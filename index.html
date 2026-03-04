@@ -101,6 +101,7 @@ textarea{resize:vertical;min-height:50px;line-height:1.5}
 .ac-item mark{background:transparent;color:var(--accent);font-weight:700}
 .error-box{background:rgba(255,80,80,0.09);border:1px solid rgba(255,80,80,0.25);color:#ff8080;padding:12px 16px;border-radius:8px;font-size:13px}
 </style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 </head>
 <body>
 <div id="pgbar"><div id="pgfill"></div></div>
@@ -455,7 +456,7 @@ function copyDoc() {
 function buildWordHtml(body) {
   return '<!DOCTYPE html><html><head><meta charset="utf-8"><style>' +
     'body{font-family:Arial,sans-serif;font-size:11pt;line-height:1.7;color:#000;max-width:700px;margin:40px auto;padding:0 20px}' +
-    'h1{font-size:18pt;font-weight:bold;margin:0 0 16pt}' +
+    'h1{font-size:14pt;font-weight:bold;margin:0 0 12pt}' +
     'h2{font-size:13pt;font-weight:bold;margin:20pt 0 8pt;border-top:1px solid #eee;padding-top:10pt}' +
     'h3{font-size:11pt;font-weight:bold;margin:12pt 0 4pt}' +
     'p{margin:0 0 8pt}ul{margin:6pt 0 10pt;padding-left:18pt}li{margin:4pt 0}' +
@@ -608,6 +609,50 @@ async function driveCreateGoogleDoc(name, htmlContent, parentId) {
   return result;
 }
 
+async function generatePDF(htmlContent, name) {
+  // Создаём временный контейнер
+  var container = document.createElement('div');
+  container.style.cssText = 'position:fixed;left:-9999px;top:0;width:794px;background:#fff;color:#000;font-family:Arial,sans-serif;padding:40px;box-sizing:border-box;';
+  container.innerHTML = htmlContent;
+  document.body.appendChild(container);
+  var opt = {
+    margin: [10, 10, 10, 10],
+    filename: 'Анализ — ' + name + '.pdf',
+    image: {type: 'jpeg', quality: 0.92},
+    html2canvas: {scale: 1.5, useCORS: true, allowTaint: true},
+    jsPDF: {unit: 'mm', format: 'a4', orientation: 'portrait'},
+    pagebreak: {mode: ['avoid-all']}
+  };
+  var blob = await html2pdf().set(opt).from(container).outputPdf('blob');
+  document.body.removeChild(container);
+  return blob;
+}
+
+async function driveUploadBlob(name, blob, mimeType, parentId) {
+  var token = await getDriveToken();
+  var boundary = 'avitolog_' + Date.now();
+  var nl = '\r\n';
+  var meta = JSON.stringify({name: name, parents: [parentId]});
+  var enc = new TextEncoder();
+  var pre = '--' + boundary + nl + 'Content-Type: application/json; charset=UTF-8' + nl + nl + meta + nl +
+    '--' + boundary + nl + 'Content-Type: ' + mimeType + nl + nl;
+  var post = nl + '--' + boundary + '--';
+  var preB = enc.encode(pre);
+  var postB = enc.encode(post);
+  var blobArr = await blob.arrayBuffer();
+  var blobB = new Uint8Array(blobArr);
+  var body = new Uint8Array(preB.length + blobB.length + postB.length);
+  body.set(preB, 0); body.set(blobB, preB.length); body.set(postB, preB.length + blobB.length);
+  var resp = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
+    method: 'POST',
+    headers: {'Authorization': 'Bearer ' + token, 'Content-Type': 'multipart/related; boundary=' + boundary},
+    body: body
+  });
+  var result = await resp.json();
+  if (!result.id) throw new Error('PDF не загружен: ' + JSON.stringify(result));
+  return result;
+}
+
 async function driveUploadText(name, text, mimeType, parentId) {
   var token = await getDriveToken();
   var boundary = 'avitolog_' + Date.now();
@@ -672,11 +717,17 @@ async function saveToDrive(html, contactsTxt, docHtml) {
     await driveUploadText('contacts.txt', contactsTxt, 'text/plain', clientId);
 
     // Создаём Google Doc
-    var doc = await driveCreateGoogleDoc('Анализ — ' + clientName, currentHtml, clientId);
-    console.log('Google Doc создан:', doc);
+    // Генерируем PDF из HTML
+    st.textContent = 'Генерирую PDF...';
+    var pdfBlob = await generatePDF(currentHtml, clientName);
+
+    // Загружаем PDF в Drive
+    st.textContent = 'Загружаю PDF...';
+    await driveUploadBlob('Анализ — ' + clientName + '.pdf', pdfBlob, 'application/pdf', clientId);
+    await driveUploadText('contacts.txt', contactsTxt, 'text/plain', clientId);
 
     st.className = 'crm-st ok';
-    st.textContent = '✓ ' + cat.name + ' / ' + clientName;
+    st.textContent = '✓ PDF загружен → ' + cat.name;
   } catch(e) {
     st.className = 'crm-st err';
     st.textContent = '✗ ' + (e.message || String(e));
