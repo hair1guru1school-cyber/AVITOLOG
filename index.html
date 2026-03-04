@@ -626,20 +626,67 @@ async function saveToDrive(html, contactsTxt, docHtml) {
     var dateStr = new Date().toLocaleDateString('ru');
     var folderName = clientName + ' (' + dateStr + ')';
     var catName = detectCRMCategory(d.category);
-    var catId = await driveGetOrCreateFolder(catName, CRM_ROOT);
-    var clientId = await driveGetOrCreateFolder(folderName, catId);
+
+    // Ищем папку категории — только среди существующих папок в CRM_ROOT
+    var token = await getDriveToken();
+    var q = "'" + CRM_ROOT + "' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false";
+    var sr = await fetch('https://www.googleapis.com/drive/v3/files?q=' + encodeURIComponent(q) + '&fields=files(id,name)', {
+      headers: {'Authorization': 'Bearer ' + token}
+    });
+    var sd = await sr.json();
+    var catFolder = null;
+    if (sd.files) {
+      // Ищем папку по частичному совпадению имени
+      for (var i = 0; i < sd.files.length; i++) {
+        var fn = sd.files[i].name.toLowerCase().replace(/[^а-яёa-z0-9]/gi, '');
+        var cn = catName.toLowerCase().replace(/[^а-яёa-z0-9]/gi, '');
+        if (fn.indexOf(cn.slice(0,8)) >= 0 || cn.indexOf(fn.slice(0,8)) >= 0) {
+          catFolder = sd.files[i];
+          break;
+        }
+      }
+      // Если не нашли — берём первое похожее
+      if (!catFolder) {
+        var kw = catName.toLowerCase();
+        for (var i = 0; i < sd.files.length; i++) {
+          var fn2 = sd.files[i].name.toLowerCase();
+          if ((kw.indexOf('строи') >= 0 && fn2.indexOf('строи') >= 0) ||
+              (kw.indexOf('услуг') >= 0 && fn2.indexOf('услуг') >= 0) ||
+              (kw.indexOf('мебел') >= 0 && fn2.indexOf('мебел') >= 0) ||
+              (kw.indexOf('дом') >= 0 && fn2.indexOf('дом') >= 0) ||
+              (kw.indexOf('авто') >= 0 && fn2.indexOf('авто') >= 0) ||
+              (kw.indexOf('оборуд') >= 0 && fn2.indexOf('оборуд') >= 0)) {
+            catFolder = sd.files[i];
+            break;
+          }
+        }
+      }
+      // Если совсем не нашли — кладём в БАЗА без оплаты
+      if (!catFolder) {
+        for (var i = 0; i < sd.files.length; i++) {
+          if (sd.files[i].name.toLowerCase().indexOf('база') >= 0) {
+            catFolder = sd.files[i];
+            break;
+          }
+        }
+      }
+    }
+    if (!catFolder) throw new Error('Папка категории не найдена в CRM');
+
+    // Создаём папку клиента внутри категории
+    var clientId = await driveGetOrCreateFolder(folderName, catFolder.id);
+
+    // Загружаем contacts.txt
     await driveUploadText('contacts.txt', contactsTxt, 'text/plain', clientId);
+
+    // Создаём Google Doc
     await driveCreateGoogleDoc('Анализ — ' + clientName, currentHtml, clientId);
+
     st.className = 'crm-st ok';
-    st.textContent = '✓ CRM сохранено';
+    st.textContent = '✓ ' + catFolder.name + ' / ' + folderName;
   } catch(e) {
     st.className = 'crm-st err';
-    var msg = e.message || String(e);
-    if (msg.indexOf('fetch') >= 0 || msg.indexOf('CORS') >= 0 || msg.indexOf('network') >= 0) {
-      st.textContent = '✗ Нужен хостинг — открой файл через сервер, не из папки';
-    } else {
-      st.textContent = '✗ Drive ошибка: ' + msg;
-    }
+    st.textContent = '✗ ' + (e.message || String(e));
     console.error('Drive error:', e);
   }
 }
