@@ -717,17 +717,23 @@ async function saveToDrive(html, contactsTxt, docHtml) {
     await driveUploadText('contacts.txt', contactsTxt, 'text/plain', clientId);
 
     // Создаём Google Doc
-    // Генерируем PDF из HTML
+    // Генерируем PDF и скачиваем локально
     st.textContent = 'Генерирую PDF...';
     var pdfBlob = await generatePDF(currentHtml, clientName);
+    var pdfUrl = URL.createObjectURL(pdfBlob);
+    var a = document.createElement('a');
+    a.href = pdfUrl;
+    a.download = 'Анализ — ' + clientName + '.pdf';
+    a.click();
+    setTimeout(function(){ URL.revokeObjectURL(pdfUrl); }, 3000);
 
-    // Загружаем PDF в Drive
-    st.textContent = 'Загружаю PDF...';
-    await driveUploadBlob('Анализ — ' + clientName + '.pdf', pdfBlob, 'application/pdf', clientId);
+    // Загружаем contacts.txt в Drive
     await driveUploadText('contacts.txt', contactsTxt, 'text/plain', clientId);
 
+    // Открываем папку клиента в Drive
+    var folderUrl = 'https://drive.google.com/drive/folders/' + clientId;
     st.className = 'crm-st ok';
-    st.textContent = '✓ PDF загружен → ' + cat.name;
+    st.innerHTML = '✓ PDF скачан · <a href="' + folderUrl + '" target="_blank" style="color:#4fc;text-decoration:underline">Открыть папку в Drive →</a>';
   } catch(e) {
     st.className = 'crm-st err';
     st.textContent = '✗ ' + (e.message || String(e));
