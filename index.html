@@ -593,27 +593,25 @@ async function driveUploadText(name, text, mimeType, parentId) {
 
 function detectCRMCategory(category) {
   var c = (category || '').toLowerCase();
+  // ID реальных папок в Drive
   var cats = [
-    {name: '🔨 ТОВАРЫ СТРОИТЕЛЬСТВО', kw: ['строи','пиломат','доска','брус','кирпич','бетон','цемент','сэндвич','металл','кровл','черепиц','профил','труб','арматур']},
-    {name: '👷 УСЛУГИ | СТРОИТЕЛИ',   kw: ['монтаж','ремонт','отделк','сантех','сварк','бурен','фундам','строит','укладк','кладк']},
-    {name: '⚙️ ОБОРУДОВАНИЕ',         kw: ['оборуд','станок','компрес','генерат','насос','инстр','агрегат','аппарат']},
-    {name: '🛋 ТОВАРЫ - мебель',       kw: ['мебел','диван','шкаф','кухн','кресл','стол','матрас','корпус']},
-    {name: '🏠 ДОМА | БЫТОВКИ | БАНИ', kw: ['дом','бытовк','бан','блок-контейн','каркас','сруб','модул']},
-    {name: '🚗 ТОВАРЫ | АВТОзапчасти', kw: ['авто','запчаст','шин','колес','мото','масл','фильтр']},
-    {name: '👗 ОДЕЖДА Кроссовки Пошив',kw: ['одежд','обувь','кроссовк','пошив','текстил','футболк','куртк']},
-    {name: '🏢 ГОТОВЫЙ БИЗНЕС',        kw: ['бизнес','готов','франш','продаж бизнес']},
-    {name: '⚖️ УСЛУГИ - Юр, Репетиторы, IT', kw: ['юрид','адвокат','репетитор','бухгал','налог','it','программ','сайт','дизайн']},
-    {name: '🚚 ЛОГИСТИКА услуги',      kw: ['логист','доставк','перевозк','транспорт','грузоперев']},
-    {name: '💼 ВАКАНСИИ',              kw: ['вакансия','работа','сотрудник','найм','персонал']},
-    {name: '🚀 АКТИВ+',               kw: ['актив','продвиж','маркетинг','реклам','авитолог']},
-    {name: '🚙 ТОВАРЫ Авто аксессуары',kw: ['аксессуар','чехол','коврик','магнитол','видеорегистр']},
+    {name: '🪚 ТОВАРЫ СТРОИТЕЛЬСТВО', id: '12QkZZOOmrTqtVEgS89H45eeAJzm5tiI2', kw: ['строи','пиломат','доска','брус','кирпич','бетон','цемент','сэндвич','металл','кровл','черепиц','профил','труб','арматур']},
+    {name: '👷 УСЛУГИ | СТРОИТЕЛИ',   id: '174UazB2ErOG0wD9KplArQWO0JxfhDhfc', kw: ['монтаж','ремонт','отделк','сантех','сварк','бурен','фундам','строит','укладк','кладк']},
+    {name: '⚙️ ОБОРУДОВАНИЕ',         id: '1j3bqO2-9O9OeENLS7uDxVCu4imgsF1tb', kw: ['оборуд','станок','компрес','генерат','насос','инстр','агрегат','аппарат','электр','печ','котл']},
+    {name: '🛋 ТОВАРЫ - мебель',       id: '1ODPfNieEXqs9HmL96udmw-qLwiXL3EAS', kw: ['мебел','диван','шкаф','кухн','кресл','стол','матрас','корпус']},
+    {name: '🏠 ДОМА | БЫТОВКИ | БАНИ', id: '12ajIWwl0fLs4jWB8NATNdvr6F2SmEeUU', kw: ['дом','бытовк','бан','блок-контейн','каркас','сруб','модул']},
+    {name: '🚗 ТОВАРЫ | АВТОзапчасти', id: '1RwiDeVxf3HiCySEMC1fI_5hMDm-5Er9T', kw: ['авто','запчаст','шин','колес','мото','масл','фильтр']},
+    {name: '👗 ОДЕЖДА Кроссовки Пошив',id: '1Os8bLpRKDAeLlaUi_P5HFyE3zEL8AebL', kw: ['одежд','обувь','кроссовк','пошив','текстил','футболк','куртк','вакансия','работа']},
+    {name: '🏢 ГОТОВЫЙ БИЗНЕС',        id: '1ci9RhkZPtvyuBSK4jOh7x02ooBqmpGxw', kw: ['бизнес','готов','франш']},
+    {name: '👤 УСЛУГИ - Юр, Репетиторы, IT', id: '1ci9RhkZPtvyuBSK4jOh7x02ooBqmpGxw', kw: ['юрид','адвокат','репетитор','бухгал','налог','it','программ','сайт','дизайн']},
   ];
   for (var i = 0; i < cats.length; i++) {
     for (var j = 0; j < cats[i].kw.length; j++) {
-      if (c.indexOf(cats[i].kw[j]) >= 0) return cats[i].name;
+      if (c.indexOf(cats[i].kw[j]) >= 0) return cats[i];
     }
   }
-  return 'БАЗА без оплаты';
+  // По умолчанию — БАЗА без оплаты (корень CRM)
+  return {name: 'БАЗА без оплаты', id: CRM_ROOT};
 }
 
 async function saveToDrive(html, contactsTxt, docHtml) {
@@ -625,55 +623,11 @@ async function saveToDrive(html, contactsTxt, docHtml) {
     var clientName = [d.company, d.name].filter(Boolean).join(' - ') || 'Клиент';
     var dateStr = new Date().toLocaleDateString('ru');
     var folderName = clientName + ' (' + dateStr + ')';
-    var catName = detectCRMCategory(d.category);
+    var cat = detectCRMCategory(d.category);
+    var catName = cat.name;
 
-    // Ищем папку категории — только среди существующих папок в CRM_ROOT
-    var token = await getDriveToken();
-    var q = "'" + CRM_ROOT + "' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false";
-    var sr = await fetch('https://www.googleapis.com/drive/v3/files?q=' + encodeURIComponent(q) + '&fields=files(id,name)', {
-      headers: {'Authorization': 'Bearer ' + token}
-    });
-    var sd = await sr.json();
-    var catFolder = null;
-    if (sd.files) {
-      // Ищем папку по частичному совпадению имени
-      for (var i = 0; i < sd.files.length; i++) {
-        var fn = sd.files[i].name.toLowerCase().replace(/[^а-яёa-z0-9]/gi, '');
-        var cn = catName.toLowerCase().replace(/[^а-яёa-z0-9]/gi, '');
-        if (fn.indexOf(cn.slice(0,8)) >= 0 || cn.indexOf(fn.slice(0,8)) >= 0) {
-          catFolder = sd.files[i];
-          break;
-        }
-      }
-      // Если не нашли — берём первое похожее
-      if (!catFolder) {
-        var kw = catName.toLowerCase();
-        for (var i = 0; i < sd.files.length; i++) {
-          var fn2 = sd.files[i].name.toLowerCase();
-          if ((kw.indexOf('строи') >= 0 && fn2.indexOf('строи') >= 0) ||
-              (kw.indexOf('услуг') >= 0 && fn2.indexOf('услуг') >= 0) ||
-              (kw.indexOf('мебел') >= 0 && fn2.indexOf('мебел') >= 0) ||
-              (kw.indexOf('дом') >= 0 && fn2.indexOf('дом') >= 0) ||
-              (kw.indexOf('авто') >= 0 && fn2.indexOf('авто') >= 0) ||
-              (kw.indexOf('оборуд') >= 0 && fn2.indexOf('оборуд') >= 0)) {
-            catFolder = sd.files[i];
-            break;
-          }
-        }
-      }
-      // Если совсем не нашли — кладём в БАЗА без оплаты
-      if (!catFolder) {
-        for (var i = 0; i < sd.files.length; i++) {
-          if (sd.files[i].name.toLowerCase().indexOf('база') >= 0) {
-            catFolder = sd.files[i];
-            break;
-          }
-        }
-      }
-    }
-    if (!catFolder) throw new Error('Папка категории не найдена в CRM');
-
-    // Создаём папку клиента внутри категории
+    // Берём ID папки категории напрямую (захардкожено)
+    var catFolder = detectCRMCategory(d.category);
     var clientId = await driveGetOrCreateFolder(folderName, catFolder.id);
 
     // Загружаем contacts.txt
@@ -683,7 +637,7 @@ async function saveToDrive(html, contactsTxt, docHtml) {
     await driveCreateGoogleDoc('Анализ — ' + clientName, currentHtml, clientId);
 
     st.className = 'crm-st ok';
-    st.textContent = '✓ ' + catFolder.name + ' / ' + folderName;
+    st.textContent = '✓ ' + cat.name + ' / ' + clientName;
   } catch(e) {
     st.className = 'crm-st err';
     st.textContent = '✗ ' + (e.message || String(e));
