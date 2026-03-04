@@ -528,6 +528,27 @@ async function getDriveToken() {
   return _driveToken;
 }
 
+async function driveCreateClientFolder(name, parentId) {
+  // Создаём папку клиента внутри уже существующей папки категории
+  var token = await getDriveToken();
+  // Проверяем нет ли уже такой папки
+  var q = "name='" + name.replace(/'/g,"\'") + "' and '" + parentId + "' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false";
+  var sr = await fetch('https://www.googleapis.com/drive/v3/files?q=' + encodeURIComponent(q) + '&fields=files(id)', {
+    headers: {'Authorization': 'Bearer ' + token}
+  });
+  var sd = await sr.json();
+  if (sd.files && sd.files.length > 0) return sd.files[0].id;
+  // Создаём новую папку клиента
+  var cr = await fetch('https://www.googleapis.com/drive/v3/files', {
+    method: 'POST',
+    headers: {'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json'},
+    body: JSON.stringify({name: name, mimeType: 'application/vnd.google-apps.folder', parents: [parentId]})
+  });
+  var cd = await cr.json();
+  if (!cd.id) throw new Error('Не удалось создать папку клиента: ' + JSON.stringify(cd));
+  return cd.id;
+}
+
 async function driveGetOrCreateFolder(name, parentId) {
   var token = await getDriveToken();
   var q = "name='" + name.replace(/'/g,"\\'") + "' and '" + parentId + "' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false";
@@ -628,7 +649,7 @@ async function saveToDrive(html, contactsTxt, docHtml) {
 
     // Берём ID папки категории напрямую (захардкожено)
     var catFolder = detectCRMCategory(d.category);
-    var clientId = await driveGetOrCreateFolder(folderName, catFolder.id);
+    var clientId = await driveCreateClientFolder(folderName, catFolder.id);
 
     // Загружаем contacts.txt
     await driveUploadText('contacts.txt', contactsTxt, 'text/plain', clientId);
