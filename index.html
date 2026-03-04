@@ -386,10 +386,6 @@ function renderDoc(html) {
   docReady = true;
   setContent(
     '<div class="doc-wrap">' +
-      '<div class="doc-toolbar">' +
-        '<button type="button" class="btn-t btn-copy" onclick="copyDoc()">Скопировать для Google Docs</button>' +
-        '<button type="button" class="btn-t btn-dl" onclick="dlDoc()">Скачать Word</button>' +
-      '</div>' +
       '<div class="doc-block" id="docBlock">' + withImg(html) + '</div>' +
     '</div>'
   );
@@ -549,6 +545,34 @@ async function driveGetOrCreateFolder(name, parentId) {
   return cd.id;
 }
 
+async function driveCreateGoogleDoc(name, htmlContent, parentId) {
+  var token = await getDriveToken();
+  // Конвертируем HTML в plain text для Google Doc
+  var tmp = document.createElement('div');
+  tmp.innerHTML = htmlContent;
+  var plainText = tmp.innerText || tmp.textContent;
+  var boundary = 'avitolog_' + Date.now();
+  var enc = new TextEncoder();
+  var meta = JSON.stringify({
+    name: name,
+    mimeType: 'application/vnd.google-apps.document',
+    parents: [parentId]
+  });
+  var nl = '\r\n';
+  var pre = '--' + boundary + nl + 'Content-Type: application/json; charset=UTF-8' + nl + nl + meta + nl +
+    '--' + boundary + nl + 'Content-Type: text/html; charset=UTF-8' + nl + nl;
+  var post = nl + '--' + boundary + '--';
+  var preB = enc.encode(pre), textB = enc.encode(htmlContent), postB = enc.encode(post);
+  var body = new Uint8Array(preB.length + textB.length + postB.length);
+  body.set(preB, 0); body.set(textB, preB.length); body.set(postB, preB.length + textB.length);
+  var resp = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
+    method: 'POST',
+    headers: {'Authorization': 'Bearer ' + token, 'Content-Type': 'multipart/related; boundary=' + boundary},
+    body: body
+  });
+  return await resp.json();
+}
+
 async function driveUploadText(name, text, mimeType, parentId) {
   var token = await getDriveToken();
   var boundary = 'avitolog_' + Date.now();
@@ -570,15 +594,19 @@ async function driveUploadText(name, text, mimeType, parentId) {
 function detectCRMCategory(category) {
   var c = (category || '').toLowerCase();
   var cats = [
-    {name: 'ТОВАРЫ СТРОИТЕЛЬСТВО', kw: ['строи','пиломат','доска','брус','кирпич','бетон','цемент','сэндвич','металл','кровл','черепиц']},
-    {name: 'УСЛУГИ СТРОИТЕЛИ', kw: ['монтаж','ремонт','отделк','сантех','сварк','бурен','фундам','строит']},
-    {name: 'ОБОРУДОВАНИЕ', kw: ['оборуд','станок','компрес','генерат','насос','инстр']},
-    {name: 'ТОВАРЫ - мебель', kw: ['мебел','диван','шкаф','кухн','кресл']},
-    {name: 'ДОМА БЫТОВКИ БАНИ', kw: ['дом','бытовк','бан','блок-контейн']},
-    {name: 'ТОВАРЫ АВТОзапчасти', kw: ['авто','запчаст','шин','колес','мото']},
-    {name: 'ОДЕЖДА Кроссовки Пошив', kw: ['одежд','обувь','кроссовк','пошив','текстил']},
-    {name: 'ГОТОВЫЙ БИЗНЕС', kw: ['бизнес','готов','франш']},
-    {name: 'ЛОГИСТИКА услуги', kw: ['логист','доставк','перевозк']},
+    {name: '🔨 ТОВАРЫ СТРОИТЕЛЬСТВО', kw: ['строи','пиломат','доска','брус','кирпич','бетон','цемент','сэндвич','металл','кровл','черепиц','профил','труб','арматур']},
+    {name: '👷 УСЛУГИ | СТРОИТЕЛИ',   kw: ['монтаж','ремонт','отделк','сантех','сварк','бурен','фундам','строит','укладк','кладк']},
+    {name: '⚙️ ОБОРУДОВАНИЕ',         kw: ['оборуд','станок','компрес','генерат','насос','инстр','агрегат','аппарат']},
+    {name: '🛋 ТОВАРЫ - мебель',       kw: ['мебел','диван','шкаф','кухн','кресл','стол','матрас','корпус']},
+    {name: '🏠 ДОМА | БЫТОВКИ | БАНИ', kw: ['дом','бытовк','бан','блок-контейн','каркас','сруб','модул']},
+    {name: '🚗 ТОВАРЫ | АВТОзапчасти', kw: ['авто','запчаст','шин','колес','мото','масл','фильтр']},
+    {name: '👗 ОДЕЖДА Кроссовки Пошив',kw: ['одежд','обувь','кроссовк','пошив','текстил','футболк','куртк']},
+    {name: '🏢 ГОТОВЫЙ БИЗНЕС',        kw: ['бизнес','готов','франш','продаж бизнес']},
+    {name: '⚖️ УСЛУГИ - Юр, Репетиторы, IT', kw: ['юрид','адвокат','репетитор','бухгал','налог','it','программ','сайт','дизайн']},
+    {name: '🚚 ЛОГИСТИКА услуги',      kw: ['логист','доставк','перевозк','транспорт','грузоперев']},
+    {name: '💼 ВАКАНСИИ',              kw: ['вакансия','работа','сотрудник','найм','персонал']},
+    {name: '🚀 АКТИВ+',               kw: ['актив','продвиж','маркетинг','реклам','авитолог']},
+    {name: '🚙 ТОВАРЫ Авто аксессуары',kw: ['аксессуар','чехол','коврик','магнитол','видеорегистр']},
   ];
   for (var i = 0; i < cats.length; i++) {
     for (var j = 0; j < cats[i].kw.length; j++) {
@@ -601,9 +629,9 @@ async function saveToDrive(html, contactsTxt, docHtml) {
     var catId = await driveGetOrCreateFolder(catName, CRM_ROOT);
     var clientId = await driveGetOrCreateFolder(folderName, catId);
     await driveUploadText('contacts.txt', contactsTxt, 'text/plain', clientId);
-    await driveUploadText('analysis.doc', docHtml, 'application/msword', clientId);
+    await driveCreateGoogleDoc('Анализ — ' + clientName, currentHtml, clientId);
     st.className = 'crm-st ok';
-    st.textContent = '✓ Сохранено → ' + catName + ' / ' + folderName;
+    st.textContent = '✓ CRM сохранено';
   } catch(e) {
     st.className = 'crm-st err';
     var msg = e.message || String(e);
