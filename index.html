@@ -568,30 +568,44 @@ async function driveGetOrCreateFolder(name, parentId) {
 
 async function driveCreateGoogleDoc(name, htmlContent, parentId) {
   var token = await getDriveToken();
-  // Конвертируем HTML в plain text для Google Doc
-  var tmp = document.createElement('div');
-  tmp.innerHTML = htmlContent;
-  var plainText = tmp.innerText || tmp.textContent;
-  var boundary = 'avitolog_' + Date.now();
   var enc = new TextEncoder();
+  var boundary = 'avitolog_' + Date.now();
+  var nl = '\r\n';
   var meta = JSON.stringify({
     name: name,
     mimeType: 'application/vnd.google-apps.document',
     parents: [parentId]
   });
-  var nl = '\r\n';
-  var pre = '--' + boundary + nl + 'Content-Type: application/json; charset=UTF-8' + nl + nl + meta + nl +
-    '--' + boundary + nl + 'Content-Type: text/html; charset=UTF-8' + nl + nl;
-  var post = nl + '--' + boundary + '--';
-  var preB = enc.encode(pre), textB = enc.encode(htmlContent), postB = enc.encode(post);
-  var body = new Uint8Array(preB.length + textB.length + postB.length);
-  body.set(preB, 0); body.set(textB, preB.length); body.set(postB, preB.length + textB.length);
-  var resp = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
-    method: 'POST',
-    headers: {'Authorization': 'Bearer ' + token, 'Content-Type': 'multipart/related; boundary=' + boundary},
-    body: body
-  });
-  return await resp.json();
+  // Строим multipart тело
+  var part1 = '--' + boundary + nl +
+    'Content-Type: application/json; charset=UTF-8' + nl + nl +
+    meta + nl;
+  var part2 = '--' + boundary + nl +
+    'Content-Type: text/html; charset=UTF-8' + nl + nl;
+  var part3 = nl + '--' + boundary + '--';
+  var b1 = enc.encode(part1);
+  var b2 = enc.encode(part2);
+  var b3 = enc.encode(htmlContent);
+  var b4 = enc.encode(part3);
+  var total = new Uint8Array(b1.length + b2.length + b3.length + b4.length);
+  total.set(b1, 0);
+  total.set(b2, b1.length);
+  total.set(b3, b1.length + b2.length);
+  total.set(b4, b1.length + b2.length + b3.length);
+  var resp = await fetch(
+    'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,name,webViewLink',
+    {
+      method: 'POST',
+      headers: {
+        'Authorization': 'Bearer ' + token,
+        'Content-Type': 'multipart/related; boundary=' + boundary
+      },
+      body: total
+    }
+  );
+  var result = await resp.json();
+  if (!result.id) throw new Error('Google Doc не создан: ' + JSON.stringify(result));
+  return result;
 }
 
 async function driveUploadText(name, text, mimeType, parentId) {
@@ -614,25 +628,27 @@ async function driveUploadText(name, text, mimeType, parentId) {
 
 function detectCRMCategory(category) {
   var c = (category || '').toLowerCase();
-  // ID реальных папок в Drive
   var cats = [
-    {name: '🪚 ТОВАРЫ СТРОИТЕЛЬСТВО', id: '12QkZZOOmrTqtVEgS89H45eeAJzm5tiI2', kw: ['строи','пиломат','доска','брус','кирпич','бетон','цемент','сэндвич','металл','кровл','черепиц','профил','труб','арматур']},
-    {name: '👷 УСЛУГИ | СТРОИТЕЛИ',   id: '174UazB2ErOG0wD9KplArQWO0JxfhDhfc', kw: ['монтаж','ремонт','отделк','сантех','сварк','бурен','фундам','строит','укладк','кладк']},
-    {name: '⚙️ ОБОРУДОВАНИЕ',         id: '1j3bqO2-9O9OeENLS7uDxVCu4imgsF1tb', kw: ['оборуд','станок','компрес','генерат','насос','инстр','агрегат','аппарат','электр','печ','котл']},
+    {name: '🪚 ТОВАРЫ СТРОИТЕЛЬСТВО', id: '12QkZZOOmrTqtVEgS89H45eeAJzm5tiI2', kw: ['строи','пиломат','доска','брус','кирпич','бетон','цемент','металл','кровл','черепиц','профил','труб','арматур','пиломат']},
+    {name: '👷 УСЛУГИ | СТРОИТЕЛИ',   id: '174UazB2ErOG0wD9KplArQWO0JxfhDhfc', kw: ['монтаж','ремонт','отделк','сантех','сварк','бурен','фундам','строит','укладк','кладк','каркасник']},
+    {name: '⚙️ ОБОРУДОВАНИЕ',         id: '1j3bqO2-9O9OeENLS7uDxVCu4imgsF1tb', kw: ['оборуд','станок','компрес','генерат','насос','инстр','электр','печ','котл','спецтехник']},
     {name: '🛋 ТОВАРЫ - мебель',       id: '1ODPfNieEXqs9HmL96udmw-qLwiXL3EAS', kw: ['мебел','диван','шкаф','кухн','кресл','стол','матрас','корпус']},
     {name: '🏠 ДОМА | БЫТОВКИ | БАНИ', id: '12ajIWwl0fLs4jWB8NATNdvr6F2SmEeUU', kw: ['дом','бытовк','бан','блок-контейн','каркас','сруб','модул']},
-    {name: '🚗 ТОВАРЫ | АВТОзапчасти', id: '1RwiDeVxf3HiCySEMC1fI_5hMDm-5Er9T', kw: ['авто','запчаст','шин','колес','мото','масл','фильтр']},
-    {name: '👗 ОДЕЖДА Кроссовки Пошив',id: '1Os8bLpRKDAeLlaUi_P5HFyE3zEL8AebL', kw: ['одежд','обувь','кроссовк','пошив','текстил','футболк','куртк','вакансия','работа']},
-    {name: '🏢 ГОТОВЫЙ БИЗНЕС',        id: '1ci9RhkZPtvyuBSK4jOh7x02ooBqmpGxw', kw: ['бизнес','готов','франш']},
-    {name: '👤 УСЛУГИ - Юр, Репетиторы, IT', id: '1ci9RhkZPtvyuBSK4jOh7x02ooBqmpGxw', kw: ['юрид','адвокат','репетитор','бухгал','налог','it','программ','сайт','дизайн']},
+    {name: '🚙 ТОВАРЫ | АВТОзапчасти', id: '1RwiDeVxf3HiCySEMC1fI_5hMDm-5Er9T', kw: ['запчаст','шин','колес','масл','фильтр','автозапч']},
+    {name: '🛻 АВТОМОБИЛИ и МОТО',     id: '1rh2Fq8wGsGVDCediTr9zN4tnzvth1CWK', kw: ['автомобил','мото','байк','скутер','авто прод']},
+    {name: '🏎 ТОВАРЫ Авто аксессуары',id: '1tevmc_P3MxW4xFLhcuAUMtp7PKNQ8678', kw: ['аксессуар','чехол','коврик','магнитол','видеорегистр']},
+    {name: '👕 ОДЕЖДА / Кроссовки',   id: '1p8-ETlYZ4X88X87sMuqNSMF_f4w-td_C', kw: ['одежд','обувь','кроссовк','пошив','текстил','футболк','куртк']},
+    {name: '🏭 ГОТОВЫЙ БИЗНЕС',        id: '1aA1wATzVmPRavUrAh8oGsuEa6-xeIOdP', kw: ['бизнес','готов','франш']},
+    {name: '👤 УСЛУГИ - Юр, IT',       id: '1ci9RhkZPtvyuBSK4jOh7x02ooBqmpGxw', kw: ['юрид','адвокат','репетитор','бухгал','налог','it','программ','сайт','дизайн']},
+    {name: '✈️ ЛОГИСТИКА услуги',      id: '1UgnWOC7tBupL_FSYV0T9RU4Lg6GOEqNa', kw: ['логист','доставк','перевозк','транспорт']},
+    {name: '👤 ВАКАНСИИ',              id: '1Os8bLpRKDAeLlaUi_P5HFyE3zEL8AebL', kw: ['вакансия','работа','сотрудник','найм','персонал']},
   ];
   for (var i = 0; i < cats.length; i++) {
     for (var j = 0; j < cats[i].kw.length; j++) {
       if (c.indexOf(cats[i].kw[j]) >= 0) return cats[i];
     }
   }
-  // По умолчанию — БАЗА без оплаты (корень CRM)
-  return {name: 'БАЗА без оплаты', id: CRM_ROOT};
+  return {name: '🙇 БАЗА без оплаты', id: '1-nKHmmLp-vY81EK3APxQSg7v8GSO5TJy'};
 }
 
 async function saveToDrive(html, contactsTxt, docHtml) {
@@ -644,18 +660,20 @@ async function saveToDrive(html, contactsTxt, docHtml) {
     var clientName = [d.company, d.name].filter(Boolean).join(' - ') || 'Клиент';
     var dateStr = new Date().toLocaleDateString('ru');
     var folderName = clientName + ' (' + dateStr + ')';
+    // Определяем категорию и берём её ID напрямую
     var cat = detectCRMCategory(d.category);
-    var catName = cat.name;
+    console.log('CRM категория:', cat.name, 'ID:', cat.id);
 
-    // Берём ID папки категории напрямую (захардкожено)
-    var catFolder = detectCRMCategory(d.category);
-    var clientId = await driveCreateClientFolder(folderName, catFolder.id);
+    // Создаём папку клиента ВНУТРИ существующей папки категории
+    var clientId = await driveCreateClientFolder(folderName, cat.id);
+    console.log('Папка клиента создана:', clientId);
 
     // Загружаем contacts.txt
     await driveUploadText('contacts.txt', contactsTxt, 'text/plain', clientId);
 
     // Создаём Google Doc
-    await driveCreateGoogleDoc('Анализ — ' + clientName, currentHtml, clientId);
+    var doc = await driveCreateGoogleDoc('Анализ — ' + clientName, currentHtml, clientId);
+    console.log('Google Doc создан:', doc);
 
     st.className = 'crm-st ok';
     st.textContent = '✓ ' + cat.name + ' / ' + clientName;
