@@ -57,6 +57,9 @@ textarea{resize:vertical;min-height:50px;line-height:1.5}
 .btn-gen{width:100%;background:var(--accent);color:#0c0c0e;border:none;padding:13px;border-radius:9px;font-family:'Golos Text',sans-serif;font-size:15px;font-weight:900;letter-spacing:1px;cursor:pointer;margin-top:12px;transition:all 0.2s;display:flex;align-items:center;justify-content:center;gap:8px;white-space:nowrap}
 .btn-gen:hover{background:#00ffaa;transform:translateY(-1px)}
 .btn-gen:disabled{background:var(--border);color:var(--muted);cursor:not-allowed;transform:none}
+.btn-refresh{width:100%;background:transparent;border:1px solid var(--accent);color:var(--accent);padding:9px;border-radius:9px;font-family:'Golos Text',sans-serif;font-size:13px;font-weight:700;cursor:pointer;margin-top:6px;transition:all 0.2s}
+.btn-refresh:hover{background:rgba(0,217,126,0.1)}
+.btn-refresh:disabled{opacity:0.4;cursor:not-allowed}
 .content-wrap{display:flex;flex-direction:column;overflow:hidden;background:var(--bg)}
 .content{overflow-y:auto;padding:20px;flex:1}
 .depth-bar{display:flex;gap:6px;justify-content:center;padding:8px 0;flex-shrink:0}
@@ -192,6 +195,7 @@ textarea{resize:vertical;min-height:50px;line-height:1.5}
   </div>
   <button type="button" class="btn-add" onclick="addPos()">+ Добавить позицию</button>
   <button type="button" class="btn-gen" id="genBtn" onclick="generate()"><span>&#9889;</span><span>СГЕНЕРИРОВАТЬ</span></button>
+  <button type="button" class="btn-refresh" id="refreshBtn" onclick="refreshDriveDoc()" style="display:none">🔄 Обновить в Drive</button>
 </div>
 
 <div class="content-wrap">
@@ -250,6 +254,7 @@ var currentDepth = 'mid';
 var _timer = null, _secs = 0;
 var currentHtml = '';
 var currentData = null;
+var lastDocId = null;  // ID последнего созданного Google Doc
 var docReady = false;
 
 // ── KP TAGS ──
@@ -594,7 +599,7 @@ function withImgUrl(html) {
 
 // ── CHAT ──
 function showChat() { document.getElementById('chatFloat').style.display = 'block'; }
-function hideChat() { document.getElementById('chatFloat').style.display = 'none'; docReady = false; }
+function hideChat() { document.getElementById('chatFloat').style.display = 'none'; document.getElementById('refreshBtn').style.display = 'none'; docReady = false; }
 
 function sendChat() {
   var inp = document.getElementById('chatInp');
@@ -608,7 +613,14 @@ function sendChat() {
   var prompt = 'HTML документа:\n' + currentHtml + '\n\nПравка: "' + comment + '"\n\nВерни JSON: {"html":"..."}';
   callAPI(prompt, 2000).then(function(raw) {
     var json = JSON.parse(fixJSON(raw.replace(/```json|```/g,'').trim()));
-    if (json.html) { currentHtml = json.html; renderDoc(json.html); }
+    if (json.html) { 
+      currentHtml = json.html; 
+      renderDoc(json.html);
+      // Показываем кнопку обновления если есть Doc в Drive
+      if (lastDocId && _driveToken) {
+        document.getElementById('refreshBtn').style.display = 'block';
+      }
+    }
   }).catch(function(e) {
     alert('Ошибка: ' + e.message);
   }).finally(function() {
@@ -924,6 +936,7 @@ async function saveToDrive(html, contactsTxt, docHtml) {
     try {
       var docResult = await driveCreateGoogleDoc(docName, driveHtml, clientId);
       console.log('Google Doc OK:', docResult);
+      lastDocId = docResult.id;
       var folderUrl = 'https://drive.google.com/drive/folders/' + clientId;
       var docLink = docResult && docResult.webViewLink 
         ? ' · <a href="' + docResult.webViewLink + '" target="_blank" style="color:#7c6af7;text-decoration:underline">Док →</a>' 
@@ -966,6 +979,58 @@ function triggerCRM(html) {
   lines.push('Дата:      ' + dateStr);
   lines.push('===============================');
   saveToDrive(html, lines.join('\n'), buildWordHtml(withImg(html)));
+}
+
+// ── REFRESH DRIVE DOC ──
+async function refreshDriveDoc() {
+  if (!lastDocId || !_driveToken) return;
+  var btn = document.getElementById('refreshBtn');
+  btn.disabled = true;
+  btn.textContent = '🔄 Обновляю...';
+  var st = document.getElementById('crmSt');
+  st.className = 'crm-st';
+  st.textContent = 'Обновляю документ...';
+  try {
+    var driveHtml = currentTab === 'analysis' 
+      ? buildWordHtml(withImgUrl(currentHtml)) 
+      : buildWordHtml(currentHtml);
+    
+    // Удаляем старый док и создаём новый в той же папке
+    var token = _driveToken;
+    // Получаем parents старого дока
+    var infoResp = await fetch('https://www.googleapis.com/drive/v3/files/' + lastDocId + '?fields=parents,name', {
+      headers: {'Authorization': 'Bearer ' + token}
+    });
+    var info = await infoResp.json();
+    var parentId = info.parents ? info.parents[0] : null;
+    var docName = info.name || 'Документ';
+    
+    if (!parentId) throw new Error('Не найдена папка документа');
+    
+    // Удаляем старый
+    await fetch('https://www.googleapis.com/drive/v3/files/' + lastDocId, {
+      method: 'DELETE',
+      headers: {'Authorization': 'Bearer ' + token}
+    });
+    
+    // Создаём новый
+    var docResult = await driveCreateGoogleDoc(docName, driveHtml, parentId);
+    lastDocId = docResult.id;
+    console.log('Doc обновлён:', docResult);
+    
+    st.className = 'crm-st ok';
+    var docLink = docResult.webViewLink 
+      ? ' · <a href="' + docResult.webViewLink + '" target="_blank" style="color:#7c6af7;text-decoration:underline">Док →</a>'
+      : '';
+    st.innerHTML = '✓ Документ обновлён' + docLink;
+    btn.style.display = 'none';
+  } catch(e) {
+    console.error('Refresh error:', e);
+    st.className = 'crm-st err';
+    st.textContent = '✗ ' + (e.message || String(e));
+    btn.disabled = false;
+    btn.textContent = '🔄 Обновить в Drive';
+  }
 }
 
 // ── SAVE NORM ──
