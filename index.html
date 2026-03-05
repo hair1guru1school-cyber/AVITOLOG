@@ -443,6 +443,13 @@ function withImg(html) {
   return i >= 0 ? html.slice(0,i+5) + img + html.slice(i+5) : img + html;
 }
 
+// Версия с URL картинкой для Google Docs (base64 не работает в Docs)
+function withImgUrl(html) {
+  var img = '<img src="https://hair1guru1school-cyber.github.io/AVITOLOG/logo.jpg" style="width:100%;max-width:600px;display:block;margin:14px 0 24px">';
+  var i = html.indexOf('</h1>');
+  return i >= 0 ? html.slice(0,i+5) + img + html.slice(i+5) : img + html;
+}
+
 // ── CHAT ──
 function showChat() { document.getElementById('chatFloat').style.display = 'block'; }
 function hideChat() { document.getElementById('chatFloat').style.display = 'none'; docReady = false; }
@@ -752,16 +759,25 @@ async function saveToDrive(html, contactsTxt, docHtml) {
       console.log('contacts.txt загружен');
     }
 
-    // Загружаем анализ как Google Doc (без base64 картинки — она ломает конвертацию)
-    var cleanHtml = buildWordHtml(currentHtml);
-    console.log('Загружаю Google Doc, размер HTML:', cleanHtml.length);
-    var docResult = await driveCreateGoogleDoc('Анализ — ' + clientName, cleanHtml, clientId);
-    console.log('Google Doc создан:', docResult);
-
-    var folderUrl = 'https://drive.google.com/drive/folders/' + clientId;
-    var docLink = docResult && docResult.webViewLink ? ' · <a href="' + docResult.webViewLink + '" target="_blank" style="color:#7c6af7;text-decoration:underline">Документ →</a>' : '';
-    st.className = 'crm-st ok';
-    st.innerHTML = '✓ ' + cat.name + ' · <a href="' + folderUrl + '" target="_blank" style="color:#4fc;text-decoration:underline">Папка →</a>' + docLink;
+    // Создаём Google Doc (с URL картинкой и стилями)
+    var docHtml = buildWordHtml(withImgUrl(currentHtml));
+    console.log('Создаю Google Doc, HTML размер:', docHtml.length);
+    try {
+      var docResult = await driveCreateGoogleDoc('Анализ — ' + clientName, docHtml, clientId);
+      console.log('Google Doc OK:', docResult);
+      var folderUrl = 'https://drive.google.com/drive/folders/' + clientId;
+      var docLink = docResult && docResult.webViewLink 
+        ? ' · <a href="' + docResult.webViewLink + '" target="_blank" style="color:#7c6af7;text-decoration:underline">Док →</a>' 
+        : '';
+      st.className = 'crm-st ok';
+      st.innerHTML = '✓ ' + cat.name + ' · <a href="' + folderUrl + '" target="_blank" style="color:#4fc;text-decoration:underline">Папка →</a>' + docLink;
+    } catch(docErr) {
+      console.error('Google Doc ошибка, гружу HTML fallback:', docErr);
+      await driveUploadText('Анализ — ' + clientName + '.html', docHtml, 'text/html', clientId);
+      var folderUrl = 'https://drive.google.com/drive/folders/' + clientId;
+      st.className = 'crm-st ok';
+      st.innerHTML = '✓ ' + cat.name + ' (HTML) · <a href="' + folderUrl + '" target="_blank" style="color:#4fc;text-decoration:underline">Папка →</a>';
+    }
   } catch(e) {
     st.className = 'crm-st err';
     st.textContent = '✗ ' + (e.message || String(e));
