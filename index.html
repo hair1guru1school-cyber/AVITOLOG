@@ -13,7 +13,7 @@ body{font-family:'Golos Text',sans-serif;background:var(--bg);color:var(--text);
 #pgfill{height:100%;width:0%;background:linear-gradient(90deg,var(--accent),var(--accent3));box-shadow:0 0 8px var(--accent);transition:width 0.4s ease}
 header{background:var(--surface);border-bottom:1px solid var(--border);padding:0 22px;display:flex;align-items:center;height:52px;position:sticky;top:3px;z-index:100;gap:12px}
 .logo{font-family:'Bebas Neue',sans-serif;font-size:28px;letter-spacing:5px;color:var(--accent)}
-.layout{display:grid;grid-template-columns:280px 1fr 155px;height:calc(100vh - 55px)}
+.layout{display:grid;grid-template-columns:320px 1fr;height:calc(100vh - 55px)}
 .sidebar{background:var(--surface);border-right:1px solid var(--border);padding:14px;overflow-y:auto;display:flex;flex-direction:column}
 .side-tabs{display:flex;flex-direction:column;gap:5px;margin-bottom:14px;padding-bottom:14px;border-bottom:1px solid var(--border)}
 .side-tab{display:flex;flex-direction:column;background:var(--surface2);border:1px solid var(--border);color:var(--muted);border-radius:10px;cursor:pointer;font-family:'Bebas Neue',sans-serif;transition:all 0.18s;width:100%;overflow:hidden;padding:0}
@@ -101,12 +101,11 @@ textarea{resize:vertical;min-height:50px;line-height:1.5}
 .ac-item mark{background:transparent;color:var(--accent);font-weight:700}
 .error-box{background:rgba(255,80,80,0.09);border:1px solid rgba(255,80,80,0.25);color:#ff8080;padding:12px 16px;border-radius:8px;font-size:13px}
 .right-tabs{background:var(--surface);border-left:1px solid var(--border);padding:10px 8px;display:flex;flex-direction:column;gap:6px;overflow-y:auto}
-.rtab{display:flex;flex-direction:column;align-items:center;gap:5px;padding:14px 6px;border-radius:10px;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;text-align:center;font-family:Golos Text,sans-serif;font-size:10px;font-weight:700;letter-spacing:0.5px;transition:all 0.2s;width:100%;position:relative;overflow:hidden}
+.rtab{display:flex;flex-direction:column;align-items:center;gap:5px;padding:14px 6px;border-radius:10px;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;text-align:center;font-family:Golos Text,sans-serif;font-size:10px;font-weight:700;letter-spacing:0.5px;transition:all 0.2s;width:100%}
 .rtab:hover{background:rgba(255,255,255,0.05);color:var(--fg)}
 .rtab.active{background:linear-gradient(135deg,rgba(255,200,0,0.15),rgba(255,200,0,0.05));border-color:var(--accent);color:var(--accent)}
 .rtab-ico{font-size:24px;line-height:1}
 .rtab-txt{line-height:1.3;word-break:keep-all}
-.rtab-bar{position:absolute;bottom:0;left:0;height:3px;background:var(--accent);width:0;transition:width 22s cubic-bezier(0.05,0.4,0.2,1);border-radius:2px}
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 </head>
@@ -126,7 +125,16 @@ textarea{resize:vertical;min-height:50px;line-height:1.5}
 <div class="layout">
 
 <div class="sidebar">
-  
+  <div class="side-tabs">
+    <button type="button" class="side-tab active" id="tab-analysis" onclick="switchTab('analysis')">
+      <div class="tab-inner"><span class="tab-ico">&#128202;</span><span class="tab-txt" id="txt-analysis">АНАЛИТИКА</span></div>
+      <div class="tab-loader"><span class="tab-bar" id="bar-analysis"></span></div>
+    </button>
+    <button type="button" class="side-tab" id="tab-presale" onclick="switchTab('presale')">
+      <div class="tab-inner"><span class="tab-ico">&#9200;</span><span class="tab-txt" id="txt-presale">НУЖНО СЕЙЧАС</span></div>
+      <div class="tab-loader"><span class="tab-bar" id="bar-presale"></span></div>
+    </button>
+  </div>
 
   <div class="sec">&#129309; Клиент</div>
   <div class="crm-row">
@@ -163,13 +171,13 @@ textarea{resize:vertical;min-height:50px;line-height:1.5}
         + Добавить
       </button>
     </div>
-    <div class="kp-wrap" id="kpWrap">
-      <button type="button" class="kp-tag" data-kp="50" onclick="toggleKP(this)">50</button>
-      <button type="button" class="kp-tag" data-kp="100" onclick="toggleKP(this)">100</button>
-      <button type="button" class="kp-tag" data-kp="250" onclick="toggleKP(this)">250</button>
-      <button type="button" class="kp-tag" data-kp="500" onclick="toggleKP(this)">500</button>
-      <button type="button" class="kp-tag" data-kp="1000" onclick="toggleKP(this)">1000</button>
-      <button type="button" class="kp-tag" data-kp="1500" onclick="toggleKP(this)">1500</button>
+    <div class="kp-wrap">
+      <button type="button" class="kp-tag" data-kp="50">50</button>
+      <button type="button" class="kp-tag" data-kp="100">100</button>
+      <button type="button" class="kp-tag" data-kp="250">250</button>
+      <button type="button" class="kp-tag" data-kp="500">500</button>
+      <button type="button" class="kp-tag" data-kp="1000">1000</button>
+      <button type="button" class="kp-tag" data-kp="1500">1500</button>
       <button type="button" class="kp-tag" data-kp="∞">&#8734; <sup style="font-size:9px;opacity:.7">alfa</sup></button>
     </div>
     <input type="hidden" id="kp_count" value="">
@@ -194,23 +202,6 @@ textarea{resize:vertical;min-height:50px;line-height:1.5}
     <p style="font-size:12px;opacity:.45;margin-top:4px">АНАЛИТИКА — гео, ЦА, кластеры, SEO<br>НУЖНО СЕЙЧАС — документ для КП</p>
   </div>
 </div>
-
-<div class="right-tabs">
-  <button type="button" class="rtab active" id="tab-analysis" onclick="switchTab('analysis')">
-    <span class="rtab-ico">📊</span>
-    <span class="rtab-txt" id="txt-analysis">АНАЛИТИКА</span>
-    <div class="rtab-bar" id="bar-analysis"></div>
-  </button>
-  <button type="button" class="rtab" id="tab-presale" onclick="switchTab('presale')">
-    <span class="rtab-ico">⏰</span>
-    <span class="rtab-txt" id="txt-presale">НУЖНО СЕЙЧАС</span>
-    <div class="rtab-bar" id="bar-presale"></div>
-  </button>
-  <button type="button" class="rtab" id="tab-avito1" onclick="switchTab('avito1')">
-    <span class="rtab-ico">🏆</span>
-    <span class="rtab-txt" id="txt-avito1">AVITO №1</span>
-    <div class="rtab-bar" id="bar-avito1"></div>
-  </button>
 </div>
 
 <div class="chat-float" id="chatFloat" style="display:none">
@@ -222,13 +213,25 @@ textarea{resize:vertical;min-height:50px;line-height:1.5}
 
 </div>
 
+<div class="right-tabs">
+  <button type="button" class="rtab active" id="tab-analysis" onclick="switchTab('analysis')">
+    <span class="rtab-ico">📊</span>
+    <span class="rtab-txt">АНАЛИТИКА</span>
+    <div class="rtab-bar" id="bar-analysis"></div>
+  </button>
+  <button type="button" class="rtab" id="tab-presale" onclick="switchTab('presale')">
+    <span class="rtab-ico">⏰</span>
+    <span class="rtab-txt">НУЖНО СЕЙЧАС</span>
+    <div class="rtab-bar" id="bar-presale"></div>
+  </button>
+  <button type="button" class="rtab" id="tab-avito1" onclick="switchTab('avito1')">
+    <span class="rtab-ico">🏆</span>
+    <span class="rtab-txt">AVITO №1</span>
+    <div class="rtab-bar" id="bar-avito1"></div>
+  </button>
 </div>
 
-<button type="button" onclick="fillTest()" title="Заполнить тестовые данные"
-  style="position:fixed;bottom:14px;right:14px;width:38px;height:38px;border-radius:50%;border:1px solid #2a2a2e;background:#1c1c1f;color:#666;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:50;transition:all 0.2s;opacity:0.5"
-  onmouseover="this.style.opacity='1';this.style.borderColor='#7c6af7';this.style.color='#7c6af7'"
-  onmouseout="this.style.opacity='0.5';this.style.borderColor='#2a2a2e';this.style.color='#666'"
->🧪</button>
+</div>
 
 <script>
 const API = 'https://api.anthropic.com/v1/messages';
@@ -242,25 +245,25 @@ var currentData = null;
 var docReady = false;
 
 // ── KP TAGS ──
-function toggleKP(btn) {
-  btn.classList.toggle('on');
-  updateKPValue();
-}
 function initKP() {
-  // onclick уже в HTML
+  document.querySelectorAll('.kp-tag:not(.kp-custom)').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      this.classList.toggle('on');
+      updateKPValue();
+    });
+  });
 }
 
 // ── TABS ──
 function switchTab(tab) {
   currentTab = tab;
-  ['analysis','presale','avito1'].forEach(function(t) {
+  ['analysis','presale'].forEach(function(t) {
     document.getElementById('tab-'+t).classList.toggle('active', t===tab);
   });
   if (!docReady) {
-    var ico = tab==='analysis' ? '📊' : tab==='presale' ? '⏰' : '🏆';
     document.getElementById('mainContent').innerHTML =
       '<div class="empty-st"><div style="font-size:38px;opacity:.2">' +
-      ico +
+      (tab==='analysis' ? '📊' : '⏰') +
       '</div><p style="font-size:14px">Заполни данные и нажми Сгенерировать</p></div>';
   }
 }
@@ -311,7 +314,7 @@ function pgStop() {
   bar.style.transition = 'width 0.3s ease';
   bar.style.width = '100%';
   document.getElementById('tab-'+currentTab).classList.add('done');
-  txt.textContent = currentTab==='analysis' ? 'АНАЛИТИКА' : currentTab==='presale' ? 'НУЖНО СЕЙЧАС' : 'AVITO №1';
+  txt.textContent = currentTab==='analysis' ? 'АНАЛИТИКА' : 'НУЖНО СЕЙЧАС';
 }
 
 // ── HELPERS ──
@@ -327,24 +330,6 @@ function setContent(html) {
 function generate() {
   acSaveAll();
   var btn = document.getElementById('genBtn');
-  var crmOn = document.getElementById('crmToggle').checked;
-
-  // КРИТИЧНО: открываем попап ПРЯМО ЗДЕСЬ в синхронном onclick
-  // Иначе браузер заблокирует window.open из async функции
-  if (crmOn && !_driveToken) {
-    var w = 500, h = 600;
-    var left = Math.round((screen.width - w) / 2);
-    var top = Math.round((screen.height - h) / 2);
-    var authUrl = 'https://accounts.google.com/o/oauth2/v2/auth'
-      + '?client_id=' + encodeURIComponent(OAUTH_CLIENT_ID)
-      + '&redirect_uri=' + encodeURIComponent('https://hair1guru1school-cyber.github.io/AVITOLOG/index.html')
-      + '&response_type=token'
-      + '&scope=' + encodeURIComponent(OAUTH_SCOPE)
-      + '&prompt=select_account';
-    _oauthPopup = window.open(authUrl, 'oauth2', 'width='+w+',height='+h+',left='+left+',top='+top);
-    console.log('OAuth попап открыт:', !!_oauthPopup);
-  }
-
   btn.disabled = true;
   btn.innerHTML = '<span>⚡</span><span>Генерирую...</span>';
   pgStart();
@@ -373,14 +358,8 @@ function generate() {
     var json = JSON.parse(fixJSON(cleaned));
     saveNorm(json.normalized);
     renderDoc(json.html);
-    if (crmOn) {
-      getDriveToken().then(function() {
-        triggerCRM(json.html);
-      }).catch(function(e) {
-        var st = document.getElementById('crmSt');
-        st.className = 'crm-st err';
-        st.textContent = '✗ ' + (e.message || 'Авторизация не пройдена');
-      });
+    if (document.getElementById('crmToggle').checked) {
+      setTimeout(function() { triggerCRM(json.html); }, 500);
     }
   }).catch(function(e) {
     setContent('<div class="error-box">Ошибка: ' + e.message + '</div>');
@@ -526,7 +505,7 @@ function buildWordHtml(body) {
     'h3{font-size:11pt;font-weight:bold;margin:12pt 0 4pt}' +
     'p{margin:0 0 8pt}ul{margin:6pt 0 10pt;padding-left:18pt}li{margin:4pt 0}' +
     'img{width:100%;max-width:600px;display:block;margin:16px 0 28px;border-radius:6px}' +
-    '\n</style></head><body>' + body + "';"
+    '\n</style></head><body>' + body + ';
 }
 
 function dlDoc() {
@@ -545,22 +524,20 @@ var SA_EMAIL = "avitolog-crm@avito-489218.iam.gserviceaccount.com";
 var OAUTH_CLIENT_ID = '98192715547-1a7jrfa6a53e1u7k5lojss8ji12q4432.apps.googleusercontent.com';
 var OAUTH_SCOPE = 'https://www.googleapis.com/auth/drive';
 var _driveToken = null;
-var _oauthPopup = null;
 
 async function getDriveToken() {
   if (_driveToken) return _driveToken;
   return new Promise(function(resolve, reject) {
-    // Используем попап, уже открытый из generate() 
-    var popup = _oauthPopup;
-    _oauthPopup = null;
-    
-    // Если попапа нет (уже авторизован или вызов не из generate)
-    if (!popup || popup.closed) {
-      reject(new Error('Попап авторизации не открыт'));
-      return;
-    }
-    
-    console.log('Ожидаю авторизацию Google...');
+    var w = 500, h = 600;
+    var left = Math.round((screen.width - w) / 2);
+    var top = Math.round((screen.height - h) / 2);
+    var authUrl = 'https://accounts.google.com/o/oauth2/v2/auth'
+      + '?client_id=' + encodeURIComponent(OAUTH_CLIENT_ID)
+      + '&redirect_uri=' + encodeURIComponent('https://hair1guru1school-cyber.github.io/AVITOLOG/index.html')
+      + '&response_type=token'
+      + '&scope=' + encodeURIComponent(OAUTH_SCOPE)
+      + '&prompt=select_account';
+    var popup = window.open(authUrl, 'oauth2', 'width='+w+',height='+h+',left='+left+',top='+top);
     var timer = setInterval(function() {
       try {
         if (!popup || popup.closed) {
@@ -763,26 +740,35 @@ async function saveToDrive(html, contactsTxt, docHtml) {
     var clientName = [d.company, d.name].filter(Boolean).join(' - ') || 'Клиент';
     var dateStr = new Date().toLocaleDateString('ru');
     var folderName = clientName + ' (' + dateStr + ')';
+    // Определяем категорию и берём её ID напрямую
     var cat = detectCRMCategory(d.category);
     console.log('CRM категория:', cat.name, 'ID:', cat.id);
 
+    // Создаём папку клиента ВНУТРИ существующей папки категории
     var clientId = await driveCreateClientFolder(folderName, cat.id);
     console.log('Папка клиента создана:', clientId);
 
-    // contacts.txt — только если есть хоть какие-то контакты
-    var hasContacts = d.company || d.name || d.tg || d.phone;
-    if (hasContacts && contactsTxt) {
-      await driveUploadText('contacts.txt', contactsTxt, 'text/plain', clientId);
-      console.log('contacts.txt загружен');
-    }
+    // Загружаем contacts.txt
+    await driveUploadText('contacts.txt', contactsTxt, 'text/plain', clientId);
 
-    // Анализ — всегда
-    await driveUploadText('Анализ — ' + clientName + '.html', currentHtml, 'text/html', clientId);
-    console.log('Анализ загружен');
+    // Создаём Google Doc
+    // Генерируем PDF и скачиваем локально
+    st.textContent = 'Генерирую PDF...';
+    var pdfBlob = await generatePDF(currentHtml, clientName);
+    var pdfUrl = URL.createObjectURL(pdfBlob);
+    var a = document.createElement('a');
+    a.href = pdfUrl;
+    a.download = 'Анализ — ' + clientName + '.pdf';
+    a.click();
+    setTimeout(function(){ URL.revokeObjectURL(pdfUrl); }, 3000);
 
+    // Загружаем contacts.txt в Drive
+    await driveUploadText('contacts.txt', contactsTxt, 'text/plain', clientId);
+
+    // Открываем папку клиента в Drive
     var folderUrl = 'https://drive.google.com/drive/folders/' + clientId;
     st.className = 'crm-st ok';
-    st.innerHTML = '✓ ' + cat.name + ' · <a href="' + folderUrl + '" target="_blank" style="color:#4fc;text-decoration:underline">Drive →</a>';
+    st.innerHTML = '✓ PDF скачан · <a href="' + folderUrl + '" target="_blank" style="color:#4fc;text-decoration:underline">Открыть папку в Drive →</a>';
   } catch(e) {
     st.className = 'crm-st err';
     st.textContent = '✗ ' + (e.message || String(e));
@@ -1597,36 +1583,6 @@ function updateKPValue() {
   document.getElementById('kp_count').value = vals.join(', ');
 }
 
-// ── TEST FILL ──
-function fillTest() {
-  var tests = [
-    {company:'ТестСтрой',name:'Иван',tg:'@teststroy',phone:'+7 999 111 22 33',category:'Пиломатериалы',city:'Москва, Подольск',usp:'Собственное производство, ГОСТ',extra:'',kp:'100',pos:['Доска обрезная 50х100','Брус 150х150']},
-    {company:'МебельПро',name:'Алексей',tg:'@mebelpro',phone:'+7 900 222 33 44',category:'Кухни на заказ',city:'Санкт-Петербург',usp:'Замер бесплатно, рассрочка 0%',extra:'Работаем с 2015',kp:'250',pos:['Кухня модульная','Шкаф-купе']},
-    {company:'АвтоДеталь',name:'Сергей',tg:'@avtodet',phone:'+7 911 333 44 55',category:'Автозапчасти',city:'Краснодар, Сочи',usp:'Оригинал + аналоги, доставка 1 день',extra:'',kp:'500',pos:['Тормозные колодки','Масляный фильтр','Свечи зажигания']},
-  ];
-  var t = tests[Math.floor(Math.random() * tests.length)];
-  document.getElementById('company').value = t.company;
-  document.getElementById('contact_name').value = t.name;
-  document.getElementById('tg').value = t.tg;
-  document.getElementById('phone').value = t.phone;
-  document.getElementById('category').value = t.category;
-  document.getElementById('city').value = t.city;
-  document.getElementById('usp').value = t.usp;
-  document.getElementById('extra').value = t.extra;
-  document.querySelectorAll('.kp-tag').forEach(function(b) { b.classList.remove('on'); });
-  var kpBtn = document.querySelector('.kp-tag[data-kp="'+t.kp+'"]');
-  if (kpBtn) { kpBtn.classList.add('on'); }
-  document.getElementById('kp_count').value = t.kp;
-  var list = document.getElementById('posList');
-  list.innerHTML = '';
-  t.pos.forEach(function(p) {
-    var row = document.createElement('div');
-    row.className = 'pos-row';
-    row.innerHTML = '<input type="text" value="'+p+'" class="pname"><button type="button" class="btn-x" onclick="removePos(this)">×</button>';
-    list.appendChild(row);
-  });
-}
-
 // ── INIT ──
 document.addEventListener('DOMContentLoaded', function() {
   // Рандомные name на контактных полях — Chrome не автозаполняет
@@ -1656,4 +1612,5 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 </script>
 </body>
-</html>
+</html></script>
+</body>
