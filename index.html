@@ -100,13 +100,19 @@ textarea{resize:vertical;min-height:50px;line-height:1.5}
 .ac-del:hover{color:#ff4444}
 .ac-item mark{background:transparent;color:var(--accent);font-weight:700}
 .error-box{background:rgba(255,80,80,0.09);border:1px solid rgba(255,80,80,0.25);color:#ff8080;padding:12px 16px;border-radius:8px;font-size:13px}
+.right-tabs{background:var(--surface);border-left:1px solid var(--border);padding:10px 8px;display:flex;flex-direction:column;gap:6px;overflow-y:auto}
+.rtab{display:flex;flex-direction:column;align-items:center;gap:5px;padding:14px 6px;border-radius:10px;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;text-align:center;font-family:Golos Text,sans-serif;font-size:10px;font-weight:700;letter-spacing:0.5px;transition:all 0.2s;width:100%}
+.rtab:hover{background:rgba(255,255,255,0.05);color:var(--fg)}
+.rtab.active{background:linear-gradient(135deg,rgba(255,200,0,0.15),rgba(255,200,0,0.05));border-color:var(--accent);color:var(--accent)}
+.rtab-ico{font-size:24px;line-height:1}
+.rtab-txt{line-height:1.3;word-break:keep-all}
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 </head>
 <body>
 <div id="pgbar"><div id="pgfill"></div></div>
 <header>
-  <div class="logo">&#127170; AVITOLOG</div>
+  <div class="logo">🃏 AVITOLOG</div>
   <div style="flex:1"></div>
   <div style="display:flex;align-items:center;gap:8px">
     <input type="password" id="apiKeyInput" placeholder="sk-ant-... (API ключ)" 
@@ -204,6 +210,27 @@ textarea{resize:vertical;min-height:50px;line-height:1.5}
     <input class="chat-inp" id="chatInp" placeholder="Напиши что изменить...">
     <button type="button" class="btn-send" id="btnSend" onclick="sendChat()">Применить</button>
   </div>
+
+</div>
+
+<div class="right-tabs">
+  <button type="button" class="rtab active" id="tab-analysis" onclick="switchTab('analysis')">
+    <span class="rtab-ico">📊</span>
+    <span class="rtab-txt">АНАЛИТИКА</span>
+    <div class="rtab-bar" id="bar-analysis"></div>
+  </button>
+  <button type="button" class="rtab" id="tab-presale" onclick="switchTab('presale')">
+    <span class="rtab-ico">⏰</span>
+    <span class="rtab-txt">НУЖНО СЕЙЧАС</span>
+    <div class="rtab-bar" id="bar-presale"></div>
+  </button>
+  <button type="button" class="rtab" id="tab-avito1" onclick="switchTab('avito1')">
+    <span class="rtab-ico">🏆</span>
+    <span class="rtab-txt">AVITO №1</span>
+    <div class="rtab-bar" id="bar-avito1"></div>
+  </button>
+</div>
+
 </div>
 
 <script>
@@ -276,7 +303,7 @@ function pgStart() {
   _timer = setInterval(function() {
     _secs++;
     var m = Math.floor(_secs/60), s = _secs%60;
-    var lbl = currentTab==='analysis' ? 'АНАЛИТИКА' : 'НУЖНО СЕЙЧАС';
+    var lbl = currentTab==='analysis' ? 'АНАЛИТИКА' : currentTab==='presale' ? 'НУЖНО СЕЙЧАС' : 'AVITO №1';
     txt.textContent = lbl + ' ' + (m ? m+'м ' : '') + s + 'с';
   }, 1000);
 }
@@ -322,7 +349,9 @@ function generate() {
     positions: getPos()
   };
 
-  var prompt = currentTab === 'analysis' ? buildAnalysisPrompt() : buildPresalePrompt();
+  var prompt = currentTab === 'analysis' ? buildAnalysisPrompt() :
+               currentTab === 'presale' ? buildPresalePrompt() :
+               buildAvito1Prompt();
 
   callAPI(prompt, 3000).then(function(raw) {
     var cleaned = raw.replace(/```json|```/g, '').trim();
@@ -379,6 +408,21 @@ function buildPresalePrompt() {
     'Компактно. Адаптируй под нишу и гео.\n\n' +
     'JSON без markdown:\n' +
     '{"html":"<h1>...</h1>...","normalized":{"company":"...","category":"...","city":"...","usp":"..."}}';
+}
+
+function buildAvito1Prompt() {
+  return 'Ты топовый авитолог и маркетолог. Напиши документ «Почему Avito — №1 площадка для данной ниши и гео».\n\n' +
+    clientInfo() +
+    '\n\nСтруктура (h1 + разделы h2):\n' +
+    'h1: Почему Avito №1 площадка для [ниша] в [гео]\n' +
+    'h2: Как думает заказчик — почему Avito попадает точно\n' +
+    'h2: Avito vs Яндекс vs Соцсети — сравнение каналов\n' +
+    'h2: Почему Avito особенно силён для этой ниши\n' +
+    'h2: География как инструмент продаж\n' +
+    'h2: Почему клиент выбирает через Avito\n' +
+    'h2: Итог — 4-5 ключевых тезиса\n\n' +
+    'Пиши конкретно под нишу и гео. Без воды.\n' +
+    'JSON без markdown: {"html":"<h1>...</h1>...","normalized":{"company":"...","category":"...","city":"...","usp":"..."}}';
 }
 
 // ── RENDER ──
@@ -461,7 +505,7 @@ function buildWordHtml(body) {
     'h3{font-size:11pt;font-weight:bold;margin:12pt 0 4pt}' +
     'p{margin:0 0 8pt}ul{margin:6pt 0 10pt;padding-left:18pt}li{margin:4pt 0}' +
     'img{width:100%;max-width:600px;display:block;margin:16px 0 28px;border-radius:6px}' +
-    '</style></head><body>' + body + '</body></html>';
+    '\n</style></head><body>' + body + ';
 }
 
 function dlDoc() {
@@ -477,56 +521,594 @@ function dlDoc() {
 // GOOGLE DRIVE SERVICE ACCOUNT INTEGRATION
 // ═══════════════════════════════════════════
 var SA_EMAIL = "avitolog-crm@avito-489218.iam.gserviceaccount.com";
-var SA_KEY_PEM = "-----BEGIN PRIVATE KEY-----\nMIIEvwIBADANBgkqhkiG9w0BAQEFAASCBKkwggSlAgEAAoIBAQCcOOF//dNB9NYi\n8E/wyIh4aR8+ZbscG+Mlo5N0mbrU84NqTPIP48kxJVpZ9992QN9DCdFJN8StfKXH\nDRRCGEjxgxJn5bSUKJAreyVp68retmzzk/cKj22vJsL/RkgMFG98MtngImdL+0ni\ntuK5WOLwRHJ5+XUKJQqHdSGcb86+HRc2W9vg1Fb+/H77Ir8hcjzxZC3hk49x/RFv\n69mwetpU0eY8IHFb2Ia09lC/few4aOfSIGQwYl/MyVzNgHrGl3jSPEqSbklfR8Vg\nVNc86veVC4EfBMe4j8qKLR5nAsN8q0jYTwhAO7MyIre86uec8Ahkc7KzEXuXmWZB\n9inpKnYZAgMBAAECggEAB1aarR74ufvsxSZhsu9QjctuVsmDkQ30TRPSfOMtxgwM\nS8WCh2GNVVwqUtiUbCMe+bCv3o8ak4Wr6d5A6dvnLUUZa7z8DwuavhgiSUf0tyJ9\nmrGEJMBZCCW7ei9MehjJpd1jo6YqEQUkUtyBaPB2dI/aisU/jLLxvCwx4H3WCdMU\nNtR8/DlmWLaPLzNfTAOdDrTkleWIs8jiRclUo2W626xtv3DdbcXqtpL7cv4zojlS\nYqxlbDGeRReBrsZY26jqKJ0MioJ8O8R6KFd0nAlUmT2q0qEcica5D6ReMXrgLlxR\nnW+72bz7OeHHluU3Zl99O7iicOKiEpcDIXxJHE0JSQKBgQDIDLOglIiPHpQMwKSs\nl0BVYD/T4OsRduYCGWHc8bZ6GAFz9h6wJcNocksNv1oAURHof7b+MMUGadtUDWJv\nf3OuuobkJfEaExckJlYhs3bSsJKbWEBujnOvzYcjXDAz8w1bx0pjJ3rn+4bsB5kX\nuqjM+effhCugdxbuRrWlRBRPnQKBgQDH6jD1Lb7IEzmYdZIyW2KBDIKWD0ivw/27\n1XhdOvk+Jqun4RYDryGCgeTYpPIZhYzqcyb9QRkB2IhvQpa8Zwyv0AJ5YPgyJUE5\n1d0zZXOXpMsNQGPfLpQdM4cZ8qjYB/l7/idsIt7mVYBF5LxFQMu8Cw0Ju5gQ0/9v\nlS7sIIV9rQKBgQCGJM5GvZMctVp9eqhx+zJujY3/W/EE0v/FJJQU/hhoorRGuCE3\n6PqxjQJ7A3csgzBJAWsJ5FYZyN4D7L23GnXOEtHlJvQXkfmQigxzqM3i1fhZJsJ9\n4BP/LQiTU3wXOcIZavecqZqm+Gku2KF14frTCDjODujaP0EnIk8ntRERmQKBgQCm\nQOayH3b3oLVXSv9oDYOf2q2G6fMC6TVMTj0pG3BH9ZTvqkrKiYyOokOUv6fu/Zex\nKk6Ucty/IjpkfLYqvHBajdxg4PnHih/yXx70LTyyMgQDYzcrVesrVbzXIWy1K/yY\n10YlseI5H4XrmkvQNBC6s14GaBIQfJ2DSEeba3hYiQKBgQCp+HPMR7POWuIgmKaB\nT5w6MjWmGGZruQ+pENstvDjVAto7uKl2RylrXXDCRxkSoHFyWdhn2tdUeO8XevOT\nPQmFWjDikqnGZIo29NdaNbn9cN/53Qk1ycBN1CSSOQmSDtq8XuzGN7NITSperVQH\nurwE+j1Mw5YLVh09DiN/mFUd/g==\n-----END PRIVATE KEY-----\n";
+var OAUTH_CLIENT_ID = '98192715547-1a7jrfa6a53e1u7k5lojss8ji12q4432.apps.googleusercontent.com';
+var OAUTH_SCOPE = 'https://www.googleapis.com/auth/drive';
 var _driveToken = null;
-var _driveTokenExp = 0;
-
-function pemToArrayBuffer(pem) {
-  var b64 = pem.replace(/-----BEGIN PRIVATE KEY-----|-----END PRIVATE KEY-----/g, '').replace(/\n/g, '').replace(/\s/g, '');
-  var binary = atob(b64);
-  var buf = new ArrayBuffer(binary.length);
-  var view = new Uint8Array(buf);
-  for (var i = 0; i < binary.length; i++) view[i] = binary.charCodeAt(i);
-  return buf;
-}
-function b64url(str) {
-  return btoa(unescape(encodeURIComponent(str))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=/g,'');
-}
-function b64urlBuf(buf) {
-  var bytes = new Uint8Array(buf);
-  var binary = '';
-  for (var i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i]);
-  return btoa(binary).replace(/\+/g,'-').replace(/\//g,'_').replace(/=/g,'');
-}
 
 async function getDriveToken() {
-  var now = Math.floor(Date.now() / 1000);
-  if (_driveToken && now < _driveTokenExp - 60) return _driveToken;
-  var header = b64url(JSON.stringify({alg:'RS256',typ:'JWT'}));
-  var claim = b64url(JSON.stringify({
-    iss: SA_EMAIL,
-    scope: 'https://www.googleapis.com/auth/drive',
-    aud: 'https://oauth2.googleapis.com/token',
-    exp: now + 3600, iat: now
-  }));
-  var sigInput = header + '.' + claim;
-  var keyBuf = pemToArrayBuffer(SA_KEY_PEM);
-  var cryptoKey = await crypto.subtle.importKey(
-    'pkcs8', keyBuf, {name:'RSASSA-PKCS1-v1_5',hash:'SHA-256'}, false, ['sign']
-  );
-  var sigBuf = await crypto.subtle.sign('RSASSA-PKCS1-v1_5', cryptoKey, new TextEncoder().encode(sigInput));
-  var jwt = sigInput + '.' + b64urlBuf(sigBuf);
-  var resp = await fetch('https://oauth2.googleapis.com/token', {
-    method: 'POST',
-    mode: 'cors',
-    headers: {'Content-Type':'application/x-www-form-urlencoded'},
-    body: 'grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Ajwt-bearer&assertion=' + jwt
+  if (_driveToken) return _driveToken;
+  return new Promise(function(resolve, reject) {
+    var w = 500, h = 600;
+    var left = Math.round((screen.width - w) / 2);
+    var top = Math.round((screen.height - h) / 2);
+    var authUrl = 'https://accounts.google.com/o/oauth2/v2/auth'
+      + '?client_id=' + encodeURIComponent(OAUTH_CLIENT_ID)
+      + '&redirect_uri=' + encodeURIComponent('https://hair1guru1school-cyber.github.io/AVITOLOG/index.html')
+      + '&response_type=token'
+      + '&scope=' + encodeURIComponent(OAUTH_SCOPE)
+      + '&prompt=select_account';
+    var popup = window.open(authUrl, 'oauth2', 'width='+w+',height='+h+',left='+left+',top='+top);
+    var timer = setInterval(function() {
+      try {
+        if (!popup || popup.closed) {
+          clearInterval(timer);
+          if (!_driveToken) reject(new Error('Авторизация отменена'));
+          return;
+        }
+        var url = '';
+        try { url = popup.location.href; } catch(e) { return; }
+        if (url && url.indexOf('access_token=') >= 0) {
+          clearInterval(timer);
+          popup.close();
+          var m = url.match(/access_token=([^&]+)/);
+          if (m) {
+            _driveToken = m[1];
+            setTimeout(function(){ _driveToken = null; }, 55 * 60 * 1000);
+            resolve(_driveToken);
+          } else {
+            reject(new Error('Токен не получен'));
+          }
+        }
+      } catch(e) { /* cross-origin — ждём */ }
+    }, 300);
   });
-  var data = await resp.json();
-  if (!data.access_token) throw new Error('Drive auth failed: ' + JSON.stringify(data));
-  _driveToken = data.access_token;
-  _driveTokenExp = now + (data.expires_in || 3600);
-  return _driveToken;
+}
+
+async function driveCreateClientFolder(name, parentId) {
+  // Создаём папку клиента внутри уже существующей папки категории
+  var token = await getDriveToken();
+  // Проверяем нет ли уже такой папки
+  var q = "name='" + name.replace(/'/g,"\'") + "' and '" + parentId + "' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false";
+  var sr = await fetch('https://www.googleapis.com/drive/v3/files?q=' + encodeURIComponent(q) + '&fields=files(id)', {
+    headers: {'Authorization': 'Bearer ' + token}
+  });
+  var sd = await sr.json();
+  if (sd.files && sd.files.length > 0) return sd.files[0].id;
+  // Создаём новую папку клиента
+  var cr = await fetch('https://www.googleapis.com/drive/v3/files', {
+    method: 'POST',
+    headers: {'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json'},
+    body: JSON.stringify({name: name, mimeType: 'application/vnd.google-apps.folder', parents: [parentId]})
+  });
+  var cd = await cr.json();
+  if (!cd.id) throw new Error('Не удалось создать папку клиента: ' + JSON.stringify(cd));
+  return cd.id;
+}
+
+async function driveGetOrCreateFolder(name, parentId) {
+  var token = await getDriveToken();
+  var q = "name='" + name.replace(/'/g,"\\'") + "' and '" + parentId + "' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false";
+  var sr = await fetch('https://www.googleapis.com/drive/v3/files?q=' + encodeURIComponent(q) + '&fields=files(id)', {
+    headers: {'Authorization': 'Bearer ' + token}
+  });
+  var sd = await sr.json();
+  if (sd.files && sd.files.length > 0) return sd.files[0].id;
+  var cr = await fetch('https://www.googleapis.com/drive/v3/files', {
+    method: 'POST',
+    headers: {'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json'},
+    body: JSON.stringify({name: name, mimeType: 'application/vnd.google-apps.folder', parents: [parentId]})
+  });
+  var cd = await cr.json();
+  return cd.id;
+}
+
+async function driveCreateGoogleDoc(name, htmlContent, parentId) {
+  var token = await getDriveToken();
+  var enc = new TextEncoder();
+  var boundary = 'avitolog_' + Date.now();
+  var nl = '\r\n';
+  var meta = JSON.stringify({
+    name: name,
+    mimeType: 'application/vnd.google-apps.document',
+    parents: [parentId]
+  });
+  // Строим multipart тело
+  var part1 = '--' + boundary + nl +
+    'Content-Type: application/json; charset=UTF-8' + nl + nl +
+    meta + nl;
+  var part2 = '--' + boundary + nl +
+    'Content-Type: text/html; charset=UTF-8' + nl + nl;
+  var part3 = nl + '--' + boundary + '--';
+  var b1 = enc.encode(part1);
+  var b2 = enc.encode(part2);
+  var b3 = enc.encode(htmlContent);
+  var b4 = enc.encode(part3);
+  var total = new Uint8Array(b1.length + b2.length + b3.length + b4.length);
+  total.set(b1, 0);
+  total.set(b2, b1.length);
+  total.set(b3, b1.length + b2.length);
+  total.set(b4, b1.length + b2.length + b3.length);
+  var resp = await fetch(
+    'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,name,webViewLink',
+    {
+      method: 'POST',
+      headers: {
+        'Authorization': 'Bearer ' + token,
+        'Content-Type': 'multipart/related; boundary=' + boundary
+      },
+      body: total
+    }
+  );
+  var result = await resp.json();
+  if (!result.id) throw new Error('Google Doc не создан: ' + JSON.stringify(result));
+  return result;
+}
+
+async function generatePDF(htmlContent, name) {
+  // Создаём временный контейнер
+  var container = document.createElement('div');
+  container.style.cssText = 'position:fixed;left:-9999px;top:0;width:794px;background:#fff;color:#000;font-family:Arial,sans-serif;padding:40px;box-sizing:border-box;';
+  container.innerHTML = htmlContent;
+  document.body.appendChild(container);
+  var opt = {
+    margin: [10, 10, 10, 10],
+    filename: 'Анализ — ' + name + '.pdf',
+    image: {type: 'jpeg', quality: 0.92},
+    html2canvas: {scale: 1.5, useCORS: true, allowTaint: true},
+    jsPDF: {unit: 'mm', format: 'a4', orientation: 'portrait'},
+    pagebreak: {mode: ['avoid-all']}
+  };
+  var blob = await html2pdf().set(opt).from(container).outputPdf('blob');
+  document.body.removeChild(container);
+  return blob;
+}
+
+async function driveUploadBlob(name, blob, mimeType, parentId) {
+  var token = await getDriveToken();
+  var boundary = 'avitolog_' + Date.now();
+  var nl = '\r\n';
+  var meta = JSON.stringify({name: name, parents: [parentId]});
+  var enc = new TextEncoder();
+  var pre = '--' + boundary + nl + 'Content-Type: application/json; charset=UTF-8' + nl + nl + meta + nl +
+    '--' + boundary + nl + 'Content-Type: ' + mimeType + nl + nl;
+  var post = nl + '--' + boundary + '--';
+  var preB = enc.encode(pre);
+  var postB = enc.encode(post);
+  var blobArr = await blob.arrayBuffer();
+  var blobB = new Uint8Array(blobArr);
+  var body = new Uint8Array(preB.length + blobB.length + postB.length);
+  body.set(preB, 0); body.set(blobB, preB.length); body.set(postB, preB.length + blobB.length);
+  var resp = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
+    method: 'POST',
+    headers: {'Authorization': 'Bearer ' + token, 'Content-Type': 'multipart/related; boundary=' + boundary},
+    body: body
+  });
+  var result = await resp.json();
+  if (!result.id) throw new Error('PDF не загружен: ' + JSON.stringify(result));
+  return result;
+}
+
+async function driveUploadText(name, text, mimeType, parentId) {
+  var token = await getDriveToken();
+  var boundary = 'avitolog_' + Date.now();
+  var enc = new TextEncoder();
+  var meta = JSON.stringify({name: name, parents: [parentId]});
+  var nl = '\r\n';
+  var pre = '--' + boundary + nl + 'Content-Type: application/json; charset=UTF-8' + nl + nl + meta + nl + '--' + boundary + nl + 'Content-Type: ' + mimeType + nl + nl;
+  var post = nl + '--' + boundary + '--';
+  var preB = enc.encode(pre), textB = enc.encode(text), postB = enc.encode(post);
+  var body = new Uint8Array(preB.length + textB.length + postB.length);
+  body.set(preB, 0); body.set(textB, preB.length); body.set(postB, preB.length + textB.length);
+  await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
+    method: 'POST',
+    headers: {'Authorization': 'Bearer ' + token, 'Content-Type': 'multipart/related; boundary=' + boundary},
+    body: body
+  });
+}
+
+function detectCRMCategory(category) {
+  var c = (category || '').toLowerCase();
+  var cats = [
+    {name: '🪚 ТОВАРЫ СТРОИТЕЛЬСТВО', id: '12QkZZOOmrTqtVEgS89H45eeAJzm5tiI2', kw: ['строи','пиломат','доска','брус','кирпич','бетон','цемент','металл','кровл','черепиц','профил','труб','арматур','пиломат']},
+    {name: '👷 УСЛУГИ | СТРОИТЕЛИ',   id: '174UazB2ErOG0wD9KplArQWO0JxfhDhfc', kw: ['монтаж','ремонт','отделк','сантех','сварк','бурен','фундам','строит','укладк','кладк','каркасник']},
+    {name: '⚙️ ОБОРУДОВАНИЕ',         id: '1j3bqO2-9O9OeENLS7uDxVCu4imgsF1tb', kw: ['оборуд','станок','компрес','генерат','насос','инстр','электр','печ','котл','спецтехник']},
+    {name: '🛋 ТОВАРЫ - мебель',       id: '1ODPfNieEXqs9HmL96udmw-qLwiXL3EAS', kw: ['мебел','диван','шкаф','кухн','кресл','стол','матрас','корпус']},
+    {name: '🏠 ДОМА | БЫТОВКИ | БАНИ', id: '12ajIWwl0fLs4jWB8NATNdvr6F2SmEeUU', kw: ['дом','бытовк','бан','блок-контейн','каркас','сруб','модул']},
+    {name: '🚙 ТОВАРЫ | АВТОзапчасти', id: '1RwiDeVxf3HiCySEMC1fI_5hMDm-5Er9T', kw: ['запчаст','шин','колес','масл','фильтр','автозапч']},
+    {name: '🛻 АВТОМОБИЛИ и МОТО',     id: '1rh2Fq8wGsGVDCediTr9zN4tnzvth1CWK', kw: ['автомобил','мото','байк','скутер','авто прод']},
+    {name: '🏎 ТОВАРЫ Авто аксессуары',id: '1tevmc_P3MxW4xFLhcuAUMtp7PKNQ8678', kw: ['аксессуар','чехол','коврик','магнитол','видеорегистр']},
+    {name: '👕 ОДЕЖДА / Кроссовки',   id: '1p8-ETlYZ4X88X87sMuqNSMF_f4w-td_C', kw: ['одежд','обувь','кроссовк','пошив','текстил','футболк','куртк']},
+    {name: '🏭 ГОТОВЫЙ БИЗНЕС',        id: '1aA1wATzVmPRavUrAh8oGsuEa6-xeIOdP', kw: ['бизнес','готов','франш']},
+    {name: '👤 УСЛУГИ - Юр, IT',       id: '1ci9RhkZPtvyuBSK4jOh7x02ooBqmpGxw', kw: ['юрид','адвокат','репетитор','бухгал','налог','it','программ','сайт','дизайн']},
+    {name: '✈️ ЛОГИСТИКА услуги',      id: '1UgnWOC7tBupL_FSYV0T9RU4Lg6GOEqNa', kw: ['логист','доставк','перевозк','транспорт']},
+    {name: '👤 ВАКАНСИИ',              id: '1Os8bLpRKDAeLlaUi_P5HFyE3zEL8AebL', kw: ['вакансия','работа','сотрудник','найм','персонал']},
+  ];
+  for (var i = 0; i < cats.length; i++) {
+    for (var j = 0; j < cats[i].kw.length; j++) {
+      if (c.indexOf(cats[i].kw[j]) >= 0) return cats[i];
+    }
+  }
+  return {name: '🙇 БАЗА без оплаты', id: '1-nKHmmLp-vY81EK3APxQSg7v8GSO5TJy'};
+}
+
+async function saveToDrive(html, contactsTxt, docHtml) {
+  var st = document.getElementById('crmSt');
+  st.className = 'crm-st';
+  st.textContent = 'Сохраняю в CRM...';
+  try {
+    var d = currentData;
+    var clientName = [d.company, d.name].filter(Boolean).join(' - ') || 'Клиент';
+    var dateStr = new Date().toLocaleDateString('ru');
+    var folderName = clientName + ' (' + dateStr + ')';
+    // Определяем категорию и берём её ID напрямую
+    var cat = detectCRMCategory(d.category);
+    console.log('CRM категория:', cat.name, 'ID:', cat.id);
+
+    // Создаём папку клиента ВНУТРИ существующей папки категории
+    var clientId = await driveCreateClientFolder(folderName, cat.id);
+    console.log('Папка клиента создана:', clientId);
+
+    // Загружаем contacts.txt
+    await driveUploadText('contacts.txt', contactsTxt, 'text/plain', clientId);
+
+    // Создаём Google Doc
+    // Генерируем PDF и скачиваем локально
+    st.textContent = 'Генерирую PDF...';
+    var pdfBlob = await generatePDF(currentHtml, clientName);
+    var pdfUrl = URL.createObjectURL(pdfBlob);
+    var a = document.createElement('a');
+    a.href = pdfUrl;
+    a.download = 'Анализ — ' + clientName + '.pdf';
+    a.click();
+    setTimeout(function(){ URL.revokeObjectURL(pdfUrl); }, 3000);
+
+    // Загружаем contacts.txt в Drive
+    await driveUploadText('contacts.txt', contactsTxt, 'text/plain', clientId);
+
+    // Открываем папку клиента в Drive
+    var folderUrl = 'https://drive.google.com/drive/folders/' + clientId;
+    st.className = 'crm-st ok';
+    st.innerHTML = '✓ PDF скачан · <a href="' + folderUrl + '" target="_blank" style="color:#4fc;text-decoration:underline">Открыть папку в Drive →</a>';
+  } catch(e) {
+    st.className = 'crm-st err';
+    st.textContent = '✗ ' + (e.message || String(e));
+    console.error('Drive error:', e);
+  }
+}
+
+function triggerCRM(html) {
+  var d = currentData;
+  var dateStr = new Date().toLocaleDateString('ru');
+  var lines = [];
+  lines.push('===============================');
+  lines.push('  КОНТАКТЫ КЛИЕНТА');
+  lines.push('===============================');
+  lines.push('');
+  if (d.company)  lines.push('Компания:  ' + d.company);
+  if (d.name)     lines.push('Имя:       ' + d.name);
+  if (d.tg)       lines.push('Телеграм:  ' + d.tg);
+  if (d.phone)    lines.push('Телефон:   ' + d.phone);
+  lines.push('');
+  lines.push('-------------------------------');
+  if (d.category) lines.push('Ниша:      ' + d.category);
+  if (d.city)     lines.push('ГЕО:       ' + d.city);
+  if (d.kp)       lines.push('КП:        ' + d.kp + ' объявлений');
+  if (d.usp)      lines.push('УТП:       ' + d.usp);
+  lines.push('');
+  lines.push('Дата:      ' + dateStr);
+  lines.push('===============================');
+  saveToDrive(html, lines.join('\n'), buildWordHtml(withImg(html)));
+}
+
+// ── SAVE NORM ──
+function saveNorm(n) {
+  if (!n) return;
+  function set(id, val) {
+    if (!val) return;
+    acSave(id, val);
+    var e = document.getElementById(id);
+    if (e && e.value) e.value = val;
+  }
+  set('company', n.company);
+  set('category', n.category);
+  set('city', n.city);
+  set('usp', n.usp);
+}
+
+// ── API ──
+function callAPI(prompt, maxTokens) {
+    var userKey = localStorage.getItem('avito_api_key') || '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';
+  var headers = {
+    'Content-Type': 'application/json',
+    'x-api-key': userKey.trim(),
+    'anthropic-version': '2023-06-01',
+    'anthropic-dangerous-direct-browser-access': 'true'
+  };
+  return fetch(API, {
+    method: 'POST',
+    headers: headers,
+    body: JSON.stringify({
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: maxTokens,
+      messages: [{role:'user', content: prompt}]
+    })
+  }).then(function(r) {
+    return r.json();
+  }).then(function(data) {
+    if (data.error) throw new Error(data.error.message);
+    return data.content.map(function(i) { return i.text || ''; }).join('');
+  });
+}
+
+// ── FIX JSON ──
+function fixJSON(s) {
+  try { JSON.parse(s); return s; } catch(e) {}
+  var lc = s.lastIndexOf(','), lb = s.lastIndexOf('}'), la = s.lastIndexOf(']');
+  if (lc > Math.max(lb,la)) s = s.substring(0,lc);
+  var op = 0, ar = 0;
+  for (var ci = 0; ci < s.length; ci++) {
+    var c = s[ci];
+    if (c==='{') op++; else if (c==='}') op--;
+    if (c==='[') ar++; else if (c===']') ar--;
+  }
+  var quotes = (s.match(/"/g)||[]).length;
+  if (quotes % 2 !== 0) s += '"';
+  while (ar-- > 0) s += ']';
+  while (op-- > 0) s += '}';
+  return s;
+}
+
+// ── AUTOCOMPLETE ──
+var ACF = ['category','city','usp','extra'];
+var ACP = 'avitolog_ac_';
+
+function acLoad(f) {
+  try { return JSON.parse(localStorage.getItem(ACP+f) || '[]'); } catch(e) { return []; }
+}
+
+function acSim(a, b) {
+  var x = a.toLowerCase().trim(), y = b.toLowerCase().trim();
+  if (x===y) return true;
+  if (x.indexOf(y)>=0 || y.indexOf(x)>=0) return true;
+  if (Math.abs(x.length-y.length) > 3) return false;
+  var d = 0;
+  var lo = x.length>y.length ? x : y;
+  var sh = x.length>y.length ? y : x;
+  for (var i=0; i<sh.length; i++) {
+    if (lo[i] !== sh[i]) d++;
+    if (d > 2) return false;
+  }
+  return d + (lo.length - sh.length) <= 2;
+}
+
+function acSave(f, v) {
+  if (!v || v.trim().length < 2) return;
+  var val = v.trim();
+  var l = acLoad(f).filter(function(x) { return !acSim(x,val); });
+  l.push(val);
+  l.sort(function(a,b) { return a.localeCompare(b,'ru'); });
+  localStorage.setItem(ACP+f, JSON.stringify(l.slice(-50)));
+}
+
+function acSaveAll() {
+  ACF.forEach(function(f) {
+    var e = document.getElementById(f);
+    if (e && e.value.trim()) acSave(f, e.value.trim());
+  });
+  document.querySelectorAll('.pname').forEach(function(e) {
+    if (e.value.trim()) acSave('positions', e.value.trim());
+  });
+}
+
+function acFlt(f, q) {
+  var l = acLoad(f);
+  if (!q) return l;
+  var lq = q.toLowerCase();
+  return l.filter(function(v) { return v.toLowerCase().indexOf(lq) >= 0; });
+}
+
+function acHL(t, q) {
+  if (!q) return t;
+  var i = t.toLowerCase().indexOf(q.toLowerCase());
+  if (i < 0) return t;
+  return t.slice(0,i) + '<mark>' + t.slice(i,i+q.length) + '</mark>' + t.slice(i+q.length);
+}
+
+function setupAC(el, fn) {
+  var w = document.createElement('div');
+  w.className = 'ac-wrap';
+  el.parentNode.insertBefore(w, el);
+  w.appendChild(el);
+  var lst = document.createElement('div');
+  lst.className = 'ac-list';
+  w.appendChild(lst);
+  var si = -1;
+
+  function show(q) {
+    var items = acFlt(fn, q);
+    if (!items.length) { lst.classList.remove('open'); return; }
+    lst.innerHTML = items.map(function(v, i) {
+      var safe = v.replace(/"/g, '&quot;');
+      return '<div class="ac-item" data-val="' + safe + '" data-idx="' + i + '">' +
+        '<span class="ac-t">' + acHL(v, q) + '</span>' +
+        '<span class="ac-del" data-val="' + safe + '">x</span></div>';
+    }).join('');
+    lst.classList.add('open');
+    si = -1;
+    lst.querySelectorAll('.ac-item').forEach(function(item) {
+      item.querySelector('.ac-del').addEventListener('mousedown', function(e) {
+        e.preventDefault(); e.stopPropagation();
+        var val = e.target.getAttribute('data-val');
+        var saved = acLoad(fn).filter(function(v) { return v !== val; });
+        localStorage.setItem(ACP+fn, JSON.stringify(saved));
+        show(el.value);
+      });
+      item.querySelector('.ac-t').addEventListener('mousedown', function(e) {
+        e.preventDefault();
+        el.value = item.getAttribute('data-val');
+        lst.classList.remove('open');
+      });
+    });
+  }
+
+  el.addEventListener('input', function() { show(el.value); });
+  el.addEventListener('focus', function() { show(el.value); });
+  el.addEventListener('keydown', function(e) {
+    var its = lst.querySelectorAll('.ac-item');
+    if (!lst.classList.contains('open') || !its.length) return;
+    if (e.key === 'ArrowDown') {
+      e.preventDefault(); si = Math.min(si+1, its.length-1);
+      its.forEach(function(t,i) { t.classList.toggle('sel', i===si); });
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault(); si = Math.max(si-1, 0);
+      its.forEach(function(t,i) { t.classList.toggle('sel', i===si); });
+    } else if (e.key === 'Enter' && si >= 0) {
+      e.preventDefault(); el.value = its[si].getAttribute('data-val'); lst.classList.remove('open');
+    } else if (e.key === 'Escape') {
+      lst.classList.remove('open');
+    }
+  });
+  document.addEventListener('click', function(e) {
+    if (!w.contains(e.target)) lst.classList.remove('open');
+  });
+}
+
+function initAC() {
+  ACF.forEach(function(f) {
+    var e = document.getElementById(f);
+    if (e) setupAC(e, f);
+  });
+  var fp = document.querySelector('.pname');
+  if (fp) setupAC(fp, 'positions');
+}
+
+// ── CUSTOM KP ──
+function addCustomKP() {
+  var inp = document.getElementById('kpCustom');
+  var val = inp.value.trim().replace(/[^0-9∞]/g, '');
+  if (!val) return;
+  // Сохраняем в localStorage
+  var saved = JSON.parse(localStorage.getItem('avito_kp_custom') || '[]');
+  if (saved.indexOf(val) < 0) {
+    saved.push(val);
+    localStorage.setItem('avito_kp_custom', JSON.stringify(saved));
+  }
+  addKPTag(val);
+  inp.value = '';
+}
+
+function addKPTag(val) {
+  var wrap = document.querySelector('.kp-wrap');
+  // Проверяем нет ли уже такого
+  var exists = false;
+  wrap.querySelectorAll('.kp-tag').forEach(function(b) {
+    if (b.getAttribute('data-kp') === val) exists = true;
+  });
+  if (exists) return;
+  var btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = 'kp-tag kp-custom';
+  btn.setAttribute('data-kp', val);
+  btn.innerHTML = val + ' <span style="opacity:.5;font-size:10px" onclick="removeKPTag(this.parentElement,event)">x</span>';
+  btn.addEventListener('click', function(e) {
+    if (e.target.tagName === 'SPAN') return;
+    this.classList.toggle('on');
+    updateKPValue();
+  });
+  wrap.appendChild(btn);
+}
+
+function removeKPTag(btn, e) {
+  e.stopPropagation();
+  var val = btn.getAttribute('data-kp');
+  btn.remove();
+  var saved = JSON.parse(localStorage.getItem('avito_kp_custom') || '[]');
+  saved = saved.filter(function(v) { return v !== val; });
+  localStorage.setItem('avito_kp_custom', JSON.stringify(saved));
+  updateKPValue();
+}
+
+function updateKPValue() {
+  var vals = [];
+  document.querySelectorAll('.kp-tag.on').forEach(function(b) {
+    vals.push(b.getAttribute('data-kp'));
+  });
+  document.getElementById('kp_count').value = vals.join(', ');
+}
+
+// ── INIT ──
+document.addEventListener('DOMContentLoaded', function() {
+  // Рандомные name на контактных полях — Chrome не автозаполняет
+  ['company','contact_name','tg','phone'].forEach(function(id) {
+    var el = document.getElementById(id);
+    if (el) el.setAttribute('name', 'f_' + Math.random().toString(36).slice(2));
+  });
+  // Загружаем сохранённый API ключ
+  var savedKey = localStorage.getItem('avito_api_key');
+  if (savedKey) {
+    var ki = document.getElementById('apiKeyInput');
+    if (ki) ki.value = savedKey;
+  }
+  // Загружаем кастомные KP теги
+  var customKP = JSON.parse(localStorage.getItem('avito_kp_custom') || '[]');
+  customKP.forEach(function(val) { addKPTag(val); });
+  initKP();
+  initAC();
+});
+
+// chatInp enter
+document.addEventListener('DOMContentLoaded', function() {
+  var ci = document.getElementById('chatInp');
+  if (ci) ci.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') { e.preventDefault(); sendChat(); }
+  });
+});
+
+// ── Google OAuth2 ──
+var OAUTH_CLIENT_ID = '98192715547-1a7jrfa6a53e1u7k5lojss8ji12q4432.apps.googleusercontent.com';
+var OAUTH_SCOPE = 'https://www.googleapis.com/auth/drive';
+var _driveToken = null;
+
+function getDriveToken() {
+  return new Promise(function(resolve, reject) {
+    if (_driveToken) { resolve(_driveToken); return; }
+    // Открываем OAuth2 popup
+    var w = 500, h = 600;
+    var left = (screen.width - w) / 2;
+    var top = (screen.height - h) / 2;
+    var authUrl = 'https://accounts.google.com/o/oauth2/v2/auth?' +
+      'client_id=' + OAUTH_CLIENT_ID +
+      '&redirect_uri=' + encodeURIComponent('https://hair1guru1school-cyber.github.io/AVITOLOG/index.html') +
+      '&response_type=token' +
+      '&scope=' + encodeURIComponent(OAUTH_SCOPE) +
+      '&prompt=consent';
+    var popup = window.open(authUrl, 'oauth', 'width=' + w + ',height=' + h + ',left=' + left + ',top=' + top);
+    var timer = setInterval(function() {
+      try {
+        if (popup.closed) {
+          clearInterval(timer);
+          if (!_driveToken) reject(new Error('Авторизация отменена'));
+          return;
+        }
+        var url = popup.location.href;
+        if (url && url.indexOf('access_token=') >= 0) {
+          clearInterval(timer);
+          popup.close();
+          var match = url.match(/access_token=([^&]+)/);
+          if (match) {
+            _driveToken = match[1];
+            // Сохраняем токен на 55 минут
+            setTimeout(function(){ _driveToken = null; }, 55 * 60 * 1000);
+            resolve(_driveToken);
+          } else {
+            reject(new Error('Токен не найден'));
+          }
+        }
+      } catch(e) {
+        // cross-origin пока грузится — ждём
+      }
+    }, 300);
+  });
 }
 
 async function driveCreateClientFolder(name, parentId) {
@@ -1030,4 +1612,5 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 </script>
 </body>
-</html>
+</html></script>
+</body>
