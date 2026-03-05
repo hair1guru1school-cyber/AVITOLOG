@@ -247,13 +247,14 @@ function initKP() {
 // ── TABS ──
 function switchTab(tab) {
   currentTab = tab;
-  ['analysis','presale'].forEach(function(t) {
+  ['analysis','presale','avito1'].forEach(function(t) {
     document.getElementById('tab-'+t).classList.toggle('active', t===tab);
   });
   if (!docReady) {
+    var ico = tab==='analysis' ? '📊' : tab==='presale' ? '⏰' : '🏆';
     document.getElementById('mainContent').innerHTML =
       '<div class="empty-st"><div style="font-size:38px;opacity:.2">' +
-      (tab==='analysis' ? '📊' : '⏰') +
+      ico +
       '</div><p style="font-size:14px">Заполни данные и нажми Сгенерировать</p></div>';
   }
 }
@@ -304,7 +305,7 @@ function pgStop() {
   bar.style.transition = 'width 0.3s ease';
   bar.style.width = '100%';
   document.getElementById('tab-'+currentTab).classList.add('done');
-  txt.textContent = currentTab==='analysis' ? 'АНАЛИТИКА' : 'НУЖНО СЕЙЧАС';
+  txt.textContent = currentTab==='analysis' ? 'АНАЛИТИКА' : currentTab==='presale' ? 'НУЖНО СЕЙЧАС' : 'AVITO №1';
 }
 
 // ── HELPERS ──
@@ -320,6 +321,14 @@ function setContent(html) {
 function generate() {
   acSaveAll();
   var btn = document.getElementById('genBtn');
+  var crmOn = document.getElementById('crmToggle').checked;
+
+  // ВАЖНО: получаем токен Drive СРАЗУ по клику (пока браузер разрешает попап)
+  var tokenPromise = crmOn ? getDriveToken().catch(function(e) { 
+    console.warn('OAuth не получен:', e.message); 
+    return null; 
+  }) : Promise.resolve(null);
+
   btn.disabled = true;
   btn.innerHTML = '<span>⚡</span><span>Генерирую...</span>';
   pgStart();
@@ -348,8 +357,16 @@ function generate() {
     var json = JSON.parse(fixJSON(cleaned));
     saveNorm(json.normalized);
     renderDoc(json.html);
-    if (document.getElementById('crmToggle').checked) {
-      setTimeout(function() { triggerCRM(json.html); }, 500);
+    if (crmOn) {
+      tokenPromise.then(function(token) {
+        if (token) {
+          triggerCRM(json.html);
+        } else {
+          var st = document.getElementById('crmSt');
+          st.className = 'crm-st err';
+          st.textContent = '✗ Авторизация Google не пройдена';
+        }
+      });
     }
   }).catch(function(e) {
     setContent('<div class="error-box">Ошибка: ' + e.message + '</div>');
@@ -1590,5 +1607,4 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 </script>
 </body>
-</html></script>
-</body>
+</html>
