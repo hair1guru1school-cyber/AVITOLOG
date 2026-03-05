@@ -275,8 +275,13 @@ function switchTab(tab) {
   ['analysis','presale','avito1'].forEach(function(t) {
     document.getElementById('tab-'+t).classList.toggle('active', t===tab);
   });
-  // Depth bar только для аналитики
-  document.getElementById('depthBar').style.display = tab === 'analysis' ? 'flex' : 'none';
+  // Depth bar: 3 кнопки для аналитики, 2 для остальных
+  var bar = document.getElementById('depthBar');
+  bar.style.display = 'flex';
+  var btns = bar.querySelectorAll('.depth-btn');
+  btns[2].style.display = tab === 'analysis' ? '' : 'none'; // 🔨 только для аналитики
+  // Сброс на mid если max был выбран для не-аналитики
+  if (tab !== 'analysis' && currentDepth === 'max') { setDepth('mid'); }
   if (!docReady) {
     var ico = tab==='analysis' ? '📊' : tab==='presale' ? '⏰' : '🏆';
     document.getElementById('mainContent').innerHTML =
@@ -373,7 +378,7 @@ function generate() {
 
   var maxTok = currentTab === 'analysis' 
     ? (currentDepth === 'light' ? 4000 : currentDepth === 'max' ? 8000 : 6000) 
-    : 3000;
+    : (currentDepth === 'light' ? 3000 : 4500);
   callAPI(prompt, maxTok).then(function(raw) {
     var cleaned = raw.replace(/```json|```/g, '').trim();
     var json = JSON.parse(fixJSON(cleaned));
@@ -426,16 +431,17 @@ function buildAnalysisPrompt() {
     '<p>[товары/услуги через •]</p>\n' +
     '<p>📍 ' + (d.city || '') + '</p>\n' +
     '</div>\n' +
-    '<hr>\n\n';
+    '\n\n';
 
   var rules = '\n\nПРАВИЛА:\n' +
     '- Эмоджи в каждом h2 и ключевых местах\n' +
     '- ❌ для болей, ✔ для важного, 🔥 для акцентов\n' +
     '- h3 для подсегментов внутри разделов\n' +
+    '- НЕ используй <hr> — между разделами достаточно отступов h2\n' +
     '- Конкретика под нишу: ' + (d.category || '') + '\n' +
     '- Реальные поисковые запросы, примеры формулировок объявлений\n\n';
 
-  var jsonFmt = 'Верни JSON без markdown:\n{"html":"<div style=\\"text-align:center\\">...</div><hr>...","normalized":{"company":"...","category":"...","city":"...","usp":"..."}}';
+  var jsonFmt = 'Верни JSON без markdown:\n{"html":"<div style=\\"text-align:center\\">...</div>...","normalized":{"company":"...","category":"...","city":"...","usp":"..."}}';
 
   if (currentDepth === 'light') {
     return header +
@@ -487,36 +493,82 @@ function buildAnalysisPrompt() {
 }
 
 function buildPresalePrompt() {
-  return 'Ты опытный авитолог. Создай документ — почему сейчас лучшее время запускаться на Авито.\n\n' +
+  var d = currentData;
+  var kp = d.kp || '100';
+  var jsonFmt = 'Верни JSON без markdown:\n{"html":"<div style=\\"text-align:center\\"><h1>...</h1>...</div>...","normalized":{"company":"...","category":"...","city":"...","usp":"..."}}';
+  
+  var header = 'Ты опытный авитолог. Создай документ — почему СЕЙЧАС лучшее время запускаться на Авито.\n\n' +
     clientInfo() +
-    '\n\nСтруктура: h1 заголовок + 6-7 разделов h2 (абзац + 4 пункта) + h2 Итог (4 пункта).\n' +
-    'Компактно. Адаптируй под нишу и гео.\n\n' +
-    'JSON без markdown:\n' +
-    '{"html":"<h1>...</h1>...","normalized":{"company":"...","category":"...","city":"...","usp":"..."}}';
+    '\n\nФОРМАТ HTML:\n' +
+    'ШАПКА (text-align:center):\n' +
+    '<div style="text-align:center">\n' +
+    '<h1>⏰ Почему сейчас — лучшее время для запуска на Avito</h1>\n' +
+    '<h3>' + (d.category || 'ниша') + ' • ' + (d.city || 'город') + '</h3>\n' +
+    '</div>\n\n' +
+    'ПРАВИЛА: эмоджи в h2, НЕ используй <hr>, используй ✔🔥📈💡⚡\n\n';
+
+  if (currentDepth === 'light') {
+    return header +
+      'РАЗДЕЛЫ (компактно, 600-900 слов):\n' +
+      '<h2>📈 Рынок Avito растёт</h2> — цифры и тренды\n' +
+      '<h2>⚡ Конкуренция ещё не максимальная</h2> — окно возможностей\n' +
+      '<h2>🎯 Avito идеально для ' + (d.category || 'вашей ниши') + '</h2> — почему именно эта площадка\n' +
+      '<h2>💰 ' + kp + ' объявлений — оптимальный старт</h2> — обоснование объёма\n' +
+      '<h2>🔥 Итог</h2> — 3-4 тезиса почему стартовать сейчас\n\n' + jsonFmt;
+  }
+
+  return header +
+    'РАЗДЕЛЫ (средне, 900-1400 слов):\n' +
+    '<h2>📈 Рынок Avito: цифры и тренды</h2> — рост площадки, аудитория\n' +
+    '<h2>⚡ Окно возможностей в нише</h2> — конкуренция, когда лучше зайти\n' +
+    '<h2>🎯 Почему Avito идеально для ' + (d.category || 'ниши') + '</h2> — специфика площадки под нишу\n' +
+    '<h2>👥 Ваша аудитория уже на Avito</h2> — кто ищет, как выбирает\n' +
+    '<h2>📊 Сезонность: почему именно сейчас</h2> — привязка к текущему периоду\n' +
+    '<h2>💰 ' + kp + ' объявлений — обоснование объёма</h2> — почему это оптимально, распределение\n' +
+    '<h2>🔥 Итог — почему стартовать сейчас</h2> — 4-5 тезисов\n\n' + jsonFmt;
 }
 
 function buildAvito1Prompt() {
-  return 'Ты топовый авитолог и маркетолог. Напиши документ «Почему Avito — №1 площадка для данной ниши и гео».\n\n' +
+  var d = currentData;
+  var jsonFmt = 'Верни JSON без markdown:\n{"html":"<div style=\\"text-align:center\\"><h1>...</h1>...</div>...","normalized":{"company":"...","category":"...","city":"...","usp":"..."}}';
+
+  var header = 'Ты топовый авитолог и маркетолог. Напиши документ почему Avito — площадка №1.\n\n' +
     clientInfo() +
-    '\n\nСтруктура (h1 + разделы h2):\n' +
-    'h1: Почему Avito №1 площадка для [ниша] в [гео]\n' +
-    'h2: Как думает заказчик — почему Avito попадает точно\n' +
-    'h2: Avito vs Яндекс vs Соцсети — сравнение каналов\n' +
-    'h2: Почему Avito особенно силён для этой ниши\n' +
-    'h2: География как инструмент продаж\n' +
-    'h2: Почему клиент выбирает через Avito\n' +
-    'h2: Итог — 4-5 ключевых тезиса\n\n' +
-    'Пиши конкретно под нишу и гео. Без воды.\n' +
-    'JSON без markdown: {"html":"<h1>...</h1>...","normalized":{"company":"...","category":"...","city":"...","usp":"..."}}';
+    '\n\nФОРМАТ HTML:\n' +
+    'ШАПКА (text-align:center):\n' +
+    '<div style="text-align:center">\n' +
+    '<h1>🏆 Почему Avito — площадка №1 для ' + (d.category || 'вашей ниши') + '</h1>\n' +
+    '<h3>📍 ' + (d.city || 'город') + '</h3>\n' +
+    '</div>\n\n' +
+    'ПРАВИЛА: эмоджи в h2, НЕ используй <hr>, используй ✔🔥💡📊⚡\n\n';
+
+  if (currentDepth === 'light') {
+    return header +
+      'РАЗДЕЛЫ (компактно, 600-900 слов):\n' +
+      '<h2>🧠 Как думает ваш клиент</h2> — путь от потребности до Avito\n' +
+      '<h2>⚔️ Avito vs другие каналы</h2> — сравнение с Яндекс, соцсети\n' +
+      '<h2>💎 Сила Avito для ' + (d.category || 'ниши') + '</h2> — конкретные преимущества\n' +
+      '<h2>🔥 Итог</h2> — 3-4 ключевых тезиса\n\n' + jsonFmt;
+  }
+
+  return header +
+    'РАЗДЕЛЫ (средне, 900-1400 слов):\n' +
+    '<h2>🧠 Как думает ваш клиент</h2> — путь от потребности до покупки через Avito\n' +
+    '<h2>⚔️ Avito vs Яндекс vs Соцсети</h2> — честное сравнение каналов с ✔ и ❌\n' +
+    '<h2>💎 Почему Avito особенно силён для ' + (d.category || 'ниши') + '</h2> — специфика\n' +
+    '<h2>📍 География как инструмент продаж</h2> — ' + (d.city || 'город') + ' и окрестности\n' +
+    '<h2>👥 Почему клиент выбирает через Avito</h2> — триггеры доверия\n' +
+    '<h2>🔥 Итог — 5 причин почему Avito №1</h2>\n\n' + jsonFmt;
 }
 
 // ── RENDER ──
 function renderDoc(html) {
   currentHtml = html;
   docReady = true;
+  var content = currentTab === 'analysis' ? withImg(html) : html;
   setContent(
     '<div class="doc-wrap">' +
-      '<div class="doc-block" id="docBlock">' + withImg(html) + '</div>' +
+      '<div class="doc-block" id="docBlock">' + content + '</div>' +
     '</div>'
   );
   showChat();
@@ -835,26 +887,42 @@ async function saveToDrive(html, contactsTxt, docHtml) {
     var clientName = [d.company, d.name].filter(Boolean).join(' - ') || 'Клиент';
     var dateStr = new Date().toLocaleDateString('ru');
     var folderName = clientName + ' (' + dateStr + ')';
-    // Определяем категорию и берём её ID напрямую
     var cat = detectCRMCategory(d.category);
     console.log('CRM категория:', cat.name, 'ID:', cat.id);
 
-    // Создаём папку клиента ВНУТРИ существующей папки категории
     var clientId = await driveCreateClientFolder(folderName, cat.id);
-    console.log('Папка клиента создана:', clientId);
+    console.log('Папка клиента:', clientId);
 
-    // contacts.txt — только если есть контакты
+    // contacts.txt — только при первой генерации (проверяем есть ли уже)
     var hasContacts = d.company || d.name || d.tg || d.phone;
     if (hasContacts && contactsTxt) {
-      await driveUploadText('contacts.txt', contactsTxt, 'text/plain', clientId);
-      console.log('contacts.txt загружен');
+      try {
+        var token = await getDriveToken();
+        var chk = await fetch('https://www.googleapis.com/drive/v3/files?q=name%3D%27contacts.txt%27+and+%27' + clientId + '%27+in+parents+and+trashed%3Dfalse&fields=files(id)', {
+          headers: {'Authorization': 'Bearer ' + token}
+        });
+        var chkD = await chk.json();
+        if (!chkD.files || chkD.files.length === 0) {
+          await driveUploadText('contacts.txt', contactsTxt, 'text/plain', clientId);
+          console.log('contacts.txt создан');
+        } else {
+          console.log('contacts.txt уже есть — пропускаю');
+        }
+      } catch(e) { console.warn('contacts check error:', e); }
     }
 
-    // Создаём Google Doc (с URL картинкой и стилями)
-    var docHtml = buildWordHtml(withImgUrl(currentHtml));
-    console.log('Создаю Google Doc, HTML размер:', docHtml.length);
+    // Название документа по табу
+    var tabNames = { analysis: '📊 Аналитика', presale: '⏰ Нужно сейчас', avito1: '🏆 Avito №1' };
+    var docName = (tabNames[currentTab] || 'Документ') + ' — ' + clientName;
+    
+    // HTML для Drive: картинка только для аналитики
+    var driveHtml = currentTab === 'analysis' 
+      ? buildWordHtml(withImgUrl(currentHtml)) 
+      : buildWordHtml(currentHtml);
+    
+    console.log('Создаю Google Doc:', docName, 'размер:', driveHtml.length);
     try {
-      var docResult = await driveCreateGoogleDoc('Анализ — ' + clientName, docHtml, clientId);
+      var docResult = await driveCreateGoogleDoc(docName, driveHtml, clientId);
       console.log('Google Doc OK:', docResult);
       var folderUrl = 'https://drive.google.com/drive/folders/' + clientId;
       var docLink = docResult && docResult.webViewLink 
@@ -863,11 +931,11 @@ async function saveToDrive(html, contactsTxt, docHtml) {
       st.className = 'crm-st ok';
       st.innerHTML = '✓ ' + cat.name + ' · <a href="' + folderUrl + '" target="_blank" style="color:#4fc;text-decoration:underline">Папка →</a>' + docLink;
     } catch(docErr) {
-      console.error('Google Doc ошибка, гружу HTML fallback:', docErr);
-      await driveUploadText('Анализ — ' + clientName + '.html', docHtml, 'text/html', clientId);
+      console.error('Google Doc fallback → HTML:', docErr);
+      await driveUploadText(docName + '.html', driveHtml, 'text/html', clientId);
       var folderUrl = 'https://drive.google.com/drive/folders/' + clientId;
       st.className = 'crm-st ok';
-      st.innerHTML = '✓ ' + cat.name + ' (HTML) · <a href="' + folderUrl + '" target="_blank" style="color:#4fc;text-decoration:underline">Папка →</a>';
+      st.innerHTML = '✓ ' + cat.name + ' · <a href="' + folderUrl + '" target="_blank" style="color:#4fc;text-decoration:underline">Папка →</a>';
     }
   } catch(e) {
     st.className = 'crm-st err';
