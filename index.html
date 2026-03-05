@@ -163,13 +163,13 @@ textarea{resize:vertical;min-height:50px;line-height:1.5}
         + Добавить
       </button>
     </div>
-    <div class="kp-wrap">
-      <button type="button" class="kp-tag" data-kp="50">50</button>
-      <button type="button" class="kp-tag" data-kp="100">100</button>
-      <button type="button" class="kp-tag" data-kp="250">250</button>
-      <button type="button" class="kp-tag" data-kp="500">500</button>
-      <button type="button" class="kp-tag" data-kp="1000">1000</button>
-      <button type="button" class="kp-tag" data-kp="1500">1500</button>
+    <div class="kp-wrap" id="kpWrap">
+      <button type="button" class="kp-tag" data-kp="50" onclick="toggleKP(this)">50</button>
+      <button type="button" class="kp-tag" data-kp="100" onclick="toggleKP(this)">100</button>
+      <button type="button" class="kp-tag" data-kp="250" onclick="toggleKP(this)">250</button>
+      <button type="button" class="kp-tag" data-kp="500" onclick="toggleKP(this)">500</button>
+      <button type="button" class="kp-tag" data-kp="1000" onclick="toggleKP(this)">1000</button>
+      <button type="button" class="kp-tag" data-kp="1500" onclick="toggleKP(this)">1500</button>
       <button type="button" class="kp-tag" data-kp="∞">&#8734; <sup style="font-size:9px;opacity:.7">alfa</sup></button>
     </div>
     <input type="hidden" id="kp_count" value="">
@@ -236,13 +236,12 @@ var currentData = null;
 var docReady = false;
 
 // ── KP TAGS ──
+function toggleKP(btn) {
+  btn.classList.toggle('on');
+  updateKPValue();
+}
 function initKP() {
-  document.querySelectorAll('.kp-tag:not(.kp-custom)').forEach(function(btn) {
-    btn.addEventListener('click', function() {
-      this.classList.toggle('on');
-      updateKPValue();
-    });
-  });
+  // onclick уже в HTML
 }
 
 // ── TABS ──
@@ -742,24 +741,12 @@ async function saveToDrive(html, contactsTxt, docHtml) {
     // Загружаем contacts.txt
     await driveUploadText('contacts.txt', contactsTxt, 'text/plain', clientId);
 
-    // Создаём Google Doc
-    // Генерируем PDF и скачиваем локально
-    st.textContent = 'Генерирую PDF...';
-    var pdfBlob = await generatePDF(currentHtml, clientName);
-    var pdfUrl = URL.createObjectURL(pdfBlob);
-    var a = document.createElement('a');
-    a.href = pdfUrl;
-    a.download = 'Анализ — ' + clientName + '.pdf';
-    a.click();
-    setTimeout(function(){ URL.revokeObjectURL(pdfUrl); }, 3000);
+    // Загружаем анализ как HTML файл
+    await driveUploadText('Анализ — ' + clientName + '.html', currentHtml, 'text/html', clientId);
 
-    // Загружаем contacts.txt в Drive
-    await driveUploadText('contacts.txt', contactsTxt, 'text/plain', clientId);
-
-    // Открываем папку клиента в Drive
     var folderUrl = 'https://drive.google.com/drive/folders/' + clientId;
     st.className = 'crm-st ok';
-    st.innerHTML = '✓ PDF скачан · <a href="' + folderUrl + '" target="_blank" style="color:#4fc;text-decoration:underline">Открыть папку в Drive →</a>';
+    st.innerHTML = '✓ ' + cat.name + ' · <a href="' + folderUrl + '" target="_blank" style="color:#4fc;text-decoration:underline">Drive →</a>';
   } catch(e) {
     st.className = 'crm-st err';
     st.textContent = '✗ ' + (e.message || String(e));
