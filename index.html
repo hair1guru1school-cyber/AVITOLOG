@@ -347,7 +347,7 @@ function generate() {
                currentTab === 'presale' ? buildPresalePrompt() :
                buildAvito1Prompt();
 
-  callAPI(prompt, 3000).then(function(raw) {
+  callAPI(prompt, 8000).then(function(raw) {
     var cleaned = raw.replace(/```json|```/g, '').trim();
     var json = JSON.parse(fixJSON(cleaned));
     saveNorm(json.normalized);
@@ -385,20 +385,45 @@ function clientInfo() {
 
 // ── PROMPTS ──
 function buildAnalysisPrompt() {
-  return 'Ты опытный авитолог. Создай предварительный анализ ниши.\n\n' +
+  var d = currentData;
+  return 'Ты опытный авитолог-аналитик. Создай РАЗВЁРНУТЫЙ предварительный анализ ниши.\n\n' +
     clientInfo() +
-    '\n\nСтруктура (строго, компактно, без воды):\n' +
-    'h1: Анализ Ниши + Целевой Аудитории + Спроса в городах\n' +
-    'h2: 1) Гео-стратегия — основной регион, города, логика размещения\n' +
-    'h2: 2) Целевая аудитория — 3-4 сегмента: кто/что важно/что транслировать\n' +
-    'h2: 3) Кластеры объявлений — 2-4 кластера с подкластерами\n' +
-    'h2: 4) Рекомендованная модель — объём карточек и распределение\n' +
-    'h2: 5) Стратегия широких файлов — 4 пункта\n' +
-    'h2: 6) SEO-ядро — горячие запросы\n' +
-    'h2: 7) Сезонность\n' +
-    'h2: Итоговая рекомендация — 4 пункта\n\n' +
+    '\n\nФОРМАТ HTML — строго по структуре:\n\n' +
+    '1) ШАПКА (центрированная):\n' +
+    '<div style="text-align:center"><h1>🔎 Анализ Ниши + Целевой Аудитории + Спроса в городах</h1>' +
+    '<h2>🔎 АНАЛИЗ НИШИ И РЫНКА</h2>' +
+    '<h3>🏗 [краткое описание ниши клиента]</h3>' +
+    '<p>[перечисление основных услуг/товаров через •]</p>' +
+    '<p>📍 ' + (d.city || 'Город') + '</p></div>\n' +
+    '<p>[ЗДЕСЬ БУДЕТ КАРТИНКА — оставь пустую строку]</p>\n\n' +
+    '2) РАЗДЕЛЫ (каждый h2 с эмоджи, развёрнуто, по 5-15 пунктов в каждом):\n\n' +
+    '<h2>📊 1. Картина спроса и сезонность</h2>\n' +
+    'Подробно: пик сезона, низкий сезон, что именно ищут в каждый период. Используй эмоджи 🔥❄🍂💡✔\n\n' +
+    '<h2>👥 2. Целевая аудитория (сегментация)</h2>\n' +
+    'Подробно каждый сегмент отдельным h3: возраст, ситуации, боли (❌), что важно (✔). Минимум 3-4 сегмента.\n\n' +
+    '<h2>🔥 3. Основные боли по продуктам</h2>\n' +
+    'По каждому продукту/услуге: боли (❌), что покупает клиент на самом деле\n\n' +
+    '<h2>📦 4. Поведение клиента на Avito</h2>\n' +
+    'Как ищет, сколько сравнивает, триггеры выбора (📸📐🛠💬)\n\n' +
+    '<h2>🔎 5. Как ищут (семантика)</h2>\n' +
+    'Группы запросов по категориям — реальные поисковые фразы\n\n' +
+    '<h2>📍 6. География спроса</h2>\n' +
+    'Основные и дополнительные города, районы\n\n' +
+    '<h2>💰 7. Средний чек</h2>\n' +
+    'По каждой категории товаров/услуг с диапазонами\n\n' +
+    '<h2>🚀 8. Стратегия масштабирования</h2>\n' +
+    'Этапы: 1→2→3, конкретные действия на каждом\n\n' +
+    '<h2>🎯 Итог по рынку</h2>\n' +
+    'Что покупает клиент, как занять позицию, 4-5 ключевых тезисов с 🔥\n\n' +
+    'ВАЖНО:\n' +
+    '- Пиши РАЗВЁРНУТО, минимум 2000 слов\n' +
+    '- Используй эмоджи в заголовках и ключевых пунктах\n' +
+    '- Используй h3 для подсегментов внутри разделов\n' +
+    '- Используй ❌ для болей, ✔ для преимуществ, 🔥 для акцентов\n' +
+    '- Адаптируй ВСЁ под конкретную нишу: ' + (d.category || '') + '\n' +
+    '- Конкретные цифры, примеры объявлений, реальные запросы\n\n' +
     'Верни JSON без markdown:\n' +
-    '{"html":"<h1>...</h1>...","normalized":{"company":"...","category":"...","city":"...","usp":"..."}}';
+    '{"html":"<div style=\\"text-align:center\\">...</div>...",\"normalized\":{\"company\":\"...\",\"category\":\"...\",\"city\":\"...\",\"usp\":\"...\"}}'
 }
 
 function buildPresalePrompt() {
@@ -445,9 +470,14 @@ function withImg(html) {
 
 // Версия с URL картинкой для Google Docs (base64 не работает в Docs)
 function withImgUrl(html) {
-  var img = '<img src="https://hair1guru1school-cyber.github.io/AVITOLOG/logo.jpg" style="width:100%;max-width:600px;display:block;margin:14px 0 24px">';
-  var i = html.indexOf('</h1>');
-  return i >= 0 ? html.slice(0,i+5) + img + html.slice(i+5) : img + html;
+  var img = '<img src="https://hair1guru1school-cyber.github.io/AVITOLOG/logo.jpg" style="width:100%;max-width:600px;display:block;margin:20px auto 30px">';
+  // Вставляем после закрывающего </div> центрированной шапки, или после </h1>
+  var divEnd = html.indexOf('</div>');
+  if (divEnd >= 0 && divEnd < 500) {
+    return html.slice(0, divEnd + 6) + img + html.slice(divEnd + 6);
+  }
+  var h1End = html.indexOf('</h1>');
+  return h1End >= 0 ? html.slice(0, h1End + 5) + img + html.slice(h1End + 5) : img + html;
 }
 
 // ── CHAT ──
@@ -506,13 +536,14 @@ function copyDoc() {
 // ── DOWNLOAD ──
 function buildWordHtml(body) {
   return '<!DOCTYPE html><html><head><meta charset="utf-8"><style>' +
-    'body{font-family:Arial,sans-serif;font-size:11pt;line-height:1.7;color:#000;max-width:700px;margin:40px auto;padding:0 20px}' +
-    'h1{font-size:16pt;font-weight:bold;margin:0 0 12pt;color:#1a1a2e}' +
-    'h2{font-size:13pt;font-weight:bold;margin:20pt 0 8pt;border-top:1px solid #ddd;padding-top:10pt;color:#2d2d44}' +
-    'h3{font-size:11pt;font-weight:bold;margin:12pt 0 4pt}' +
-    'p{margin:0 0 8pt}ul{margin:6pt 0 10pt;padding-left:18pt}li{margin:4pt 0}' +
+    'body{font-family:Arial,sans-serif;font-size:11pt;line-height:1.8;color:#222;max-width:700px;margin:40px auto;padding:0 20px}' +
+    'h1{font-size:22pt;font-weight:bold;margin:0 0 6pt;color:#1a1a2e}' +
+    'h2{font-size:16pt;font-weight:bold;margin:28pt 0 10pt;padding-top:14pt;border-top:1px solid #ccc;color:#1a1a2e}' +
+    'h3{font-size:13pt;font-weight:bold;margin:18pt 0 6pt;color:#333}' +
+    'p{margin:0 0 8pt}' +
+    'ul{margin:6pt 0 12pt;padding-left:20pt}li{margin:4pt 0}' +
     'strong{color:#111}' +
-    'img{width:100%;max-width:600px;display:block;margin:16px 0 28px;border-radius:6px}' +
+    'img{width:100%;max-width:600px;display:block;margin:20px auto 30px;border-radius:8px}' +
     '</style></head><body>' + body + '</body></html>';
 }
 
