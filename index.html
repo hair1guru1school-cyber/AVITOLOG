@@ -224,6 +224,12 @@ textarea{resize:vertical;min-height:50px;line-height:1.5}
 
 </div>
 
+<button type="button" onclick="fillTest()" title="Заполнить тестовые данные"
+  style="position:fixed;bottom:14px;right:14px;width:38px;height:38px;border-radius:50%;border:1px solid #2a2a2e;background:#1c1c1f;color:#666;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:50;transition:all 0.2s;opacity:0.5"
+  onmouseover="this.style.opacity='1';this.style.borderColor='#7c6af7';this.style.color='#7c6af7'"
+  onmouseout="this.style.opacity='0.5';this.style.borderColor='#2a2a2e';this.style.color='#666'"
+>🧪</button>
+
 <script>
 const API = 'https://api.anthropic.com/v1/messages';
 const CRM_ROOT = '1d8oElVgTO2vzbs0HjOYPnReVmGUPltIk';
@@ -323,11 +329,21 @@ function generate() {
   var btn = document.getElementById('genBtn');
   var crmOn = document.getElementById('crmToggle').checked;
 
-  // ВАЖНО: получаем токен Drive СРАЗУ по клику (пока браузер разрешает попап)
-  var tokenPromise = crmOn ? getDriveToken().catch(function(e) { 
-    console.warn('OAuth не получен:', e.message); 
-    return null; 
-  }) : Promise.resolve(null);
+  // КРИТИЧНО: открываем попап ПРЯМО ЗДЕСЬ в синхронном onclick
+  // Иначе браузер заблокирует window.open из async функции
+  if (crmOn && !_driveToken) {
+    var w = 500, h = 600;
+    var left = Math.round((screen.width - w) / 2);
+    var top = Math.round((screen.height - h) / 2);
+    var authUrl = 'https://accounts.google.com/o/oauth2/v2/auth'
+      + '?client_id=' + encodeURIComponent(OAUTH_CLIENT_ID)
+      + '&redirect_uri=' + encodeURIComponent('https://hair1guru1school-cyber.github.io/AVITOLOG/index.html')
+      + '&response_type=token'
+      + '&scope=' + encodeURIComponent(OAUTH_SCOPE)
+      + '&prompt=select_account';
+    _oauthPopup = window.open(authUrl, 'oauth2', 'width='+w+',height='+h+',left='+left+',top='+top);
+    console.log('OAuth попап открыт:', !!_oauthPopup);
+  }
 
   btn.disabled = true;
   btn.innerHTML = '<span>⚡</span><span>Генерирую...</span>';
@@ -358,14 +374,12 @@ function generate() {
     saveNorm(json.normalized);
     renderDoc(json.html);
     if (crmOn) {
-      tokenPromise.then(function(token) {
-        if (token) {
-          triggerCRM(json.html);
-        } else {
-          var st = document.getElementById('crmSt');
-          st.className = 'crm-st err';
-          st.textContent = '✗ Авторизация Google не пройдена';
-        }
+      getDriveToken().then(function() {
+        triggerCRM(json.html);
+      }).catch(function(e) {
+        var st = document.getElementById('crmSt');
+        st.className = 'crm-st err';
+        st.textContent = '✗ ' + (e.message || 'Авторизация не пройдена');
       });
     }
   }).catch(function(e) {
@@ -531,20 +545,22 @@ var SA_EMAIL = "avitolog-crm@avito-489218.iam.gserviceaccount.com";
 var OAUTH_CLIENT_ID = '98192715547-1a7jrfa6a53e1u7k5lojss8ji12q4432.apps.googleusercontent.com';
 var OAUTH_SCOPE = 'https://www.googleapis.com/auth/drive';
 var _driveToken = null;
+var _oauthPopup = null;
 
 async function getDriveToken() {
   if (_driveToken) return _driveToken;
   return new Promise(function(resolve, reject) {
-    var w = 500, h = 600;
-    var left = Math.round((screen.width - w) / 2);
-    var top = Math.round((screen.height - h) / 2);
-    var authUrl = 'https://accounts.google.com/o/oauth2/v2/auth'
-      + '?client_id=' + encodeURIComponent(OAUTH_CLIENT_ID)
-      + '&redirect_uri=' + encodeURIComponent('https://hair1guru1school-cyber.github.io/AVITOLOG/index.html')
-      + '&response_type=token'
-      + '&scope=' + encodeURIComponent(OAUTH_SCOPE)
-      + '&prompt=select_account';
-    var popup = window.open(authUrl, 'oauth2', 'width='+w+',height='+h+',left='+left+',top='+top);
+    // Используем попап, уже открытый из generate() 
+    var popup = _oauthPopup;
+    _oauthPopup = null;
+    
+    // Если попапа нет (уже авторизован или вызов не из generate)
+    if (!popup || popup.closed) {
+      reject(new Error('Попап авторизации не открыт'));
+      return;
+    }
+    
+    console.log('Ожидаю авторизацию Google...');
     var timer = setInterval(function() {
       try {
         if (!popup || popup.closed) {
@@ -747,19 +763,22 @@ async function saveToDrive(html, contactsTxt, docHtml) {
     var clientName = [d.company, d.name].filter(Boolean).join(' - ') || 'Клиент';
     var dateStr = new Date().toLocaleDateString('ru');
     var folderName = clientName + ' (' + dateStr + ')';
-    // Определяем категорию и берём её ID напрямую
     var cat = detectCRMCategory(d.category);
     console.log('CRM категория:', cat.name, 'ID:', cat.id);
 
-    // Создаём папку клиента ВНУТРИ существующей папки категории
     var clientId = await driveCreateClientFolder(folderName, cat.id);
     console.log('Папка клиента создана:', clientId);
 
-    // Загружаем contacts.txt
-    await driveUploadText('contacts.txt', contactsTxt, 'text/plain', clientId);
+    // contacts.txt — только если есть хоть какие-то контакты
+    var hasContacts = d.company || d.name || d.tg || d.phone;
+    if (hasContacts && contactsTxt) {
+      await driveUploadText('contacts.txt', contactsTxt, 'text/plain', clientId);
+      console.log('contacts.txt загружен');
+    }
 
-    // Загружаем анализ как HTML файл
+    // Анализ — всегда
     await driveUploadText('Анализ — ' + clientName + '.html', currentHtml, 'text/html', clientId);
+    console.log('Анализ загружен');
 
     var folderUrl = 'https://drive.google.com/drive/folders/' + clientId;
     st.className = 'crm-st ok';
@@ -1576,6 +1595,36 @@ function updateKPValue() {
     vals.push(b.getAttribute('data-kp'));
   });
   document.getElementById('kp_count').value = vals.join(', ');
+}
+
+// ── TEST FILL ──
+function fillTest() {
+  var tests = [
+    {company:'ТестСтрой',name:'Иван',tg:'@teststroy',phone:'+7 999 111 22 33',category:'Пиломатериалы',city:'Москва, Подольск',usp:'Собственное производство, ГОСТ',extra:'',kp:'100',pos:['Доска обрезная 50х100','Брус 150х150']},
+    {company:'МебельПро',name:'Алексей',tg:'@mebelpro',phone:'+7 900 222 33 44',category:'Кухни на заказ',city:'Санкт-Петербург',usp:'Замер бесплатно, рассрочка 0%',extra:'Работаем с 2015',kp:'250',pos:['Кухня модульная','Шкаф-купе']},
+    {company:'АвтоДеталь',name:'Сергей',tg:'@avtodet',phone:'+7 911 333 44 55',category:'Автозапчасти',city:'Краснодар, Сочи',usp:'Оригинал + аналоги, доставка 1 день',extra:'',kp:'500',pos:['Тормозные колодки','Масляный фильтр','Свечи зажигания']},
+  ];
+  var t = tests[Math.floor(Math.random() * tests.length)];
+  document.getElementById('company').value = t.company;
+  document.getElementById('contact_name').value = t.name;
+  document.getElementById('tg').value = t.tg;
+  document.getElementById('phone').value = t.phone;
+  document.getElementById('category').value = t.category;
+  document.getElementById('city').value = t.city;
+  document.getElementById('usp').value = t.usp;
+  document.getElementById('extra').value = t.extra;
+  document.querySelectorAll('.kp-tag').forEach(function(b) { b.classList.remove('on'); });
+  var kpBtn = document.querySelector('.kp-tag[data-kp="'+t.kp+'"]');
+  if (kpBtn) { kpBtn.classList.add('on'); }
+  document.getElementById('kp_count').value = t.kp;
+  var list = document.getElementById('posList');
+  list.innerHTML = '';
+  t.pos.forEach(function(p) {
+    var row = document.createElement('div');
+    row.className = 'pos-row';
+    row.innerHTML = '<input type="text" value="'+p+'" class="pname"><button type="button" class="btn-x" onclick="removePos(this)">×</button>';
+    list.appendChild(row);
+  });
 }
 
 // ── INIT ──
