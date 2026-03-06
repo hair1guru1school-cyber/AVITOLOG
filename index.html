@@ -67,6 +67,9 @@ textarea{resize:vertical;min-height:50px;line-height:1.5}
 .btn-save{width:100%;background:transparent;border:1px solid var(--accent);color:var(--accent);padding:9px;border-radius:9px;font-family:'Golos Text',sans-serif;font-size:13px;font-weight:700;cursor:pointer;margin-top:6px;margin-bottom:4px;transition:all 0.2s}
 .btn-save:hover{background:rgba(0,217,126,0.1)}
 .btn-save:disabled{opacity:0.4;cursor:not-allowed}
+.btn-drive-big{width:100%;background:var(--surface2);border:2px solid var(--border);color:var(--text);padding:13px;border-radius:9px;font-family:'Golos Text',sans-serif;font-size:15px;font-weight:900;letter-spacing:1px;cursor:pointer;margin-top:12px;transition:all 0.2s;display:flex;align-items:center;justify-content:center;gap:10px;white-space:nowrap;animation:driveBreatheBig 2.5s ease-in-out infinite}
+@keyframes driveBreatheBig{0%,100%{opacity:1;box-shadow:none}50%{opacity:0.85;box-shadow:0 0 16px rgba(0,217,126,0.25)}}
+.btn-drive-big:hover{border-color:var(--accent);color:var(--accent);background:rgba(0,217,126,0.06);animation:none}
 .ctype-wrap{display:flex;gap:0;border:1px solid var(--border);border-radius:7px;overflow:hidden;height:32px}
 .ctype-btn{flex:1;padding:0;background:transparent;border:none;border-right:1px solid var(--border);color:var(--muted);font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;transition:all 0.15s}
 .ctype-btn:last-child{border-right:none}
@@ -172,13 +175,14 @@ textarea{resize:vertical;min-height:50px;line-height:1.5}
 <div class="layout">
 
 <div class="sidebar">
-  
-
   <div class="sec">&#129309; Клиент</div>
+  <div id="driveConnectBlock">
+    <button type="button" class="btn-drive-big" onclick="startAuth()">&#128192; Google Drive</button>
+  </div>
+  <div id="clientPanel" style="display:none">
   <div class="crm-row" style="position:relative">
-    <input type="checkbox" id="crmToggle" checked style="position:absolute;opacity:0;pointer-events:none">
-    <button type="button" id="authBtn" onclick="startAuth()" style="display:none"></button>
-    <span id="driveBadge" class="badge err" onclick="if(!_driveToken)startAuth()" style="cursor:pointer">✖ Drive</span>
+    <input type="checkbox" id="crmToggle" checked style="position:absolute;opacity:0;pointer-events:none;width:0;height:0">
+    <span id="driveBadge" class="badge err" onclick="if(!_driveToken)startAuth()" style="cursor:pointer">&#128192; Drive</span>
     <button type="button" id="crmFolderBtn" class="badge" onclick="toggleClientMenu()" style="display:none">👤 CRM</button>
     <span id="clientBadge" class="badge" style="display:none" onclick="openClientFolder()">
       👤 <span id="clientBadgeName">Сохранено</span>
@@ -246,6 +250,7 @@ textarea{resize:vertical;min-height:50px;line-height:1.5}
   <button type="button" class="btn-save" id="saveClientBtn" onclick="saveClient()">💾 Сохранить</button>
   <button type="button" class="btn-gen" id="genBtn" onclick="generate()"><span>&#9889;</span><span>СГЕНЕРИРОВАТЬ</span></button>
   <button type="button" class="btn-refresh" id="refreshBtn" onclick="refreshDriveDoc()" style="display:none">🔄 Обновить в Drive</button>
+  </div>
 </div>
 
 <div class="content-wrap">
@@ -808,19 +813,30 @@ var _driveToken = null;
     if (m) {
       _driveToken = m[1];
       history.replaceState(null, '', window.location.pathname);
-      document.addEventListener('DOMContentLoaded', function() {
-        var btn = document.getElementById('authBtn');
-        if (btn) { btn.textContent = '✓ Drive'; btn.style.borderColor = '#00d97e'; btn.style.color = '#00d97e'; }
-        var db = document.getElementById('driveBadge');
-        if (db) { db.className = 'badge ok'; db.textContent = '✓ Drive'; }
-        var crmBtn = document.getElementById('crmFolderBtn');
-        if (crmBtn) { crmBtn.style.display = 'inline-flex'; }
-        var st = document.getElementById('crmSt');
-        if (st) { st.className = 'crm-st'; st.textContent = ''; }
-      });
+      document.addEventListener('DOMContentLoaded', function() { updateDriveUI(); });
     }
   }
 })();
+
+function updateDriveUI() {
+  var block = document.getElementById('driveConnectBlock');
+  var panel = document.getElementById('clientPanel');
+  var db = document.getElementById('driveBadge');
+  var crmBtn = document.getElementById('crmFolderBtn');
+  if (_driveToken) {
+    if (block) block.style.display = 'none';
+    if (panel) panel.style.display = 'block';
+    if (db) { db.className = 'badge ok'; db.textContent = '✓ Drive'; }
+    if (crmBtn) crmBtn.style.display = 'inline-flex';
+  } else {
+    if (block) block.style.display = 'block';
+    if (panel) panel.style.display = 'none';
+    if (db) { db.className = 'badge err'; db.textContent = '✖ Drive'; }
+    if (crmBtn) crmBtn.style.display = 'none';
+  }
+  var st = document.getElementById('crmSt');
+  if (st && _driveToken) { st.className = 'crm-st'; st.textContent = ''; }
+}
 
 function startAuth() {
   if (_driveToken) { alert('Google Drive уже подключён!'); return; }
@@ -1806,11 +1822,7 @@ document.addEventListener('DOMContentLoaded', function() {
   updateClientBadge();
   if (_activeClient) loadClient(-1); // -1 = load from _activeClient
 
-  // Если Drive уже активен (например, вернулись по hash раньше) — показываем кнопку CRM
-  if (_driveToken) {
-    var crmBtn = document.getElementById('crmFolderBtn');
-    if (crmBtn) crmBtn.style.display = 'inline-flex';
-  }
+  updateDriveUI();
 
   // Клик по пункту папки: делегированный обработчик (без inline onclick — имена с апострофом не ломаются)
   var clientMenuEl = document.getElementById('clientMenu');
