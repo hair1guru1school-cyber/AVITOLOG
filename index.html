@@ -8,8 +8,13 @@
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Golos+Text:wght@400;500;600;700;900&display=swap');
 :root{--bg:#0c0c0e;--surface:#141416;--surface2:#1c1c1f;--border:#2a2a2e;--accent:#00d97e;--accent2:#ff6b35;--accent3:#7c6af7;--text:#ebebeb;--muted:#666;--muted2:#333}
-*{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Golos Text',sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+#driveSplash{position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;background:#0c0c0e url('splash.png') center/cover no-repeat}
+#driveSplash::before{content:'';position:absolute;inset:0;background:rgba(0,0,0,0.65);pointer-events:none}
+#driveSplash .splash-btn{position:relative;z-index:1;padding:18px 48px;font-size:18px;font-weight:900;border-radius:12px;border:2px solid var(--accent);background:rgba(0,217,126,0.15);color:var(--accent);cursor:pointer;font-family:'Golos Text',sans-serif;letter-spacing:2px;transition:all 0.25s;animation:driveBreatheBig 2.5s ease-in-out infinite}
+#driveSplash .splash-btn:hover{background:var(--accent);color:#0c0c0e;transform:scale(1.05);animation:none;box-shadow:0 0 30px rgba(0,217,126,0.5)}
+#mainApp{display:none}
+*{box-sizing:border-box;margin:0;padding:0}
 #pgbar{position:fixed;top:0;left:0;right:0;height:3px;z-index:999;pointer-events:none}
 #pgfill{height:100%;width:0%;background:linear-gradient(90deg,var(--accent),var(--accent3));box-shadow:0 0 8px var(--accent);transition:width 0.4s ease}
 header{background:var(--surface);border-bottom:1px solid var(--border);padding:0 22px;display:flex;align-items:center;height:52px;position:sticky;top:3px;z-index:100;gap:12px}
@@ -160,6 +165,10 @@ textarea{resize:vertical;min-height:50px;line-height:1.5}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 </head>
 <body>
+<div id="driveSplash">
+  <button type="button" class="splash-btn" onclick="startAuth()">&#128192; Google Drive</button>
+</div>
+<div id="mainApp">
 <div id="pgbar"><div id="pgfill"></div></div>
 <header>
   <div class="logo">🃏 AVITOLOG</div>
@@ -308,6 +317,7 @@ textarea{resize:vertical;min-height:50px;line-height:1.5}
 
 <button type="button" onclick="fillTest()" title="Тестовые данные" style="position:fixed;bottom:14px;right:14px;width:38px;height:38px;border-radius:50%;border:1px solid #2a2a2e;background:#1c1c1f;color:#666;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:50;opacity:0.5">🧪</button>
 
+</div><!-- /mainApp -->
 <script>
 const API = 'https://api.anthropic.com/v1/messages';
 const CRM_ROOT = '1d8oElVgTO2vzbs0HjOYPnReVmGUPltIk';
@@ -819,16 +829,22 @@ var _driveToken = null;
 })();
 
 function updateDriveUI() {
+  var splash = document.getElementById('driveSplash');
+  var mainApp = document.getElementById('mainApp');
   var block = document.getElementById('driveConnectBlock');
   var panel = document.getElementById('clientPanel');
   var db = document.getElementById('driveBadge');
   var crmBtn = document.getElementById('crmFolderBtn');
   if (_driveToken) {
+    if (splash) splash.style.display = 'none';
+    if (mainApp) mainApp.style.display = 'block';
     if (block) block.style.display = 'none';
     if (panel) panel.style.display = 'block';
     if (db) { db.className = 'badge ok'; db.textContent = '✓ Drive'; }
     if (crmBtn) crmBtn.style.display = 'inline-flex';
   } else {
+    if (splash) splash.style.display = 'flex';
+    if (mainApp) mainApp.style.display = 'none';
     if (block) block.style.display = 'block';
     if (panel) panel.style.display = 'none';
     if (db) { db.className = 'badge err'; db.textContent = '✖ Drive'; }
