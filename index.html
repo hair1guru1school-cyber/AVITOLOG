@@ -188,16 +188,12 @@ textarea{resize:vertical;min-height:50px;line-height:1.5}
 
   <div class="sec">&#129309; Клиент</div>
   <div class="crm-row" style="position:relative">
-    <label class="crm-lbl">
-      <input type="checkbox" id="crmToggle" checked>
-      &#128193; CRM
-    </label>
-    <button type="button" id="authBtn" onclick="startAuth()" style="display:none"></button>
+    <input type="checkbox" id="crmToggle" checked style="position:absolute;opacity:0;pointer-events:none;width:0;height:0">
     <span id="driveBadge" class="badge err" onclick="if(!_driveToken)startAuth()" style="cursor:pointer">✖ Drive</span>
+    <button type="button" id="crmFolderBtn" class="badge" onclick="toggleClientMenu()" style="cursor:pointer">👤 CRM</button>
     <span id="clientBadge" class="badge" style="display:none" onclick="openClientFolder()">
-      💾 <span id="clientBadgeName">Сохранено</span>
+      👤 <span id="clientBadgeName">Сохранено</span>
       <span class="x" onclick="event.stopPropagation();clearActiveClient()">✖</span>
-      <span class="x" onclick="event.stopPropagation();toggleClientMenu()" style="font-size:13px">⋯</span>
     </span>
     <div class="client-menu" id="clientMenu"></div>
   </div>
@@ -205,7 +201,7 @@ textarea{resize:vertical;min-height:50px;line-height:1.5}
 
   <div class="row3">
     <div class="fg"><label>&#127970; Компания</label><input type="search" id="company" autocomplete="new-password" placeholder="СтройДом, ИП..."></div>
-    <div class="fg"><label>&#128100; Имя</label><input type="search" id="contact_name" autocomplete="new-password" placeholder="Иван..."></div>
+    <div class="fg"><label>&#128483; Имя</label><input type="search" id="contact_name" autocomplete="new-password" placeholder="Иван..."></div>
     <div class="fg"><label>&#128222; Телефон</label><input type="search" id="phone" autocomplete="new-password" placeholder="+7 999..."></div>
   </div>
   <div class="row3">
