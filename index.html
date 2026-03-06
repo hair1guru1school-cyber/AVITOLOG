@@ -157,6 +157,25 @@ textarea{resize:vertical;min-height:50px;line-height:1.5}
 .rtab-ico{font-size:24px;line-height:1}
 .rtab-txt{line-height:1.3;word-break:keep-all}
 .rtab-bar{position:absolute;bottom:0;left:0;height:3px;background:var(--accent);width:0;transition:width 22s cubic-bezier(0.05,0.4,0.2,1);border-radius:2px}
+/* ——— Только мобильная версия: левое меню — выдвижной drawer ——— */
+@media (max-width: 768px) {
+  .layout{grid-template-columns:1fr;grid-template-areas:'main'}
+  .sidebar{position:fixed;left:0;top:0;bottom:0;width:min(300px,85vw);z-index:400;transform:translateX(-100%);transition:transform 0.25s ease;box-shadow:4px 0 24px rgba(0,0,0,0.4)}
+  body.sidebar-open-mobile .sidebar{transform:translateX(0)}
+  .sidebar-overlay{display:block !important}
+  body.sidebar-open-mobile .sidebar-overlay{opacity:1;pointer-events:auto}
+  .header-menu-btn{display:flex !important}
+  .content-wrap{grid-area:main;min-width:0;padding-bottom:70px}
+  .right-tabs{position:fixed;bottom:0;left:0;right:0;height:auto;flex-direction:row;justify-content:space-around;padding:8px;border-top:1px solid var(--border);z-index:350;border-left:none}
+  .content{padding:12px 10px}
+  .doc-wrap{max-width:none;width:100%;margin:0;padding:0 4px}
+  .doc-block{padding:20px 14px;font-size:13px}
+  .doc-block img{max-width:100%;width:100% !important;height:auto;display:block;border-radius:8px}
+  .doc-block .doc-header-img img{width:100% !important;max-width:100% !important;height:auto}
+}
+.sidebar-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:350;opacity:0;pointer-events:none;transition:opacity 0.2s}
+.header-menu-btn{display:none;align-items:center;justify-content:center;width:44px;height:44px;border:1px solid var(--border);background:var(--surface2);color:var(--text);border-radius:10px;cursor:pointer;font-size:20px;margin-right:8px}
+.header-menu-btn:hover{background:rgba(0,217,126,0.15);border-color:var(--accent);color:var(--accent)}
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 </head>
@@ -169,6 +188,7 @@ textarea{resize:vertical;min-height:50px;line-height:1.5}
 <div id="mainApp">
 <div id="pgbar"><div id="pgfill"></div></div>
 <header>
+  <button type="button" class="header-menu-btn" id="headerMenuBtn" onclick="toggleMobileSidebar()" title="Меню" aria-label="Меню">☰</button>
   <div class="logo">🃏 AVITOLOG</div>
   <div style="flex:1"></div>
   <div style="display:flex;align-items:center;gap:8px">
@@ -179,6 +199,7 @@ textarea{resize:vertical;min-height:50px;line-height:1.5}
     <span style="font-size:11px;color:#666" title="Нужен для работы вне claude.ai">?</span>
   </div>
 </header>
+<div class="sidebar-overlay" id="sidebarOverlay" onclick="closeMobileSidebar()"></div>
 <div class="layout">
 
 <div class="sidebar">
@@ -1526,6 +1547,12 @@ function toggleClientMenu() {
 function closeClientMenu() {
   document.getElementById('clientMenu').classList.remove('show');
 }
+function toggleMobileSidebar() {
+  document.body.classList.toggle('sidebar-open-mobile');
+}
+function closeMobileSidebar() {
+  document.body.classList.remove('sidebar-open-mobile');
+}
 
 async function browseFolder(folderId, folderName) {
   _browseCurrentId = folderId;
@@ -1812,7 +1839,7 @@ document.addEventListener('DOMContentLoaded', function() {
       menu.classList.remove('show');
     }
   });
-  // Клик по папке в CRM — в фазе capture, чтобы не перехватывалось и меню не закрывалось
+  // Клик по папке в CRM — в фазе capture, stopPropagation: переход во вложенные папки работает (успех зафиксирован)
   var crmMenu = document.getElementById('clientMenu');
   if (crmMenu) {
     crmMenu.addEventListener('click', function(e) {
