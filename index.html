@@ -44,7 +44,8 @@ textarea{resize:vertical;min-height:50px;line-height:1.5}
 .crm-lbl{display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12px;color:var(--muted);font-weight:600;user-select:none}
 .badge{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:5px;font-size:10px;font-weight:700;cursor:pointer;border:1px solid var(--border);background:transparent;color:var(--muted);transition:all 0.2s}
 .badge.ok{border-color:var(--accent);color:var(--accent)}
-.badge.err{border-color:#ff5050;color:#ff5050}
+.badge.err{border-color:#ff5050;color:#ff5050;animation:driveBreathe 2.5s ease-in-out infinite}
+@keyframes driveBreathe{0%,100%{opacity:1;box-shadow:none}50%{opacity:0.75;box-shadow:0 0 12px rgba(255,80,80,0.4)}}
 .badge .x{opacity:0.5;margin-left:2px;cursor:pointer}.badge .x:hover{opacity:1}
 .client-menu{position:absolute;left:0;top:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;min-width:280px;max-height:340px;overflow:hidden;z-index:50;display:none;box-shadow:0 8px 24px rgba(0,0,0,0.4);flex-direction:column}
 .client-menu.show{display:flex}
@@ -175,15 +176,12 @@ textarea{resize:vertical;min-height:50px;line-height:1.5}
 
   <div class="sec">&#129309; Клиент</div>
   <div class="crm-row" style="position:relative">
-    <label class="crm-lbl">
-      <input type="checkbox" id="crmToggle" checked>
-      &#128193; CRM
-    </label>
+    <input type="checkbox" id="crmToggle" checked style="position:absolute;opacity:0;pointer-events:none">
     <button type="button" id="authBtn" onclick="startAuth()" style="display:none"></button>
     <span id="driveBadge" class="badge err" onclick="if(!_driveToken)startAuth()" style="cursor:pointer">✖ Drive</span>
     <button type="button" id="crmFolderBtn" class="badge" onclick="toggleClientMenu()" style="display:none">👤 CRM</button>
     <span id="clientBadge" class="badge" style="display:none" onclick="openClientFolder()">
-      🗣 <span id="clientBadgeName">Сохранено</span>
+      👤 <span id="clientBadgeName">Сохранено</span>
       <span class="x" onclick="event.stopPropagation();clearActiveClient()">✖</span>
     </span>
     <div class="client-menu" id="clientMenu"></div>
@@ -192,7 +190,7 @@ textarea{resize:vertical;min-height:50px;line-height:1.5}
 
   <div class="row3">
     <div class="fg"><label>&#127970; Компания</label><input type="search" id="company" autocomplete="new-password" placeholder="СтройДом, ИП..."></div>
-    <div class="fg"><label>&#128100; Имя</label><input type="search" id="contact_name" autocomplete="new-password" placeholder="Иван..."></div>
+    <div class="fg"><label>&#128483; Имя</label><input type="search" id="contact_name" autocomplete="new-password" placeholder="Иван..."></div>
     <div class="fg"><label>&#128222; Телефон</label><input type="search" id="phone" autocomplete="new-password" placeholder="+7 999..."></div>
   </div>
   <div class="row3">
