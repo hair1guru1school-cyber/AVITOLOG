@@ -112,6 +112,10 @@ textarea{resize:vertical;min-height:50px;line-height:1.5}
 .depth-btn{width:36px;height:36px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;transition:all 0.2s;padding:0}
 .depth-btn:hover{border-color:var(--accent);color:var(--accent)}
 .depth-btn.on{border-color:var(--accent);background:rgba(0,217,126,0.12);color:var(--accent)}
+.sec-bar{display:flex;gap:5px;justify-content:center;padding:0 8px 8px;flex-shrink:0}
+.sec-btn{padding:4px 10px;border-radius:6px;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;font-size:11px;font-family:'Golos Text',sans-serif;font-weight:600;transition:all 0.2s;letter-spacing:0.3px}
+.sec-btn:hover{border-color:var(--accent);color:var(--accent)}
+.sec-btn.on{border-color:var(--accent);background:rgba(0,217,126,0.12);color:var(--accent)}
 .rtab:hover{background:rgba(255,255,255,0.05);color:var(--fg)}
 .rtab.active{background:linear-gradient(135deg,rgba(255,200,0,0.15),rgba(255,200,0,0.05));border-color:var(--accent);color:var(--accent)}
 .rtab-ico{font-size:24px;line-height:1}
@@ -205,6 +209,15 @@ textarea{resize:vertical;min-height:50px;line-height:1.5}
     <button type="button" class="depth-btn on" data-depth="mid" onclick="setDepth('mid')">⚖️</button>
     <button type="button" class="depth-btn" data-depth="max" onclick="setDepth('max')">🔨</button>
   </div>
+  <div class="sec-bar" id="secBar">
+    <button type="button" class="sec-btn on" data-sec="demand" onclick="toggleSec(this)">📊 Спрос</button>
+    <button type="button" class="sec-btn on" data-sec="audience" onclick="toggleSec(this)">👥 ЦА</button>
+    <button type="button" class="sec-btn on" data-sec="pains" onclick="toggleSec(this)">🔥 Боли</button>
+    <button type="button" class="sec-btn on" data-sec="behavior" onclick="toggleSec(this)">🧭 Поведение</button>
+    <button type="button" class="sec-btn on" data-sec="keywords" onclick="toggleSec(this)">🔎 Ключи</button>
+    <button type="button" class="sec-btn on" data-sec="geo" onclick="toggleSec(this)">📍 Гео</button>
+    <button type="button" class="sec-btn on" data-sec="summary" onclick="toggleSec(this)">🎯 Итог</button>
+  </div>
   <div class="content" id="mainContent">
     <div class="empty-st">
       <div style="font-size:40px;opacity:.2">&#128202;</div>
@@ -252,6 +265,12 @@ var HERO = 'data:image/png;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/4gHYSUNDX1BST0ZJTE
 
 var currentTab = 'analysis';
 var currentDepth = 'mid';
+var analysisSections = {demand:true, audience:true, pains:true, behavior:true, keywords:true, geo:true, summary:true};
+// Восстанавливаем из localStorage
+try {
+  var saved = JSON.parse(localStorage.getItem('avitolog_analysis_sections'));
+  if (saved) analysisSections = saved;
+} catch(e) {}
 var _timer = null, _secs = 0;
 var currentHtml = '';
 var currentData = null;
@@ -275,6 +294,20 @@ function setDepth(d) {
   });
 }
 
+// ── SECTION TOGGLES ──
+function toggleSec(btn) {
+  var sec = btn.getAttribute('data-sec');
+  analysisSections[sec] = !analysisSections[sec];
+  btn.classList.toggle('on', analysisSections[sec]);
+  try { localStorage.setItem('avitolog_analysis_sections', JSON.stringify(analysisSections)); } catch(e) {}
+}
+function initSecBar() {
+  document.querySelectorAll('.sec-btn').forEach(function(b) {
+    var sec = b.getAttribute('data-sec');
+    b.classList.toggle('on', !!analysisSections[sec]);
+  });
+}
+
 // ── TABS ──
 function switchTab(tab) {
   currentTab = tab;
@@ -286,6 +319,8 @@ function switchTab(tab) {
   bar.style.display = 'flex';
   var btns = bar.querySelectorAll('.depth-btn');
   btns[2].style.display = tab === 'analysis' ? '' : 'none'; // 🔨 только для аналитики
+  // Section bar только для аналитики
+  document.getElementById('secBar').style.display = tab === 'analysis' ? 'flex' : 'none';
   // Сброс на mid если max был выбран для не-аналитики
   if (tab !== 'analysis' && currentDepth === 'max') { setDepth('mid'); }
   if (!docReady) {
@@ -425,6 +460,7 @@ function clientInfo() {
 function buildAnalysisPrompt() {
   var d = currentData;
   var kp = d.kp || '100';
+  var S = analysisSections;
   
   var header = 'Ты опытный авитолог-аналитик. Создай предварительный анализ ниши.\n\n' +
     clientInfo() +
@@ -445,57 +481,87 @@ function buildAnalysisPrompt() {
     '- h3 для подсегментов внутри разделов\n' +
     '- НЕ используй <hr> — между разделами достаточно отступов h2\n' +
     '- Конкретика под нишу: ' + (d.category || '') + '\n' +
-    '- Реальные поисковые запросы, примеры формулировок объявлений\n\n';
+    '- Реальные поисковые запросы, примеры формулировок объявлений\n' +
+    '- СТРОГО: генерируй ТОЛЬКО перечисленные ниже разделы. Если раздела нет в списке — НЕ выводи его вообще, даже заголовок.\n\n';
 
   var jsonFmt = 'Верни JSON без markdown:\n{"html":"<div style=\\"text-align:center\\">...</div>...","normalized":{"company":"...","category":"...","city":"...","usp":"..."}}';
 
-  if (currentDepth === 'light') {
-    return header +
-      'РАЗДЕЛЫ (коротко, макс 5 страниц):\n' +
-      '<h2>📊 1. Картина спроса и сезонность</h2> — пик, спад, что ищут\n' +
-      '<h2>👥 2. Целевая аудитория</h2> — 3 сегмента коротко\n' +
-      '<h2>🔥 3. Основные боли клиентов</h2> — по продуктам\n' +
-      '<h2>📦 4. Поведение клиента на Avito</h2> — как выбирает\n' +
-      '<h2>🔎 5. Как ищут (семантика)</h2> — запросы по категориям\n' +
-      '<h2>📍 6. География спроса</h2> — города и районы\n' +
-      '<h2>🎯 Итог</h2> — 3-4 тезиса\n' +
-      rules + 'Объём: компактно, 800-1200 слов.\n\n' + jsonFmt;
+  // Собираем только включённые разделы
+  function buildSections(detail) {
+    var secs = [];
+    var n = 1;
+    if (S.demand) {
+      if (detail === 'light') secs.push('<h2>📊 ' + n + '. Картина спроса и сезонность</h2> — пик, спад, что ищут');
+      else if (detail === 'max') secs.push('<h2>📊 ' + n + '. Картина спроса и сезонность</h2> — подробно по месяцам, что именно ищут в каждый период');
+      else secs.push('<h2>📊 ' + n + '. Картина спроса и сезонность</h2> — пик/спад, что ищут по сезонам');
+      n++;
+    }
+    if (S.audience) {
+      if (detail === 'light') secs.push('<h2>👥 ' + n + '. Целевая аудитория</h2> — 3 сегмента коротко');
+      else if (detail === 'max') secs.push('<h2>👥 ' + n + '. Целевая аудитория (сегментация)</h2> — 4+ сегмента, каждый через h3: возраст, ситуации, боли ❌, что важно ✔');
+      else secs.push('<h2>👥 ' + n + '. Целевая аудитория</h2> — 3-4 сегмента через h3: кто, боли ❌, что важно ✔');
+      n++;
+    }
+    if (S.pains) {
+      if (detail === 'light') secs.push('<h2>🔥 ' + n + '. Основные боли клиентов</h2> — по продуктам');
+      else if (detail === 'max') secs.push('<h2>🔥 ' + n + '. Основные боли по продуктам</h2> — по каждому продукту отдельно с ❌');
+      else secs.push('<h2>🔥 ' + n + '. Основные боли по продуктам</h2> — ключевые боли с ❌');
+      n++;
+    }
+    if (S.behavior) {
+      if (detail === 'light') secs.push('<h2>🧭 ' + n + '. Поведение клиента на Avito</h2> — как выбирает');
+      else if (detail === 'max') secs.push('<h2>🧭 ' + n + '. Поведение клиента на Avito</h2> — триггеры выбора 📸📐🛠💬, сколько сравнивает');
+      else secs.push('<h2>🧭 ' + n + '. Поведение клиента на Avito</h2> — как выбирает, триггеры');
+      n++;
+    }
+    // Ключи, Гео — теперь отключаемые
+    if (S.keywords) {
+      if (detail !== 'light') {
+        secs.push('<h2>🔎 ' + n + '. Как ищут (семантика)</h2> — ' + (detail === 'max' ? 'группы запросов по категориям' : 'реальные запросы'));
+      } else {
+        secs.push('<h2>🔎 ' + n + '. Как ищут (семантика)</h2> — запросы по категориям');
+      }
+      n++;
+    }
+    if (S.geo) {
+      if (detail !== 'light') {
+        secs.push('<h2>📍 ' + n + '. География спроса</h2> — ' + (detail === 'max' ? 'основные и доп. города, районы, примеры формулировок' : 'города'));
+      } else {
+        secs.push('<h2>📍 ' + n + '. География спроса</h2> — города и районы');
+      }
+      n++;
+    }
+    if (detail === 'mid' || detail === 'max') {
+      secs.push('<h2>💰 ' + n + '. Средний чек</h2> — ' + (detail === 'max' ? 'по каждой категории с диапазонами' : 'диапазоны по категориям'));
+      n++;
+      if (detail === 'max') {
+        secs.push('<h2>🚀 ' + n + '. Стратегия объёма объявлений</h2>\n' +
+          'Клиент планирует ' + kp + ' объявлений. Объясни:\n' +
+          '- Почему это оптимальный объём для данной ниши и гео\n' +
+          '- Как распределить по категориям и городам\n' +
+          '- Какой охват и результат даст такой объём\n' +
+          '- Минимальный порог входа и почему меньше не имеет смысла');
+      } else {
+        secs.push('<h2>🚀 ' + n + '. Обоснование объёма</h2>\n' +
+          'Клиент планирует ' + kp + ' объявлений. Кратко обоснуй почему это хороший объём.');
+      }
+      n++;
+    }
+    if (S.summary) {
+      secs.push('<h2>🎯 Итог' + (detail === 'max' ? ' по рынку' : '') + '</h2> — ' +
+        (detail === 'light' ? '3-4 тезиса' : detail === 'max' ? 'что покупает клиент, 5 тезисов с 🔥' : '4 тезиса с 🔥'));
+    }
+    return secs.join('\n');
   }
 
-  if (currentDepth === 'max') {
-    return header +
-      'РАЗДЕЛЫ (развёрнуто, 2000+ слов):\n' +
-      '<h2>📊 1. Картина спроса и сезонность</h2> — подробно по месяцам, что именно ищут в каждый период\n' +
-      '<h2>👥 2. Целевая аудитория (сегментация)</h2> — 4+ сегмента, каждый через h3: возраст, ситуации, боли ❌, что важно ✔\n' +
-      '<h2>🔥 3. Основные боли по продуктам</h2> — по каждому продукту отдельно с ❌\n' +
-      '<h2>📦 4. Поведение клиента на Avito</h2> — триггеры выбора 📸📐🛠💬, сколько сравнивает\n' +
-      '<h2>🔎 5. Как ищут (семантика)</h2> — группы запросов по категориям\n' +
-      '<h2>📍 6. География спроса</h2> — основные и доп. города, районы, примеры формулировок\n' +
-      '<h2>💰 7. Средний чек</h2> — по каждой категории с диапазонами\n' +
-      '<h2>🚀 8. Стратегия объёма объявлений</h2>\n' +
-      'Клиент планирует ' + kp + ' объявлений. Объясни:\n' +
-      '- Почему это оптимальный объём для данной ниши и гео\n' +
-      '- Как распределить по категориям и городам\n' +
-      '- Какой охват и результат даст такой объём\n' +
-      '- Минимальный порог входа и почему меньше не имеет смысла\n' +
-      '<h2>🎯 Итог по рынку</h2> — что покупает клиент, 5 тезисов с 🔥\n' +
-      rules + 'Объём: развёрнуто, 2000-3000 слов.\n\n' + jsonFmt;
-  }
+  var detail = currentDepth;
+  var wordRange = detail === 'light' ? '800-1200' : detail === 'max' ? '2000-3000' : '1200-1800';
+  var label = detail === 'light' ? 'коротко, макс 5 страниц' : detail === 'max' ? 'развёрнуто, 2000+ слов' : 'средняя детализация, 1200-1800 слов';
 
-  // mid (по умолчанию)
   return header +
-    'РАЗДЕЛЫ (средняя детализация, 1200-1800 слов):\n' +
-    '<h2>📊 1. Картина спроса и сезонность</h2> — пик/спад, что ищут по сезонам\n' +
-    '<h2>👥 2. Целевая аудитория</h2> — 3-4 сегмента через h3: кто, боли ❌, что важно ✔\n' +
-    '<h2>🔥 3. Основные боли по продуктам</h2> — ключевые боли с ❌\n' +
-    '<h2>📦 4. Поведение клиента на Avito</h2> — как выбирает, триггеры\n' +
-    '<h2>🔎 5. Как ищут (семантика)</h2> — реальные запросы\n' +
-    '<h2>📍 6. География спроса</h2> — города\n' +
-    '<h2>💰 7. Средний чек</h2> — диапазоны по категориям\n' +
-    '<h2>🚀 8. Обоснование объёма</h2>\n' +
-    'Клиент планирует ' + kp + ' объявлений. Кратко обоснуй почему это хороший объём.\n' +
-    '<h2>🎯 Итог</h2> — 4 тезиса с 🔥\n' +
-    rules + 'Объём: средний, 1200-1800 слов.\n\n' + jsonFmt;
+    'РАЗДЕЛЫ (' + label + '):\n' +
+    buildSections(detail) + '\n' +
+    rules + 'Объём: ' + wordRange + ' слов.\n\n' + jsonFmt;
 }
 
 function buildPresalePrompt() {
@@ -1318,6 +1384,7 @@ document.addEventListener('DOMContentLoaded', function() {
   customKP.forEach(function(val) { addKPTag(val); });
   initKP();
   initAC();
+  initSecBar();
 });
 
 // chatInp enter
