@@ -40,7 +40,7 @@ textarea{resize:vertical;min-height:50px;line-height:1.5}
 .row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:8px}
 .row3 .fg{margin-bottom:0}
 .row2 .fg{margin-bottom:0}
-.crm-row{display:flex;align-items:center;gap:7px;margin-bottom:4px;flex-wrap:wrap}
+.crm-row{display:flex;align-items:center;gap:7px;margin-bottom:10px;flex-wrap:wrap}
 .crm-lbl{display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12px;color:var(--muted);font-weight:600;user-select:none}
 .badge{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:5px;font-size:10px;font-weight:700;cursor:pointer;border:1px solid var(--border);background:transparent;color:var(--muted);transition:all 0.2s}
 .badge.ok{border-color:var(--accent);color:var(--accent)}
@@ -182,9 +182,9 @@ textarea{resize:vertical;min-height:50px;line-height:1.5}
     <button type="button" id="authBtn" onclick="startAuth()" style="display:none"></button>
     <span id="driveBadge" class="badge err" onclick="if(!_driveToken)startAuth()" style="cursor:pointer">✖ Drive</span>
     <span id="clientBadge" class="badge" style="display:none" onclick="openClientFolder()">
-      💾 <span id="clientBadgeName">Сохранено</span>
+      👤 <span id="clientBadgeName">Сохранено</span>
       <span class="x" onclick="event.stopPropagation();clearActiveClient()">✖</span>
-      <span class="x" onclick="event.stopPropagation();toggleClientMenu()" style="font-size:13px">⋯</span>
+      <span class="x" onclick="event.stopPropagation();toggleClientMenu()" style="font-size:13px">⋮</span>
     </span>
     <div class="client-menu" id="clientMenu"></div>
   </div>
@@ -1432,7 +1432,8 @@ function updateClientBadge() {
   var ac = _activeClient || getActiveClient();
   if (ac && ac.folderId) {
     badge.style.display = 'inline-flex';
-    document.getElementById('clientBadgeName').textContent = ac.company || 'Клиент';
+    var folderLabel = ac.folder_name || ac.folderName || ac.folder || '';
+    document.getElementById('clientBadgeName').textContent = (folderLabel || ac.company || 'Клиент');
     badge.className = 'badge ok';
   } else {
     badge.style.display = 'none';
@@ -1507,7 +1508,7 @@ async function browseFolder(folderId, folderName) {
     } else {
       listEl.innerHTML = folders.map(function(f) {
         var safeName = f.name.replace(/'/g, "\\'").replace(/"/g, '&quot;');
-        return '<div class="client-item" onclick="enterFolder(\'' + f.id + '\',\'' + safeName + '\')">' +
+        return '<div class="client-item" onclick="enterFolder(event,\'' + f.id + '\',\'' + safeName + '\')">' +
           '<span>📁 ' + f.name + '</span>' +
           '<span class="chevron">›</span>' +
         '</div>';
@@ -1518,7 +1519,8 @@ async function browseFolder(folderId, folderName) {
   }
 }
 
-function enterFolder(id, name) {
+function enterFolder(e, id, name) {
+  if (e) e.stopPropagation();
   _browseStack.push({id: _browseCurrentId, name: document.querySelector('.cm-head span:first-child').textContent.replace('📁 ', ''), level: _browseLevel});
   _browseLevel++;
   browseFolder(id, name);
@@ -1553,9 +1555,13 @@ function selectBrowseFolder() {
     document.querySelectorAll('.ctype-btn').forEach(function(b) {
       b.classList.toggle('on', b.textContent.trim() === (found.client_type || ''));
     });
+    found.folder_name = folderName;
+    found.folderLink = folderLink;
     setActiveClient(found);
+    // Сохраняем обновление (название/ссылка папки) в CRM списке
+    saveCrmClients(clients);
   } else {
-    setActiveClient({folderId: folderId, folderLink: folderLink, company: folderName});
+    setActiveClient({folderId: folderId, folderLink: folderLink, folder_name: folderName});
   }
   closeClientMenu();
 }
@@ -1631,8 +1637,20 @@ async function saveClient() {
     // Сохраняем в localStorage
     d.folderId = folderId;
     d.folderLink = folderLink;
+    d.folder_name = (ac && (ac.folder_name || ac.folderName)) ? (ac.folder_name || ac.folderName) : (folderName || '');
+
+    // client_id: создаём один раз и переиспользуем
+    if (ac && ac.client_id) d.client_id = ac.client_id;
+    if (!d.client_id) {
+      var existingByFolder = getCrmClients().find(function(c) { return c.folderId === folderId && c.client_id; });
+      if (existingByFolder) d.client_id = existingByFolder.client_id;
+    }
+    if (!d.client_id) d.client_id = generateClientId();
+
     var clients = getCrmClients();
-    var existing = clients.findIndex(function(c) { return c.company === d.company && c.phone === d.phone; });
+    // Приоритет: по папке (если выбрана), иначе старое совпадение
+    var existing = clients.findIndex(function(c) { return c.folderId === folderId; });
+    if (existing < 0) existing = clients.findIndex(function(c) { return c.company === d.company && c.phone === d.phone; });
     if (existing >= 0) { clients[existing] = d; } else { clients.unshift(d); }
     saveCrmClients(clients);
     setActiveClient(d);
@@ -1653,15 +1671,93 @@ async function saveClient() {
   }
 }
 
+function generateClientId() {
+  return 'cid_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 10);
+}
+
+async function getFirstSheetTitle() {
+  var token = _driveToken;
+  if (!token) throw new Error('Drive не подключён');
+  var resp = await fetch('https://sheets.googleapis.com/v4/spreadsheets/' + SHEETS_ID + '?fields=sheets(properties(sheetId,title))', {
+    headers: {'Authorization': 'Bearer ' + token}
+  });
+  var data = await resp.json();
+  var sheets = (data && data.sheets) ? data.sheets : [];
+  var gid0 = sheets.find(function(s) { return s && s.properties && s.properties.sheetId === 0; });
+  if (gid0 && gid0.properties && gid0.properties.title) return gid0.properties.title;
+  if (sheets[0] && sheets[0].properties && sheets[0].properties.title) return sheets[0].properties.title;
+  return 'Sheet1';
+}
+
+async function ensureSheetHeader(sheetTitle) {
+  var token = _driveToken;
+  if (!token) return;
+  var range = encodeURIComponent(sheetTitle + '!A1:G1');
+  var resp = await fetch('https://sheets.googleapis.com/v4/spreadsheets/' + SHEETS_ID + '/values/' + range, {
+    headers: {'Authorization': 'Bearer ' + token}
+  });
+  var data = await resp.json();
+  var row = (data && data.values && data.values[0]) ? data.values[0] : [];
+  var header = ['client_id','company','contact_name','telegram','avito_account','folder_link','folder_name'];
+  var same = header.every(function(h, i) { return (row[i] || '').trim() === h; });
+  if (same) return;
+  await fetch('https://sheets.googleapis.com/v4/spreadsheets/' + SHEETS_ID + '/values/' + encodeURIComponent(sheetTitle + '!A1:G1') + '?valueInputOption=RAW', {
+    method: 'PUT',
+    headers: {'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json'},
+    body: JSON.stringify({values: [header]})
+  });
+}
+
 async function writeToSheets(d) {
   var token = _driveToken;
   if (!token) return;
-  var row = [d.createdAt, d.folderId, d.folderLink, d.company, d.contact_name, d.phone, d.telegram, d.avito_account, d.client_type, d.category, d.city, d.notes, d.positions, d.kp_count, 'saved'];
-  await fetch('https://sheets.googleapis.com/v4/spreadsheets/' + SHEETS_ID + '/values/Clients!A:O:append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS', {
-    method: 'POST',
-    headers: {'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json'},
-    body: JSON.stringify({values: [row]})
+  var sheetTitle = await getFirstSheetTitle(); // gid=0 / first sheet
+  await ensureSheetHeader(sheetTitle);
+
+  var row = [
+    d.client_id || '',
+    d.company || '',
+    d.contact_name || '',
+    d.telegram || '',
+    d.avito_account || '',
+    d.folderLink || d.folder_link || '',
+    d.folder_name || d.folderName || ''
+  ];
+
+  // Upsert по client_id (колонка A)
+  var rangeAll = encodeURIComponent(sheetTitle + '!A:G');
+  var existingResp = await fetch('https://sheets.googleapis.com/v4/spreadsheets/' + SHEETS_ID + '/values/' + rangeAll, {
+    headers: {'Authorization': 'Bearer ' + token}
   });
+  var existingData = await existingResp.json();
+  var values = (existingData && existingData.values) ? existingData.values : [];
+  var targetRowIndex = -1; // 1-based in Sheets
+  for (var i = 1; i < values.length; i++) { // skip header
+    if ((values[i] && values[i][0]) === row[0] && row[0]) {
+      targetRowIndex = i + 1;
+      break;
+    }
+    // fallback для старых строк без client_id: матчим по folder_link (колонка F)
+    if (targetRowIndex < 0 && row[5] && values[i] && values[i][5] === row[5]) {
+      targetRowIndex = i + 1;
+      // не break: если ниже есть точный client_id — он важнее
+    }
+  }
+
+  if (targetRowIndex > 0) {
+    var updRange = encodeURIComponent(sheetTitle + '!A' + targetRowIndex + ':G' + targetRowIndex);
+    await fetch('https://sheets.googleapis.com/v4/spreadsheets/' + SHEETS_ID + '/values/' + updRange + '?valueInputOption=USER_ENTERED', {
+      method: 'PUT',
+      headers: {'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json'},
+      body: JSON.stringify({values: [row]})
+    });
+  } else {
+    await fetch('https://sheets.googleapis.com/v4/spreadsheets/' + SHEETS_ID + '/values/' + encodeURIComponent(sheetTitle + '!A:G') + ':append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS', {
+      method: 'POST',
+      headers: {'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json'},
+      body: JSON.stringify({values: [row]})
+    });
+  }
 }
 
 // ── TEST FILL ──
@@ -1716,6 +1812,13 @@ document.addEventListener('DOMContentLoaded', function() {
   _activeClient = getActiveClient();
   updateClientBadge();
   if (_activeClient) loadClient(-1); // -1 = load from _activeClient
+
+  // Клик внутри меню не должен закрывать меню при навигации
+  var cm = document.getElementById('clientMenu');
+  if (cm) {
+    cm.addEventListener('click', function(e) { e.stopPropagation(); }, true);
+  }
+
   // Закрытие меню клиентов при клике вне
   document.addEventListener('click', function(e) {
     var menu = document.getElementById('clientMenu');
