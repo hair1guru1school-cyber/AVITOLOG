@@ -181,10 +181,10 @@ textarea{resize:vertical;min-height:50px;line-height:1.5}
     </label>
     <button type="button" id="authBtn" onclick="startAuth()" style="display:none"></button>
     <span id="driveBadge" class="badge err" onclick="if(!_driveToken)startAuth()" style="cursor:pointer">✖ Drive</span>
+    <button type="button" id="crmFolderBtn" class="badge" onclick="toggleClientMenu()" style="display:none">👤 CRM</button>
     <span id="clientBadge" class="badge" style="display:none" onclick="openClientFolder()">
-      💾 <span id="clientBadgeName">Сохранено</span>
+      🗣 <span id="clientBadgeName">Сохранено</span>
       <span class="x" onclick="event.stopPropagation();clearActiveClient()">✖</span>
-      <span class="x" onclick="event.stopPropagation();toggleClientMenu()" style="font-size:13px">⋯</span>
     </span>
     <div class="client-menu" id="clientMenu"></div>
   </div>
@@ -815,6 +815,8 @@ var _driveToken = null;
         if (btn) { btn.textContent = '✓ Drive'; btn.style.borderColor = '#00d97e'; btn.style.color = '#00d97e'; }
         var db = document.getElementById('driveBadge');
         if (db) { db.className = 'badge ok'; db.textContent = '✓ Drive'; }
+        var crmBtn = document.getElementById('crmFolderBtn');
+        if (crmBtn) { crmBtn.style.display = 'inline-flex'; }
         var st = document.getElementById('crmSt');
         if (st) { st.className = 'crm-st'; st.textContent = ''; }
       });
@@ -1805,6 +1807,12 @@ document.addEventListener('DOMContentLoaded', function() {
   _activeClient = getActiveClient();
   updateClientBadge();
   if (_activeClient) loadClient(-1); // -1 = load from _activeClient
+
+  // Если Drive уже активен (например, вернулись по hash раньше) — показываем кнопку CRM
+  if (_driveToken) {
+    var crmBtn = document.getElementById('crmFolderBtn');
+    if (crmBtn) crmBtn.style.display = 'inline-flex';
+  }
 
   // Клик по пункту папки: делегированный обработчик (без inline onclick — имена с апострофом не ломаются)
   var clientMenuEl = document.getElementById('clientMenu');
