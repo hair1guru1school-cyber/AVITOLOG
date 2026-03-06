@@ -52,16 +52,24 @@ textarea{resize:vertical;min-height:50px;line-height:1.5}
 .cm-head .cm-close{cursor:pointer;color:var(--muted);font-size:14px}
 .cm-head .cm-close:hover{color:var(--text)}
 .cm-path{padding:4px 10px;font-size:10px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;border-bottom:1px solid var(--border)}
-.cm-list{flex:1;overflow-y:auto}
-.cm-foot{padding:8px 10px;border-top:1px solid var(--border)}
-.client-item{padding:8px 12px;cursor:pointer;font-size:11px;border-bottom:1px solid var(--border);transition:background 0.15s}
-.client-item:hover{background:rgba(0,217,126,0.08)}
+.cm-list{flex:1;overflow-y:auto;scrollbar-width:thin;scrollbar-color:var(--border) transparent}
+.cm-list::-webkit-scrollbar{width:6px}.cm-list::-webkit-scrollbar-track{background:transparent}.cm-list::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+.cm-foot{padding:6px 10px;border-top:1px solid var(--border);display:flex;gap:4px}
+.cm-foot button{flex:1;padding:6px;border-radius:6px;border:1px solid var(--border);background:transparent;color:var(--muted);font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;transition:all 0.15s}
+.cm-foot button:hover{border-color:var(--accent);color:var(--accent)}
+.cm-foot button.primary{border-color:var(--accent);color:var(--accent)}
+.client-item{display:flex;align-items:center;justify-content:space-between;padding:9px 12px;cursor:pointer;font-size:11px;border-bottom:1px solid var(--border);transition:background 0.12s;color:var(--text)}
+.client-item:hover{background:rgba(0,217,126,0.06)}
 .client-item:last-child{border-bottom:none}
+.client-item .chevron{color:var(--muted);font-size:13px;opacity:0.5;transition:opacity 0.15s}
+.client-item:hover .chevron{opacity:1;color:var(--accent)}
 .btn-save{width:100%;background:transparent;border:1px solid var(--accent);color:var(--accent);padding:9px;border-radius:9px;font-family:'Golos Text',sans-serif;font-size:13px;font-weight:700;cursor:pointer;margin-top:6px;margin-bottom:4px;transition:all 0.2s}
 .btn-save:hover{background:rgba(0,217,126,0.1)}
 .btn-save:disabled{opacity:0.4;cursor:not-allowed}
-.ctype-wrap{display:flex;gap:0;border:1px solid var(--border);border-radius:7px;overflow:hidden}
-.ctype-btn{flex:1;padding:5px 0;background:transparent;border:none;color:var(--muted);font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;transition:all 0.2s}
+.ctype-wrap{display:flex;gap:0;border:1px solid var(--border);border-radius:7px;overflow:hidden;height:32px}
+.ctype-btn{flex:1;padding:0;background:transparent;border:none;border-right:1px solid var(--border);color:var(--muted);font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;transition:all 0.15s}
+.ctype-btn:last-child{border-right:none}
+.ctype-btn:hover{background:rgba(255,255,255,0.03)}
 .ctype-btn.on{background:var(--accent);color:#0c0c0e}
 .crm-lbl input{width:14px;height:14px;cursor:pointer;accent-color:var(--accent)}
 .crm-st{font-size:11px;margin-left:2px;min-height:14px;margin-bottom:8px}
@@ -180,7 +188,7 @@ textarea{resize:vertical;min-height:50px;line-height:1.5}
     </span>
     <div class="client-menu" id="clientMenu"></div>
   </div>
-  <div class="crm-st" id="crmSt"></div>
+  <div id="crmSt" style="display:none"></div>
 
   <div class="row3">
     <div class="fg"><label>&#127970; Компания</label><input type="search" id="company" autocomplete="new-password" placeholder="СтройДом, ИП..."></div>
@@ -191,10 +199,10 @@ textarea{resize:vertical;min-height:50px;line-height:1.5}
     <div class="fg"><label>&#9992; Телеграм</label><input type="search" id="tg" autocomplete="new-password" placeholder="@username"></div>
     <div class="fg"><label>📦 Avito</label><input type="search" id="avito_account" autocomplete="new-password" placeholder="avito.ru/..."></div>
     <div class="fg"><label>👤 Тип</label>
-      <div class="ctype-wrap">
-        <button type="button" class="ctype-btn" onclick="setClientType(this,'ИП')">ИП</button>
-        <button type="button" class="ctype-btn" onclick="setClientType(this,'ООО')">ООО</button>
-        <button type="button" class="ctype-btn" onclick="setClientType(this,'Физ')">Физ</button>
+      <div class="ctype-wrap" style="height:32px">
+        <button type="button" class="ctype-btn" onclick="toggleClientType(this,'ИП')">ИП</button>
+        <button type="button" class="ctype-btn" onclick="toggleClientType(this,'ООО')">ООО</button>
+        <button type="button" class="ctype-btn" onclick="toggleClientType(this,'Физ')">Физ</button>
       </div>
       <input type="hidden" id="client_type" value="">
     </div>
@@ -1388,10 +1396,16 @@ function updateKPValue() {
 }
 
 // ── CLIENT TYPE ──
-function setClientType(btn, val) {
-  document.querySelectorAll('.ctype-btn').forEach(function(b) { b.classList.remove('on'); });
-  btn.classList.add('on');
-  document.getElementById('client_type').value = val;
+function toggleClientType(btn, val) {
+  var input = document.getElementById('client_type');
+  if (btn.classList.contains('on')) {
+    btn.classList.remove('on');
+    input.value = '';
+  } else {
+    document.querySelectorAll('.ctype-btn').forEach(function(b) { b.classList.remove('on'); });
+    btn.classList.add('on');
+    input.value = val;
+  }
 }
 
 // ── CRM CLIENT STORAGE ──
@@ -1465,22 +1479,18 @@ function closeClientMenu() {
 
 async function browseFolder(folderId, folderName) {
   _browseCurrentId = folderId;
-  if (_browseStack.length === 0 || _browseStack[_browseStack.length - 1].id !== folderId) {
-    // Не добавляем если уже на вершине (назад)
-    if (_browseStack.length === 0 || _browseStack[_browseStack.length - 1].id !== folderId) {
-      // При первом вызове или при входе вперёд
-    }
-  }
   var menu = document.getElementById('clientMenu');
-  var pathStr = _browseStack.map(function(s) { return s.name; }).join(' / ') + (folderName !== 'CRM' ? ' / ' + folderName : '');
+  var pathStr = _browseStack.map(function(s) { return s.name; }).join(' › ');
+  if (pathStr && folderName !== 'CRM') pathStr += ' › ' + folderName;
+  if (!pathStr) pathStr = '📁 CRM';
   
+  var backBtn = _browseStack.length > 0 ? '<button type="button" onclick="browseBack()">← Назад</button>' : '';
+  var selectBtn = folderId !== CRM_ROOT ? '<button type="button" class="primary" onclick="selectBrowseFolder()">✓ Выбрать</button>' : '';
+
   menu.innerHTML = '<div class="cm-head"><span>📁 ' + folderName + '</span><span class="cm-close" onclick="closeClientMenu()">✕</span></div>' +
-    '<div class="cm-path">' + (pathStr || 'CRM') + '</div>' +
-    '<div class="cm-list"><div style="padding:16px;text-align:center;color:var(--muted);font-size:11px">Загрузка...</div></div>' +
-    '<div class="cm-foot">' +
-    (_browseStack.length > 0 ? '<button type="button" class="client-item" style="width:100%;text-align:center;border:none;padding:6px;font-weight:700;color:var(--muted)" onclick="browseBack()">← Назад</button>' : '') +
-    (folderId !== CRM_ROOT ? '<button type="button" class="client-item" style="width:100%;text-align:center;border:none;padding:6px;font-weight:700;color:var(--accent)" onclick="selectBrowseFolder()">✓ Выбрать эту папку</button>' : '') +
-    '</div>';
+    '<div class="cm-path">' + pathStr + '</div>' +
+    '<div class="cm-list"><div style="padding:20px;text-align:center;color:var(--muted);font-size:11px">⏳</div></div>' +
+    (backBtn || selectBtn ? '<div class="cm-foot">' + backBtn + selectBtn + '</div>' : '');
 
   try {
     var token = _driveToken;
@@ -1490,14 +1500,16 @@ async function browseFolder(folderId, folderName) {
       headers: {'Authorization': 'Bearer ' + token}
     });
     var data = await resp.json();
-    var files = (data.files || []).filter(function(f) { return f.mimeType === 'application/vnd.google-apps.folder'; });
+    var folders = (data.files || []).filter(function(f) { return f.mimeType === 'application/vnd.google-apps.folder'; });
     var listEl = menu.querySelector('.cm-list');
-    if (files.length === 0) {
-      listEl.innerHTML = '<div style="padding:12px;color:var(--muted);font-size:11px;text-align:center">Пустая папка</div>';
+    if (folders.length === 0) {
+      listEl.innerHTML = '<div style="padding:16px;color:var(--muted);font-size:11px;text-align:center">Пустая папка</div>';
     } else {
-      listEl.innerHTML = files.map(function(f) {
-        return '<div class="client-item" onclick="enterFolder(\'' + f.id + '\',\'' + f.name.replace(/'/g, "\\'") + '\')">' +
-          '<span style="opacity:0.5">📁</span> ' + f.name +
+      listEl.innerHTML = folders.map(function(f) {
+        var safeName = f.name.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+        return '<div class="client-item" onclick="enterFolder(\'' + f.id + '\',\'' + safeName + '\')">' +
+          '<span>📁 ' + f.name + '</span>' +
+          '<span class="chevron">›</span>' +
         '</div>';
       }).join('');
     }
