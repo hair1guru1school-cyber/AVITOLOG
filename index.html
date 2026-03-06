@@ -1432,7 +1432,8 @@ function updateClientBadge() {
   var ac = _activeClient || getActiveClient();
   if (ac && ac.folderId) {
     badge.style.display = 'inline-flex';
-    document.getElementById('clientBadgeName').textContent = ac.company || 'Клиент';
+    var label = ac.folder_name || ac.folderName || ac.company || 'Клиент';
+    document.getElementById('clientBadgeName').textContent = label;
     badge.className = 'badge ok';
   } else {
     badge.style.display = 'none';
@@ -1441,7 +1442,8 @@ function updateClientBadge() {
 
 function openClientFolder() {
   var ac = _activeClient || getActiveClient();
-  if (ac && ac.folderLink) window.open(ac.folderLink, '_blank');
+  var link = ac ? (ac.folderLink || ac.folder_link) : null;
+  if (link) window.open(link, '_blank');
 }
 
 function clearActiveClient() {
@@ -1504,21 +1506,26 @@ async function browseFolder(folderId, folderName) {
     var listEl = menu.querySelector('.cm-list');
     if (folders.length === 0) {
       listEl.innerHTML = '<div style="padding:16px;color:var(--muted);font-size:11px;text-align:center">Пустая папка</div>';
+      console.log('[folder picker] right panel render count', 0);
     } else {
       listEl.innerHTML = folders.map(function(f) {
-        var safeName = f.name.replace(/'/g, "\\'").replace(/"/g, '&quot;');
-        return '<div class="client-item" onclick="enterFolder(\'' + f.id + '\',\'' + safeName + '\')">' +
+        var safeName = (f.name || '').replace(/"/g, '&quot;');
+        return '<div class="client-item" data-folder-id="' + f.id + '" data-folder-name="' + safeName + '">' +
           '<span>📁 ' + f.name + '</span>' +
           '<span class="chevron">›</span>' +
         '</div>';
       }).join('');
+      console.log('[folder picker] child folders fetch result', folders.length, folders);
+      console.log('[folder picker] right panel render count', folders.length);
     }
   } catch(e) {
     menu.querySelector('.cm-list').innerHTML = '<div style="padding:12px;color:#ff8080;font-size:11px">' + e.message + '</div>';
+    console.warn('[folder picker] browseFolder error', e);
   }
 }
 
 function enterFolder(id, name) {
+  console.log('[folder picker] enterFolder', id, name);
   _browseStack.push({id: _browseCurrentId, name: document.querySelector('.cm-head span:first-child').textContent.replace('📁 ', ''), level: _browseLevel});
   _browseLevel++;
   browseFolder(id, name);
@@ -1535,8 +1542,8 @@ function selectBrowseFolder() {
   var folderId = _browseCurrentId;
   var folderName = document.querySelector('.cm-head span:first-child').textContent.replace('📁 ', '');
   var folderLink = 'https://drive.google.com/drive/folders/' + folderId;
-  
-  // Проверяем localStorage на этого клиента
+  console.log('[folder picker] final selected folder id', folderId, 'name', folderName);
+
   var clients = getCrmClients();
   var found = clients.find(function(c) { return c.folderId === folderId; });
   if (found) {
@@ -1553,9 +1560,12 @@ function selectBrowseFolder() {
     document.querySelectorAll('.ctype-btn').forEach(function(b) {
       b.classList.toggle('on', b.textContent.trim() === (found.client_type || ''));
     });
+    found.folder_name = folderName;
+    found.folderLink = folderLink;
+    found.folder_link = folderLink;
     setActiveClient(found);
   } else {
-    setActiveClient({folderId: folderId, folderLink: folderLink, company: folderName});
+    setActiveClient({folderId: folderId, folderLink: folderLink, folder_link: folderLink, folder_name: folderName, company: folderName});
   }
   closeClientMenu();
 }
@@ -1587,6 +1597,7 @@ function loadClient(idx) {
 }
 
 async function saveClient() {
+  console.log('[Sheets] save button click');
   var btn = document.getElementById('saveClientBtn');
   btn.disabled = true;
   btn.textContent = '💾 Сохраняю...';
@@ -1631,8 +1642,13 @@ async function saveClient() {
     // Сохраняем в localStorage
     d.folderId = folderId;
     d.folderLink = folderLink;
+    d.folder_link = folderLink;
+    d.folder_name = (ac && (ac.folder_name || ac.folderName)) ? (ac.folder_name || ac.folderName) : (folderName || '');
+    if (!d.client_id && ac && ac.client_id) d.client_id = ac.client_id;
+    if (!d.client_id) d.client_id = 'cid_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 10);
     var clients = getCrmClients();
-    var existing = clients.findIndex(function(c) { return c.company === d.company && c.phone === d.phone; });
+    var existing = clients.findIndex(function(c) { return c.folderId === folderId; });
+    if (existing < 0) existing = clients.findIndex(function(c) { return c.company === d.company && c.phone === d.phone; });
     if (existing >= 0) { clients[existing] = d; } else { clients.unshift(d); }
     saveCrmClients(clients);
     setActiveClient(d);
@@ -1655,13 +1671,86 @@ async function saveClient() {
 
 async function writeToSheets(d) {
   var token = _driveToken;
-  if (!token) return;
-  var row = [d.createdAt, d.folderId, d.folderLink, d.company, d.contact_name, d.phone, d.telegram, d.avito_account, d.client_type, d.category, d.city, d.notes, d.positions, d.kp_count, 'saved'];
-  await fetch('https://sheets.googleapis.com/v4/spreadsheets/' + SHEETS_ID + '/values/Clients!A:O:append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS', {
-    method: 'POST',
-    headers: {'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json'},
-    body: JSON.stringify({values: [row]})
+  if (!token) { console.log('[Sheets] no token, skip'); return; }
+  var CRM_SHEET = 'CRM Base Cloud';
+  var spreadsheetId = SHEETS_ID;
+  console.log('[Sheets] save button path: sheet name', CRM_SHEET, 'spreadsheet id', spreadsheetId);
+
+  // Ensure sheet exists
+  var metaResp = await fetch('https://sheets.googleapis.com/v4/spreadsheets/' + spreadsheetId + '?fields=sheets(properties(title))', {
+    headers: {'Authorization': 'Bearer ' + token}
   });
+  var meta = await metaResp.json();
+  if (meta.error) { console.warn('[Sheets] error response', meta.error); throw new Error(meta.error.message || 'Sheets API error'); }
+  var sheets = (meta && meta.sheets) ? meta.sheets : [];
+  var hasSheet = sheets.some(function(s) { return s && s.properties && s.properties.title === CRM_SHEET; });
+  if (!hasSheet) {
+    console.log('[Sheets] creating sheet', CRM_SHEET);
+    var createResp = await fetch('https://sheets.googleapis.com/v4/spreadsheets/' + spreadsheetId + ':batchUpdate', {
+      method: 'POST',
+      headers: {'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json'},
+      body: JSON.stringify({ requests: [{ addSheet: { properties: { title: CRM_SHEET } } }] })
+    });
+    var createData = await createResp.json();
+    if (createData.error) { console.warn('[Sheets] create sheet error', createData.error); throw new Error(createData.error.message || 'Create sheet failed'); }
+    console.log('[Sheets] sheet created');
+  }
+
+  var row = [
+    d.client_id || '',
+    d.company || '',
+    d.contact_name || '',
+    d.telegram || '',
+    d.avito_account || '',
+    d.phone || '',
+    d.client_type || '',
+    d.folder_name || d.folderName || '',
+    d.folder_link || d.folderLink || ''
+  ];
+
+  var range = encodeURIComponent(CRM_SHEET + '!A:I');
+  var getResp = await fetch('https://sheets.googleapis.com/v4/spreadsheets/' + spreadsheetId + '/values/' + range, {
+    headers: {'Authorization': 'Bearer ' + token}
+  });
+  var getData = await getResp.json();
+  if (getData.error) { console.warn('[Sheets] get values error', getData.error); throw new Error(getData.error.message || 'Sheets read failed'); }
+  var values = (getData.values || []);
+  var header = ['client_id','company','contact_name','telegram','avito_account','phone','client_type','folder_name','folder_link'];
+  if (values.length === 0 || (values[0] && values[0].length > 0 && values[0][0] !== 'client_id')) {
+    await fetch('https://sheets.googleapis.com/v4/spreadsheets/' + spreadsheetId + '/values/' + encodeURIComponent(CRM_SHEET + '!A1:I1') + '?valueInputOption=RAW', {
+      method: 'PUT',
+      headers: {'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json'},
+      body: JSON.stringify({ values: [header] })
+    });
+    values = [header];
+  }
+  var targetRow = -1;
+  for (var i = 1; i < values.length; i++) {
+    if (row[0] && values[i] && values[i][0] === row[0]) { targetRow = i + 1; break; }
+    if (targetRow < 0 && row[8] && values[i] && values[i][8] === row[8]) targetRow = i + 1;
+  }
+  if (targetRow > 0) {
+    console.log('[Sheets] update mode row', targetRow);
+    var updRange = encodeURIComponent(CRM_SHEET + '!A' + targetRow + ':I' + targetRow);
+    var updResp = await fetch('https://sheets.googleapis.com/v4/spreadsheets/' + spreadsheetId + '/values/' + updRange + '?valueInputOption=USER_ENTERED', {
+      method: 'PUT',
+      headers: {'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json'},
+      body: JSON.stringify({ values: [row] })
+    });
+    var updData = await updResp.json();
+    if (updData.error) { console.warn('[Sheets] update error', updData.error); throw new Error(updData.error.message); }
+    console.log('[Sheets] success response update');
+  } else {
+    console.log('[Sheets] append mode');
+    var appendResp = await fetch('https://sheets.googleapis.com/v4/spreadsheets/' + spreadsheetId + '/values/' + range + ':append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS', {
+      method: 'POST',
+      headers: {'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json'},
+      body: JSON.stringify({ values: [row] })
+    });
+    var appendData = await appendResp.json();
+    if (appendData.error) { console.warn('[Sheets] append error', appendData.error); throw new Error(appendData.error.message); }
+    console.log('[Sheets] success response append');
+  }
 }
 
 // ── TEST FILL ──
@@ -1716,6 +1805,23 @@ document.addEventListener('DOMContentLoaded', function() {
   _activeClient = getActiveClient();
   updateClientBadge();
   if (_activeClient) loadClient(-1); // -1 = load from _activeClient
+
+  // Клик по пункту папки: делегированный обработчик (без inline onclick — имена с апострофом не ломаются)
+  var clientMenuEl = document.getElementById('clientMenu');
+  if (clientMenuEl && !clientMenuEl._folderClickBound) {
+    clientMenuEl._folderClickBound = true;
+    clientMenuEl.addEventListener('click', function(e) {
+      e.stopPropagation();
+      var item = e.target && e.target.closest ? e.target.closest('.client-item') : null;
+      if (!item) return;
+      var folderId = item.getAttribute('data-folder-id');
+      var folderName = item.getAttribute('data-folder-name') || '';
+      if (!folderId) return;
+      console.log('[folder picker] left folder click', folderId, folderName);
+      enterFolder(folderId, folderName);
+    });
+  }
+
   // Закрытие меню клиентов при клике вне
   document.addEventListener('click', function(e) {
     var menu = document.getElementById('clientMenu');
