@@ -40,7 +40,7 @@ textarea{resize:vertical;min-height:50px;line-height:1.5}
 .row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:8px}
 .row3 .fg{margin-bottom:0}
 .row2 .fg{margin-bottom:0}
-.crm-row{display:flex;align-items:center;gap:7px;margin-bottom:10px;flex-wrap:wrap}
+.crm-row{display:flex;align-items:center;gap:7px;margin-bottom:4px;flex-wrap:wrap}
 .crm-lbl{display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12px;color:var(--muted);font-weight:600;user-select:none}
 .badge{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:5px;font-size:10px;font-weight:700;cursor:pointer;border:1px solid var(--border);background:transparent;color:var(--muted);transition:all 0.2s}
 .badge.ok{border-color:var(--accent);color:var(--accent)}
@@ -49,20 +49,11 @@ textarea{resize:vertical;min-height:50px;line-height:1.5}
 .client-menu{position:absolute;left:0;top:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;min-width:280px;max-height:340px;overflow:hidden;z-index:50;display:none;box-shadow:0 8px 24px rgba(0,0,0,0.4);flex-direction:column}
 .client-menu.show{display:flex}
 .cm-head{display:flex;align-items:center;justify-content:space-between;padding:8px 10px;border-bottom:1px solid var(--border);font-size:11px;font-weight:700;color:var(--text)}
-.cm-head .cm-close{cursor:pointer;color:var(--muted);font-size:14px;display:flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:6px}
-.cm-head .cm-close:hover{background:rgba(255,255,255,0.04)}
+.cm-head .cm-close{cursor:pointer;color:var(--muted);font-size:14px}
 .cm-head .cm-close:hover{color:var(--text)}
 .cm-path{padding:4px 10px;font-size:10px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;border-bottom:1px solid var(--border)}
 .cm-list{flex:1;overflow-y:auto;scrollbar-width:thin;scrollbar-color:var(--border) transparent}
 .cm-list::-webkit-scrollbar{width:6px}.cm-list::-webkit-scrollbar-track{background:transparent}.cm-list::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
-.cm-cols{display:flex;gap:0;flex:1;min-height:220px}
-.cm-col{flex:1;min-width:0;display:flex;flex-direction:column}
-.cm-col + .cm-col{border-left:1px solid var(--border)}
-.cm-col-head{padding:6px 10px;font-size:10px;color:var(--muted);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
-.cm-col-head .cm-col-title{font-weight:800;letter-spacing:.4px;text-transform:uppercase}
-.cm-col-body{flex:1;overflow-y:auto;scrollbar-width:thin;scrollbar-color:var(--border) transparent}
-.cm-col-body::-webkit-scrollbar{width:6px}.cm-col-body::-webkit-scrollbar-track{background:transparent}.cm-col-body::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
-.client-item.active{background:rgba(0,217,126,0.08);border-left:2px solid var(--accent);padding-left:10px}
 .cm-foot{padding:6px 10px;border-top:1px solid var(--border);display:flex;gap:4px}
 .cm-foot button{flex:1;padding:6px;border-radius:6px;border:1px solid var(--border);background:transparent;color:var(--muted);font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;transition:all 0.15s}
 .cm-foot button:hover{border-color:var(--accent);color:var(--accent)}
@@ -191,9 +182,9 @@ textarea{resize:vertical;min-height:50px;line-height:1.5}
     <button type="button" id="authBtn" onclick="startAuth()" style="display:none"></button>
     <span id="driveBadge" class="badge err" onclick="if(!_driveToken)startAuth()" style="cursor:pointer">✖ Drive</span>
     <span id="clientBadge" class="badge" style="display:none" onclick="openClientFolder()">
-      👤 <span id="clientBadgeName">Сохранено</span>
+      💾 <span id="clientBadgeName">Сохранено</span>
       <span class="x" onclick="event.stopPropagation();clearActiveClient()">✖</span>
-      <span class="x" onclick="event.stopPropagation();toggleClientMenu()" style="font-size:13px">⋮</span>
+      <span class="x" onclick="event.stopPropagation();toggleClientMenu()" style="font-size:13px">⋯</span>
     </span>
     <div class="client-menu" id="clientMenu"></div>
   </div>
@@ -1441,8 +1432,7 @@ function updateClientBadge() {
   var ac = _activeClient || getActiveClient();
   if (ac && ac.folderId) {
     badge.style.display = 'inline-flex';
-    var folderLabel = ac.folder_name || ac.folderName || ac.folder || '';
-    document.getElementById('clientBadgeName').textContent = (folderLabel || ac.company || 'Клиент');
+    document.getElementById('clientBadgeName').textContent = ac.company || 'Клиент';
     badge.className = 'badge ok';
   } else {
     badge.style.display = 'none';
@@ -1451,8 +1441,7 @@ function updateClientBadge() {
 
 function openClientFolder() {
   var ac = _activeClient || getActiveClient();
-  var link = ac ? (ac.folderLink || ac.folder_link) : null;
-  if (link) window.open(link, '_blank');
+  if (ac && ac.folderLink) window.open(ac.folderLink, '_blank');
 }
 
 function clearActiveClient() {
@@ -1480,89 +1469,11 @@ function toggleClientMenu() {
   _browseLevel = 0;
   _browseCurrentId = CRM_ROOT;
   menu.classList.add('show');
-  openCrmFolderPicker();
+  browseFolder(CRM_ROOT, 'CRM');
 }
 
 function closeClientMenu() {
   document.getElementById('clientMenu').classList.remove('show');
-}
-
-var _crmPickerLeft = null;  // {id,name}
-var _crmPickerRight = null; // [{id,name}]
-
-async function driveListFolders(parentId) {
-  var token = _driveToken;
-  if (!token) throw new Error('Drive не подключён');
-  var q = encodeURIComponent(
-    "'" + parentId + "' in parents and trashed=false and mimeType='application/vnd.google-apps.folder'"
-  );
-  var resp = await fetch('https://www.googleapis.com/drive/v3/files?q=' + q + '&fields=files(id,name)&orderBy=name&pageSize=200', {
-    headers: {'Authorization': 'Bearer ' + token}
-  });
-  var data = await resp.json();
-  return (data && data.files ? data.files : []).map(function(f) { return {id: f.id, name: f.name}; });
-}
-
-function renderCrmPicker(leftFolders, rightFolders, rightTitle) {
-  var menu = document.getElementById('clientMenu');
-  var headTitle = _crmPickerLeft ? ('CRM · ' + _crmPickerLeft.name) : 'CRM';
-  menu.innerHTML =
-    '<div class="cm-head"><span>📁 ' + headTitle + '</span><span class="cm-close" onclick="closeClientMenu()">✕</span></div>' +
-    '<div class="cm-cols">' +
-      '<div class="cm-col cm-left">' +
-        '<div class="cm-col-head"><span class="cm-col-title">Раздел</span></div>' +
-        '<div class="cm-col-body">' +
-          (leftFolders.length
-            ? leftFolders.map(function(f) {
-                var safeName = (f.name || '').replace(/"/g, '&quot;');
-                var active = _crmPickerLeft && _crmPickerLeft.id === f.id ? ' active' : '';
-                return '<div class="client-item' + active + '" data-col="left" data-folder-id="' + f.id + '" data-folder-name="' + safeName + '">' +
-                  '<span>📁 ' + f.name + '</span><span class="chevron">›</span>' +
-                '</div>';
-              }).join('')
-            : '<div style="padding:16px;color:var(--muted);font-size:11px;text-align:center">Пусто</div>') +
-        '</div>' +
-      '</div>' +
-      '<div class="cm-col cm-right">' +
-        '<div class="cm-col-head"><span class="cm-col-title">' + (rightTitle || 'Папки') + '</span></div>' +
-        '<div class="cm-col-body">' +
-          (rightFolders && rightFolders.length
-            ? rightFolders.map(function(f) {
-                var safeName = (f.name || '').replace(/"/g, '&quot;');
-                return '<div class="client-item" data-col="right" data-folder-id="' + f.id + '" data-folder-name="' + safeName + '">' +
-                  '<span>📁 ' + f.name + '</span><span class="chevron">✓</span>' +
-                '</div>';
-              }).join('')
-            : '<div style="padding:16px;color:var(--muted);font-size:11px;text-align:center">' +
-                (_crmPickerLeft ? 'Нет вложенных папок' : 'Выберите раздел слева') +
-              '</div>') +
-        '</div>' +
-      '</div>' +
-    '</div>';
-}
-
-async function openCrmFolderPicker() {
-  var menu = document.getElementById('clientMenu');
-  _crmPickerLeft = null;
-  _crmPickerRight = [];
-  menu.innerHTML =
-    '<div class="cm-head"><span>📁 CRM</span><span class="cm-close" onclick="closeClientMenu()">✕</span></div>' +
-    '<div style="padding:16px;color:var(--muted);font-size:11px;text-align:center">⏳</div>';
-  try {
-    var left = await driveListFolders(CRM_ROOT);
-    renderCrmPicker(left, [], 'Папки');
-  } catch (e) {
-    menu.innerHTML =
-      '<div class="cm-head"><span>📁 CRM</span><span class="cm-close" onclick="closeClientMenu()">✕</span></div>' +
-      '<div style="padding:12px;color:#ff8080;font-size:11px">' + (e.message || String(e)) + '</div>';
-  }
-}
-
-async function crmPickerSelectFinal(folderId, folderName) {
-  _browseCurrentId = folderId;
-  var head = document.querySelector('#clientMenu .cm-head span:first-child');
-  if (head) head.textContent = '📁 ' + folderName;
-  selectBrowseFolder(); // sets activeClient.folderId/folder_name/folder_link, updates badge, closes menu
 }
 
 async function browseFolder(folderId, folderName) {
@@ -1595,8 +1506,8 @@ async function browseFolder(folderId, folderName) {
       listEl.innerHTML = '<div style="padding:16px;color:var(--muted);font-size:11px;text-align:center">Пустая папка</div>';
     } else {
       listEl.innerHTML = folders.map(function(f) {
-        var safeName = (f.name || '').replace(/"/g, '&quot;');
-        return '<div class="client-item" data-folder-id="' + f.id + '" data-folder-name="' + safeName + '">' +
+        var safeName = f.name.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+        return '<div class="client-item" onclick="enterFolder(\'' + f.id + '\',\'' + safeName + '\')">' +
           '<span>📁 ' + f.name + '</span>' +
           '<span class="chevron">›</span>' +
         '</div>';
@@ -1607,32 +1518,10 @@ async function browseFolder(folderId, folderName) {
   }
 }
 
-function enterFolder(e, id, name) {
-  if (e) e.stopPropagation();
+function enterFolder(id, name) {
   _browseStack.push({id: _browseCurrentId, name: document.querySelector('.cm-head span:first-child').textContent.replace('📁 ', ''), level: _browseLevel});
   _browseLevel++;
   browseFolder(id, name);
-}
-
-async function folderHasChildren(folderId) {
-  var token = _driveToken;
-  if (!token) throw new Error('Drive не подключён');
-  var q = encodeURIComponent(
-    "'" + folderId + "' in parents and trashed=false and mimeType='application/vnd.google-apps.folder'"
-  );
-  var resp = await fetch('https://www.googleapis.com/drive/v3/files?q=' + q + '&fields=files(id)&pageSize=1', {
-    headers: {'Authorization': 'Bearer ' + token}
-  });
-  var data = await resp.json();
-  return !!(data && data.files && data.files.length);
-}
-
-async function selectFinalFolder(folderId, folderName) {
-  _browseCurrentId = folderId;
-  // Временно подменяем заголовок, чтобы переиспользовать selectBrowseFolder()
-  var head = document.querySelector('#clientMenu .cm-head span:first-child');
-  if (head) head.textContent = '📁 ' + folderName;
-  selectBrowseFolder(); // setActiveClient + badge update + close menu
 }
 
 function browseBack() {
@@ -1664,14 +1553,9 @@ function selectBrowseFolder() {
     document.querySelectorAll('.ctype-btn').forEach(function(b) {
       b.classList.toggle('on', b.textContent.trim() === (found.client_type || ''));
     });
-    found.folder_name = folderName;
-    found.folderLink = folderLink;
-    found.folder_link = folderLink;
     setActiveClient(found);
-    // Сохраняем обновление (название/ссылка папки) в CRM списке
-    saveCrmClients(clients);
   } else {
-    setActiveClient({folderId: folderId, folderLink: folderLink, folder_link: folderLink, folder_name: folderName});
+    setActiveClient({folderId: folderId, folderLink: folderLink, company: folderName});
   }
   closeClientMenu();
 }
@@ -1747,21 +1631,8 @@ async function saveClient() {
     // Сохраняем в localStorage
     d.folderId = folderId;
     d.folderLink = folderLink;
-    d.folder_link = folderLink;
-    d.folder_name = (ac && (ac.folder_name || ac.folderName)) ? (ac.folder_name || ac.folderName) : (folderName || '');
-
-    // client_id: создаём один раз и переиспользуем
-    if (ac && ac.client_id) d.client_id = ac.client_id;
-    if (!d.client_id) {
-      var existingByFolder = getCrmClients().find(function(c) { return c.folderId === folderId && c.client_id; });
-      if (existingByFolder) d.client_id = existingByFolder.client_id;
-    }
-    if (!d.client_id) d.client_id = generateClientId();
-
     var clients = getCrmClients();
-    // Приоритет: по папке (если выбрана), иначе старое совпадение
-    var existing = clients.findIndex(function(c) { return c.folderId === folderId; });
-    if (existing < 0) existing = clients.findIndex(function(c) { return c.company === d.company && c.phone === d.phone; });
+    var existing = clients.findIndex(function(c) { return c.company === d.company && c.phone === d.phone; });
     if (existing >= 0) { clients[existing] = d; } else { clients.unshift(d); }
     saveCrmClients(clients);
     setActiveClient(d);
@@ -1782,97 +1653,15 @@ async function saveClient() {
   }
 }
 
-function generateClientId() {
-  return 'cid_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 10);
-}
-
-var CRM_SHEET_NAME = 'CRM Base Cloud';
-
-async function getCrmSheetTitle() {
-  var token = _driveToken;
-  if (!token) throw new Error('Drive не подключён');
-  var resp = await fetch('https://sheets.googleapis.com/v4/spreadsheets/' + SHEETS_ID + '?fields=sheets(properties(sheetId,title))', {
-    headers: {'Authorization': 'Bearer ' + token}
-  });
-  var data = await resp.json();
-  var sheets = (data && data.sheets) ? data.sheets : [];
-  var named = sheets.find(function(s) { return s && s.properties && s.properties.title === CRM_SHEET_NAME; });
-  if (named && named.properties && named.properties.title) return named.properties.title;
-  if (sheets[0] && sheets[0].properties && sheets[0].properties.title) return sheets[0].properties.title;
-  return CRM_SHEET_NAME;
-}
-
-async function ensureSheetHeader(sheetTitle) {
-  var token = _driveToken;
-  if (!token) return;
-  var range = encodeURIComponent(sheetTitle + '!A1:I1');
-  var resp = await fetch('https://sheets.googleapis.com/v4/spreadsheets/' + SHEETS_ID + '/values/' + range, {
-    headers: {'Authorization': 'Bearer ' + token}
-  });
-  var data = await resp.json();
-  var row = (data && data.values && data.values[0]) ? data.values[0] : [];
-  var header = ['client_id','company','contact_name','telegram','avito_account','phone','client_type','folder_name','folder_link'];
-  var same = header.every(function(h, i) { return (row[i] || '').trim() === h; });
-  if (same) return;
-  await fetch('https://sheets.googleapis.com/v4/spreadsheets/' + SHEETS_ID + '/values/' + encodeURIComponent(sheetTitle + '!A1:I1') + '?valueInputOption=RAW', {
-    method: 'PUT',
-    headers: {'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json'},
-    body: JSON.stringify({values: [header]})
-  });
-}
-
 async function writeToSheets(d) {
   var token = _driveToken;
   if (!token) return;
-  var sheetTitle = await getCrmSheetTitle(); // CRM Base Cloud
-  await ensureSheetHeader(sheetTitle);
-
-  var row = [
-    d.client_id || '',
-    d.company || '',
-    d.contact_name || '',
-    d.telegram || '',
-    d.avito_account || '',
-    d.phone || '',
-    d.client_type || '',
-    d.folder_name || d.folderName || '',
-    d.folder_link || d.folderLink || ''
-  ];
-
-  // Upsert по client_id (колонка A)
-  var rangeAll = encodeURIComponent(sheetTitle + '!A:I');
-  var existingResp = await fetch('https://sheets.googleapis.com/v4/spreadsheets/' + SHEETS_ID + '/values/' + rangeAll, {
-    headers: {'Authorization': 'Bearer ' + token}
+  var row = [d.createdAt, d.folderId, d.folderLink, d.company, d.contact_name, d.phone, d.telegram, d.avito_account, d.client_type, d.category, d.city, d.notes, d.positions, d.kp_count, 'saved'];
+  await fetch('https://sheets.googleapis.com/v4/spreadsheets/' + SHEETS_ID + '/values/Clients!A:O:append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS', {
+    method: 'POST',
+    headers: {'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json'},
+    body: JSON.stringify({values: [row]})
   });
-  var existingData = await existingResp.json();
-  var values = (existingData && existingData.values) ? existingData.values : [];
-  var targetRowIndex = -1; // 1-based in Sheets
-  for (var i = 1; i < values.length; i++) { // skip header
-    if ((values[i] && values[i][0]) === row[0] && row[0]) {
-      targetRowIndex = i + 1;
-      break;
-    }
-    // fallback: матчим по folder_link (колонка I)
-    if (targetRowIndex < 0 && row[8] && values[i] && values[i][8] === row[8]) {
-      targetRowIndex = i + 1;
-      // не break: если ниже есть точный client_id — он важнее
-    }
-  }
-
-  if (targetRowIndex > 0) {
-    var updRange = encodeURIComponent(sheetTitle + '!A' + targetRowIndex + ':I' + targetRowIndex);
-    await fetch('https://sheets.googleapis.com/v4/spreadsheets/' + SHEETS_ID + '/values/' + updRange + '?valueInputOption=USER_ENTERED', {
-      method: 'PUT',
-      headers: {'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json'},
-      body: JSON.stringify({values: [row]})
-    });
-  } else {
-    await fetch('https://sheets.googleapis.com/v4/spreadsheets/' + SHEETS_ID + '/values/' + encodeURIComponent(sheetTitle + '!A:I') + ':append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS', {
-      method: 'POST',
-      headers: {'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json'},
-      body: JSON.stringify({values: [row]})
-    });
-  }
 }
 
 // ── TEST FILL ──
@@ -1927,78 +1716,6 @@ document.addEventListener('DOMContentLoaded', function() {
   _activeClient = getActiveClient();
   updateClientBadge();
   if (_activeClient) loadClient(-1); // -1 = load from _activeClient
-
-  // Клик внутри меню не должен закрывать меню при навигации
-  var cm = document.getElementById('clientMenu');
-  if (cm) {
-    cm.addEventListener('click', function(e) { e.stopPropagation(); }, true);
-  }
-
-  // Делегированный клик по папкам: навигация без закрытия меню,
-  // листовая папка = финальный выбор
-  if (cm && !cm._browseBound) {
-    cm._browseBound = true;
-    cm.addEventListener('click', async function(e) {
-      // Если открыт новый 2-колоночный пикер — игнорируем старую логику
-      if (cm.querySelector('.cm-cols')) return;
-      var item = e.target && e.target.closest ? e.target.closest('.client-item') : null;
-      if (!item || !cm.contains(item)) return;
-      e.stopPropagation();
-      e.preventDefault();
-
-      var folderId = item.getAttribute('data-folder-id');
-      var folderName = item.getAttribute('data-folder-name') || '';
-      if (!folderId) return;
-
-      try {
-        var hasKids = await folderHasChildren(folderId);
-        if (hasKids) {
-          enterFolder(null, folderId, folderName);
-        } else {
-          await selectFinalFolder(folderId, folderName);
-        }
-      } catch (err) {
-        console.warn('Folder click error:', err);
-      }
-    });
-  }
-
-  // 2-колоночный пикер: слева навигация, справа выбор финальной папки
-  if (cm && !cm._crmPickerBound) {
-    cm._crmPickerBound = true;
-    cm.addEventListener('click', async function(e) {
-      if (!cm.querySelector('.cm-cols')) return;
-      var item = e.target && e.target.closest ? e.target.closest('.client-item') : null;
-      if (!item || !cm.contains(item)) return;
-      e.stopPropagation();
-      e.preventDefault();
-
-      var col = item.getAttribute('data-col');
-      var folderId = item.getAttribute('data-folder-id');
-      var folderName = item.getAttribute('data-folder-name') || '';
-      if (!folderId) return;
-
-      try {
-        if (col === 'left') {
-          _crmPickerLeft = {id: folderId, name: folderName};
-          var left = await driveListFolders(CRM_ROOT);
-          var children = await driveListFolders(folderId);
-          _crmPickerRight = children;
-          renderCrmPicker(left, children, 'Внутри');
-
-          // если нет детей — считаем это финальной папкой
-          if (!children || children.length === 0) {
-            await crmPickerSelectFinal(folderId, folderName);
-          }
-        } else if (col === 'right') {
-          await crmPickerSelectFinal(folderId, folderName);
-        }
-      } catch (err) {
-        console.warn('CRM picker error:', err);
-      }
-    });
-  }
-
   // Закрытие меню клиентов при клике вне
   document.addEventListener('click', function(e) {
     var menu = document.getElementById('clientMenu');
