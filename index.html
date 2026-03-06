@@ -703,28 +703,36 @@ function renderDoc(html) {
   showChat();
 }
 
-// Картинка в шапке документа аналитики (Google Drive, доступ по ссылке)
+// Картинка в шапке документа аналитики (Google Drive)
 var ANALYTICS_HEADER_IMG = 'https://drive.google.com/uc?export=view&id=1tiqcQF4dtAPmFvBExDgdgFElfwxiazww';
+// Альтернатива для встраивания (thumbnail часто грузится надёжнее)
+var ANALYTICS_HEADER_IMG_THUMB = 'https://drive.google.com/thumbnail?id=1tiqcQF4dtAPmFvBExDgdgFElfwxiazww&sz=w1000';
 
 function withImg(html) {
-  var img = '<img src="' + ANALYTICS_HEADER_IMG + '" alt="" style="width:100%;max-width:600px;border-radius:9px;margin:14px auto 24px;display:block">';
+  var img = '<img src="' + ANALYTICS_HEADER_IMG_THUMB + '" alt="" style="width:100%;max-width:600px;border-radius:9px;margin:14px auto 24px;display:block">';
+  var h1End = html.indexOf('</h1>');
+  if (h1End >= 0) {
+    return html.slice(0, h1End + 5) + img + html.slice(h1End + 5);
+  }
   var divEnd = html.indexOf('</div>');
-  if (divEnd >= 0 && divEnd < 600) {
+  if (divEnd >= 0 && divEnd < 1500) {
     return html.slice(0, divEnd + 6) + img + html.slice(divEnd + 6);
   }
-  var i = html.indexOf('</h1>');
-  return i >= 0 ? html.slice(0, i + 5) + img + html.slice(i + 5) : img + html;
+  return img + html;
 }
 
-// Версия с URL картинкой для экспорта в Drive / Word (заголовок + мини-подзаголовок + картинка + анализ)
+// Версия с URL картинкой для экспорта в Drive / Word (заголовок + картинка + анализ)
 function withImgUrl(html) {
   var imgBlock = '<div style="text-align:center;margin:0 0 24px"><img src="' + ANALYTICS_HEADER_IMG + '" alt="" style="width:100%;max-width:600px;display:block;margin:20px auto 30px;border-radius:8px"></div>';
+  var h1End = html.indexOf('</h1>');
+  if (h1End >= 0) {
+    return html.slice(0, h1End + 5) + imgBlock + html.slice(h1End + 5);
+  }
   var divEnd = html.indexOf('</div>');
-  if (divEnd >= 0 && divEnd < 600) {
+  if (divEnd >= 0 && divEnd < 1500) {
     return html.slice(0, divEnd + 6) + imgBlock + html.slice(divEnd + 6);
   }
-  var h1End = html.indexOf('</h1>');
-  return h1End >= 0 ? html.slice(0, h1End + 5) + imgBlock + html.slice(h1End + 5) : imgBlock + html;
+  return imgBlock + html;
 }
 
 // ── CHAT ──
