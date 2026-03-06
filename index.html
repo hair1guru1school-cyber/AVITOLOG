@@ -1557,9 +1557,9 @@ async function browseFolder(folderId, folderName) {
       listEl.innerHTML = '<div style="padding:16px;color:var(--muted);font-size:11px;text-align:center">Пустая папка</div>';
     } else {
       listEl.innerHTML = folders.map(function(f) {
-        var safeName = f.name.replace(/'/g, "\\'").replace(/"/g, '&quot;');
-        return '<div class="client-item" onclick="enterFolder(\'' + f.id + '\',\'' + safeName + '\')">' +
-          '<span>📁 ' + f.name + '</span>' +
+        var esc = function(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); };
+        return '<div class="client-item" data-folder-id="' + esc(f.id) + '" data-folder-name="' + esc(f.name) + '">' +
+          '<span>📁 ' + esc(f.name) + '</span>' +
           '<span class="chevron">›</span>' +
         '</div>';
       }).join('');
@@ -1806,6 +1806,17 @@ document.addEventListener('DOMContentLoaded', function() {
       menu.classList.remove('show');
     }
   });
+  // Открытие вложенной папки в CRM по клику (без ломаного onclick из-за кавычек в названии)
+  var crmMenu = document.getElementById('clientMenu');
+  if (crmMenu) {
+    crmMenu.addEventListener('click', function(e) {
+      var item = e.target.closest('.client-item[data-folder-id]');
+      if (!item) return;
+      var id = item.getAttribute('data-folder-id');
+      var name = item.getAttribute('data-folder-name') || '';
+      if (id) enterFolder(id, name);
+    });
+  }
 });
 
 // chatInp enter
