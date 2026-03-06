@@ -1437,6 +1437,7 @@ function toggleClientType(btn, val) {
 
 // ── CRM CLIENT STORAGE ──
 var SHEETS_ID = '1gUV4mWX4ob0NkjJTpP15N9dBKfIOO2NdJQDKXCooVA8';
+var SHEETS_NAME = 'CRM Base Cloud';
 var _activeClient = null;
 
 function getCrmClients() {
@@ -1684,11 +1685,17 @@ async function writeToSheets(d) {
   var token = _driveToken;
   if (!token) return;
   var row = [d.createdAt, d.folderId, d.folderLink, d.company, d.contact_name, d.phone, d.telegram, d.avito_account, d.client_type, d.category, d.city, d.notes, d.positions, d.kp_count, 'saved'];
-  await fetch('https://sheets.googleapis.com/v4/spreadsheets/' + SHEETS_ID + '/values/Clients!A:O:append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS', {
+  var range = (typeof SHEETS_NAME !== 'undefined' ? SHEETS_NAME : 'Clients') + '!A:O';
+  var url = 'https://sheets.googleapis.com/v4/spreadsheets/' + SHEETS_ID + '/values/' + encodeURIComponent(range) + ':append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS';
+  var resp = await fetch(url, {
     method: 'POST',
     headers: {'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json'},
     body: JSON.stringify({values: [row]})
   });
+  if (!resp.ok) {
+    var err = await resp.json().catch(function() { return {}; });
+    throw new Error('Таблица: ' + (err.error && err.error.message ? err.error.message : resp.status + ' ' + resp.statusText));
+  }
 }
 
 // ── TEST FILL ──
