@@ -158,6 +158,7 @@ textarea{resize:vertical;min-height:50px;line-height:1.5}
 .analytics-tumbler button{border:1px solid var(--border);background:var(--surface2);color:var(--muted);padding:8px 18px;font-size:13px;font-weight:700;font-family:'Golos Text',sans-serif;cursor:pointer;transition:all 0.2s}
 .analytics-tumbler button:first-child{border-radius:10px 0 0 10px;border-right:none}
 .analytics-tumbler button:last-child{border-radius:0 10px 10px 0}
+.analytics-tumbler button:not(:first-child){border-left:none}
 .analytics-tumbler button.on{border-color:var(--accent);background:rgba(0,217,126,0.15);color:var(--accent)}
 .analytics-tumbler button:hover:not(.on){border-color:var(--accent);color:var(--accent)}
 .rtab:hover{background:rgba(255,255,255,0.05);color:var(--fg)}
@@ -292,6 +293,7 @@ textarea{resize:vertical;min-height:50px;line-height:1.5}
   <div class="analytics-tumbler" id="analyticsTumbler">
     <button type="button" id="tumblerFil" onclick="setAnalyticsMode('fil')">Фил</button>
     <button type="button" id="tumblerSasha" onclick="setAnalyticsMode('sasha')">🅰️ Саша</button>
+    <button type="button" id="tumblerRegina" onclick="setAnalyticsMode('regina')">Регина</button>
   </div>
   <div class="depth-bar" id="depthBar">
     <button type="button" class="depth-btn" data-depth="light" onclick="setDepth('light')">🪶</button>
@@ -404,8 +406,10 @@ function setAnalyticsMode(mode) {
   try { localStorage.setItem('avitolog_analytics_mode', mode); } catch(e) {}
   var sashaBtn = document.getElementById('tumblerSasha');
   var filBtn = document.getElementById('tumblerFil');
+  var reginaBtn = document.getElementById('tumblerRegina');
   if (sashaBtn) sashaBtn.classList.toggle('on', mode === 'sasha');
   if (filBtn) filBtn.classList.toggle('on', mode === 'fil');
+  if (reginaBtn) reginaBtn.classList.toggle('on', mode === 'regina');
   document.getElementById('depthBar').classList.remove('muted');
   document.getElementById('secBar').classList.remove('muted');
   if (currentTab === 'analysis' && docReady && currentHtml) {
@@ -415,7 +419,7 @@ function setAnalyticsMode(mode) {
 
 function applyAnalyticsModeDefault() {
   var override = localStorage.getItem('avitolog_analytics_mode');
-  if (override === 'sasha' || override === 'fil') {
+  if (override === 'sasha' || override === 'fil' || override === 'regina') {
     analyticsMode = override;
   } else if (_driveUserEmail === SASHA_EMAIL) {
     analyticsMode = 'sasha';
@@ -424,8 +428,10 @@ function applyAnalyticsModeDefault() {
   }
   var sashaBtn = document.getElementById('tumblerSasha');
   var filBtn = document.getElementById('tumblerFil');
+  var reginaBtn = document.getElementById('tumblerRegina');
   if (sashaBtn) sashaBtn.classList.toggle('on', analyticsMode === 'sasha');
   if (filBtn) filBtn.classList.toggle('on', analyticsMode === 'fil');
+  if (reginaBtn) reginaBtn.classList.toggle('on', analyticsMode === 'regina');
   var depthBar = document.getElementById('depthBar');
   var secBar = document.getElementById('secBar');
   if (depthBar) depthBar.classList.remove('muted');
@@ -788,12 +794,18 @@ var ANALYTICS_HEADER_IMG = 'https://drive.google.com/uc?export=view&id=1tiqcQF4d
 var ANALYTICS_HEADER_IMG_THUMB = 'https://drive.google.com/thumbnail?id=1tiqcQF4dtAPmFvBExDgdgFElfwxiazww&sz=w1000';
 var ANALYTICS_HEADER_IMG_SASHA = 'https://drive.google.com/uc?export=view&id=124TzG8HSARZj4xD4tlN8UwmHVi-GqGOC';
 var ANALYTICS_HEADER_IMG_SASHA_THUMB = 'https://drive.google.com/thumbnail?id=124TzG8HSARZj4xD4tlN8UwmHVi-GqGOC&sz=w1000';
+var ANALYTICS_HEADER_IMG_REGINA = 'https://drive.google.com/uc?export=view&id=15E2TiMv9LS-LNqlk5bBG1l0OMnZmCIIa';
+var ANALYTICS_HEADER_IMG_REGINA_THUMB = 'https://drive.google.com/thumbnail?id=15E2TiMv9LS-LNqlk5bBG1l0OMnZmCIIa&sz=w1000';
 
 function getAnalyticsHeaderImg() {
-  return (analyticsMode === 'sasha') ? ANALYTICS_HEADER_IMG_SASHA : ANALYTICS_HEADER_IMG;
+  if (analyticsMode === 'sasha') return ANALYTICS_HEADER_IMG_SASHA;
+  if (analyticsMode === 'regina') return ANALYTICS_HEADER_IMG_REGINA;
+  return ANALYTICS_HEADER_IMG;
 }
 function getAnalyticsHeaderImgThumb() {
-  return (analyticsMode === 'sasha') ? ANALYTICS_HEADER_IMG_SASHA_THUMB : ANALYTICS_HEADER_IMG_THUMB;
+  if (analyticsMode === 'sasha') return ANALYTICS_HEADER_IMG_SASHA_THUMB;
+  if (analyticsMode === 'regina') return ANALYTICS_HEADER_IMG_REGINA_THUMB;
+  return ANALYTICS_HEADER_IMG_THUMB;
 }
 
 function withImg(html) {
