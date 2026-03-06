@@ -703,22 +703,28 @@ function renderDoc(html) {
   showChat();
 }
 
-function withImg(html) {
-  var img = '<img src="' + HERO + '" style="width:100%;border-radius:9px;margin:14px 0 24px;display:block">';
-  var i = html.indexOf('</h1>');
-  return i >= 0 ? html.slice(0,i+5) + img + html.slice(i+5) : img + html;
-}
+// Картинка в шапке документа аналитики (Google Drive, доступ по ссылке)
+var ANALYTICS_HEADER_IMG = 'https://drive.google.com/uc?export=view&id=1tiqcQF4dtAPmFvBExDgdgFElfwxiazww';
 
-// Версия с URL картинкой для Google Docs (base64 не работает в Docs)
-function withImgUrl(html) {
-  var img = '<img src="https://hair1guru1school-cyber.github.io/AVITOLOG/logo.jpg" style="width:100%;max-width:600px;display:block;margin:20px auto 30px">';
-  // Вставляем после закрывающего </div> центрированной шапки, или после </h1>
+function withImg(html) {
+  var img = '<img src="' + ANALYTICS_HEADER_IMG + '" alt="" style="width:100%;max-width:600px;border-radius:9px;margin:14px auto 24px;display:block">';
   var divEnd = html.indexOf('</div>');
-  if (divEnd >= 0 && divEnd < 500) {
+  if (divEnd >= 0 && divEnd < 600) {
     return html.slice(0, divEnd + 6) + img + html.slice(divEnd + 6);
   }
+  var i = html.indexOf('</h1>');
+  return i >= 0 ? html.slice(0, i + 5) + img + html.slice(i + 5) : img + html;
+}
+
+// Версия с URL картинкой для экспорта в Drive / Word (заголовок + мини-подзаголовок + картинка + анализ)
+function withImgUrl(html) {
+  var imgBlock = '<div style="text-align:center;margin:0 0 24px"><img src="' + ANALYTICS_HEADER_IMG + '" alt="" style="width:100%;max-width:600px;display:block;margin:20px auto 30px;border-radius:8px"></div>';
+  var divEnd = html.indexOf('</div>');
+  if (divEnd >= 0 && divEnd < 600) {
+    return html.slice(0, divEnd + 6) + imgBlock + html.slice(divEnd + 6);
+  }
   var h1End = html.indexOf('</h1>');
-  return h1End >= 0 ? html.slice(0, h1End + 5) + img + html.slice(h1End + 5) : img + html;
+  return h1End >= 0 ? html.slice(0, h1End + 5) + imgBlock + html.slice(h1End + 5) : imgBlock + html;
 }
 
 // ── CHAT ──
