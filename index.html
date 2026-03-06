@@ -1507,8 +1507,8 @@ async function browseFolder(folderId, folderName) {
       listEl.innerHTML = '<div style="padding:16px;color:var(--muted);font-size:11px;text-align:center">Пустая папка</div>';
     } else {
       listEl.innerHTML = folders.map(function(f) {
-        var safeName = f.name.replace(/'/g, "\\'").replace(/"/g, '&quot;');
-        return '<div class="client-item" onclick="enterFolder(event,\'' + f.id + '\',\'' + safeName + '\')">' +
+        var safeName = (f.name || '').replace(/"/g, '&quot;');
+        return '<div class="client-item" data-folder-id="' + f.id + '" data-folder-name="' + safeName + '">' +
           '<span>📁 ' + f.name + '</span>' +
           '<span class="chevron">›</span>' +
         '</div>';
@@ -1524,6 +1524,27 @@ function enterFolder(e, id, name) {
   _browseStack.push({id: _browseCurrentId, name: document.querySelector('.cm-head span:first-child').textContent.replace('📁 ', ''), level: _browseLevel});
   _browseLevel++;
   browseFolder(id, name);
+}
+
+async function folderHasChildren(folderId) {
+  var token = _driveToken;
+  if (!token) throw new Error('Drive не подключён');
+  var q = encodeURIComponent(
+    "'" + folderId + "' in parents and trashed=false and mimeType='application/vnd.google-apps.folder'"
+  );
+  var resp = await fetch('https://www.googleapis.com/drive/v3/files?q=' + q + '&fields=files(id)&pageSize=1', {
+    headers: {'Authorization': 'Bearer ' + token}
+  });
+  var data = await resp.json();
+  return !!(data && data.files && data.files.length);
+}
+
+async function selectFinalFolder(folderId, folderName) {
+  _browseCurrentId = folderId;
+  // Временно подменяем заголовок, чтобы переиспользовать selectBrowseFolder()
+  var head = document.querySelector('#clientMenu .cm-head span:first-child');
+  if (head) head.textContent = '📁 ' + folderName;
+  selectBrowseFolder(); // setActiveClient + badge update + close menu
 }
 
 function browseBack() {
@@ -1817,6 +1838,33 @@ document.addEventListener('DOMContentLoaded', function() {
   var cm = document.getElementById('clientMenu');
   if (cm) {
     cm.addEventListener('click', function(e) { e.stopPropagation(); }, true);
+  }
+
+  // Делегированный клик по папкам: навигация без закрытия меню,
+  // листовая папка = финальный выбор
+  if (cm && !cm._browseBound) {
+    cm._browseBound = true;
+    cm.addEventListener('click', async function(e) {
+      var item = e.target && e.target.closest ? e.target.closest('.client-item') : null;
+      if (!item || !cm.contains(item)) return;
+      e.stopPropagation();
+      e.preventDefault();
+
+      var folderId = item.getAttribute('data-folder-id');
+      var folderName = item.getAttribute('data-folder-name') || '';
+      if (!folderId) return;
+
+      try {
+        var hasKids = await folderHasChildren(folderId);
+        if (hasKids) {
+          enterFolder(null, folderId, folderName);
+        } else {
+          await selectFinalFolder(folderId, folderName);
+        }
+      } catch (err) {
+        console.warn('Folder click error:', err);
+      }
+    });
   }
 
   // Закрытие меню клиентов при клике вне
