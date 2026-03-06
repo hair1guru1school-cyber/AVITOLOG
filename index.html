@@ -1442,7 +1442,8 @@ function updateClientBadge() {
 
 function openClientFolder() {
   var ac = _activeClient || getActiveClient();
-  if (ac && ac.folderLink) window.open(ac.folderLink, '_blank');
+  var link = ac ? (ac.folderLink || ac.folder_link) : null;
+  if (link) window.open(link, '_blank');
 }
 
 function clearActiveClient() {
@@ -1578,11 +1579,12 @@ function selectBrowseFolder() {
     });
     found.folder_name = folderName;
     found.folderLink = folderLink;
+    found.folder_link = folderLink;
     setActiveClient(found);
     // Сохраняем обновление (название/ссылка папки) в CRM списке
     saveCrmClients(clients);
   } else {
-    setActiveClient({folderId: folderId, folderLink: folderLink, folder_name: folderName});
+    setActiveClient({folderId: folderId, folderLink: folderLink, folder_link: folderLink, folder_name: folderName});
   }
   closeClientMenu();
 }
@@ -1658,6 +1660,7 @@ async function saveClient() {
     // Сохраняем в localStorage
     d.folderId = folderId;
     d.folderLink = folderLink;
+    d.folder_link = folderLink;
     d.folder_name = (ac && (ac.folder_name || ac.folderName)) ? (ac.folder_name || ac.folderName) : (folderName || '');
 
     // client_id: создаём один раз и переиспользуем
@@ -1696,7 +1699,9 @@ function generateClientId() {
   return 'cid_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 10);
 }
 
-async function getFirstSheetTitle() {
+var CRM_SHEET_NAME = 'CRM Base Cloud';
+
+async function getCrmSheetTitle() {
   var token = _driveToken;
   if (!token) throw new Error('Drive не подключён');
   var resp = await fetch('https://sheets.googleapis.com/v4/spreadsheets/' + SHEETS_ID + '?fields=sheets(properties(sheetId,title))', {
@@ -1704,25 +1709,25 @@ async function getFirstSheetTitle() {
   });
   var data = await resp.json();
   var sheets = (data && data.sheets) ? data.sheets : [];
-  var gid0 = sheets.find(function(s) { return s && s.properties && s.properties.sheetId === 0; });
-  if (gid0 && gid0.properties && gid0.properties.title) return gid0.properties.title;
+  var named = sheets.find(function(s) { return s && s.properties && s.properties.title === CRM_SHEET_NAME; });
+  if (named && named.properties && named.properties.title) return named.properties.title;
   if (sheets[0] && sheets[0].properties && sheets[0].properties.title) return sheets[0].properties.title;
-  return 'Sheet1';
+  return CRM_SHEET_NAME;
 }
 
 async function ensureSheetHeader(sheetTitle) {
   var token = _driveToken;
   if (!token) return;
-  var range = encodeURIComponent(sheetTitle + '!A1:G1');
+  var range = encodeURIComponent(sheetTitle + '!A1:I1');
   var resp = await fetch('https://sheets.googleapis.com/v4/spreadsheets/' + SHEETS_ID + '/values/' + range, {
     headers: {'Authorization': 'Bearer ' + token}
   });
   var data = await resp.json();
   var row = (data && data.values && data.values[0]) ? data.values[0] : [];
-  var header = ['client_id','company','contact_name','telegram','avito_account','folder_link','folder_name'];
+  var header = ['client_id','company','contact_name','telegram','avito_account','phone','client_type','folder_name','folder_link'];
   var same = header.every(function(h, i) { return (row[i] || '').trim() === h; });
   if (same) return;
-  await fetch('https://sheets.googleapis.com/v4/spreadsheets/' + SHEETS_ID + '/values/' + encodeURIComponent(sheetTitle + '!A1:G1') + '?valueInputOption=RAW', {
+  await fetch('https://sheets.googleapis.com/v4/spreadsheets/' + SHEETS_ID + '/values/' + encodeURIComponent(sheetTitle + '!A1:I1') + '?valueInputOption=RAW', {
     method: 'PUT',
     headers: {'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json'},
     body: JSON.stringify({values: [header]})
@@ -1732,7 +1737,7 @@ async function ensureSheetHeader(sheetTitle) {
 async function writeToSheets(d) {
   var token = _driveToken;
   if (!token) return;
-  var sheetTitle = await getFirstSheetTitle(); // gid=0 / first sheet
+  var sheetTitle = await getCrmSheetTitle(); // CRM Base Cloud
   await ensureSheetHeader(sheetTitle);
 
   var row = [
@@ -1741,12 +1746,14 @@ async function writeToSheets(d) {
     d.contact_name || '',
     d.telegram || '',
     d.avito_account || '',
-    d.folderLink || d.folder_link || '',
-    d.folder_name || d.folderName || ''
+    d.phone || '',
+    d.client_type || '',
+    d.folder_name || d.folderName || '',
+    d.folder_link || d.folderLink || ''
   ];
 
   // Upsert по client_id (колонка A)
-  var rangeAll = encodeURIComponent(sheetTitle + '!A:G');
+  var rangeAll = encodeURIComponent(sheetTitle + '!A:I');
   var existingResp = await fetch('https://sheets.googleapis.com/v4/spreadsheets/' + SHEETS_ID + '/values/' + rangeAll, {
     headers: {'Authorization': 'Bearer ' + token}
   });
@@ -1758,22 +1765,22 @@ async function writeToSheets(d) {
       targetRowIndex = i + 1;
       break;
     }
-    // fallback для старых строк без client_id: матчим по folder_link (колонка F)
-    if (targetRowIndex < 0 && row[5] && values[i] && values[i][5] === row[5]) {
+    // fallback: матчим по folder_link (колонка I)
+    if (targetRowIndex < 0 && row[8] && values[i] && values[i][8] === row[8]) {
       targetRowIndex = i + 1;
       // не break: если ниже есть точный client_id — он важнее
     }
   }
 
   if (targetRowIndex > 0) {
-    var updRange = encodeURIComponent(sheetTitle + '!A' + targetRowIndex + ':G' + targetRowIndex);
+    var updRange = encodeURIComponent(sheetTitle + '!A' + targetRowIndex + ':I' + targetRowIndex);
     await fetch('https://sheets.googleapis.com/v4/spreadsheets/' + SHEETS_ID + '/values/' + updRange + '?valueInputOption=USER_ENTERED', {
       method: 'PUT',
       headers: {'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json'},
       body: JSON.stringify({values: [row]})
     });
   } else {
-    await fetch('https://sheets.googleapis.com/v4/spreadsheets/' + SHEETS_ID + '/values/' + encodeURIComponent(sheetTitle + '!A:G') + ':append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS', {
+    await fetch('https://sheets.googleapis.com/v4/spreadsheets/' + SHEETS_ID + '/values/' + encodeURIComponent(sheetTitle + '!A:I') + ':append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS', {
       method: 'POST',
       headers: {'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json'},
       body: JSON.stringify({values: [row]})
