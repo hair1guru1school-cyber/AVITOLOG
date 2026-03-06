@@ -705,31 +705,42 @@ function renderDoc(html) {
 
 // Картинка в шапке документа аналитики (Google Drive)
 var ANALYTICS_HEADER_IMG = 'https://drive.google.com/uc?export=view&id=1tiqcQF4dtAPmFvBExDgdgFElfwxiazww';
-// Альтернатива для встраивания (thumbnail часто грузится надёжнее)
 var ANALYTICS_HEADER_IMG_THUMB = 'https://drive.google.com/thumbnail?id=1tiqcQF4dtAPmFvBExDgdgFElfwxiazww&sz=w1000';
 
 function withImg(html) {
-  var img = '<img src="' + ANALYTICS_HEADER_IMG_THUMB + '" alt="" style="width:100%;max-width:600px;border-radius:9px;margin:14px auto 24px;display:block">';
+  if (!html || typeof html !== 'string') return html;
+  var img = '<div class="doc-header-img" style="text-align:center;margin:0 0 20px"><img src="' + ANALYTICS_HEADER_IMG_THUMB + '" alt="" style="max-width:100%;width:600px;height:auto;border-radius:9px;display:block;margin:0 auto"></div>';
   var h1End = html.indexOf('</h1>');
+  if (h1End === -1) h1End = html.indexOf('</H1>');
   if (h1End >= 0) {
     return html.slice(0, h1End + 5) + img + html.slice(h1End + 5);
   }
-  var divEnd = html.indexOf('</div>');
-  if (divEnd >= 0 && divEnd < 1500) {
+  var centerIdx = html.indexOf('text-align:center');
+  var divEnd = -1;
+  if (centerIdx >= 0 && centerIdx < 800) {
+    divEnd = html.indexOf('</div>', centerIdx);
+  }
+  if (divEnd === -1) divEnd = html.indexOf('</div>');
+  if (divEnd >= 0 && divEnd < 2000) {
     return html.slice(0, divEnd + 6) + img + html.slice(divEnd + 6);
   }
   return img + html;
 }
 
-// Версия с URL картинкой для экспорта в Drive / Word (заголовок + картинка + анализ)
+// Версия с URL картинкой для экспорта в Drive / Word
 function withImgUrl(html) {
+  if (!html || typeof html !== 'string') return html;
   var imgBlock = '<div style="text-align:center;margin:0 0 24px"><img src="' + ANALYTICS_HEADER_IMG + '" alt="" style="width:100%;max-width:600px;display:block;margin:20px auto 30px;border-radius:8px"></div>';
   var h1End = html.indexOf('</h1>');
+  if (h1End === -1) h1End = html.indexOf('</H1>');
   if (h1End >= 0) {
     return html.slice(0, h1End + 5) + imgBlock + html.slice(h1End + 5);
   }
-  var divEnd = html.indexOf('</div>');
-  if (divEnd >= 0 && divEnd < 1500) {
+  var centerIdx = html.indexOf('text-align:center');
+  var divEnd = -1;
+  if (centerIdx >= 0 && centerIdx < 800) divEnd = html.indexOf('</div>', centerIdx);
+  if (divEnd === -1) divEnd = html.indexOf('</div>');
+  if (divEnd >= 0 && divEnd < 2000) {
     return html.slice(0, divEnd + 6) + imgBlock + html.slice(divEnd + 6);
   }
   return imgBlock + html;
