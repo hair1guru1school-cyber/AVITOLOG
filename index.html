@@ -153,7 +153,8 @@ textarea{resize:vertical;min-height:50px;line-height:1.5}
 .sec-btn:hover{border-color:var(--accent);color:var(--accent)}
 .sec-btn.on{border-color:var(--accent);background:rgba(0,217,126,0.12);color:var(--accent)}
 .depth-bar.muted,.sec-bar.muted{opacity:0.45;pointer-events:none;transition:opacity 0.2s}
-.analytics-tumbler{display:flex;justify-content:center;gap:0;padding:8px 0 4px;flex-shrink:0}
+.analytics-tumbler{display:flex;justify-content:center;gap:0;padding:10px 0 6px;flex-shrink:0;border-bottom:1px solid var(--border);margin-bottom:4px}
+.analytics-tumbler.hide{display:none !important}
 .analytics-tumbler button{border:1px solid var(--border);background:var(--surface2);color:var(--muted);padding:8px 18px;font-size:13px;font-weight:700;font-family:'Golos Text',sans-serif;cursor:pointer;transition:all 0.2s}
 .analytics-tumbler button:first-child{border-radius:10px 0 0 10px;border-right:none}
 .analytics-tumbler button:last-child{border-radius:0 10px 10px 0}
@@ -288,9 +289,9 @@ textarea{resize:vertical;min-height:50px;line-height:1.5}
 </div>
 
 <div class="content-wrap">
-  <div class="analytics-tumbler" id="analyticsTumbler" style="display:none">
-    <button type="button" id="tumblerSasha" onclick="setAnalyticsMode('sasha')">🅰️ Саша</button>
+  <div class="analytics-tumbler" id="analyticsTumbler">
     <button type="button" id="tumblerFil" onclick="setAnalyticsMode('fil')">Фил</button>
+    <button type="button" id="tumblerSasha" onclick="setAnalyticsMode('sasha')">🅰️ Саша</button>
   </div>
   <div class="depth-bar" id="depthBar">
     <button type="button" class="depth-btn" data-depth="light" onclick="setDepth('light')">🪶</button>
@@ -445,7 +446,7 @@ function switchTab(tab) {
   // Section bar только для аналитики
   document.getElementById('secBar').style.display = tab === 'analysis' ? 'flex' : 'none';
   var tumbler = document.getElementById('analyticsTumbler');
-  if (tumbler) tumbler.style.display = tab === 'analysis' ? 'flex' : 'none';
+  if (tumbler) tumbler.classList.toggle('hide', tab !== 'analysis');
   var depthBar = document.getElementById('depthBar');
   var secBar = document.getElementById('secBar');
   if (tab === 'analysis') {
