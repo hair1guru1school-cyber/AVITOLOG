@@ -1685,7 +1685,8 @@ async function saveClient() {
       st.style.display = 'block';
       st.className = 'crm-st err';
       st.textContent = '✗ ' + (e.message || String(e));
-    } finally {
+    }
+  } finally {
     btn.disabled = false;
     btn.textContent = '💾 Сохранить';
   }
