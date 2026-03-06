@@ -1460,16 +1460,15 @@ function clearActiveClient() {
 
 var _browseStack = []; // [{id, name}]
 var _browseCurrentId = null;
+var _browseLevel = 0; // 0=root, 1=category, 2+=client
 
 function toggleClientMenu() {
   var menu = document.getElementById('clientMenu');
-  if (menu.classList.contains('show')) {
-    menu.classList.remove('show');
-    return;
-  }
-  menu.classList.add('show');
+  // Всегда сбрасываем и открываем заново
   _browseStack = [];
+  _browseLevel = 0;
   _browseCurrentId = CRM_ROOT;
+  menu.classList.add('show');
   browseFolder(CRM_ROOT, 'CRM');
 }
 
@@ -1485,7 +1484,8 @@ async function browseFolder(folderId, folderName) {
   if (!pathStr) pathStr = '📁 CRM';
   
   var backBtn = _browseStack.length > 0 ? '<button type="button" onclick="browseBack()">← Назад</button>' : '';
-  var selectBtn = folderId !== CRM_ROOT ? '<button type="button" class="primary" onclick="selectBrowseFolder()">✓ Выбрать</button>' : '';
+  // Кнопка выбора только на уровне 2+ (внутри категории)
+  var selectBtn = _browseLevel >= 2 ? '<button type="button" class="primary" onclick="selectBrowseFolder()">✓ Выбрать</button>' : '';
 
   menu.innerHTML = '<div class="cm-head"><span>📁 ' + folderName + '</span><span class="cm-close" onclick="closeClientMenu()">✕</span></div>' +
     '<div class="cm-path">' + pathStr + '</div>' +
@@ -1519,13 +1519,15 @@ async function browseFolder(folderId, folderName) {
 }
 
 function enterFolder(id, name) {
-  _browseStack.push({id: _browseCurrentId, name: document.querySelector('.cm-head span:first-child').textContent.replace('📁 ', '')});
+  _browseStack.push({id: _browseCurrentId, name: document.querySelector('.cm-head span:first-child').textContent.replace('📁 ', ''), level: _browseLevel});
+  _browseLevel++;
   browseFolder(id, name);
 }
 
 function browseBack() {
   if (_browseStack.length === 0) return;
   var prev = _browseStack.pop();
+  _browseLevel = prev.level;
   browseFolder(prev.id, prev.name);
 }
 
@@ -1538,7 +1540,6 @@ function selectBrowseFolder() {
   var clients = getCrmClients();
   var found = clients.find(function(c) { return c.folderId === folderId; });
   if (found) {
-    // Загружаем данные клиента
     document.getElementById('company').value = found.company || '';
     document.getElementById('contact_name').value = found.contact_name || '';
     document.getElementById('phone').value = found.phone || '';
@@ -1554,7 +1555,6 @@ function selectBrowseFolder() {
     });
     setActiveClient(found);
   } else {
-    // Сохраняем только папку
     setActiveClient({folderId: folderId, folderLink: folderLink, company: folderName});
   }
   closeClientMenu();
