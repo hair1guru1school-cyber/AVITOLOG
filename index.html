@@ -46,8 +46,14 @@ textarea{resize:vertical;min-height:50px;line-height:1.5}
 .badge.ok{border-color:var(--accent);color:var(--accent)}
 .badge.err{border-color:#ff5050;color:#ff5050}
 .badge .x{opacity:0.5;margin-left:2px;cursor:pointer}.badge .x:hover{opacity:1}
-.client-menu{position:absolute;left:0;top:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;min-width:240px;max-height:200px;overflow-y:auto;z-index:50;display:none;box-shadow:0 8px 24px rgba(0,0,0,0.4)}
-.client-menu.show{display:block}
+.client-menu{position:absolute;left:0;top:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;min-width:280px;max-height:340px;overflow:hidden;z-index:50;display:none;box-shadow:0 8px 24px rgba(0,0,0,0.4);flex-direction:column}
+.client-menu.show{display:flex}
+.cm-head{display:flex;align-items:center;justify-content:space-between;padding:8px 10px;border-bottom:1px solid var(--border);font-size:11px;font-weight:700;color:var(--text)}
+.cm-head .cm-close{cursor:pointer;color:var(--muted);font-size:14px}
+.cm-head .cm-close:hover{color:var(--text)}
+.cm-path{padding:4px 10px;font-size:10px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;border-bottom:1px solid var(--border)}
+.cm-list{flex:1;overflow-y:auto}
+.cm-foot{padding:8px 10px;border-top:1px solid var(--border)}
 .client-item{padding:8px 12px;cursor:pointer;font-size:11px;border-bottom:1px solid var(--border);transition:background 0.15s}
 .client-item:hover{background:rgba(0,217,126,0.08)}
 .client-item:last-child{border-bottom:none}
@@ -165,8 +171,8 @@ textarea{resize:vertical;min-height:50px;line-height:1.5}
       <input type="checkbox" id="crmToggle" checked>
       &#128193; CRM
     </label>
-    <button type="button" id="authBtn" onclick="startAuth()" class="badge" title="Авторизация Drive">🔑 Drive</button>
-    <span id="driveBadge" class="badge err">✖ Drive</span>
+    <button type="button" id="authBtn" onclick="startAuth()" style="display:none"></button>
+    <span id="driveBadge" class="badge err" onclick="if(!_driveToken)startAuth()" style="cursor:pointer">✖ Drive</span>
     <span id="clientBadge" class="badge" style="display:none" onclick="openClientFolder()">
       💾 <span id="clientBadgeName">Сохранено</span>
       <span class="x" onclick="event.stopPropagation();clearActiveClient()">✖</span>
@@ -1438,25 +1444,108 @@ function clearActiveClient() {
   document.querySelectorAll('.kp-tag').forEach(function(b) { b.classList.remove('on'); });
 }
 
+var _browseStack = []; // [{id, name}]
+var _browseCurrentId = null;
+
 function toggleClientMenu() {
   var menu = document.getElementById('clientMenu');
-  menu.classList.toggle('show');
-  if (menu.classList.contains('show')) renderClientMenu();
-}
-
-function renderClientMenu() {
-  var menu = document.getElementById('clientMenu');
-  var clients = getCrmClients();
-  if (clients.length === 0) {
-    menu.innerHTML = '<div style="padding:12px;color:var(--muted);font-size:11px">Нет сохранённых клиентов</div>';
+  if (menu.classList.contains('show')) {
+    menu.classList.remove('show');
     return;
   }
-  menu.innerHTML = clients.map(function(c, i) {
-    return '<div class="client-item" onclick="loadClient(' + i + ')">' +
-      '<div style="font-weight:700">' + (c.company || '—') + '</div>' +
-      '<div style="color:var(--muted)">' + (c.phone || '') + ' · ' + (c.createdAt || '') + '</div>' +
+  menu.classList.add('show');
+  _browseStack = [];
+  _browseCurrentId = CRM_ROOT;
+  browseFolder(CRM_ROOT, 'CRM');
+}
+
+function closeClientMenu() {
+  document.getElementById('clientMenu').classList.remove('show');
+}
+
+async function browseFolder(folderId, folderName) {
+  _browseCurrentId = folderId;
+  if (_browseStack.length === 0 || _browseStack[_browseStack.length - 1].id !== folderId) {
+    // Не добавляем если уже на вершине (назад)
+    if (_browseStack.length === 0 || _browseStack[_browseStack.length - 1].id !== folderId) {
+      // При первом вызове или при входе вперёд
+    }
+  }
+  var menu = document.getElementById('clientMenu');
+  var pathStr = _browseStack.map(function(s) { return s.name; }).join(' / ') + (folderName !== 'CRM' ? ' / ' + folderName : '');
+  
+  menu.innerHTML = '<div class="cm-head"><span>📁 ' + folderName + '</span><span class="cm-close" onclick="closeClientMenu()">✕</span></div>' +
+    '<div class="cm-path">' + (pathStr || 'CRM') + '</div>' +
+    '<div class="cm-list"><div style="padding:16px;text-align:center;color:var(--muted);font-size:11px">Загрузка...</div></div>' +
+    '<div class="cm-foot">' +
+    (_browseStack.length > 0 ? '<button type="button" class="client-item" style="width:100%;text-align:center;border:none;padding:6px;font-weight:700;color:var(--muted)" onclick="browseBack()">← Назад</button>' : '') +
+    (folderId !== CRM_ROOT ? '<button type="button" class="client-item" style="width:100%;text-align:center;border:none;padding:6px;font-weight:700;color:var(--accent)" onclick="selectBrowseFolder()">✓ Выбрать эту папку</button>' : '') +
     '</div>';
-  }).join('');
+
+  try {
+    var token = _driveToken;
+    if (!token) throw new Error('Drive не подключён');
+    var q = encodeURIComponent("'" + folderId + "' in parents and trashed=false");
+    var resp = await fetch('https://www.googleapis.com/drive/v3/files?q=' + q + '&fields=files(id,name,mimeType)&orderBy=name&pageSize=50', {
+      headers: {'Authorization': 'Bearer ' + token}
+    });
+    var data = await resp.json();
+    var files = (data.files || []).filter(function(f) { return f.mimeType === 'application/vnd.google-apps.folder'; });
+    var listEl = menu.querySelector('.cm-list');
+    if (files.length === 0) {
+      listEl.innerHTML = '<div style="padding:12px;color:var(--muted);font-size:11px;text-align:center">Пустая папка</div>';
+    } else {
+      listEl.innerHTML = files.map(function(f) {
+        return '<div class="client-item" onclick="enterFolder(\'' + f.id + '\',\'' + f.name.replace(/'/g, "\\'") + '\')">' +
+          '<span style="opacity:0.5">📁</span> ' + f.name +
+        '</div>';
+      }).join('');
+    }
+  } catch(e) {
+    menu.querySelector('.cm-list').innerHTML = '<div style="padding:12px;color:#ff8080;font-size:11px">' + e.message + '</div>';
+  }
+}
+
+function enterFolder(id, name) {
+  _browseStack.push({id: _browseCurrentId, name: document.querySelector('.cm-head span:first-child').textContent.replace('📁 ', '')});
+  browseFolder(id, name);
+}
+
+function browseBack() {
+  if (_browseStack.length === 0) return;
+  var prev = _browseStack.pop();
+  browseFolder(prev.id, prev.name);
+}
+
+function selectBrowseFolder() {
+  var folderId = _browseCurrentId;
+  var folderName = document.querySelector('.cm-head span:first-child').textContent.replace('📁 ', '');
+  var folderLink = 'https://drive.google.com/drive/folders/' + folderId;
+  
+  // Проверяем localStorage на этого клиента
+  var clients = getCrmClients();
+  var found = clients.find(function(c) { return c.folderId === folderId; });
+  if (found) {
+    // Загружаем данные клиента
+    document.getElementById('company').value = found.company || '';
+    document.getElementById('contact_name').value = found.contact_name || '';
+    document.getElementById('phone').value = found.phone || '';
+    document.getElementById('tg').value = found.telegram || '';
+    document.getElementById('avito_account').value = found.avito_account || '';
+    document.getElementById('category').value = found.category || '';
+    document.getElementById('city').value = found.city || '';
+    document.getElementById('notes').value = found.notes || '';
+    document.getElementById('kp_count').value = found.kp_count || '';
+    document.getElementById('client_type').value = found.client_type || '';
+    document.querySelectorAll('.ctype-btn').forEach(function(b) {
+      b.classList.toggle('on', b.textContent.trim() === (found.client_type || ''));
+    });
+    setActiveClient(found);
+  } else {
+    // Сохраняем только папку
+    setActiveClient({folderId: folderId, folderLink: folderLink, company: folderName});
+  }
+  closeClientMenu();
 }
 
 function loadClient(idx) {
@@ -1618,7 +1707,9 @@ document.addEventListener('DOMContentLoaded', function() {
   // Закрытие меню клиентов при клике вне
   document.addEventListener('click', function(e) {
     var menu = document.getElementById('clientMenu');
-    if (menu && !e.target.closest('.crm-row')) menu.classList.remove('show');
+    if (menu && menu.classList.contains('show') && !e.target.closest('.client-menu') && !e.target.closest('.crm-row')) {
+      menu.classList.remove('show');
+    }
   });
 });
 
