@@ -14,7 +14,7 @@ body{font-family:'Golos Text',sans-serif;background:var(--bg);color:var(--text);
 #pgfill{height:100%;width:0%;background:linear-gradient(90deg,var(--accent),var(--accent3));box-shadow:0 0 8px var(--accent);transition:width 0.4s ease}
 header{background:var(--surface);border-bottom:1px solid var(--border);padding:0 22px;display:flex;align-items:center;height:52px;position:sticky;top:3px;z-index:100;gap:12px}
 .logo{font-family:'Bebas Neue',sans-serif;font-size:28px;letter-spacing:5px;color:var(--accent)}
-.layout{display:grid;grid-template-columns:280px 1fr 155px;height:calc(100vh - 55px)}
+.layout{display:grid;grid-template-columns:340px 1fr 155px;height:calc(100vh - 55px)}
 .sidebar{background:var(--surface);border-right:1px solid var(--border);padding:14px;overflow-y:auto;display:flex;flex-direction:column}
 .side-tabs{display:flex;flex-direction:column;gap:5px;margin-bottom:14px;padding-bottom:14px;border-bottom:1px solid var(--border)}
 .side-tab{display:flex;flex-direction:column;background:var(--surface2);border:1px solid var(--border);color:var(--muted);border-radius:10px;cursor:pointer;font-family:'Bebas Neue',sans-serif;transition:all 0.18s;width:100%;overflow:hidden;padding:0}
@@ -37,9 +37,26 @@ input[type=search]{-webkit-appearance:none;appearance:none}
 input[type=search]::-webkit-search-cancel-button{display:none}
 textarea{resize:vertical;min-height:50px;line-height:1.5}
 .row2{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:8px}
+.row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:8px}
+.row3 .fg{margin-bottom:0}
 .row2 .fg{margin-bottom:0}
-.crm-row{display:flex;align-items:center;gap:7px;margin-bottom:4px}
+.crm-row{display:flex;align-items:center;gap:7px;margin-bottom:4px;flex-wrap:wrap}
 .crm-lbl{display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12px;color:var(--muted);font-weight:600;user-select:none}
+.badge{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:5px;font-size:10px;font-weight:700;cursor:pointer;border:1px solid var(--border);background:transparent;color:var(--muted);transition:all 0.2s}
+.badge.ok{border-color:var(--accent);color:var(--accent)}
+.badge.err{border-color:#ff5050;color:#ff5050}
+.badge .x{opacity:0.5;margin-left:2px;cursor:pointer}.badge .x:hover{opacity:1}
+.client-menu{position:absolute;left:0;top:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;min-width:240px;max-height:200px;overflow-y:auto;z-index:50;display:none;box-shadow:0 8px 24px rgba(0,0,0,0.4)}
+.client-menu.show{display:block}
+.client-item{padding:8px 12px;cursor:pointer;font-size:11px;border-bottom:1px solid var(--border);transition:background 0.15s}
+.client-item:hover{background:rgba(0,217,126,0.08)}
+.client-item:last-child{border-bottom:none}
+.btn-save{width:100%;background:transparent;border:1px solid var(--accent);color:var(--accent);padding:9px;border-radius:9px;font-family:'Golos Text',sans-serif;font-size:13px;font-weight:700;cursor:pointer;margin-top:6px;margin-bottom:4px;transition:all 0.2s}
+.btn-save:hover{background:rgba(0,217,126,0.1)}
+.btn-save:disabled{opacity:0.4;cursor:not-allowed}
+.ctype-wrap{display:flex;gap:0;border:1px solid var(--border);border-radius:7px;overflow:hidden}
+.ctype-btn{flex:1;padding:5px 0;background:transparent;border:none;color:var(--muted);font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;transition:all 0.2s}
+.ctype-btn.on{background:var(--accent);color:#0c0c0e}
 .crm-lbl input{width:14px;height:14px;cursor:pointer;accent-color:var(--accent)}
 .crm-st{font-size:11px;margin-left:2px;min-height:14px;margin-bottom:8px}
 .crm-st.ok{color:var(--accent)}
@@ -143,28 +160,43 @@ textarea{resize:vertical;min-height:50px;line-height:1.5}
   
 
   <div class="sec">&#129309; Клиент</div>
-  <div class="crm-row">
+  <div class="crm-row" style="position:relative">
     <label class="crm-lbl">
       <input type="checkbox" id="crmToggle" checked>
       &#128193; CRM
     </label>
-    <button type="button" id="authBtn" onclick="startAuth()" style="background:transparent;border:1px solid var(--border);color:var(--muted);padding:3px 8px;border-radius:5px;cursor:pointer;font-size:11px">🔑 Drive</button>
+    <button type="button" id="authBtn" onclick="startAuth()" class="badge" title="Авторизация Drive">🔑 Drive</button>
+    <span id="driveBadge" class="badge err">✖ Drive</span>
+    <span id="clientBadge" class="badge" style="display:none" onclick="openClientFolder()">
+      💾 <span id="clientBadgeName">Сохранено</span>
+      <span class="x" onclick="event.stopPropagation();clearActiveClient()">✖</span>
+      <span class="x" onclick="event.stopPropagation();toggleClientMenu()" style="font-size:13px">⋯</span>
+    </span>
+    <div class="client-menu" id="clientMenu"></div>
   </div>
   <div class="crm-st" id="crmSt"></div>
 
-  <div class="row2">
+  <div class="row3">
     <div class="fg"><label>&#127970; Компания</label><input type="search" id="company" autocomplete="new-password" placeholder="СтройДом, ИП..."></div>
     <div class="fg"><label>&#128100; Имя</label><input type="search" id="contact_name" autocomplete="new-password" placeholder="Иван..."></div>
-  </div>
-  <div class="row2">
-    <div class="fg"><label>&#9992; Телеграм</label><input type="search" id="tg" autocomplete="new-password" placeholder="@username"></div>
     <div class="fg"><label>&#128222; Телефон</label><input type="search" id="phone" autocomplete="new-password" placeholder="+7 999..."></div>
+  </div>
+  <div class="row3">
+    <div class="fg"><label>&#9992; Телеграм</label><input type="search" id="tg" autocomplete="new-password" placeholder="@username"></div>
+    <div class="fg"><label>📦 Avito</label><input type="search" id="avito_account" autocomplete="new-password" placeholder="avito.ru/..."></div>
+    <div class="fg"><label>👤 Тип</label>
+      <div class="ctype-wrap">
+        <button type="button" class="ctype-btn" onclick="setClientType(this,'ИП')">ИП</button>
+        <button type="button" class="ctype-btn" onclick="setClientType(this,'ООО')">ООО</button>
+        <button type="button" class="ctype-btn" onclick="setClientType(this,'Физ')">Физ</button>
+      </div>
+      <input type="hidden" id="client_type" value="">
+    </div>
   </div>
 
   <div class="fg"><label>&#127919; Ниша</label><input type="text" id="category" placeholder="Пиломатериалы, сэндвич-панели..."></div>
   <div class="fg"><label>&#128205; ГЕО</label><textarea id="city" placeholder="Крым, Симферополь, Севастополь..."></textarea></div>
-  <div class="fg"><label>&#9889; УТП / преимущества</label><textarea id="usp" placeholder="Собственное производство, ГОСТ..."></textarea></div>
-  <div class="fg"><label>&#128172; Доп. инфо <span style="color:var(--muted2);font-weight:400">(необяз.)</span></label><textarea id="extra" placeholder="Доп. информация..." style="min-height:42px"></textarea></div>
+  <div class="fg"><label>&#9889; УТП / доп. инфо</label><textarea id="notes" placeholder="Собственное производство, ГОСТ, доп. информация..."></textarea></div>
 
   <div class="fg">
     <label>&#128203; Объявлений по КП</label>
@@ -199,6 +231,7 @@ textarea{resize:vertical;min-height:50px;line-height:1.5}
     </div>
   </div>
   <button type="button" class="btn-add" onclick="addPos()">+ Добавить позицию</button>
+  <button type="button" class="btn-save" id="saveClientBtn" onclick="saveClient()">💾 Сохранить</button>
   <button type="button" class="btn-gen" id="genBtn" onclick="generate()"><span>&#9889;</span><span>СГЕНЕРИРОВАТЬ</span></button>
   <button type="button" class="btn-refresh" id="refreshBtn" onclick="refreshDriveDoc()" style="display:none">🔄 Обновить в Drive</button>
 </div>
@@ -407,8 +440,9 @@ function generate() {
     phone:     v('phone'),
     category:  v('category'),
     city:      v('city'),
-    usp:       v('usp'),
-    extra:     v('extra'),
+    notes:     v('notes'),
+    avito_account: v('avito_account'),
+    client_type: v('client_type'),
     kp:        v('kp_count'),
     positions: getPos()
   };
@@ -450,8 +484,7 @@ function clientInfo() {
   return '- Клиент: ' + (client||'не указан') +
     '\n- Ниша: ' + (d.category||'не указана') +
     '\n- ГЕО: ' + (d.city||'не указан') +
-    '\n- УТП: ' + (d.usp||'не указано') +
-    '\n- Доп. инфо: ' + (d.extra||'нет') +
+    '\n- УТП/инфо: ' + (d.notes||'не указано') +
     '\n- Объявлений по КП: ' + (d.kp||'не указано') +
     '\n- Позиции: ' + (d.positions.join(', ')||'не указаны');
 }
@@ -752,7 +785,7 @@ function dlDoc() {
 // ═══════════════════════════════════════════
 var SA_EMAIL = "avitolog-crm@avito-489218.iam.gserviceaccount.com";
 var OAUTH_CLIENT_ID = '98192715547-1a7jrfa6a53e1u7k5lojss8ji12q4432.apps.googleusercontent.com';
-var OAUTH_SCOPE = 'https://www.googleapis.com/auth/drive';
+var OAUTH_SCOPE = 'https://www.googleapis.com/auth/drive https://www.googleapis.com/auth/spreadsheets';
 var _driveToken = null;
 
 // При загрузке ловим токен из URL (после редиректа от Google)
@@ -766,8 +799,10 @@ var _driveToken = null;
       document.addEventListener('DOMContentLoaded', function() {
         var btn = document.getElementById('authBtn');
         if (btn) { btn.textContent = '✓ Drive'; btn.style.borderColor = '#00d97e'; btn.style.color = '#00d97e'; }
+        var db = document.getElementById('driveBadge');
+        if (db) { db.className = 'badge ok'; db.textContent = '✓ Drive'; }
         var st = document.getElementById('crmSt');
-        if (st) { st.className = 'crm-st ok'; st.textContent = '✓ Google Drive подключён'; }
+        if (st) { st.className = 'crm-st'; st.textContent = ''; }
       });
     }
   }
@@ -969,8 +1004,16 @@ async function saveToDrive(html, contactsTxt, docHtml) {
     var cat = detectCRMCategory(d.category);
     console.log('CRM категория:', cat.name, 'ID:', cat.id);
 
-    var clientId = await driveCreateClientFolder(folderName, cat.id);
-    console.log('Папка клиента:', clientId);
+    // Используем папку активного клиента если есть
+    var ac = _activeClient || getActiveClient();
+    var clientId;
+    if (ac && ac.folderId) {
+      clientId = ac.folderId;
+      console.log('Используем папку активного клиента:', clientId);
+    } else {
+      clientId = await driveCreateClientFolder(folderName, cat.id);
+      console.log('Создана новая папка:', clientId);
+    }
 
     // contacts.txt — только при первой генерации (проверяем есть ли уже)
     var hasContacts = d.company || d.name || d.tg || d.phone;
@@ -1041,7 +1084,9 @@ function triggerCRM(html) {
   if (d.category) lines.push('Ниша:      ' + d.category);
   if (d.city)     lines.push('ГЕО:       ' + d.city);
   if (d.kp)       lines.push('КП:        ' + d.kp + ' объявлений');
-  if (d.usp)      lines.push('УТП:       ' + d.usp);
+  if (d.notes)    lines.push('УТП/инфо:  ' + d.notes);
+  if (d.avito_account) lines.push('Avito:     ' + d.avito_account);
+  if (d.client_type)   lines.push('Тип:       ' + d.client_type);
   lines.push('');
   lines.push('Дата:      ' + dateStr);
   lines.push('===============================');
@@ -1112,7 +1157,7 @@ function saveNorm(n) {
   set('company', n.company);
   set('category', n.category);
   set('city', n.city);
-  set('usp', n.usp);
+  set('notes', n.usp || n.notes);
 }
 
 // ── API ──
@@ -1159,7 +1204,7 @@ function fixJSON(s) {
 }
 
 // ── AUTOCOMPLETE ──
-var ACF = ['category','city','usp','extra'];
+var ACF = ['category','city','notes'];
 var ACP = 'avitolog_ac_';
 
 function acLoad(f) {
@@ -1336,11 +1381,193 @@ function updateKPValue() {
   document.getElementById('kp_count').value = vals.join(', ');
 }
 
+// ── CLIENT TYPE ──
+function setClientType(btn, val) {
+  document.querySelectorAll('.ctype-btn').forEach(function(b) { b.classList.remove('on'); });
+  btn.classList.add('on');
+  document.getElementById('client_type').value = val;
+}
+
+// ── CRM CLIENT STORAGE ──
+var SHEETS_ID = '1gUV4mWX4ob0NkjJTpP15N9dBKfIOO2NdJQDKXCooVA8';
+var _activeClient = null;
+
+function getCrmClients() {
+  try { return JSON.parse(localStorage.getItem('avitolog_clients') || '[]'); } catch(e) { return []; }
+}
+function saveCrmClients(list) {
+  localStorage.setItem('avitolog_clients', JSON.stringify(list));
+}
+function getActiveClient() {
+  try { return JSON.parse(localStorage.getItem('avitolog_active_client')); } catch(e) { return null; }
+}
+function setActiveClient(client) {
+  _activeClient = client;
+  localStorage.setItem('avitolog_active_client', JSON.stringify(client));
+  updateClientBadge();
+}
+
+function updateClientBadge() {
+  var badge = document.getElementById('clientBadge');
+  var ac = _activeClient || getActiveClient();
+  if (ac && ac.folderId) {
+    badge.style.display = 'inline-flex';
+    document.getElementById('clientBadgeName').textContent = ac.company || 'Клиент';
+    badge.className = 'badge ok';
+  } else {
+    badge.style.display = 'none';
+  }
+}
+
+function openClientFolder() {
+  var ac = _activeClient || getActiveClient();
+  if (ac && ac.folderLink) window.open(ac.folderLink, '_blank');
+}
+
+function clearActiveClient() {
+  _activeClient = null;
+  localStorage.removeItem('avitolog_active_client');
+  updateClientBadge();
+  // Очищаем форму
+  ['company','contact_name','phone','tg','avito_account','category','city','notes','kp_count'].forEach(function(id) {
+    var el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+  document.getElementById('client_type').value = '';
+  document.querySelectorAll('.ctype-btn').forEach(function(b) { b.classList.remove('on'); });
+  document.querySelectorAll('.kp-tag').forEach(function(b) { b.classList.remove('on'); });
+}
+
+function toggleClientMenu() {
+  var menu = document.getElementById('clientMenu');
+  menu.classList.toggle('show');
+  if (menu.classList.contains('show')) renderClientMenu();
+}
+
+function renderClientMenu() {
+  var menu = document.getElementById('clientMenu');
+  var clients = getCrmClients();
+  if (clients.length === 0) {
+    menu.innerHTML = '<div style="padding:12px;color:var(--muted);font-size:11px">Нет сохранённых клиентов</div>';
+    return;
+  }
+  menu.innerHTML = clients.map(function(c, i) {
+    return '<div class="client-item" onclick="loadClient(' + i + ')">' +
+      '<div style="font-weight:700">' + (c.company || '—') + '</div>' +
+      '<div style="color:var(--muted)">' + (c.phone || '') + ' · ' + (c.createdAt || '') + '</div>' +
+    '</div>';
+  }).join('');
+}
+
+function loadClient(idx) {
+  var c;
+  if (idx === -1) {
+    c = _activeClient;
+  } else {
+    var clients = getCrmClients();
+    c = clients[idx];
+  }
+  if (!c) return;
+  document.getElementById('company').value = c.company || '';
+  document.getElementById('contact_name').value = c.contact_name || '';
+  document.getElementById('phone').value = c.phone || '';
+  document.getElementById('tg').value = c.telegram || '';
+  document.getElementById('avito_account').value = c.avito_account || '';
+  document.getElementById('category').value = c.category || '';
+  document.getElementById('city').value = c.city || '';
+  document.getElementById('notes').value = c.notes || '';
+  document.getElementById('kp_count').value = c.kp_count || '';
+  document.getElementById('client_type').value = c.client_type || '';
+  document.querySelectorAll('.ctype-btn').forEach(function(b) {
+    b.classList.toggle('on', b.textContent.trim() === (c.client_type || ''));
+  });
+  if (idx !== -1) setActiveClient(c);
+  document.getElementById('clientMenu').classList.remove('show');
+}
+
+async function saveClient() {
+  var btn = document.getElementById('saveClientBtn');
+  btn.disabled = true;
+  btn.textContent = '💾 Сохраняю...';
+  try {
+    if (!_driveToken) throw new Error('Нажмите 🔑 Drive');
+    var d = {
+      company: v('company'), contact_name: v('contact_name'), phone: v('phone'),
+      telegram: v('tg'), avito_account: v('avito_account'), client_type: v('client_type'),
+      category: v('category'), city: v('city'), notes: v('notes'),
+      positions: getPos().join(', '), kp_count: v('kp_count'),
+      createdAt: new Date().toLocaleDateString('ru')
+    };
+    var clientName = [d.company, d.contact_name].filter(Boolean).join(' - ') || 'Клиент';
+    var folderName = clientName + ' (' + d.createdAt + ')';
+    var cat = detectCRMCategory(d.category);
+    
+    // Если активный клиент — используем его папку
+    var ac = _activeClient || getActiveClient();
+    var folderId;
+    if (ac && ac.folderId) {
+      folderId = ac.folderId;
+    } else {
+      folderId = await driveCreateClientFolder(folderName, cat.id);
+    }
+    var folderLink = 'https://drive.google.com/drive/folders/' + folderId;
+    
+    // contacts.txt
+    var lines = ['=== ' + clientName + ' ==='];
+    if (d.company) lines.push('Компания: ' + d.company);
+    if (d.contact_name) lines.push('Имя: ' + d.contact_name);
+    if (d.phone) lines.push('Телефон: ' + d.phone);
+    if (d.telegram) lines.push('Телеграм: ' + d.telegram);
+    if (d.avito_account) lines.push('Avito: ' + d.avito_account);
+    if (d.client_type) lines.push('Тип: ' + d.client_type);
+    if (d.category) lines.push('Ниша: ' + d.category);
+    if (d.city) lines.push('Гео: ' + d.city);
+    if (d.notes) lines.push('УТП/инфо: ' + d.notes);
+    if (d.kp_count) lines.push('КП: ' + d.kp_count);
+    lines.push('Дата: ' + d.createdAt);
+    await driveUploadText('contacts.txt', lines.join('\n'), 'text/plain', folderId);
+    
+    // Сохраняем в localStorage
+    d.folderId = folderId;
+    d.folderLink = folderLink;
+    var clients = getCrmClients();
+    var existing = clients.findIndex(function(c) { return c.company === d.company && c.phone === d.phone; });
+    if (existing >= 0) { clients[existing] = d; } else { clients.unshift(d); }
+    saveCrmClients(clients);
+    setActiveClient(d);
+    
+    // Записываем в Sheets
+    try { await writeToSheets(d); } catch(e) { console.warn('Sheets error:', e); }
+    
+    var st = document.getElementById('crmSt');
+    st.className = 'crm-st ok';
+    st.innerHTML = '✓ <a href="' + folderLink + '" target="_blank" style="color:#4fc;text-decoration:underline">' + cat.name + ' →</a>';
+  } catch(e) {
+    var st = document.getElementById('crmSt');
+    st.className = 'crm-st err';
+    st.textContent = '✗ ' + (e.message || String(e));
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '💾 Сохранить';
+  }
+}
+
+async function writeToSheets(d) {
+  var token = _driveToken;
+  if (!token) return;
+  var row = [d.createdAt, d.folderId, d.folderLink, d.company, d.contact_name, d.phone, d.telegram, d.avito_account, d.client_type, d.category, d.city, d.notes, d.positions, d.kp_count, 'saved'];
+  await fetch('https://sheets.googleapis.com/v4/spreadsheets/' + SHEETS_ID + '/values/Clients!A:O:append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS', {
+    method: 'POST',
+    headers: {'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json'},
+    body: JSON.stringify({values: [row]})
+  });
+}
+
 // ── TEST FILL ──
 function fillTest() {
   var tests = [
     {company:'ТестСтрой',name:'Иван',tg:'@teststroy',phone:'+7 999 111 22 33',category:'Пиломатериалы',city:'Москва, Подольск',usp:'Собственное производство, ГОСТ',extra:'',kp:'100',pos:['Доска обрезная 50х100','Брус 150х150']},
-    {company:'МебельПро',name:'Алексей',tg:'@mebelpro',phone:'+7 900 222 33 44',category:'Кухни на заказ',city:'Санкт-Петербург',usp:'Замер бесплатно, рассрочка 0%',extra:'Работаем с 2015',kp:'250',pos:['Кухня модульная','Шкаф-купе']},
+    {company:'МебельПро',name:'Алексей',tg:'@mebelpro',phone:'+7 900 222 33 44',category:'Кухни на заказ',city:'Санкт-Петербург',usp:'Замер бесплатно, рассрочка 0%, работаем с 2015',extra:'',kp:'250',pos:['Кухня модульная','Шкаф-купе']},
     {company:'АвтоДеталь',name:'Сергей',tg:'@avtodet',phone:'+7 911 333 44 55',category:'Автозапчасти',city:'Краснодар, Сочи',usp:'Оригинал + аналоги, доставка 1 день',extra:'',kp:'500',pos:['Тормозные колодки','Масляный фильтр','Свечи зажигания']},
   ];
   var t = tests[Math.floor(Math.random() * tests.length)];
@@ -1350,8 +1577,7 @@ function fillTest() {
   document.getElementById('phone').value = t.phone;
   document.getElementById('category').value = t.category;
   document.getElementById('city').value = t.city;
-  document.getElementById('usp').value = t.usp;
-  document.getElementById('extra').value = t.extra;
+  document.getElementById('notes').value = t.usp + (t.extra ? ', ' + t.extra : '');
   document.querySelectorAll('.kp-tag').forEach(function(b) { b.classList.remove('on'); });
   var kpBtn = document.querySelector('.kp-tag[data-kp="'+t.kp+'"]');
   if (kpBtn) { kpBtn.classList.add('on'); }
@@ -1385,6 +1611,15 @@ document.addEventListener('DOMContentLoaded', function() {
   initKP();
   initAC();
   initSecBar();
+  // Восстанавливаем активного клиента
+  _activeClient = getActiveClient();
+  updateClientBadge();
+  if (_activeClient) loadClient(-1); // -1 = load from _activeClient
+  // Закрытие меню клиентов при клике вне
+  document.addEventListener('click', function(e) {
+    var menu = document.getElementById('clientMenu');
+    if (menu && !e.target.closest('.crm-row')) menu.classList.remove('show');
+  });
 });
 
 // chatInp enter
