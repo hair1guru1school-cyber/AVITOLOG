@@ -1433,7 +1433,7 @@ function toggleClientType(btn, val) {
 
 // ── CRM CLIENT STORAGE ──
 var SHEETS_ID = '1gUV4mWX4ob0NkjJTpP15N9dBKfIOO2NdJQDKXCooVA8';
-var SHEETS_NAME = 'CRM Base Cloud';
+var SHEETS_NAME = 'Лист1';
 var _activeClient = null;
 
 function getCrmClients() {
@@ -1655,9 +1655,16 @@ async function saveClient() {
     // Сохраняем в localStorage
     d.folderId = folderId;
     d.folderLink = folderLink;
+    d.folder_name = folderName;
+    d.client_id = d.client_id || String(Date.now());
     var clients = getCrmClients();
     var existing = clients.findIndex(function(c) { return c.company === d.company && c.phone === d.phone; });
-    if (existing >= 0) { clients[existing] = d; } else { clients.unshift(d); }
+    if (existing >= 0) {
+      if (clients[existing].client_id) d.client_id = clients[existing].client_id;
+      clients[existing] = d;
+    } else {
+      clients.unshift(d);
+    }
     saveCrmClients(clients);
     setActiveClient(d);
     
@@ -1680,8 +1687,18 @@ async function saveClient() {
 async function writeToSheets(d) {
   var token = _driveToken;
   if (!token) return;
-  var row = [d.createdAt, d.folderId, d.folderLink, d.company, d.contact_name, d.phone, d.telegram, d.avito_account, d.client_type, d.category, d.city, d.notes, d.positions, d.kp_count, 'saved'];
-  var range = (typeof SHEETS_NAME !== 'undefined' ? SHEETS_NAME : 'Clients') + '!A:O';
+  var row = [
+    d.client_id || String(Date.now()),
+    d.company || '',
+    d.contact_name || '',
+    d.telegram || '',
+    d.avito_account || '',
+    d.phone || '',
+    d.client_type || '',
+    d.folder_name || '',
+    d.folderLink || ''
+  ];
+  var range = (typeof SHEETS_NAME !== 'undefined' ? SHEETS_NAME : 'Лист1') + '!A:I';
   var url = 'https://sheets.googleapis.com/v4/spreadsheets/' + SHEETS_ID + '/values/' + encodeURIComponent(range) + ':append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS';
   var resp = await fetch(url, {
     method: 'POST',
