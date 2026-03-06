@@ -197,7 +197,7 @@ textarea{resize:vertical;min-height:50px;line-height:1.5}
     </span>
     <div class="client-menu" id="clientMenu"></div>
   </div>
-  <div id="crmSt" style="display:none"></div>
+  <div id="crmSt" class="crm-st" style="display:none;margin-top:4px"></div>
 
   <div class="row3">
     <div class="fg"><label>&#127970; Компания</label><input type="search" id="company" autocomplete="new-password" placeholder="СтройДом, ИП..."></div>
@@ -1668,17 +1668,24 @@ async function saveClient() {
     saveCrmClients(clients);
     setActiveClient(d);
     
-    // Записываем в Sheets
-    try { await writeToSheets(d); } catch(e) { console.warn('Sheets error:', e); }
-    
     var st = document.getElementById('crmSt');
-    st.className = 'crm-st ok';
-    st.innerHTML = '✓ <a href="' + folderLink + '" target="_blank" style="color:#4fc;text-decoration:underline">' + cat.name + ' →</a>';
+    st.style.display = 'block';
+    try {
+      await writeToSheets(d);
+      st.className = 'crm-st ok';
+      st.innerHTML = '✓ Таблица обновлена · <a href="' + folderLink + '" target="_blank" style="color:#4fc;text-decoration:underline">' + cat.name + ' →</a>';
+    } catch (sheetErr) {
+      st.className = 'crm-st err';
+      var errMsg = (sheetErr.message || String(sheetErr)).replace(/</g,'&lt;').replace(/"/g,'&quot;');
+      st.innerHTML = '✓ Папка: <a href="' + folderLink + '" target="_blank" style="color:#4fc">' + cat.name + ' →</a><br><span style="color:#ff8080">✗ Таблица: ' + errMsg + '</span>';
+    }
   } catch(e) {
     var st = document.getElementById('crmSt');
-    st.className = 'crm-st err';
-    st.textContent = '✗ ' + (e.message || String(e));
-  } finally {
+    if (st) {
+      st.style.display = 'block';
+      st.className = 'crm-st err';
+      st.textContent = '✗ ' + (e.message || String(e));
+    } finally {
     btn.disabled = false;
     btn.textContent = '💾 Сохранить';
   }
