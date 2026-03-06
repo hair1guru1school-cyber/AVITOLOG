@@ -1564,7 +1564,7 @@ async function browseFolder(folderId, folderName) {
     } else {
       listEl.innerHTML = folders.map(function(f) {
         var esc = function(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); };
-        return '<div class="client-item" data-folder-id="' + esc(f.id) + '" onclick="enterFolderFromItem(this)">' +
+        return '<div class="client-item" data-folder-id="' + esc(f.id) + '" data-folder-name="' + esc(f.name) + '">' +
           '<span>📁 ' + esc(f.name) + '</span>' +
           '<span class="chevron">›</span>' +
         '</div>';
@@ -1579,14 +1579,6 @@ function enterFolder(id, name) {
   _browseStack.push({id: _browseCurrentId, name: document.querySelector('.cm-head span:first-child').textContent.replace('📁 ', ''), level: _browseLevel});
   _browseLevel++;
   browseFolder(id, name);
-}
-
-function enterFolderFromItem(el) {
-  var id = el.getAttribute('data-folder-id');
-  if (!id) return;
-  var span = el.querySelector('span');
-  var name = span ? span.textContent.replace(/^📁\s*/, '').trim() : '';
-  enterFolder(id, name);
 }
 
 function browseBack() {
@@ -1820,6 +1812,19 @@ document.addEventListener('DOMContentLoaded', function() {
       menu.classList.remove('show');
     }
   });
+  // Клик по папке в CRM — в фазе capture, чтобы не перехватывалось и меню не закрывалось
+  var crmMenu = document.getElementById('clientMenu');
+  if (crmMenu) {
+    crmMenu.addEventListener('click', function(e) {
+      var item = e.target.closest('.client-item[data-folder-id]');
+      if (!item) return;
+      e.preventDefault();
+      e.stopPropagation();
+      var id = item.getAttribute('data-folder-id');
+      var name = item.getAttribute('data-folder-name') || '';
+      if (id) enterFolder(id, name);
+    }, true);
+  }
 });
 
 // chatInp enter
