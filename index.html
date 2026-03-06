@@ -152,6 +152,13 @@ textarea{resize:vertical;min-height:50px;line-height:1.5}
 .sec-btn{padding:4px 10px;border-radius:6px;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;font-size:11px;font-family:'Golos Text',sans-serif;font-weight:600;transition:all 0.2s;letter-spacing:0.3px}
 .sec-btn:hover{border-color:var(--accent);color:var(--accent)}
 .sec-btn.on{border-color:var(--accent);background:rgba(0,217,126,0.12);color:var(--accent)}
+.depth-bar.muted,.sec-bar.muted{opacity:0.45;pointer-events:none;transition:opacity 0.2s}
+.analytics-tumbler{display:flex;justify-content:center;gap:0;padding:8px 0 4px;flex-shrink:0}
+.analytics-tumbler button{border:1px solid var(--border);background:var(--surface2);color:var(--muted);padding:8px 18px;font-size:13px;font-weight:700;font-family:'Golos Text',sans-serif;cursor:pointer;transition:all 0.2s}
+.analytics-tumbler button:first-child{border-radius:10px 0 0 10px;border-right:none}
+.analytics-tumbler button:last-child{border-radius:0 10px 10px 0}
+.analytics-tumbler button.on{border-color:var(--accent);background:rgba(0,217,126,0.15);color:var(--accent)}
+.analytics-tumbler button:hover:not(.on){border-color:var(--accent);color:var(--accent)}
 .rtab:hover{background:rgba(255,255,255,0.05);color:var(--fg)}
 .rtab.active{background:linear-gradient(135deg,rgba(255,200,0,0.15),rgba(255,200,0,0.05));border-color:var(--accent);color:var(--accent)}
 .rtab-ico{font-size:24px;line-height:1}
@@ -281,6 +288,10 @@ textarea{resize:vertical;min-height:50px;line-height:1.5}
 </div>
 
 <div class="content-wrap">
+  <div class="analytics-tumbler" id="analyticsTumbler" style="display:none">
+    <button type="button" id="tumblerSasha" onclick="setAnalyticsMode('sasha')">🅰️ Саша</button>
+    <button type="button" id="tumblerFil" onclick="setAnalyticsMode('fil')">Фил</button>
+  </div>
   <div class="depth-bar" id="depthBar">
     <button type="button" class="depth-btn" data-depth="light" onclick="setDepth('light')">🪶</button>
     <button type="button" class="depth-btn on" data-depth="mid" onclick="setDepth('mid')">⚖️</button>
@@ -343,6 +354,7 @@ var HERO = 'data:image/png;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/4gHYSUNDX1BST0ZJTE
 
 var currentTab = 'analysis';
 var currentDepth = 'mid';
+var analyticsMode = null; // null = не выбран, 'sasha' | 'fil'
 var analysisSections = {demand:true, audience:true, pains:true, behavior:true, keywords:true, geo:true, summary:true};
 // Восстанавливаем из localStorage
 try {
@@ -386,6 +398,19 @@ function initSecBar() {
   });
 }
 
+function setAnalyticsMode(mode) {
+  analyticsMode = mode;
+  var sashaBtn = document.getElementById('tumblerSasha');
+  var filBtn = document.getElementById('tumblerFil');
+  if (sashaBtn) sashaBtn.classList.toggle('on', mode === 'sasha');
+  if (filBtn) filBtn.classList.toggle('on', mode === 'fil');
+  document.getElementById('depthBar').classList.remove('muted');
+  document.getElementById('secBar').classList.remove('muted');
+  if (currentTab === 'analysis' && docReady && currentHtml) {
+    renderDoc(currentHtml);
+  }
+}
+
 // ── TABS ──
 function switchTab(tab) {
   currentTab = tab;
@@ -399,6 +424,19 @@ function switchTab(tab) {
   btns[2].style.display = tab === 'analysis' ? '' : 'none'; // 🔨 только для аналитики
   // Section bar только для аналитики
   document.getElementById('secBar').style.display = tab === 'analysis' ? 'flex' : 'none';
+  var tumbler = document.getElementById('analyticsTumbler');
+  if (tumbler) tumbler.style.display = tab === 'analysis' ? 'flex' : 'none';
+  var depthBar = document.getElementById('depthBar');
+  var secBar = document.getElementById('secBar');
+  if (tab === 'analysis') {
+    if (!analyticsMode) {
+      depthBar.classList.add('muted');
+      secBar.classList.add('muted');
+    } else {
+      depthBar.classList.remove('muted');
+      secBar.classList.remove('muted');
+    }
+  }
   // Сброс на mid если max был выбран для не-аналитики
   if (tab !== 'analysis' && currentDepth === 'max') { setDepth('mid'); }
   if (!docReady) {
@@ -727,10 +765,20 @@ function renderDoc(html) {
 // Картинка в шапке документа аналитики (Google Drive)
 var ANALYTICS_HEADER_IMG = 'https://drive.google.com/uc?export=view&id=1tiqcQF4dtAPmFvBExDgdgFElfwxiazww';
 var ANALYTICS_HEADER_IMG_THUMB = 'https://drive.google.com/thumbnail?id=1tiqcQF4dtAPmFvBExDgdgFElfwxiazww&sz=w1000';
+var ANALYTICS_HEADER_IMG_SASHA = 'https://drive.google.com/uc?export=view&id=124TzG8HSARZj4xD4tlN8UwmHVi-GqGOC';
+var ANALYTICS_HEADER_IMG_SASHA_THUMB = 'https://drive.google.com/thumbnail?id=124TzG8HSARZj4xD4tlN8UwmHVi-GqGOC&sz=w1000';
+
+function getAnalyticsHeaderImg() {
+  return (analyticsMode === 'sasha') ? ANALYTICS_HEADER_IMG_SASHA : ANALYTICS_HEADER_IMG;
+}
+function getAnalyticsHeaderImgThumb() {
+  return (analyticsMode === 'sasha') ? ANALYTICS_HEADER_IMG_SASHA_THUMB : ANALYTICS_HEADER_IMG_THUMB;
+}
 
 function withImg(html) {
   if (!html || typeof html !== 'string') return html;
-  var img = '<div class="doc-header-img" style="text-align:center;margin:0 0 20px"><img src="' + ANALYTICS_HEADER_IMG_THUMB + '" alt="" style="max-width:100%;width:600px;height:auto;border-radius:9px;display:block;margin:0 auto"></div>';
+  var thumb = getAnalyticsHeaderImgThumb();
+  var img = '<div class="doc-header-img" style="text-align:center;margin:0 0 20px"><img src="' + thumb + '" alt="" style="max-width:100%;width:600px;height:auto;border-radius:9px;display:block;margin:0 auto"></div>';
   var h1End = html.indexOf('</h1>');
   if (h1End === -1) h1End = html.indexOf('</H1>');
   if (h1End >= 0) {
@@ -751,7 +799,8 @@ function withImg(html) {
 // Версия с URL картинкой для экспорта в Drive / Word (полная ширина в Документах)
 function withImgUrl(html) {
   if (!html || typeof html !== 'string') return html;
-  var imgBlock = '<div style="width:100%;margin:0 0 24px;clear:both"><img src="' + ANALYTICS_HEADER_IMG + '" alt="" style="width:17.22cm;height:11.55cm;max-width:100%;height:auto;display:block;margin:0 auto 30px;border-radius:8px"></div>';
+  var src = getAnalyticsHeaderImg();
+  var imgBlock = '<div style="width:100%;margin:0 0 24px;clear:both"><img src="' + src + '" alt="" style="width:17.22cm;height:11.55cm;max-width:100%;height:auto;display:block;margin:0 auto 30px;border-radius:8px"></div>';
   var h1End = html.indexOf('</h1>');
   if (h1End === -1) h1End = html.indexOf('</H1>');
   if (h1End >= 0) {
@@ -1828,6 +1877,7 @@ document.addEventListener('DOMContentLoaded', function() {
   initKP();
   initAC();
   initSecBar();
+  switchTab('analysis');
   // Восстанавливаем активного клиента
   _activeClient = getActiveClient();
   updateClientBadge();
