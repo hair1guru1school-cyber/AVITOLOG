@@ -730,7 +730,7 @@ function withImg(html) {
 // Версия с URL картинкой для экспорта в Drive / Word (полная ширина в Документах)
 function withImgUrl(html) {
   if (!html || typeof html !== 'string') return html;
-  var imgBlock = '<div style="width:100%;margin:0 0 24px;clear:both"><img src="' + ANALYTICS_HEADER_IMG + '" alt="" style="width:100%;max-width:100%;height:auto;display:block;margin:0 auto 30px;border-radius:8px"></div>';
+  var imgBlock = '<div style="width:100%;margin:0 0 24px;clear:both"><img src="' + ANALYTICS_HEADER_IMG + '" alt="" style="width:17.22cm;height:11.55cm;max-width:100%;height:auto;display:block;margin:0 auto 30px;border-radius:8px"></div>';
   var h1End = html.indexOf('</h1>');
   if (h1End === -1) h1End = html.indexOf('</H1>');
   if (h1End >= 0) {
@@ -816,8 +816,9 @@ function buildWordHtml(body) {
     'p{margin:0 0 8pt}' +
     'ul{margin:6pt 0 12pt;padding-left:20pt}li{margin:4pt 0}' +
     'strong{color:#111}' +
-    'img{width:100%;max-width:100%;height:auto;display:block;margin:20px auto 30px;border-radius:8px}' +
+    'img{width:17.22cm;height:auto;max-width:100%;display:block;margin:20px auto 30px;border-radius:8px}' +
     '.doc-header-img img,.doc-header-img{width:100%;max-width:100%;box-sizing:border-box}' +
+    '.doc-header-img img{width:17.22cm;max-width:100%;height:auto}' +
     '</style></head><body>' + body + '</body></html>';
 }
 
