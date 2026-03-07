@@ -305,8 +305,13 @@ body.projects-mode .sidebar{padding-top:calc(14px + var(--projects-sidebar-offse
 .projects-col-resizer:hover::after{background:var(--accent)}
 .projects-table .projects-scroll{display:flex;flex-shrink:0}
 .projects-table-row{display:flex;min-height:27px;border-bottom:1px solid var(--border)}
-.projects-table-row[data-id]{cursor:pointer}
+.projects-table-row[data-id]{cursor:grab}
 .projects-table-row[data-id].selected .projects-sticky{background:rgba(0,217,126,0.08)}
+.projects-table-row[data-id].dragging{opacity:0.45}
+.projects-table-row[data-id].drop-before .projects-sticky,
+.projects-table-row[data-id].drop-before .projects-scroll{box-shadow:inset 0 2px 0 var(--accent)}
+.projects-table-row[data-id].drop-after .projects-sticky,
+.projects-table-row[data-id].drop-after .projects-scroll{box-shadow:inset 0 -2px 0 var(--accent)}
 .projects-table-row .projects-sticky{display:flex;align-items:center}
 .projects-table-row .projects-scroll{flex:1;min-width:0}
 .proj-cell-editable{cursor:pointer;padding:2px 8px;border-radius:6px;min-height:27px;display:flex;flex-wrap:nowrap;align-items:center;gap:4px;transition:background 0.15s;white-space:nowrap;overflow:hidden}
@@ -354,6 +359,16 @@ body.projects-mode .sidebar{padding-top:calc(14px + var(--projects-sidebar-offse
 .proj-status-picker span{cursor:pointer;font-size:11px;padding:4px 8px;border-radius:4px;transition:background 0.12s}
 .proj-status-picker span:hover{background:rgba(0,217,126,0.1)}
 .proj-status-btn{font-family:inherit}
+.cal-launch-bar{height:100%;width:100%;background:linear-gradient(90deg,rgba(124,106,247,0.42),rgba(124,106,247,0.22))}
+.projects-cal-day.cal-launch-preview{background:rgba(124,106,247,0.22)}
+.projects-cal-day.cal-launch-preview-last{outline:1px solid #7c6af7;outline-offset:-1px}
+.projects-cal-menu{position:fixed;z-index:1200;background:var(--surface2);border:1px solid var(--border);border-radius:8px;min-width:170px;box-shadow:0 10px 28px rgba(0,0,0,0.45);padding:6px}
+.projects-cal-menu .menu-item{position:relative;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:6px 8px;border-radius:6px;font-size:12px;color:var(--text);cursor:pointer;white-space:nowrap}
+.projects-cal-menu .menu-item:hover{background:rgba(0,217,126,0.1)}
+.projects-cal-menu .menu-sub{display:none;position:absolute;left:100%;top:0;margin-left:6px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;min-width:110px;padding:6px;box-shadow:0 10px 28px rgba(0,0,0,0.45)}
+.projects-cal-menu .has-sub:hover .menu-sub{display:block}
+.projects-cal-menu .menu-sub .menu-item{padding:5px 8px}
+body.calendar-launch-mode .projects-cal-day[data-project-id]{cursor:crosshair}
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 </head>
@@ -676,6 +691,12 @@ var _selectedProjectId = null;
 var _expandedProjectIds = {};
 var _projectChildFocusKey = null;
 var PROJECTS_STICKY_WIDTH_KEY = 'avitolog_projects_sticky_width';
+var _dragProjectId = null;
+var _calendarCtx = { projectId: null, date: null };
+var _calendarPaintMode = null; // null | 'launch'
+var _calendarPainting = false;
+var _calendarPaintProjectId = null;
+var _calendarPaintDates = [];
 
 function loadProjectsData() {
   try {
@@ -989,6 +1010,226 @@ function selectProjectRow(projectId) {
     showClientQuestionState(p);
   }
 }
+function addDaysISO(dateStr, n) {
+  var d = new Date(dateStr + 'T00:00:00');
+  d.setDate(d.getDate() + n);
+  return d.toISOString().slice(0,10);
+}
+function hideProjectsCalMenu() {
+  var m = document.getElementById('projectsCalMenu');
+  if (m) m.remove();
+}
+function showProjectsCalMenu(x, y, projectId, dateStr) {
+  hideProjectsCalMenu();
+  _calendarCtx.projectId = projectId;
+  _calendarCtx.date = dateStr;
+  var menu = document.createElement('div');
+  menu.id = 'projectsCalMenu';
+  menu.className = 'projects-cal-menu';
+  menu.innerHTML =
+    '<div class="menu-item has-sub" data-action="launch-mode">🚀 Запуск <span>▶</span>' +
+      '<div class="menu-sub">' +
+        [1,3,5,7,10,14,21,30].map(function(n){
+          return '<div class="menu-item" data-action="launch-days" data-days="' + n + '">через ' + n + ' дн.</div>';
+        }).join('') +
+      '</div>' +
+    '</div>' +
+    '<div class="menu-item" data-action="launch-paint">✍️ Режим закраски запуска</div>' +
+    '<div class="menu-item" data-action="launch-clear">🗑 Очистить запуск</div>';
+  document.body.appendChild(menu);
+  var vw = window.innerWidth, vh = window.innerHeight;
+  var r = menu.getBoundingClientRect();
+  menu.style.left = Math.max(6, Math.min(x, vw - r.width - 6)) + 'px';
+  menu.style.top = Math.max(6, Math.min(y, vh - r.height - 6)) + 'px';
+  menu.onclick = function(e) {
+    var item = e.target.closest('.menu-item[data-action]');
+    if (!item) return;
+    var action = item.getAttribute('data-action');
+    var pid = _calendarCtx.projectId;
+    var dt = _calendarCtx.date;
+    if (!pid || !dt) return;
+    if (action === 'launch-days') {
+      var n = parseInt(item.getAttribute('data-days') || '0', 10);
+      applyProjectLaunchRange(pid, dt, addDaysISO(dt, Math.max(0, n)));
+      hideProjectsCalMenu();
+    } else if (action === 'launch-paint' || action === 'launch-mode') {
+      _calendarPaintMode = 'launch';
+      document.body.classList.add('calendar-launch-mode');
+      hideProjectsCalMenu();
+    } else if (action === 'launch-clear') {
+      clearProjectLaunch(pid);
+      hideProjectsCalMenu();
+    }
+  };
+  setTimeout(function() {
+    document.addEventListener('click', function closeMenu(ev) {
+      var cur = document.getElementById('projectsCalMenu');
+      if (!cur) { document.removeEventListener('click', closeMenu); return; }
+      if (!cur.contains(ev.target)) {
+        hideProjectsCalMenu();
+        document.removeEventListener('click', closeMenu);
+      }
+    });
+  }, 0);
+}
+function applyProjectLaunchRange(projectId, startDate, endDate) {
+  var data = loadProjectsData();
+  var p = data.projects.find(function(x){ return x.id === projectId; });
+  if (!p) return;
+  var s = startDate <= endDate ? startDate : endDate;
+  var e = startDate <= endDate ? endDate : startDate;
+  p.events = (p.events || []).filter(function(ev) {
+    return ev.type !== 'launch_range' && ev.type !== 'not_launched_project_marker';
+  });
+  p.events.push({type:'launch_range', startDate:s, endDate:e});
+  p.events.push({type:'not_launched_project_marker', date:e});
+  saveProjectsData(data);
+  rerenderProjectsPreserveScroll();
+  syncProjectToActiveSheet(projectId, 'launch_range_set');
+}
+function clearProjectLaunch(projectId) {
+  var data = loadProjectsData();
+  var p = data.projects.find(function(x){ return x.id === projectId; });
+  if (!p) return;
+  p.events = (p.events || []).filter(function(ev) {
+    return ev.type !== 'launch_range' && ev.type !== 'not_launched_project_marker';
+  });
+  saveProjectsData(data);
+  rerenderProjectsPreserveScroll();
+  syncProjectToActiveSheet(projectId, 'launch_range_clear');
+}
+function getCalendarCellFromEventTarget(t) {
+  return t && t.closest ? t.closest('.projects-cal-day[data-project-id][data-date]') : null;
+}
+function previewLaunchDates(dates) {
+  document.querySelectorAll('.projects-cal-day.cal-launch-preview, .projects-cal-day.cal-launch-preview-last').forEach(function(el) {
+    el.classList.remove('cal-launch-preview', 'cal-launch-preview-last');
+  });
+  dates.forEach(function(d, idx) {
+    var sel = '.projects-cal-day[data-project-id="' + _calendarPaintProjectId + '"][data-date="' + d + '"]';
+    var cell = document.querySelector(sel);
+    if (!cell) return;
+    cell.classList.add('cal-launch-preview');
+    if (idx === dates.length - 1) cell.classList.add('cal-launch-preview-last');
+  });
+}
+function dateRangeFromPaint(dates) {
+  if (!dates || !dates.length) return null;
+  var uniq = Array.from(new Set(dates)).sort();
+  return {start: uniq[0], end: uniq[uniq.length - 1], ordered: uniq};
+}
+function bindProjectsCalendarInteractions() {
+  var wrap = document.querySelector('.projects-table-wrap');
+  if (!wrap) return;
+  wrap.oncontextmenu = function(e) {
+    var cell = getCalendarCellFromEventTarget(e.target);
+    if (!cell) return;
+    e.preventDefault();
+    showProjectsCalMenu(e.clientX, e.clientY, cell.getAttribute('data-project-id'), cell.getAttribute('data-date'));
+  };
+  wrap.onmousedown = function(e) {
+    if (e.button !== 0 || _calendarPaintMode !== 'launch') return;
+    var cell = getCalendarCellFromEventTarget(e.target);
+    if (!cell) return;
+    e.preventDefault();
+    _calendarPainting = true;
+    _calendarPaintProjectId = cell.getAttribute('data-project-id');
+    _calendarPaintDates = [cell.getAttribute('data-date')];
+    previewLaunchDates(_calendarPaintDates);
+  };
+  wrap.onmouseover = function(e) {
+    if (!_calendarPainting || _calendarPaintMode !== 'launch') return;
+    var cell = getCalendarCellFromEventTarget(e.target);
+    if (!cell) return;
+    var pid = cell.getAttribute('data-project-id');
+    if (pid !== _calendarPaintProjectId) return;
+    var d = cell.getAttribute('data-date');
+    _calendarPaintDates.push(d);
+    var range = dateRangeFromPaint(_calendarPaintDates);
+    if (range) previewLaunchDates(range.ordered);
+  };
+}
+function finishCalendarPaint() {
+  if (!_calendarPainting || _calendarPaintMode !== 'launch') return;
+  var projectId = _calendarPaintProjectId;
+  var range = dateRangeFromPaint(_calendarPaintDates);
+  _calendarPainting = false;
+  _calendarPaintProjectId = null;
+  _calendarPaintDates = [];
+  document.querySelectorAll('.projects-cal-day.cal-launch-preview, .projects-cal-day.cal-launch-preview-last').forEach(function(el) {
+    el.classList.remove('cal-launch-preview', 'cal-launch-preview-last');
+  });
+  if (range && projectId) {
+    applyProjectLaunchRange(projectId, range.start, range.end);
+  }
+}
+function clearProjectDropMarks() {
+  document.querySelectorAll('.projects-table-row.drop-before, .projects-table-row.drop-after').forEach(function(r) {
+    r.classList.remove('drop-before', 'drop-after');
+  });
+}
+function startProjectRowDrag(e, projectId) {
+  if (_calendarPaintMode === 'launch') { e.preventDefault(); return; }
+  if (e.target && e.target.closest && e.target.closest('.projects-cal-day[data-project-id]')) { e.preventDefault(); return; }
+  _dragProjectId = projectId;
+  if (e.dataTransfer) {
+    e.dataTransfer.effectAllowed = 'move';
+    try { e.dataTransfer.setData('text/plain', projectId); } catch(err) {}
+  }
+  if (e.currentTarget) e.currentTarget.classList.add('dragging');
+}
+function handleProjectRowDragOver(e, row, targetProjectId) {
+  if (!_dragProjectId || _dragProjectId === targetProjectId) return;
+  e.preventDefault();
+  if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
+  clearProjectDropMarks();
+  var rect = row.getBoundingClientRect();
+  var placeAfter = (e.clientY - rect.top) > rect.height / 2;
+  row.classList.add(placeAfter ? 'drop-after' : 'drop-before');
+}
+function handleProjectRowDragLeave(e, row) {
+  if (!row) return;
+  row.classList.remove('drop-before', 'drop-after');
+}
+function reorderProjectsWithinZone(sourceId, targetId, placeAfter) {
+  var data = loadProjectsData();
+  var src = data.projects.find(function(p){ return p.id === sourceId; });
+  var tgt = data.projects.find(function(p){ return p.id === targetId; });
+  if (!src || !tgt) return false;
+  if ((src.zone || 'active') !== (tgt.zone || 'active')) return false;
+  var zone = src.zone || 'active';
+  var zoneList = data.projects
+    .filter(function(p){ return (p.zone || 'active') === zone; })
+    .sort(function(a,b){ return (a.sortOrder||0) - (b.sortOrder||0); });
+  var ids = zoneList.map(function(p){ return p.id; });
+  var fromIdx = ids.indexOf(sourceId);
+  var targetIdx = ids.indexOf(targetId);
+  if (fromIdx < 0 || targetIdx < 0) return false;
+  var moving = ids.splice(fromIdx, 1)[0];
+  var insertIdx = ids.indexOf(targetId) + (placeAfter ? 1 : 0);
+  ids.splice(insertIdx, 0, moving);
+  ids.forEach(function(id, idx) {
+    var p = data.projects.find(function(x){ return x.id === id; });
+    if (p) p.sortOrder = idx;
+  });
+  saveProjectsData(data);
+  rerenderProjectsPreserveScroll();
+  syncProjectToActiveSheet(sourceId, 'row_reorder');
+  return true;
+}
+function handleProjectRowDrop(e, targetProjectId) {
+  e.preventDefault();
+  var row = e.currentTarget;
+  var placeAfter = row && row.classList.contains('drop-after');
+  clearProjectDropMarks();
+  if (!_dragProjectId || _dragProjectId === targetProjectId) return;
+  reorderProjectsWithinZone(_dragProjectId, targetProjectId, !!placeAfter);
+}
+function endProjectRowDrag(e) {
+  if (e.currentTarget) e.currentTarget.classList.remove('dragging');
+  _dragProjectId = null;
+  clearProjectDropMarks();
+}
 
 function getDefaultProjectsData() {
   var today = new Date();
@@ -1066,19 +1307,21 @@ function renderProjectsScreen(opts) {
     var expandedClass = _expandedProjectIds[p.id] ? ' expanded' : '';
     var stickyHtml = '<div class="proj-col-expand">' + expandContent + '</div><div class="proj-col-type" onclick="event.stopPropagation();cycleProjectClientType(\'' + p.id + '\')" title="Старые/новички/2-й раз">' + typeHtml + '</div><button type="button" class="' + driveClass + '" title="Папка клиента в Google Drive" onclick="event.stopPropagation();openProjectDriveFolder(\'' + p.id + '\')">△</button><div class="proj-cell-editable' + expandedClass + '" data-id="' + p.id + '" onclick="editProjectCell(this)"><div class="proj-main-line"><button type="button" class="proj-emoji-btn" onclick="event.stopPropagation();showProjEmojiPicker(this,\'' + p.id + '\')">' + (em||'😀') + '</button><input type="text" value="' + (p.title||'').replace(/"/g,'&quot;') + '" readonly style="pointer-events:none">' + expandBtnName + '<span class="project-path">' + pathHtml + '</span><button type="button" class="proj-status-btn project-status" onclick="event.stopPropagation();showProjectStatusPicker(this,\'' + p.id + '\')" style="background:' + (PROJECT_STATUS_COLORS[p.status]||'#666') + '22;color:' + (PROJECT_STATUS_COLORS[p.status]||'#999') + '">' + (p.status||'В работе') + '</button>' + expandBtnStatus + '</div><div class="proj-optional-row">' + extraLinesHtml + '</div></div>';
     var selectedClass = (_selectedProjectId === p.id) ? ' selected' : '';
-    var rowHtml = '<div class="projects-table-row' + selectedClass + '" data-id="' + p.id + '" onclick="selectProjectRow(\'' + p.id + '\')"><div class="projects-sticky">' + stickyHtml + '</div><div class="projects-scroll">';
+    var rowHtml = '<div class="projects-table-row' + selectedClass + '" data-id="' + p.id + '" draggable="true" onclick="selectProjectRow(\'' + p.id + '\')" ondragstart="startProjectRowDrag(event,\'' + p.id + '\')" ondragover="handleProjectRowDragOver(event,this,\'' + p.id + '\')" ondragleave="handleProjectRowDragLeave(event,this)" ondrop="handleProjectRowDrop(event,\'' + p.id + '\')" ondragend="endProjectRowDrag(event)"><div class="projects-sticky">' + stickyHtml + '</div><div class="projects-scroll">';
     dates.forEach(function(d) {
       var dStr = d.toISOString().slice(0,10);
       var cellHtml = '';
+      var launchEvt = (p.events||[]).find(function(e){ return e.type==='launch_range' && dStr>=e.startDate && dStr<=e.endDate; });
       var evt = (p.events||[]).find(function(e){ return e.type==='active_range' && dStr>=e.startDate && dStr<=e.endDate; });
       var deadline = (p.events||[]).find(function(e){ return e.type==='deadline' && e.date===dStr; });
       var cards = (p.events||[]).find(function(e){ return e.type==='cards_count_without_active_upload' && e.date===dStr; });
       var rocket = (p.events||[]).find(function(e){ return e.type==='not_launched_project_marker' && e.date===dStr; });
-      if (evt) cellHtml = '<div class="cal-bar"></div>';
+      if (rocket) cellHtml = '<div class="cal-rocket">🚀</div>';
+      else if (launchEvt) cellHtml = '<div class="cal-launch-bar"></div>';
+      else if (evt) cellHtml = '<div class="cal-bar"></div>';
       else if (deadline) cellHtml = '<div class="cal-deadline">‼️</div>';
       else if (cards) cellHtml = '<div class="cal-cards">' + cards.value + '</div>';
-      else if (rocket) cellHtml = '<div class="cal-rocket">🚀</div>';
-      rowHtml += '<div class="projects-cal-day" style="width:' + DAY_PX + 'px">' + cellHtml + '</div>';
+      rowHtml += '<div class="projects-cal-day" data-project-id="' + p.id + '" data-date="' + dStr + '" style="width:' + DAY_PX + 'px">' + cellHtml + '</div>';
     });
     rowHtml += '</div></div>';
     html += rowHtml;
@@ -1111,6 +1354,7 @@ function renderProjectsScreen(opts) {
     }
     _projectChildFocusKey = null;
   }
+  bindProjectsCalendarInteractions();
 }
 function editProjectCell(el) {
   var cell = el.closest('.proj-cell-editable');
@@ -2821,6 +3065,18 @@ document.addEventListener('DOMContentLoaded', function() {
   if (_activeClient) loadClient(-1); // -1 = load from _activeClient
   updateProjectsSidebarOffset();
   window.addEventListener('resize', updateProjectsSidebarOffset);
+  document.addEventListener('mouseup', finishCalendarPaint);
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+      _calendarPaintMode = null;
+      _calendarPainting = false;
+      document.body.classList.remove('calendar-launch-mode');
+      hideProjectsCalMenu();
+      document.querySelectorAll('.projects-cal-day.cal-launch-preview, .projects-cal-day.cal-launch-preview-last').forEach(function(el) {
+        el.classList.remove('cal-launch-preview', 'cal-launch-preview-last');
+      });
+    }
+  });
   // Закрытие меню клиентов при клике вне
   document.addEventListener('click', function(e) {
     var menu = document.getElementById('clientMenu');
