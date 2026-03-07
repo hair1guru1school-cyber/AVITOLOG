@@ -836,6 +836,14 @@ function getProjectAutoloadRange(p) {
 function escAttr(v) {
   return String(v == null ? '' : v).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
+function normalizeProjectClientType(t) {
+  var v = String(t || '').trim().toLowerCase();
+  if (!v) return 'new';
+  if (v === 'old' || v === '💎' || v.indexOf('diamond') >= 0 || v.indexOf('стар') >= 0) return 'old';
+  if (v === 'returning' || v === '2' || v === '2️⃣' || v.indexOf('return') >= 0 || v.indexOf('repeat') >= 0) return 'returning';
+  if (v === 'new' || v.indexOf('нов') >= 0) return 'new';
+  return 'new';
+}
 function getSavedProjectsStickyWidth() {
   var n = parseInt(localStorage.getItem(PROJECTS_STICKY_WIDTH_KEY) || '', 10);
   return Number.isFinite(n) ? n : 0;
@@ -1369,9 +1377,9 @@ function renderProjectsScreen(opts) {
   });
   var activeProjects = (data.projects || []).filter(function(p){ return (p.zone || 'active') === 'active'; });
   var activeCount = activeProjects.length;
-  var diamondCount = activeProjects.filter(function(p){ return p.clientType === 'old'; }).length;
-  var newCount = activeProjects.filter(function(p){ return p.clientType === 'new'; }).length;
-  var returningCount = activeProjects.filter(function(p){ return p.clientType === 'returning'; }).length;
+  var diamondCount = activeProjects.filter(function(p){ return normalizeProjectClientType(p.clientType) === 'old'; }).length;
+  var newCount = activeProjects.filter(function(p){ return normalizeProjectClientType(p.clientType) === 'new'; }).length;
+  var returningCount = activeProjects.filter(function(p){ return normalizeProjectClientType(p.clientType) === 'returning'; }).length;
   var stickyW = getSavedProjectsStickyWidth() || getProjectsStickyWidthPx(allProjects);
   var html = '<div class="projects-board"><div class="projects-table-wrap"><div class="projects-table" style="--projects-sticky-width:' + stickyW + 'px">';
   var headerSticky =
@@ -1403,7 +1411,8 @@ function renderProjectsScreen(opts) {
   allProjects.forEach(function(p) {
     var em = (p.emoji||'');
     var pathHtml = pathLabels.map(function(pl){ return '<button type="button" class="proj-path-btn' + (p.clientPath&&p.clientPath[pl.k]?' on':'') + '" title="' + pl.l + '" onclick="event.stopPropagation();toggleProjectPath(\'' + p.id + '\',\'' + pl.k + '\')">' + (pl.e||pl.l.slice(0,1)) + '</button>'; }).join('');
-    var typeHtml = (p.clientType==='old') ? '<span class="proj-type-diamond">💎</span>' : (p.clientType==='returning') ? '<span class="proj-type-2">2</span>' : '<span class="proj-type-new">NEW</span>';
+    var normType = normalizeProjectClientType(p.clientType);
+    var typeHtml = (normType==='old') ? '<span class="proj-type-diamond">💎</span>' : (normType==='returning') ? '<span class="proj-type-2">2</span>' : '<span class="proj-type-new">NEW</span>';
     var hasChildLines = (p.childLines || []).some(function(v){ return String(v || '').trim() !== ''; });
     var expandContent = hasChildLines ? '&#9660;' : '';
     var expandBtnName = '<button type="button" class="field-expand-btn" title="Раскрыть доп. поле" onclick="event.stopPropagation();toggleProjectOptional(this,\'' + p.id + '\')">&#9662;</button>';
