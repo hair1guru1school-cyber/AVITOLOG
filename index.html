@@ -153,6 +153,11 @@ textarea{resize:vertical;min-height:50px;line-height:1.5}
 .sec-btn:hover{border-color:var(--accent);color:var(--accent)}
 .sec-btn.on{border-color:var(--accent);background:rgba(0,217,126,0.12);color:var(--accent)}
 .depth-bar.muted,.sec-bar.muted{opacity:0.45;pointer-events:none;transition:opacity 0.2s}
+.analytics-top-row{display:flex;justify-content:center;padding:8px 0 4px;flex-shrink:0;gap:8px}
+.btn-projects{border:1px solid var(--border);background:var(--surface2);color:var(--muted);padding:8px 20px;font-size:13px;font-weight:700;font-family:'Golos Text',sans-serif;cursor:pointer;border-radius:10px;transition:all 0.2s}
+.btn-projects:hover{border-color:var(--accent);color:var(--accent)}
+.btn-projects-return{padding:12px 28px;font-size:15px;background:var(--accent);color:#0c0c0e;border-color:var(--accent)}
+.btn-projects-return:hover{background:#00ffaa;border-color:#00ffaa}
 .analytics-tumbler{display:flex;justify-content:center;gap:0;padding:10px 0 6px;flex-shrink:0;border-bottom:1px solid var(--border);margin-bottom:4px}
 .analytics-tumbler.hide{display:none !important}
 .analytics-tumbler button{border:1px solid var(--border);background:var(--surface2);color:var(--muted);padding:8px 18px;font-size:13px;font-weight:700;font-family:'Golos Text',sans-serif;cursor:pointer;transition:all 0.2s}
@@ -161,6 +166,51 @@ textarea{resize:vertical;min-height:50px;line-height:1.5}
 .analytics-tumbler button:not(:first-child){border-left:none}
 .analytics-tumbler button.on{border-color:var(--accent);background:rgba(0,217,126,0.15);color:var(--accent)}
 .analytics-tumbler button:hover:not(.on){border-color:var(--accent);color:var(--accent)}
+.analytics-top-row{display:flex;justify-content:center;padding:8px 0 4px;flex-shrink:0;border-bottom:1px solid var(--border);margin-bottom:4px}
+.analytics-top-row:empty{display:none}
+.btn-projects{border:1px solid var(--border);background:var(--surface2);color:var(--muted);padding:8px 20px;font-size:13px;font-weight:700;font-family:'Golos Text',sans-serif;cursor:pointer;border-radius:10px;transition:all 0.2s}
+.btn-projects:hover{border-color:var(--accent);color:var(--accent)}
+.btn-projects-return{padding:12px 28px;font-size:15px;background:var(--accent);color:#0c0c0e;border-color:var(--accent)}
+.btn-projects-return:hover{background:#00ffaa;border-color:#00ffaa}
+body.projects-mode .analytics-tumbler,body.projects-mode .depth-bar,body.projects-mode .sec-bar{display:none !important}
+body.projects-mode .right-tabs{display:none !important}
+body.projects-mode .gen-mobile-wrap{display:none !important}
+/* ——— Экран Проекты ——— */
+.projects-board{display:flex;height:100%;min-height:400px;overflow:hidden;background:var(--bg)}
+.projects-left{width:380px;min-width:380px;flex-shrink:0;background:var(--surface);border-right:1px solid var(--border);overflow-y:auto;display:flex;flex-direction:column}
+.projects-calendar-wrap{flex:1;overflow:auto;min-width:0}
+.projects-zone{ padding:10px 12px;border-bottom:1px solid var(--border)}
+.projects-zone-title{font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--accent);margin-bottom:8px}
+.projects-zone.active .projects-zone-title{color:var(--accent)}
+.projects-zone.second .projects-zone-title{color:#ffb347}
+.projects-zone.archive .projects-zone-title{color:var(--muted)}
+.proj-row{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:8px;margin-bottom:4px;cursor:pointer;border:1px solid transparent;transition:all 0.15s}
+.proj-row:hover{background:rgba(255,255,255,0.03)}
+.proj-row.expanded{background:rgba(0,217,126,0.06)}
+.proj-expand{width:20px;flex-shrink:0;color:var(--muted);font-size:12px;cursor:pointer}
+.proj-title{flex:1;font-size:13px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.proj-status{padding:2px 6px;border-radius:4px;font-size:10px;font-weight:700;white-space:nowrap}
+.proj-status.work{background:rgba(0,217,126,0.2);color:var(--accent)}
+.proj-status.wait{background:rgba(255,200,0,0.2);color:#ffc800}
+.proj-status.done{background:rgba(0,217,126,0.3);color:var(--accent)}
+.proj-status.off{background:rgba(255,80,80,0.15);color:#ff8080}
+.proj-path{display:flex;gap:2px;margin-top:4px;flex-wrap:wrap}
+.proj-path span{width:18px;height:18px;border-radius:4px;border:1px solid var(--border);font-size:10px;display:flex;align-items:center;justify-content:center;color:var(--muted)}
+.proj-path span.on{border-color:var(--accent);color:var(--accent);background:rgba(0,217,126,0.1)}
+.proj-child{padding-left:28px;font-size:12px;color:var(--muted)}
+.projects-calendar{display:flex;flex-direction:column;min-width:max-content}
+.cal-header{display:flex;background:var(--surface2);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:10}
+.cal-day{width:36px;min-width:36px;padding:6px 4px;text-align:center;font-size:10px;color:var(--muted);border-right:1px solid var(--border)}
+.cal-day.today{background:rgba(0,217,126,0.15);color:var(--accent);font-weight:700}
+.cal-day-num{font-size:11px;font-weight:600;color:var(--text)}
+.cal-body{display:flex;flex-direction:column}
+.cal-row{display:flex;min-height:40px;border-bottom:1px solid var(--border)}
+.cal-row-left{width:380px;min-width:380px;flex-shrink:0;padding:8px 10px;font-size:12px;color:var(--muted);border-right:1px solid var(--border)}
+.cal-cell{width:36px;min-width:36px;border-right:1px solid var(--border);position:relative;background:var(--bg)}
+.cal-cell.bar{background:linear-gradient(90deg,var(--accent),rgba(0,217,126,0.5))}
+.cal-cell.deadline{background:rgba(255,200,0,0.3);color:#000;display:flex;align-items:center;justify-content:center;font-size:14px}
+.cal-cell.num{display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:var(--accent)}
+.cal-cell.rocket{display:flex;align-items:center;justify-content:center;font-size:16px;color:var(--muted)}
 .rtab:hover{background:rgba(255,255,255,0.05);color:var(--fg)}
 .rtab.active{background:linear-gradient(135deg,rgba(255,200,0,0.15),rgba(255,200,0,0.05));border-color:var(--accent);color:var(--accent)}
 .rtab-ico{font-size:24px;line-height:1}
@@ -192,6 +242,58 @@ textarea{resize:vertical;min-height:50px;line-height:1.5}
 .sidebar-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:350;opacity:0;pointer-events:none;transition:opacity 0.2s}
 .header-menu-btn{display:none;align-items:center;justify-content:center;width:44px;height:44px;border:1px solid var(--border);background:var(--surface2);color:var(--text);border-radius:10px;cursor:pointer;font-size:20px;margin-right:8px}
 .header-menu-btn:hover{background:rgba(0,217,126,0.15);border-color:var(--accent);color:var(--accent)}
+/* ——— Проекты (экран) ——— */
+.analytics-top-row{display:flex;justify-content:center;padding:6px 0 4px;flex-shrink:0;border-bottom:1px solid var(--border);margin-bottom:2px}
+.btn-projects{border:1px solid var(--border);background:var(--surface2);color:var(--muted);padding:8px 20px;font-size:13px;font-weight:700;font-family:'Golos Text',sans-serif;cursor:pointer;border-radius:8px;transition:all 0.2s}
+.btn-projects:hover{border-color:var(--accent);color:var(--accent)}
+.btn-projects-return{padding:12px 28px;font-size:15px;background:var(--accent);color:#0c0c0e;border-color:var(--accent)}
+.btn-projects-return:hover{background:#00ffaa;border-color:#00ffaa}
+body.projects-mode .right-tabs{display:none !important}
+body.projects-mode .depth-bar{display:none !important}
+body.projects-mode .sec-bar{display:none !important}
+body.projects-mode .gen-mobile-wrap{display:none !important}
+body.projects-mode .analytics-tumbler{display:none !important}
+body.projects-mode .analytics-top-row .btn-projects{display:none !important}
+body.projects-mode .analytics-top-row .btn-projects-return{display:flex !important}
+.projects-board{display:flex;height:100%;min-height:400px;overflow:hidden;background:var(--bg)}
+.projects-left{width:380px;min-width:380px;flex-shrink:0;background:var(--surface);border-right:1px solid var(--border);overflow-y:auto;display:flex;flex-direction:column}
+.projects-calendar-wrap{flex:1;overflow:auto;min-width:0}
+.projects-zone{margin-bottom:16px}
+.projects-zone-title{font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--accent);margin-bottom:8px;padding:4px 0}
+.projects-zone.active .projects-zone-title{color:var(--accent)}
+.projects-zone.second .projects-zone-title{color:var(--accent2)}
+.projects-zone.archive .projects-zone-title{color:var(--muted)}
+.proj-row{display:flex;align-items:center;gap:8px;padding:8px 10px;border-bottom:1px solid var(--border);cursor:pointer;transition:background 0.12s;font-size:12px}
+.proj-row:hover{background:rgba(0,217,126,0.06)}
+.proj-row.child{padding-left:24px;font-size:11px}
+.proj-expand{width:18px;height:18px;flex-shrink:0;border:none;background:transparent;color:var(--muted);cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;padding:0}
+.proj-expand:hover{color:var(--accent)}
+.proj-row.has-children .proj-expand::before{content:'▶'}
+.proj-row.has-children.expanded .proj-expand::before{content:'▼'}
+.proj-row:not(.has-children) .proj-expand{visibility:hidden}
+.proj-title{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.proj-status{padding:2px 6px;border-radius:4px;font-size:10px;font-weight:700;flex-shrink:0}
+.proj-status.s1{background:rgba(255,200,0,0.2);color:#ffc800}
+.proj-status.s2{background:rgba(0,217,126,0.2);color:var(--accent)}
+.proj-status.s3{background:rgba(124,106,247,0.2);color:var(--accent3)}
+.proj-status.s4{background:rgba(255,107,53,0.2);color:var(--accent2)}
+.proj-status.s5{background:rgba(102,102,102,0.3);color:var(--muted)}
+.proj-path{display:flex;gap:4px;flex-wrap:wrap;margin-top:4px}
+.proj-path span{font-size:9px;padding:1px 4px;border-radius:3px;background:var(--surface2);color:var(--muted)}
+.proj-path span.on{background:rgba(0,217,126,0.15);color:var(--accent)}
+.projects-calendar{display:flex;flex-direction:column;min-width:max-content}
+.projects-cal-header{display:flex;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--surface);z-index:10}
+.projects-cal-month{display:flex;align-items:center;justify-content:center;padding:6px 12px;font-size:11px;font-weight:700;color:var(--accent);min-width:120px}
+.projects-cal-days{display:flex}
+.projects-cal-day{min-width:36px;max-width:36px;padding:4px;text-align:center;font-size:10px;color:var(--muted);border-right:1px solid var(--border)}
+.projects-cal-day.today{background:rgba(0,217,126,0.1);color:var(--accent)}
+.projects-cal-body{display:flex;flex-direction:column}
+.projects-cal-row{display:flex;min-height:40px;border-bottom:1px solid var(--border)}
+.projects-cal-cell{min-width:36px;max-width:36px;height:38px;border-right:1px solid var(--border);position:relative;font-size:10px}
+.projects-cal-cell.bar{background:linear-gradient(90deg,rgba(0,217,126,0.4),rgba(0,217,126,0.2))}
+.projects-cal-cell.deadline{background:rgba(255,200,0,0.3);display:flex;align-items:center;justify-content:center;font-size:12px}
+.projects-cal-cell.rocket{display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:14px}
+.projects-cal-cell.num{display:flex;align-items:center;justify-content:center;font-weight:700;color:var(--accent3)}
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 </head>
@@ -297,6 +399,10 @@ textarea{resize:vertical;min-height:50px;line-height:1.5}
 </div>
 
 <div class="content-wrap">
+  <div class="analytics-top-row" id="analyticsTopRow">
+    <button type="button" class="btn-projects" id="btnProjects" onclick="toggleProjectsScreen()" style="display:none">📈 Проекты</button>
+    <button type="button" class="btn-projects btn-projects-return" id="btnProjectsReturn" onclick="toggleProjectsScreen()" style="display:none">← Вернуться к аналитике</button>
+  </div>
   <div class="analytics-tumbler" id="analyticsTumbler">
     <button type="button" id="tumblerFil" onclick="setAnalyticsMode('fil')">🅰️ Фил</button>
     <button type="button" id="tumblerSasha" onclick="setAnalyticsMode('sasha')">Саша</button>
@@ -368,6 +474,8 @@ var HERO = 'data:image/png;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/4gHYSUNDX1BST0ZJTE
 var currentTab = 'analysis';
 var currentDepth = 'mid';
 var analyticsMode = null; // null = не выбран, 'sasha' | 'fil'
+var projectsMode = false;
+var projectsMode = false;
 var analysisSections = {demand:true, audience:true, pains:true, behavior:true, keywords:true, geo:true, summary:true};
 // Восстанавливаем из localStorage
 try {
@@ -422,8 +530,44 @@ function setAnalyticsMode(mode) {
   if (reginaBtn) reginaBtn.classList.toggle('on', mode === 'regina');
   document.getElementById('depthBar').classList.remove('muted');
   document.getElementById('secBar').classList.remove('muted');
+  updateProjectsButtonVisibility();
   if (currentTab === 'analysis' && docReady && currentHtml) {
     renderDoc(currentHtml);
+  }
+}
+
+var projectsMode = false;
+function toggleProjectsScreen() {
+  projectsMode = !projectsMode;
+  document.body.classList.toggle('projects-mode', projectsMode);
+  if (projectsMode) {
+    renderProjectsScreen();
+  } else {
+    var ico = currentTab==='analysis' ? '&#128202;' : currentTab==='presale' ? '&#9200;' : '&#127942;';
+    document.getElementById('mainContent').innerHTML =
+      '<div class="empty-st"><div style="font-size:38px;opacity:.2">' + ico +
+      '</div><p style="font-size:14px">Заполни данные и нажми Сгенерировать</p></div>';
+    if (currentTab === 'analysis' && docReady && currentHtml) renderDoc(currentHtml);
+  }
+  updateProjectsButtonVisibility();
+}
+function updateProjectsButtonVisibility() {
+  var btn = document.getElementById('btnProjects');
+  var ret = document.getElementById('btnProjectsReturn');
+  var row = document.getElementById('analyticsTopRow');
+  if (!row) return;
+  if (projectsMode) {
+    if (btn) btn.style.display = 'none';
+    if (ret) ret.style.display = 'flex';
+    row.style.display = 'flex';
+  } else if (analyticsMode === 'fil') {
+    if (btn) btn.style.display = 'flex';
+    if (ret) ret.style.display = 'none';
+    row.style.display = 'flex';
+  } else {
+    if (btn) btn.style.display = 'none';
+    if (ret) ret.style.display = 'none';
+    row.style.display = 'none';
   }
 }
 
@@ -446,6 +590,109 @@ function applyAnalyticsModeDefault() {
   var secBar = document.getElementById('secBar');
   if (depthBar) depthBar.classList.remove('muted');
   if (secBar) secBar.classList.remove('muted');
+  updateProjectsButtonVisibility();
+}
+
+// ── PROJECTS SCREEN ──
+var PROJECTS_DATA_KEY = 'avitolog_projects';
+var PROJECT_STATUSES = ['Ожидают','В работе','Готово!','ЛИМИТ','OFF','След. мес.','Жду','ПАРКУЙ','О бюджете'];
+var PROJECT_STATUS_COLORS = {'Ожидают':'#7c6af7','В работе':'#00d97e','Готово!':'#00d97e','ЛИМИТ':'#ff6b35','OFF':'#666','След. мес.':'#ffcc00','Жду':'#ffcc00','ПАРКУЙ':'#666','О бюджете':'#ff6b35'};
+
+function loadProjectsData() {
+  try {
+    var s = localStorage.getItem(PROJECTS_DATA_KEY);
+    return s ? JSON.parse(s) : getDefaultProjectsData();
+  } catch(e) { return getDefaultProjectsData(); }
+}
+function saveProjectsData(data) {
+  try { localStorage.setItem(PROJECTS_DATA_KEY, JSON.stringify(data)); } catch(e) {}
+}
+
+function getDefaultProjectsData() {
+  var today = new Date();
+  var d = function(offset) { var x=new Date(today); x.setDate(x.getDate()+offset); return x.toISOString().slice(0,10); };
+  return {
+    projects: [
+      { id:'p1', title:'Клиент А', zone:'active', status:'В работе', sortOrder:0, clientPath:{autoload:true,analytics:true,texts:false,packaging:false,portfolio:false,reviews:false}, events:[{type:'active_range',startDate:d(-5),endDate:d(10)},{type:'deadline',date:d(12),label:'‼️'}], childLines:[] },
+      { id:'p2', title:'Клиент Б', zone:'active', status:'Ожидают', sortOrder:1, clientPath:{autoload:false,analytics:true,texts:false,packaging:false,portfolio:false,reviews:false}, events:[{type:'cards_count_without_active_upload',date:d(3),value:40},{type:'not_launched_project_marker',date:d(5),icon:'rocket',color:'gray'}], childLines:[] },
+      { id:'p3', title:'Клиент В', zone:'second_chance', status:'Жду', sortOrder:2, clientPath:{autoload:true,analytics:true,texts:true,packaging:false,portfolio:false,reviews:false}, events:[{type:'active_range',startDate:d(-10),endDate:d(-2)},{type:'deadline',date:d(7),label:'‼️'}], childLines:[] },
+      { id:'p4', title:'Клиент Г', zone:'archive', status:'OFF', sortOrder:3, clientPath:{autoload:true,analytics:true,texts:true,packaging:true,portfolio:true,reviews:true}, events:[], childLines:[] }
+    ]
+  };
+}
+
+function renderProjectsScreen() {
+  var data = loadProjectsData();
+  var DAY_PX = 28;
+  var DAYS_LEFT = 14;
+  var DAYS_RIGHT = 45;
+  var today = new Date();
+  today.setHours(0,0,0,0);
+  var startDate = new Date(today);
+  startDate.setDate(startDate.getDate() - DAYS_LEFT);
+  var endDate = new Date(today);
+  endDate.setDate(endDate.getDate() + DAYS_RIGHT);
+  var dates = [];
+  for (var d = new Date(startDate); d <= endDate; d.setDate(d.getDate()+1)) {
+    dates.push(new Date(d));
+  }
+  var pathLabels = [{k:'autoload',l:'Автозагрузка'},{k:'analytics',l:'Аналитика'},{k:'texts',l:'Тексты'},{k:'packaging',l:'Упаковка'},{k:'portfolio',l:'Портфолио'},{k:'reviews',l:'Отзывы'}];
+
+  var zoneTitle = function(z) { return z==='active'?'Активные':z==='second_chance'?'Подвисшие / второй круг':'Архив'; };
+  var zoneClass = function(z) { return z==='active'?'projects-zone-active':z==='second_chance'?'projects-zone-second':'projects-zone-archive'; };
+
+  var html = '<div class="projects-board"><div class="projects-left">';
+  ['active','second_chance','archive'].forEach(function(zone) {
+    var projs = data.projects.filter(function(p){ return p.zone===zone; }).sort(function(a,b){ return (a.sortOrder||0)-(b.sortOrder||0); });
+    html += '<div class="projects-zone ' + zoneClass(zone) + '"><div class="projects-zone-title">' + zoneTitle(zone) + '</div>';
+    projs.forEach(function(p) {
+      var pathHtml = pathLabels.map(function(pl){ return '<span class="project-path-dot' + (p.clientPath&&p.clientPath[pl.k]?' on':'') + '" title="' + pl.l + '">' + pl.l.slice(0,1) + '</span>'; }).join('');
+      html += '<div class="project-row" data-id="' + p.id + '"><div class="project-row-main"><span class="project-expand">' + (p.childLines&&p.childLines.length?'▼':'') + '</span><span class="project-title">' + (p.title||'') + '</span><span class="project-status" style="background:' + (PROJECT_STATUS_COLORS[p.status]||'#666') + '22;color:' + (PROJECT_STATUS_COLORS[p.status]||'#999') + '">' + (p.status||'') + '</span></div><div class="project-path">' + pathHtml + '</div></div>';
+    });
+    html += '</div>';
+  });
+  html += '</div><div class="projects-calendar-wrap"><div class="projects-calendar">';
+
+  var monthRow = '<div class="projects-cal-row projects-cal-header"><div class="projects-cal-fixed" style="width:0;min-width:0"></div><div class="projects-cal-days">';
+  var wdRow = '<div class="projects-cal-row projects-cal-weekdays"><div class="projects-cal-fixed" style="width:0;min-width:0"></div><div class="projects-cal-days">';
+  var dayNames = ['вс','пн','вт','ср','чт','пт','сб'];
+  dates.forEach(function(d) {
+    var isToday = d.getTime()===today.getTime();
+    var mon = ['янв','фев','мар','апр','май','июн','июл','авг','сен','окт','ноя','дек'][d.getMonth()];
+    monthRow += '<div class="projects-cal-day' + (isToday?' today':'') + '" style="width:' + DAY_PX + 'px"><span class="cal-mon">' + mon + '</span></div>';
+    wdRow += '<div class="projects-cal-day' + (isToday?' today':'') + '" style="width:' + DAY_PX + 'px"><span class="cal-wd">' + dayNames[d.getDay()] + '</span><span class="cal-num">' + d.getDate() + '</span></div>';
+  });
+  monthRow += '</div></div>';
+  wdRow += '</div></div>';
+  html += monthRow + wdRow;
+
+  data.projects.forEach(function(p) {
+    var rowHtml = '<div class="projects-cal-row project-cal-row" data-id="' + p.id + '"><div class="projects-cal-fixed"><span class="project-cal-title">' + (p.title||'') + '</span></div><div class="projects-cal-days">';
+    dates.forEach(function(d) {
+      var dStr = d.toISOString().slice(0,10);
+      var cellHtml = '';
+      var evt = (p.events||[]).find(function(e){ return e.type==='active_range' && dStr>=e.startDate && dStr<=e.endDate; });
+      var deadline = (p.events||[]).find(function(e){ return e.type==='deadline' && e.date===dStr; });
+      var cards = (p.events||[]).find(function(e){ return e.type==='cards_count_without_active_upload' && e.date===dStr; });
+      var rocket = (p.events||[]).find(function(e){ return e.type==='not_launched_project_marker' && e.date===dStr; });
+      if (evt) cellHtml = '<div class="cal-bar"></div>';
+      else if (deadline) cellHtml = '<div class="cal-deadline">‼️</div>';
+      else if (cards) cellHtml = '<div class="cal-cards">' + cards.value + '</div>';
+      else if (rocket) cellHtml = '<div class="cal-rocket">🚀</div>';
+      rowHtml += '<div class="projects-cal-day" style="width:' + DAY_PX + 'px">' + cellHtml + '</div>';
+    });
+    rowHtml += '</div></div>';
+    html += rowHtml;
+  });
+  html += '</div></div></div>';
+  document.getElementById('mainContent').innerHTML = html;
+
+  var calWrap = document.querySelector('.projects-calendar-wrap');
+  if (calWrap) {
+    var todayIdx = DAYS_LEFT;
+    var scrollX = Math.max(0, todayIdx * DAY_PX - calWrap.clientWidth / 2);
+    calWrap.scrollLeft = scrollX;
+  }
 }
 
 // ── TABS ──
