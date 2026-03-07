@@ -304,19 +304,19 @@ body.projects-mode .sidebar{padding-top:calc(14px + var(--projects-sidebar-offse
 .projects-table-wrap{overflow:auto;flex:1;min-height:0}
 .projects-table{display:flex;flex-direction:column;min-width:max-content}
 .projects-table .projects-sticky{position:sticky;left:0;z-index:3;background:var(--surface);border-right:1px solid var(--border);min-width:var(--projects-sticky-width,360px);width:var(--projects-sticky-width,360px);flex-shrink:0;box-shadow:2px 0 8px rgba(0,0,0,0.2)}
-.projects-sticky-head{position:relative;padding:8px 10px;font-size:10px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:1px}
+.projects-sticky-head{position:relative;padding:7px 10px;font-size:10px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:1px}
 .projects-head-title{display:inline-flex;align-items:center;gap:6px}
-.projects-head-stats{display:inline-flex;align-items:center;gap:6px;margin-left:8px}
-.projects-head-chip{display:inline-flex;align-items:center;gap:5px;padding:2px 8px;border-radius:999px;border:1px solid var(--border);font-size:10px;line-height:1.3;letter-spacing:0;text-transform:none;color:var(--muted);background:var(--surface2);font-weight:700}
-.projects-head-chip b{font-size:12px;line-height:1;color:#fff;font-weight:900}
-.projects-head-chip.active{color:var(--accent);border-color:rgba(0,217,126,0.45);background:rgba(0,217,126,0.14)}
-.projects-head-chip.active b{color:var(--accent)}
-.projects-head-chip.diamond{color:#7fb8ff;border-color:rgba(91,155,213,0.55);background:rgba(91,155,213,0.16)}
-.projects-head-chip.diamond b{color:#b9d8ff}
-.projects-head-chip.new{color:#c6bcff;border-color:rgba(124,106,247,0.6);background:rgba(124,106,247,0.16)}
-.projects-head-chip.new b{color:#e2dcff}
-.projects-head-chip.ret{color:#c6bcff;border-color:rgba(124,106,247,0.6);background:rgba(124,106,247,0.16)}
-.projects-head-chip.ret b{color:#e2dcff}
+.projects-head-stats{display:inline-flex;align-items:center;gap:7px;margin-left:8px}
+.projects-head-chip{display:inline-flex;align-items:center;gap:7px;min-height:24px;padding:3px 11px;border-radius:9px;border:1px solid var(--border);font-size:12px;line-height:1;letter-spacing:0;text-transform:none;color:var(--muted);background:var(--surface2);font-weight:800;box-shadow:inset 0 0 0 1px rgba(255,255,255,0.03)}
+.projects-head-chip b{font-size:20px;line-height:1;color:#fff;font-weight:900;letter-spacing:.2px}
+.projects-head-chip.active{color:#9ff9cf;border-color:rgba(79,255,204,0.78);background:linear-gradient(180deg,rgba(0,217,126,0.2),rgba(0,217,126,0.08));box-shadow:0 0 16px rgba(79,255,204,0.28),inset 0 0 10px rgba(111,255,210,0.12)}
+.projects-head-chip.active b{color:#b7ffdf}
+.projects-head-chip.diamond{color:#a5d9ff;border-color:rgba(91,155,213,0.8);background:linear-gradient(180deg,rgba(91,155,213,0.24),rgba(91,155,213,0.1));box-shadow:0 0 16px rgba(91,155,213,0.24),inset 0 0 10px rgba(121,184,240,0.12)}
+.projects-head-chip.diamond b{color:#d7ecff}
+.projects-head-chip.new{color:#f0c6ff;border-color:rgba(230,94,255,0.76);background:linear-gradient(180deg,rgba(180,54,222,0.28),rgba(110,36,150,0.14));box-shadow:0 0 16px rgba(220,88,255,0.28),inset 0 0 10px rgba(237,168,255,0.12)}
+.projects-head-chip.new b{color:#ffe6ff}
+.projects-head-chip.ret{color:#dccfff;border-color:rgba(154,128,255,0.8);background:linear-gradient(180deg,rgba(124,106,247,0.26),rgba(82,65,173,0.14));box-shadow:0 0 16px rgba(154,128,255,0.28),inset 0 0 10px rgba(198,182,255,0.12)}
+.projects-head-chip.ret b{color:#f0e9ff}
 .projects-col-resizer{position:absolute;top:0;right:-4px;width:8px;height:100%;cursor:ew-resize;z-index:8}
 .projects-col-resizer::after{content:'';position:absolute;right:3px;top:8px;bottom:8px;width:2px;border-radius:2px;background:rgba(255,255,255,0.18)}
 .projects-col-resizer:hover::after{background:var(--accent)}
@@ -1565,7 +1565,7 @@ function renderProjectsScreen(opts) {
     '<div class="projects-sticky-head">' +
       '<span class="projects-head-title">Проект |</span>' +
       '<span class="projects-head-stats">' +
-        '<span class="projects-head-chip active">активных: <b>' + activeCount + '</b></span>' +
+        '<span class="projects-head-chip active" title="Активные проекты">🃏 <b>' + activeCount + '</b></span>' +
         '<span class="projects-head-chip diamond">💎 <b>' + diamondCount + '</b></span>' +
         '<span class="projects-head-chip new">NEW <b>' + newCount + '</b></span>' +
         '<span class="projects-head-chip ret">2️⃣ <b>' + returningCount + '</b></span>' +
