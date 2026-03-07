@@ -387,13 +387,13 @@ body.projects-mode .sidebar{padding-top:calc(14px + var(--projects-sidebar-offse
 .cal-launch-bar{height:100%;width:100%;background:linear-gradient(90deg,rgba(124,106,247,0.42),rgba(124,106,247,0.22))}
 .projects-cal-day.cal-launch-preview{background:rgba(124,106,247,0.22)}
 .projects-cal-day.cal-launch-preview-last{outline:1px solid #7c6af7;outline-offset:-1px}
-.projects-cal-menu{position:fixed;z-index:1200;min-width:250px;padding:10px;border-radius:14px;background:linear-gradient(160deg,rgba(9,14,31,0.96),rgba(12,9,28,0.94));border:1px solid rgba(160,185,255,0.28);box-shadow:0 16px 40px rgba(0,0,0,0.58),0 0 22px rgba(122,133,255,0.2),inset 0 0 20px rgba(255,255,255,0.03);backdrop-filter:blur(4px)}
-.projects-cal-menu .menu-item{position:relative;display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:32px;padding:8px 12px;border-radius:11px;font-size:13.5px;font-weight:700;line-height:1.15;color:#f1f4ff;cursor:pointer;white-space:nowrap;border:1px solid rgba(170,185,255,0.34);background:linear-gradient(180deg,rgba(22,34,64,0.72),rgba(13,22,40,0.75));box-shadow:inset 0 0 0 1px rgba(255,255,255,0.03),0 0 0 rgba(0,0,0,0);transition:transform .14s ease,box-shadow .14s ease,border-color .14s ease,filter .14s ease}
+.projects-cal-menu{position:fixed;z-index:1200;min-width:236px;padding:8px;border-radius:14px;background:linear-gradient(160deg,rgba(9,14,31,0.96),rgba(12,9,28,0.94));border:1px solid rgba(160,185,255,0.28);box-shadow:0 16px 40px rgba(0,0,0,0.58),0 0 22px rgba(122,133,255,0.2),inset 0 0 20px rgba(255,255,255,0.03);backdrop-filter:blur(4px)}
+.projects-cal-menu .menu-item{position:relative;display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:29px;padding:6px 10px;border-radius:10px;font-size:13.5px;font-weight:700;line-height:1.1;color:#f1f4ff;cursor:pointer;white-space:nowrap;border:1px solid rgba(170,185,255,0.34);background:linear-gradient(180deg,rgba(22,34,64,0.72),rgba(13,22,40,0.75));box-shadow:inset 0 0 0 1px rgba(255,255,255,0.03),0 0 0 rgba(0,0,0,0);transition:transform .14s ease,box-shadow .14s ease,border-color .14s ease,filter .14s ease}
 .projects-cal-menu .menu-item:hover{transform:translateY(-1px);border-color:rgba(151,219,255,0.78);box-shadow:0 0 14px rgba(85,206,255,0.5),inset 0 0 10px rgba(140,224,255,0.2)}
 .projects-cal-menu .menu-item > span{font-size:11px;opacity:0.78}
-.projects-cal-menu .menu-sub{display:none;position:absolute;left:100%;top:-4px;margin-left:10px;min-width:220px;padding:10px;border-radius:14px;background:linear-gradient(160deg,rgba(9,14,31,0.97),rgba(13,9,28,0.95));border:1px solid rgba(160,185,255,0.3);box-shadow:0 16px 40px rgba(0,0,0,0.58),0 0 18px rgba(122,133,255,0.22)}
+.projects-cal-menu .menu-sub{display:none;position:absolute;left:100%;top:-4px;margin-left:8px;min-width:206px;padding:8px;border-radius:14px;background:linear-gradient(160deg,rgba(9,14,31,0.97),rgba(13,9,28,0.95));border:1px solid rgba(160,185,255,0.3);box-shadow:0 16px 40px rgba(0,0,0,0.58),0 0 18px rgba(122,133,255,0.22)}
 .projects-cal-menu .has-sub:hover .menu-sub{display:block}
-.projects-cal-menu .menu-sub .menu-item{font-size:13px;padding:7px 11px;min-height:30px}
+.projects-cal-menu .menu-sub .menu-item{font-size:13px;padding:6px 10px;min-height:28px}
 .projects-cal-menu .menu-item[data-action="launch-mode"],
 .projects-cal-menu .menu-item[data-action="launch-paint"],
 .projects-cal-menu .menu-item[data-action="launch-days"]{border-color:rgba(130,243,178,0.64);background:linear-gradient(180deg,rgba(8,65,44,0.6),rgba(10,34,23,0.72))}
@@ -410,6 +410,11 @@ body.projects-mode .sidebar{padding-top:calc(14px + var(--projects-sidebar-offse
 .projects-cal-menu .menu-item[data-action="autoload-clear"]{border-color:rgba(255,128,154,0.62);background:linear-gradient(180deg,rgba(92,20,47,0.62),rgba(47,13,30,0.75))}
 .projects-cal-menu .menu-item[data-action="launch-clear"]:hover,
 .projects-cal-menu .menu-item[data-action="autoload-clear"]:hover{box-shadow:0 0 15px rgba(255,122,166,0.52),inset 0 0 12px rgba(255,153,184,0.2);border-color:rgba(255,172,196,0.9)}
+.projects-cal-menu .menu-item[data-action="cards-active"]{border-color:rgba(114,214,255,0.66);background:linear-gradient(180deg,rgba(16,53,94,0.62),rgba(11,31,61,0.74))}
+.projects-cal-menu .menu-item[data-action="cards-active"]:hover{box-shadow:0 0 15px rgba(112,214,255,0.5),inset 0 0 10px rgba(162,235,255,0.2);border-color:rgba(150,225,255,0.9)}
+.proj-joker-badge{height:16px;min-width:24px;padding:0 5px;border-radius:999px;border:1px solid rgba(114,214,255,0.66);background:linear-gradient(180deg,rgba(16,53,94,0.62),rgba(11,31,61,0.74));color:#d7f2ff;font-size:9px;font-weight:800;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;line-height:1;white-space:nowrap;transition:all 0.14s}
+.proj-joker-badge:hover{border-color:rgba(150,225,255,0.9);box-shadow:0 0 12px rgba(112,214,255,0.45)}
+.proj-joker-badge.armed{border-color:rgba(255,172,196,0.9);background:linear-gradient(180deg,rgba(92,20,47,0.62),rgba(47,13,30,0.75));color:#ffdce5}
 body.calendar-launch-mode .projects-cal-day[data-project-id]{cursor:crosshair}
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
@@ -742,6 +747,7 @@ var _calendarPaintMode = null; // null | 'launch'
 var _calendarPainting = false;
 var _calendarPaintProjectId = null;
 var _calendarPaintDates = [];
+var _projectJokerDetachArmedId = null;
 var _projectsSheetPullTimer = null;
 var _projectsSheetPullBusy = false;
 
@@ -1256,6 +1262,7 @@ function showProjectsCalMenu(x, y, projectId, dateStr) {
         '<div class="menu-item" data-action="autoload-clear">🗑 Очистить автозагрузку</div>' +
       '</div>' +
     '</div>' +
+    '<div class="menu-item" data-action="cards-active">🃏 Актив карточек</div>' +
     '<div class="menu-item" data-action="launch-paint">✍️ Режим закраски запуска</div>' +
     '<div class="menu-item" data-action="launch-clear">🗑 Очистить запуск</div>';
   document.body.appendChild(menu);
@@ -1291,6 +1298,16 @@ function showProjectsCalMenu(x, y, projectId, dateStr) {
       hideProjectsCalMenu();
     } else if (action === 'autoload-clear') {
       clearProjectAutoload(pid);
+      hideProjectsCalMenu();
+    } else if (action === 'cards-active') {
+      var existingCards = '';
+      try {
+        var pdCards = loadProjectsData();
+        var ppCards = (pdCards.projects || []).find(function(x){ return x.id === pid; });
+        existingCards = ppCards && ppCards.cardsActive ? String(ppCards.cardsActive) : '';
+      } catch(ex) {}
+      var cval = prompt('Актив карточек (число):', existingCards || '1');
+      if (cval !== null) setProjectCardsActive(pid, cval);
       hideProjectsCalMenu();
     } else if (action === 'launch-paint' || action === 'launch-mode') {
       _calendarPaintMode = 'launch';
@@ -1582,8 +1599,12 @@ function renderProjectsScreen(opts) {
     var extraLinesHtml = renderProjectChildLinesHtml(p);
     var driveClass = 'proj-drive-btn' + (p.folderLink ? ' on' : '');
     var expandedClass = _expandedProjectIds[p.id] ? ' expanded' : '';
+    var hasCardsActive = !!String(p.cardsActive || '').trim();
+    var cardsLabel = (_projectJokerDetachArmedId === p.id) ? '✖' : ('🃏 ' + (p.cardsActive || ''));
+    var cardsClass = 'proj-joker-badge' + (_projectJokerDetachArmedId === p.id ? ' armed' : '');
+    var cardsHtml = hasCardsActive ? '<button type="button" class="' + cardsClass + '" title="Актив карточек. Нажмите ещё раз, чтобы снять." onclick="event.stopPropagation();toggleProjectCardsBadge(\'' + p.id + '\')">' + cardsLabel + '</button>' : '';
     var hoverPop = '<div class="proj-hover-pop"><button type="button" class="crm-bind-btn" onclick="startProjectFolderBind(\'' + p.id + '\', event)">CRM</button></div>';
-    var stickyHtml = '<div class="proj-col-expand">' + expandContent + '</div><div class="proj-col-type" onclick="event.stopPropagation();cycleProjectClientType(\'' + p.id + '\')" title="Старые/новички/2-й раз">' + typeHtml + '</div><button type="button" class="' + driveClass + '" title="Папка клиента в Google Drive" onclick="event.stopPropagation();openProjectDriveFolder(\'' + p.id + '\')">△</button><div class="proj-cell-editable' + expandedClass + '" data-id="' + p.id + '" onclick="editProjectCell(this)">' + hoverPop + '<div class="proj-main-line"><button type="button" class="proj-emoji-btn" onclick="event.stopPropagation();showProjEmojiPicker(this,\'' + p.id + '\')">' + (em||'😀') + '</button><input type="text" value="' + (p.title||'').replace(/"/g,'&quot;') + '" readonly style="pointer-events:none">' + expandBtnName + '<span class="project-path">' + pathHtml + '</span><button type="button" class="proj-status-btn project-status" onclick="event.stopPropagation();showProjectStatusPicker(this,\'' + p.id + '\')" style="background:' + (PROJECT_STATUS_COLORS[p.status]||'#666') + '22;color:' + (PROJECT_STATUS_COLORS[p.status]||'#999') + '">' + (p.status||'В работе') + '</button>' + expandBtnStatus + '</div><div class="proj-optional-row">' + extraLinesHtml + '</div></div>';
+    var stickyHtml = '<div class="proj-col-expand">' + expandContent + '</div><div class="proj-col-type" onclick="event.stopPropagation();cycleProjectClientType(\'' + p.id + '\')" title="Старые/новички/2-й раз">' + typeHtml + '</div><button type="button" class="' + driveClass + '" title="Папка клиента в Google Drive" onclick="event.stopPropagation();openProjectDriveFolder(\'' + p.id + '\')">△</button><div class="proj-cell-editable' + expandedClass + '" data-id="' + p.id + '" onclick="editProjectCell(this)">' + hoverPop + '<div class="proj-main-line"><button type="button" class="proj-emoji-btn" onclick="event.stopPropagation();showProjEmojiPicker(this,\'' + p.id + '\')">' + (em||'😀') + '</button><input type="text" value="' + (p.title||'').replace(/"/g,'&quot;') + '" readonly style="pointer-events:none">' + expandBtnName + cardsHtml + '<span class="project-path">' + pathHtml + '</span><button type="button" class="proj-status-btn project-status" onclick="event.stopPropagation();showProjectStatusPicker(this,\'' + p.id + '\')" style="background:' + (PROJECT_STATUS_COLORS[p.status]||'#666') + '22;color:' + (PROJECT_STATUS_COLORS[p.status]||'#999') + '">' + (p.status||'В работе') + '</button>' + expandBtnStatus + '</div><div class="proj-optional-row">' + extraLinesHtml + '</div></div>';
     var selectedClass = (_selectedProjectId === p.id) ? ' selected' : '';
     var rowHtml = '<div class="projects-table-row' + selectedClass + '" data-id="' + p.id + '" draggable="true" onclick="selectProjectRow(\'' + p.id + '\')" ondragstart="startProjectRowDrag(event,\'' + p.id + '\')" ondragover="handleProjectRowDragOver(event,this,\'' + p.id + '\')" ondragleave="handleProjectRowDragLeave(event,this)" ondrop="handleProjectRowDrop(event,\'' + p.id + '\')" ondragend="endProjectRowDrag(event)"><div class="projects-sticky">' + stickyHtml + '</div><div class="projects-scroll">';
     dates.forEach(function(d) {
@@ -1720,6 +1741,36 @@ function showProjectStatusPicker(btn, projectId) {
       if (!picker.contains(e.target) && e.target !== btn) { picker.remove(); document.removeEventListener('click', close); }
     });
   }, 0);
+}
+function setProjectCardsActive(projectId, value) {
+  var data = loadProjectsData();
+  var p = data.projects.find(function(x){ return x.id===projectId; });
+  if (!p) return;
+  var n = parseInt(String(value || '').trim(), 10);
+  if (!isFinite(n) || n <= 0) {
+    p.cardsActive = '';
+  } else {
+    p.cardsActive = String(n);
+  }
+  _projectJokerDetachArmedId = null;
+  saveProjectsData(data);
+  rerenderProjectsPreserveScroll();
+  syncProjectToActiveSheet(projectId, 'cards_active_set');
+}
+function toggleProjectCardsBadge(projectId) {
+  var data = loadProjectsData();
+  var p = data.projects.find(function(x){ return x.id===projectId; });
+  if (!p || !p.cardsActive) return;
+  if (_projectJokerDetachArmedId !== projectId) {
+    _projectJokerDetachArmedId = projectId;
+    rerenderProjectsPreserveScroll();
+    return;
+  }
+  p.cardsActive = '';
+  _projectJokerDetachArmedId = null;
+  saveProjectsData(data);
+  rerenderProjectsPreserveScroll();
+  syncProjectToActiveSheet(projectId, 'cards_active_clear');
 }
 function toggleProjectOptional(btn, projectId) {
   var cell = btn.closest('.proj-cell-editable');
