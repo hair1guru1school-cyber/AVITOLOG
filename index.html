@@ -297,7 +297,7 @@ body.projects-mode .analytics-top-row .btn-projects-return{display:flex !importa
 /* Проекты: фикс. левая колонка + редактируемые ячейки */
 .projects-table-wrap{overflow:auto;flex:1;min-height:0}
 .projects-table{display:flex;flex-direction:column;min-width:max-content}
-.projects-table .projects-sticky{position:sticky;left:0;z-index:3;background:var(--surface);border-right:1px solid var(--border);min-width:200px;width:200px;flex-shrink:0;box-shadow:2px 0 8px rgba(0,0,0,0.2)}
+.projects-table .projects-sticky{position:sticky;left:0;z-index:3;background:var(--surface);border-right:1px solid var(--border);min-width:165px;width:165px;flex-shrink:0;box-shadow:2px 0 8px rgba(0,0,0,0.2)}
 .projects-table .projects-scroll{display:flex;flex-shrink:0}
 .projects-table-row{display:flex;min-height:32px;border-bottom:1px solid var(--border)}
 .projects-table-row .projects-sticky{display:flex;align-items:center}
@@ -322,7 +322,13 @@ body.projects-mode .analytics-top-row .btn-projects-return{display:flex !importa
 .proj-path-btn{cursor:pointer;font-size:14px;padding:2px 4px;border-radius:4px;opacity:0.4;transition:all 0.15s}
 .proj-path-btn:hover{opacity:0.7}
 .proj-path-btn.on{opacity:1;color:var(--accent)}
-.projects-table .projects-sticky{min-width:256px;width:256px}
+.projects-table .projects-sticky{min-width:165px;width:165px}
+.proj-status-btn{cursor:pointer;padding:2px 6px;border-radius:4px;font-size:10px;font-weight:700;border:1px solid transparent;transition:all 0.15s;white-space:nowrap}
+.proj-status-btn:hover{border-color:var(--accent)}
+.proj-status-picker{position:absolute;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:6px;display:flex;flex-direction:column;gap:2px;z-index:100;box-shadow:0 8px 24px rgba(0,0,0,0.4);max-height:200px;overflow-y:auto}
+.proj-status-picker span{cursor:pointer;font-size:11px;padding:4px 8px;border-radius:4px;transition:background 0.12s}
+.proj-status-picker span:hover{background:rgba(0,217,126,0.1)}
+.proj-status-btn{font-family:inherit}
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 </head>
@@ -709,7 +715,7 @@ function renderProjectsScreen() {
     var pathHtml = pathLabels.map(function(pl){ return '<span class="proj-path-btn' + (p.clientPath&&p.clientPath[pl.k]?' on':'') + '" title="' + pl.l + '" onclick="event.stopPropagation();toggleProjectPath(\'' + p.id + '\',\'' + pl.k + '\')">' + (pl.e||pl.l.slice(0,1)) + '</span>'; }).join('');
     var typeHtml = (p.clientType==='old') ? '<span class="proj-type-diamond">💎</span>' : (p.clientType==='returning') ? '<span class="proj-type-2">2</span>' : '<span class="proj-type-new">NEW</span>';
     var expandContent = (p.childLines&&p.childLines.length) ? '&#9660;' : '';
-    var stickyHtml = '<div class="proj-col-expand">' + expandContent + '</div><div class="proj-col-type" onclick="event.stopPropagation();cycleProjectClientType(\'' + p.id + '\')" title="Старые/новички/2-й раз">' + typeHtml + '</div><div class="proj-cell-editable" data-id="' + p.id + '" onclick="editProjectCell(this)"><button type="button" class="proj-emoji-btn" onclick="event.stopPropagation();showProjEmojiPicker(this,\'' + p.id + '\')">' + (em||'😀') + '</button><input type="text" value="' + (p.title||'').replace(/"/g,'&quot;') + '" readonly style="pointer-events:none"><span class="project-path">' + pathHtml + '</span><span class="project-status" style="background:' + (PROJECT_STATUS_COLORS[p.status]||'#666') + '22;color:' + (PROJECT_STATUS_COLORS[p.status]||'#999') + '">' + (p.status||'') + '</span></div>';
+    var stickyHtml = '<div class="proj-col-expand">' + expandContent + '</div><div class="proj-col-type" onclick="event.stopPropagation();cycleProjectClientType(\'' + p.id + '\')" title="Старые/новички/2-й раз">' + typeHtml + '</div><div class="proj-cell-editable" data-id="' + p.id + '" onclick="editProjectCell(this)"><button type="button" class="proj-emoji-btn" onclick="event.stopPropagation();showProjEmojiPicker(this,\'' + p.id + '\')">' + (em||'😀') + '</button><input type="text" value="' + (p.title||'').replace(/"/g,'&quot;') + '" readonly style="pointer-events:none"><span class="project-path">' + pathHtml + '</span><button type="button" class="proj-status-btn project-status" onclick="event.stopPropagation();showProjectStatusPicker(this,\'' + p.id + '\')" style="background:' + (PROJECT_STATUS_COLORS[p.status]||'#666') + '22;color:' + (PROJECT_STATUS_COLORS[p.status]||'#999') + '">' + (p.status||'В работе') + '</button></div>';
     var rowHtml = '<div class="projects-table-row" data-id="' + p.id + '"><div class="projects-sticky">' + stickyHtml + '</div><div class="projects-scroll">';
     dates.forEach(function(d) {
       var dStr = d.toISOString().slice(0,10);
