@@ -300,6 +300,8 @@ body.projects-mode .analytics-top-row .btn-projects-return{display:flex !importa
 .projects-table .projects-sticky{position:sticky;left:0;z-index:3;background:var(--surface);border-right:1px solid var(--border);min-width:var(--projects-sticky-width,360px);width:var(--projects-sticky-width,360px);flex-shrink:0;box-shadow:2px 0 8px rgba(0,0,0,0.2)}
 .projects-table .projects-scroll{display:flex;flex-shrink:0}
 .projects-table-row{display:flex;min-height:27px;border-bottom:1px solid var(--border)}
+.projects-table-row[data-id]{cursor:pointer}
+.projects-table-row[data-id].selected .projects-sticky{background:rgba(0,217,126,0.08)}
 .projects-table-row .projects-sticky{display:flex;align-items:center}
 .projects-table-row .projects-scroll{flex:1;min-width:0}
 .proj-cell-editable{cursor:pointer;padding:2px 8px;border-radius:6px;min-height:27px;display:flex;flex-wrap:nowrap;align-items:center;gap:4px;transition:background 0.15s;white-space:nowrap;overflow:hidden}
@@ -648,6 +650,7 @@ var PROJECT_STATUS_COLORS = {'Ожидают':'#7c6af7','В работе':'#00d9
 var PROJECT_EMOJIS = ['🏠','🪵','🛋️','🍳','🚪','🔨','🏗️','📦','🚀','💼'];
 var PROJECTS_ACTIVE_SHEET_NAME = 'Активные';
 var _projectsDidInitialCenter = false;
+var _selectedProjectId = null;
 
 function loadProjectsData() {
   try {
@@ -831,6 +834,85 @@ function syncProjectToActiveSheet(projectId, reason) {
   if (!p) return;
   appendProjectActiveRowToSheets(p, reason).catch(function(e){ console.warn('Active sheet sync failed:', e); });
 }
+function getSelectedProject() {
+  if (!_selectedProjectId) return null;
+  var data = loadProjectsData();
+  return data.projects.find(function(x){ return x.id === _selectedProjectId; }) || null;
+}
+function fillClientForm(c) {
+  document.getElementById('company').value = c.company || '';
+  document.getElementById('contact_name').value = c.contact_name || '';
+  document.getElementById('phone').value = c.phone || '';
+  document.getElementById('tg').value = c.telegram || '';
+  document.getElementById('avito_account').value = c.avito_account || '';
+  document.getElementById('category').value = c.category || '';
+  document.getElementById('city').value = c.city || '';
+  document.getElementById('notes').value = c.notes || '';
+  document.getElementById('kp_count').value = c.kp_count || '';
+  document.getElementById('client_type').value = c.client_type || '';
+  document.querySelectorAll('.ctype-btn').forEach(function(b) {
+    b.classList.toggle('on', b.textContent.trim() === (c.client_type || ''));
+  });
+}
+function clearClientForm() {
+  ['company','contact_name','phone','tg','avito_account','category','city','notes','kp_count'].forEach(function(id) {
+    var el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+  document.getElementById('client_type').value = '';
+  document.querySelectorAll('.ctype-btn').forEach(function(b) { b.classList.remove('on'); });
+}
+function findClientForProject(project) {
+  var clients = getCrmClients();
+  if (!project || !clients.length) return null;
+  if (project.crmClientId) {
+    var byId = clients.find(function(c){ return c.client_id === project.crmClientId; });
+    if (byId) return byId;
+  }
+  var t = (project.title || '').toLowerCase().trim();
+  if (!t) return null;
+  return clients.find(function(c) {
+    var cc = (c.company || '').toLowerCase();
+    var cn = (c.contact_name || '').toLowerCase();
+    return t.indexOf(cc) >= 0 || cc.indexOf(t) >= 0 || t.indexOf(cn) >= 0 || cn.indexOf(t) >= 0;
+  }) || null;
+}
+function markProjectRowSelection(projectId) {
+  document.querySelectorAll('.projects-table-row[data-id]').forEach(function(row) {
+    row.classList.toggle('selected', row.getAttribute('data-id') === projectId);
+  });
+}
+function showClientQuestionState(project) {
+  var badge = document.getElementById('clientBadge');
+  var nameEl = document.getElementById('clientBadgeName');
+  var st = document.getElementById('crmSt');
+  if (badge && nameEl) {
+    badge.style.display = 'inline-flex';
+    badge.className = 'badge err';
+    nameEl.textContent = '?';
+  }
+  if (st) {
+    st.style.display = 'block';
+    st.className = 'crm-st err';
+    st.textContent = 'Нет данных по проекту: ' + (project && project.title ? project.title : '');
+  }
+}
+function selectProjectRow(projectId) {
+  _selectedProjectId = projectId;
+  markProjectRowSelection(projectId);
+  var p = getSelectedProject();
+  if (!p) return;
+  var found = findClientForProject(p);
+  if (found) {
+    fillClientForm(found);
+    setActiveClient(found);
+  } else {
+    clearClientForm();
+    _activeClient = null;
+    localStorage.removeItem('avitolog_active_client');
+    showClientQuestionState(p);
+  }
+}
 
 function getDefaultProjectsData() {
   var today = new Date();
@@ -905,7 +987,8 @@ function renderProjectsScreen(opts) {
     var optionalValue = (p.optionalField||'').replace(/"/g,'&quot;');
     var driveClass = 'proj-drive-btn' + (p.folderLink ? ' on' : '');
     var stickyHtml = '<div class="proj-col-expand">' + expandContent + '</div><div class="proj-col-type" onclick="event.stopPropagation();cycleProjectClientType(\'' + p.id + '\')" title="Старые/новички/2-й раз">' + typeHtml + '</div><button type="button" class="' + driveClass + '" title="Папка клиента в Google Drive" onclick="event.stopPropagation();openProjectDriveFolder(\'' + p.id + '\')">△</button><div class="proj-cell-editable" data-id="' + p.id + '" onclick="editProjectCell(this)"><div class="proj-main-line"><button type="button" class="proj-emoji-btn" onclick="event.stopPropagation();showProjEmojiPicker(this,\'' + p.id + '\')">' + (em||'😀') + '</button><input type="text" value="' + (p.title||'').replace(/"/g,'&quot;') + '" readonly style="pointer-events:none">' + expandBtnName + '<span class="project-path">' + pathHtml + '</span><button type="button" class="proj-status-btn project-status" onclick="event.stopPropagation();showProjectStatusPicker(this,\'' + p.id + '\')" style="background:' + (PROJECT_STATUS_COLORS[p.status]||'#666') + '22;color:' + (PROJECT_STATUS_COLORS[p.status]||'#999') + '">' + (p.status||'В работе') + '</button>' + expandBtnStatus + '</div><div class="proj-optional-row"><input type="text" class="proj-optional-input" value="' + optionalValue + '" placeholder="Доп. поле..." onclick="event.stopPropagation();" onblur="saveProjectOptional(\'' + p.id + '\', this.value)" onkeydown="if(event.key===\'Enter\'){event.preventDefault();this.blur();}"></div></div>';
-    var rowHtml = '<div class="projects-table-row" data-id="' + p.id + '"><div class="projects-sticky">' + stickyHtml + '</div><div class="projects-scroll">';
+    var selectedClass = (_selectedProjectId === p.id) ? ' selected' : '';
+    var rowHtml = '<div class="projects-table-row' + selectedClass + '" data-id="' + p.id + '" onclick="selectProjectRow(\'' + p.id + '\')"><div class="projects-sticky">' + stickyHtml + '</div><div class="projects-scroll">';
     dates.forEach(function(d) {
       var dStr = d.toISOString().slice(0,10);
       var cellHtml = '';
@@ -2389,19 +2472,7 @@ function loadClient(idx) {
     c = clients[idx];
   }
   if (!c) return;
-  document.getElementById('company').value = c.company || '';
-  document.getElementById('contact_name').value = c.contact_name || '';
-  document.getElementById('phone').value = c.phone || '';
-  document.getElementById('tg').value = c.telegram || '';
-  document.getElementById('avito_account').value = c.avito_account || '';
-  document.getElementById('category').value = c.category || '';
-  document.getElementById('city').value = c.city || '';
-  document.getElementById('notes').value = c.notes || '';
-  document.getElementById('kp_count').value = c.kp_count || '';
-  document.getElementById('client_type').value = c.client_type || '';
-  document.querySelectorAll('.ctype-btn').forEach(function(b) {
-    b.classList.toggle('on', b.textContent.trim() === (c.client_type || ''));
-  });
+  fillClientForm(c);
   if (idx !== -1) setActiveClient(c);
   document.getElementById('clientMenu').classList.remove('show');
 }
@@ -2452,9 +2523,11 @@ async function saveClient() {
     d.folderId = folderId;
     d.folderLink = folderLink;
     d.folder_name = folderName;
-    d.client_id = d.client_id || String(Date.now());
+    var selectedProject = getSelectedProject();
+    d.client_id = (selectedProject && selectedProject.crmClientId) || d.client_id || String(Date.now());
     var clients = getCrmClients();
-    var existing = clients.findIndex(function(c) { return c.company === d.company && c.phone === d.phone; });
+    var existing = clients.findIndex(function(c) { return c.client_id === d.client_id; });
+    if (existing < 0) existing = clients.findIndex(function(c) { return c.company === d.company && c.phone === d.phone; });
     if (existing >= 0) {
       if (clients[existing].client_id) d.client_id = clients[existing].client_id;
       clients[existing] = d;
@@ -2463,6 +2536,18 @@ async function saveClient() {
     }
     saveCrmClients(clients);
     setActiveClient(d);
+    if (selectedProject) {
+      var pd = loadProjectsData();
+      var sp = pd.projects.find(function(x){ return x.id === selectedProject.id; });
+      if (sp) {
+        sp.crmClientId = d.client_id;
+        sp.folderId = d.folderId || sp.folderId || '';
+        sp.folderLink = d.folderLink || sp.folderLink || '';
+        saveProjectsData(pd);
+        syncProjectToActiveSheet(sp.id, 'crm_save');
+        rerenderProjectsPreserveScroll();
+      }
+    }
     
     var st = document.getElementById('crmSt');
     st.style.display = 'block';
@@ -2502,13 +2587,35 @@ async function writeToSheets(d) {
     d.folder_name || '',
     d.folderLink || ''
   ];
-  var range = (typeof SHEETS_NAME !== 'undefined' ? SHEETS_NAME : 'Лист1') + '!A:I';
-  var url = 'https://sheets.googleapis.com/v4/spreadsheets/' + SHEETS_ID + '/values/' + encodeURIComponent(range) + ':append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS';
-  var resp = await fetch(url, {
-    method: 'POST',
-    headers: {'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json'},
-    body: JSON.stringify({values: [row]})
-  });
+  var sheetName = (typeof SHEETS_NAME !== 'undefined' ? SHEETS_NAME : 'Лист1');
+  var colAUrl = 'https://sheets.googleapis.com/v4/spreadsheets/' + SHEETS_ID + '/values/' + encodeURIComponent(sheetName + '!A2:A');
+  var colAResp = await fetch(colAUrl, { headers: {'Authorization': 'Bearer ' + token} });
+  var targetRow = 0;
+  if (colAResp.ok) {
+    var colAData = await colAResp.json().catch(function(){ return {}; });
+    var vals = colAData.values || [];
+    for (var i = 0; i < vals.length; i++) {
+      if ((vals[i] && vals[i][0]) === (d.client_id || '')) { targetRow = i + 2; break; }
+    }
+  }
+  var resp;
+  if (targetRow > 0) {
+    var updRange = sheetName + '!A' + targetRow + ':I' + targetRow;
+    var updUrl = 'https://sheets.googleapis.com/v4/spreadsheets/' + SHEETS_ID + '/values/' + encodeURIComponent(updRange) + '?valueInputOption=USER_ENTERED';
+    resp = await fetch(updUrl, {
+      method: 'PUT',
+      headers: {'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json'},
+      body: JSON.stringify({values: [row]})
+    });
+  } else {
+    var appRange = sheetName + '!A:I';
+    var appUrl = 'https://sheets.googleapis.com/v4/spreadsheets/' + SHEETS_ID + '/values/' + encodeURIComponent(appRange) + ':append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS';
+    resp = await fetch(appUrl, {
+      method: 'POST',
+      headers: {'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json'},
+      body: JSON.stringify({values: [row]})
+    });
+  }
   if (!resp.ok) {
     var err = await resp.json().catch(function() { return {}; });
     throw new Error('Таблица: ' + (err.error && err.error.message ? err.error.message : resp.status + ' ' + resp.statusText));
