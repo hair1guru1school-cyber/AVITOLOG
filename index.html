@@ -175,11 +175,13 @@ textarea{resize:vertical;min-height:50px;line-height:1.5}
   body.sidebar-open-mobile .sidebar-overlay{opacity:1;pointer-events:auto;left:min(300px,85vw)}
   .btn-gen,.btn-gen-mobile{touch-action:manipulation;-webkit-tap-highlight-color:transparent}
   .gen-mobile-wrap{display:flex !important;justify-content:center;padding:10px 12px 12px;flex-shrink:0}
+  body.sidebar-open-mobile .gen-mobile-wrap{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:450;padding:0}
   .btn-gen-mobile{display:flex !important;margin:0 auto;max-width:280px}
   .header-menu-btn{display:flex !important}
   .content-wrap{grid-area:main;min-width:0;padding-bottom:70px}
   .right-tabs{position:fixed;bottom:0;left:0;right:0;height:auto;flex-direction:row;justify-content:space-around;padding:8px;border-top:1px solid var(--border);z-index:350;border-left:none}
   .content{padding:12px 10px}
+  .empty-st{justify-content:flex-start;padding-top:8px}
   .doc-wrap{max-width:none;width:100%;margin:0;padding:0 4px}
   .doc-block{padding:20px 14px;font-size:13px}
   .doc-block img{max-width:100%;width:100% !important;height:auto;display:block;border-radius:8px}
