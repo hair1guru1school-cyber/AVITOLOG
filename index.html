@@ -255,6 +255,7 @@ body.projects-mode .gen-mobile-wrap{display:none !important}
 body.projects-mode .analytics-tumbler{display:none !important}
 body.projects-mode .analytics-top-row .btn-projects{display:none !important}
 body.projects-mode .analytics-top-row .btn-projects-return{display:flex !important}
+body.projects-mode .sidebar{padding-top:calc(14px + var(--projects-sidebar-offset, 0px))}
 .projects-board{display:flex;height:100%;min-height:400px;overflow:hidden;background:var(--bg)}
 .projects-left{width:380px;min-width:380px;flex-shrink:0;background:var(--surface);border-right:1px solid var(--border);overflow-y:auto;display:flex;flex-direction:column}
 .projects-table-wrap{flex:1;overflow:auto;min-width:0}
@@ -599,6 +600,7 @@ var projectsMode = false;
 function toggleProjectsScreen() {
   projectsMode = !projectsMode;
   document.body.classList.toggle('projects-mode', projectsMode);
+  updateProjectsSidebarOffset();
   if (projectsMode) {
     _projectsDidInitialCenter = false;
     renderProjectsScreen();
@@ -629,6 +631,16 @@ function updateProjectsButtonVisibility() {
     if (ret) ret.style.display = 'none';
     row.style.display = 'none';
   }
+  updateProjectsSidebarOffset();
+}
+function updateProjectsSidebarOffset() {
+  var row = document.getElementById('analyticsTopRow');
+  var off = 0;
+  if (projectsMode && row) {
+    var cs = getComputedStyle(row);
+    if (cs.display !== 'none') off = row.offsetHeight || 0;
+  }
+  document.documentElement.style.setProperty('--projects-sidebar-offset', off + 'px');
 }
 
 function applyAnalyticsModeDefault() {
@@ -2807,6 +2819,8 @@ document.addEventListener('DOMContentLoaded', function() {
   _activeClient = getActiveClient();
   updateClientBadge();
   if (_activeClient) loadClient(-1); // -1 = load from _activeClient
+  updateProjectsSidebarOffset();
+  window.addEventListener('resize', updateProjectsSidebarOffset);
   // Закрытие меню клиентов при клике вне
   document.addEventListener('click', function(e) {
     var menu = document.getElementById('clientMenu');
