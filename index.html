@@ -172,7 +172,10 @@ textarea{resize:vertical;min-height:50px;line-height:1.5}
   .sidebar{position:fixed;left:0;top:0;bottom:0;width:min(300px,85vw);z-index:400;transform:translateX(-100%);transition:transform 0.25s ease;box-shadow:4px 0 24px rgba(0,0,0,0.4)}
   body.sidebar-open-mobile .sidebar{transform:translateX(0)}
   .sidebar-overlay{display:block !important}
-  body.sidebar-open-mobile .sidebar-overlay{opacity:1;pointer-events:auto}
+  body.sidebar-open-mobile .sidebar-overlay{opacity:1;pointer-events:auto;left:min(300px,85vw)}
+  .btn-gen,.btn-gen-mobile{touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+  .gen-mobile-wrap{display:flex !important;justify-content:center;padding:10px 12px 12px;flex-shrink:0}
+  .btn-gen-mobile{display:flex !important;margin:0 auto;max-width:280px}
   .header-menu-btn{display:flex !important}
   .content-wrap{grid-area:main;min-width:0;padding-bottom:70px}
   .right-tabs{position:fixed;bottom:0;left:0;right:0;height:auto;flex-direction:row;justify-content:space-around;padding:8px;border-top:1px solid var(--border);z-index:350;border-left:none}
@@ -182,6 +185,7 @@ textarea{resize:vertical;min-height:50px;line-height:1.5}
   .doc-block img{max-width:100%;width:100% !important;height:auto;display:block;border-radius:8px}
   .doc-block .doc-header-img img{width:100% !important;max-width:100% !important;height:auto}
 }
+.btn-gen-mobile{display:none}
 .sidebar-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:350;opacity:0;pointer-events:none;transition:opacity 0.2s}
 .header-menu-btn{display:none;align-items:center;justify-content:center;width:44px;height:44px;border:1px solid var(--border);background:var(--surface2);color:var(--text);border-radius:10px;cursor:pointer;font-size:20px;margin-right:8px}
 .header-menu-btn:hover{background:rgba(0,217,126,0.15);border-color:var(--accent);color:var(--accent)}
@@ -308,6 +312,9 @@ textarea{resize:vertical;min-height:50px;line-height:1.5}
     <button type="button" class="sec-btn on" data-sec="keywords" onclick="toggleSec(this)">🔎 Ключи</button>
     <button type="button" class="sec-btn on" data-sec="geo" onclick="toggleSec(this)">📍 Гео</button>
     <button type="button" class="sec-btn on" data-sec="summary" onclick="toggleSec(this)">🎯 Итог</button>
+  </div>
+  <div class="gen-mobile-wrap" id="genMobileWrap">
+    <button type="button" class="btn-gen btn-gen-mobile" id="genBtnMobile" onclick="generate()"><span>&#9889;</span><span>СГЕНЕРИРОВАТЬ</span></button>
   </div>
   <div class="content" id="mainContent">
     <div class="empty-st">
@@ -536,9 +543,11 @@ function setContent(html) {
 // ── GENERATE ──
 function generate() {
   acSaveAll();
-  var btn = document.getElementById('genBtn');
-  btn.disabled = true;
-  btn.innerHTML = '<span>⚡</span><span>Генерирую...</span>';
+  var btns = document.querySelectorAll('.btn-gen, .btn-gen-mobile');
+  btns.forEach(function(b) {
+    b.disabled = true;
+    b.innerHTML = '<span>⚡</span><span>Генерирую...</span>';
+  });
   pgStart();
   setContent('<div class="loading"><div class="spinner"></div><p>AI анализирует нишу...</p></div>');
   hideChat();
@@ -581,8 +590,10 @@ function generate() {
   }).catch(function(e) {
     setContent('<div class="error-box">Ошибка: ' + e.message + '</div>');
   }).finally(function() {
-    btn.disabled = false;
-    btn.innerHTML = '<span>⚡</span><span>СГЕНЕРИРОВАТЬ</span>';
+    document.querySelectorAll('.btn-gen, .btn-gen-mobile').forEach(function(b) {
+      b.disabled = false;
+      b.innerHTML = '<span>⚡</span><span>СГЕНЕРИРОВАТЬ</span>';
+    });
     pgStop();
   });
 }
