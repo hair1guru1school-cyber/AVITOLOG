@@ -428,15 +428,15 @@ body.projects-mode .sidebar{padding-top:calc(14px + var(--projects-sidebar-offse
 .proj-joker-wrap{position:relative;display:inline-flex;align-items:center}
 .proj-joker-del{position:absolute;right:-5px;top:-6px;width:11px;height:11px;border:1px solid rgba(255,172,196,0.9);border-radius:999px;background:#2a0f1b;color:#ffdce5;font-size:8px;line-height:1;display:flex;align-items:center;justify-content:center;cursor:pointer;padding:0}
 .proj-joker-del:hover{background:#4b1730}
-.proj-launch-badge{height:16px;min-width:22px;padding:0 5px;border-radius:999px;border:1px solid rgba(255,128,154,0.66);background:linear-gradient(180deg,rgba(92,20,47,0.62),rgba(47,13,30,0.75));color:#ffdce5;font-size:9px;font-weight:900;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;line-height:1;white-space:nowrap;transition:all 0.14s}
-.proj-launch-badge:hover{border-color:rgba(255,172,196,0.9);box-shadow:0 0 12px rgba(255,122,166,0.45)}
-.proj-launch-badge.armed{border-color:rgba(255,210,98,0.9);background:linear-gradient(180deg,rgba(110,76,9,0.62),rgba(55,38,7,0.75));color:#ffe9a8}
+.proj-launch-badge{height:16px;min-width:22px;padding:0 5px;border-radius:999px;border:1px solid rgba(255,210,98,0.9);background:linear-gradient(180deg,rgba(214,160,32,0.82),rgba(146,108,18,0.86));color:#2d2003;font-size:9px;font-weight:900;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;line-height:1;white-space:nowrap;transition:all 0.14s}
+.proj-launch-badge:hover{border-color:rgba(255,231,156,0.95);box-shadow:0 0 12px rgba(255,216,106,0.45)}
+.proj-launch-badge.armed{border-color:rgba(255,231,156,0.95);background:linear-gradient(180deg,rgba(232,186,58,0.92),rgba(170,127,24,0.9));color:#251b02}
 .proj-launch-del{position:absolute;right:-5px;top:-6px;width:11px;height:11px;border:1px solid rgba(255,210,98,0.9);border-radius:999px;background:#382708;color:#ffe9a8;font-size:8px;line-height:1;display:flex;align-items:center;justify-content:center;cursor:pointer;padding:0}
 .proj-launch-del:hover{background:#5b3e0e}
 .cal-bar{height:100%;width:100%;background:linear-gradient(90deg,rgba(0,217,126,0.4),rgba(0,217,126,0.2))}
 .cal-rocket,.cal-deadline,.cal-cards{height:100%;width:100%;display:flex;align-items:center;justify-content:center}
 .cal-rocket{font-size:14px;color:var(--muted)}
-.cal-deadline{font-size:12px}
+.cal-deadline{font-size:12px;background:linear-gradient(180deg,rgba(250,220,94,0.95),rgba(219,171,34,0.94));border:1px solid rgba(255,230,146,0.95);border-radius:5px;box-sizing:border-box;color:#2d2003}
 .cal-cards{font-size:11px;font-weight:800;color:#d7f2ff;background:linear-gradient(180deg,rgba(16,53,94,0.72),rgba(11,31,61,0.74));border:1px solid rgba(114,214,255,0.55);border-radius:5px;box-sizing:border-box}
 body.calendar-launch-mode .projects-cal-day[data-project-id]{cursor:crosshair}
 </style>
@@ -787,7 +787,13 @@ var _projectsDayStamp = '';
 function getTodayISO() {
   var d = new Date();
   d.setHours(0,0,0,0);
-  return d.toISOString().slice(0,10);
+  return toIsoDateLocal(d);
+}
+function toIsoDateLocal(d) {
+  var y = d.getFullYear();
+  var m = String(d.getMonth() + 1).padStart(2, '0');
+  var day = String(d.getDate()).padStart(2, '0');
+  return y + '-' + m + '-' + day;
 }
 
 function stopProjectsSheetPullTimer() {
@@ -858,6 +864,36 @@ function loadProjectsData() {
           p.clientPath = {autoload:false,analytics:false,texts:false,packaging:false,portfolio:false};
         }
       });
+    }
+    // Migration: move legacy date-bound markers to "today-floating" fields.
+    if (!localStorage.getItem('avitolog_projects_today_markers_v1')) {
+      var migrated = false;
+      data.projects.forEach(function(p) {
+        var events = Array.isArray(p.events) ? p.events : [];
+        if (!String(p.cardsActive || '').trim()) {
+          var cardsEvt = events.find(function(e){ return e && e.type === 'cards_count_without_active_upload' && String(e.value || '').trim(); });
+          if (cardsEvt) {
+            p.cardsActive = String(cardsEvt.value || '').trim();
+            migrated = true;
+          }
+        }
+        if (!p.mustLaunchRequired) {
+          var hasDeadline = events.some(function(e){ return e && e.type === 'deadline'; });
+          if (hasDeadline) {
+            p.mustLaunchRequired = true;
+            migrated = true;
+          }
+        }
+        var filtered = events.filter(function(e){
+          return e && e.type !== 'cards_count_without_active_upload' && e.type !== 'deadline';
+        });
+        if (filtered.length !== events.length) {
+          p.events = filtered;
+          migrated = true;
+        }
+      });
+      localStorage.setItem('avitolog_projects_today_markers_v1', '1');
+      if (migrated) saveProjectsData(data);
     }
     return data;
   } catch(e) { return getDefaultProjectsData(); }
@@ -1338,7 +1374,7 @@ function startProjectFolderBind(projectId, e) {
 function addDaysISO(dateStr, n) {
   var d = new Date(dateStr + 'T00:00:00');
   d.setDate(d.getDate() + n);
-  return d.toISOString().slice(0,10);
+  return toIsoDateLocal(d);
 }
 function normalizeIsoDateInput(v) {
   var s = String(v || '').trim();
@@ -1695,7 +1731,7 @@ function endProjectRowDrag(e) {
 
 function getDefaultProjectsData() {
   var today = new Date();
-  var d = function(offset) { var x=new Date(today); x.setDate(x.getDate()+offset); return x.toISOString().slice(0,10); };
+  var d = function(offset) { var x=new Date(today); x.setDate(x.getDate()+offset); return toIsoDateLocal(x); };
   var clients = [
     { emoji:'🌲', title:'Андрей Молл-Строй' }, { emoji:'🗄', title:'Дамир Казань MebelFan' }, { emoji:'🧱', title:'KuGa Термопанели' },
     { emoji:'🌲', title:'Иван ЦФО | НДС' }, { emoji:'🌲', title:'Иван Lumber Market 2' }, { emoji:'🛋', title:'Кирилл Кровати МСК' },
@@ -1721,7 +1757,7 @@ function renderProjectsScreen(opts) {
   var DAYS_RIGHT = 45;
   var today = new Date();
   today.setHours(0,0,0,0);
-  var todayIso = today.toISOString().slice(0,10);
+  var todayIso = toIsoDateLocal(today);
   var startDate = new Date(today);
   startDate.setDate(startDate.getDate() - DAYS_LEFT);
   var endDate = new Date(today);
@@ -1797,12 +1833,10 @@ function renderProjectsScreen(opts) {
     var selectedClass = (_selectedProjectId === p.id) ? ' selected' : '';
     var rowHtml = '<div class="projects-table-row' + selectedClass + '" data-id="' + p.id + '" draggable="true" onclick="selectProjectRow(\'' + p.id + '\')" ondragstart="startProjectRowDrag(event,\'' + p.id + '\')" ondragover="handleProjectRowDragOver(event,this,\'' + p.id + '\')" ondragleave="handleProjectRowDragLeave(event,this)" ondrop="handleProjectRowDrop(event,\'' + p.id + '\')" ondragend="endProjectRowDrag(event)"><div class="projects-sticky">' + stickyHtml + '</div><div class="projects-scroll">';
     dates.forEach(function(d) {
-      var dStr = d.toISOString().slice(0,10);
+      var dStr = toIsoDateLocal(d);
       var cellHtml = '';
       var launchEvt = (p.events||[]).find(function(e){ return e.type==='launch_range' && dStr>=e.startDate && dStr<=e.endDate; });
       var evt = (p.events||[]).find(function(e){ return e.type==='active_range' && dStr>=e.startDate && dStr<=e.endDate; });
-      var deadline = (p.events||[]).find(function(e){ return e.type==='deadline' && e.date===dStr; });
-      var cards = (p.events||[]).find(function(e){ return e.type==='cards_count_without_active_upload' && e.date===dStr; });
       var cardsActiveToday = hasCardsActive && (dStr === todayIso);
       var mustLaunchToday = hasMustLaunch && (dStr === todayIso);
       var rocket = (p.events||[]).find(function(e){ return e.type==='not_launched_project_marker' && e.date===dStr; });
@@ -1811,8 +1845,6 @@ function renderProjectsScreen(opts) {
       else if (rocket) cellHtml = '<div class="cal-rocket">🚀</div>';
       else if (launchEvt) cellHtml = '<div class="cal-launch-bar"></div>';
       else if (evt) cellHtml = '<div class="cal-bar"></div>';
-      else if (deadline) cellHtml = '<div class="cal-deadline">‼️</div>';
-      else if (cards) cellHtml = '<div class="cal-cards">' + cards.value + '</div>';
       rowHtml += '<div class="projects-cal-day" data-project-id="' + p.id + '" data-date="' + dStr + '" style="width:' + DAY_PX + 'px">' + cellHtml + '</div>';
     });
     rowHtml += '</div></div>';
