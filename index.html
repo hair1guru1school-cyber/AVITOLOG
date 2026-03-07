@@ -644,7 +644,9 @@ function toggleProjectsScreen() {
   if (projectsMode) {
     _projectsDidInitialCenter = false;
     renderProjectsScreen();
+    startProjectsSheetPullTimer();
   } else {
+    stopProjectsSheetPullTimer();
     var ico = currentTab==='analysis' ? '&#128202;' : currentTab==='presale' ? '&#9200;' : '&#127942;';
     document.getElementById('mainContent').innerHTML =
       '<div class="empty-st"><div style="font-size:38px;opacity:.2">' + ico +
@@ -723,6 +725,34 @@ var _calendarPaintMode = null; // null | 'launch'
 var _calendarPainting = false;
 var _calendarPaintProjectId = null;
 var _calendarPaintDates = [];
+var _projectsSheetPullTimer = null;
+var _projectsSheetPullBusy = false;
+
+function stopProjectsSheetPullTimer() {
+  if (_projectsSheetPullTimer) {
+    clearInterval(_projectsSheetPullTimer);
+    _projectsSheetPullTimer = null;
+  }
+}
+
+function runProjectsSheetPull(forceMerge) {
+  if (_projectsSheetPullBusy) return;
+  _projectsSheetPullBusy = true;
+  hydrateProjectsFromActiveSheet(!!forceMerge).then(function(changed){
+    if (!projectsMode) return;
+    if (changed) rerenderProjectsPreserveScroll();
+  }).catch(function(){}).finally(function(){
+    _projectsSheetPullBusy = false;
+  });
+}
+
+function startProjectsSheetPullTimer() {
+  stopProjectsSheetPullTimer();
+  runProjectsSheetPull(true);
+  _projectsSheetPullTimer = setInterval(function(){
+    runProjectsSheetPull(true);
+  }, 20000);
+}
 
 function loadProjectsData() {
   try {
@@ -751,42 +781,45 @@ function loadProjectsData() {
 function saveProjectsData(data) {
   try { localStorage.setItem(PROJECTS_DATA_KEY, JSON.stringify(data)); } catch(e) {}
 }
-async function hydrateProjectsFromActiveSheet() {
-  if (!_driveToken) return;
+async function hydrateProjectsFromActiveSheet(forceMerge) {
+  if (!_driveToken) return false;
+  if (typeof forceMerge === 'undefined') forceMerge = false;
   try {
     var localRaw = localStorage.getItem(PROJECTS_DATA_KEY);
-    if (localRaw) {
+    if (!forceMerge && localRaw) {
       var localData = JSON.parse(localRaw);
-      if (localData && localData.projects && localData.projects.length >= 10) return;
+      if (localData && localData.projects && localData.projects.length >= 10) return false;
     }
   } catch(e) {}
   try {
     var range = PROJECTS_ACTIVE_SHEET_NAME + '!A2:M';
     var url = 'https://sheets.googleapis.com/v4/spreadsheets/' + SHEETS_ID + '/values/' + encodeURIComponent(range);
     var resp = await fetch(url, { headers: {'Authorization': 'Bearer ' + _driveToken} });
-    if (!resp.ok) return;
+    if (!resp.ok) return false;
     var json = await resp.json();
     var rows = json.values || [];
-    if (!rows.length) return;
+    if (!rows.length) return false;
     var latestById = {};
     rows.forEach(function(r) {
-      var pid = r[1] || '';
+      var pid = String(r[1] || '').trim();
       if (!pid) return;
       var ts = r[0] || '';
       if (!latestById[pid] || String(latestById[pid][0] || '') <= String(ts)) latestById[pid] = r;
     });
-    var data = getDefaultProjectsData();
+    var data = loadProjectsData();
+    if (!data || !data.projects || !data.projects.length) data = getDefaultProjectsData();
+    var changed = false;
     data.projects.forEach(function(p) {
       var r = latestById[p.id];
       if (!r) return;
-      p.title = r[2] || p.title;
-      p.status = r[3] || p.status;
-      p.folderLink = r[7] || p.folderLink || '';
-      p.folderId = r[8] || p.folderId || '';
-      p.clientType = r[9] || p.clientType;
-      p.optionalField = r[10] || p.optionalField || '';
+      var title = r[2] || p.title;
+      var status = r[3] || p.status;
+      var folderLink = r[7] || p.folderLink || '';
+      var folderId = r[8] || p.folderId || '';
+      var clientType = r[9] || p.clientType;
+      var optionalField = r[10] || p.optionalField || '';
       var pathText = r[4] || '';
-      p.clientPath = {
+      var nextPath = {
         autoload: pathText.indexOf('Автозагрузка') >= 0,
         analytics: pathText.indexOf('Аналитика') >= 0,
         texts: pathText.indexOf('Тексты') >= 0,
@@ -795,14 +828,31 @@ async function hydrateProjectsFromActiveSheet() {
       };
       var start = r[5] || '';
       var end = r[6] || '';
+      if (p.title !== title) { p.title = title; changed = true; }
+      if (p.status !== status) { p.status = status; changed = true; }
+      if ((p.folderLink || '') !== folderLink) { p.folderLink = folderLink; changed = true; }
+      if ((p.folderId || '') !== folderId) { p.folderId = folderId; changed = true; }
+      if ((p.clientType || '') !== clientType) { p.clientType = clientType; changed = true; }
+      if ((p.optionalField || '') !== optionalField) { p.optionalField = optionalField; changed = true; }
+      var prevPath = p.clientPath || {};
+      if (!!prevPath.autoload !== !!nextPath.autoload || !!prevPath.analytics !== !!nextPath.analytics || !!prevPath.texts !== !!nextPath.texts || !!prevPath.packaging !== !!nextPath.packaging || !!prevPath.portfolio !== !!nextPath.portfolio) {
+        p.clientPath = nextPath;
+        changed = true;
+      }
       if (start && end) {
-        p.events = (p.events || []).filter(function(e){ return e.type !== 'active_range'; });
-        p.events.push({type:'active_range', startDate:start, endDate:end});
+        var prevRange = (p.events || []).find(function(e){ return e.type === 'active_range'; });
+        if (!prevRange || prevRange.startDate !== start || prevRange.endDate !== end) {
+          p.events = (p.events || []).filter(function(e){ return e.type !== 'active_range'; });
+          p.events.push({type:'active_range', startDate:start, endDate:end});
+          changed = true;
+        }
       }
     });
-    saveProjectsData(data);
+    if (changed) saveProjectsData(data);
+    return changed;
   } catch(e) {
     console.warn('hydrateProjectsFromActiveSheet failed:', e);
+    return false;
   }
 }
 function getProjectsWrapScroll() {
