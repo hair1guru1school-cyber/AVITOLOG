@@ -1006,6 +1006,10 @@ function findClientForProject(project) {
     var byId = clients.find(function(c){ return c.client_id === project.crmClientId; });
     if (byId) return byId;
   }
+  if (project.folderId) {
+    var byFolder = clients.find(function(c){ return String(c.folderId || '') === String(project.folderId || ''); });
+    if (byFolder) return byFolder;
+  }
   var t = (project.title || '').toLowerCase().trim();
   if (!t) return null;
   return clients.find(function(c) {
@@ -1043,11 +1047,38 @@ function selectProjectRow(projectId) {
   if (found) {
     fillClientForm(found);
     setActiveClient(found);
+    // Self-heal linkage so project stays bound after restarts.
+    if (p.crmClientId !== found.client_id || p.folderId !== found.folderId || p.folderLink !== found.folderLink) {
+      var pd = loadProjectsData();
+      var sp = pd.projects.find(function(x){ return x.id === p.id; });
+      if (sp) {
+        sp.crmClientId = found.client_id || sp.crmClientId || '';
+        sp.folderId = found.folderId || sp.folderId || '';
+        sp.folderLink = found.folderLink || sp.folderLink || '';
+        saveProjectsData(pd);
+      }
+    }
   } else {
     clearClientForm();
-    _activeClient = null;
-    localStorage.removeItem('avitolog_active_client');
-    showClientQuestionState(p);
+    if (p.folderId || p.folderLink) {
+      // Keep folder binding visible even if CRM card is not yet saved locally.
+      setActiveClient({
+        client_id: p.crmClientId || '',
+        folderId: p.folderId || '',
+        folderLink: p.folderLink || '',
+        company: p.title || 'Клиент'
+      });
+      var st = document.getElementById('crmSt');
+      if (st) {
+        st.style.display = 'block';
+        st.className = 'crm-st err';
+        st.textContent = 'Папка привязана, но карточка клиента не найдена локально. Нажмите "Сохранить".';
+      }
+    } else {
+      _activeClient = null;
+      localStorage.removeItem('avitolog_active_client');
+      showClientQuestionState(p);
+    }
   }
 }
 function startProjectFolderBind(projectId, e) {
