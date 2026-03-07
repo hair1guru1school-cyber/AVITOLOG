@@ -297,16 +297,16 @@ body.projects-mode .analytics-top-row .btn-projects-return{display:flex !importa
 /* Проекты: фикс. левая колонка + редактируемые ячейки */
 .projects-table-wrap{overflow:auto;flex:1;min-height:0}
 .projects-table{display:flex;flex-direction:column;min-width:max-content}
-.projects-table .projects-sticky{position:sticky;left:0;z-index:3;background:var(--surface);border-right:1px solid var(--border);min-width:165px;width:165px;flex-shrink:0;box-shadow:2px 0 8px rgba(0,0,0,0.2)}
+.projects-table .projects-sticky{position:sticky;left:0;z-index:3;background:var(--surface);border-right:1px solid var(--border);min-width:360px;width:360px;flex-shrink:0;box-shadow:2px 0 8px rgba(0,0,0,0.2)}
 .projects-table .projects-scroll{display:flex;flex-shrink:0}
 .projects-table-row{display:flex;min-height:32px;border-bottom:1px solid var(--border)}
 .projects-table-row .projects-sticky{display:flex;align-items:center}
 .projects-table-row .projects-scroll{flex:1;min-width:0}
-.proj-cell-editable{cursor:pointer;padding:6px 10px;border-radius:6px;min-height:32px;display:flex;flex-wrap:wrap;align-items:center;gap:6px;transition:background 0.15s}
-.proj-cell-editable .project-path{width:100%;margin-top:2px}
+.proj-cell-editable{cursor:pointer;padding:6px 10px;border-radius:6px;min-height:32px;display:flex;flex-wrap:nowrap;align-items:center;gap:6px;transition:background 0.15s;white-space:nowrap;overflow:hidden}
+.proj-cell-editable .project-path{display:inline-flex;align-items:center;gap:3px;flex-shrink:0}
 .proj-cell-editable:hover{background:rgba(0,217,126,0.08)}
 .proj-cell-editable.editing{background:var(--surface2);outline:1px solid var(--accent)}
-.proj-cell-editable input{flex:1;background:transparent;border:none;color:var(--text);font-size:13px;font-family:inherit;outline:none}
+.proj-cell-editable input{flex:1;min-width:70px;background:transparent;border:none;color:var(--text);font-size:13px;font-family:inherit;outline:none}
 .proj-emoji-btn{width:24px;height:24px;flex-shrink:0;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--muted);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:14px;transition:all 0.15s}
 .proj-emoji-btn:hover{border-color:var(--accent);color:var(--accent)}
 .proj-emoji-picker{position:absolute;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:8px;display:flex;flex-wrap:wrap;gap:6px;z-index:100;box-shadow:0 8px 24px rgba(0,0,0,0.4);max-width:200px}
@@ -319,11 +319,11 @@ body.projects-mode .analytics-top-row .btn-projects-return{display:flex !importa
 .proj-col-type .proj-type-diamond{font-size:14px;color:#5b9bd5}
 .proj-col-type .proj-type-new{background:var(--accent3);color:#fff;padding:1px 5px;border-radius:4px;font-size:9px;font-weight:700}
 .proj-col-type .proj-type-2{background:var(--accent3);color:#fff;padding:1px 6px;border-radius:4px;font-size:10px;font-weight:700}
-.proj-path-btn{cursor:pointer;font-size:14px;padding:2px 4px;border-radius:4px;opacity:0.4;transition:all 0.15s}
-.proj-path-btn:hover{opacity:0.7}
-.proj-path-btn.on{opacity:1;color:var(--accent)}
-.projects-table .projects-sticky{min-width:165px;width:165px}
-.proj-status-btn{cursor:pointer;padding:2px 6px;border-radius:4px;font-size:10px;font-weight:700;border:1px solid transparent;transition:all 0.15s;white-space:nowrap}
+.proj-path-btn{cursor:pointer;font-size:12px;line-height:1;padding:2px 4px;border-radius:4px;opacity:0.55;transition:all 0.15s;border:1px solid var(--border);background:transparent;color:var(--muted);font-family:inherit}
+.proj-path-btn:hover{opacity:0.9;border-color:var(--accent);color:var(--accent)}
+.proj-path-btn.on{opacity:1;color:var(--accent);border-color:var(--accent);background:rgba(0,217,126,0.12)}
+.projects-table .projects-sticky{min-width:360px;width:360px}
+.proj-status-btn{cursor:pointer;padding:2px 6px;border-radius:4px;font-size:10px;font-weight:700;border:1px solid transparent;transition:all 0.15s;white-space:nowrap;flex-shrink:0}
 .proj-status-btn:hover{border-color:var(--accent)}
 .proj-status-picker{position:absolute;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:6px;display:flex;flex-direction:column;gap:2px;z-index:100;box-shadow:0 8px 24px rgba(0,0,0,0.4);max-height:200px;overflow-y:auto}
 .proj-status-picker span{cursor:pointer;font-size:11px;padding:4px 8px;border-radius:4px;transition:background 0.12s}
@@ -712,7 +712,7 @@ function renderProjectsScreen() {
 
   allProjects.forEach(function(p) {
     var em = (p.emoji||'');
-    var pathHtml = pathLabels.map(function(pl){ return '<span class="proj-path-btn' + (p.clientPath&&p.clientPath[pl.k]?' on':'') + '" title="' + pl.l + '" onclick="event.stopPropagation();toggleProjectPath(\'' + p.id + '\',\'' + pl.k + '\')">' + (pl.e||pl.l.slice(0,1)) + '</span>'; }).join('');
+    var pathHtml = pathLabels.map(function(pl){ return '<button type="button" class="proj-path-btn' + (p.clientPath&&p.clientPath[pl.k]?' on':'') + '" title="' + pl.l + '" onclick="event.stopPropagation();toggleProjectPath(\'' + p.id + '\',\'' + pl.k + '\')">' + (pl.e||pl.l.slice(0,1)) + '</button>'; }).join('');
     var typeHtml = (p.clientType==='old') ? '<span class="proj-type-diamond">💎</span>' : (p.clientType==='returning') ? '<span class="proj-type-2">2</span>' : '<span class="proj-type-new">NEW</span>';
     var expandContent = (p.childLines&&p.childLines.length) ? '&#9660;' : '';
     var stickyHtml = '<div class="proj-col-expand">' + expandContent + '</div><div class="proj-col-type" onclick="event.stopPropagation();cycleProjectClientType(\'' + p.id + '\')" title="Старые/новички/2-й раз">' + typeHtml + '</div><div class="proj-cell-editable" data-id="' + p.id + '" onclick="editProjectCell(this)"><button type="button" class="proj-emoji-btn" onclick="event.stopPropagation();showProjEmojiPicker(this,\'' + p.id + '\')">' + (em||'😀') + '</button><input type="text" value="' + (p.title||'').replace(/"/g,'&quot;') + '" readonly style="pointer-events:none"><span class="project-path">' + pathHtml + '</span><button type="button" class="proj-status-btn project-status" onclick="event.stopPropagation();showProjectStatusPicker(this,\'' + p.id + '\')" style="background:' + (PROJECT_STATUS_COLORS[p.status]||'#666') + '22;color:' + (PROJECT_STATUS_COLORS[p.status]||'#999') + '">' + (p.status||'В работе') + '</button></div>';
@@ -790,6 +790,61 @@ function showProjEmojiPicker(btn, projectId) {
       if (!picker.contains(e.target) && e.target !== btn) { picker.remove(); document.removeEventListener('click', close); }
     });
   }, 0);
+}
+function showProjectStatusPicker(btn, projectId) {
+  var existing = document.getElementById('projStatusPicker');
+  if (existing) existing.remove();
+  var picker = document.createElement('div');
+  picker.id = 'projStatusPicker';
+  picker.className = 'proj-status-picker';
+  picker.style.position = 'fixed';
+  PROJECT_STATUSES.forEach(function(st) {
+    var s = document.createElement('span');
+    s.textContent = st;
+    s.style.background = (PROJECT_STATUS_COLORS[st]||'#666') + '22';
+    s.style.color = PROJECT_STATUS_COLORS[st] || '#999';
+    s.onclick = function() {
+      var data = loadProjectsData();
+      var p = data.projects.find(function(x){ return x.id===projectId; });
+      if (p) {
+        p.status = st;
+        saveProjectsData(data);
+        renderProjectsScreen();
+      }
+      picker.remove();
+    };
+    picker.appendChild(s);
+  });
+  document.body.appendChild(picker);
+  var r = btn.getBoundingClientRect();
+  picker.style.left = Math.max(6, r.left) + 'px';
+  picker.style.top = (r.bottom + 4) + 'px';
+  setTimeout(function() {
+    document.addEventListener('click', function close(e) {
+      if (!picker.contains(e.target) && e.target !== btn) { picker.remove(); document.removeEventListener('click', close); }
+    });
+  }, 0);
+}
+function toggleProjectPath(projectId, key) {
+  var data = loadProjectsData();
+  var p = data.projects.find(function(x){ return x.id===projectId; });
+  if (!p) return;
+  if (!p.clientPath || typeof p.clientPath !== 'object') {
+    p.clientPath = {autoload:false,analytics:false,texts:false,packaging:false,portfolio:false};
+  }
+  p.clientPath[key] = !p.clientPath[key];
+  saveProjectsData(data);
+  renderProjectsScreen();
+}
+function cycleProjectClientType(projectId) {
+  var data = loadProjectsData();
+  var p = data.projects.find(function(x){ return x.id===projectId; });
+  if (!p) return;
+  var order = ['old','new','returning'];
+  var idx = order.indexOf(p.clientType);
+  p.clientType = order[(idx + 1 + order.length) % order.length];
+  saveProjectsData(data);
+  renderProjectsScreen();
 }
 
 // ── TABS ──
