@@ -58,6 +58,11 @@ textarea{resize:vertical;min-height:50px;line-height:1.5}
 .cm-head .cm-close{cursor:pointer;color:var(--muted);font-size:14px}
 .cm-head .cm-close:hover{color:var(--text)}
 .cm-path{padding:4px 10px;font-size:10px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;border-bottom:1px solid var(--border)}
+.cm-tools{display:flex;gap:6px;padding:6px 10px;border-bottom:1px solid var(--border)}
+.cm-tools input{flex:1;min-width:0;background:var(--surface);border:1px solid var(--border);color:var(--text);padding:6px 8px;border-radius:6px;font-size:11px;outline:none;font-family:inherit}
+.cm-tools input:focus{border-color:var(--accent)}
+.cm-tools button{border:1px solid var(--accent);background:rgba(0,217,126,0.12);color:var(--accent);padding:0 8px;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap}
+.cm-tools button:hover{background:rgba(0,217,126,0.2)}
 .cm-list{flex:1;overflow-y:auto;scrollbar-width:thin;scrollbar-color:var(--border) transparent}
 .cm-list::-webkit-scrollbar{width:6px}.cm-list::-webkit-scrollbar-track{background:transparent}.cm-list::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
 .cm-foot{padding:6px 10px;border-top:1px solid var(--border);display:flex;gap:4px}
@@ -2864,6 +2869,7 @@ function clearActiveClient() {
 var _browseStack = []; // [{id, name}]
 var _browseCurrentId = null;
 var _browseLevel = 0; // 0=root, 1=category, 2+=client
+var _browseCurrentName = 'CRM';
 
 function toggleClientMenu() {
   var menu = document.getElementById('clientMenu');
@@ -2888,6 +2894,7 @@ function closeMobileSidebar() {
 
 async function browseFolder(folderId, folderName) {
   _browseCurrentId = folderId;
+  _browseCurrentName = folderName || 'CRM';
   var menu = document.getElementById('clientMenu');
   var pathStr = _browseStack.map(function(s) { return s.name; }).join(' › ');
   if (pathStr && folderName !== 'CRM') pathStr += ' › ' + folderName;
@@ -2899,6 +2906,7 @@ async function browseFolder(folderId, folderName) {
 
   menu.innerHTML = '<div class="cm-head"><span>📁 ' + folderName + '</span><span class="cm-close" onclick="closeClientMenu()">✕</span></div>' +
     '<div class="cm-path">' + pathStr + '</div>' +
+    '<div class="cm-tools"><input type="search" id="cmSearch" placeholder="Поиск папки..." oninput="filterBrowseFolders(this.value)"><button type="button" onclick="createBrowseFolder()">+ Папка</button></div>' +
     '<div class="cm-list"><div style="padding:20px;text-align:center;color:var(--muted);font-size:11px">⏳</div></div>' +
     (backBtn || selectBtn ? '<div class="cm-foot">' + backBtn + selectBtn + '</div>' : '');
 
@@ -2929,8 +2937,50 @@ async function browseFolder(folderId, folderName) {
         '</div>';
       }).join('');
     }
+    var searchEl = document.getElementById('cmSearch');
+    if (searchEl && searchEl.value) filterBrowseFolders(searchEl.value);
   } catch(e) {
     menu.querySelector('.cm-list').innerHTML = '<div style="padding:12px;color:#ff8080;font-size:11px">' + e.message + '</div>';
+  }
+}
+function filterBrowseFolders(query) {
+  var q = String(query || '').trim().toLowerCase();
+  var any = false;
+  document.querySelectorAll('#clientMenu .client-item[data-folder-id]').forEach(function(item) {
+    var name = (item.getAttribute('data-folder-name') || '').toLowerCase();
+    var show = !q || name.indexOf(q) >= 0;
+    item.style.display = show ? '' : 'none';
+    if (show) any = true;
+  });
+  var list = document.querySelector('#clientMenu .cm-list');
+  if (!list) return;
+  var empty = document.getElementById('cmNoSearchRes');
+  if (!any && q) {
+    if (!empty) {
+      empty = document.createElement('div');
+      empty.id = 'cmNoSearchRes';
+      empty.style.cssText = 'padding:12px;color:var(--muted);font-size:11px;text-align:center';
+      empty.textContent = 'Ничего не найдено';
+      list.appendChild(empty);
+    }
+  } else if (empty) {
+    empty.remove();
+  }
+}
+async function createBrowseFolder() {
+  if (!_browseCurrentId) return;
+  var name = prompt('Название новой папки:');
+  if (!name) return;
+  var clean = String(name).trim();
+  if (!clean) return;
+  try {
+    await driveCreateClientFolder(clean, _browseCurrentId);
+    await browseFolder(_browseCurrentId, _browseCurrentName);
+    var st = document.getElementById('crmSt');
+    if (st) { st.style.display = 'block'; st.className = 'crm-st ok'; st.textContent = 'Папка создана: ' + clean; }
+  } catch(e) {
+    var st = document.getElementById('crmSt');
+    if (st) { st.style.display = 'block'; st.className = 'crm-st err'; st.textContent = '✗ ' + (e.message || String(e)); }
   }
 }
 
