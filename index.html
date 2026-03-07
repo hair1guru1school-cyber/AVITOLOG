@@ -298,6 +298,10 @@ body.projects-mode .analytics-top-row .btn-projects-return{display:flex !importa
 .projects-table-wrap{overflow:auto;flex:1;min-height:0}
 .projects-table{display:flex;flex-direction:column;min-width:max-content}
 .projects-table .projects-sticky{position:sticky;left:0;z-index:3;background:var(--surface);border-right:1px solid var(--border);min-width:var(--projects-sticky-width,360px);width:var(--projects-sticky-width,360px);flex-shrink:0;box-shadow:2px 0 8px rgba(0,0,0,0.2)}
+.projects-sticky-head{position:relative;padding:8px 10px;font-size:10px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:1px}
+.projects-col-resizer{position:absolute;top:0;right:-4px;width:8px;height:100%;cursor:ew-resize;z-index:8}
+.projects-col-resizer::after{content:'';position:absolute;right:3px;top:8px;bottom:8px;width:2px;border-radius:2px;background:rgba(255,255,255,0.18)}
+.projects-col-resizer:hover::after{background:var(--accent)}
 .projects-table .projects-scroll{display:flex;flex-shrink:0}
 .projects-table-row{display:flex;min-height:27px;border-bottom:1px solid var(--border)}
 .projects-table-row[data-id]{cursor:pointer}
@@ -316,8 +320,14 @@ body.projects-mode .analytics-top-row .btn-projects-return{display:flex !importa
 .proj-optional-row{display:none;width:100%;margin-top:4px;padding-left:24px}
 .proj-cell-editable.expanded{flex-wrap:wrap;white-space:normal}
 .proj-cell-editable.expanded .proj-optional-row{display:flex}
-.proj-optional-input{width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:4px 7px;border-radius:6px;font-size:11px;font-family:inherit;outline:none}
-.proj-optional-input:focus{border-color:var(--accent)}
+.proj-extra-lines{display:flex;flex-direction:column;gap:3px;width:100%}
+.proj-extra-line{display:flex;align-items:center;gap:4px;width:100%}
+.proj-extra-del{width:14px;min-width:14px;height:14px;border:1px solid var(--border);border-radius:4px;background:transparent;color:#ff8a8a;cursor:pointer;font-size:10px;line-height:1;display:flex;align-items:center;justify-content:center;padding:0}
+.proj-extra-del:hover{border-color:#ff5050;color:#ff5050}
+.proj-extra-input{flex:1;min-width:0;background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:2px 6px;border-radius:5px;font-size:12px;font-weight:400;font-family:inherit;outline:none}
+.proj-extra-input:focus{border-color:var(--accent)}
+.proj-extra-add{width:16px;min-width:16px;height:16px;border:1px solid var(--accent);border-radius:5px;background:rgba(0,217,126,0.14);color:var(--accent);cursor:pointer;font-size:11px;line-height:1;display:flex;align-items:center;justify-content:center;padding:0}
+.proj-extra-add:hover{background:rgba(0,217,126,0.22)}
 .proj-emoji-btn{width:20px;height:20px;flex-shrink:0;border:1px solid var(--border);border-radius:5px;background:var(--surface2);color:var(--muted);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:12px;transition:all 0.15s}
 .proj-emoji-btn:hover{border-color:var(--accent);color:var(--accent)}
 .proj-emoji-picker{position:absolute;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:8px;display:flex;flex-wrap:wrap;gap:6px;z-index:100;box-shadow:0 8px 24px rgba(0,0,0,0.4);max-width:200px}
@@ -651,6 +661,9 @@ var PROJECT_EMOJIS = ['🏠','🪵','🛋️','🍳','🚪','🔨','🏗️','�
 var PROJECTS_ACTIVE_SHEET_NAME = 'Активные';
 var _projectsDidInitialCenter = false;
 var _selectedProjectId = null;
+var _expandedProjectIds = {};
+var _projectChildFocusKey = null;
+var PROJECTS_STICKY_WIDTH_KEY = 'avitolog_projects_sticky_width';
 
 function loadProjectsData() {
   try {
@@ -760,6 +773,57 @@ function getProjectAutoloadRange(p) {
   if (!ranges.length) return {start:'', end:''};
   ranges.sort(function(a,b){ return String(a.startDate||'').localeCompare(String(b.startDate||'')); });
   return {start: ranges[0].startDate || '', end: ranges[ranges.length - 1].endDate || ''};
+}
+function escAttr(v) {
+  return String(v == null ? '' : v).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+function getSavedProjectsStickyWidth() {
+  var n = parseInt(localStorage.getItem(PROJECTS_STICKY_WIDTH_KEY) || '', 10);
+  return Number.isFinite(n) ? n : 0;
+}
+function setProjectsStickyWidthPx(width) {
+  var w = Math.max(320, Math.min(1200, Math.round(width || 0)));
+  localStorage.setItem(PROJECTS_STICKY_WIDTH_KEY, String(w));
+  var table = document.querySelector('.projects-table');
+  if (table) table.style.setProperty('--projects-sticky-width', w + 'px');
+}
+function startProjectsColResize(e) {
+  e.preventDefault();
+  e.stopPropagation();
+  var table = document.querySelector('.projects-table');
+  if (!table) return;
+  var current = parseInt(getComputedStyle(table).getPropertyValue('--projects-sticky-width') || '360', 10) || 360;
+  var startX = e.clientX;
+  function onMove(ev) {
+    setProjectsStickyWidthPx(current + (ev.clientX - startX));
+  }
+  function onUp() {
+    document.removeEventListener('mousemove', onMove);
+    document.removeEventListener('mouseup', onUp);
+  }
+  document.addEventListener('mousemove', onMove);
+  document.addEventListener('mouseup', onUp);
+}
+function resetProjectsStickyWidthAuto(e) {
+  if (e) { e.preventDefault(); e.stopPropagation(); }
+  localStorage.removeItem(PROJECTS_STICKY_WIDTH_KEY);
+  rerenderProjectsPreserveScroll();
+}
+function getProjectChildLines(p) {
+  var arr = Array.isArray(p && p.childLines) ? p.childLines.slice() : [];
+  if (!arr.length) arr = [''];
+  return arr;
+}
+function renderProjectChildLinesHtml(p) {
+  var lines = getProjectChildLines(p);
+  return '<div class="proj-extra-lines">' + lines.map(function(line, idx) {
+    var focusKey = p.id + ':' + idx;
+    return '<div class="proj-extra-line">' +
+      '<button type="button" class="proj-extra-del" title="Удалить строку" onclick="event.stopPropagation();removeProjectChildLine(\'' + p.id + '\',' + idx + ')">×</button>' +
+      '<input type="text" class="proj-extra-input" data-child-focus="' + focusKey + '" value="' + escAttr(line) + '" placeholder="Доп. позиция" onclick="event.stopPropagation();" oninput="updateProjectChildLine(\'' + p.id + '\',' + idx + ',this.value)" onkeydown="handleProjectChildLineKey(event,\'' + p.id + '\',' + idx + ')">' +
+      '<button type="button" class="proj-extra-add" title="Добавить строку" onclick="event.stopPropagation();addProjectChildLine(\'' + p.id + '\',' + idx + ')">+</button>' +
+      '</div>';
+  }).join('') + '</div>';
 }
 function getProjectsStickyWidthPx(projects) {
   var longest = 'Проект';
@@ -959,9 +1023,9 @@ function renderProjectsScreen(opts) {
   ['active','second_chance','archive'].forEach(function(zone) {
     data.projects.filter(function(p){ return p.zone===zone; }).sort(function(a,b){ return (a.sortOrder||0)-(b.sortOrder||0); }).forEach(function(p){ allProjects.push(p); });
   });
-  var stickyW = getProjectsStickyWidthPx(allProjects);
+  var stickyW = getSavedProjectsStickyWidth() || getProjectsStickyWidthPx(allProjects);
   var html = '<div class="projects-board"><div class="projects-table-wrap"><div class="projects-table" style="--projects-sticky-width:' + stickyW + 'px">';
-  var headerSticky = '<div style="padding:8px 10px;font-size:10px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:1px">Проект</div>';
+  var headerSticky = '<div class="projects-sticky-head">Проект<div class="projects-col-resizer" title="Тяните, чтобы менять ширину. Двойной клик — авто" onmousedown="startProjectsColResize(event)" ondblclick="resetProjectsStickyWidthAuto(event)"></div></div>';
   var headerScroll = '';
   dates.forEach(function(d) {
     var isToday = d.getTime()===today.getTime();
@@ -981,12 +1045,14 @@ function renderProjectsScreen(opts) {
     var em = (p.emoji||'');
     var pathHtml = pathLabels.map(function(pl){ return '<button type="button" class="proj-path-btn' + (p.clientPath&&p.clientPath[pl.k]?' on':'') + '" title="' + pl.l + '" onclick="event.stopPropagation();toggleProjectPath(\'' + p.id + '\',\'' + pl.k + '\')">' + (pl.e||pl.l.slice(0,1)) + '</button>'; }).join('');
     var typeHtml = (p.clientType==='old') ? '<span class="proj-type-diamond">💎</span>' : (p.clientType==='returning') ? '<span class="proj-type-2">2</span>' : '<span class="proj-type-new">NEW</span>';
-    var expandContent = (p.childLines&&p.childLines.length) ? '&#9660;' : '';
+    var hasChildLines = (p.childLines || []).some(function(v){ return String(v || '').trim() !== ''; });
+    var expandContent = hasChildLines ? '&#9660;' : '';
     var expandBtnName = '<button type="button" class="field-expand-btn" title="Раскрыть доп. поле" onclick="event.stopPropagation();toggleProjectOptional(this,\'' + p.id + '\')">&#9662;</button>';
     var expandBtnStatus = '<button type="button" class="field-expand-btn" title="Раскрыть доп. поле" onclick="event.stopPropagation();toggleProjectOptional(this,\'' + p.id + '\')">&#9662;</button>';
-    var optionalValue = (p.optionalField||'').replace(/"/g,'&quot;');
+    var extraLinesHtml = renderProjectChildLinesHtml(p);
     var driveClass = 'proj-drive-btn' + (p.folderLink ? ' on' : '');
-    var stickyHtml = '<div class="proj-col-expand">' + expandContent + '</div><div class="proj-col-type" onclick="event.stopPropagation();cycleProjectClientType(\'' + p.id + '\')" title="Старые/новички/2-й раз">' + typeHtml + '</div><button type="button" class="' + driveClass + '" title="Папка клиента в Google Drive" onclick="event.stopPropagation();openProjectDriveFolder(\'' + p.id + '\')">△</button><div class="proj-cell-editable" data-id="' + p.id + '" onclick="editProjectCell(this)"><div class="proj-main-line"><button type="button" class="proj-emoji-btn" onclick="event.stopPropagation();showProjEmojiPicker(this,\'' + p.id + '\')">' + (em||'😀') + '</button><input type="text" value="' + (p.title||'').replace(/"/g,'&quot;') + '" readonly style="pointer-events:none">' + expandBtnName + '<span class="project-path">' + pathHtml + '</span><button type="button" class="proj-status-btn project-status" onclick="event.stopPropagation();showProjectStatusPicker(this,\'' + p.id + '\')" style="background:' + (PROJECT_STATUS_COLORS[p.status]||'#666') + '22;color:' + (PROJECT_STATUS_COLORS[p.status]||'#999') + '">' + (p.status||'В работе') + '</button>' + expandBtnStatus + '</div><div class="proj-optional-row"><input type="text" class="proj-optional-input" value="' + optionalValue + '" placeholder="Доп. поле..." onclick="event.stopPropagation();" onblur="saveProjectOptional(\'' + p.id + '\', this.value)" onkeydown="if(event.key===\'Enter\'){event.preventDefault();this.blur();}"></div></div>';
+    var expandedClass = _expandedProjectIds[p.id] ? ' expanded' : '';
+    var stickyHtml = '<div class="proj-col-expand">' + expandContent + '</div><div class="proj-col-type" onclick="event.stopPropagation();cycleProjectClientType(\'' + p.id + '\')" title="Старые/новички/2-й раз">' + typeHtml + '</div><button type="button" class="' + driveClass + '" title="Папка клиента в Google Drive" onclick="event.stopPropagation();openProjectDriveFolder(\'' + p.id + '\')">△</button><div class="proj-cell-editable' + expandedClass + '" data-id="' + p.id + '" onclick="editProjectCell(this)"><div class="proj-main-line"><button type="button" class="proj-emoji-btn" onclick="event.stopPropagation();showProjEmojiPicker(this,\'' + p.id + '\')">' + (em||'😀') + '</button><input type="text" value="' + (p.title||'').replace(/"/g,'&quot;') + '" readonly style="pointer-events:none">' + expandBtnName + '<span class="project-path">' + pathHtml + '</span><button type="button" class="proj-status-btn project-status" onclick="event.stopPropagation();showProjectStatusPicker(this,\'' + p.id + '\')" style="background:' + (PROJECT_STATUS_COLORS[p.status]||'#666') + '22;color:' + (PROJECT_STATUS_COLORS[p.status]||'#999') + '">' + (p.status||'В работе') + '</button>' + expandBtnStatus + '</div><div class="proj-optional-row">' + extraLinesHtml + '</div></div>';
     var selectedClass = (_selectedProjectId === p.id) ? ' selected' : '';
     var rowHtml = '<div class="projects-table-row' + selectedClass + '" data-id="' + p.id + '" onclick="selectProjectRow(\'' + p.id + '\')"><div class="projects-sticky">' + stickyHtml + '</div><div class="projects-scroll">';
     dates.forEach(function(d) {
@@ -1023,6 +1089,15 @@ function renderProjectsScreen(opts) {
   if (opts.preserveScroll) {
     var content = document.querySelector('.content');
     if (content) content.scrollTop = opts.preserveScroll.contentTop || 0;
+  }
+  if (_projectChildFocusKey) {
+    var focusEl = document.querySelector('input[data-child-focus="' + _projectChildFocusKey + '"]');
+    if (focusEl) {
+      focusEl.focus();
+      focusEl.selectionStart = focusEl.value.length;
+      focusEl.selectionEnd = focusEl.value.length;
+    }
+    _projectChildFocusKey = null;
   }
 }
 function editProjectCell(el) {
@@ -1115,7 +1190,9 @@ function showProjectStatusPicker(btn, projectId) {
 function toggleProjectOptional(btn, projectId) {
   var cell = btn.closest('.proj-cell-editable');
   if (!cell) return;
-  cell.classList.toggle('expanded');
+  var next = !cell.classList.contains('expanded');
+  cell.classList.toggle('expanded', next);
+  _expandedProjectIds[projectId] = next;
 }
 function saveProjectOptional(projectId, value) {
   var data = loadProjectsData();
@@ -1124,6 +1201,52 @@ function saveProjectOptional(projectId, value) {
   p.optionalField = (value || '').trim();
   saveProjectsData(data);
   syncProjectToActiveSheet(projectId, 'optional_field_update');
+}
+function handleProjectChildLineKey(e, projectId, idx) {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    addProjectChildLine(projectId, idx);
+  }
+}
+function updateProjectChildLine(projectId, idx, value) {
+  var data = loadProjectsData();
+  var p = data.projects.find(function(x){ return x.id===projectId; });
+  if (!p) return;
+  var lines = getProjectChildLines(p);
+  lines[idx] = value;
+  p.childLines = lines;
+  saveProjectsData(data);
+}
+function addProjectChildLine(projectId, idx) {
+  var data = loadProjectsData();
+  var p = data.projects.find(function(x){ return x.id===projectId; });
+  if (!p) return;
+  var lines = getProjectChildLines(p);
+  var insertAt = Math.max(0, Math.min(lines.length, idx + 1));
+  lines.splice(insertAt, 0, '');
+  p.childLines = lines;
+  _expandedProjectIds[projectId] = true;
+  _projectChildFocusKey = projectId + ':' + insertAt;
+  saveProjectsData(data);
+  rerenderProjectsPreserveScroll();
+  syncProjectToActiveSheet(projectId, 'child_line_add');
+}
+function removeProjectChildLine(projectId, idx) {
+  var data = loadProjectsData();
+  var p = data.projects.find(function(x){ return x.id===projectId; });
+  if (!p) return;
+  var lines = getProjectChildLines(p);
+  if (lines.length <= 1) {
+    lines[0] = '';
+  } else {
+    lines.splice(idx, 1);
+  }
+  p.childLines = lines;
+  _expandedProjectIds[projectId] = true;
+  _projectChildFocusKey = projectId + ':' + Math.max(0, idx - 1);
+  saveProjectsData(data);
+  rerenderProjectsPreserveScroll();
+  syncProjectToActiveSheet(projectId, 'child_line_remove');
 }
 function toggleProjectPath(projectId, key) {
   var data = loadProjectsData();
