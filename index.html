@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="ru">
 <head>
 <meta charset="UTF-8">
@@ -178,7 +178,7 @@ body.projects-mode .gen-mobile-wrap{display:none !important}
 /* ——— Экран Проекты ——— */
 .projects-board{display:flex;height:100%;min-height:400px;overflow:hidden;background:var(--bg)}
 .projects-left{width:380px;min-width:380px;flex-shrink:0;background:var(--surface);border-right:1px solid var(--border);overflow-y:auto;display:flex;flex-direction:column}
-.projects-calendar-wrap{flex:1;overflow:auto;min-width:0}
+.projects-table-wrap{flex:1;overflow:auto;min-width:0}
 .projects-zone{ padding:10px 12px;border-bottom:1px solid var(--border)}
 .projects-zone-title{font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--accent);margin-bottom:8px}
 .projects-zone.active .projects-zone-title{color:var(--accent)}
@@ -257,7 +257,7 @@ body.projects-mode .analytics-top-row .btn-projects{display:none !important}
 body.projects-mode .analytics-top-row .btn-projects-return{display:flex !important}
 .projects-board{display:flex;height:100%;min-height:400px;overflow:hidden;background:var(--bg)}
 .projects-left{width:380px;min-width:380px;flex-shrink:0;background:var(--surface);border-right:1px solid var(--border);overflow-y:auto;display:flex;flex-direction:column}
-.projects-calendar-wrap{flex:1;overflow:auto;min-width:0}
+.projects-table-wrap{flex:1;overflow:auto;min-width:0}
 .projects-zone{margin-bottom:16px}
 .projects-zone-title{font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--accent);margin-bottom:8px;padding:4px 0}
 .projects-zone.active .projects-zone-title{color:var(--accent)}
@@ -294,6 +294,24 @@ body.projects-mode .analytics-top-row .btn-projects-return{display:flex !importa
 .projects-cal-cell.deadline{background:rgba(255,200,0,0.3);display:flex;align-items:center;justify-content:center;font-size:12px}
 .projects-cal-cell.rocket{display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:14px}
 .projects-cal-cell.num{display:flex;align-items:center;justify-content:center;font-weight:700;color:var(--accent3)}
+/* Проекты: фикс. левая колонка + редактируемые ячейки */
+.projects-table-wrap{overflow:auto;flex:1;min-height:0}
+.projects-table{display:flex;flex-direction:column;min-width:max-content}
+.projects-table .projects-sticky{position:sticky;left:0;z-index:3;background:var(--surface);border-right:1px solid var(--border);min-width:380px;width:380px;flex-shrink:0;box-shadow:2px 0 8px rgba(0,0,0,0.2)}
+.projects-table .projects-scroll{display:flex;flex-shrink:0}
+.projects-table-row{display:flex;min-height:44px;border-bottom:1px solid var(--border)}
+.projects-table-row .projects-sticky{display:flex;align-items:center}
+.projects-table-row .projects-scroll{flex:1;min-width:0}
+.proj-cell-editable{cursor:pointer;padding:6px 10px;border-radius:6px;min-height:32px;display:flex;flex-wrap:wrap;align-items:center;gap:6px;transition:background 0.15s}
+.proj-cell-editable .project-path{width:100%;margin-top:2px}
+.proj-cell-editable:hover{background:rgba(0,217,126,0.08)}
+.proj-cell-editable.editing{background:var(--surface2);outline:1px solid var(--accent)}
+.proj-cell-editable input{flex:1;background:transparent;border:none;color:var(--text);font-size:13px;font-family:inherit;outline:none}
+.proj-emoji-btn{width:24px;height:24px;flex-shrink:0;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--muted);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:14px;transition:all 0.15s}
+.proj-emoji-btn:hover{border-color:var(--accent);color:var(--accent)}
+.proj-emoji-picker{position:absolute;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:8px;display:flex;flex-wrap:wrap;gap:6px;z-index:100;box-shadow:0 8px 24px rgba(0,0,0,0.4);max-width:200px}
+.proj-emoji-picker span{cursor:pointer;font-size:18px;padding:4px;border-radius:6px;transition:background 0.12s}
+.proj-emoji-picker span:hover{background:rgba(0,217,126,0.15)}
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 </head>
@@ -597,6 +615,7 @@ function applyAnalyticsModeDefault() {
 var PROJECTS_DATA_KEY = 'avitolog_projects';
 var PROJECT_STATUSES = ['Ожидают','В работе','Готово!','ЛИМИТ','OFF','След. мес.','Жду','ПАРКУЙ','О бюджете'];
 var PROJECT_STATUS_COLORS = {'Ожидают':'#7c6af7','В работе':'#00d97e','Готово!':'#00d97e','ЛИМИТ':'#ff6b35','OFF':'#666','След. мес.':'#ffcc00','Жду':'#ffcc00','ПАРКУЙ':'#666','О бюджете':'#ff6b35'};
+var PROJECT_EMOJIS = ['🏠','🪵','🛋️','🍳','🚪','🔨','🏗️','📦','🚀','💼'];
 
 function loadProjectsData() {
   try {
@@ -641,33 +660,32 @@ function renderProjectsScreen() {
   var zoneTitle = function(z) { return z==='active'?'Активные':z==='second_chance'?'Подвисшие / второй круг':'Архив'; };
   var zoneClass = function(z) { return z==='active'?'projects-zone-active':z==='second_chance'?'projects-zone-second':'projects-zone-archive'; };
 
-  var html = '<div class="projects-board"><div class="projects-left">';
+  var allProjects = [];
   ['active','second_chance','archive'].forEach(function(zone) {
-    var projs = data.projects.filter(function(p){ return p.zone===zone; }).sort(function(a,b){ return (a.sortOrder||0)-(b.sortOrder||0); });
-    html += '<div class="projects-zone ' + zoneClass(zone) + '"><div class="projects-zone-title">' + zoneTitle(zone) + '</div>';
-    projs.forEach(function(p) {
-      var pathHtml = pathLabels.map(function(pl){ return '<span class="project-path-dot' + (p.clientPath&&p.clientPath[pl.k]?' on':'') + '" title="' + pl.l + '">' + pl.l.slice(0,1) + '</span>'; }).join('');
-      html += '<div class="project-row" data-id="' + p.id + '"><div class="project-row-main"><span class="project-expand">' + (p.childLines&&p.childLines.length?'▼':'') + '</span><span class="project-title">' + (p.title||'') + '</span><span class="project-status" style="background:' + (PROJECT_STATUS_COLORS[p.status]||'#666') + '22;color:' + (PROJECT_STATUS_COLORS[p.status]||'#999') + '">' + (p.status||'') + '</span></div><div class="project-path">' + pathHtml + '</div></div>';
-    });
-    html += '</div>';
+    data.projects.filter(function(p){ return p.zone===zone; }).sort(function(a,b){ return (a.sortOrder||0)-(b.sortOrder||0); }).forEach(function(p){ allProjects.push(p); });
   });
-  html += '</div><div class="projects-calendar-wrap"><div class="projects-calendar">';
-
-  var monthRow = '<div class="projects-cal-row projects-cal-header"><div class="projects-cal-fixed" style="width:0;min-width:0"></div><div class="projects-cal-days">';
-  var wdRow = '<div class="projects-cal-row projects-cal-weekdays"><div class="projects-cal-fixed" style="width:0;min-width:0"></div><div class="projects-cal-days">';
-  var dayNames = ['вс','пн','вт','ср','чт','пт','сб'];
+  var html = '<div class="projects-board"><div class="projects-table-wrap"><div class="projects-table">';
+  var headerSticky = '<div class="projects-sticky" style="padding:8px 10px;font-size:10px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:1px">Проект</div>';
+  var headerScroll = '';
   dates.forEach(function(d) {
     var isToday = d.getTime()===today.getTime();
     var mon = ['янв','фев','мар','апр','май','июн','июл','авг','сен','окт','ноя','дек'][d.getMonth()];
-    monthRow += '<div class="projects-cal-day' + (isToday?' today':'') + '" style="width:' + DAY_PX + 'px"><span class="cal-mon">' + mon + '</span></div>';
-    wdRow += '<div class="projects-cal-day' + (isToday?' today':'') + '" style="width:' + DAY_PX + 'px"><span class="cal-wd">' + dayNames[d.getDay()] + '</span><span class="cal-num">' + d.getDate() + '</span></div>';
+    headerScroll += '<div class="projects-cal-day' + (isToday?' today':'') + '" style="width:' + DAY_PX + 'px;min-width:' + DAY_PX + 'px"><span class="cal-mon">' + mon + '</span><br><span class="cal-num">' + d.getDate() + '</span></div>';
   });
-  monthRow += '</div></div>';
-  wdRow += '</div></div>';
-  html += monthRow + wdRow;
+  html += '<div class="projects-table-row projects-table-header"><div class="projects-sticky">' + headerSticky + '</div><div class="projects-scroll">' + headerScroll + '</div></div>';
+  var dayNames = ['вс','пн','вт','ср','чт','пт','сб'];
+  var wdRow = '<div class="projects-table-row"><div class="projects-sticky" style="padding:4px 10px;font-size:9px;color:var(--muted)"></div><div class="projects-scroll">';
+  dates.forEach(function(d) {
+    var isToday = d.getTime()===today.getTime();
+    wdRow += '<div class="projects-cal-day' + (isToday?' today':'') + '" style="width:' + DAY_PX + 'px;min-width:' + DAY_PX + 'px"><span class="cal-wd">' + dayNames[d.getDay()] + '</span></div>';
+  });
+  html += wdRow + '</div></div>';
 
-  data.projects.forEach(function(p) {
-    var rowHtml = '<div class="projects-cal-row project-cal-row" data-id="' + p.id + '"><div class="projects-cal-fixed"><span class="project-cal-title">' + (p.title||'') + '</span></div><div class="projects-cal-days">';
+  allProjects.forEach(function(p) {
+    var em = (p.emoji||'');
+    var pathHtml = pathLabels.map(function(pl){ return '<span class="project-path-dot' + (p.clientPath&&p.clientPath[pl.k]?' on':'') + '" title="' + pl.l + '">' + pl.l.slice(0,1) + '</span>'; }).join('');
+    var stickyHtml = '<div class="proj-cell-editable" data-id="' + p.id + '" onclick="editProjectCell(this)" title="Нажмите для редактирования"><button type="button" class="proj-emoji-btn" onclick="event.stopPropagation();showProjEmojiPicker(this,\'' + p.id + '\')">' + (em||'😀') + '</button><input type="text" value="' + (p.title||'').replace(/"/g,'&quot;') + '" readonly style="pointer-events:none"><div class="project-path">' + pathHtml + '</div><span class="project-status" style="background:' + (PROJECT_STATUS_COLORS[p.status]||'#666') + '22;color:' + (PROJECT_STATUS_COLORS[p.status]||'#999') + '">' + (p.status||'') + '</span></div>';
+    var rowHtml = '<div class="projects-table-row" data-id="' + p.id + '"><div class="projects-sticky">' + stickyHtml + '</div><div class="projects-scroll">';
     dates.forEach(function(d) {
       var dStr = d.toISOString().slice(0,10);
       var cellHtml = '';
@@ -687,12 +705,60 @@ function renderProjectsScreen() {
   html += '</div></div></div>';
   document.getElementById('mainContent').innerHTML = html;
 
-  var calWrap = document.querySelector('.projects-calendar-wrap');
+  var calWrap = document.querySelector('.projects-table-wrap');
   if (calWrap) {
     var todayIdx = DAYS_LEFT;
     var scrollX = Math.max(0, todayIdx * DAY_PX - calWrap.clientWidth / 2);
     calWrap.scrollLeft = scrollX;
   }
+}
+function editProjectCell(el) {
+  var cell = el.closest('.proj-cell-editable');
+  if (!cell || cell.classList.contains('editing')) return;
+  cell.classList.add('editing');
+  var inp = cell.querySelector('input');
+  inp.removeAttribute('readonly');
+  inp.style.pointerEvents = '';
+  inp.focus();
+  inp.select();
+  function done() {
+    cell.classList.remove('editing');
+    inp.setAttribute('readonly','');
+    inp.style.pointerEvents = 'none';
+    var id = cell.getAttribute('data-id');
+    var data = loadProjectsData();
+    var p = data.projects.find(function(x){ return x.id===id; });
+    if (p) { p.title = inp.value.trim() || p.title; saveProjectsData(data); }
+  }
+  inp.onblur = done;
+  inp.onkeydown = function(e) { if (e.key==='Enter') { e.preventDefault(); inp.blur(); } };
+}
+function showProjEmojiPicker(btn, projectId) {
+  var existing = document.getElementById('projEmojiPicker');
+  if (existing) existing.remove();
+  var picker = document.createElement('div');
+  picker.id = 'projEmojiPicker';
+  picker.className = 'proj-emoji-picker';
+  PROJECT_EMOJIS.forEach(function(em) {
+    var s = document.createElement('span');
+    s.textContent = em;
+    s.onclick = function() {
+      var data = loadProjectsData();
+      var p = data.projects.find(function(x){ return x.id===projectId; });
+      if (p) { p.emoji = em; saveProjectsData(data); renderProjectsScreen(); }
+      picker.remove();
+    };
+    picker.appendChild(s);
+  });
+  document.body.appendChild(picker);
+  var r = btn.getBoundingClientRect();
+  picker.style.left = r.left + 'px';
+  picker.style.top = (r.bottom + 4) + 'px';
+  setTimeout(function() {
+    document.addEventListener('click', function close(e) {
+      if (!picker.contains(e.target) && e.target !== btn) { picker.remove(); document.removeEventListener('click', close); }
+    });
+  }, 0);
 }
 
 // ── TABS ──
