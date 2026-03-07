@@ -1781,7 +1781,9 @@ function renderProjectsScreen(opts) {
       calWrap.scrollTop = opts.preserveScroll.wrapTop || 0;
     } else if (!_projectsDidInitialCenter) {
       var todayIdx = DAYS_LEFT;
-      var scrollX = Math.max(0, todayIdx * DAY_PX - calWrap.clientWidth / 2);
+      // Default view starts from "today": past days are hidden
+      // until user manually scrolls left.
+      var scrollX = Math.max(0, todayIdx * DAY_PX);
       calWrap.scrollLeft = scrollX;
       _projectsDidInitialCenter = true;
     }
