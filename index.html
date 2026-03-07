@@ -691,6 +691,8 @@ function toggleProjectsScreen() {
     renderProjectsScreen();
     startProjectsSheetPullTimer();
     startProjectsDayShiftTimer();
+    // Persist current calendar snapshot with all timeline fields.
+    syncActiveProjectsSheetExact('calendar_snapshot_open').catch(function(){});
   } else {
     stopProjectsSheetPullTimer();
     stopProjectsDayShiftTimer();
@@ -874,7 +876,7 @@ async function hydrateProjectsFromActiveSheet(forceMerge) {
     }
   } catch(e) {}
   try {
-    var range = PROJECTS_ACTIVE_SHEET_NAME + '!A2:M';
+    var range = PROJECTS_ACTIVE_SHEET_NAME + '!A2:Q';
     var url = 'https://sheets.googleapis.com/v4/spreadsheets/' + SHEETS_ID + '/values/' + encodeURIComponent(range);
     var resp = await fetch(url, { headers: {'Authorization': 'Bearer ' + _driveToken} });
     if (!resp.ok) return false;
@@ -910,6 +912,14 @@ async function hydrateProjectsFromActiveSheet(forceMerge) {
       };
       var start = r[5] || '';
       var end = r[6] || '';
+      var hasLaunchCols = r.length > 14;
+      var hasCardsCol = r.length > 15;
+      var hasMustLaunchCol = r.length > 16;
+      var launchStart = hasLaunchCols ? (r[13] || '') : '';
+      var launchEnd = hasLaunchCols ? (r[14] || '') : '';
+      var cardsActive = hasCardsCol ? String(r[15] || '').trim() : null;
+      var mustLaunchRaw = hasMustLaunchCol ? String(r[16] || '').trim().toLowerCase() : '';
+      var mustLaunchRequired = hasMustLaunchCol ? (mustLaunchRaw === '1' || mustLaunchRaw === 'true' || mustLaunchRaw === 'yes' || mustLaunchRaw === 'да' || mustLaunchRaw === '‼️') : null;
       if (p.title !== title) { p.title = title; changed = true; }
       if (p.status !== status) { p.status = status; changed = true; }
       if ((p.folderLink || '') !== folderLink) { p.folderLink = folderLink; changed = true; }
@@ -938,6 +948,32 @@ async function hydrateProjectsFromActiveSheet(forceMerge) {
           p.events.push({type:'active_range', startDate:start, endDate:end});
           changed = true;
         }
+      }
+      if (hasLaunchCols) {
+        if (launchStart && launchEnd) {
+          var prevLaunch = (p.events || []).find(function(e){ return e.type === 'launch_range'; });
+          var prevRocket = (p.events || []).find(function(e){ return e.type === 'not_launched_project_marker'; });
+          if (!prevLaunch || prevLaunch.startDate !== launchStart || prevLaunch.endDate !== launchEnd || !prevRocket || prevRocket.date !== launchEnd) {
+            p.events = (p.events || []).filter(function(e){ return e.type !== 'launch_range' && e.type !== 'not_launched_project_marker'; });
+            p.events.push({type:'launch_range', startDate:launchStart, endDate:launchEnd});
+            p.events.push({type:'not_launched_project_marker', date:launchEnd});
+            changed = true;
+          }
+        } else {
+          var hadLaunch = (p.events || []).some(function(e){ return e.type === 'launch_range' || e.type === 'not_launched_project_marker'; });
+          if (hadLaunch) {
+            p.events = (p.events || []).filter(function(e){ return e.type !== 'launch_range' && e.type !== 'not_launched_project_marker'; });
+            changed = true;
+          }
+        }
+      }
+      if (hasCardsCol && (p.cardsActive || '') !== cardsActive) {
+        p.cardsActive = cardsActive;
+        changed = true;
+      }
+      if (hasMustLaunchCol && !!p.mustLaunchRequired !== !!mustLaunchRequired) {
+        p.mustLaunchRequired = !!mustLaunchRequired;
+        changed = true;
       }
     });
     if (changed) saveProjectsData(data);
@@ -971,6 +1007,12 @@ function getProjectPathSummary(p) {
 }
 function getProjectAutoloadRange(p) {
   var ranges = (p && p.events ? p.events : []).filter(function(e) { return e && e.type === 'active_range'; });
+  if (!ranges.length) return {start:'', end:''};
+  ranges.sort(function(a,b){ return String(a.startDate||'').localeCompare(String(b.startDate||'')); });
+  return {start: ranges[0].startDate || '', end: ranges[ranges.length - 1].endDate || ''};
+}
+function getProjectLaunchRange(p) {
+  var ranges = (p && p.events ? p.events : []).filter(function(e) { return e && e.type === 'launch_range'; });
   if (!ranges.length) return {start:'', end:''};
   ranges.sort(function(a,b){ return String(a.startDate||'').localeCompare(String(b.startDate||'')); });
   return {start: ranges[0].startDate || '', end: ranges[ranges.length - 1].endDate || ''};
@@ -1068,6 +1110,7 @@ async function ensureActiveProjectsSheet() {
 }
 function buildActiveProjectRow(p, reason) {
   var rng = getProjectAutoloadRange(p);
+  var launch = getProjectLaunchRange(p);
   return [
     new Date().toISOString(),
     p.id || '',
@@ -1081,7 +1124,11 @@ function buildActiveProjectRow(p, reason) {
     p.clientType || '',
     p.optionalField || '',
     reason || '',
-    _driveUserEmail || ''
+    _driveUserEmail || '',
+    launch.start || '',
+    launch.end || '',
+    p.cardsActive || '',
+    p.mustLaunchRequired ? '1' : '0'
   ];
 }
 async function syncActiveProjectsSheetExact(reason) {
@@ -1092,14 +1139,14 @@ async function syncActiveProjectsSheetExact(reason) {
     .filter(function(p){ return (p.zone || 'active') === 'active'; })
     .sort(function(a,b){ return (a.sortOrder||0) - (b.sortOrder||0); });
   var rows = active.map(function(p){ return buildActiveProjectRow(p, reason || 'sync'); });
-  var clearUrl = 'https://sheets.googleapis.com/v4/spreadsheets/' + SHEETS_ID + '/values/' + encodeURIComponent(PROJECTS_ACTIVE_SHEET_NAME + '!A2:M') + ':clear';
+  var clearUrl = 'https://sheets.googleapis.com/v4/spreadsheets/' + SHEETS_ID + '/values/' + encodeURIComponent(PROJECTS_ACTIVE_SHEET_NAME + '!A2:Q') + ':clear';
   await fetch(clearUrl, {
     method: 'POST',
     headers: {'Authorization': 'Bearer ' + _driveToken, 'Content-Type': 'application/json'},
     body: '{}'
   });
   if (!rows.length) return;
-  var setUrl = 'https://sheets.googleapis.com/v4/spreadsheets/' + SHEETS_ID + '/values/' + encodeURIComponent(PROJECTS_ACTIVE_SHEET_NAME + '!A2:M' + (rows.length + 1)) + '?valueInputOption=USER_ENTERED';
+  var setUrl = 'https://sheets.googleapis.com/v4/spreadsheets/' + SHEETS_ID + '/values/' + encodeURIComponent(PROJECTS_ACTIVE_SHEET_NAME + '!A2:Q' + (rows.length + 1)) + '?valueInputOption=USER_ENTERED';
   var resp = await fetch(setUrl, {
     method: 'PUT',
     headers: {'Authorization': 'Bearer ' + _driveToken, 'Content-Type': 'application/json'},
