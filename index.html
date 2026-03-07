@@ -54,18 +54,18 @@ textarea{resize:vertical;min-height:50px;line-height:1.5}
 .badge .x{opacity:0.5;margin-left:2px;cursor:pointer}.badge .x:hover{opacity:1}
 .client-menu{position:absolute;left:0;top:100%;background:#171922;border:1px solid var(--border);border-radius:8px;min-width:280px;max-height:340px;overflow:hidden;z-index:50;display:none;box-shadow:0 8px 24px rgba(0,0,0,0.45);flex-direction:column;opacity:1}
 .client-menu.show{display:flex}
-.cm-head{display:flex;align-items:center;justify-content:space-between;padding:8px 10px;border-bottom:1px solid var(--border);font-size:11px;font-weight:700;color:var(--text)}
+.cm-head{display:flex;align-items:center;justify-content:space-between;padding:8px 10px;border-bottom:1px solid var(--border);font-size:11px;font-weight:700;color:var(--text);background:#171922}
 .cm-head .cm-close{cursor:pointer;color:var(--muted);font-size:14px}
 .cm-head .cm-close:hover{color:var(--text)}
-.cm-path{padding:4px 10px;font-size:10px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;border-bottom:1px solid var(--border)}
-.cm-tools{display:flex;gap:6px;padding:6px 10px;border-bottom:1px solid var(--border)}
+.cm-path{padding:4px 10px;font-size:10px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;border-bottom:1px solid var(--border);background:#171922}
+.cm-tools{display:flex;gap:6px;padding:6px 10px;border-bottom:1px solid var(--border);background:#171922}
 .cm-tools input{flex:1;min-width:0;background:var(--surface);border:1px solid var(--border);color:var(--text);padding:6px 8px;border-radius:6px;font-size:11px;outline:none;font-family:inherit}
 .cm-tools input:focus{border-color:var(--accent)}
 .cm-tools button{border:1px solid var(--accent);background:rgba(0,217,126,0.12);color:var(--accent);padding:0 8px;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap}
 .cm-tools button:hover{background:rgba(0,217,126,0.2)}
-.cm-list{flex:1;overflow-y:auto;scrollbar-width:thin;scrollbar-color:var(--border) transparent}
+.cm-list{flex:1;overflow-y:auto;scrollbar-width:thin;scrollbar-color:var(--border) transparent;background:#171922}
 .cm-list::-webkit-scrollbar{width:6px}.cm-list::-webkit-scrollbar-track{background:transparent}.cm-list::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
-.cm-foot{padding:6px 10px;border-top:1px solid var(--border);display:flex;gap:4px}
+.cm-foot{padding:6px 10px;border-top:1px solid var(--border);display:flex;gap:4px;background:#171922}
 .cm-foot button{flex:1;padding:6px;border-radius:6px;border:1px solid var(--border);background:transparent;color:var(--muted);font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;transition:all 0.15s}
 .cm-foot button:hover{border-color:var(--accent);color:var(--accent)}
 .cm-foot button.primary{border-color:var(--accent);color:var(--accent)}
@@ -322,9 +322,12 @@ body.projects-mode .sidebar{padding-top:calc(14px + var(--projects-sidebar-offse
 .projects-col-resizer:hover::after{background:var(--accent)}
 .projects-table .projects-scroll{display:flex;flex-shrink:0}
 .projects-table-row{display:flex;min-height:27px;border-bottom:1px solid var(--border)}
-.projects-table-row[data-id]{cursor:grab}
+.projects-table-row[data-id]{cursor:default}
+.projects-table-row[data-id] .projects-sticky{cursor:grab}
+.projects-table-row[data-id] .projects-sticky:active{cursor:grabbing}
 .projects-table-row[data-id].selected .projects-sticky{background:rgba(0,217,126,0.08)}
 .projects-table-row[data-id].dragging{opacity:0.45}
+.projects-table-row[data-id].dragging .projects-sticky{cursor:grabbing}
 .projects-table-row[data-id].drop-before .projects-sticky,
 .projects-table-row[data-id].drop-before .projects-scroll{box-shadow:inset 0 2px 0 var(--accent)}
 .projects-table-row[data-id].drop-after .projects-sticky,
@@ -438,7 +441,10 @@ body.projects-mode .sidebar{padding-top:calc(14px + var(--projects-sidebar-offse
 .cal-rocket{font-size:14px;color:var(--muted)}
 .cal-deadline{font-size:12px;background:linear-gradient(180deg,rgba(250,220,94,0.95),rgba(219,171,34,0.94));border:1px solid rgba(255,230,146,0.95);border-radius:5px;box-sizing:border-box;color:#2d2003}
 .cal-cards{font-size:11px;font-weight:800;color:#d7f2ff;background:linear-gradient(180deg,rgba(16,53,94,0.72),rgba(11,31,61,0.74));border:1px solid rgba(114,214,255,0.55);border-radius:5px;box-sizing:border-box}
+.projects-cal-day[data-project-id]{cursor:cell}
 body.calendar-launch-mode .projects-cal-day[data-project-id]{cursor:crosshair}
+body.calendar-launch-mode.calendar-erase-mode .projects-cal-day[data-project-id]{cursor:not-allowed}
+.projects-drag-ghost{position:fixed;left:-9999px;top:-9999px;pointer-events:none;z-index:9999;opacity:.95;filter:drop-shadow(0 8px 16px rgba(0,0,0,.45))}
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 </head>
@@ -775,6 +781,7 @@ var _projectFolderBindTargetId = null;
 var _calendarCtx = { projectId: null, date: null };
 var _calendarPaintMode = null; // null | 'launch'
 var _calendarPainting = false;
+var _calendarPaintErase = false;
 var _calendarPaintProjectId = null;
 var _calendarPaintDates = [];
 var _projectJokerDetachArmedId = null;
@@ -1528,6 +1535,7 @@ function showProjectsCalMenu(x, y, projectId, dateStr) {
     } else if (action === 'launch-paint') {
       _calendarPaintMode = 'launch';
       document.body.classList.add('calendar-launch-mode');
+      document.body.classList.remove('calendar-erase-mode');
       hideProjectsCalMenu();
     } else if (action === 'launch-clear') {
       clearProjectLaunch(pid);
@@ -1560,6 +1568,41 @@ function clearProjectLaunch(projectId) {
   saveProjectsData(data);
   rerenderProjectsPreserveScroll();
   syncProjectToActiveSheet(projectId, 'launch_range_clear');
+}
+function clearProjectLaunchRange(projectId, startDate, endDate) {
+  var data = loadProjectsData();
+  var p = data.projects.find(function(x){ return x.id === projectId; });
+  if (!p) return;
+  var s = startDate <= endDate ? startDate : endDate;
+  var e = startDate <= endDate ? endDate : startDate;
+  var launchRanges = (p.events || []).filter(function(ev){ return ev && ev.type === 'launch_range'; });
+  if (!launchRanges.length) return;
+  var nextRanges = [];
+  launchRanges.forEach(function(rg){
+    var rs = String(rg.startDate || '');
+    var re = String(rg.endDate || '');
+    if (!rs || !re) return;
+    if (re < s || rs > e) {
+      nextRanges.push({type:'launch_range', startDate:rs, endDate:re});
+      return;
+    }
+    if (rs < s) {
+      nextRanges.push({type:'launch_range', startDate:rs, endDate:addDaysISO(s, -1)});
+    }
+    if (re > e) {
+      nextRanges.push({type:'launch_range', startDate:addDaysISO(e, 1), endDate:re});
+    }
+  });
+  p.events = (p.events || []).filter(function(ev){
+    return ev.type !== 'launch_range' && ev.type !== 'not_launched_project_marker';
+  });
+  nextRanges.forEach(function(rg){
+    p.events.push(rg);
+    p.events.push({type:'not_launched_project_marker', date:rg.endDate});
+  });
+  saveProjectsData(data);
+  rerenderProjectsPreserveScroll();
+  syncProjectToActiveSheet(projectId, 'launch_range_partial_clear');
 }
 function applyProjectAutoloadRange(projectId, startDate, endDate) {
   var data = loadProjectsData();
@@ -1613,6 +1656,16 @@ function bindProjectsCalendarInteractions() {
   wrap.oncontextmenu = function(e) {
     var cell = getCalendarCellFromEventTarget(e.target);
     if (!cell) return;
+    if (_calendarPaintMode === 'launch') {
+      e.preventDefault();
+      _calendarPainting = true;
+      _calendarPaintErase = true;
+      _calendarPaintProjectId = cell.getAttribute('data-project-id');
+      _calendarPaintDates = [cell.getAttribute('data-date')];
+      document.body.classList.add('calendar-erase-mode');
+      previewLaunchDates(_calendarPaintDates);
+      return;
+    }
     e.preventDefault();
     showProjectsCalMenu(e.clientX, e.clientY, cell.getAttribute('data-project-id'), cell.getAttribute('data-date'));
   };
@@ -1622,8 +1675,10 @@ function bindProjectsCalendarInteractions() {
     if (!cell) return;
     e.preventDefault();
     _calendarPainting = true;
+    _calendarPaintErase = false;
     _calendarPaintProjectId = cell.getAttribute('data-project-id');
     _calendarPaintDates = [cell.getAttribute('data-date')];
+    document.body.classList.remove('calendar-erase-mode');
     previewLaunchDates(_calendarPaintDates);
   };
   wrap.onmouseover = function(e) {
@@ -1642,14 +1697,18 @@ function finishCalendarPaint() {
   if (!_calendarPainting || _calendarPaintMode !== 'launch') return;
   var projectId = _calendarPaintProjectId;
   var range = dateRangeFromPaint(_calendarPaintDates);
+  var eraseMode = !!_calendarPaintErase;
   _calendarPainting = false;
+  _calendarPaintErase = false;
   _calendarPaintProjectId = null;
   _calendarPaintDates = [];
+  document.body.classList.remove('calendar-erase-mode');
   document.querySelectorAll('.projects-cal-day.cal-launch-preview, .projects-cal-day.cal-launch-preview-last').forEach(function(el) {
     el.classList.remove('cal-launch-preview', 'cal-launch-preview-last');
   });
   if (range && projectId) {
-    applyProjectLaunchRange(projectId, range.start, range.end);
+    if (eraseMode) clearProjectLaunchRange(projectId, range.start, range.end);
+    else applyProjectLaunchRange(projectId, range.start, range.end);
   }
 }
 function clearProjectDropMarks() {
@@ -1657,15 +1716,35 @@ function clearProjectDropMarks() {
     r.classList.remove('drop-before', 'drop-after');
   });
 }
+function createProjectRowDragGhost(row) {
+  if (!row) return null;
+  var ghost = row.cloneNode(true);
+  ghost.classList.remove('selected', 'dragging', 'drop-before', 'drop-after');
+  ghost.classList.add('projects-drag-ghost');
+  ghost.style.width = row.offsetWidth + 'px';
+  ghost.style.height = row.offsetHeight + 'px';
+  document.body.appendChild(ghost);
+  return ghost;
+}
 function startProjectRowDrag(e, projectId) {
   if (_calendarPaintMode === 'launch') { e.preventDefault(); return; }
   if (e.target && e.target.closest && e.target.closest('.projects-cal-day[data-project-id]')) { e.preventDefault(); return; }
+  if (!e.target || !e.target.closest || !e.target.closest('.projects-sticky')) { e.preventDefault(); return; }
   _dragProjectId = projectId;
+  var row = e.currentTarget;
   if (e.dataTransfer) {
     e.dataTransfer.effectAllowed = 'move';
     try { e.dataTransfer.setData('text/plain', projectId); } catch(err) {}
+    var ghost = createProjectRowDragGhost(row);
+    if (ghost && typeof e.dataTransfer.setDragImage === 'function') {
+      var sticky = row ? row.querySelector('.projects-sticky') : null;
+      var offsetX = sticky ? Math.min(20, Math.max(8, Math.floor(sticky.getBoundingClientRect().width * 0.08))) : 12;
+      var offsetY = Math.max(8, Math.floor((row ? row.offsetHeight : 28) * 0.5));
+      e.dataTransfer.setDragImage(ghost, offsetX, offsetY);
+      setTimeout(function(){ try { ghost.remove(); } catch(_e) {} }, 0);
+    }
   }
-  if (e.currentTarget) e.currentTarget.classList.add('dragging');
+  if (row) row.classList.add('dragging');
 }
 function handleProjectRowDragOver(e, row, targetProjectId) {
   if (!_dragProjectId || _dragProjectId === targetProjectId) return;
@@ -3839,7 +3918,9 @@ document.addEventListener('DOMContentLoaded', function() {
     if (e.key === 'Escape') {
       _calendarPaintMode = null;
       _calendarPainting = false;
+      _calendarPaintErase = false;
       document.body.classList.remove('calendar-launch-mode');
+      document.body.classList.remove('calendar-erase-mode');
       hideProjectsCalMenu();
       document.querySelectorAll('.projects-cal-day.cal-launch-preview, .projects-cal-day.cal-launch-preview-last').forEach(function(el) {
         el.classList.remove('cal-launch-preview', 'cal-launch-preview-last');
