@@ -832,6 +832,16 @@ async function hydrateProjectsFromActiveSheet(forceMerge) {
       if (p.status !== status) { p.status = status; changed = true; }
       if ((p.folderLink || '') !== folderLink) { p.folderLink = folderLink; changed = true; }
       if ((p.folderId || '') !== folderId) { p.folderId = folderId; changed = true; }
+      if (p.crmData && typeof p.crmData === 'object') {
+        if ((p.crmData.folderLink || '') !== (p.folderLink || '')) {
+          p.crmData.folderLink = p.folderLink || '';
+          changed = true;
+        }
+        if ((p.crmData.folderId || '') !== (p.folderId || '')) {
+          p.crmData.folderId = p.folderId || '';
+          changed = true;
+        }
+      }
       if ((p.clientType || '') !== clientType) { p.clientType = clientType; changed = true; }
       if ((p.optionalField || '') !== optionalField) { p.optionalField = optionalField; changed = true; }
       var prevPath = p.clientPath || {};
@@ -1073,6 +1083,14 @@ function hasProjectCrmData(project) {
   var d = project.crmData;
   return !!(d.company || d.contact_name || d.phone || d.telegram || d.avito_account || d.category || d.city || d.notes || d.kp_count || d.client_type);
 }
+function getProjectPreferredFolder(project) {
+  var p = project || {};
+  var d = p.crmData || {};
+  return {
+    folderId: p.folderId || d.folderId || '',
+    folderLink: p.folderLink || d.folderLink || ''
+  };
+}
 function makeProjectCrmSnapshot(d) {
   return {
     client_id: d.client_id || '',
@@ -1118,28 +1136,39 @@ function selectProjectRow(projectId) {
   var p = getSelectedProject();
   if (!p) return;
   if (hasProjectCrmData(p)) {
-    fillClientForm(p.crmData);
+    var prefFolder = getProjectPreferredFolder(p);
+    var mergedCrm = Object.assign({}, p.crmData || {});
+    mergedCrm.folderId = prefFolder.folderId;
+    mergedCrm.folderLink = prefFolder.folderLink;
+    fillClientForm(mergedCrm);
     setActiveClient({
-      client_id: p.crmData.client_id || p.crmClientId || '',
-      folderId: p.crmData.folderId || p.folderId || '',
-      folderLink: p.crmData.folderLink || p.folderLink || '',
-      company: p.crmData.company || p.title || 'Клиент'
+      client_id: mergedCrm.client_id || p.crmClientId || '',
+      folderId: prefFolder.folderId,
+      folderLink: prefFolder.folderLink,
+      company: mergedCrm.company || p.title || 'Клиент'
     });
     return;
   }
   var found = findClientForProject(p);
   if (found) {
     fillClientForm(found);
-    setActiveClient(found);
+    var foundWithProjectFolder = Object.assign({}, found);
+    var prefFolderFound = getProjectPreferredFolder(p);
+    foundWithProjectFolder.folderId = prefFolderFound.folderId || foundWithProjectFolder.folderId || '';
+    foundWithProjectFolder.folderLink = prefFolderFound.folderLink || foundWithProjectFolder.folderLink || '';
+    setActiveClient(foundWithProjectFolder);
     // Self-heal linkage so project stays bound after restarts.
-    if (p.crmClientId !== found.client_id || p.folderId !== found.folderId || p.folderLink !== found.folderLink || !hasProjectCrmData(p)) {
+    if (p.crmClientId !== found.client_id || !hasProjectCrmData(p)) {
       var pd = loadProjectsData();
       var sp = pd.projects.find(function(x){ return x.id === p.id; });
       if (sp) {
         sp.crmClientId = found.client_id || sp.crmClientId || '';
-        sp.folderId = found.folderId || sp.folderId || '';
-        sp.folderLink = found.folderLink || sp.folderLink || '';
-        sp.crmData = makeProjectCrmSnapshot(found);
+        sp.folderId = sp.folderId || found.folderId || '';
+        sp.folderLink = sp.folderLink || found.folderLink || '';
+        var snap = makeProjectCrmSnapshot(found);
+        snap.folderId = sp.folderId || snap.folderId || '';
+        snap.folderLink = sp.folderLink || snap.folderLink || '';
+        sp.crmData = snap;
         saveProjectsData(pd);
       }
     }
@@ -1763,18 +1792,9 @@ function openProjectDriveFolder(projectId) {
   var data = loadProjectsData();
   var p = data.projects.find(function(x){ return x.id===projectId; });
   if (!p) return;
-  if (!p.folderLink) {
-    var ac = _activeClient || getActiveClient();
-    if (ac && ac.folderLink) {
-      p.folderLink = ac.folderLink || '';
-      p.folderId = ac.folderId || '';
-      saveProjectsData(data);
-      rerenderProjectsPreserveScroll();
-      syncProjectToActiveSheet(projectId, 'folder_link_attach_from_active_client');
-    }
-  }
-  if (p.folderLink) {
-    window.open(p.folderLink, '_blank');
+  var prefFolder = getProjectPreferredFolder(p);
+  if (prefFolder.folderLink) {
+    window.open(prefFolder.folderLink, '_blank');
   } else {
     alert('Для этого проекта еще не привязана папка в Google Drive. Выберите клиента в CRM и повторите.');
   }
