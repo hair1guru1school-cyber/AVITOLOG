@@ -52,7 +52,7 @@ textarea{resize:vertical;min-height:50px;line-height:1.5}
 .badge.ok{border-color:var(--accent);color:var(--accent)}
 .badge.err{border-color:#ff5050;color:#ff5050}
 .badge .x{opacity:0.5;margin-left:2px;cursor:pointer}.badge .x:hover{opacity:1}
-.client-menu{position:absolute;left:0;top:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;min-width:280px;max-height:340px;overflow:hidden;z-index:50;display:none;box-shadow:0 8px 24px rgba(0,0,0,0.4);flex-direction:column}
+.client-menu{position:absolute;left:0;top:100%;background:#171922;border:1px solid var(--border);border-radius:8px;min-width:280px;max-height:340px;overflow:hidden;z-index:50;display:none;box-shadow:0 8px 24px rgba(0,0,0,0.45);flex-direction:column;opacity:1}
 .client-menu.show{display:flex}
 .cm-head{display:flex;align-items:center;justify-content:space-between;padding:8px 10px;border-bottom:1px solid var(--border);font-size:11px;font-weight:700;color:var(--text)}
 .cm-head .cm-close{cursor:pointer;color:var(--muted);font-size:14px}
@@ -865,36 +865,24 @@ function loadProjectsData() {
         }
       });
     }
-    // Migration: move legacy date-bound markers to "today-floating" fields.
-    if (!localStorage.getItem('avitolog_projects_today_markers_v1')) {
-      var migrated = false;
-      data.projects.forEach(function(p) {
-        var events = Array.isArray(p.events) ? p.events : [];
-        if (!String(p.cardsActive || '').trim()) {
-          var cardsEvt = events.find(function(e){ return e && e.type === 'cards_count_without_active_upload' && String(e.value || '').trim(); });
-          if (cardsEvt) {
-            p.cardsActive = String(cardsEvt.value || '').trim();
-            migrated = true;
-          }
-        }
-        if (!p.mustLaunchRequired) {
-          var hasDeadline = events.some(function(e){ return e && e.type === 'deadline'; });
-          if (hasDeadline) {
-            p.mustLaunchRequired = true;
-            migrated = true;
-          }
-        }
-        var filtered = events.filter(function(e){
-          return e && e.type !== 'cards_count_without_active_upload' && e.type !== 'deadline';
-        });
-        if (filtered.length !== events.length) {
-          p.events = filtered;
-          migrated = true;
-        }
+    // Always sanitize old date-bound markers:
+    // they should not live on historical dates anymore.
+    var sanitized = false;
+    data.projects.forEach(function(p) {
+      var events = Array.isArray(p.events) ? p.events : [];
+      var hasLegacyMarkers = events.some(function(e){
+        return e && (e.type === 'cards_count_without_active_upload' || e.type === 'deadline');
       });
-      localStorage.setItem('avitolog_projects_today_markers_v1', '1');
-      if (migrated) saveProjectsData(data);
-    }
+      if (!hasLegacyMarkers) return;
+      p.events = events.filter(function(e){
+        return e && e.type !== 'cards_count_without_active_upload' && e.type !== 'deadline';
+      });
+      // If legacy markers existed, reset floating markers too.
+      p.cardsActive = '';
+      p.mustLaunchRequired = false;
+      sanitized = true;
+    });
+    if (sanitized) saveProjectsData(data);
     return data;
   } catch(e) { return getDefaultProjectsData(); }
 }
@@ -977,13 +965,16 @@ async function hydrateProjectsFromActiveSheet(forceMerge) {
         p.clientPath = nextPath;
         changed = true;
       }
+      var prevRange = (p.events || []).find(function(e){ return e.type === 'active_range'; });
       if (start && end) {
-        var prevRange = (p.events || []).find(function(e){ return e.type === 'active_range'; });
         if (!prevRange || prevRange.startDate !== start || prevRange.endDate !== end) {
           p.events = (p.events || []).filter(function(e){ return e.type !== 'active_range'; });
           p.events.push({type:'active_range', startDate:start, endDate:end});
           changed = true;
         }
+      } else if (prevRange) {
+        p.events = (p.events || []).filter(function(e){ return e.type !== 'active_range'; });
+        changed = true;
       }
       if (hasLaunchCols) {
         if (launchStart && launchEnd) {
@@ -1795,7 +1786,7 @@ function renderProjectsScreen(opts) {
     '</div>';
   var headerScroll = '';
   dates.forEach(function(d) {
-    var isToday = d.getTime()===today.getTime();
+    var isToday = toIsoDateLocal(d) === todayIso;
     var mon = ['янв','фев','мар','апр','май','июн','июл','авг','сен','окт','ноя','дек'][d.getMonth()];
     headerScroll += '<div class="projects-cal-day' + (isToday?' today':'') + '" style="width:' + DAY_PX + 'px;min-width:' + DAY_PX + 'px"><span class="cal-mon">' + mon + '</span><br><span class="cal-num">' + d.getDate() + '</span></div>';
   });
@@ -1803,7 +1794,7 @@ function renderProjectsScreen(opts) {
   var dayNames = ['вс','пн','вт','ср','чт','пт','сб'];
   var wdRow = '<div class="projects-table-row"><div class="projects-sticky" style="padding:4px 10px;font-size:9px;color:var(--muted)"></div><div class="projects-scroll">';
   dates.forEach(function(d) {
-    var isToday = d.getTime()===today.getTime();
+    var isToday = toIsoDateLocal(d) === todayIso;
     wdRow += '<div class="projects-cal-day' + (isToday?' today':'') + '" style="width:' + DAY_PX + 'px;min-width:' + DAY_PX + 'px"><span class="cal-wd">' + dayNames[d.getDay()] + '</span></div>';
   });
   html += wdRow + '</div></div>';
@@ -1821,15 +1812,9 @@ function renderProjectsScreen(opts) {
     var driveClass = 'proj-drive-btn' + (p.folderLink ? ' on' : '');
     var expandedClass = _expandedProjectIds[p.id] ? ' expanded' : '';
     var hasCardsActive = !!String(p.cardsActive || '').trim();
-    var cardsClass = 'proj-joker-badge' + (_projectJokerDetachArmedId === p.id ? ' armed' : '');
-    var cardsDel = (_projectJokerDetachArmedId === p.id) ? '<button type="button" class="proj-joker-del" title="Отключить актив карточек" onclick="event.stopPropagation();removeProjectCardsActive(\'' + p.id + '\')">✕</button>' : '';
-    var cardsHtml = hasCardsActive ? '<span class="proj-joker-wrap"><button type="button" class="' + cardsClass + '" title="Актив карточек. Нажмите для управления." onclick="event.stopPropagation();toggleProjectCardsBadge(\'' + p.id + '\')">🃏 ' + (p.cardsActive || '') + '</button>' + cardsDel + '</span>' : '';
     var hasMustLaunch = !!p.mustLaunchRequired;
-    var mustLaunchClass = 'proj-launch-badge' + (_projectMustLaunchDetachArmedId === p.id ? ' armed' : '');
-    var mustLaunchDel = (_projectMustLaunchDetachArmedId === p.id) ? '<button type="button" class="proj-launch-del" title="Снять пометку запуска" onclick="event.stopPropagation();removeProjectMustLaunchRequired(\'' + p.id + '\')">✕</button>' : '';
-    var mustLaunchHtml = hasMustLaunch ? '<span class="proj-joker-wrap"><button type="button" class="' + mustLaunchClass + '" title="Должен быть запущен. Нажмите для управления." onclick="event.stopPropagation();toggleProjectMustLaunchBadge(\'' + p.id + '\')">‼️</button>' + mustLaunchDel + '</span>' : '';
     var hoverPop = '<div class="proj-hover-pop"><button type="button" class="crm-bind-btn" onclick="startProjectFolderBind(\'' + p.id + '\', event)">CRM</button></div>';
-    var stickyHtml = '<div class="proj-col-expand">' + expandContent + '</div><div class="proj-col-type" onclick="event.stopPropagation();cycleProjectClientType(\'' + p.id + '\')" title="Старые/новички/2-й раз">' + typeHtml + '</div><button type="button" class="' + driveClass + '" title="Папка клиента в Google Drive" onclick="event.stopPropagation();openProjectDriveFolder(\'' + p.id + '\')">△</button><div class="proj-cell-editable' + expandedClass + '" data-id="' + p.id + '" onclick="editProjectCell(this)">' + hoverPop + '<div class="proj-main-line"><button type="button" class="proj-emoji-btn" onclick="event.stopPropagation();showProjEmojiPicker(this,\'' + p.id + '\')">' + (em||'😀') + '</button><input type="text" value="' + (p.title||'').replace(/"/g,'&quot;') + '" readonly style="pointer-events:none">' + expandBtnName + cardsHtml + mustLaunchHtml + '<span class="project-path">' + pathHtml + '</span><button type="button" class="proj-status-btn project-status" onclick="event.stopPropagation();showProjectStatusPicker(this,\'' + p.id + '\')" style="background:' + (PROJECT_STATUS_COLORS[p.status]||'#666') + '22;color:' + (PROJECT_STATUS_COLORS[p.status]||'#999') + '">' + (p.status||'В работе') + '</button>' + expandBtnStatus + '</div><div class="proj-optional-row">' + extraLinesHtml + '</div></div>';
+    var stickyHtml = '<div class="proj-col-expand">' + expandContent + '</div><div class="proj-col-type" onclick="event.stopPropagation();cycleProjectClientType(\'' + p.id + '\')" title="Старые/новички/2-й раз">' + typeHtml + '</div><button type="button" class="' + driveClass + '" title="Папка клиента в Google Drive" onclick="event.stopPropagation();openProjectDriveFolder(\'' + p.id + '\')">△</button><div class="proj-cell-editable' + expandedClass + '" data-id="' + p.id + '" onclick="editProjectCell(this)">' + hoverPop + '<div class="proj-main-line"><button type="button" class="proj-emoji-btn" onclick="event.stopPropagation();showProjEmojiPicker(this,\'' + p.id + '\')">' + (em||'😀') + '</button><input type="text" value="' + (p.title||'').replace(/"/g,'&quot;') + '" readonly style="pointer-events:none">' + expandBtnName + '<span class="project-path">' + pathHtml + '</span><button type="button" class="proj-status-btn project-status" onclick="event.stopPropagation();showProjectStatusPicker(this,\'' + p.id + '\')" style="background:' + (PROJECT_STATUS_COLORS[p.status]||'#666') + '22;color:' + (PROJECT_STATUS_COLORS[p.status]||'#999') + '">' + (p.status||'В работе') + '</button>' + expandBtnStatus + '</div><div class="proj-optional-row">' + extraLinesHtml + '</div></div>';
     var selectedClass = (_selectedProjectId === p.id) ? ' selected' : '';
     var rowHtml = '<div class="projects-table-row' + selectedClass + '" data-id="' + p.id + '" draggable="true" onclick="selectProjectRow(\'' + p.id + '\')" ondragstart="startProjectRowDrag(event,\'' + p.id + '\')" ondragover="handleProjectRowDragOver(event,this,\'' + p.id + '\')" ondragleave="handleProjectRowDragLeave(event,this)" ondrop="handleProjectRowDrop(event,\'' + p.id + '\')" ondragend="endProjectRowDrag(event)"><div class="projects-sticky">' + stickyHtml + '</div><div class="projects-scroll">';
     dates.forEach(function(d) {
@@ -1973,6 +1958,7 @@ function setProjectCardsActive(projectId, value) {
   var data = loadProjectsData();
   var p = data.projects.find(function(x){ return x.id===projectId; });
   if (!p) return;
+  p.events = (p.events || []).filter(function(e){ return e && e.type !== 'cards_count_without_active_upload'; });
   var n = parseInt(String(value || '').trim(), 10);
   if (!isFinite(n) || n <= 0) {
     p.cardsActive = '';
@@ -2009,6 +1995,7 @@ function setProjectMustLaunchRequired(projectId, enabled) {
   var data = loadProjectsData();
   var p = data.projects.find(function(x){ return x.id===projectId; });
   if (!p) return;
+  p.events = (p.events || []).filter(function(e){ return e && e.type !== 'deadline'; });
   p.mustLaunchRequired = !!enabled;
   _projectMustLaunchDetachArmedId = null;
   saveProjectsData(data);
