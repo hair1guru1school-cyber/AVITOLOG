@@ -308,7 +308,9 @@ body.projects-mode .sidebar{padding-top:calc(14px + var(--projects-sidebar-offse
 .projects-head-title{display:inline-flex;align-items:center;gap:6px}
 .projects-head-stats{display:inline-flex;align-items:center;gap:7px;margin-left:8px}
 .projects-head-chip{display:inline-flex;align-items:center;gap:7px;min-height:24px;padding:3px 11px;border-radius:9px;border:1px solid var(--border);font-size:12px;line-height:1;letter-spacing:0;text-transform:none;color:var(--muted);background:var(--surface2);font-weight:800;box-shadow:inset 0 0 0 1px rgba(255,255,255,0.03)}
+.projects-head-chip{cursor:pointer;user-select:none}
 .projects-head-chip b{font-size:20px;line-height:1;color:#fff;font-weight:900;letter-spacing:.2px}
+.projects-head-chip.is-on{transform:translateY(-1px);filter:saturate(1.15)}
 .projects-head-chip.active{color:#9ff9cf;border-color:rgba(79,255,204,0.78);background:linear-gradient(180deg,rgba(0,217,126,0.2),rgba(0,217,126,0.08));box-shadow:0 0 16px rgba(79,255,204,0.28),inset 0 0 10px rgba(111,255,210,0.12)}
 .projects-head-chip.active b{color:#b7ffdf}
 .projects-head-chip.diamond{color:#a5d9ff;border-color:rgba(91,155,213,0.8);background:linear-gradient(180deg,rgba(91,155,213,0.24),rgba(91,155,213,0.1));box-shadow:0 0 16px rgba(91,155,213,0.24),inset 0 0 10px rgba(121,184,240,0.12)}
@@ -790,6 +792,7 @@ var _projectsSheetPullTimer = null;
 var _projectsSheetPullBusy = false;
 var _projectsDayShiftTimer = null;
 var _projectsDayStamp = '';
+var _projectsTypeSortPriority = null; // null | 'old' | 'new' | 'returning'
 
 function getTodayISO() {
   var d = new Date();
@@ -1028,6 +1031,12 @@ function getProjectsWrapScroll() {
 }
 function rerenderProjectsPreserveScroll() {
   renderProjectsScreen({ preserveScroll: getProjectsWrapScroll() });
+}
+function setProjectsTypeSortPriority(kind) {
+  var k = (kind === 'old' || kind === 'new' || kind === 'returning') ? kind : null;
+  if (_projectsTypeSortPriority === k) _projectsTypeSortPriority = null;
+  else _projectsTypeSortPriority = k;
+  rerenderProjectsPreserveScroll();
 }
 function getProjectPathSummary(p) {
   if (!p || !p.clientPath) return '';
@@ -1843,7 +1852,15 @@ function renderProjectsScreen(opts) {
 
   var allProjects = [];
   ['active','second_chance','archive'].forEach(function(zone) {
-    data.projects.filter(function(p){ return p.zone===zone; }).sort(function(a,b){ return (a.sortOrder||0)-(b.sortOrder||0); }).forEach(function(p){ allProjects.push(p); });
+    var zoneProjects = data.projects
+      .filter(function(p){ return p.zone===zone; })
+      .sort(function(a,b){ return (a.sortOrder||0)-(b.sortOrder||0); });
+    if (_projectsTypeSortPriority) {
+      var first = zoneProjects.filter(function(p){ return normalizeProjectClientType(p.clientType) === _projectsTypeSortPriority; });
+      var rest = zoneProjects.filter(function(p){ return normalizeProjectClientType(p.clientType) !== _projectsTypeSortPriority; });
+      zoneProjects = first.concat(rest);
+    }
+    zoneProjects.forEach(function(p){ allProjects.push(p); });
   });
   var activeProjects = (data.projects || []).filter(function(p){ return (p.zone || 'active') === 'active'; });
   var activeCount = activeProjects.length;
@@ -1856,10 +1873,10 @@ function renderProjectsScreen(opts) {
     '<div class="projects-sticky-head">' +
       '<span class="projects-head-title">Проект |</span>' +
       '<span class="projects-head-stats">' +
-        '<span class="projects-head-chip active" title="Активные проекты">🃏 <b>' + activeCount + '</b></span>' +
-        '<span class="projects-head-chip diamond">💎 <b>' + diamondCount + '</b></span>' +
-        '<span class="projects-head-chip ret">2️⃣ <b>' + returningCount + '</b></span>' +
-        '<span class="projects-head-chip new">NEW <b>' + newCount + '</b></span>' +
+        '<span class="projects-head-chip active" title="Сбросить группировку типов" onclick="event.stopPropagation();setProjectsTypeSortPriority(null)">🃏 <b>' + activeCount + '</b></span>' +
+        '<span class="projects-head-chip diamond' + (_projectsTypeSortPriority === 'old' ? ' is-on' : '') + '" onclick="event.stopPropagation();setProjectsTypeSortPriority(\'old\')">💎 <b>' + diamondCount + '</b></span>' +
+        '<span class="projects-head-chip ret' + (_projectsTypeSortPriority === 'returning' ? ' is-on' : '') + '" onclick="event.stopPropagation();setProjectsTypeSortPriority(\'returning\')">2️⃣ <b>' + returningCount + '</b></span>' +
+        '<span class="projects-head-chip new' + (_projectsTypeSortPriority === 'new' ? ' is-on' : '') + '" onclick="event.stopPropagation();setProjectsTypeSortPriority(\'new\')">NEW <b>' + newCount + '</b></span>' +
       '</span>' +
       '<div class="projects-col-resizer" title="Тяните, чтобы менять ширину. Двойной клик — авто" onmousedown="startProjectsColResize(event)" ondblclick="resetProjectsStickyWidthAuto(event)"></div>' +
     '</div>';
