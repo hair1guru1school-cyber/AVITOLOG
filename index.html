@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="ru">
 <head>
 <meta charset="UTF-8">
@@ -413,9 +413,31 @@ body.projects-mode .sidebar{padding-top:calc(14px + var(--projects-sidebar-offse
 .projects-cal-menu .menu-item[data-action="autoload-clear"]:hover{box-shadow:0 0 15px rgba(255,122,166,0.52),inset 0 0 12px rgba(255,153,184,0.2);border-color:rgba(255,172,196,0.9)}
 .projects-cal-menu .menu-item[data-action="cards-active"]{border-color:rgba(114,214,255,0.66);background:linear-gradient(180deg,rgba(16,53,94,0.62),rgba(11,31,61,0.74))}
 .projects-cal-menu .menu-item[data-action="cards-active"]:hover{box-shadow:0 0 15px rgba(112,214,255,0.5),inset 0 0 10px rgba(162,235,255,0.2);border-color:rgba(150,225,255,0.9)}
+.projects-cal-menu .menu-item[data-action="must-launch"]{border-color:rgba(255,128,154,0.66);background:linear-gradient(180deg,rgba(92,20,47,0.62),rgba(47,13,30,0.75))}
+.projects-cal-menu .menu-item[data-action="must-launch"]:hover{box-shadow:0 0 15px rgba(255,122,166,0.5),inset 0 0 10px rgba(255,153,184,0.2);border-color:rgba(255,172,196,0.9)}
+.projects-mini-prompt{position:fixed;z-index:1300;min-width:200px;max-width:230px;padding:8px;border-radius:10px;background:linear-gradient(160deg,rgba(9,14,31,0.97),rgba(13,9,28,0.95));border:1px solid rgba(160,185,255,0.34);box-shadow:0 10px 24px rgba(0,0,0,0.45)}
+.projects-mini-prompt .mini-title{font-size:11px;font-weight:700;color:#dce6ff;margin-bottom:6px}
+.projects-mini-prompt .mini-input{width:100%;height:26px;border-radius:7px;border:1px solid rgba(170,185,255,0.38);background:rgba(9,14,31,0.7);color:#f2f5ff;padding:0 8px;font-size:12px;outline:none;box-sizing:border-box}
+.projects-mini-prompt .mini-input:focus{border-color:rgba(150,225,255,0.9);box-shadow:0 0 10px rgba(112,214,255,0.35)}
+.projects-mini-prompt .mini-row{display:flex;gap:6px;justify-content:flex-end;margin-top:7px}
+.projects-mini-prompt .mini-btn{height:24px;min-width:46px;padding:0 8px;border-radius:7px;border:1px solid rgba(170,185,255,0.38);background:rgba(22,34,64,0.72);color:#f1f4ff;font-size:11px;font-weight:700;cursor:pointer}
+.projects-mini-prompt .mini-btn.ok{border-color:rgba(150,225,255,0.78);background:linear-gradient(180deg,rgba(16,53,94,0.62),rgba(11,31,61,0.74))}
 .proj-joker-badge{height:16px;min-width:24px;padding:0 5px;border-radius:999px;border:1px solid rgba(114,214,255,0.66);background:linear-gradient(180deg,rgba(16,53,94,0.62),rgba(11,31,61,0.74));color:#d7f2ff;font-size:9px;font-weight:800;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;line-height:1;white-space:nowrap;transition:all 0.14s}
 .proj-joker-badge:hover{border-color:rgba(150,225,255,0.9);box-shadow:0 0 12px rgba(112,214,255,0.45)}
 .proj-joker-badge.armed{border-color:rgba(255,172,196,0.9);background:linear-gradient(180deg,rgba(92,20,47,0.62),rgba(47,13,30,0.75));color:#ffdce5}
+.proj-joker-wrap{position:relative;display:inline-flex;align-items:center}
+.proj-joker-del{position:absolute;right:-5px;top:-6px;width:11px;height:11px;border:1px solid rgba(255,172,196,0.9);border-radius:999px;background:#2a0f1b;color:#ffdce5;font-size:8px;line-height:1;display:flex;align-items:center;justify-content:center;cursor:pointer;padding:0}
+.proj-joker-del:hover{background:#4b1730}
+.proj-launch-badge{height:16px;min-width:22px;padding:0 5px;border-radius:999px;border:1px solid rgba(255,128,154,0.66);background:linear-gradient(180deg,rgba(92,20,47,0.62),rgba(47,13,30,0.75));color:#ffdce5;font-size:9px;font-weight:900;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;line-height:1;white-space:nowrap;transition:all 0.14s}
+.proj-launch-badge:hover{border-color:rgba(255,172,196,0.9);box-shadow:0 0 12px rgba(255,122,166,0.45)}
+.proj-launch-badge.armed{border-color:rgba(255,210,98,0.9);background:linear-gradient(180deg,rgba(110,76,9,0.62),rgba(55,38,7,0.75));color:#ffe9a8}
+.proj-launch-del{position:absolute;right:-5px;top:-6px;width:11px;height:11px;border:1px solid rgba(255,210,98,0.9);border-radius:999px;background:#382708;color:#ffe9a8;font-size:8px;line-height:1;display:flex;align-items:center;justify-content:center;cursor:pointer;padding:0}
+.proj-launch-del:hover{background:#5b3e0e}
+.cal-bar{height:100%;width:100%;background:linear-gradient(90deg,rgba(0,217,126,0.4),rgba(0,217,126,0.2))}
+.cal-rocket,.cal-deadline,.cal-cards{height:100%;width:100%;display:flex;align-items:center;justify-content:center}
+.cal-rocket{font-size:14px;color:var(--muted)}
+.cal-deadline{font-size:12px}
+.cal-cards{font-size:11px;font-weight:800;color:#d7f2ff;background:linear-gradient(180deg,rgba(16,53,94,0.72),rgba(11,31,61,0.74));border:1px solid rgba(114,214,255,0.55);border-radius:5px;box-sizing:border-box}
 body.calendar-launch-mode .projects-cal-day[data-project-id]{cursor:crosshair}
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
@@ -668,8 +690,10 @@ function toggleProjectsScreen() {
     _projectsDidInitialCenter = false;
     renderProjectsScreen();
     startProjectsSheetPullTimer();
+    startProjectsDayShiftTimer();
   } else {
     stopProjectsSheetPullTimer();
+    stopProjectsDayShiftTimer();
     var ico = currentTab==='analysis' ? '&#128202;' : currentTab==='presale' ? '&#9200;' : '&#127942;';
     document.getElementById('mainContent').innerHTML =
       '<div class="empty-st"><div style="font-size:38px;opacity:.2">' + ico +
@@ -752,8 +776,17 @@ var _calendarPainting = false;
 var _calendarPaintProjectId = null;
 var _calendarPaintDates = [];
 var _projectJokerDetachArmedId = null;
+var _projectMustLaunchDetachArmedId = null;
 var _projectsSheetPullTimer = null;
 var _projectsSheetPullBusy = false;
+var _projectsDayShiftTimer = null;
+var _projectsDayStamp = '';
+
+function getTodayISO() {
+  var d = new Date();
+  d.setHours(0,0,0,0);
+  return d.toISOString().slice(0,10);
+}
 
 function stopProjectsSheetPullTimer() {
   if (_projectsSheetPullTimer) {
@@ -782,6 +815,25 @@ function startProjectsSheetPullTimer() {
   _projectsSheetPullTimer = setInterval(function(){
     runProjectsSheetPull(true);
   }, 20000);
+}
+function stopProjectsDayShiftTimer() {
+  if (_projectsDayShiftTimer) {
+    clearInterval(_projectsDayShiftTimer);
+    _projectsDayShiftTimer = null;
+  }
+}
+function startProjectsDayShiftTimer() {
+  stopProjectsDayShiftTimer();
+  _projectsDayStamp = getTodayISO();
+  _projectsDayShiftTimer = setInterval(function() {
+    if (!projectsMode || document.hidden) return;
+    var nowDay = getTodayISO();
+    if (nowDay !== _projectsDayStamp) {
+      _projectsDayStamp = nowDay;
+      _projectsDidInitialCenter = false;
+      renderProjectsScreen();
+    }
+  }, 30000);
 }
 
 function loadProjectsData() {
@@ -1250,9 +1302,59 @@ function normalizeIsoDateInput(v) {
     if (m) s = m[3] + '-' + m[2] + '-' + m[1];
   }
   if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return '';
-  var d = new Date(s + 'T00:00:00');
-  if (isNaN(d.getTime())) return '';
-  return d.toISOString().slice(0,10) === s ? s : '';
+  var parts = s.split('-');
+  var y = parseInt(parts[0], 10);
+  var mo = parseInt(parts[1], 10);
+  var d = parseInt(parts[2], 10);
+  if (!isFinite(y) || !isFinite(mo) || !isFinite(d)) return '';
+  var dt = new Date(y, mo - 1, d);
+  if (isNaN(dt.getTime())) return '';
+  if (dt.getFullYear() !== y || (dt.getMonth() + 1) !== mo || dt.getDate() !== d) return '';
+  return s;
+}
+function showProjectsMiniPrompt(opts) {
+  opts = opts || {};
+  var existing = document.getElementById('projectsMiniPrompt');
+  if (existing) existing.remove();
+  var wrap = document.createElement('div');
+  wrap.id = 'projectsMiniPrompt';
+  wrap.className = 'projects-mini-prompt';
+  wrap.innerHTML =
+    '<div class="mini-title">' + (opts.title || 'Введите значение') + '</div>' +
+    '<input type="text" class="mini-input" id="projectsMiniInput" value="' + escAttr(opts.value || '') + '">' +
+    '<div class="mini-row">' +
+      '<button type="button" class="mini-btn" id="projectsMiniCancel">Отмена</button>' +
+      '<button type="button" class="mini-btn ok" id="projectsMiniOk">OK</button>' +
+    '</div>';
+  document.body.appendChild(wrap);
+  var vw = window.innerWidth, vh = window.innerHeight;
+  var x = typeof opts.x === 'number' ? opts.x : 20;
+  var y = typeof opts.y === 'number' ? opts.y : 20;
+  var r = wrap.getBoundingClientRect();
+  wrap.style.left = Math.max(8, Math.min(x, vw - r.width - 8)) + 'px';
+  wrap.style.top = Math.max(8, Math.min(y, vh - r.height - 8)) + 'px';
+  var inp = document.getElementById('projectsMiniInput');
+  if (inp) {
+    inp.focus();
+    inp.select();
+    inp.addEventListener('keydown', function(e){
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        var ok = document.getElementById('projectsMiniOk');
+        if (ok) ok.click();
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        wrap.remove();
+      }
+    });
+  }
+  var cancel = document.getElementById('projectsMiniCancel');
+  if (cancel) cancel.onclick = function(){ wrap.remove(); };
+  var okBtn = document.getElementById('projectsMiniOk');
+  if (okBtn) okBtn.onclick = function(){
+    var val = inp ? inp.value : '';
+    if (typeof opts.onSubmit === 'function') opts.onSubmit(val, wrap);
+  };
 }
 function hideProjectsCalMenu() {
   var m = document.getElementById('projectsCalMenu');
@@ -1283,6 +1385,7 @@ function showProjectsCalMenu(x, y, projectId, dateStr) {
       '</div>' +
     '</div>' +
     '<div class="menu-item" data-action="cards-active">🃏 Актив карточек</div>' +
+    '<div class="menu-item" data-action="must-launch">‼️ Должен быть запущен</div>' +
     '<div class="menu-item" data-action="launch-paint">✍️ Режим закраски запуска</div>' +
     '<div class="menu-item" data-action="launch-clear">🗑 Очистить запуск</div>';
   document.body.appendChild(menu);
@@ -1315,15 +1418,23 @@ function showProjectsCalMenu(x, y, projectId, dateStr) {
       applyProjectAutoloadRange(pid, dt, addDaysISO(dt, Math.max(0, na)));
       hideProjectsCalMenu();
     } else if (action === 'autoload-date') {
-      var val = prompt('Дата до (ГГГГ-ММ-ДД или ДД.ММ.ГГГГ):', dt);
-      if (val === null) return;
-      var v = normalizeIsoDateInput(val);
-      if (v) {
-        applyProjectAutoloadRange(pid, dt, v);
-        hideProjectsCalMenu();
-      } else {
-        alert('Неверный формат даты. Пример: 2026-03-15 или 15.03.2026');
-      }
+      var menuRect = menu.getBoundingClientRect();
+      showProjectsMiniPrompt({
+        title: 'Дата до (ГГГГ-ММ-ДД)',
+        value: dt,
+        x: menuRect.right + 6,
+        y: menuRect.top + 2,
+        onSubmit: function(val, promptEl) {
+          var v = normalizeIsoDateInput(val);
+          if (!v) {
+            alert('Неверный формат даты. Пример: 2026-03-15 или 15.03.2026');
+            return;
+          }
+          applyProjectAutoloadRange(pid, dt, v);
+          if (promptEl) promptEl.remove();
+          hideProjectsCalMenu();
+        }
+      });
     } else if (action === 'autoload-clear') {
       clearProjectAutoload(pid);
       hideProjectsCalMenu();
@@ -1336,6 +1447,9 @@ function showProjectsCalMenu(x, y, projectId, dateStr) {
       } catch(ex) {}
       var cval = prompt('Актив карточек (число):', existingCards || '1');
       if (cval !== null) setProjectCardsActive(pid, cval);
+      hideProjectsCalMenu();
+    } else if (action === 'must-launch') {
+      setProjectMustLaunchRequired(pid, true);
       hideProjectsCalMenu();
     } else if (action === 'launch-paint') {
       _calendarPaintMode = 'launch';
@@ -1379,8 +1493,13 @@ function applyProjectAutoloadRange(projectId, startDate, endDate) {
   if (!p) return;
   var s = startDate <= endDate ? startDate : endDate;
   var e = startDate <= endDate ? endDate : startDate;
+  var todayIso = getTodayISO();
   p.events = (p.events || []).filter(function(ev) { return ev.type !== 'active_range'; });
   p.events.push({type:'active_range', startDate:s, endDate:e});
+  if (p.mustLaunchRequired && e > todayIso) {
+    p.mustLaunchRequired = false;
+    _projectMustLaunchDetachArmedId = null;
+  }
   saveProjectsData(data);
   rerenderProjectsPreserveScroll();
   syncProjectToActiveSheet(projectId, 'autoload_range_set');
@@ -1555,6 +1674,7 @@ function renderProjectsScreen(opts) {
   var DAYS_RIGHT = 45;
   var today = new Date();
   today.setHours(0,0,0,0);
+  var todayIso = today.toISOString().slice(0,10);
   var startDate = new Date(today);
   startDate.setDate(startDate.getDate() - DAYS_LEFT);
   var endDate = new Date(today);
@@ -1618,11 +1738,15 @@ function renderProjectsScreen(opts) {
     var driveClass = 'proj-drive-btn' + (p.folderLink ? ' on' : '');
     var expandedClass = _expandedProjectIds[p.id] ? ' expanded' : '';
     var hasCardsActive = !!String(p.cardsActive || '').trim();
-    var cardsLabel = (_projectJokerDetachArmedId === p.id) ? '✖' : ('🃏 ' + (p.cardsActive || ''));
     var cardsClass = 'proj-joker-badge' + (_projectJokerDetachArmedId === p.id ? ' armed' : '');
-    var cardsHtml = hasCardsActive ? '<button type="button" class="' + cardsClass + '" title="Актив карточек. Нажмите ещё раз, чтобы снять." onclick="event.stopPropagation();toggleProjectCardsBadge(\'' + p.id + '\')">' + cardsLabel + '</button>' : '';
+    var cardsDel = (_projectJokerDetachArmedId === p.id) ? '<button type="button" class="proj-joker-del" title="Отключить актив карточек" onclick="event.stopPropagation();removeProjectCardsActive(\'' + p.id + '\')">✕</button>' : '';
+    var cardsHtml = hasCardsActive ? '<span class="proj-joker-wrap"><button type="button" class="' + cardsClass + '" title="Актив карточек. Нажмите для управления." onclick="event.stopPropagation();toggleProjectCardsBadge(\'' + p.id + '\')">🃏 ' + (p.cardsActive || '') + '</button>' + cardsDel + '</span>' : '';
+    var hasMustLaunch = !!p.mustLaunchRequired;
+    var mustLaunchClass = 'proj-launch-badge' + (_projectMustLaunchDetachArmedId === p.id ? ' armed' : '');
+    var mustLaunchDel = (_projectMustLaunchDetachArmedId === p.id) ? '<button type="button" class="proj-launch-del" title="Снять пометку запуска" onclick="event.stopPropagation();removeProjectMustLaunchRequired(\'' + p.id + '\')">✕</button>' : '';
+    var mustLaunchHtml = hasMustLaunch ? '<span class="proj-joker-wrap"><button type="button" class="' + mustLaunchClass + '" title="Должен быть запущен. Нажмите для управления." onclick="event.stopPropagation();toggleProjectMustLaunchBadge(\'' + p.id + '\')">‼️</button>' + mustLaunchDel + '</span>' : '';
     var hoverPop = '<div class="proj-hover-pop"><button type="button" class="crm-bind-btn" onclick="startProjectFolderBind(\'' + p.id + '\', event)">CRM</button></div>';
-    var stickyHtml = '<div class="proj-col-expand">' + expandContent + '</div><div class="proj-col-type" onclick="event.stopPropagation();cycleProjectClientType(\'' + p.id + '\')" title="Старые/новички/2-й раз">' + typeHtml + '</div><button type="button" class="' + driveClass + '" title="Папка клиента в Google Drive" onclick="event.stopPropagation();openProjectDriveFolder(\'' + p.id + '\')">△</button><div class="proj-cell-editable' + expandedClass + '" data-id="' + p.id + '" onclick="editProjectCell(this)">' + hoverPop + '<div class="proj-main-line"><button type="button" class="proj-emoji-btn" onclick="event.stopPropagation();showProjEmojiPicker(this,\'' + p.id + '\')">' + (em||'😀') + '</button><input type="text" value="' + (p.title||'').replace(/"/g,'&quot;') + '" readonly style="pointer-events:none">' + expandBtnName + cardsHtml + '<span class="project-path">' + pathHtml + '</span><button type="button" class="proj-status-btn project-status" onclick="event.stopPropagation();showProjectStatusPicker(this,\'' + p.id + '\')" style="background:' + (PROJECT_STATUS_COLORS[p.status]||'#666') + '22;color:' + (PROJECT_STATUS_COLORS[p.status]||'#999') + '">' + (p.status||'В работе') + '</button>' + expandBtnStatus + '</div><div class="proj-optional-row">' + extraLinesHtml + '</div></div>';
+    var stickyHtml = '<div class="proj-col-expand">' + expandContent + '</div><div class="proj-col-type" onclick="event.stopPropagation();cycleProjectClientType(\'' + p.id + '\')" title="Старые/новички/2-й раз">' + typeHtml + '</div><button type="button" class="' + driveClass + '" title="Папка клиента в Google Drive" onclick="event.stopPropagation();openProjectDriveFolder(\'' + p.id + '\')">△</button><div class="proj-cell-editable' + expandedClass + '" data-id="' + p.id + '" onclick="editProjectCell(this)">' + hoverPop + '<div class="proj-main-line"><button type="button" class="proj-emoji-btn" onclick="event.stopPropagation();showProjEmojiPicker(this,\'' + p.id + '\')">' + (em||'😀') + '</button><input type="text" value="' + (p.title||'').replace(/"/g,'&quot;') + '" readonly style="pointer-events:none">' + expandBtnName + cardsHtml + mustLaunchHtml + '<span class="project-path">' + pathHtml + '</span><button type="button" class="proj-status-btn project-status" onclick="event.stopPropagation();showProjectStatusPicker(this,\'' + p.id + '\')" style="background:' + (PROJECT_STATUS_COLORS[p.status]||'#666') + '22;color:' + (PROJECT_STATUS_COLORS[p.status]||'#999') + '">' + (p.status||'В работе') + '</button>' + expandBtnStatus + '</div><div class="proj-optional-row">' + extraLinesHtml + '</div></div>';
     var selectedClass = (_selectedProjectId === p.id) ? ' selected' : '';
     var rowHtml = '<div class="projects-table-row' + selectedClass + '" data-id="' + p.id + '" draggable="true" onclick="selectProjectRow(\'' + p.id + '\')" ondragstart="startProjectRowDrag(event,\'' + p.id + '\')" ondragover="handleProjectRowDragOver(event,this,\'' + p.id + '\')" ondragleave="handleProjectRowDragLeave(event,this)" ondrop="handleProjectRowDrop(event,\'' + p.id + '\')" ondragend="endProjectRowDrag(event)"><div class="projects-sticky">' + stickyHtml + '</div><div class="projects-scroll">';
     dates.forEach(function(d) {
@@ -1632,8 +1756,12 @@ function renderProjectsScreen(opts) {
       var evt = (p.events||[]).find(function(e){ return e.type==='active_range' && dStr>=e.startDate && dStr<=e.endDate; });
       var deadline = (p.events||[]).find(function(e){ return e.type==='deadline' && e.date===dStr; });
       var cards = (p.events||[]).find(function(e){ return e.type==='cards_count_without_active_upload' && e.date===dStr; });
+      var cardsActiveToday = hasCardsActive && (dStr === todayIso);
+      var mustLaunchToday = hasMustLaunch && (dStr === todayIso);
       var rocket = (p.events||[]).find(function(e){ return e.type==='not_launched_project_marker' && e.date===dStr; });
-      if (rocket) cellHtml = '<div class="cal-rocket">🚀</div>';
+      if (cardsActiveToday) cellHtml = '<div class="cal-cards">' + (p.cardsActive || '') + '</div>';
+      else if (mustLaunchToday) cellHtml = '<div class="cal-deadline">‼️</div>';
+      else if (rocket) cellHtml = '<div class="cal-rocket">🚀</div>';
       else if (launchEvt) cellHtml = '<div class="cal-launch-bar"></div>';
       else if (evt) cellHtml = '<div class="cal-bar"></div>';
       else if (deadline) cellHtml = '<div class="cal-deadline">‼️</div>';
@@ -1781,14 +1909,44 @@ function toggleProjectCardsBadge(projectId) {
   if (!p || !p.cardsActive) return;
   if (_projectJokerDetachArmedId !== projectId) {
     _projectJokerDetachArmedId = projectId;
-    rerenderProjectsPreserveScroll();
-    return;
+  } else {
+    _projectJokerDetachArmedId = null;
   }
+  rerenderProjectsPreserveScroll();
+}
+function removeProjectCardsActive(projectId) {
+  var data = loadProjectsData();
+  var p = data.projects.find(function(x){ return x.id===projectId; });
+  if (!p) return;
   p.cardsActive = '';
   _projectJokerDetachArmedId = null;
   saveProjectsData(data);
   rerenderProjectsPreserveScroll();
   syncProjectToActiveSheet(projectId, 'cards_active_clear');
+}
+function setProjectMustLaunchRequired(projectId, enabled) {
+  var data = loadProjectsData();
+  var p = data.projects.find(function(x){ return x.id===projectId; });
+  if (!p) return;
+  p.mustLaunchRequired = !!enabled;
+  _projectMustLaunchDetachArmedId = null;
+  saveProjectsData(data);
+  rerenderProjectsPreserveScroll();
+  syncProjectToActiveSheet(projectId, enabled ? 'must_launch_set' : 'must_launch_clear');
+}
+function toggleProjectMustLaunchBadge(projectId) {
+  var data = loadProjectsData();
+  var p = data.projects.find(function(x){ return x.id===projectId; });
+  if (!p || !p.mustLaunchRequired) return;
+  if (_projectMustLaunchDetachArmedId !== projectId) {
+    _projectMustLaunchDetachArmedId = projectId;
+  } else {
+    _projectMustLaunchDetachArmedId = null;
+  }
+  rerenderProjectsPreserveScroll();
+}
+function removeProjectMustLaunchRequired(projectId) {
+  setProjectMustLaunchRequired(projectId, false);
 }
 function toggleProjectOptional(btn, projectId) {
   var cell = btn.closest('.proj-cell-editable');
@@ -2392,6 +2550,7 @@ function dlDoc() {
 var SA_EMAIL = "avitolog-crm@avito-489218.iam.gserviceaccount.com";
 var OAUTH_CLIENT_ID = '98192715547-1a7jrfa6a53e1u7k5lojss8ji12q4432.apps.googleusercontent.com';
 var OAUTH_SCOPE = 'https://www.googleapis.com/auth/drive https://www.googleapis.com/auth/spreadsheets';
+var OAUTH_REDIRECT_URI = 'https://hair1guru1school-cyber.github.io/AVITOLOG/index.html';
 var _driveToken = null;
 var _driveUserEmail = null;
 var SASHA_EMAIL = 'cyplakovaleksandr153@gmail.com';
@@ -2418,28 +2577,42 @@ function persistDriveToken(token, expiresInSec) {
   var exp = Date.now() + (Math.max(60, Number(expiresInSec) || 3600) - 60) * 1000;
   try { localStorage.setItem(DRIVE_AUTH_KEY, JSON.stringify({token: token, exp: exp})); } catch(e) {}
 }
+function setDriveConnectedUiState() {
+  updateDriveUI();
+  var btn = document.getElementById('authBtn');
+  if (btn) { btn.textContent = '✓ Drive'; btn.style.borderColor = '#00d97e'; btn.style.color = '#00d97e'; }
+  var db = document.getElementById('driveBadge');
+  if (db) { db.className = 'badge ok'; db.textContent = '✓ Drive'; }
+  var st = document.getElementById('crmSt');
+  if (st) { st.className = 'crm-st'; st.textContent = ''; }
+}
+function applyOAuthHash(hash) {
+  if (!hash || hash.indexOf('access_token=') < 0) return false;
+  var m = hash.match(/access_token=([^&]+)/);
+  if (!m) return false;
+  _driveToken = m[1];
+  var ex = hash.match(/expires_in=([^&]+)/);
+  persistDriveToken(_driveToken, ex ? parseInt(ex[1], 10) : 3600);
+  return true;
+}
+function buildAuthUrl() {
+  return 'https://accounts.google.com/o/oauth2/v2/auth'
+    + '?client_id=' + encodeURIComponent(OAUTH_CLIENT_ID)
+    + '&redirect_uri=' + encodeURIComponent(OAUTH_REDIRECT_URI)
+    + '&response_type=token'
+    + '&scope=' + encodeURIComponent(OAUTH_SCOPE)
+    + '&include_granted_scopes=true';
+}
 
 // При загрузке ловим токен из URL (после редиректа от Google)
 (function() {
   restoreDriveTokenFromStorage();
   var hash = window.location.hash;
-  if (hash && hash.indexOf('access_token=') >= 0) {
-    var m = hash.match(/access_token=([^&]+)/);
-    if (m) {
-      _driveToken = m[1];
-      var ex = hash.match(/expires_in=([^&]+)/);
-      persistDriveToken(_driveToken, ex ? parseInt(ex[1], 10) : 3600);
-      history.replaceState(null, '', window.location.pathname);
-      document.addEventListener('DOMContentLoaded', function() {
-        updateDriveUI();
-        var btn = document.getElementById('authBtn');
-        if (btn) { btn.textContent = '✓ Drive'; btn.style.borderColor = '#00d97e'; btn.style.color = '#00d97e'; }
-        var db = document.getElementById('driveBadge');
-        if (db) { db.className = 'badge ok'; db.textContent = '✓ Drive'; }
-        var st = document.getElementById('crmSt');
-        if (st) { st.className = 'crm-st'; st.textContent = ''; }
-      });
-    }
+  if (applyOAuthHash(hash)) {
+    history.replaceState(null, '', window.location.pathname);
+    document.addEventListener('DOMContentLoaded', function() {
+      setDriveConnectedUiState();
+    });
   }
 })();
 
@@ -2465,14 +2638,45 @@ function updateDriveUI() {
 }
 
 function startAuth() {
-  if (_driveToken) { alert('Google Drive уже подключён!'); return; }
-  var authUrl = 'https://accounts.google.com/o/oauth2/v2/auth'
-    + '?client_id=' + encodeURIComponent(OAUTH_CLIENT_ID)
-    + '&redirect_uri=' + encodeURIComponent('https://hair1guru1school-cyber.github.io/AVITOLOG/index.html')
-    + '&response_type=token'
-    + '&scope=' + encodeURIComponent(OAUTH_SCOPE)
-    + '&include_granted_scopes=true';
-  window.location.href = authUrl;
+  if (!_driveToken) restoreDriveTokenFromStorage();
+  if (_driveToken) { setDriveConnectedUiState(); return; }
+  var authUrl = buildAuthUrl();
+  var canUsePopup = false;
+  try {
+    canUsePopup = (new URL(OAUTH_REDIRECT_URI)).origin === window.location.origin;
+  } catch(e) {}
+  if (!canUsePopup) {
+    window.location.href = authUrl;
+    return;
+  }
+  var w = 540, h = 700;
+  var left = Math.max(0, Math.round((window.screen.width - w) / 2));
+  var top = Math.max(0, Math.round((window.screen.height - h) / 2));
+  var pop = window.open(authUrl, 'driveAuth', 'popup=yes,width=' + w + ',height=' + h + ',left=' + left + ',top=' + top);
+  if (!pop) {
+    window.location.href = authUrl;
+    return;
+  }
+  var started = Date.now();
+  var timer = setInterval(function() {
+    if (!pop || pop.closed) { clearInterval(timer); return; }
+    try {
+      var href = pop.location && pop.location.href ? pop.location.href : '';
+      if (href && href.indexOf(OAUTH_REDIRECT_URI) === 0) {
+        if (applyOAuthHash(pop.location.hash || '')) {
+          clearInterval(timer);
+          try { pop.close(); } catch(e) {}
+          setDriveConnectedUiState();
+          return;
+        }
+      }
+    } catch(e) {}
+    if (Date.now() - started > 45000) {
+      clearInterval(timer);
+      try { pop.close(); } catch(e) {}
+      window.location.href = authUrl;
+    }
+  }, 220);
 }
 
 function getDriveToken() {
@@ -3554,8 +3758,13 @@ document.addEventListener('DOMContentLoaded', function() {
   window.addEventListener('resize', updateProjectsSidebarOffset);
   document.addEventListener('visibilitychange', function() {
     if (!projectsMode) return;
-    if (document.hidden) stopProjectsSheetPullTimer();
-    else startProjectsSheetPullTimer();
+    if (document.hidden) {
+      stopProjectsSheetPullTimer();
+      stopProjectsDayShiftTimer();
+    } else {
+      startProjectsSheetPullTimer();
+      startProjectsDayShiftTimer();
+    }
   });
   document.addEventListener('mouseup', finishCalendarPaint);
   document.addEventListener('keydown', function(e) {
