@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>AVITOLOG</title>
+<title>AVITOBO$$</title>
 <link rel="icon" href="icon.png" type="image/png">
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Golos+Text:wght@400;500;600;700;900&display=swap');
@@ -20,7 +20,7 @@ body{font-family:'Golos Text',sans-serif;background:var(--bg);color:var(--text);
 #pgbar{position:fixed;top:0;left:0;right:0;height:3px;z-index:999;pointer-events:none}
 #pgfill{height:100%;width:0%;background:linear-gradient(90deg,var(--accent),var(--accent3));box-shadow:0 0 8px var(--accent);transition:width 0.4s ease}
 header{background:var(--surface);border-bottom:1px solid var(--border);padding:0 22px;display:flex;align-items:center;height:52px;position:sticky;top:3px;z-index:100;gap:12px}
-.logo{font-family:'Bebas Neue',sans-serif;font-size:28px;letter-spacing:5px;color:var(--accent)}
+.logo{font-family:'Bebas Neue',sans-serif;font-size:28px;letter-spacing:5px;color:var(--accent);white-space:nowrap}
 .layout{display:grid;grid-template-columns:340px 1fr 155px;height:calc(100vh - 55px)}
 .sidebar{background:var(--surface);border-right:1px solid var(--border);padding:14px;overflow-y:auto;display:flex;flex-direction:column}
 .side-tabs{display:flex;flex-direction:column;gap:5px;margin-bottom:14px;padding-bottom:14px;border-bottom:1px solid var(--border)}
@@ -168,6 +168,7 @@ textarea{resize:vertical;min-height:50px;line-height:1.5}
 .rtab-bar{position:absolute;bottom:0;left:0;height:3px;background:var(--accent);width:0;transition:width 22s cubic-bezier(0.05,0.4,0.2,1);border-radius:2px}
 /* ——— Только мобильная версия: левое меню — выдвижной drawer ——— */
 @media (max-width: 768px) {
+  .logo{white-space:nowrap;font-size:22px;letter-spacing:2px}
   .layout{grid-template-columns:1fr;grid-template-areas:'main'}
   .sidebar{position:fixed;left:0;top:0;bottom:0;width:min(300px,85vw);z-index:400;transform:translateX(-100%);transition:transform 0.25s ease;box-shadow:4px 0 24px rgba(0,0,0,0.4)}
   body.sidebar-open-mobile .sidebar{transform:translateX(0)}
@@ -204,7 +205,7 @@ textarea{resize:vertical;min-height:50px;line-height:1.5}
 <div id="pgbar"><div id="pgfill"></div></div>
 <header>
   <button type="button" class="header-menu-btn" id="headerMenuBtn" onclick="toggleMobileSidebar()" title="Меню" aria-label="Меню">☰</button>
-  <div class="logo">🃏 AVITOLOG</div>
+  <div class="logo">🃏AVITOBO$$</div>
   <div style="flex:1"></div>
   <div style="display:flex;align-items:center;gap:8px">
     <input type="password" id="apiKeyInput" placeholder="sk-ant-... (API ключ)" 
