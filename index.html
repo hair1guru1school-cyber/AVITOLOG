@@ -619,6 +619,7 @@ function toggleProjectsScreen() {
   if (projectsMode) {
     _projectsDidInitialCenter = false;
     renderProjectsScreen();
+    if (_driveToken) scheduleActiveSheetExactSync('projects_open');
   } else {
     var ico = currentTab==='analysis' ? '&#128202;' : currentTab==='presale' ? '&#9200;' : '&#127942;';
     document.getElementById('mainContent').innerHTML =
@@ -697,6 +698,7 @@ var _calendarPaintMode = null; // null | 'launch'
 var _calendarPainting = false;
 var _calendarPaintProjectId = null;
 var _calendarPaintDates = [];
+var _activeSheetSyncTimer = null;
 
 function loadProjectsData() {
   try {
@@ -879,10 +881,20 @@ function getProjectsStickyWidthPx(projects) {
   var w = fixedControlsPx + titlePx;
   return Math.max(360, Math.min(900, w));
 }
-async function appendProjectActiveRowToSheets(p, reason) {
-  if (!_driveToken || !p || p.zone !== 'active') return;
+async function ensureActiveProjectsSheet() {
+  var readUrl = 'https://sheets.googleapis.com/v4/spreadsheets/' + SHEETS_ID + '/values/' + encodeURIComponent(PROJECTS_ACTIVE_SHEET_NAME + '!A1:A1');
+  var readResp = await fetch(readUrl, { headers: {'Authorization': 'Bearer ' + _driveToken} });
+  if (readResp.ok) return;
+  var createUrl = 'https://sheets.googleapis.com/v4/spreadsheets/' + SHEETS_ID + ':batchUpdate';
+  await fetch(createUrl, {
+    method: 'POST',
+    headers: {'Authorization': 'Bearer ' + _driveToken, 'Content-Type': 'application/json'},
+    body: JSON.stringify({requests:[{addSheet:{properties:{title:PROJECTS_ACTIVE_SHEET_NAME}}}]})
+  }).catch(function(){});
+}
+function buildActiveProjectRow(p, reason) {
   var rng = getProjectAutoloadRange(p);
-  var row = [
+  return [
     new Date().toISOString(),
     p.id || '',
     p.title || '',
@@ -897,39 +909,42 @@ async function appendProjectActiveRowToSheets(p, reason) {
     reason || '',
     _driveUserEmail || ''
   ];
-  var range = PROJECTS_ACTIVE_SHEET_NAME + '!A:M';
-  var url = 'https://sheets.googleapis.com/v4/spreadsheets/' + SHEETS_ID + '/values/' + encodeURIComponent(range) + ':append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS';
-  async function doAppend() {
-    return fetch(url, {
-      method: 'POST',
-      headers: {'Authorization': 'Bearer ' + _driveToken, 'Content-Type': 'application/json'},
-      body: JSON.stringify({values: [row]})
-    });
-  }
-  var resp = await doAppend();
+}
+async function syncActiveProjectsSheetExact(reason) {
+  if (!_driveToken) return;
+  await ensureActiveProjectsSheet();
+  var data = loadProjectsData();
+  var active = (data.projects || [])
+    .filter(function(p){ return (p.zone || 'active') === 'active'; })
+    .sort(function(a,b){ return (a.sortOrder||0) - (b.sortOrder||0); });
+  var rows = active.map(function(p){ return buildActiveProjectRow(p, reason || 'sync'); });
+  var clearUrl = 'https://sheets.googleapis.com/v4/spreadsheets/' + SHEETS_ID + '/values/' + encodeURIComponent(PROJECTS_ACTIVE_SHEET_NAME + '!A2:M') + ':clear';
+  await fetch(clearUrl, {
+    method: 'POST',
+    headers: {'Authorization': 'Bearer ' + _driveToken, 'Content-Type': 'application/json'},
+    body: '{}'
+  });
+  if (!rows.length) return;
+  var setUrl = 'https://sheets.googleapis.com/v4/spreadsheets/' + SHEETS_ID + '/values/' + encodeURIComponent(PROJECTS_ACTIVE_SHEET_NAME + '!A2:M' + (rows.length + 1)) + '?valueInputOption=USER_ENTERED';
+  var resp = await fetch(setUrl, {
+    method: 'PUT',
+    headers: {'Authorization': 'Bearer ' + _driveToken, 'Content-Type': 'application/json'},
+    body: JSON.stringify({values: rows})
+  });
   if (!resp.ok) {
     var err = await resp.json().catch(function() { return {}; });
-    var msg = err && err.error && err.error.message ? err.error.message : (resp.status + ' ' + resp.statusText);
-    if (/Unable to parse range|not found|No sheet with name/i.test(String(msg))) {
-      var createUrl = 'https://sheets.googleapis.com/v4/spreadsheets/' + SHEETS_ID + ':batchUpdate';
-      await fetch(createUrl, {
-        method: 'POST',
-        headers: {'Authorization': 'Bearer ' + _driveToken, 'Content-Type': 'application/json'},
-        body: JSON.stringify({requests:[{addSheet:{properties:{title:PROJECTS_ACTIVE_SHEET_NAME}}}]})
-      }).catch(function(){});
-      resp = await doAppend();
-      if (resp.ok) return;
-      err = await resp.json().catch(function() { return {}; });
-      msg = err && err.error && err.error.message ? err.error.message : (resp.status + ' ' + resp.statusText);
-    }
-    throw new Error('Активные: ' + msg);
+    throw new Error('Активные: ' + (err.error && err.error.message ? err.error.message : resp.status + ' ' + resp.statusText));
   }
 }
 function syncProjectToActiveSheet(projectId, reason) {
-  var data = loadProjectsData();
-  var p = data.projects.find(function(x){ return x.id === projectId; });
-  if (!p) return;
-  appendProjectActiveRowToSheets(p, reason).catch(function(e){ console.warn('Active sheet sync failed:', e); });
+  syncActiveProjectsSheetExact(reason || 'sync').catch(function(e){ console.warn('Active sheet sync failed:', e); });
+}
+function scheduleActiveSheetExactSync(reason) {
+  if (!_driveToken) return;
+  if (_activeSheetSyncTimer) clearTimeout(_activeSheetSyncTimer);
+  _activeSheetSyncTimer = setTimeout(function() {
+    syncActiveProjectsSheetExact(reason || 'sync').catch(function(e){ console.warn('Active sheet sync failed:', e); });
+  }, 250);
 }
 function getSelectedProject() {
   if (!_selectedProjectId) return null;
@@ -1034,6 +1049,15 @@ function showProjectsCalMenu(x, y, projectId, dateStr) {
         }).join('') +
       '</div>' +
     '</div>' +
+    '<div class="menu-item has-sub" data-action="autoload-menu">🅰️ Автозагрузка <span>▶</span>' +
+      '<div class="menu-sub">' +
+        [1,3,5,7,10,14,21,30].map(function(n){
+          return '<div class="menu-item" data-action="autoload-days" data-days="' + n + '">до + ' + n + ' дн.</div>';
+        }).join('') +
+        '<div class="menu-item" data-action="autoload-date">📅 Указать дату…</div>' +
+        '<div class="menu-item" data-action="autoload-clear">🗑 Очистить автозагрузку</div>' +
+      '</div>' +
+    '</div>' +
     '<div class="menu-item" data-action="launch-paint">✍️ Режим закраски запуска</div>' +
     '<div class="menu-item" data-action="launch-clear">🗑 Очистить запуск</div>';
   document.body.appendChild(menu);
@@ -1051,6 +1075,24 @@ function showProjectsCalMenu(x, y, projectId, dateStr) {
     if (action === 'launch-days') {
       var n = parseInt(item.getAttribute('data-days') || '0', 10);
       applyProjectLaunchRange(pid, dt, addDaysISO(dt, Math.max(0, n)));
+      hideProjectsCalMenu();
+    } else if (action === 'autoload-days') {
+      var na = parseInt(item.getAttribute('data-days') || '0', 10);
+      applyProjectAutoloadRange(pid, dt, addDaysISO(dt, Math.max(0, na)));
+      hideProjectsCalMenu();
+    } else if (action === 'autoload-date') {
+      var val = prompt('Дата до (ГГГГ-ММ-ДД):', dt);
+      if (val) {
+        var v = String(val).trim();
+        if (/^\d{4}-\d{2}-\d{2}$/.test(v)) {
+          applyProjectAutoloadRange(pid, dt, v);
+        } else {
+          alert('Неверный формат даты. Используйте ГГГГ-ММ-ДД');
+        }
+      }
+      hideProjectsCalMenu();
+    } else if (action === 'autoload-clear') {
+      clearProjectAutoload(pid);
       hideProjectsCalMenu();
     } else if (action === 'launch-paint' || action === 'launch-mode') {
       _calendarPaintMode = 'launch';
@@ -1097,6 +1139,27 @@ function clearProjectLaunch(projectId) {
   saveProjectsData(data);
   rerenderProjectsPreserveScroll();
   syncProjectToActiveSheet(projectId, 'launch_range_clear');
+}
+function applyProjectAutoloadRange(projectId, startDate, endDate) {
+  var data = loadProjectsData();
+  var p = data.projects.find(function(x){ return x.id === projectId; });
+  if (!p) return;
+  var s = startDate <= endDate ? startDate : endDate;
+  var e = startDate <= endDate ? endDate : startDate;
+  p.events = (p.events || []).filter(function(ev) { return ev.type !== 'active_range'; });
+  p.events.push({type:'active_range', startDate:s, endDate:e});
+  saveProjectsData(data);
+  rerenderProjectsPreserveScroll();
+  syncProjectToActiveSheet(projectId, 'autoload_range_set');
+}
+function clearProjectAutoload(projectId) {
+  var data = loadProjectsData();
+  var p = data.projects.find(function(x){ return x.id === projectId; });
+  if (!p) return;
+  p.events = (p.events || []).filter(function(ev) { return ev.type !== 'active_range'; });
+  saveProjectsData(data);
+  rerenderProjectsPreserveScroll();
+  syncProjectToActiveSheet(projectId, 'autoload_range_clear');
 }
 function getCalendarCellFromEventTarget(t) {
   return t && t.closest ? t.closest('.projects-cal-day[data-project-id][data-date]') : null;
