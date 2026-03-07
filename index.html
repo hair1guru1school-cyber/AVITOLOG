@@ -2681,6 +2681,37 @@ function toggleClientType(btn, val) {
 var SHEETS_ID = '1gUV4mWX4ob0NkjJTpP15N9dBKfIOO2NdJQDKXCooVA8';
 var SHEETS_NAME = 'Лист1';
 var _activeClient = null;
+function normClientField(v) {
+  return String(v || '').trim().toLowerCase();
+}
+function generateClientId() {
+  try {
+    if (window.crypto && typeof window.crypto.randomUUID === 'function') return window.crypto.randomUUID();
+  } catch(e) {}
+  return 'cid_' + Date.now() + '_' + Math.random().toString(36).slice(2,10);
+}
+function findClientIndexByData(list, d) {
+  var id = String(d.client_id || '');
+  if (id) {
+    var byId = list.findIndex(function(c) { return String(c.client_id || '') === id; });
+    if (byId >= 0) return byId;
+  }
+  if (d.folderId) {
+    var byFolder = list.findIndex(function(c) { return String(c.folderId || '') === String(d.folderId); });
+    if (byFolder >= 0) return byFolder;
+  }
+  var company = normClientField(d.company);
+  var contact = normClientField(d.contact_name);
+  var phone = normClientField(d.phone);
+  return list.findIndex(function(c) {
+    var cCompany = normClientField(c.company);
+    var cContact = normClientField(c.contact_name);
+    var cPhone = normClientField(c.phone);
+    if (company && contact && cCompany === company && cContact === contact) return true;
+    if (company && phone && cCompany === company && cPhone === phone) return true;
+    return false;
+  });
+}
 
 function getCrmClients() {
   try { return JSON.parse(localStorage.getItem('avitolog_clients') || '[]'); } catch(e) { return []; }
@@ -2903,10 +2934,15 @@ async function saveClient() {
     d.folderLink = folderLink;
     d.folder_name = folderName;
     var selectedProject = getSelectedProject();
-    d.client_id = (selectedProject && selectedProject.crmClientId) || d.client_id || String(Date.now());
+    d.client_id = (selectedProject && selectedProject.crmClientId) || d.client_id || '';
+    if (!d.client_id) {
+      var active = _activeClient || getActiveClient();
+      if (active && active.client_id) d.client_id = active.client_id;
+    }
     var clients = getCrmClients();
-    var existing = clients.findIndex(function(c) { return c.client_id === d.client_id; });
-    if (existing < 0) existing = clients.findIndex(function(c) { return c.company === d.company && c.phone === d.phone; });
+    var existing = findClientIndexByData(clients, d);
+    if (!d.client_id && existing >= 0 && clients[existing].client_id) d.client_id = clients[existing].client_id;
+    if (!d.client_id) d.client_id = generateClientId();
     if (existing >= 0) {
       if (clients[existing].client_id) d.client_id = clients[existing].client_id;
       clients[existing] = d;
@@ -2967,14 +3003,25 @@ async function writeToSheets(d) {
     d.folderLink || ''
   ];
   var sheetName = (typeof SHEETS_NAME !== 'undefined' ? SHEETS_NAME : 'Лист1');
-  var colAUrl = 'https://sheets.googleapis.com/v4/spreadsheets/' + SHEETS_ID + '/values/' + encodeURIComponent(sheetName + '!A2:A');
-  var colAResp = await fetch(colAUrl, { headers: {'Authorization': 'Bearer ' + token} });
+  var lookupRange = sheetName + '!A2:F';
+  var lookupUrl = 'https://sheets.googleapis.com/v4/spreadsheets/' + SHEETS_ID + '/values/' + encodeURIComponent(lookupRange);
+  var colAResp = await fetch(lookupUrl, { headers: {'Authorization': 'Bearer ' + token} });
   var targetRow = 0;
   if (colAResp.ok) {
     var colAData = await colAResp.json().catch(function(){ return {}; });
     var vals = colAData.values || [];
+    var dCompany = normClientField(d.company);
+    var dContact = normClientField(d.contact_name);
+    var dPhone = normClientField(d.phone);
     for (var i = 0; i < vals.length; i++) {
-      if ((vals[i] && vals[i][0]) === (d.client_id || '')) { targetRow = i + 2; break; }
+      var rid = vals[i] ? String(vals[i][0] || '') : '';
+      if (rid && rid === String(d.client_id || '')) { targetRow = i + 2; break; }
+      var rCompany = normClientField(vals[i] && vals[i][1]);
+      var rContact = normClientField(vals[i] && vals[i][2]);
+      var rPhone = normClientField(vals[i] && vals[i][5]);
+      if (!targetRow && dCompany && ((dContact && dCompany === rCompany && dContact === rContact) || (dPhone && dCompany === rCompany && dPhone === rPhone))) {
+        targetRow = i + 2;
+      }
     }
   }
   var resp;
