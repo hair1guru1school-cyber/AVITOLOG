@@ -297,7 +297,7 @@ body.projects-mode .analytics-top-row .btn-projects-return{display:flex !importa
 /* Проекты: фикс. левая колонка + редактируемые ячейки */
 .projects-table-wrap{overflow:auto;flex:1;min-height:0}
 .projects-table{display:flex;flex-direction:column;min-width:max-content}
-.projects-table .projects-sticky{position:sticky;left:0;z-index:3;background:var(--surface);border-right:1px solid var(--border);min-width:360px;width:360px;flex-shrink:0;box-shadow:2px 0 8px rgba(0,0,0,0.2)}
+.projects-table .projects-sticky{position:sticky;left:0;z-index:3;background:var(--surface);border-right:1px solid var(--border);min-width:var(--projects-sticky-width,360px);width:var(--projects-sticky-width,360px);flex-shrink:0;box-shadow:2px 0 8px rgba(0,0,0,0.2)}
 .projects-table .projects-scroll{display:flex;flex-shrink:0}
 .projects-table-row{display:flex;min-height:27px;border-bottom:1px solid var(--border)}
 .projects-table-row .projects-sticky{display:flex;align-items:center}
@@ -334,7 +334,7 @@ body.projects-mode .analytics-top-row .btn-projects-return{display:flex !importa
 .proj-path-btn{cursor:pointer;font-size:10px;line-height:1;padding:1px 3px;border-radius:4px;opacity:0.55;transition:all 0.15s;border:1px solid var(--border);background:transparent;color:var(--muted);font-family:inherit}
 .proj-path-btn:hover{opacity:0.9;border-color:var(--accent);color:var(--accent)}
 .proj-path-btn.on{opacity:1;color:var(--accent);border-color:var(--accent);background:rgba(0,217,126,0.12)}
-.projects-table .projects-sticky{min-width:360px;width:360px}
+.projects-table .projects-sticky{min-width:var(--projects-sticky-width,360px);width:var(--projects-sticky-width,360px)}
 .proj-status-btn{cursor:pointer;padding:1px 5px;border-radius:4px;font-size:9px;font-weight:700;border:1px solid transparent;transition:all 0.15s;white-space:nowrap;flex-shrink:0}
 .proj-status-btn:hover{border-color:var(--accent)}
 .proj-status-picker{position:absolute;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:6px;display:flex;flex-direction:column;gap:2px;z-index:100;box-shadow:0 8px 24px rgba(0,0,0,0.4);max-height:200px;overflow-y:auto}
@@ -758,6 +758,27 @@ function getProjectAutoloadRange(p) {
   ranges.sort(function(a,b){ return String(a.startDate||'').localeCompare(String(b.startDate||'')); });
   return {start: ranges[0].startDate || '', end: ranges[ranges.length - 1].endDate || ''};
 }
+function getProjectsStickyWidthPx(projects) {
+  var longest = 'Проект';
+  (projects || []).forEach(function(p) {
+    var t = (p && p.title ? String(p.title) : '').trim();
+    if (t.length > longest.length) longest = t;
+  });
+  var titlePx = 0;
+  try {
+    var canvas = document.createElement('canvas');
+    var ctx = canvas.getContext('2d');
+    if (ctx) {
+      ctx.font = '600 15px "Golos Text", sans-serif';
+      titlePx = Math.ceil(ctx.measureText(longest).width);
+    }
+  } catch(e) {}
+  if (!titlePx) titlePx = longest.length * 9;
+  // Base controls width: expand/type/drive + emoji + path buttons + status + paddings/gaps.
+  var fixedControlsPx = 320;
+  var w = fixedControlsPx + titlePx;
+  return Math.max(360, Math.min(900, w));
+}
 async function appendProjectActiveRowToSheets(p, reason) {
   if (!_driveToken || !p || p.zone !== 'active') return;
   var rng = getProjectAutoloadRange(p);
@@ -856,8 +877,9 @@ function renderProjectsScreen(opts) {
   ['active','second_chance','archive'].forEach(function(zone) {
     data.projects.filter(function(p){ return p.zone===zone; }).sort(function(a,b){ return (a.sortOrder||0)-(b.sortOrder||0); }).forEach(function(p){ allProjects.push(p); });
   });
-  var html = '<div class="projects-board"><div class="projects-table-wrap"><div class="projects-table">';
-  var headerSticky = '<div class="projects-sticky" style="padding:8px 10px;font-size:10px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:1px">Проект</div>';
+  var stickyW = getProjectsStickyWidthPx(allProjects);
+  var html = '<div class="projects-board"><div class="projects-table-wrap"><div class="projects-table" style="--projects-sticky-width:' + stickyW + 'px">';
+  var headerSticky = '<div style="padding:8px 10px;font-size:10px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:1px">Проект</div>';
   var headerScroll = '';
   dates.forEach(function(d) {
     var isToday = d.getTime()===today.getTime();
