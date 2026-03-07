@@ -1018,6 +1018,30 @@ function findClientForProject(project) {
     return t.indexOf(cc) >= 0 || cc.indexOf(t) >= 0 || t.indexOf(cn) >= 0 || cn.indexOf(t) >= 0;
   }) || null;
 }
+function hasProjectCrmData(project) {
+  if (!project || !project.crmData) return false;
+  var d = project.crmData;
+  return !!(d.company || d.contact_name || d.phone || d.telegram || d.avito_account || d.category || d.city || d.notes || d.kp_count || d.client_type);
+}
+function makeProjectCrmSnapshot(d) {
+  return {
+    client_id: d.client_id || '',
+    company: d.company || '',
+    contact_name: d.contact_name || '',
+    phone: d.phone || '',
+    telegram: d.telegram || '',
+    avito_account: d.avito_account || '',
+    client_type: d.client_type || '',
+    category: d.category || '',
+    city: d.city || '',
+    notes: d.notes || '',
+    kp_count: d.kp_count || '',
+    positions: d.positions || '',
+    folderId: d.folderId || '',
+    folderLink: d.folderLink || '',
+    folder_name: d.folder_name || ''
+  };
+}
 function markProjectRowSelection(projectId) {
   document.querySelectorAll('.projects-table-row[data-id]').forEach(function(row) {
     row.classList.toggle('selected', row.getAttribute('data-id') === projectId);
@@ -1043,18 +1067,29 @@ function selectProjectRow(projectId) {
   markProjectRowSelection(projectId);
   var p = getSelectedProject();
   if (!p) return;
+  if (hasProjectCrmData(p)) {
+    fillClientForm(p.crmData);
+    setActiveClient({
+      client_id: p.crmData.client_id || p.crmClientId || '',
+      folderId: p.crmData.folderId || p.folderId || '',
+      folderLink: p.crmData.folderLink || p.folderLink || '',
+      company: p.crmData.company || p.title || 'Клиент'
+    });
+    return;
+  }
   var found = findClientForProject(p);
   if (found) {
     fillClientForm(found);
     setActiveClient(found);
     // Self-heal linkage so project stays bound after restarts.
-    if (p.crmClientId !== found.client_id || p.folderId !== found.folderId || p.folderLink !== found.folderLink) {
+    if (p.crmClientId !== found.client_id || p.folderId !== found.folderId || p.folderLink !== found.folderLink || !hasProjectCrmData(p)) {
       var pd = loadProjectsData();
       var sp = pd.projects.find(function(x){ return x.id === p.id; });
       if (sp) {
         sp.crmClientId = found.client_id || sp.crmClientId || '';
         sp.folderId = found.folderId || sp.folderId || '';
         sp.folderLink = found.folderLink || sp.folderLink || '';
+        sp.crmData = makeProjectCrmSnapshot(found);
         saveProjectsData(pd);
       }
     }
@@ -3070,6 +3105,13 @@ function selectBrowseFolder() {
       p.folderId = folderId;
       p.folderLink = folderLink;
       if (found && found.client_id) p.crmClientId = found.client_id;
+      p.crmData = p.crmData || {};
+      p.crmData.folderId = folderId;
+      p.crmData.folderLink = folderLink;
+      if (found) {
+        p.crmData.client_id = found.client_id || p.crmData.client_id || '';
+        if (found.company) p.crmData.company = found.company;
+      }
       saveProjectsData(pd);
       syncProjectToActiveSheet(p.id, 'folder_bind_from_crm_popup');
       if (projectsMode) rerenderProjectsPreserveScroll();
@@ -3170,6 +3212,7 @@ async function saveClient() {
         sp.crmClientId = d.client_id;
         sp.folderId = d.folderId || sp.folderId || '';
         sp.folderLink = d.folderLink || sp.folderLink || '';
+        sp.crmData = makeProjectCrmSnapshot(d);
         saveProjectsData(pd);
         syncProjectToActiveSheet(sp.id, 'crm_save');
         rerenderProjectsPreserveScroll();
