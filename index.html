@@ -3635,17 +3635,17 @@ function saveProjectsDayPx(px) {
 }
 function getSavedProjectsZoom() {
   var z = parseFloat(localStorage.getItem(PROJECTS_ZOOM_KEY) || '1');
-  return (isNaN(z) || z < 0.5 || z > 2) ? 1 : z;
+  return (isNaN(z) || z < 0.25 || z > 2) ? 1 : z;
 }
 function saveProjectsZoom(z) {
-  z = Math.max(0.5, Math.min(2, z));
+  z = Math.max(0.25, Math.min(2, z));
   localStorage.setItem(PROJECTS_ZOOM_KEY, String(z));
   var board = document.querySelector('.projects-board');
   if (board) board.style.transform = 'scale(' + z + ')';
   var table = document.querySelector('.projects-table');
   if (table) {
     var rowH = getSavedProjectsRowHeight() || 27;
-    var effectiveRowH = z < 1 ? Math.max(12, Math.round(rowH * z)) : rowH;
+    var effectiveRowH = z < 1 ? Math.max(8, Math.round(rowH * z)) : rowH;
     table.style.setProperty('--projects-row-height', effectiveRowH + 'px');
   }
 }
@@ -4361,7 +4361,7 @@ function bindProjectsCalendarInteractions() {
     e.preventDefault();
     var cur = getSavedProjectsZoom();
     var delta = e.deltaY > 0 ? -0.05 : 0.05;
-    var next = Math.max(0.5, Math.min(2, cur + delta));
+    var next = Math.max(0.25, Math.min(2, cur + delta));
     if (Math.abs(next - cur) > 0.01) saveProjectsZoom(next);
   }
   if (board) board.addEventListener('wheel', onProjectsZoomWheel, { passive: false });
@@ -5295,7 +5295,7 @@ function renderProjectsScreen(opts) {
   var stickyW = getSavedProjectsStickyWidth() || getProjectsStickyWidthPx(allProjects);
   var rowH = getSavedProjectsRowHeight() || 27;
   var projectsZoom = getSavedProjectsZoom();
-  var effectiveRowH = projectsZoom < 1 ? Math.max(12, Math.round(rowH * projectsZoom)) : rowH;
+  var effectiveRowH = projectsZoom < 1 ? Math.max(8, Math.round(rowH * projectsZoom)) : rowH;
   var tableStyle = '--projects-sticky-width:' + stickyW + 'px;--projects-row-height:' + effectiveRowH + 'px';
   var html = '<div class="projects-board" style="transform:scale(' + projectsZoom + ');transform-origin:0 0"><div class="projects-table-wrap"><div class="projects-table" style="' + tableStyle + '">';
   var tasksCount = visibleProjects.reduce(function(sum,p){ return sum + (typeof getTasksForProject === 'function' ? getTasksForProject(p.id) : []).length; }, 0);
