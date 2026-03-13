@@ -692,10 +692,10 @@ body.projects-mode .sidebar{padding-top:calc(14px + var(--projects-sidebar-offse
 .proj-path span{font-size:9px;padding:1px 4px;border-radius:3px;background:var(--surface2);color:var(--muted)}
 .proj-path span.on{background:rgba(0,217,126,0.15);color:var(--accent)}
 .projects-calendar{display:flex;flex-direction:column;min-width:max-content}
-.projects-cal-header{display:flex;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--surface);z-index:10}
+.projects-cal-header{display:flex;border-bottom:1px solid rgba(255,255,255,0.06);position:sticky;top:0;background:var(--surface);z-index:10}
 .projects-cal-month{display:flex;align-items:center;justify-content:center;padding:6px 12px;font-size:11px;font-weight:700;color:var(--accent);min-width:120px}
 .projects-cal-days{display:flex}
-.projects-cal-day{min-width:28px;max-width:64px;padding:2px 3px;text-align:center;font-size:10px;color:var(--muted);border-right:1px solid var(--border);box-sizing:border-box;overflow:hidden}
+.projects-cal-day{min-width:28px;max-width:64px;padding:2px 3px;text-align:center;font-size:10px;color:var(--muted);border-right:1px solid rgba(255,255,255,0.06);box-sizing:border-box;overflow:hidden}
 .projects-scroll .projects-cal-day[data-project-id][data-date]{overflow:hidden;position:relative;min-height:0;box-sizing:border-box;transition:background .15s ease,border-color .15s ease,box-shadow .2s ease}
 .projects-scroll .projects-cal-day[data-project-id][data-date]:hover{box-shadow:inset 0 0 0 1px rgba(53,208,255,0.2)}
 .projects-scroll .projects-cal-day.cal-day-selected{background:rgba(0,217,126,0.25);box-shadow:inset 0 0 0 2px rgba(0,217,126,0.6)}
@@ -712,8 +712,8 @@ body.projects-mode .sidebar{padding-top:calc(14px + var(--projects-sidebar-offse
 .projects-cal-day.today{background:rgba(0,217,126,0.18);color:var(--accent);box-shadow:inset 0 0 0 1px rgba(0,217,126,0.35)}
 .cal-today-badge{display:block;font-size:6px;font-weight:900;letter-spacing:.3px;color:var(--accent);text-shadow:0 0 6px rgba(0,217,126,0.8);line-height:1;margin-bottom:0;max-width:100%;overflow:hidden;text-overflow:ellipsis}
 .projects-cal-body{display:flex;flex-direction:column}
-.projects-cal-row{display:flex;min-height:40px;border-bottom:1px solid var(--border)}
-.projects-cal-cell{min-width:36px;max-width:36px;height:38px;border-right:1px solid var(--border);position:relative;font-size:10px}
+.projects-cal-row{display:flex;min-height:40px;border-bottom:1px solid rgba(255,255,255,0.06)}
+.projects-cal-cell{min-width:36px;max-width:36px;height:38px;border-right:1px solid rgba(255,255,255,0.06);position:relative;font-size:10px}
 .projects-cal-cell.bar{background:linear-gradient(90deg,rgba(0,217,126,0.4),rgba(0,217,126,0.2))}
 .projects-cal-cell.deadline{background:rgba(255,200,0,0.3);display:flex;align-items:center;justify-content:center;font-size:12px}
 .projects-cal-cell.rocket{display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:14px}
@@ -730,7 +730,7 @@ body.projects-mode .sidebar{padding-top:calc(14px + var(--projects-sidebar-offse
 .projects-hidden-item:hover{background:rgba(0,217,126,0.15);color:var(--accent)}
 .projects-hidden-empty{font-size:10px;color:rgba(255,255,255,0.3);padding:12px 4px}
 .projects-table{display:flex;flex-direction:column;min-width:max-content}
-.projects-table .projects-sticky{position:sticky;left:0;z-index:4;background:#10131b;border-right:1px solid var(--border);min-width:var(--projects-sticky-width,360px);width:var(--projects-sticky-width,360px);flex-shrink:0;box-shadow:2px 0 10px rgba(0,0,0,0.35)}
+.projects-table .projects-sticky{position:sticky;left:0;z-index:4;background:#10131b;border-right:1px solid rgba(255,255,255,0.06);min-width:var(--projects-sticky-width,360px);width:var(--projects-sticky-width,360px);flex-shrink:0;box-shadow:2px 0 10px rgba(0,0,0,0.35)}
 .projects-sticky-head{position:relative;padding:8px 12px 8px;font-size:10px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:1px;background:linear-gradient(180deg,#070b14 0%,#0b1220 56%,transparent 100%);display:flex;flex-direction:column;align-items:stretch;gap:0}
 .projects-zone-tabs{display:flex;align-items:center;gap:10px;margin:0;position:relative;flex-wrap:nowrap}
 .projects-zone-tabs::before{content:none}
@@ -885,7 +885,7 @@ body.task-panel-font-l .task-panel-content{--tf:1.15}
 .projects-col-resizer:hover::after{background:var(--accent);box-shadow:0 0 8px rgba(0,217,126,0.5)}
 .projects-row-resizing .projects-col-resizer::after{background:var(--accent);box-shadow:0 0 10px rgba(0,217,126,0.6)}
 .projects-table .projects-scroll{display:flex;flex-shrink:0}
-.projects-table-row{display:flex;min-height:var(--projects-row-height,27px);border-bottom:1px solid var(--border)}
+.projects-table-row{display:flex;min-height:var(--projects-row-height,27px);border-bottom:1px solid rgba(255,255,255,0.06)}
 .projects-table-row[data-id]{cursor:default}
 .projects-table-row[data-id] .projects-sticky{cursor:grab}
 .projects-table-row[data-id] .projects-sticky:active{cursor:grabbing}
@@ -3642,6 +3642,12 @@ function saveProjectsZoom(z) {
   localStorage.setItem(PROJECTS_ZOOM_KEY, String(z));
   var board = document.querySelector('.projects-board');
   if (board) board.style.transform = 'scale(' + z + ')';
+  var table = document.querySelector('.projects-table');
+  if (table) {
+    var rowH = getSavedProjectsRowHeight() || 27;
+    var effectiveRowH = z < 1 ? Math.max(12, Math.round(rowH * z)) : rowH;
+    table.style.setProperty('--projects-row-height', effectiveRowH + 'px');
+  }
 }
 function setProjectsRowHeightPx(h) {
   var px = Math.max(20, Math.min(120, Math.round(h || 0)));
@@ -5287,9 +5293,10 @@ function renderProjectsScreen(opts) {
   var newCount = activeProjects.filter(function(p){ return normalizeProjectClientType(p.clientType) === 'new'; }).length;
   var returningCount = activeProjects.filter(function(p){ return normalizeProjectClientType(p.clientType) === 'returning'; }).length;
   var stickyW = getSavedProjectsStickyWidth() || getProjectsStickyWidthPx(allProjects);
-  var rowH = getSavedProjectsRowHeight();
-  var tableStyle = '--projects-sticky-width:' + stickyW + 'px' + (rowH ? ';--projects-row-height:' + rowH + 'px' : '');
+  var rowH = getSavedProjectsRowHeight() || 27;
   var projectsZoom = getSavedProjectsZoom();
+  var effectiveRowH = projectsZoom < 1 ? Math.max(12, Math.round(rowH * projectsZoom)) : rowH;
+  var tableStyle = '--projects-sticky-width:' + stickyW + 'px;--projects-row-height:' + effectiveRowH + 'px';
   var html = '<div class="projects-board" style="transform:scale(' + projectsZoom + ');transform-origin:0 0"><div class="projects-table-wrap"><div class="projects-table" style="' + tableStyle + '">';
   var tasksCount = visibleProjects.reduce(function(sum,p){ return sum + (typeof getTasksForProject === 'function' ? getTasksForProject(p.id) : []).length; }, 0);
   var tasksLabel = '<button type="button" class="projects-zone-tab projects-tasks-tab' + (_projectsTasksSortOn ? ' on' : '') + '" data-zone="tasks" onclick="event.stopPropagation();toggleTasksSortFilter()" title="' + (_projectsTasksSortOn ? 'Сбросить сортировку по задачам' : 'Сортировать: больше задач — выше') + '"><span class="proj-tasks-count-badge">' + tasksCount + '</span></button>';
