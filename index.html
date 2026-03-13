@@ -1395,7 +1395,7 @@ if (!window.AVITOLOG_GOALS) {
 <body>
 <div id="driveSplash">
   <!-- Сплеш: assets/splash.png или assets/splash.png.png -->
-  <img class="splash-bg" src="assets/splash.png" alt="" onerror="this.onerror=null;this.src='assets/splash.png.png'">
+  <img class="splash-bg" src="assets/splash.png.png" alt="" onerror="this.style.display='none'">
   <div style="display:flex;flex-direction:column;align-items:center;gap:12px;position:relative;z-index:2">
     <button type="button" class="splash-btn" onclick="startAuth()">🔑 Войти в Google Drive</button>
     <a href="#" onclick="startAuthRedirect();return false" style="font-size:11px;color:var(--muted);text-decoration:none">Не работает? Войти через страницу</a>
