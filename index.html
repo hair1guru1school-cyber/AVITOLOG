@@ -727,17 +727,20 @@ body.projects-mode .sidebar{padding-top:calc(14px + var(--projects-sidebar-offse
 .projects-hidden-empty{font-size:10px;color:rgba(255,255,255,0.3);padding:12px 4px}
 .projects-table{display:flex;flex-direction:column;min-width:max-content}
 .projects-table .projects-sticky{position:sticky;left:0;z-index:4;background:#10131b;border-right:1px solid var(--border);min-width:var(--projects-sticky-width,360px);width:var(--projects-sticky-width,360px);flex-shrink:0;box-shadow:2px 0 10px rgba(0,0,0,0.35)}
-.projects-sticky-head{position:relative;padding:8px 12px 6px;font-size:10px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:1px;background:linear-gradient(180deg,#070b14 0%,#0b1220 56%,transparent 100%);display:flex;flex-direction:column;align-items:flex-start;gap:6px}
+.projects-sticky-head{position:relative;padding:8px 12px 8px;font-size:10px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:1px;background:linear-gradient(180deg,#070b14 0%,#0b1220 56%,transparent 100%);display:flex;flex-direction:column;align-items:stretch;gap:0}
 .projects-zone-tabs{display:flex;align-items:center;gap:10px;margin:0;position:relative;flex-wrap:nowrap}
 .projects-zone-tabs::before{content:none}
-.projects-zone-tabs-top{margin-bottom:2px}
-.projects-zone-tabs-bottom{flex:1;width:100%;min-width:0}
-.projects-zone-tabs-bottom .projects-head-actions{flex:1;display:flex;align-items:center;gap:8px;margin:0;min-width:0}
+.projects-zone-tabs-top{margin-bottom:6px}
+.projects-zone-tabs-bottom{width:100%;display:flex;align-items:center;gap:10px;flex-wrap:nowrap;min-width:0}
+.projects-zone-tabs-bottom .projects-head-title{flex-shrink:0}
+.projects-zone-tabs-bottom .projects-head-stats{flex:1;display:inline-flex;align-items:center;gap:8px;justify-content:flex-start;min-width:0}
+.projects-zone-tab.projects-zone-tab-zone{height:56px;min-height:56px;padding:0 32px;border-radius:6px;border:1px solid rgba(100,140,200,0.3);background:rgba(18,26,42,0.7);backdrop-filter:blur(14px);color:#9fb4d5;font-size:16px;font-weight:700;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;justify-content:center;gap:8px;line-height:1;min-width:130px;white-space:nowrap;position:relative;transition:all .2s;z-index:1}
 .projects-zone-tab{height:48px;min-height:48px;padding:0 28px;border-radius:16px 16px 12px 12px;border:1px solid rgba(100,140,200,0.3);background:rgba(18,26,42,0.7);backdrop-filter:blur(14px);color:#9fb4d5;font-size:15px;font-weight:600;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;justify-content:center;gap:8px;line-height:1;min-width:120px;white-space:nowrap;position:relative;transition:all .2s;z-index:1}
 .projects-zone-tab + .projects-zone-tab{margin-left:0}
 .projects-zone-tab:hover{transform:translateY(-2px);filter:saturate(1.08)}
-.projects-zone-tab[data-zone="second_chance"]{background:linear-gradient(180deg,#2a2146,#1c1732);color:#b7a6ff;box-shadow:0 0 18px rgba(124,92,255,0.2)}
-.projects-zone-tab[data-zone="archive"]{background:linear-gradient(180deg,#341d3f,#22122c);color:#ff9ce8;box-shadow:0 0 18px rgba(255,79,216,0.2)}
+.projects-zone-tab.projects-zone-tab-zone[data-zone="second_chance"]{background:linear-gradient(180deg,#2a2146,#1c1732);color:#b7a6ff;box-shadow:0 0 18px rgba(124,92,255,0.2)}
+.projects-zone-tab.projects-zone-tab-zone[data-zone="archive"]{background:linear-gradient(180deg,#341d3f,#22122c);color:#ff9ce8;box-shadow:0 0 18px rgba(255,79,216,0.2)}
+.projects-zone-tab.projects-zone-tab-zone.on{border-radius:6px}
 .projects-zone-tab.on{background:linear-gradient(180deg,#132c45,#0f1e32);color:#7cf5ff;box-shadow:0 0 28px rgba(53,208,255,0.42),inset 0 0 12px rgba(63,123,255,0.16);z-index:3}
 .projects-zone-tab.on::before{content:'';position:absolute;left:18px;right:18px;top:-2px;height:2px;border-radius:2px;background:linear-gradient(90deg,rgba(53,208,255,0),rgba(53,208,255,0.9),rgba(53,208,255,0))}
 .projects-zone-tab.zone-tab-dragging{opacity:0.6}
@@ -1384,7 +1387,7 @@ body.goals-client-dragging .goal-block-sold{transition:all .18s ease}
 if (!window.AVITOLOG_GOALS) {
   window.AVITOLOG_GOALS = window.__AVITOLOG_GOALS_LEGACY = { render: function() {
     var m = document.getElementById('mainContent');
-    if (m) m.innerHTML = '<div class="empty-st"><div style="font-size:38px;opacity:.2">🎯</div><p>ЦЕЛИ</p><p style="font-size:12px;opacity:.6;margin-top:8px">js/goals.js не загружен (404). Добавь папку js/ и styles.css в репо: <code>git add js/ styles.css</code> и запушь.</p></div>';
+    if (m) m.innerHTML = '<div class="empty-st"><div style="font-size:38px;opacity:.2">&#128197;</div><p>CRM</p><p style="font-size:12px;opacity:.6;margin-top:8px">js/goals.js не загружен (404). Добавь папку js/ и styles.css в репо: <code>git add js/ styles.css</code> и запушь.</p></div>';
   }};
 }
 </script>
@@ -1531,7 +1534,7 @@ if (!window.AVITOLOG_GOALS) {
 
 <div class="content-wrap">
   <div class="analytics-top-row" id="analyticsTopRow">
-    <button type="button" class="btn-projects" id="btnGoals" data-tab="goals" draggable="true" onclick="openGoalsTab()" ondragstart="topTabDragStart(event,'goals')" ondragover="topTabDragOver(event)" ondragleave="topTabDragLeave(event)" ondrop="topTabDrop(event,'goals')" ondragend="topTabDragEnd(event)">🎯 ЦЕЛИ</button>
+    <button type="button" class="btn-projects" id="btnGoals" data-tab="goals" draggable="true" onclick="openGoalsTab()" ondragstart="topTabDragStart(event,'goals')" ondragover="topTabDragOver(event)" ondragleave="topTabDragLeave(event)" ondrop="topTabDrop(event,'goals')" ondragend="topTabDragEnd(event)">💽 CRM</button>
     <button type="button" class="btn-projects" id="btnProjectsReturn" data-tab="analytics" draggable="true" onclick="openAnalyticsTab()" ondragstart="topTabDragStart(event,'analytics')" ondragover="topTabDragOver(event)" ondragleave="topTabDragLeave(event)" ondrop="topTabDrop(event,'analytics')" ondragend="topTabDragEnd(event)">👤 КЛИЕНТ</button>
     <button type="button" class="btn-projects" id="btnProjects" data-tab="projects" draggable="true" onclick="openProjectsTab()" ondragstart="topTabDragStart(event,'projects')" ondragover="topTabDragOver(event)" ondragleave="topTabDragLeave(event)" ondrop="topTabDrop(event,'projects')" ondragend="topTabDragEnd(event)">📈 ПРОЕКТЫ</button>
     <button type="button" class="btn-projects" id="btnStrategy" data-tab="strategy" draggable="true" onclick="openStrategyTab()" ondragstart="topTabDragStart(event,'strategy')" ondragover="topTabDragOver(event)" ondragleave="topTabDragLeave(event)" ondrop="topTabDrop(event,'strategy')" ondragend="topTabDragEnd(event)" style="display:none">🧠 СТРАТЕГИЯ</button>
@@ -2032,16 +2035,21 @@ function openGoalsTab() {
   goalsMode = true;
   projectsMode = false;
   agencyMode = false;
-  strategyMode = false;
   if (typeof closeTaskPanel === 'function') closeTaskPanel();
   document.body.classList.remove('projects-mode');
   document.body.classList.remove('agency-mode');
   document.body.classList.add('goals-mode');
   hideChat();
   stopProjectsSheetPullTimer();
-  var mc = document.getElementById('mainContent');
-  if (mc) mc.innerHTML = '<div class="empty-st" style="padding:40px"><div style="font-size:32px;opacity:.4">&#128197;</div><p style="margin-top:12px">Загрузка ЦЕЛИ...</p></div>';
   stopProjectsDayShiftTimer();
+  var mc = document.getElementById('mainContent');
+  if (mc) {
+    mc.innerHTML = '<div class="empty-st" style="padding:40px"><div style="font-size:32px;opacity:.4">&#128197;</div><p style="margin-top:12px">Загрузка CRM...</p></div>';
+    mc.style.display = '';
+    mc.scrollTop = 0;
+    var wrap = mc.closest('.content-wrap');
+    if (wrap) wrap.scrollTop = 0;
+  }
   function doRender() {
     var mc = document.getElementById('mainContent');
     if (!mc) {
@@ -2077,13 +2085,13 @@ function openGoalsTab() {
       }
       var errMsg = lastErr ? (lastErr.message || String(lastErr)) : 'Модуль целей не загрузился';
       var escMsg = String(errMsg).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-      mc.innerHTML = '<div class="empty-st"><div style="font-size:38px;opacity:.2">🎯</div><p>ЦЕЛИ</p><p style="font-size:12px;opacity:.6;margin-top:8px">' + escMsg + '</p><p style="font-size:11px;opacity:.5;margin-top:6px">Обнови страницу (F5) или открой консоль (F12) для деталей</p></div>';
+      mc.innerHTML = '<div class="empty-st"><div style="font-size:38px;opacity:.2">&#128197;</div><p>CRM</p><p style="font-size:12px;opacity:.6;margin-top:8px">' + escMsg + '</p><p style="font-size:11px;opacity:.5;margin-top:6px">Обнови страницу (F5) или открой консоль (F12) для деталей</p></div>';
     } catch (err) {
       console.error('Goals doRender error', err);
-      if (mc) mc.innerHTML = '<div class="empty-st"><div style="font-size:38px;opacity:.2">🎯</div><p>ЦЕЛИ</p><p style="font-size:12px;opacity:.6;margin-top:8px">Ошибка: ' + String(err && err.message || err) + '</p></div>';
+      if (mc) mc.innerHTML = '<div class="empty-st"><div style="font-size:38px;opacity:.2">&#128197;</div><p>CRM</p><p style="font-size:12px;opacity:.6;margin-top:8px">Ошибка: ' + String(err && err.message || err) + '</p></div>';
     }
   }
-  requestAnimationFrame(function() { doRender(); });
+  setTimeout(doRender, 0);
   updateTopRowButtons();
 }
 function openProjectsTab() {
@@ -5274,20 +5282,17 @@ function renderProjectsScreen(opts) {
   var tasksLabel = '<button type="button" class="projects-zone-tab projects-tasks-tab' + (_projectsTasksSortOn ? ' on' : '') + '" data-zone="tasks" onclick="event.stopPropagation();toggleTasksSortFilter()" title="' + (_projectsTasksSortOn ? 'Сбросить сортировку по задачам' : 'Сортировать: больше задач — выше') + '"><span class="proj-tasks-count-badge">' + tasksCount + '</span></button>';
   var zoneLabels = { active:'&#9889; Актив', second_chance:'&#128164; Zzz', archive:'&#128230; Архив' };
   var tabsBtns = _projectsZoneTabOrder.map(function(z){
-    return '<button type="button" class="projects-zone-tab' + (_projectsZoneTab===z ? ' on' : '') + '" data-zone="' + z + '" draggable="true" onclick="event.stopPropagation();setProjectsZoneTab(\'' + z + '\')" ondragstart="zoneTabDragStart(event,\'' + z + '\')" ondragover="zoneTabDragOver(event)" ondragleave="zoneTabDragLeave(event)" ondrop="zoneTabDrop(event,\'' + z + '\')" ondragend="zoneTabDragEnd(event)">' + (zoneLabels[z]||z) + '</button>';
+    return '<button type="button" class="projects-zone-tab projects-zone-tab-zone' + (_projectsZoneTab===z ? ' on' : '') + '" data-zone="' + z + '" draggable="true" onclick="event.stopPropagation();setProjectsZoneTab(\'' + z + '\')" ondragstart="zoneTabDragStart(event,\'' + z + '\')" ondragover="zoneTabDragOver(event)" ondragleave="zoneTabDragLeave(event)" ondrop="zoneTabDrop(event,\'' + z + '\')" ondragend="zoneTabDragEnd(event)">' + (zoneLabels[z]||z) + '</button>';
   }).join('');
   var zoneTabsRow = '<div class="projects-zone-tabs projects-zone-tabs-top">' + tabsBtns + '</div>';
-  var headActionsHtml = '<div class="projects-head-actions">' +
-        '<span class="projects-head-spacer"></span>' +
-        '<span class="projects-head-title"><button type="button" class="projects-add-btn" onclick="event.stopPropagation();createNewProjectInActive()">+ ПРОЕКТ</button></span>' +
-        '<span class="projects-head-stats">' +
+  var addBtnHtml = '<span class="projects-head-title"><button type="button" class="projects-add-btn" onclick="event.stopPropagation();createNewProjectInActive()">+ ПРОЕКТ</button></span>';
+  var chipsHtml = '<span class="projects-head-stats">' +
           '<span class="projects-head-chip active" title="Сбросить группировку типов" onclick="event.stopPropagation();setProjectsTypeSortPriority(null)">🃏 <b>' + activeCount + '</b></span>' +
           '<span class="projects-head-chip diamond' + (_projectsTypeSortPriority === 'old' ? ' is-on' : '') + '" onclick="event.stopPropagation();setProjectsTypeSortPriority(\'old\')">💎 <b>' + diamondCount + '</b></span>' +
           '<span class="projects-head-chip ret' + (_projectsTypeSortPriority === 'returning' ? ' is-on' : '') + '" onclick="event.stopPropagation();setProjectsTypeSortPriority(\'returning\')">2️⃣ <b>' + returningCount + '</b></span>' +
           '<span class="projects-head-chip new' + (_projectsTypeSortPriority === 'new' ? ' is-on' : '') + '" onclick="event.stopPropagation();setProjectsTypeSortPriority(\'new\')">NEW <b>' + newCount + '</b></span>' +
-        '</span>' +
-      '</div>';
-  var toolsRow = '<div class="projects-zone-tabs projects-zone-tabs-bottom">' + tasksLabel + headActionsHtml + '</div>';
+        '</span>';
+  var toolsRow = '<div class="projects-zone-tabs projects-zone-tabs-bottom">' + addBtnHtml + tasksLabel + chipsHtml + '</div>';
   var headerSticky =
     '<div class="projects-sticky-head">' +
       zoneTabsRow +
