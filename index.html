@@ -6876,6 +6876,7 @@ function buildAnalysisPrompt() {
     '\n\n';
 
   var rules = '\n\nПРАВИЛА:\n' +
+    '- СТРУКТУРА ОБЯЗАТЕЛЬНА: каждый раздел — свой <h2>, подпункты — <h3>, текст — в <p> или <ul>/<li>. Никогда не выводи текст одной простынёй без заголовков.\n' +
     '- Эмоджи в каждом h2 и ключевых местах\n' +
     '- ❌ для болей, ✔ для важного, 🔥 для акцентов\n' +
     '- h3 для подсегментов внутри разделов\n' +
@@ -6979,7 +6980,7 @@ function buildPresalePrompt() {
     '<h1>⏰ Почему сейчас — лучшее время для запуска на Avito</h1>\n' +
     '<h3>' + (d.category || 'ниша') + ' • ' + (d.city || 'город') + '</h3>\n' +
     '</div>\n\n' +
-    'ПРАВИЛА: эмоджи в h2, НЕ используй <hr>, используй ✔🔥📈💡⚡\n\n';
+    'ПРАВИЛА: СТРУКТУРА ОБЯЗАТЕЛЬНА — каждый раздел <h2>, подпункты <h3>, текст в <p>. Никогда не выводи одной простынёй. Эмоджи в h2, НЕ <hr>, используй ✔🔥📈💡⚡\n\n';
   var extra = getExtraPrompt();
   var extraBlock = extra ? '\nДОПОЛНИТЕЛЬНЫЙ ЗАПРОС:\n' + extra + '\n\n' : '';
 
@@ -7016,7 +7017,7 @@ function buildAvito1Prompt() {
     '<h1>🏆 Почему Avito — площадка №1 для ' + (d.category || 'вашей ниши') + '</h1>\n' +
     '<h3>📍 ' + (d.city || 'город') + '</h3>\n' +
     '</div>\n\n' +
-    'ПРАВИЛА: эмоджи в h2, НЕ используй <hr>, используй ✔🔥💡📊⚡\n\n';
+    'ПРАВИЛА: СТРУКТУРА ОБЯЗАТЕЛЬНА — каждый раздел <h2>, подпункты <h3>, текст в <p>. Никогда не выводи одной простынёй. Эмоджи в h2, НЕ <hr>, используй ✔🔥💡📊⚡\n\n';
   var extra = getExtraPrompt();
   var extraBlock = extra ? '\nДОПОЛНИТЕЛЬНЫЙ ЗАПРОС:\n' + extra + '\n\n' : '';
 
@@ -7070,17 +7071,14 @@ var AVITO1_HEADER_IMG = 'assets/avito1_header.png';
 // URL для экспорта в Drive/Docs (относительный путь не работает в Google Docs). Оставьте пустым — тогда используется абсолютный URL от текущего хоста (GitHub Pages). Или укажите ссылку Drive: 'https://drive.google.com/uc?export=view&id=XXX'
 var PRESALE_HEADER_IMG_DRIVE = '';
 var AVITO1_HEADER_IMG_DRIVE = '';
-// Резерв: Drive-ссылка из аналитики (гарантированно работает в Google Docs). Для своих картинок заполните PRESALE_HEADER_IMG_DRIVE/AVITO1_HEADER_IMG_DRIVE выше.
-var PRESALE_HEADER_FALLBACK = 'https://drive.google.com/uc?export=view&id=1tiqcQF4dtAPmFvBExDgdgFElfwxiazww';
-var AVITO1_HEADER_FALLBACK = 'https://drive.google.com/uc?export=view&id=1tiqcQF4dtAPmFvBExDgdgFElfwxiazww';
-
+// Резерв для экспорта в Drive. У каждого документа своя картинка — не из аналитики.
 function getPresaleHeaderImgForExport() {
   if (PRESALE_HEADER_IMG_DRIVE) return PRESALE_HEADER_IMG_DRIVE;
-  return PRESALE_HEADER_FALLBACK;
+  try { return new URL('assets/presale_header.png', (typeof window !== 'undefined' && window.location && window.location.href) ? window.location.href : 'https://example.com/').href; } catch(e) { return 'assets/presale_header.png'; }
 }
 function getAvito1HeaderImgForExport() {
   if (AVITO1_HEADER_IMG_DRIVE) return AVITO1_HEADER_IMG_DRIVE;
-  return AVITO1_HEADER_FALLBACK;
+  try { return new URL('assets/avito1_header.png', (typeof window !== 'undefined' && window.location && window.location.href) ? window.location.href : 'https://example.com/').href; } catch(e) { return 'assets/avito1_header.png'; }
 }
 
 function getAnalyticsHeaderImg() {
@@ -7161,7 +7159,7 @@ function sendChat() {
   btn.disabled = true;
   btn.textContent = '...';
 
-  var prompt = 'HTML документа:\n' + currentHtml + '\n\nПравка: "' + comment + '"\n\nВерни JSON: {"html":"..."}';
+  var prompt = 'HTML документа:\n' + currentHtml + '\n\nПравка: "' + comment + '"\n\nСохрани структуру: h2 для разделов, h3 для подпунктов, p для абзацев. Не сливай текст в одну простыню. Верни JSON: {"html":"..."}';
   callAPI(prompt, 2000).then(function(raw) {
     var json = JSON.parse(fixJSON(raw.replace(/```json|```/g,'').trim()));
     if (json.html) { 
@@ -7570,28 +7568,40 @@ async function driveGetFileContent(fileId, mimeType) {
   if (!fileId) return null;
   var token = await getDriveToken();
   if (!token) return null;
-  try {
-    if (mimeType === 'application/vnd.google-apps.document') {
-      var resp = await fetch('https://www.googleapis.com/drive/v3/files/' + encodeURIComponent(fileId) + '/export?mimeType=text/html', {
+  var lastErr = null;
+  for (var attempt = 0; attempt < 3; attempt++) {
+    try {
+      if (mimeType === 'application/vnd.google-apps.document') {
+        var resp = await fetch('https://www.googleapis.com/drive/v3/files/' + encodeURIComponent(fileId) + '/export?mimeType=text/html', {
+          headers: {'Authorization': 'Bearer ' + token}
+        });
+        if (!resp.ok) {
+          if (resp.status === 401) { _driveToken = null; clearStoredDriveAuth(); updateDriveUI(); return null; }
+          lastErr = 'HTTP ' + resp.status;
+          if (attempt < 2) { await new Promise(function(r){ setTimeout(r, 800 + attempt * 400); }); continue; }
+          console.warn('Drive export error:', resp.status, await resp.text());
+          return null;
+        }
+        var raw = await resp.text();
+        return extractHtmlBody(raw) || raw;
+      }
+      var r2 = await fetch('https://www.googleapis.com/drive/v3/files/' + encodeURIComponent(fileId) + '?alt=media', {
         headers: {'Authorization': 'Bearer ' + token}
       });
-      if (!resp.ok) {
-        if (resp.status === 401) { _driveToken = null; clearStoredDriveAuth(); updateDriveUI(); }
-        console.warn('Drive export error:', resp.status, await resp.text());
+      if (!r2.ok) {
+        if (r2.status === 401) { _driveToken = null; clearStoredDriveAuth(); updateDriveUI(); return null; }
+        lastErr = 'HTTP ' + r2.status;
+        if (attempt < 2) { await new Promise(function(r){ setTimeout(r, 800 + attempt * 400); }); continue; }
         return null;
       }
-      var raw = await resp.text();
-      return extractHtmlBody(raw) || raw;
+      return await r2.text();
+    } catch(e) {
+      lastErr = e;
+      if (attempt < 2) await new Promise(function(r){ setTimeout(r, 800 + attempt * 400); });
+      else { console.warn('driveGetFileContent:', e); return null; }
     }
-    var r2 = await fetch('https://www.googleapis.com/drive/v3/files/' + encodeURIComponent(fileId) + '?alt=media', {
-      headers: {'Authorization': 'Bearer ' + token}
-    });
-    if (!r2.ok) {
-      if (r2.status === 401) { _driveToken = null; clearStoredDriveAuth(); updateDriveUI(); }
-      return null;
-    }
-    return await r2.text();
-  } catch(e) { console.warn('driveGetFileContent:', e); return null; }
+  }
+  return null;
 }
 
 async function openClientDocInWindow(docId, docKey, driveLink, mimeType) {
