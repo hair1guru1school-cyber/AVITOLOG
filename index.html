@@ -69,6 +69,8 @@ body.day-mode.goals-mode .goal-more-btn,body.day-mode.goals-mode .goal-move-btn,
 body.day-mode.goals-mode .goal-status-picker{background:var(--surface);border-color:var(--border);box-shadow:0 12px 32px rgba(0,0,0,0.15)}
 body.day-mode.goals-mode .goal-picker-tag-inp{background:var(--surface2);border-color:var(--border);color:var(--text)}
 body.day-mode.goals-mode .goal-week-title{background:rgba(0,136,92,0.08);border-color:rgba(0,136,92,0.2);color:var(--accent)}
+body.day-mode.goals-mode .goal-week-active .goal-week-title{background:rgba(0,136,92,0.18);border-color:rgba(0,136,92,0.4);box-shadow:0 0 12px rgba(0,136,92,0.15)}
+body.day-mode.goals-mode .goal-week-active{background:rgba(0,136,92,0.06);border-color:rgba(0,136,92,0.25)}
 body.day-mode.goals-mode .goal-week-indicators .goal-week-sep{color:var(--muted)}
 body.day-mode.goals-mode .goal-week-rows::-webkit-scrollbar-track{background:rgba(0,0,0,0.06)}
 body.day-mode.goals-mode .goal-week-rows::-webkit-scrollbar-thumb{background:rgba(0,0,0,0.2)}
@@ -331,6 +333,13 @@ textarea{resize:vertical;min-height:50px;line-height:1.5}
 .analytics-project-hero-wrap{position:relative;min-height:220px;aspect-ratio:3/4;overflow:hidden;flex:1}
 .analytics-project-hero-wrap img{width:100%;height:100%;object-fit:cover;object-position:center top;display:block}
 .analytics-project-hero-wrap .analytics-project-hero-fallback{width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:50px;background:radial-gradient(circle at 25% 20%,rgba(53,208,255,0.35),rgba(8,16,28,0.95))}
+.analytics-project-hero-add{position:absolute;bottom:10px;right:10px;width:40px;height:40px;border-radius:50%;background:rgba(0,217,126,0.25);border:2px solid rgba(0,217,126,0.6);color:#7cf5a8;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:900;cursor:pointer;transition:all .2s;z-index:2}
+.analytics-project-hero-add:hover{background:rgba(0,217,126,0.4);border-color:var(--accent);transform:scale(1.08);box-shadow:0 0 16px rgba(0,217,126,0.35)}
+.analytics-project-kp-folder-bar{display:inline-flex;align-items:center;gap:6px;flex-wrap:wrap}
+.analytics-project-kp-folder-btn{display:inline-flex;align-items:center;gap:5px;padding:5px 10px;border-radius:8px;border:1px dashed rgba(124,245,255,0.4);background:rgba(53,208,255,0.08);color:#7cf5ff;font-size:12px;font-weight:700;cursor:pointer;transition:all .15s}
+.analytics-project-kp-folder-btn:hover{background:rgba(53,208,255,0.18);border-color:rgba(124,245,255,0.6)}
+.analytics-project-kp-folder-link{display:inline-flex;align-items:center;gap:5px;padding:5px 10px;border-radius:8px;background:rgba(0,217,126,0.12);border:1px solid rgba(0,217,126,0.35);color:#7cf5a8;font-size:12px;font-weight:700;text-decoration:none;transition:all .15s}
+.analytics-project-kp-folder-link:hover{background:rgba(0,217,126,0.22);color:#00d97e}
 .analytics-project-info-tags{display:flex;flex-wrap:wrap;gap:8px}
 .analytics-project-chip.analytics-chip-info{font-size:13px;padding:5px 10px;background:rgba(255,255,255,0.05);border-color:rgba(124,245,255,0.25);color:#bfe7ff}
 .analytics-project-tags-wrap{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
@@ -661,9 +670,9 @@ body.projects-mode .gen-extra-prompt,body.projects-mode .gen-buttons-row{display
 body.projects-mode .analytics-tumbler{display:none !important}
 body.projects-mode .analytics-control-panel{display:none !important}
 body.projects-mode header{border-bottom:none;box-shadow:none}
-body.projects-mode .analytics-top-row{border-bottom:none;margin-bottom:0;padding-bottom:0}
+body.projects-mode .analytics-top-row{border-bottom:none;margin-bottom:0;padding:4px 10px 0;flex-shrink:0}
 body.projects-mode .sidebar{padding-top:calc(14px + var(--projects-sidebar-offset, 0px))}
-body.projects-mode .layout{grid-template-columns:340px 1fr 0}
+body.projects-mode .layout{grid-template-columns:340px 1fr 0;height:calc(100vh - 52px)}
 body.projects-mode .content{padding:0;overflow:hidden;display:flex;flex-direction:column;min-height:0}
 body.projects-mode .content-wrap{min-height:0}
 body.projects-mode .content>*{flex:1;min-height:0;display:flex;flex-direction:column}
@@ -896,7 +905,7 @@ body.task-panel-font-l .task-panel-content{--tf:1.15}
 .projects-col-resizer:hover::after{background:var(--accent);box-shadow:0 0 8px rgba(0,217,126,0.5)}
 .projects-row-resizing .projects-col-resizer::after{background:var(--accent);box-shadow:0 0 10px rgba(0,217,126,0.6)}
 .projects-table .projects-scroll{display:flex;flex-shrink:0}
-.projects-table-row{display:flex;min-height:var(--projects-row-height,27px);border-bottom:1px solid rgba(255,255,255,0.06)}
+.projects-table-row{display:flex;min-height:var(--projects-row-height,18px);border-bottom:1px solid rgba(255,255,255,0.06)}
 .projects-table-row[data-id]{cursor:default}
 .projects-table-row[data-id] .projects-sticky{cursor:grab}
 .projects-table-row[data-id] .projects-sticky:active{cursor:grabbing}
@@ -914,7 +923,7 @@ body.task-panel-font-l .task-panel-content{--tf:1.15}
 .projects-table-row[data-id].drop-after .projects-scroll{box-shadow:inset 0 -2px 0 var(--accent),0 8px 16px -12px rgba(0,217,126,0.85)}
 .projects-table-row .projects-sticky{display:flex;align-items:center}
 .projects-table-row .projects-scroll{flex:1;min-width:0}
-.proj-cell-editable{cursor:pointer;padding:2px 8px;border-radius:6px;min-height:var(--projects-row-height,27px);display:flex;flex-wrap:nowrap;align-items:center;gap:4px;transition:background 0.15s;white-space:nowrap;overflow:hidden}
+.proj-cell-editable{cursor:pointer;padding:2px 8px;border-radius:6px;min-height:var(--projects-row-height,18px);display:flex;flex-wrap:nowrap;align-items:center;gap:4px;transition:background 0.15s;white-space:nowrap;overflow:hidden}
 .proj-cell-editable{position:relative}
 .proj-hover-pop{position:absolute;right:6px;top:-22px;opacity:0;pointer-events:none;transform:translateY(3px);transition:all 0.12s;z-index:30}
 .projects-table-row[data-id]:hover .proj-hover-pop{opacity:1;pointer-events:auto;transform:translateY(0)}
@@ -1198,6 +1207,8 @@ body.goals-client-dragging .goal-week,
 body.goals-client-dragging .goal-block-sold{transition:all .18s ease}
 .goal-week[data-week="4"]{order:1}.goal-week[data-week="3"]{order:2}.goal-week[data-week="2"]{order:3}.goal-week[data-week="1"]{order:4}
 .goal-week-title{font-size:15px;font-weight:700;letter-spacing:1.2px;color:rgba(124,245,255,0.95);margin-bottom:8px;padding:6px 12px;border-radius:8px;background:rgba(53,208,255,0.06);border:1px solid rgba(53,208,255,0.15);font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+.goal-week-active .goal-week-title{background:linear-gradient(135deg,rgba(0,217,126,0.18),rgba(53,208,255,0.12));border-color:rgba(0,217,126,0.45);color:#7cf5a8;box-shadow:0 0 20px rgba(0,217,126,0.12),inset 0 1px 0 rgba(255,255,255,0.06)}
+.goal-week-active{border-radius:10px;padding:8px;margin:-2px 0;background:rgba(0,217,126,0.04);border:1px solid rgba(0,217,126,0.2);box-shadow:0 0 16px rgba(0,217,126,0.08)}
 .goal-week-indicators{display:flex;align-items:center;gap:12px;margin-top:6px;margin-bottom:4px;font-size:12px;font-weight:600;letter-spacing:.4px}
 .goal-week-indicators .goal-week-sep{color:rgba(255,255,255,0.25);font-weight:400}
 .goal-week-sold{color:#ffb380}
@@ -3638,7 +3649,7 @@ function setProjectsStickyWidthPx(width) {
 }
 function getSavedProjectsRowHeight() {
   var n = parseInt(localStorage.getItem(PROJECTS_ROW_HEIGHT_KEY) || '', 10);
-  return Number.isFinite(n) && n >= 20 ? n : 0;
+  return Number.isFinite(n) && n >= 14 ? n : 0;
 }
 function getSavedProjectsDayPx() {
   var n = parseInt(localStorage.getItem(PROJECTS_DAY_PX_KEY) || '', 10);
@@ -3660,8 +3671,8 @@ function saveProjectsZoom(z) {
   if (board) board.style.transform = 'scale(' + z + ')';
   var table = document.querySelector('.projects-table');
   if (table) {
-    var rowH = getSavedProjectsRowHeight() || 27;
-    var effectiveRowH = z < 1 ? Math.max(8, Math.round(rowH * z)) : rowH;
+    var rowH = getSavedProjectsRowHeight() || 18;
+    var effectiveRowH = z < 1 ? Math.max(6, Math.round(rowH * z)) : rowH;
     table.style.setProperty('--projects-row-height', effectiveRowH + 'px');
   }
 }
@@ -3673,7 +3684,7 @@ function toggleProjectsSidebar() {
   if (typeof rerenderProjectsPreserveScroll === 'function') rerenderProjectsPreserveScroll();
 }
 function setProjectsRowHeightPx(h) {
-  var px = Math.max(20, Math.min(120, Math.round(h || 0)));
+  var px = Math.max(14, Math.min(120, Math.round(h || 0)));
   localStorage.setItem(PROJECTS_ROW_HEIGHT_KEY, String(px));
   var table = document.querySelector('.projects-table');
   if (table) table.style.setProperty('--projects-row-height', px + 'px');
@@ -3683,7 +3694,7 @@ function startProjectsRowResize(e) {
   e.stopPropagation();
   var table = document.querySelector('.projects-table');
   if (!table) return;
-  var current = getSavedProjectsRowHeight() || 27;
+  var current = getSavedProjectsRowHeight() || 18;
   var startY = e.clientY;
   document.body.classList.add('projects-row-resizing');
   document.body.style.cursor = 'ns-resize';
@@ -5316,9 +5327,9 @@ function renderProjectsScreen(opts) {
   var newCount = activeProjects.filter(function(p){ return normalizeProjectClientType(p.clientType) === 'new'; }).length;
   var returningCount = activeProjects.filter(function(p){ return normalizeProjectClientType(p.clientType) === 'returning'; }).length;
   var stickyW = getSavedProjectsStickyWidth() || getProjectsStickyWidthPx(allProjects);
-  var rowH = getSavedProjectsRowHeight() || 27;
+  var rowH = getSavedProjectsRowHeight() || 18;
   var projectsZoom = getSavedProjectsZoom();
-  var effectiveRowH = projectsZoom < 1 ? Math.max(8, Math.round(rowH * projectsZoom)) : rowH;
+  var effectiveRowH = projectsZoom < 1 ? Math.max(6, Math.round(rowH * projectsZoom)) : rowH;
   var tableStyle = '--projects-sticky-width:' + stickyW + 'px;--projects-row-height:' + effectiveRowH + 'px';
   var html = '<div class="projects-board" style="transform:scale(' + projectsZoom + ');transform-origin:0 0"><div class="projects-table-wrap"><div class="projects-table" style="' + tableStyle + '">';
   var tasksCount = visibleProjects.reduce(function(sum,p){ return sum + (typeof getTasksForProject === 'function' ? getTasksForProject(p.id) : []).length; }, 0);
@@ -6089,6 +6100,18 @@ function saveAnalyticsRecentGeneration(entry) {
     localStorage.setItem(ANALYTICS_RECENT_GEN_KEY, JSON.stringify(arr));
   } catch (e) {}
 }
+function updateAnalyticsRecentProject(projectId, updates) {
+  if (!projectId || !updates) return;
+  try {
+    var arr = JSON.parse(localStorage.getItem(ANALYTICS_RECENT_GEN_KEY) || '[]');
+    if (!Array.isArray(arr)) return;
+    var p = arr.find(function(x){ return x && x.projectId === projectId; });
+    if (p) {
+      Object.keys(updates).forEach(function(k){ p[k] = updates[k]; });
+      localStorage.setItem(ANALYTICS_RECENT_GEN_KEY, JSON.stringify(arr));
+    }
+  } catch (e) {}
+}
 function buildAnalyticsRecentProjectsBlock() {
   var esc = function(s) { return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); };
   var all = getAnalyticsRecentProjects();
@@ -6163,6 +6186,7 @@ function buildAnalyticsProjectDetail(project, byKey) {
   var hero = project.avatar
     ? '<img src="' + esc(project.avatar) + '" alt="">'
     : '<div class="analytics-project-hero-fallback">' + esc(project.emoji || '📦') + '</div>';
+  hero += '<div class="analytics-project-hero-add" id="analyticsProjectAvatarAdd" data-project-id="' + esc(project.projectId || '') + '" title="Добавить аватар в папку клиента">+</div>';
   var contactChips = '';
   if (project.phone) contactChips += '<span class="analytics-project-chip analytics-chip-large">📞 ' + esc(String(project.phone)) + '</span>';
   if (project.email) contactChips += '<span class="analytics-project-chip analytics-chip-large">✉ ' + esc(String(project.email)) + '</span>';
@@ -6174,6 +6198,12 @@ function buildAnalyticsProjectDetail(project, byKey) {
   var infoTags = '';
   if (project.city) infoTags += '<span class="analytics-project-chip analytics-chip-info">' + esc(project.city) + '</span>';
   if (project.kp_count || project.kp) infoTags += '<span class="analytics-project-chip analytics-chip-info">КП: ' + esc(String(project.kp_count || project.kp || '')) + '</span>';
+  var kpFolderHtml = '<span class="analytics-project-kp-folder-bar">';
+  if (project.kpFolderLink) {
+    kpFolderHtml += '<a href="' + esc(project.kpFolderLink) + '" target="_blank" rel="noopener" class="analytics-project-kp-folder-link">&#128194; Папка КП</a>';
+  }
+  kpFolderHtml += '<span class="analytics-project-kp-folder-btn" id="analyticsProjectKpFolderBtn" data-project-id="' + esc(project.projectId || '') + '" title="Привязать папку с КП (она в папке клиента). Вставьте ссылку на подпапку.">' + (project.kpFolderLink ? '&#128260; Изменить' : '&#128194; + Папка КП') + '</span></span>';
+  infoTags += kpFolderHtml;
   if (project.kp_sum) infoTags += '<span class="analytics-project-chip analytics-chip-info">от ' + esc(String(project.kp_sum)) + ' ₽</span>';
   if (project.sold_sum || project.revenue) infoTags += '<span class="analytics-project-chip analytics-chip-info">куплено за ' + esc(String(project.sold_sum || project.revenue || '')) + ' ₽</span>';
   var statusArr = Array.isArray(project.status) ? project.status : (project.status ? [project.status] : []);
@@ -6198,6 +6228,76 @@ function buildAnalyticsProjectDetail(project, byKey) {
 }
 function wireAnalyticsProjectTags(project) {
   if (!project) return;
+  var avatarAdd = document.getElementById('analyticsProjectAvatarAdd');
+  if (avatarAdd) {
+    avatarAdd.onclick = function(e) {
+      e.stopPropagation();
+      var folderId = project.folderId || '';
+      if (!folderId && project.folderLink) {
+        var m = String(project.folderLink).match(/\/folders\/([a-zA-Z0-9_-]+)/);
+        folderId = m ? m[1] : '';
+      }
+      if (!folderId) {
+        alert('Сначала откройте папку клиента (кнопка «Открыть папку»), чтобы добавить аватар в папку.');
+        return;
+      }
+      var input = document.createElement('input');
+      input.type = 'file';
+      input.accept = 'image/*';
+      input.onchange = function() {
+        var f = input.files && input.files[0];
+        if (!f) return;
+        if (typeof driveUploadAvatarToClientFolder === 'function' && typeof getDriveToken === 'function') {
+          getDriveToken().then(function() {
+            return driveUploadAvatarToClientFolder(f, folderId);
+          }).then(function(url) {
+            if (url) {
+              updateAnalyticsRecentProject(project.projectId, { avatar: url });
+              refreshClientContents(true);
+            }
+          }).catch(function(err) {
+            console.warn('Drive upload failed, using local:', err);
+            var reader = new FileReader();
+            reader.onload = function() {
+              updateAnalyticsRecentProject(project.projectId, { avatar: String(reader.result || '') });
+              refreshClientContents(true);
+            };
+            reader.readAsDataURL(f);
+          });
+        } else {
+          var reader = new FileReader();
+          reader.onload = function() {
+            updateAnalyticsRecentProject(project.projectId, { avatar: String(reader.result || '') });
+            refreshClientContents(true);
+          };
+          reader.readAsDataURL(f);
+        }
+      };
+      input.click();
+    };
+  }
+  var kpFolderBtn = document.getElementById('analyticsProjectKpFolderBtn');
+  if (kpFolderBtn) {
+    kpFolderBtn.onclick = function(e) {
+      e.stopPropagation();
+      var current = project.kpFolderLink || '';
+      var fl = project.folderLink || (project.folderId ? 'https://drive.google.com/drive/folders/' + project.folderId : '');
+      var hint = 'Папка с КП всегда в папке клиента.' + (fl ? ' Откройте папку клиента, скопируйте ссылку на подпапку с КП.' : '') + '\n\nВставьте ссылку:';
+      var url = prompt(hint, current);
+      if (url == null) return;
+      url = String(url || '').trim();
+      if (!url) {
+        updateAnalyticsRecentProject(project.projectId, { kpFolderLink: '' });
+        refreshClientContents(true);
+        return;
+      }
+      var m = url.match(/\/folders\/([a-zA-Z0-9_-]+)/);
+      var folderId = m ? m[1] : (url.length < 50 ? url : '');
+      var link = folderId ? 'https://drive.google.com/drive/folders/' + folderId : url;
+      updateAnalyticsRecentProject(project.projectId, { kpFolderLink: link });
+      refreshClientContents(true);
+    };
+  }
   var bar = document.getElementById('analyticsProjectTagBar');
   var inp = document.getElementById('analyticsProjectTagInput');
   if (!bar) return;
@@ -7775,7 +7875,7 @@ async function driveUploadBlob(name, blob, mimeType, parentId) {
   var blobB = new Uint8Array(blobArr);
   var body = new Uint8Array(preB.length + blobB.length + postB.length);
   body.set(preB, 0); body.set(blobB, preB.length); body.set(postB, preB.length + blobB.length);
-  var resp = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
+  var resp = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,thumbnailLink,webViewLink', {
     method: 'POST',
     headers: {'Authorization': 'Bearer ' + token, 'Content-Type': 'multipart/related; boundary=' + boundary},
     body: body
@@ -7783,6 +7883,14 @@ async function driveUploadBlob(name, blob, mimeType, parentId) {
   var result = await resp.json();
   if (!result.id) throw new Error('PDF не загружен: ' + JSON.stringify(result));
   return result;
+}
+async function driveUploadAvatarToClientFolder(file, parentFolderId) {
+  var ext = (file.name || '').split('.').pop() || 'jpg';
+  var name = 'avatar.' + (ext.toLowerCase() === 'png' || ext.toLowerCase() === 'jpeg' || ext.toLowerCase() === 'jpg' ? ext.toLowerCase() : 'jpg');
+  var mime = file.type || 'image/jpeg';
+  var result = await driveUploadBlob(name, file, mime, parentFolderId);
+  var url = result.thumbnailLink || (result.id ? 'https://drive.google.com/uc?export=view&id=' + result.id : null);
+  return url || (result.webViewLink || '');
 }
 
 async function driveUploadText(name, text, mimeType, parentId) {

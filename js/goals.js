@@ -35,6 +35,18 @@
     if (day >= 15 && day <= 21) return 3;
     return 4;
   }
+  function getWeekDateRange(weekNum, year, month) {
+    var monthNames = ['января','февраля','марта','апреля','мая','июня','июля','августа','сентября','октября','ноября','декабря'];
+    var m = month >= 0 && month < 12 ? month : 0;
+    var lastDay = new Date(year, m + 1, 0).getDate();
+    var from = 1, to = 7;
+    if (weekNum === 1) { from = 1; to = 7; }
+    else if (weekNum === 2) { from = 8; to = 14; }
+    else if (weekNum === 3) { from = 15; to = 21; }
+    else { from = 22; to = lastDay; }
+    var mn = monthNames[m] || '';
+    return 'с ' + from + ' по ' + to + ' ' + mn;
+  }
 
   function generateId() {
     return 'g_' + Date.now() + '_' + Math.random().toString(36).slice(2, 9);
@@ -306,7 +318,7 @@
     });
   }
 
-  function renderWeekSection(weekNum, projects, soldAll, activeClient) {
+  function renderWeekSection(weekNum, projects, soldAll, activeClient, currentWeekNum, year, month) {
     var selectedProjectNameNorm = '';
     if (typeof window.__goalsGetSelectedProjectName === 'function') {
       selectedProjectNameNorm = String(window.__goalsGetSelectedProjectName() || '').trim().toLowerCase();
@@ -402,8 +414,11 @@
       ? '<span class="goal-week-add-client-thumb"><img src="' + esc(clientAvatar) + '" alt=""></span>'
       : '<span class="goal-week-add-client-thumb"><span class="goal-week-add-client-fallback">🖼</span></span>';
     var addClientBtn = clientName ? '<button type="button" class="goal-week-add-client" draggable="true" ondragstart="window.__goalsClientDragStart && window.__goalsClientDragStart(event)" ondragend="window.__goalsClientDragEnd && window.__goalsClientDragEnd(event)" onclick="window.__goalsAddClientToWeek && window.__goalsAddClientToWeek(' + weekNum + ')" title="Добавить прикреплённый проект в неделю">' + avatarHtml + '<span class="goal-week-add-client-text"><span class="goal-week-add-client-plus">+</span><span>Добавить</span><span class="goal-week-add-client-name">' + esc(clientName) + '</span></span></button>' : '';
-    return '<div class="goal-week" data-week="' + weekNum + '">' +
-      '<div class="goal-week-title">' + weekNum + ' НЕДЕЛЯ</div>' +
+    var dateRange = (typeof year === 'number' && typeof month === 'number') ? getWeekDateRange(weekNum, year, month) : '';
+    var titleText = weekNum + ' НЕДЕЛЯ' + (dateRange ? ' · ' + dateRange : '');
+    var activeCls = (currentWeekNum === weekNum) ? ' goal-week-active' : '';
+    return '<div class="goal-week' + activeCls + '" data-week="' + weekNum + '">' +
+      '<div class="goal-week-title">' + titleText + '</div>' +
       '<div class="goal-week-rows" onclick="window.__goalsQuickAddClientToWeek && window.__goalsQuickAddClientToWeek(' + weekNum + ',event)" ondragover="window.__goalsClientDragOver && window.__goalsClientDragOver(event)" ondrop="window.__goalsClientDropOnWeek && window.__goalsClientDropOnWeek(' + weekNum + ',event)">' + header + (rows.length ? rows.join('') : '<div class="goal-empty">Нет проектов</div>') + '</div>' +
       weekIndicators +
       '<div class="goal-week-add-row">' +
@@ -640,10 +655,10 @@
       '</div>' +
       '<div class="goals-weeks-wrap">' +
         '<div class="goals-weeks">' +
-          renderWeekSection(4, week4, sold, activeClient) +
-          renderWeekSection(3, week3, sold, activeClient) +
-          renderWeekSection(2, week2, sold, activeClient) +
-          renderWeekSection(1, week1, sold, activeClient) +
+          renderWeekSection(4, week4, sold, activeClient, currentWeekNum, y, m) +
+          renderWeekSection(3, week3, sold, activeClient, currentWeekNum, y, m) +
+          renderWeekSection(2, week2, sold, activeClient, currentWeekNum, y, m) +
+          renderWeekSection(1, week1, sold, activeClient, currentWeekNum, y, m) +
         '</div>' +
       '</div>' +
       '<div class="goals-work-wrap">' +
