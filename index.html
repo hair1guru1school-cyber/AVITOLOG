@@ -88,7 +88,11 @@ body.day-mode.goals-mode .goal-counter-sold b{color:#b85a20}
 body.day-mode.goals-mode .goal-counter-kp{background:rgba(92,70,180,0.08);border-color:rgba(92,70,180,0.2);color:var(--accent3)}
 body.day-mode.goals-mode .goal-counter-kp b{color:var(--accent3)}
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:'Golos Text',sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+*::-webkit-scrollbar{width:4px;height:4px}
+*::-webkit-scrollbar-track{background:rgba(0,0,0,0.15)}
+*::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.12);border-radius:2px}
+*::-webkit-scrollbar-thumb:hover{background:rgba(255,255,255,0.2)}
+body{font-family:'Golos Text',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;scrollbar-width:thin;scrollbar-color:rgba(255,255,255,0.15) transparent}
 #driveSplash{position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;background:#0c0c0e;overflow:hidden}
 #driveSplash .splash-bg{position:absolute;top:0;left:0;width:100vw;height:100vh;min-width:100vw;min-height:100vh;object-fit:cover;object-position:center;display:block;z-index:0;pointer-events:none}
 #driveSplash::after{content:'';position:absolute;inset:0;background:rgba(0,0,0,0.65);pointer-events:none;z-index:1}
@@ -716,7 +720,7 @@ body.projects-mode .sidebar{padding-top:calc(14px + var(--projects-sidebar-offse
 .projects-cal-cell.num{display:flex;align-items:center;justify-content:center;font-weight:400;color:var(--accent3)}
 /* Проекты: фикс. левая колонка + редактируемые ячейки */
 .projects-table-wrap{overflow:auto;flex:1;min-height:0}
-.projects-hidden-strip{width:56px;min-width:56px;flex-shrink:0;background:rgba(0,0,0,0.35);backdrop-filter:blur(8px);border-left:1px solid rgba(255,255,255,0.06);display:flex;flex-direction:column;align-items:center;overflow:hidden;opacity:0.85;transition:opacity .2s}
+.projects-hidden-strip{display:none !important}
 .projects-hidden-strip:hover{opacity:1;width:72px;min-width:72px;transition:width .2s,opacity .2s}
 .projects-hidden-head{font-size:14px;padding:8px 0;opacity:0.7}
 .projects-hidden-list{flex:1;overflow-y:auto;width:100%;padding:4px 0;font-size:9px;line-height:1.4}
