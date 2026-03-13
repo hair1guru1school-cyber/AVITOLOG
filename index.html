@@ -730,6 +730,9 @@ body.projects-mode .sidebar{padding-top:calc(14px + var(--projects-sidebar-offse
 .projects-sticky-head{position:relative;padding:8px 12px 6px;font-size:10px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:1px;background:linear-gradient(180deg,#070b14 0%,#0b1220 56%,transparent 100%);display:flex;flex-direction:column;align-items:flex-start;gap:6px}
 .projects-zone-tabs{display:flex;align-items:center;gap:10px;margin:0;position:relative;flex-wrap:nowrap}
 .projects-zone-tabs::before{content:none}
+.projects-zone-tabs-top{margin-bottom:2px}
+.projects-zone-tabs-bottom{flex:1;width:100%;min-width:0}
+.projects-zone-tabs-bottom .projects-head-actions{flex:1;display:flex;align-items:center;gap:8px;margin:0;min-width:0}
 .projects-zone-tab{height:48px;min-height:48px;padding:0 28px;border-radius:16px 16px 12px 12px;border:1px solid rgba(100,140,200,0.3);background:rgba(18,26,42,0.7);backdrop-filter:blur(14px);color:#9fb4d5;font-size:15px;font-weight:600;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;justify-content:center;gap:8px;line-height:1;min-width:120px;white-space:nowrap;position:relative;transition:all .2s;z-index:1}
 .projects-zone-tab + .projects-zone-tab{margin-left:0}
 .projects-zone-tab:hover{transform:translateY(-2px);filter:saturate(1.08)}
@@ -740,11 +743,12 @@ body.projects-mode .sidebar{padding-top:calc(14px + var(--projects-sidebar-offse
 .projects-zone-tab.zone-tab-dragging{opacity:0.6}
 .projects-zone-tab.zone-tab-drop-target{box-shadow:inset 0 0 0 2px rgba(53,208,255,0.6)}
 .projects-tasks-label{font-size:11px;color:var(--muted);margin-right:8px;align-self:center;flex-shrink:0}
-.projects-tasks-tab{min-width:56px;padding:0 12px;font-size:22px;line-height:1}
+.projects-tasks-tab{min-width:48px;padding:0 12px;font-size:14px;line-height:1}
 .projects-tasks-tab.on{background:linear-gradient(180deg,#132c45,#0f1e32);color:#7cf5ff;box-shadow:0 0 28px rgba(53,208,255,0.42),inset 0 0 12px rgba(63,123,255,0.16)}
-.proj-task-badge{display:inline-flex;flex-direction:column;align-items:center;gap:2px;margin-top:4px;padding-top:4px;border-top:1px solid rgba(255,255,255,0.04)}
+.proj-tasks-count-badge{min-width:24px;height:24px;padding:0 6px;border-radius:50%;background:rgba(0,217,126,0.3);color:var(--accent);font-size:12px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;line-height:1}
+.projects-tasks-tab.on .proj-tasks-count-badge{background:rgba(53,208,255,0.35);color:#7cf5ff}
+.proj-task-badge{display:inline-flex;align-items:center;justify-content:center;margin-top:4px;padding-top:4px;border-top:1px solid rgba(255,255,255,0.04)}
 .proj-task-count{min-width:18px;height:18px;padding:0 5px;border-radius:50%;background:rgba(0,217,126,0.25);color:var(--accent);font-size:10px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;line-height:1}
-.proj-task-emoji{font-size:22px;line-height:1;display:block}
 .proj-task-indicators{font-size:10px;color:var(--muted);display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:2px;padding-top:2px;border-top:1px solid rgba(255,255,255,0.04)}
 .task-ind-urgent{color:#ff6b35}
 .task-ind-type,.task-ind-date{opacity:0.85}
@@ -878,6 +882,9 @@ body.task-panel-font-l .task-panel-content{--tf:1.15}
 .projects-table-row[data-id]{cursor:default}
 .projects-table-row[data-id] .projects-sticky{cursor:grab}
 .projects-table-row[data-id] .projects-sticky:active{cursor:grabbing}
+.proj-row-drag-handle{display:inline-flex;align-items:center;justify-content:center;width:20px;min-width:20px;cursor:grab;color:var(--muted);font-size:14px;opacity:.6;margin-right:2px;user-select:none}
+.proj-row-drag-handle:hover{opacity:1;color:var(--accent)}
+.proj-row-drag-handle:active{cursor:grabbing}
 .projects-table-row[data-id].selected .projects-sticky{background:#111a1a;box-shadow:inset 0 0 0 1px rgba(0,217,126,0.32),2px 0 10px rgba(0,0,0,0.35)}
 .projects-table-row[data-id].group-match .projects-sticky{background:#12222b}
 .projects-table-row[data-id].group-match .projects-scroll{background:rgba(49,125,159,0.09)}
@@ -922,8 +929,9 @@ body.task-panel-font-l .task-panel-content{--tf:1.15}
 .proj-emoji-picker span:hover{background:rgba(0,217,126,0.15)}
 .proj-emoji-picker .emoji-upload{font-size:12px;font-weight:800;padding:6px 8px;border:1px dashed var(--accent3);border-radius:8px;color:#d8ccff}
 .proj-emoji-picker .emoji-upload:hover{background:rgba(124,106,247,0.2)}
-.proj-col-expand{width:16px;min-width:16px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:9px;color:var(--muted);cursor:pointer}
-.proj-col-expand:hover{color:var(--accent)}
+.proj-col-expand{width:38px;min-width:38px;flex-shrink:0;display:flex;align-items:center;justify-content:flex-start;gap:2px;font-size:9px;color:var(--muted)}
+.proj-col-expand .proj-col-expand-arrow{cursor:pointer}
+.proj-col-expand .proj-col-expand-arrow:hover{color:var(--accent)}
 .proj-col-type{width:32px;min-width:32px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:10px;cursor:pointer;border-right:1px solid var(--border);transition:background 0.12s}
 .proj-col-type:hover{background:rgba(0,217,126,0.06)}
 .proj-col-type .proj-type-diamond,
@@ -2031,6 +2039,8 @@ function openGoalsTab() {
   document.body.classList.add('goals-mode');
   hideChat();
   stopProjectsSheetPullTimer();
+  var mc = document.getElementById('mainContent');
+  if (mc) mc.innerHTML = '<div class="empty-st" style="padding:40px"><div style="font-size:32px;opacity:.4">&#128197;</div><p style="margin-top:12px">Загрузка ЦЕЛИ...</p></div>';
   stopProjectsDayShiftTimer();
   function doRender() {
     var mc = document.getElementById('mainContent');
@@ -5261,16 +5271,13 @@ function renderProjectsScreen(opts) {
   var tableStyle = '--projects-sticky-width:' + stickyW + 'px' + (rowH ? ';--projects-row-height:' + rowH + 'px' : '');
   var html = '<div class="projects-board"><div class="projects-table-wrap"><div class="projects-table" style="' + tableStyle + '">';
   var tasksCount = visibleProjects.reduce(function(sum,p){ return sum + (typeof getTasksForProject === 'function' ? getTasksForProject(p.id) : []).length; }, 0);
-  var tasksLabel = '<button type="button" class="projects-zone-tab projects-tasks-tab' + (_projectsTasksSortOn ? ' on' : '') + '" data-zone="tasks" onclick="event.stopPropagation();toggleTasksSortFilter()" title="' + (_projectsTasksSortOn ? 'Сбросить сортировку по задачам' : 'Сортировать: больше задач — выше') + '">&#128203;</button>';
+  var tasksLabel = '<button type="button" class="projects-zone-tab projects-tasks-tab' + (_projectsTasksSortOn ? ' on' : '') + '" data-zone="tasks" onclick="event.stopPropagation();toggleTasksSortFilter()" title="' + (_projectsTasksSortOn ? 'Сбросить сортировку по задачам' : 'Сортировать: больше задач — выше') + '"><span class="proj-tasks-count-badge">' + tasksCount + '</span></button>';
   var zoneLabels = { active:'&#9889; Актив', second_chance:'&#128164; Zzz', archive:'&#128230; Архив' };
   var tabsBtns = _projectsZoneTabOrder.map(function(z){
     return '<button type="button" class="projects-zone-tab' + (_projectsZoneTab===z ? ' on' : '') + '" data-zone="' + z + '" draggable="true" onclick="event.stopPropagation();setProjectsZoneTab(\'' + z + '\')" ondragstart="zoneTabDragStart(event,\'' + z + '\')" ondragover="zoneTabDragOver(event)" ondragleave="zoneTabDragLeave(event)" ondrop="zoneTabDrop(event,\'' + z + '\')" ondragend="zoneTabDragEnd(event)">' + (zoneLabels[z]||z) + '</button>';
   }).join('');
-  var tabsHtml = '<div class="projects-zone-tabs">' + tasksLabel + tabsBtns + '</div>';
-  var headerSticky =
-    '<div class="projects-sticky-head">' +
-      tabsHtml +
-      '<div class="projects-head-actions">' +
+  var zoneTabsRow = '<div class="projects-zone-tabs projects-zone-tabs-top">' + tabsBtns + '</div>';
+  var headActionsHtml = '<div class="projects-head-actions">' +
         '<span class="projects-head-spacer"></span>' +
         '<span class="projects-head-title"><button type="button" class="projects-add-btn" onclick="event.stopPropagation();createNewProjectInActive()">+ ПРОЕКТ</button></span>' +
         '<span class="projects-head-stats">' +
@@ -5279,7 +5286,12 @@ function renderProjectsScreen(opts) {
           '<span class="projects-head-chip ret' + (_projectsTypeSortPriority === 'returning' ? ' is-on' : '') + '" onclick="event.stopPropagation();setProjectsTypeSortPriority(\'returning\')">2️⃣ <b>' + returningCount + '</b></span>' +
           '<span class="projects-head-chip new' + (_projectsTypeSortPriority === 'new' ? ' is-on' : '') + '" onclick="event.stopPropagation();setProjectsTypeSortPriority(\'new\')">NEW <b>' + newCount + '</b></span>' +
         '</span>' +
-      '</div>' +
+      '</div>';
+  var toolsRow = '<div class="projects-zone-tabs projects-zone-tabs-bottom">' + tasksLabel + headActionsHtml + '</div>';
+  var headerSticky =
+    '<div class="projects-sticky-head">' +
+      zoneTabsRow +
+      toolsRow +
       '<div class="projects-col-resizer" title="Ctrl+колесо — масштаб календаря и строк. Тяните — только высота строк. Двойной клик — сброс" onmousedown="startProjectsRowResize(event)" ondblclick="resetProjectsRowHeight(event)"><div class="projects-scroll-slider" id="projectsScrollBackBtn" title="Клик — на сегодня. Зажми — скролл в прошлое"></div></div>' +
     '</div>';
   var dayNames = ['вс','пн','вт','ср','чт','пт','сб'];
@@ -5309,8 +5321,9 @@ function renderProjectsScreen(opts) {
     var hoverPop = '<div class="proj-hover-pop"><button type="button" class="crm-bind-btn" onclick="startProjectFolderBind(\'' + p.id + '\', event)">CRM</button></div>';
     var moveBtn = '<button type="button" class="field-expand-btn" title="Переместить проект" onclick="event.stopPropagation();showProjectZoneMenu(this,\'' + p.id + '\')">&#9633;</button>';
     var taskCount = (typeof getTasksForProject === 'function' ? getTasksForProject(p.id) : []).length;
-    var taskIndicatorsHtml = '<div class="proj-task-badge"><span class="proj-task-count">' + taskCount + '</span><span class="proj-task-emoji">&#128203;</span></div>';
-    var stickyHtml = '<div class="proj-col-expand">' + expandContent + '</div><div class="proj-col-type" onclick="event.stopPropagation();cycleProjectClientType(\'' + p.id + '\')" title="Старые/новички/2-й раз">' + typeHtml + '</div><button type="button" class="' + driveClass + '" title="' + driveTitle + '" onclick="event.stopPropagation();openProjectDriveFolder(\'' + p.id + '\')">💿</button><div class="proj-cell-editable' + expandedClass + '" data-id="' + p.id + '" onclick="editProjectCell(this)">' + hoverPop + '<div class="proj-main-line"><button type="button" class="proj-emoji-btn" onclick="event.stopPropagation();showProjEmojiPicker(this,\'' + p.id + '\')">' + emHtml + '</button><input type="text" value="' + (p.title||'').replace(/"/g,'&quot;') + '" readonly style="pointer-events:none">' + expandBtnName + '<span class="project-path">' + pathHtml + '</span><button type="button" class="proj-status-btn project-status" onclick="event.stopPropagation();showProjectStatusPicker(this,\'' + p.id + '\')" style="background:' + (PROJECT_STATUS_COLORS[p.status]||'#666') + '22;color:' + (PROJECT_STATUS_COLORS[p.status]||'#999') + '">' + (p.status||'В работе') + '</button>' + moveBtn + '</div><div class="proj-optional-row">' + extraLinesHtml + '</div>' + taskIndicatorsHtml + '</div>';
+    var taskIndicatorsHtml = '<div class="proj-task-badge"><span class="proj-task-count">' + taskCount + '</span></div>';
+    var dragHandle = '<span class="proj-row-drag-handle" title="Тяните для перетаскивания строки">&#9776;</span>';
+    var stickyHtml = '<div class="proj-col-expand">' + dragHandle + '<span class="proj-col-expand-arrow">' + expandContent + '</span></div><div class="proj-col-type" onclick="event.stopPropagation();cycleProjectClientType(\'' + p.id + '\')" title="Старые/новички/2-й раз">' + typeHtml + '</div><button type="button" class="' + driveClass + '" title="' + driveTitle + '" onclick="event.stopPropagation();openProjectDriveFolder(\'' + p.id + '\')">💿</button><div class="proj-cell-editable' + expandedClass + '" data-id="' + p.id + '" onclick="editProjectCell(this)">' + hoverPop + '<div class="proj-main-line"><button type="button" class="proj-emoji-btn" onclick="event.stopPropagation();showProjEmojiPicker(this,\'' + p.id + '\')">' + emHtml + '</button><input type="text" value="' + (p.title||'').replace(/"/g,'&quot;') + '" readonly style="pointer-events:none">' + expandBtnName + '<span class="project-path">' + pathHtml + '</span><button type="button" class="proj-status-btn project-status" onclick="event.stopPropagation();showProjectStatusPicker(this,\'' + p.id + '\')" style="background:' + (PROJECT_STATUS_COLORS[p.status]||'#666') + '22;color:' + (PROJECT_STATUS_COLORS[p.status]||'#999') + '">' + (p.status||'В работе') + '</button>' + moveBtn + '</div><div class="proj-optional-row">' + extraLinesHtml + '</div>' + taskIndicatorsHtml + '</div>';
     var selectedClass = (_selectedProjectId === p.id) ? ' selected' : '';
     var groupedClass = (_projectsTypeSortPriority && normalizeProjectClientType(p.clientType) === _projectsTypeSortPriority) ? ' group-match' : '';
     var newFromGoalsClass = p._newFromGoals ? ' project-row-new-from-goals' : '';
