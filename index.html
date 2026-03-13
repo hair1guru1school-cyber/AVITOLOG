@@ -743,7 +743,10 @@ body.projects-mode.projects-sidebar-hidden .sidebar{min-width:0;width:0;padding:
 .projects-cal-cell.rocket{display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:14px}
 .projects-cal-cell.num{display:flex;align-items:center;justify-content:center;font-weight:400;color:var(--accent3)}
 /* Проекты: фикс. левая колонка + редактируемые ячейки */
-.projects-table-wrap{overflow:auto;flex:1;min-height:0}
+.projects-table-wrap{overflow-x:auto;overflow-y:hidden;flex:1;min-height:0;min-width:0;display:flex;flex-direction:column}
+.projects-table-wrap .projects-table{flex:1;min-height:0;display:flex;flex-direction:column}
+.projects-table-wrap .projects-table .projects-table-header{flex-shrink:0}
+.projects-table-wrap .projects-table .projects-table-row[data-id]{flex:1 1 0;min-height:6px}
 .projects-hidden-strip{display:none !important}
 .projects-hidden-strip:hover{opacity:1;width:72px;min-width:72px;transition:width .2s,opacity .2s}
 .projects-hidden-head{font-size:14px;padding:8px 0;opacity:0.7}
@@ -1039,6 +1042,21 @@ body.task-panel-font-l .task-panel-content{--tf:1.15}
 .projects-mini-prompt .mini-row{display:flex;gap:6px;justify-content:flex-end;margin-top:7px}
 .projects-mini-prompt .mini-btn{height:24px;min-width:46px;padding:0 8px;border-radius:7px;border:1px solid rgba(170,185,255,0.38);background:rgba(22,34,64,0.72);color:#f1f4ff;font-size:11px;font-weight:700;cursor:pointer}
 .projects-mini-prompt .mini-btn.ok{border-color:rgba(150,225,255,0.78);background:linear-gradient(180deg,rgba(16,53,94,0.62),rgba(11,31,61,0.74))}
+.kp-folder-picker{position:fixed;z-index:1300;min-width:260px;max-width:320px;max-height:360px;padding:8px;border-radius:12px;background:linear-gradient(160deg,rgba(9,14,31,0.98),rgba(12,9,28,0.96));border:1px solid rgba(160,185,255,0.32);box-shadow:0 12px 28px rgba(0,0,0,0.5),0 0 16px rgba(122,133,255,0.18);display:flex;flex-direction:column;overflow:hidden}
+.kp-folder-picker .kp-picker-title{font-size:12px;font-weight:700;color:#dce6ff;margin-bottom:8px;padding:0 4px;flex-shrink:0}
+.kp-folder-picker .kp-picker-list{flex:1;overflow-y:auto;max-height:280px}
+.kp-folder-picker .kp-picker-item{display:flex;align-items:center;gap:8px;padding:6px 10px;border-radius:8px;font-size:13px;color:#f1f4ff;cursor:pointer;transition:background .14s,border-color .14s;border:1px solid transparent}
+.kp-folder-picker .kp-picker-item:hover{background:rgba(148,226,255,0.12);border-color:rgba(151,219,255,0.4)}
+.kp-folder-picker .kp-picker-item.is-folder{font-weight:600}
+.kp-folder-picker .kp-picker-item .kp-item-ico{font-size:16px;opacity:.9}
+.kp-folder-picker .kp-picker-item .kp-item-name{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.kp-folder-picker .kp-picker-back{display:flex;align-items:center;gap:6px;padding:6px 10px;margin-bottom:4px;border-radius:8px;font-size:12px;color:#a8c4ff;cursor:pointer;background:rgba(22,34,64,0.5);border:1px solid rgba(170,185,255,0.2)}
+.kp-folder-picker .kp-picker-back:hover{background:rgba(148,226,255,0.1);border-color:rgba(151,219,255,0.4)}
+.kp-folder-picker .kp-picker-select-folder{margin-top:4px;padding:6px 10px;border-radius:8px;font-size:11px;color:#94e2ff;cursor:pointer;background:rgba(16,53,94,0.5);border:1px solid rgba(114,214,255,0.4);text-align:center}
+.kp-folder-picker .kp-picker-select-folder:hover{background:rgba(148,226,255,0.15);border-color:rgba(151,219,255,0.6)}
+.kp-folder-picker .kp-picker-clear{margin-top:6px;padding:6px 10px;border-radius:8px;font-size:11px;color:#ffb3c6;cursor:pointer;background:rgba(92,20,47,0.4);border:1px solid rgba(255,128,154,0.3);text-align:center}
+.kp-folder-picker .kp-picker-clear:hover{background:rgba(92,20,47,0.6);border-color:rgba(255,172,196,0.5)}
+.kp-folder-picker .kp-picker-loading,.kp-folder-picker .kp-picker-empty{padding:16px;text-align:center;font-size:12px;color:#a8c4ff;opacity:.8}
 .proj-joker-badge{height:16px;min-width:24px;padding:0 5px;border-radius:999px;border:1px solid rgba(114,214,255,0.66);background:linear-gradient(180deg,rgba(16,53,94,0.62),rgba(11,31,61,0.74));color:#d7f2ff;font-size:9px;font-weight:800;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;line-height:1;white-space:nowrap;transition:all 0.14s}
 .proj-joker-badge:hover{border-color:rgba(150,225,255,0.9);box-shadow:0 0 12px rgba(112,214,255,0.45)}
 .proj-joker-badge.armed{border-color:rgba(255,172,196,0.9);background:linear-gradient(180deg,rgba(92,20,47,0.62),rgba(47,13,30,0.75));color:#ffdce5}
@@ -6209,7 +6227,7 @@ function buildAnalyticsProjectDetail(project, byKey) {
   if (project.kpFolderLink) {
     kpFolderHtml += '<a href="' + esc(project.kpFolderLink) + '" target="_blank" rel="noopener" class="analytics-project-kp-folder-link">&#128194; Папка КП</a>';
   }
-  kpFolderHtml += '<span class="analytics-project-kp-folder-btn" id="analyticsProjectKpFolderBtn" data-project-id="' + esc(project.projectId || '') + '" title="Привязать папку с КП (она в папке клиента). Вставьте ссылку на подпапку.">' + (project.kpFolderLink ? '&#128260; Изменить' : '&#128194; + Папка КП') + '</span></span>';
+  kpFolderHtml += '<span class="analytics-project-kp-folder-btn" id="analyticsProjectKpFolderBtn" data-project-id="' + esc(project.projectId || '') + '" title="Выбрать папку или документ КП из папки клиента">' + (project.kpFolderLink ? '&#128260; Изменить' : '&#128194; + Папка КП') + '</span></span>';
   infoTags += kpFolderHtml;
   if (project.kp_sum) infoTags += '<span class="analytics-project-chip analytics-chip-info">от ' + esc(String(project.kp_sum)) + ' ₽</span>';
   if (project.sold_sum || project.revenue) infoTags += '<span class="analytics-project-chip analytics-chip-info">куплено за ' + esc(String(project.sold_sum || project.revenue || '')) + ' ₽</span>';
@@ -6232,6 +6250,102 @@ function buildAnalyticsProjectDetail(project, byKey) {
       titleLine + (folderBtn ? '<div class="analytics-project-folder-row">' + folderBtn + '</div>' : '') +
       contactsBlock + infoBlock + tagsBlock + emptyMsg +
     '</div></div>';
+}
+async function showKpFolderPicker(project, btnEl) {
+  var folderId = project.folderId || '';
+  if (!folderId && project.folderLink) {
+    var m = String(project.folderLink).match(/\/folders\/([a-zA-Z0-9_-]+)/);
+    folderId = m ? m[1] : '';
+  }
+  if (!folderId) {
+    alert('Сначала откройте папку клиента (кнопка «Открыть папку»), чтобы выбрать документ КП.');
+    return;
+  }
+  var esc = function(s) { return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); };
+  var prevPicker = document.getElementById('kpFolderPicker');
+  if (prevPicker) prevPicker.remove();
+  var wrap = document.createElement('div');
+  wrap.id = 'kpFolderPicker';
+  wrap.className = 'kp-folder-picker';
+  var breadcrumb = []; var currentFolderId = folderId; var breadcrumbNames = [];
+  function renderList(fid) {
+    var title = breadcrumbNames.length ? breadcrumbNames[breadcrumbNames.length - 1] : 'Содержимое папки клиента';
+    var selectFolderBtn = breadcrumb.length ? '<div class="kp-picker-select-folder" data-action="select-folder" data-folder-id="' + esc(fid) + '">Выбрать эту папку</div>' : '';
+    wrap.innerHTML = '<div class="kp-picker-title">' + esc(title) + '</div><div class="kp-picker-list"><div class="kp-picker-loading">Загрузка...</div></div>' + selectFolderBtn + (breadcrumb.length ? '<div class="kp-picker-back" data-action="back">← Назад</div>' : '') + '<div class="kp-picker-clear" data-action="clear">Сбросить привязку</div>';
+    var listEl = wrap.querySelector('.kp-picker-list');
+    driveListFolderItems(fid).then(function(items) {
+      listEl.innerHTML = '';
+      if (!items || items.length === 0) {
+        listEl.innerHTML = '<div class="kp-picker-empty">Папка пуста</div>';
+        return;
+      }
+      items.forEach(function(it) {
+        var div = document.createElement('div');
+        div.className = 'kp-picker-item' + (it.isFolder ? ' is-folder' : '');
+        div.setAttribute('data-id', it.id);
+        div.setAttribute('data-is-folder', it.isFolder ? '1' : '0');
+        div.setAttribute('data-link', it.link || '');
+        div.setAttribute('data-name', it.name || '');
+        div.innerHTML = '<span class="kp-item-ico">' + (it.isFolder ? '📁' : '📄') + '</span><span class="kp-item-name">' + esc(it.name) + '</span>' + (it.isFolder ? ' <span style="opacity:.6">→</span>' : '');
+        div.onclick = function() {
+          if (it.isFolder) {
+            breadcrumb.push(currentFolderId);
+            breadcrumbNames.push(it.name);
+            currentFolderId = it.id;
+            renderList(it.id);
+          } else {
+            updateAnalyticsRecentProject(project.projectId, { kpFolderLink: it.link });
+            refreshClientContents(true);
+            wrap.remove();
+          }
+        };
+        listEl.appendChild(div);
+      });
+    }).catch(function(err) {
+      listEl.innerHTML = '<div class="kp-picker-empty">Ошибка: ' + esc(String(err && err.message || err)) + '</div>';
+    });
+  }
+  wrap.addEventListener('click', function(e) {
+    var back = e.target.closest('[data-action="back"]');
+    var clear = e.target.closest('[data-action="clear"]');
+    var selectFolder = e.target.closest('[data-action="select-folder"]');
+    if (back) {
+      currentFolderId = breadcrumb.pop() || folderId;
+      breadcrumbNames.pop();
+      renderList(currentFolderId);
+    } else if (clear) {
+      updateAnalyticsRecentProject(project.projectId, { kpFolderLink: '' });
+      refreshClientContents(true);
+      wrap.remove();
+    } else if (selectFolder) {
+      var fid = selectFolder.getAttribute('data-folder-id');
+      var link = fid ? 'https://drive.google.com/drive/folders/' + fid : '';
+      if (link) {
+        updateAnalyticsRecentProject(project.projectId, { kpFolderLink: link });
+        refreshClientContents(true);
+      }
+      wrap.remove();
+    }
+  });
+  document.body.appendChild(wrap);
+  var rect = btnEl.getBoundingClientRect();
+  var pickerRect = wrap.getBoundingClientRect();
+  var x = rect.left;
+  var y = rect.bottom + 6;
+  if (y + pickerRect.height > window.innerHeight) y = rect.top - pickerRect.height - 6;
+  if (x + pickerRect.width > window.innerWidth) x = window.innerWidth - pickerRect.width - 8;
+  if (x < 8) x = 8;
+  wrap.style.left = x + 'px';
+  wrap.style.top = y + 'px';
+  renderList(folderId);
+  var closeOnClickOutside = function(ev) {
+    if (!wrap.parentNode) { document.removeEventListener('click', closeOnClickOutside); return; }
+    if (!wrap.contains(ev.target) && !btnEl.contains(ev.target)) {
+      wrap.remove();
+      document.removeEventListener('click', closeOnClickOutside);
+    }
+  };
+  setTimeout(function() { document.addEventListener('click', closeOnClickOutside); }, 50);
 }
 function wireAnalyticsProjectTags(project) {
   if (!project) return;
@@ -6287,22 +6401,7 @@ function wireAnalyticsProjectTags(project) {
   if (kpFolderBtn) {
     kpFolderBtn.onclick = function(e) {
       e.stopPropagation();
-      var current = project.kpFolderLink || '';
-      var fl = project.folderLink || (project.folderId ? 'https://drive.google.com/drive/folders/' + project.folderId : '');
-      var hint = 'Папка с КП всегда в папке клиента.' + (fl ? ' Откройте папку клиента, скопируйте ссылку на подпапку с КП.' : '') + '\n\nВставьте ссылку:';
-      var url = prompt(hint, current);
-      if (url == null) return;
-      url = String(url || '').trim();
-      if (!url) {
-        updateAnalyticsRecentProject(project.projectId, { kpFolderLink: '' });
-        refreshClientContents(true);
-        return;
-      }
-      var m = url.match(/\/folders\/([a-zA-Z0-9_-]+)/);
-      var folderId = m ? m[1] : (url.length < 50 ? url : '');
-      var link = folderId ? 'https://drive.google.com/drive/folders/' + folderId : url;
-      updateAnalyticsRecentProject(project.projectId, { kpFolderLink: link });
-      refreshClientContents(true);
+      showKpFolderPicker(project, kpFolderBtn);
     };
   }
   var bar = document.getElementById('analyticsProjectTagBar');
@@ -7772,6 +7871,39 @@ async function openClientDocInWindow(docId, docKey, driveLink, mimeType) {
   if (rb) rb.style.display = 'inline-flex';
   var bb = document.getElementById('backBtn');
   if (bb) bb.style.display = 'inline-flex';
+}
+
+async function driveListFolderItems(folderId) {
+  if (!folderId) return [];
+  var token = await getDriveToken();
+  if (!token) throw new Error('Нажмите 🔑 Drive');
+  var q = encodeURIComponent("'" + folderId + "' in parents and trashed=false");
+  var ctrl = typeof AbortController !== 'undefined' ? new AbortController() : null;
+  var abortMs = 12000;
+  var tmr = ctrl ? setTimeout(function() { ctrl.abort(); }, abortMs) : null;
+  var opts = { headers: {'Authorization': 'Bearer ' + token} };
+  if (ctrl) opts.signal = ctrl.signal;
+  try {
+    var resp = await fetch('https://www.googleapis.com/drive/v3/files?q=' + q + '&fields=files(id,name,mimeType,webViewLink)&orderBy=folder,name&pageSize=100', opts);
+    if (tmr) clearTimeout(tmr);
+    var data = await resp.json();
+    if (!resp.ok || data.error) {
+      if (resp.status === 401) { _driveToken = null; clearStoredDriveAuth(); updateDriveUI(); }
+      var errMsg = (data.error && data.error.message) ? data.error.message : ('HTTP ' + resp.status);
+      throw new Error(errMsg);
+    }
+    var items = (data.files || []).map(function(f) {
+      var isFolder = f.mimeType === 'application/vnd.google-apps.folder';
+      var link = isFolder ? ('https://drive.google.com/drive/folders/' + f.id) : (f.webViewLink || (f.mimeType === 'application/vnd.google-apps.document' && f.id ? 'https://docs.google.com/document/d/' + f.id + '/edit' : f.id ? 'https://drive.google.com/file/d/' + f.id + '/view' : null));
+      return { id: f.id, name: f.name || 'Без имени', mimeType: f.mimeType, isFolder: isFolder, link: link };
+    });
+    return items;
+  } catch (e) {
+    if (tmr) clearTimeout(tmr);
+    console.warn('driveListFolderItems:', e);
+    if (e && e.name === 'AbortError') throw new Error('Таймаут загрузки. Проверь интернет и попробуй снова.');
+    throw e;
+  }
 }
 
 async function driveListClientFolderFiles(folderId) {
