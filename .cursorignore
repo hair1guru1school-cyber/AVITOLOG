@@ -1,0 +1,3 @@
+﻿# Reduce Cursor load - prevents crashes
+backups/
+__pycache__/

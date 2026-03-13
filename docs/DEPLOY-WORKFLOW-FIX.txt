@@ -1,0 +1,30 @@
+# Вставь это в файл .github/workflows/deploy-pages.yml на GitHub
+# Редактировать: https://github.com/hair1guru1school-cyber/AVITOLOG/edit/main/.github/workflows/deploy-pages.yml
+
+name: Deploy to Pages
+on:
+  push:
+    branches: ["main", "master"]
+  workflow_dispatch:
+concurrency:
+  group: pages
+  cancel-in-progress: false
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: name: github-pages
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Pages
+        uses: actions/configure-pages@v4
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: .
+      - name: Deploy
+        id: deployment
+        uses: actions/deploy-pages@v4

@@ -1,0 +1,23 @@
+═══════════════════════════════════════════════════════════════
+  GOOGLE CLOUD CONSOLE — настройка OAuth для AVITOLOG
+═══════════════════════════════════════════════════════════════
+
+1. Открой: https://console.cloud.google.com/apis/credentials
+
+2. Выбери проект с OAuth клиентом Avitolog (Client ID заканчивается на ...q4432)
+
+3. Тип клиента ОБЯЗАТЕЛЬНО: "Web application" (не Desktop, не Mobile!)
+
+4. Authorized JavaScript origins — добавь ровно:
+   https://hair1guru1school-cyber.github.io
+
+5. Authorized redirect URIs — добавь ровно (скопируй без изменений):
+   https://hair1guru1school-cyber.github.io/AVITOLOG/index.html
+
+   ВАЖНО: без слеша в конце, без пробелов, https (не http)
+
+6. Сохрани (Save). Подожди 2–3 минуты.
+
+7. Сайт: https://hair1guru1school-cyber.github.io/AVITOLOG/index.html
+   • "Google Drive (popup GIS)" — обычно работает сразу
+   • "Google Drive (редирект)" — после сохранения redirect URI
