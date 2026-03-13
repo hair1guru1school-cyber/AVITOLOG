@@ -1,3 +1,9 @@
 ﻿# Reduce Cursor load - prevents crashes
 backups/
 __pycache__/
+
+docs/
+.github/
+agent-transcripts/
+*.log
+node_modules/
