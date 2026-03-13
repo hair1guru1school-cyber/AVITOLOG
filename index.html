@@ -5207,6 +5207,7 @@ function ensureTasksInData(data) {
 var _renderProjectsInProgress = false;
 function renderProjectsScreen(opts) {
   opts = opts || {};
+  if (!projectsMode) return;
   if (_renderProjectsInProgress) return;
   _renderProjectsInProgress = true;
   try {
