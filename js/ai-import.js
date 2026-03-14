@@ -384,6 +384,19 @@
     { emoji: '🧱', name: 'Дома Андрей' }
   ];
 
+  var ASSETS_STORAGE_KEY = 'avitolog_assets_projects_v1';
+  var ASSETS_USD_RATE = 95;
+
+  function getAssetsData() {
+    try {
+      return JSON.parse(localStorage.getItem(ASSETS_STORAGE_KEY) || '{}');
+    } catch (e) { return {}; }
+  }
+
+  function saveAssetsData(data) {
+    try { localStorage.setItem(ASSETS_STORAGE_KEY, JSON.stringify(data)); } catch (e) {}
+  }
+
   function findProjectAmount(projName, soldProjects) {
     if (!soldProjects || !soldProjects.length) return null;
     var n = String(projName || '').trim().toLowerCase();
@@ -404,8 +417,11 @@
     var fmt = function(n) { return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ' '); };
     var goalsData = getGoalsData();
     var sold = (goalsData.projects || []).filter(function(p) { return p && p.stage === 'sold'; });
+    var assetsData = getAssetsData();
+    var totalRub = 338000;
+    var totalUsd = Math.round(totalRub / ASSETS_USD_RATE);
     var summaryRows = [
-      { icon: '💰', label: 'Получено за все', val: '338 000' },
+      { icon: '💰', label: 'Получено за все', val: '338 000', valUsd: totalUsd, main: true },
       { icon: '✅', label: 'Оплаты клиентов', val: '304 000' },
       { icon: '🌿', label: 'Ожидается еще', val: '20 000' },
       { icon: '📊', label: 'Ожидается за мес', val: '324 000' },
@@ -414,17 +430,30 @@
       { icon: '👤', label: 'Активные клиенты', val: '195 000' }
     ];
     var summaryHtml = summaryRows.map(function(r) {
-      return '<div class="assets-summary-row"><span class="assets-summary-label">' + r.icon + ' ' + esc(r.label) + '</span><span class="assets-summary-val">' + (r.val ? esc(r.val) + ' ₽' : '—') + '</span></div>';
+      var rowCls = 'assets-summary-row' + (r.main ? ' assets-summary-main' : '');
+      var valHtml = r.val ? (r.main ? '<span class="assets-summary-val">' + esc(r.val) + ' ₽<span class="assets-summary-usd">$' + fmt(r.valUsd) + '</span></span>' : '<span class="assets-summary-val">' + esc(r.val) + ' ₽</span>') : '<span class="assets-summary-val">—</span>';
+      return '<div class="' + rowCls + '"><span class="assets-summary-label">' + r.icon + ' ' + esc(r.label) + '</span>' + valHtml + '</div>';
     }).join('');
-    var projectRows = ASSETS_PROJECTS.map(function(p) {
-      var amt = findProjectAmount(p.name, sold);
-      var amtStr = amt ? fmt(amt) + ' ₽' : '—';
-      return '<div class="assets-project-row"><span class="assets-project-emoji">' + p.emoji + '</span><span class="assets-project-name">' + esc(p.name) + '</span><span class="assets-project-amount">' + amtStr + '</span></div>';
+    var headerRow = '<div class="assets-projects-header"><span class="ap-name">Проект</span><span class="ap-paid">Оплатил</span><span class="ap-expected">Ожидать в мес</span></div>';
+    var projectRows = ASSETS_PROJECTS.map(function(p, idx) {
+      var key = p.name;
+      var stored = assetsData[key] || {};
+      var paidFromGoals = findProjectAmount(p.name, sold);
+      var paidVal = stored.paid || paidFromGoals || '';
+      var expectedVal = stored.expected || '';
+      var paidFmt = paidVal ? fmt(String(paidVal).replace(/\s/g, '')) : '';
+      var expectedFmt = expectedVal ? fmt(String(expectedVal).replace(/\s/g, '')) : '';
+      return '<div class="assets-project-row" data-name="' + esc(key) + '">' +
+        '<span class="assets-project-emoji">' + p.emoji + '</span>' +
+        '<span class="assets-project-name">' + esc(p.name) + '</span>' +
+        '<span class="assets-project-paid"><input type="text" value="' + esc(paidFmt) + '" placeholder="0" data-field="paid" onblur="window.__assetsSaveProject(this)"></span>' +
+        '<span class="assets-project-expected"><input type="text" value="' + esc(expectedFmt) + '" placeholder="0" data-field="expected" onblur="window.__assetsSaveProject(this)"></span>' +
+        '</div>';
     }).join('');
     mc.innerHTML = '<div class="assets-page-wrap">' +
       '<div class="assets-summary-table">' + summaryHtml + '</div>' +
-      '<div class="assets-projects-title">Проекты (цены складываются в общую сумму за март 338 000 ₽)</div>' +
-      '<div class="assets-projects-list" id="assetsProjectsList">' + projectRows + '</div>' +
+      '<div class="assets-projects-title">Проекты — чек клиента и оплата</div>' +
+      '<div class="assets-projects-list" id="assetsProjectsList">' + headerRow + projectRows + '</div>' +
       '<div class="assets-ai-row" id="assetsAiRow">' +
         '<span class="ai-label">🤖 ИИ-импорт</span>' +
         '<textarea class="ai-input" id="aiImportTextarea" rows="1" placeholder="Вставь текст оплат/клиентов — ИИ разберёт..."></textarea>' +
@@ -440,10 +469,24 @@
       '</div>';
   }
 
+  function saveProjectField(inputEl) {
+    if (!inputEl) return;
+    var row = inputEl.closest('.assets-project-row');
+    var name = row && row.getAttribute('data-name');
+    var field = inputEl.getAttribute('data-field');
+    var val = String(inputEl.value || '').replace(/\s/g, '');
+    if (!name || !field) return;
+    var data = getAssetsData();
+    data[name] = data[name] || {};
+    data[name][field] = val ? val : '';
+    saveAssetsData(data);
+  }
+
   window.__aiImportParse = parseAndShow;
   window.__aiImportRejectRow = rejectRow;
   window.__aiImportConfirm = confirmImport;
   window.__aiImportLoadToTable = loadToTable;
   window.__aiImportRender = renderAiImportContent;
   window.__renderAssetsPage = renderAssetsPage;
+  window.__assetsSaveProject = saveProjectField;
 })();
