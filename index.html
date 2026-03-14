@@ -761,14 +761,18 @@ body.projects-mode.projects-sidebar-hidden .sidebar{min-width:0;width:0;padding:
 .projects-hidden-empty{font-size:10px;color:rgba(255,255,255,0.3);padding:12px 4px}
 .projects-table{display:flex;flex-direction:column;min-width:max-content}
 .projects-table .projects-sticky{position:sticky;left:0;z-index:4;background:#10131b;border-right:1px solid rgba(255,255,255,0.06);min-width:var(--projects-sticky-width,360px);width:var(--projects-sticky-width,360px);flex-shrink:0;box-shadow:2px 0 10px rgba(0,0,0,0.35)}
-.projects-sticky-head{position:relative;padding:8px 12px 8px;font-size:10px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:1px;background:linear-gradient(180deg,#070b14 0%,#0b1220 56%,transparent 100%);display:flex;flex-direction:column;align-items:stretch;gap:0}
+.projects-sticky-head{position:relative;padding:6px 10px 6px;font-size:10px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:1px;background:linear-gradient(180deg,#070b14 0%,#0b1220 56%,transparent 100%);display:flex;flex-direction:column;align-items:stretch;gap:4px;overflow:hidden;max-width:100%}
 .projects-zone-tabs{display:flex;align-items:center;gap:10px;margin:0;position:relative;flex-wrap:nowrap}
 .projects-zone-tabs::before{content:none}
 .projects-zone-tabs-top{margin-bottom:6px;width:100%}
 .projects-zone-tabs-top .projects-zone-tab.projects-zone-tab-zone{flex:1;min-width:0}
+.projects-zone-tabs-wrap{display:flex;flex-direction:column;gap:6px;width:100%}
 .projects-zone-tabs-bottom{width:100%;display:flex;align-items:center;gap:10px;flex-wrap:nowrap;min-width:0}
+.projects-zone-tabs-row1{flex-shrink:0}
+.projects-zone-tabs-row2{flex-shrink:0}
 .projects-zone-tabs-bottom .projects-head-title{flex-shrink:0}
 .projects-zone-tabs-bottom .projects-head-stats{flex:1;display:inline-flex;align-items:center;gap:8px;justify-content:flex-start;min-width:0}
+.projects-head-stats-row2{flex:1}
 .projects-zone-tab.projects-zone-tab-zone{height:56px;min-height:56px;padding:0 32px;border-radius:6px;border:1px solid rgba(100,140,200,0.3);background:rgba(18,26,42,0.7);backdrop-filter:blur(14px);color:#9fb4d5;font-size:16px;font-weight:700;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;justify-content:center;gap:8px;line-height:1;min-width:130px;white-space:nowrap;position:relative;transition:all .2s;z-index:1}
 .projects-zone-tab{height:48px;min-height:48px;padding:0 28px;border-radius:16px 16px 12px 12px;border:1px solid rgba(100,140,200,0.3);background:rgba(18,26,42,0.7);backdrop-filter:blur(14px);color:#9fb4d5;font-size:15px;font-weight:600;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;justify-content:center;gap:8px;line-height:1;min-width:120px;white-space:nowrap;position:relative;transition:all .2s;z-index:1}
 .projects-zone-tab + .projects-zone-tab{margin-left:0}

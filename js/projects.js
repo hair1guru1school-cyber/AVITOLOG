@@ -2444,9 +2444,17 @@ function renderProjectsScreen(opts) {
     var rest = visibleProjects.filter(function(p){ return normalizeProjectClientType(p.clientType) !== _projectsTypeSortPriority; });
     visibleProjects = first.concat(rest);
   }
-  if (_projectsFilterLaunch) visibleProjects = visibleProjects.filter(projectHasLaunch);
-  if (_projectsFilterAutoload) visibleProjects = visibleProjects.filter(projectHasAutoload);
-  if (_projectsFilterMustLaunch) visibleProjects = visibleProjects.filter(projectHasMustLaunch);
+  if (_projectsFilterLaunch || _projectsFilterAutoload || _projectsFilterMustLaunch) {
+    var matchFilter = function(p) {
+      if (_projectsFilterLaunch && projectHasLaunch(p)) return true;
+      if (_projectsFilterAutoload && projectHasAutoload(p)) return true;
+      if (_projectsFilterMustLaunch && projectHasMustLaunch(p)) return true;
+      return false;
+    };
+    var first = visibleProjects.filter(matchFilter);
+    var rest = visibleProjects.filter(function(p){ return !matchFilter(p); });
+    visibleProjects = first.concat(rest);
+  }
   allProjects = visibleProjects.slice();
   var activeProjects = (data.projects || []).filter(function(p){ return (p.zone || 'active') === 'active'; });
   var activeCount = activeProjects.length;
@@ -2471,17 +2479,20 @@ function renderProjectsScreen(opts) {
   }).join('');
   var zoneTabsRow = '<div class="projects-zone-tabs projects-zone-tabs-top">' + tabsBtns + '</div>';
   var addBtnHtml = '<span class="projects-head-title"><button type="button" class="projects-add-btn" onclick="event.stopPropagation();createNewProjectInActive()">+ ПРОЕКТ</button></span>';
-  var chipsHtml = '<span class="projects-head-stats">' +
+  var chipsRow1 = '<span class="projects-head-stats">' +
           '<span class="projects-head-chip active" title="Все проекты" onclick="event.stopPropagation();setProjectsTypeSortPriority(null)">🃏 <b>' + activeCount + '</b></span>' +
           '<span class="projects-head-chip diamond' + (_projectsTypeSortPriority === 'old' ? ' is-on' : '') + '" title="Алмазы" onclick="event.stopPropagation();setProjectsTypeSortPriority(\'old\')">💎 <b>' + diamondCount + '</b></span>' +
           '<span class="projects-head-chip ret' + (_projectsTypeSortPriority === 'returning' ? ' is-on' : '') + '" title="Второй раз" onclick="event.stopPropagation();setProjectsTypeSortPriority(\'returning\')">2️⃣ <b>' + returningCount + '</b></span>' +
           '<span class="projects-head-chip new' + (_projectsTypeSortPriority === 'new' ? ' is-on' : '') + '" onclick="event.stopPropagation();setProjectsTypeSortPriority(\'new\')">NEW <b>' + newCount + '</b></span>' +
-          '<span class="projects-head-chip launch' + (_projectsFilterLaunch ? ' is-on' : '') + '" title="Только проекты с запуском" onclick="event.stopPropagation();toggleProjectsFilterLaunch()">🚀 <b>' + launchCount + '</b></span>' +
-          '<span class="projects-head-chip autoload' + (_projectsFilterAutoload ? ' is-on' : '') + '" title="Только проекты с автозагрузкой" onclick="event.stopPropagation();toggleProjectsFilterAutoload()">🅰 <b>' + autoloadCount + '</b></span>' +
-          '<span class="projects-head-chip mustlaunch' + (_projectsFilterMustLaunch ? ' is-on' : '') + '" title="Только проекты с !!" onclick="event.stopPropagation();toggleProjectsFilterMustLaunch()">!! <b>' + mustLaunchCount + '</b></span>' +
+        '</span>';
+  var chipsRow2 = '<span class="projects-head-stats projects-head-stats-row2">' +
+          tasksLabel +
+          '<span class="projects-head-chip launch' + (_projectsFilterLaunch ? ' is-on' : '') + '" title="Показать проекты с запуском первыми" onclick="event.stopPropagation();toggleProjectsFilterLaunch()">🚀 <b>' + launchCount + '</b></span>' +
+          '<span class="projects-head-chip autoload' + (_projectsFilterAutoload ? ' is-on' : '') + '" title="Показать проекты с автозагрузкой первыми" onclick="event.stopPropagation();toggleProjectsFilterAutoload()">🅰 <b>' + autoloadCount + '</b></span>' +
+          '<span class="projects-head-chip mustlaunch' + (_projectsFilterMustLaunch ? ' is-on' : '') + '" title="Показать проекты с !! первыми" onclick="event.stopPropagation();toggleProjectsFilterMustLaunch()">!! <b>' + mustLaunchCount + '</b></span>' +
         '</span>';
   var expandCls = (typeof localStorage !== 'undefined' && localStorage.getItem('avitolog_projects_sidebar_hidden') === '1') ? ' on' : '';
-var toolsRow = '<div class="projects-zone-tabs projects-zone-tabs-bottom">' + addBtnHtml + tasksLabel + chipsHtml + '<button type="button" class="projects-expand-btn' + expandCls + '" onclick="event.stopPropagation();toggleProjectsSidebar()" title="Растянуть таблицу на весь экран / вернуть панель">⛶</button></div>';
+  var toolsRow = '<div class="projects-zone-tabs-wrap"><div class="projects-zone-tabs projects-zone-tabs-bottom projects-zone-tabs-row1">' + addBtnHtml + chipsRow1 + '<button type="button" class="projects-expand-btn' + expandCls + '" onclick="event.stopPropagation();toggleProjectsSidebar()" title="Растянуть таблицу на весь экран / вернуть панель">⛶</button></div><div class="projects-zone-tabs projects-zone-tabs-bottom projects-zone-tabs-row2">' + chipsRow2 + '</div></div>';
   var headerSticky =
     '<div class="projects-sticky-head">' +
       zoneTabsRow +
