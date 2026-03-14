@@ -40,11 +40,11 @@ nav::after{content:'';position:absolute;bottom:0;left:0;right:0;height:1px;backg
 .nav-avito-drop a:hover{color:var(--red);background:var(--red-dim)}
 
 /* HERO */
-.hero{position:relative;min-height:100vh;display:flex;flex-direction:column;justify-content:flex-end;overflow:hidden}
+.hero{position:relative;min-height:100vh;display:flex;overflow-x:clip;flex-direction:column;justify-content:flex-end;overflow:hidden}
 .hero-cta-wrap .btn{width:100%;min-width:auto}}
 .hero-bg{position:absolute;inset:0;background:url('PC/hero-banner.png') center 20%/cover no-repeat;will-change:transform;transition:transform .1s ease-out}
 .hero-bg::before{content:'';position:absolute;inset:0;background:linear-gradient(180deg,rgba(8,11,18,.15) 0%,rgba(8,11,18,.3) 50%,rgba(8,11,18,.6) 60%,rgba(8,11,18,.9) 75%,var(--bg) 100%)}
-.hero-stripe{margin:28px 0 32px;width:100%;background:linear-gradient(90deg,var(--red) 0%,#b50016 70%,rgba(180,0,22,.88) 100%);display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:32px;padding:12px 24px;row-gap:8px;border-top:1.5px solid rgba(255,255,255,.15);border-bottom:1.5px solid rgba(255,255,255,.1);border-radius:0}
+.hero-stripe{margin:36px 0 40px;width:100vw;margin-left:50%;transform:translateX(-50%);background:linear-gradient(90deg,var(--red) 0%,#b50016 70%,rgba(180,0,22,.88) 100%);display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:32px;padding:14px 24px;row-gap:8px;border-top:1.5px solid rgba(255,255,255,.15);border-bottom:1.5px solid rgba(255,255,255,.1);border-radius:0;position:relative;z-index:5}
 .stripe-item{display:flex;align-items:center;gap:8px;flex-shrink:0;font-family:'Oswald',sans-serif;font-size:14px;font-weight:500;letter-spacing:.5px;color:#fff;text-transform:uppercase;white-space:nowrap}
 .s-ico{font-size:18px;opacity:.9}
 .hero-content{position:relative;z-index:10;padding:0 80px 80px}
@@ -325,6 +325,24 @@ footer{background:var(--bg);border-top:1px solid var(--border);padding:40px 80px
 .screen-icons-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:32px;max-width:800px}
 .si-item{display:flex;align-items:center;gap:12px;padding:14px 18px;background:var(--bg2);border:1px solid var(--border);border-radius:8px;font-size:14px;color:var(--text)}
 .si-ico{font-size:20px}
+
+/* Turnkey block: benefits + image */
+.turnkey-layout{display:grid;grid-template-columns:1fr 1fr;gap:48px;align-items:center}
+.turnkey-content{max-width:520px}
+.turnkey-benefits{display:grid;grid-template-columns:1fr 1fr;gap:10px 20px;margin-top:24px}
+.tb-item{display:flex;align-items:center;gap:10px;padding:10px 14px;background:rgba(53,208,255,.06);border:1px solid rgba(53,208,255,.2);font-size:13px;color:var(--text)}
+.tb-ico{font-size:16px}
+.turnkey-visual{position:relative;border-radius:8px;overflow:hidden;border:1px solid var(--border-b)}
+.turnkey-visual img{width:100%;max-height:320px;object-fit:contain;object-position:center;display:block}
+@media(max-width:768px){
+.turnkey-layout{grid-template-columns:1fr}
+.turnkey-benefits{grid-template-columns:1fr}
+.turnkey-visual img{max-height:240px}
+}
+
+.turnkey-divider{display:flex;align-items:center;justify-content:center;gap:8px;margin:32px 0 28px}
+.turnkey-divider span{width:40px;height:2px;background:linear-gradient(90deg,var(--red),var(--blue));border-radius:1px}
+.turnkey-divider span:nth-child(2){width:12px;height:12px;border-radius:50%;border:2px solid var(--red);background:transparent}
 @media(max-width:600px){.screen-icons-grid{grid-template-columns:1fr 1fr}}
 /* ЭКРАН 3: один баннер */
 .banner-single{background:var(--bg);overflow:hidden}
@@ -403,7 +421,7 @@ footer{background:var(--bg);border-top:1px solid var(--border);padding:40px 80px
     </h1>
     <div class="h1-sub">в 2–10 раз на Авито</div>
     <div class="hero-stripe">
-      <div class="stripe-item"><span class="s-ico">&#128196;</span>Договор с моим ИП</div>
+      <div class="stripe-item"><span class="s-ico">&#128196;</span>Договор, Приложение — Р/С</div>
       <div class="stripe-item"><span class="s-ico">&#128273;</span>Ведение под ключ</div>
       <div class="stripe-item"><span class="s-ico">&#128737;</span>Гарантия заявок за 7 дней</div>
       <div class="stripe-item"><span class="s-ico">&#128202;</span>Отчётность и прозрачность</div>
@@ -413,7 +431,7 @@ footer{background:var(--bg);border-top:1px solid var(--border);padding:40px 80px
 <div class="hero-stats">
       <div class="hs"><div class="hs-val">1856+</div><div class="hs-lbl">проектов запущено</div></div>
       <div class="hs"><div class="hs-val">+9 лет</div><div class="hs-lbl">в Авито</div></div>
-      <div class="hs"><div class="hs-val">3+ года</div><div class="hs-lbl">среднее время партнёров</div></div>
+      <div class="hs"><div class="hs-val">среднее время партнёров / партнерства</div><div class="hs-lbl">длительность сотрудничества</div></div>
       <div class="hs"><div class="hs-val">54+</div><div class="hs-lbl">ниши в кейсах</div></div>
     </div>
     <div class="hero-btns">
@@ -424,34 +442,27 @@ footer{background:var(--bg);border-top:1px solid var(--border);padding:40px 80px
   </div>
 </section>
 
-<!-- ЭКРАН 2: краткий текст + иконки -->
-<section class="sec screen-icons bg-blue" id="screen2">
-  <div class="sec-lbl">УСЛУГИ</div>
-  <h2 class="sec-title">Ведение под ключ — <span>комплексная эффективность</span></h2>
-  <p class="sec-desc">Полный цикл работы с Авито — от анализа рынка до сотен заявок в месяц. Договор, гарантия, прозрачность.</p>
-  <div class="screen-icons-grid">
-    <div class="si-item"><span class="si-ico">🔎</span><span>Анализ рынка и клиентов</span></div>
-    <div class="si-item"><span class="si-ico">✍️</span><span>Продающие тексты и SEO</span></div>
-    <div class="si-item"><span class="si-ico">🎨</span><span>Дизайн и инфографика</span></div>
-    <div class="si-item"><span class="si-ico">🤖</span><span>Бот и автоответчик</span></div>
-    <div class="si-item"><span class="si-ico">📸</span><span>Подбор топ-фото</span></div>
-    <div class="si-item"><span class="si-ico">⚡</span><span>Масштабирование</span></div>
+<!-- Ведение под ключ: 1 компактный блок -->
+<section class="sec turnkey-block bg-blue" id="services">
+  <div class="turnkey-layout">
+    <div class="turnkey-content">
+      <div class="sec-lbl">Преимущества</div>
+      <h2 class="sec-title">Ведение под ключ — <span>комплексная эффективность</span></h2>
+      <p class="sec-desc">Полный цикл работы с Авито — от анализа до сотен заявок в месяц. Договор, гарантия, прозрачность.</p>
+      <div class="turnkey-benefits">
+        <div class="tb-item"><span class="tb-ico">🔍</span>Анализ рынка и клиентов</div>
+        <div class="tb-item"><span class="tb-ico">🔥</span>Продающие тексты и SEO</div>
+        <div class="tb-item"><span class="tb-ico">🧠</span>Дизайн и инфографика</div>
+        <div class="tb-item"><span class="tb-ico">📦</span>Бот и автоответчик</div>
+        <div class="tb-item"><span class="tb-ico">📸</span>Подбор топ-фото</div>
+        <div class="tb-item"><span class="tb-ico">⚡</span>Масштабирование</div>
+      </div>
+    </div>
+    <div class="turnkey-visual">
+      <img src="station.png" alt="Ведение под ключ" loading="lazy">
+    </div>
   </div>
-</section>
-
-<!-- ЭКРАН 3: баннер Ведение под ключ (1 шт) -->
-<section class="banner-single">
-  <div class="analytics-visual rev">
-    <img src="analytics-banner.png" alt="Аналитика заявок — Авитолог" loading="lazy">
-    <div class="analytics-visual-overlay"></div>
-  </div>
-</section>
-
-<!-- SERVICES -->
-<section class="sec" id="services" style="background:var(--bg2)">
-  <div class="sec-lbl">Что входит</div>
-  <h2 class="sec-title">ВЕДЕНИЕ ПОД КЛЮЧ —<br><span>КОМПЛЕКСНАЯ ЭФФЕКТИВНОСТЬ</span></h2>
-  <p class="sec-desc">Полный цикл работы с Авито — от анализа рынка до сотен заявок в месяц. Договор, гарантия, прозрачность.</p>
+  <div class="turnkey-divider"><span></span><span></span><span></span></div>
   <div class="srv-grid">
     <div class="srv-item rev"><div class="srv-icon">🔍</div><div><div class="srv-title">Анализ рынка и клиентов</div><div class="srv-desc">Изучаем потребности покупателей, анализируем конкурентов, находим точки роста в вашей нише.</div></div></div>
     <div class="srv-item rev"><div class="srv-icon">🎨</div><div><div class="srv-title">Дизайн и инфографика</div><div class="srv-desc">Вовлекающие баннеры, инфографика с выгодами, профессиональные обложки — конверсия +30–50%.</div></div></div>
@@ -463,7 +474,7 @@ footer{background:var(--bg);border-top:1px solid var(--border);padding:40px 80px
     <div class="srv-item rev"><div class="srv-icon">📊</div><div><div class="srv-title">Отчётность и прозрачность</div><div class="srv-desc">Еженедельные отчёты: заявки, расходы, позиции, рост. Вы всегда знаете, за что платите.</div></div></div>
   </div>
   <div class="guar-bar">
-    <div><div class="guar-t">📋 Прописываем договор с моим ИП</div><div class="guar-s">100% гарантия на все работы · Гарантия заявок в течение 7 дней после запуска</div></div>
+    <div><div class="guar-t">📋 Прописываем Договор, Приложение — Р/С</div><div class="guar-s">100% гарантия на все работы · Гарантия заявок в течение 7 дней после запуска</div></div>
     <a href="https://t.me/Aces_Of_Ads_bot" target="_blank" class="btn btn-cyan">🤖 Обсудить проект</a>
   </div>
 </section>
