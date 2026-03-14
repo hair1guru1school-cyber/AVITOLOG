@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Aces of Ads — Авитолог №1 | Увеличу поток заявок в 2-10 раз</title>
-<link rel="preload" href="PC/banner2.jpg" as="image">
+<link rel="preload" href="PC/hero-banner.png" as="image">
 <link href="https://fonts.googleapis.com/css2?family=Exo+2:wght@300;400;600;700;800;900&family=Oswald:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
 :root{
@@ -40,19 +40,13 @@ nav::after{content:'';position:absolute;bottom:0;left:0;right:0;height:1px;backg
 
 /* HERO */
 .hero{position:relative;min-height:100vh;display:flex;flex-direction:column;justify-content:flex-end;overflow:hidden}
-/* Hero simple - full-width image + one button */
-.hero.hero-simple{display:block;min-height:auto;justify-content:stretch}
-.hero-banner-wrap{width:100%;line-height:0;overflow:hidden}
-.hero-banner-img{width:100%;height:auto;display:block;object-fit:cover;object-position:center}
-.hero-cta-wrap{padding:24px 20px 32px;text-align:center;background:var(--bg)}
-.hero-cta-wrap .btn{min-width:280px}
-@media(max-width:768px){.hero-cta-wrap{padding:20px 16px 28px}.hero-cta-wrap .btn{width:100%;min-width:auto}}
+.hero-cta-wrap .btn{width:100%;min-width:auto}}
 .hero-bg{position:absolute;inset:0;background:url('PC/hero-banner.png') center 20%/cover no-repeat;will-change:transform;transition:transform .1s ease-out}
-.hero-bg::before{content:'';position:absolute;inset:0;background:linear-gradient(180deg,rgba(8,11,18,.15) 0%,rgba(8,11,18,.3) 50%,rgba(8,11,18,.75) 68%,rgba(8,11,18,.92) 78%,var(--bg) 100%)}
-.hero-stripe{position:absolute;left:0;right:0;top:75%;height:54px;background:linear-gradient(90deg,var(--red) 0%,#b50016 70%,rgba(180,0,22,.88) 100%);display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:32px;z-index:5;padding:12px 24px;row-gap:8px;border-top:1.5px solid rgba(255,255,255,.15);border-bottom:1.5px solid rgba(255,255,255,.1)}
+.hero-bg::before{content:'';position:absolute;inset:0;background:linear-gradient(180deg,rgba(8,11,18,.15) 0%,rgba(8,11,18,.3) 50%,rgba(8,11,18,.6) 60%,rgba(8,11,18,.9) 75%,var(--bg) 100%)}
+.hero-stripe{position:absolute;left:0;right:0;top:78%;height:54px;background:linear-gradient(90deg,var(--red) 0%,#b50016 70%,rgba(180,0,22,.88) 100%);display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:32px;z-index:5;padding:12px 24px;row-gap:8px;border-top:1.5px solid rgba(255,255,255,.15);border-bottom:1.5px solid rgba(255,255,255,.1)}
 .stripe-item{display:flex;align-items:center;gap:8px;flex-shrink:0;font-family:'Oswald',sans-serif;font-size:14px;font-weight:500;letter-spacing:.5px;color:#fff;text-transform:uppercase;white-space:nowrap}
 .s-ico{font-size:18px;opacity:.9}
-.hero-content{position:relative;z-index:10;padding:0 80px 80px;margin-top:24px}
+.hero-content{position:relative;z-index:10;padding:0 80px 80px;margin-top:32px}
 .hero-lbl{display:inline-flex;align-items:center;gap:12px;font-size:11px;font-weight:700;letter-spacing:4px;text-transform:uppercase;color:var(--cyan);margin-bottom:20px}
 .hero-lbl::before{content:'';width:32px;height:1px;background:var(--cyan);box-shadow:0 0 8px var(--cyan)}
 .h1{font-family:'Oswald',sans-serif;font-size:clamp(50px,8vw,108px);font-weight:700;line-height:1;letter-spacing:-1px;margin-bottom:12px;margin-top:0}
@@ -325,6 +319,17 @@ footer{background:var(--bg);border-top:1px solid var(--border);padding:40px 80px
 .gallery-dot{width:10px;height:10px;border-radius:50%;border:2px solid rgba(255,255,255,.6);background:transparent;cursor:pointer;transition:all .25s}
 .gallery-dot:hover,.gallery-dot.active{background:var(--red);border-color:var(--red)}
 @media(max-width:768px){.gallery-slide{min-height:320px}.gallery-slide:nth-child(1){background-image:url('MOB/под%20ключ.jpg')}.gallery-slide:nth-child(2){background-image:url('MOB/аналитика-регина.jpeg')}}
+
+/* ЭКРАН 2: текст + иконки */
+.screen-icons-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:32px;max-width:800px}
+.si-item{display:flex;align-items:center;gap:12px;padding:14px 18px;background:var(--bg2);border:1px solid var(--border);border-radius:8px;font-size:14px;color:var(--text)}
+.si-ico{font-size:20px}
+@media(max-width:600px){.screen-icons-grid{grid-template-columns:1fr 1fr}}
+/* ЭКРАН 3: один баннер */
+.banner-single{background:var(--bg);overflow:hidden}
+.banner-single-img{position:relative;width:100%;line-height:0}
+.banner-single-img img{width:100%;height:auto;display:block;object-fit:cover}
+.banner-single-overlay{position:absolute;inset:0;background:linear-gradient(180deg,transparent 50%,rgba(0,0,0,.3) 100%);pointer-events:none}
 </style>
 </head>
 <body>
@@ -344,39 +349,60 @@ footer{background:var(--bg);border-top:1px solid var(--border);padding:40px 80px
 </nav>
 
 <!-- HERO -->
-<section class="hero hero-simple">
-  <div class="hero-banner-wrap">
-    <picture>
-      <source media="(max-width:768px)" srcset="MOB/под%20ключ.jpg">
-      <img src="PC/banner2.jpg" alt="Ведение под ключ — комплексная эффективность" class="hero-banner-img">
-    </picture>
+<section class="hero">
+  <div class="hero-bg" role="img" aria-label="Фоновое изображение"></div>
+  <div class="hero-stripe">
+    <div class="stripe-item"><span class="s-ico">📋</span>Договор с моим ИП</div>
+    <div class="stripe-item"><span class="s-ico">🔑</span>Ведение под ключ</div>
+    <div class="stripe-item"><span class="s-ico">🛡</span>Гарантия заявок за 7 дней</div>
+    <div class="stripe-item"><span class="s-ico">📊</span>Отчётность и прозрачность</div>
+    <div class="stripe-item"><span class="s-ico">🎨</span>Дизайн и инфографика</div>
+    <div class="stripe-item"><span class="s-ico">⚡</span>Автозагрузка</div>
   </div>
-  <div class="hero-cta-wrap">
-    <a href="https://t.me/Aces_Of_Ads_bot" target="_blank" class="btn btn-red btn-cta-pulse">Получить расчёт за 15 минут</a>
+  <div class="hero-content">
+    <div class="hero-lbl">Авитолог · Pro · Агентство</div>
+    <h1 class="h1">
+      <span class="h1-w">УВЕЛИЧУ ПОТОК</span>
+      <span class="h1-r">ЗАЯВОК</span>
+    </h1>
+    <div class="h1-sub">в 2–10 раз на Авито</div>
+    <div class="hero-stats">
+      <div class="hs"><div class="hs-val">1856+</div><div class="hs-lbl">проектов запущено</div></div>
+      <div class="hs"><div class="hs-val">+9 лет</div><div class="hs-lbl">в Авито</div></div>
+      <div class="hs"><div class="hs-val">3+ года</div><div class="hs-lbl">среднее время партнёров</div></div>
+      <div class="hs"><div class="hs-val">54+</div><div class="hs-lbl">ниши в кейсах</div></div>
+    </div>
+    <div class="hero-btns">
+      <a href="https://t.me/Aces_Of_Ads_bot" target="_blank" class="btn btn-red btn-cta-pulse" data-cta-primary>🤖 <span class="cta-default">Оставить заявку</span><span class="cta-ab">Получить расчёт за 15 минут</span></a>
+      <a href="#cases" class="btn btn-ghost">→ Смотреть кейсы</a>
+      <a href="portfolio.html" class="btn btn-ghost">🎨 Портфолио дизайнов</a>
+    </div>
   </div>
 </section>
 
-<!-- GALLERY - лозунги на затемнённых картинках -->
-<section class="gallery-sec">
-  <div class="gallery-track">
-    <div class="gallery-slide" style="background-image:url('PC/banner2.jpg')">
-      <div class="gallery-overlay"></div>
-      <div class="gallery-caption">
-        <h2 class="gallery-title">ВЕДЕНИЕ ПОД КЛЮЧ</h2>
-        <p class="gallery-slogan">КОМПЛЕКСНАЯ ЭФФЕКТИВНОСТЬ</p>
-      </div>
-    </div>
-    <div class="gallery-slide" style="background-image:url('PC/banner3.jpg')">
-      <div class="gallery-overlay"></div>
-      <div class="gallery-caption">
-        <h2 class="gallery-title">КОНСУЛЬТАЦИЯ + АУДИТ</h2>
-        <p class="gallery-slogan">РАССЧИТАЮ КП И АНАЛИЗ РЫНКА</p>
-      </div>
-    </div>
+<!-- ЭКРАН 2: краткий текст + иконки -->
+<section class="sec screen-icons" id="screen2">
+  <div class="sec-lbl">УСЛУГИ</div>
+  <h2 class="sec-title">Ведение под ключ — <span>комплексная эффективность</span></h2>
+  <p class="sec-desc">Полный цикл работы с Авито — от анализа рынка до сотен заявок в месяц. Договор, гарантия, прозрачность.</p>
+  <div class="screen-icons-grid">
+    <div class="si-item"><span class="si-ico">🔎</span><span>Анализ рынка и клиентов</span></div>
+    <div class="si-item"><span class="si-ico">✍️</span><span>Продающие тексты и SEO</span></div>
+    <div class="si-item"><span class="si-ico">🎨</span><span>Дизайн и инфографика</span></div>
+    <div class="si-item"><span class="si-ico">🤖</span><span>Бот и автоответчик</span></div>
+    <div class="si-item"><span class="si-ico">📸</span><span>Подбор топ-фото</span></div>
+    <div class="si-item"><span class="si-ico">⚡</span><span>Масштабирование</span></div>
   </div>
-  <div class="gallery-nav">
-    <button type="button" class="gallery-dot active" data-slide="0" aria-label="Слайд 1"></button>
-    <button type="button" class="gallery-dot" data-slide="1" aria-label="Слайд 2"></button>
+</section>
+
+<!-- ЭКРАН 3: баннер Ведение под ключ (1 шт) -->
+<section class="banner-single">
+  <div class="banner-single-img">
+    <picture>
+      <source media="(max-width:768px)" srcset="MOB/под%20ключ.jpg">
+      <img src="PC/banner2.jpg" alt="Ведение под ключ — комплексная эффективность">
+    </picture>
+    <div class="banner-single-overlay"></div>
   </div>
 </section>
 
@@ -649,23 +675,17 @@ document.querySelectorAll('.rev').forEach(el=>ro.observe(el));
 
 
 
+
+
 <script>
-(function(){
-  var track=document.querySelector('.gallery-track');
-  var dots=document.querySelectorAll('.gallery-dot');
-  if(!track||!dots.length)return;
-  dots.forEach(function(dot,i){
-    dot.addEventListener('click',function(){
-      track.scrollTo({left:track.offsetWidth*i,behavior:'smooth'});
-      dots.forEach(function(d){d.classList.remove('active')});
-      dot.classList.add('active');
-    });
-  });
-  track.addEventListener('scroll',function(){
-    var idx=Math.round(track.scrollLeft/track.offsetWidth);
-    dots.forEach(function(d,i){d.classList.toggle('active',i===idx)});
-  });
-})();
+(function(){var hero=document.querySelector('.hero');var bg=document.querySelector('.hero-bg');
+if(!hero||!bg)return;
+function onScroll(){var rect=hero.getBoundingClientRect();var h=window.innerHeight;
+if(rect.bottom<0)return;
+var rate=Math.max(0,Math.min(1,(h-rect.top)/(h*1.5)));var move=rate*20;
+bg.style.transform='translateY('+(-move)+'px) scale(1.02)';}
+window.addEventListener('scroll',function(){requestAnimationFrame(onScroll)},{passive:true});
+onScroll();})();
 </script>
 </body>
 </html>  .hero-stripe{top:72%;flex-wrap:wrap;justify-content:center;gap:12px;padding:10px 16px}
