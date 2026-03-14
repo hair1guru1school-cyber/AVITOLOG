@@ -1,9 +1,25 @@
 ﻿# Reduce Cursor load - prevents crashes
 backups/
 __pycache__/
+.git/
 
 docs/
 .github/
 agent-transcripts/
 *.log
 node_modules/
+
+# Site / build outputs (many files)
+ОБНОВИТЬ_САЙТ/
+
+# Heavy binary assets (Cursor indexes poorly)
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.webp
+*.ico
+*.woff
+*.woff2
+
+AOA-Land/

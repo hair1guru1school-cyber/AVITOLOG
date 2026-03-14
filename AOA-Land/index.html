@@ -4,14 +4,16 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Aces of Ads — Авитолог №1 | Увеличу поток заявок в 2-10 раз</title>
+<link rel="preload" href="hero-banner.png" as="image">
 <link href="https://fonts.googleapis.com/css2?family=Exo+2:wght@300;400;600;700;800;900&family=Oswald:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
 :root{
+  /* WCAG AA: red #e8001d on #080b12 ~4.5:1, white on red >7:1 */
   --bg:#080b12;--bg2:#0d1219;--surface:#111821;--s2:#161f2e;
   --red:#e8001d;--red2:#ff2040;--red-dim:rgba(232,0,29,.12);--red-glow:rgba(232,0,29,.4);
   --cyan:#00cfff;--cyan-dim:rgba(0,207,255,.1);
-  --gold:#ffc93c;--text:#f0f4ff;--muted:#5d7a9a;
-  --border:rgba(255,255,255,.07);--border-r:rgba(232,0,29,.25);--border-c:rgba(0,207,255,.18);
+  --gold:#ffc93c;--text:#f0f4ff;--muted:#7a9abb;
+  --border:rgba(255,255,255,.1);--border-r:rgba(232,0,29,.3);--border-c:rgba(0,207,255,.22);
 }
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 html{scroll-behavior:smooth}
@@ -53,24 +55,25 @@ nav::after{content:'';position:absolute;bottom:0;left:0;right:0;height:1px;backg
 .btn{display:inline-flex;align-items:center;gap:9px;padding:13px 28px;font-family:'Exo 2',sans-serif;font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:2px;text-decoration:none;cursor:pointer;border:none;transition:all .25s;clip-path:polygon(0 0,calc(100% - 10px) 0,100% 10px,100% 100%,10px 100%,0 calc(100% - 10px))}
 .btn-red{background:var(--red);color:#fff}
 .btn-red:hover{background:var(--red2);box-shadow:0 0 40px var(--red-glow),0 8px 30px rgba(0,0,0,.5);transform:translateY(-2px)}
+/* CTA pulse: subtle, 1x per 7s */
+@keyframes cta-pulse{0%,90%,100%{box-shadow:0 0 0 0 rgba(232,0,29,.35)}50%{box-shadow:0 0 0 8px rgba(232,0,29,0)}} .btn-red.btn-cta-pulse{animation:cta-pulse 7s ease-in-out 1}
 .btn-ghost{background:transparent;color:var(--text);border:1px solid var(--border-c);clip-path:none}
 .btn-ghost:hover{border-color:var(--cyan);color:var(--cyan);background:var(--cyan-dim)}
 .btn-cyan{background:var(--cyan);color:#000;clip-path:none}
 .btn-cyan:hover{box-shadow:0 0 40px rgba(0,207,255,.4);transform:translateY(-2px)}
 
 /* SECTION */
-.sec{padding:88px 80px;position:relative}
 .sec-lbl{display:flex;align-items:center;gap:14px;font-size:10px;font-weight:700;letter-spacing:4px;text-transform:uppercase;color:var(--red);margin-bottom:14px}
 .sec-lbl::before{content:'';width:36px;height:2px;background:var(--red);box-shadow:0 0 8px var(--red)}
 .sec-lbl::after{content:'';flex:1;height:1px;background:linear-gradient(90deg,var(--border-r),transparent);max-width:160px}
-.sec-title{font-family:'Oswald',sans-serif;font-size:clamp(28px,4.5vw,58px);font-weight:700;letter-spacing:-.5px;line-height:1.05;margin-bottom:10px}
+.sec-title{font-family:'Oswald',sans-serif;font-size:clamp(28px,4.5vw,58px);font-weight:700;letter-spacing:-.5px;line-height:1.12;margin-bottom:14px;margin-top:4px}
 .sec-title span{color:var(--red)}
-.sec-desc{font-size:16px;color:var(--muted);max-width:560px;line-height:1.75;margin-bottom:50px}
+.sec-desc{font-size:16px;color:var(--muted);max-width:560px;line-height:1.8;margin-bottom:50px}
 
 /* BANNERS ROW */
 .banners-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;background:var(--bg);padding:0 0 0 0}
 .av-banner{border:1px solid var(--border-r);overflow:hidden;position:relative}
-.av-banner img{width:100%;display:block;max-height:280px;object-fit:cover;object-position:center 20%}
+.av-banner img{width:100%;display:block;max-height:280px;object-fit:cover;object-position:center 20%;aspect-ratio:16/9}
 .av-banner-lbl{position:absolute;bottom:0;left:0;right:0;background:linear-gradient(0deg,rgba(8,11,18,.95) 0%,transparent 100%);padding:20px 18px 14px;font-family:'Oswald',sans-serif;font-size:13px;font-weight:600;color:var(--text);letter-spacing:.5px;text-transform:uppercase}
 
 /* SERVICES */
@@ -86,9 +89,9 @@ nav::after{content:'';position:absolute;bottom:0;left:0;right:0;height:1px;backg
 
 /* NICHES */
 .niches-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--border);border:1px solid var(--border)}
-.nc{background:var(--bg2);padding:26px 22px;display:flex;flex-direction:column;gap:10px;transition:all .25s;position:relative;overflow:hidden;cursor:default}
+.nc{background:var(--bg2);padding:26px 22px;display:flex;flex-direction:column;gap:10px;transition:all .28s;position:relative;overflow:hidden;cursor:default;border:1px solid transparent;box-shadow:0 2px 8px rgba(0,0,0,.2)}
 .nc::after{content:'';position:absolute;bottom:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--red),var(--gold));transform:scaleX(0);transform-origin:left;transition:transform .3s}
-.nc:hover{background:var(--s2)}
+.nc:hover{background:var(--s2);border-color:var(--border-r);box-shadow:0 8px 24px rgba(0,0,0,.35)}
 .nc:hover::after{transform:scaleX(1)}
 .nc-icon{font-size:30px}
 .nc-name{font-family:'Oswald',sans-serif;font-size:18px;font-weight:600;color:var(--text);letter-spacing:.5px}
@@ -120,9 +123,9 @@ nav::after{content:'';position:absolute;bottom:0;left:0;right:0;height:1px;backg
 .cat-nm{font-family:'Oswald',sans-serif;font-size:15px;font-weight:600;color:var(--text);letter-spacing:.5px}
 .cat-cnt{margin-left:auto;font-size:10px;color:var(--red);background:var(--red-dim);border:1px solid var(--border-r);padding:3px 10px;font-weight:700}
 .cards-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:1px;background:var(--border);border:1px solid var(--border)}
-.ccard{background:var(--bg2);padding:20px;text-decoration:none;color:inherit;display:flex;flex-direction:column;gap:10px;transition:all .25s;position:relative;overflow:hidden}
+.ccard{background:var(--bg2);padding:20px;text-decoration:none;color:inherit;display:flex;flex-direction:column;gap:10px;transition:all .28s;position:relative;overflow:hidden;border:1px solid var(--border);box-shadow:0 2px 8px rgba(0,0,0,.15)}
 .ccard::before{content:'';position:absolute;top:0;left:0;width:2px;height:0;background:var(--red);box-shadow:2px 0 12px var(--red);transition:height .3s}
-.ccard:hover{background:var(--s2)}
+.ccard:hover{background:var(--s2);border-color:var(--border-r);box-shadow:0 8px 24px rgba(0,0,0,.3)}
 .ccard:hover::before{height:100%}
 .cc-emoji{font-size:22px}
 .cc-title{font-size:13px;font-weight:600;color:var(--text);line-height:1.4}
@@ -147,9 +150,9 @@ nav::after{content:'';position:absolute;bottom:0;left:0;right:0;height:1px;backg
 
 /* NOW */
 .now-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:0}
-.nc2{background:var(--surface);border:1px solid var(--border);padding:30px;position:relative;overflow:hidden;transition:all .3s}
+.nc2{background:var(--surface);border:1px solid var(--border);padding:30px;position:relative;overflow:hidden;transition:all .3s;box-shadow:0 2px 12px rgba(0,0,0,.15)}
 .nc2::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--red),var(--gold));transform:scaleX(0);transform-origin:left;transition:transform .3s}
-.nc2:hover{border-color:var(--border-r);transform:translateY(-3px);box-shadow:0 14px 40px rgba(0,0,0,.4)}
+.nc2:hover{border-color:var(--border-r);transform:translateY(-3px);box-shadow:0 14px 40px rgba(0,0,0,.4),0 0 0 1px rgba(232,0,29,.1)}
 .nc2:hover::before{transform:scaleX(1)}
 .nc2-icon{font-size:34px;margin-bottom:14px;display:block}
 .nc2-title{font-family:'Oswald',sans-serif;font-size:16px;font-weight:600;color:var(--text);margin-bottom:8px;letter-spacing:.5px}
@@ -157,7 +160,7 @@ nav::after{content:'';position:absolute;bottom:0;left:0;right:0;height:1px;backg
 .nc2-val{font-family:'Oswald',sans-serif;font-size:30px;font-weight:700;color:var(--red);text-shadow:0 0 16px var(--red-glow)}
 .nc2-lbl{font-size:10px;color:var(--muted)}
 .split-block{grid-column:span 2;display:grid;grid-template-columns:1fr 1fr;background:var(--surface);border:1px solid var(--border);overflow:hidden}
-.split-img{position:relative;min-height:300px}
+.split-img{position:relative;min-height:300px;aspect-ratio:16/10}
 .split-img img{width:100%;height:100%;object-fit:cover;object-position:center top}
 .split-img::after{content:'';position:absolute;inset:0;background:linear-gradient(90deg,transparent 60%,var(--surface) 100%)}
 .split-txt{padding:40px 36px;display:flex;flex-direction:column;justify-content:center;gap:18px;position:relative}
@@ -180,17 +183,53 @@ footer{background:var(--bg);border-top:1px solid var(--border);padding:40px 80px
 .f-links a{color:var(--muted);text-decoration:none;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;transition:color .2s}
 .f-links a:hover{color:var(--red)}
 
-/* REVEAL */
-.rev{opacity:0;transform:translateY(26px);transition:opacity .55s ease,transform .55s ease}
+/* FIXED FLOATING CTA */
+.floating-cta{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);z-index:400;display:flex;justify-content:center;padding:0 16px;pointer-events:none}
+.floating-cta a{pointer-events:auto;box-shadow:0 8px 32px rgba(0,0,0,.5),0 0 0 1px rgba(255,255,255,.08)}
+.cta-ab{display:none}.ab .cta-ab{display:inline}.ab .cta-default{display:none}
+/* REVEAL - entrance animation */
+.rev{opacity:0;transform:translateY(28px);transition:opacity .6s cubic-bezier(.22,1,.36,1),transform .6s cubic-bezier(.22,1,.36,1)}
 .rev.on{opacity:1;transform:translateY(0)}
 
-/* RESPONSIVE */
+/* RESPONSIVE - breakpoints 360/390/414/768 */
+@media(max-width:768px){
+  .sec{padding:48px 20px}
+  .sec-title{font-size:clamp(24px,5vw,36px);line-height:1.15}
+  .sec-desc{font-size:15px;margin-bottom:36px}
+  .hero-stripe .stripe-item:nth-child(n+5){display:none}
+  .floating-cta{bottom:16px;padding:0 12px}
+  .floating-cta .btn{padding:12px 20px;font-size:11px}
+  /* safe area for floating CTA - no overlap with forms */
+  .cta-big{padding-bottom:100px}
+  .sec:last-of-type{padding-bottom:100px}
+}
+@media(max-width:414px){
+  .hero-content{padding:0 16px 48px}
+  .hero-stripe{top:48%;height:auto;min-height:44px;padding:8px 12px;gap:8px}
+  .hero-stripe .stripe-item:nth-child(n+4){display:none}
+  .h1{font-size:clamp(36px,10vw,50px)}
+  .h1-sub{font-size:clamp(18px,4vw,24px);margin-bottom:24px}
+  .hero-stats{gap:0;margin-bottom:28px}
+  .hs{padding:12px 16px;min-width:calc(50% - 2px)}
+  .hero-btns .btn{width:100%;justify-content:center}
+  .floating-cta{bottom:12px}
+}
+@media(max-width:390px){
+  .hero-stripe .stripe-item{font-size:11px;gap:6px}
+  .s-ico{font-size:14px}
+}
+@media(max-width:360px){
+  .sec{padding:40px 14px}
+  .hs-val{font-size:28px}
+}
+
 @media(max-width:900px){
   nav{padding:0 20px}
   .nav-links{display:none}
   .sec{padding:56px 24px}
   .hero-content{padding:0 24px 60px}
   .hero-stripe{gap:12px;flex-wrap:wrap;height:auto;padding:10px 18px}
+  .hero-stripe .stripe-item:nth-child(n+6){display:none}
   .banners-row{grid-template-columns:1fr}
   .srv-grid{grid-template-columns:1fr}
   .niches-grid{grid-template-columns:1fr 1fr}
@@ -225,7 +264,7 @@ footer{background:var(--bg);border-top:1px solid var(--border);padding:40px 80px
 
 <!-- HERO -->
 <section class="hero">
-  <div class="hero-bg"></div>
+  <div class="hero-bg" role="img" aria-label="Фоновое изображение"></div>
   <div class="hero-stripe">
     <div class="stripe-item"><span class="s-ico">📋</span>Договор с моим ИП</div>
     <div class="stripe-item"><span class="s-ico">🔑</span>Ведение под ключ</div>
@@ -248,7 +287,7 @@ footer{background:var(--bg);border-top:1px solid var(--border);padding:40px 80px
       <div class="hs"><div class="hs-val">17₽</div><div class="hs-lbl">Мин. лид</div></div>
     </div>
     <div class="hero-btns">
-      <a href="https://t.me/Aces_Of_Ads_bot" target="_blank" class="btn btn-red">🤖 Получить консультацию</a>
+      <a href="https://t.me/Aces_Of_Ads_bot" target="_blank" class="btn btn-red btn-cta-pulse" data-cta-primary>🤖 <span class="cta-default">Оставить заявку</span><span class="cta-ab">Получить расчёт за 15 минут</span></a>
       <a href="#cases" class="btn btn-ghost">→ Смотреть кейсы</a>
       <a href="portfolio.html" class="btn btn-ghost">🎨 Портфолио дизайнов</a>
     </div>
@@ -258,8 +297,8 @@ footer{background:var(--bg);border-top:1px solid var(--border);padding:40px 80px
 <!-- BANNERS ROW -->
 <section style="background:var(--bg);padding:8px 0 0">
   <div class="banners-row" style="padding:0 8px;gap:8px">
-    <div class="av-banner"><img src="banner2.png" alt="Ведение под ключ" loading="lazy"><div class="av-banner-lbl">Ведение под ключ — комплексная эффективность</div></div>
-    <div class="av-banner"><img src="banner3.png" alt="Консультация + аудит" loading="lazy"><div class="av-banner-lbl">Консультация + аудит — рассчитаю КП и анализ рынка</div></div>
+    <div class="av-banner"><img src="banner2.jpg" alt="Ведение под ключ" loading="lazy" width="600" height="338"><div class="av-banner-lbl">Ведение под ключ — комплексная эффективность</div></div>
+    <div class="av-banner"><img src="banner3.png" alt="Консультация + аудит" loading="lazy" width="600" height="338"><div class="av-banner-lbl">Консультация + аудит — рассчитаю КП и анализ рынка</div></div>
   </div>
 </section>
 
@@ -439,7 +478,7 @@ footer{background:var(--bg);border-top:1px solid var(--border);padding:40px 80px
     <div class="nc2 rev"><span class="nc2-icon">🎯</span><div class="nc2-title">Конкуренты ещё не проснулись</div><div class="nc2-desc">В большинстве ниш Авито недооценён. Пока другие думают — вы собираете заявки по 17₽.</div><div class="nc2-val">17₽</div><div class="nc2-lbl">рекорд стоимости заявки в нашей практике</div></div>
     <div class="nc2 rev"><span class="nc2-icon">⚙️</span><div class="nc2-title">Системный рост вместо хаоса</div><div class="nc2-desc">Правильная стратегия с первого шага — 45+ кейсов и вся боль уже пройдена за вас.</div><div class="nc2-val">45+</div><div class="nc2-lbl">задокументированных кейсов с цифрами</div></div>
     <div class="split-block rev">
-      <div class="split-img"><img src="station.png" alt="Авитолог" loading="lazy"></div>
+      <div class="split-img"><img src="station.png" alt="Авитолог" loading="lazy" width="800" height="500"></div>
       <div class="split-txt">
         <div class="sec-lbl" style="margin-bottom:0">Время решает</div>
         <div class="nc2-title" style="font-family:'Oswald',sans-serif;font-size:19px;letter-spacing:.5px">КАЖДЫЙ ЧАС — ЭТО ПОТЕРЯННЫЕ ЗАЯВКИ</div>
@@ -465,6 +504,11 @@ footer{background:var(--bg);border-top:1px solid var(--border);padding:40px 80px
   </div>
 </div>
 
+<!-- FIXED FLOATING CTA -->
+<div class="floating-cta" id="floatingCta">
+  <a href="https://t.me/Aces_Of_Ads_bot" target="_blank" class="btn btn-red btn-cta-pulse">🤖 <span class="cta-default">Оставить заявку</span><span class="cta-ab">Получить расчёт за 15 минут</span></a>
+</div>
+
 <footer>
   <div class="f-logo">ACES <span>OF ADS</span></div>
   <div class="f-links">
@@ -478,6 +522,8 @@ footer{background:var(--bg);border-top:1px solid var(--border);padding:40px 80px
 <script>
 let af='all';
 function setFilter(f,b){af=f;document.querySelectorAll('.fbtn').forEach(x=>x.classList.remove('active'));b.classList.add('active');filterCases()}
+// A/B CTA: 50% "Получить расчёт за 15 минут"
+(function(){var ab=Math.random()<0.5;var els=document.querySelectorAll('[data-cta-primary], .floating-cta');els.forEach(function(el){if(ab)el.classList.add('ab')})})();
 function filterCases(){
   const q=document.getElementById('searchInput').value.toLowerCase();
   let tot=0;
