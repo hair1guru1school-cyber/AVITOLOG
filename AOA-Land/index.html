@@ -43,23 +43,23 @@ nav::after{content:'';position:absolute;bottom:0;left:0;right:0;height:1px;backg
 .hero-cta-wrap .btn{width:100%;min-width:auto}}
 .hero-bg{position:absolute;inset:0;background:url('PC/hero-banner.png') center 20%/cover no-repeat;will-change:transform;transition:transform .1s ease-out}
 .hero-bg::before{content:'';position:absolute;inset:0;background:linear-gradient(180deg,rgba(8,11,18,.15) 0%,rgba(8,11,18,.3) 50%,rgba(8,11,18,.6) 60%,rgba(8,11,18,.9) 75%,var(--bg) 100%)}
-.hero-stripe{position:absolute;left:0;right:0;top:78%;height:54px;background:linear-gradient(90deg,var(--red) 0%,#b50016 70%,rgba(180,0,22,.88) 100%);display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:32px;z-index:5;padding:12px 24px;row-gap:8px;border-top:1.5px solid rgba(255,255,255,.15);border-bottom:1.5px solid rgba(255,255,255,.1)}
+.hero-stripe{margin:28px 0 32px;width:100%;background:linear-gradient(90deg,var(--red) 0%,#b50016 70%,rgba(180,0,22,.88) 100%);display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:32px;padding:12px 24px;row-gap:8px;border-top:1.5px solid rgba(255,255,255,.15);border-bottom:1.5px solid rgba(255,255,255,.1);border-radius:0}
 .stripe-item{display:flex;align-items:center;gap:8px;flex-shrink:0;font-family:'Oswald',sans-serif;font-size:14px;font-weight:500;letter-spacing:.5px;color:#fff;text-transform:uppercase;white-space:nowrap}
 .s-ico{font-size:18px;opacity:.9}
-.hero-content{position:relative;z-index:10;padding:0 80px 80px;margin-top:32px}
+.hero-content{position:relative;z-index:10;padding:0 80px 80px}
 .hero-lbl{display:inline-flex;align-items:center;gap:12px;font-size:11px;font-weight:700;letter-spacing:4px;text-transform:uppercase;color:var(--cyan);margin-bottom:20px}
 .hero-lbl::before{content:'';width:32px;height:1px;background:var(--cyan);box-shadow:0 0 8px var(--cyan)}
 .h1{font-family:'Oswald',sans-serif;font-size:clamp(50px,8vw,108px);font-weight:700;line-height:1;letter-spacing:-1px;margin-bottom:12px;margin-top:0}
 .h1-w{color:#fff;display:block}
 .h1-r{color:var(--red);display:block;margin-top:6px;text-shadow:0 0 60px rgba(232,0,29,.5),0 0 120px rgba(232,0,29,.2)}
 .h1-sub{font-family:'Oswald',sans-serif;font-size:clamp(22px,3.5vw,46px);font-weight:400;color:rgba(240,244,255,.7);letter-spacing:2px;margin-bottom:36px;margin-top:4px}
-.hero-stats{display:flex;gap:0;margin-bottom:40px;flex-wrap:wrap}
-.hs{padding:16px 30px;border:1px solid var(--border-r);border-right:none;background:rgba(232,0,29,.07);position:relative}
+.hero-stats{display:flex;gap:2px;margin-bottom:28px;flex-wrap:wrap}
+.hs{padding:16px 28px;border:1px solid var(--border-r);border-right:none;background:rgba(232,0,29,.07);position:relative;margin:0 2px}
 .hs:first-child{border-left:3px solid var(--red)}
 .hs:last-child{border-right:1px solid var(--border-r)}
 .hs-val{font-family:'Oswald',sans-serif;font-size:34px;font-weight:700;color:var(--red);text-shadow:0 0 20px var(--red-glow);line-height:1}
 .hs-lbl{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-top:4px}
-.hero-btns{display:flex;gap:12px;flex-wrap:wrap}
+.hero-btns{display:flex;gap:16px;flex-wrap:wrap}
 .btn{display:inline-flex;align-items:center;gap:9px;padding:13px 28px;font-family:'Exo 2',sans-serif;font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:2px;text-decoration:none;cursor:pointer;border:none;transition:all .25s;clip-path:polygon(0 0,calc(100% - 10px) 0,100% 10px,100% 100%,10px 100%,0 calc(100% - 10px))}
 .btn-red{background:var(--red);color:#fff}
 .btn-red:hover{background:var(--red2);box-shadow:0 0 40px var(--red-glow),0 8px 30px rgba(0,0,0,.5);transform:translateY(-2px)}
@@ -215,8 +215,8 @@ footer{background:var(--bg);border-top:1px solid var(--border);padding:40px 80px
   .sec:last-of-type{padding-bottom:100px}
 }
 @media(max-width:414px){
-  .hero-content{padding:0 16px 48px}
-  .hero-stripe{top:65%;height:auto;min-height:44px;padding:8px 12px;gap:8px}
+  .hero-content{padding:0 16px 48px;margin-top:24px}
+  .hero-stripe{margin:20px 0 24px;padding:8px 12px;gap:8px}
   .hero-stripe .stripe-item:nth-child(n+4){display:none}
   .h1{font-size:clamp(36px,10vw,50px)}
   .h1-sub{font-size:clamp(18px,4vw,24px);margin-bottom:24px}
@@ -239,7 +239,7 @@ footer{background:var(--bg);border-top:1px solid var(--border);padding:40px 80px
   .nav-links{display:none}
   .sec{padding:56px 24px}
   .hero-content{padding:0 24px 60px}
-  .hero-stripe{gap:12px;flex-wrap:wrap;height:auto;padding:10px 18px}
+  .hero-stripe{margin:24px 0 28px;gap:12px;flex-wrap:wrap;padding:10px 18px}
   .hero-stripe .stripe-item:nth-child(n+6){display:none}
   .banners-row{grid-template-columns:1fr}
   .srv-grid{grid-template-columns:1fr}
@@ -284,7 +284,7 @@ footer{background:var(--bg);border-top:1px solid var(--border);padding:40px 80px
 
 @media(max-width:480px){
   .hero-content{padding:0 16px 44px}
-  .hero-stripe{top:70%;padding:8px 12px;gap:8px}
+  .hero-stripe{margin:20px 0 24px;padding:8px 12px;gap:8px}
   .h1{font-size:clamp(32px,10vw,44px)}
   .h1-sub{font-size:clamp(16px,4vw,20px);margin-bottom:20px}
   .hero-stats{margin-bottom:24px}
@@ -296,7 +296,7 @@ footer{background:var(--bg);border-top:1px solid var(--border);padding:40px 80px
 /* Hero: tablet/mobile adaptation */
 @media(max-width:768px){
   .hero-content{padding:0 24px 60px}
-  .hero-stripe{top:73%;gap:20px;padding:10px 20px}
+  .hero-stripe{margin:24px 0 28px;gap:20px;padding:10px 20px}
   .h1{font-size:clamp(38px,9vw,56px)}
   .h1-sub{font-size:clamp(18px,4vw,26px)}
   .hero-stats{margin-bottom:32px}
@@ -351,14 +351,6 @@ footer{background:var(--bg);border-top:1px solid var(--border);padding:40px 80px
 <!-- HERO -->
 <section class="hero">
   <div class="hero-bg" role="img" aria-label="Фоновое изображение"></div>
-  <div class="hero-stripe">
-    <div class="stripe-item"><span class="s-ico">📋</span>Договор с моим ИП</div>
-    <div class="stripe-item"><span class="s-ico">🔑</span>Ведение под ключ</div>
-    <div class="stripe-item"><span class="s-ico">🛡</span>Гарантия заявок за 7 дней</div>
-    <div class="stripe-item"><span class="s-ico">📊</span>Отчётность и прозрачность</div>
-    <div class="stripe-item"><span class="s-ico">🎨</span>Дизайн и инфографика</div>
-    <div class="stripe-item"><span class="s-ico">⚡</span>Автозагрузка</div>
-  </div>
   <div class="hero-content">
     <div class="hero-lbl">Авитолог · Pro · Агентство</div>
     <h1 class="h1">
@@ -366,7 +358,15 @@ footer{background:var(--bg);border-top:1px solid var(--border);padding:40px 80px
       <span class="h1-r">ЗАЯВОК</span>
     </h1>
     <div class="h1-sub">в 2–10 раз на Авито</div>
-    <div class="hero-stats">
+    <div class="hero-stripe">
+      <div class="stripe-item"><span class="s-ico">&#128196;</span>Договор с моим ИП</div>
+      <div class="stripe-item"><span class="s-ico">&#128273;</span>Ведение под ключ</div>
+      <div class="stripe-item"><span class="s-ico">&#128737;</span>Гарантия заявок за 7 дней</div>
+      <div class="stripe-item"><span class="s-ico">&#128202;</span>Отчётность и прозрачность</div>
+      <div class="stripe-item"><span class="s-ico">&#127912;</span>Дизайн и инфографика</div>
+      <div class="stripe-item"><span class="s-ico">&#11015;</span>Автозагрузка</div>
+    </div>
+<div class="hero-stats">
       <div class="hs"><div class="hs-val">1856+</div><div class="hs-lbl">проектов запущено</div></div>
       <div class="hs"><div class="hs-val">+9 лет</div><div class="hs-lbl">в Авито</div></div>
       <div class="hs"><div class="hs-val">3+ года</div><div class="hs-lbl">среднее время партнёров</div></div>
@@ -688,7 +688,7 @@ window.addEventListener('scroll',function(){requestAnimationFrame(onScroll)},{pa
 onScroll();})();
 </script>
 </body>
-</html>  .hero-stripe{top:72%;flex-wrap:wrap;justify-content:center;gap:12px;padding:10px 16px}
+</html>  .hero-stripe{margin:20px 0 24px;flex-wrap:wrap;justify-content:center;gap:12px;padding:10px 16px}
   .hero-stats{flex-wrap:wrap;justify-content:center;gap:0}
   .hs{min-width:calc(50% - 2px);flex:1 1 45%}
   .hero-btns{flex-direction:column;gap:10px}
