@@ -1432,6 +1432,8 @@ var _projectsSheetPullPauseUntil = 0;
 var _projectsDayShiftTimer = null;
 var _projectsDayStamp = '';
 var _projectsTypeSortPriority = null; // null | 'old' | 'new' | 'returning'
+var _projectsFilterLaunch = false;
+var _projectsFilterAutoload = false;
 var _projectsZoneTab = 'active'; // active | second_chance | archive
 var TASKS_LAYER_ON_KEY = 'avitolog_tasks_layer_on';
 var TASK_PANEL_FONT_KEY = 'avitolog_task_panel_font';
@@ -1782,6 +1784,22 @@ function setProjectsTypeSortPriority(kind) {
   if (_projectsTypeSortPriority === k) _projectsTypeSortPriority = null;
   else _projectsTypeSortPriority = k;
   rerenderProjectsPreserveScroll();
+}
+function toggleProjectsFilterLaunch() { _projectsFilterLaunch = !_projectsFilterLaunch; rerenderProjectsPreserveScroll(); }
+function toggleProjectsFilterAutoload() { _projectsFilterAutoload = !_projectsFilterAutoload; rerenderProjectsPreserveScroll(); }
+function projectHasLaunch(p) {
+  var ev = (p.events || []).some(function(e){ return e && (e.type === 'launch_range' || e.type === 'not_launched_project_marker'); });
+  if (ev) return true;
+  var cl = p.childLineEvents || {};
+  for (var k in cl) { if ((cl[k] || []).some(function(e){ return e && (e.type === 'launch_range' || e.type === 'not_launched_project_marker'); })) return true; }
+  return false;
+}
+function projectHasAutoload(p) {
+  var ev = (p.events || []).some(function(e){ return e && e.type === 'active_range'; });
+  if (ev) return true;
+  var cl = p.childLineEvents || {};
+  for (var k in cl) { if ((cl[k] || []).some(function(e){ return e && e.type === 'active_range'; })) return true; }
+  return false;
 }
 function setProjectsZoneTab(zone) {
   var z = (zone === 'active' || zone === 'second_chance' || zone === 'archive') ? zone : 'active';
@@ -3773,9 +3791,13 @@ function renderProjectsScreen(opts) {
     var rest = visibleProjects.filter(function(p){ return normalizeProjectClientType(p.clientType) !== _projectsTypeSortPriority; });
     visibleProjects = first.concat(rest);
   }
+  if (_projectsFilterLaunch) visibleProjects = visibleProjects.filter(projectHasLaunch);
+  if (_projectsFilterAutoload) visibleProjects = visibleProjects.filter(projectHasAutoload);
   allProjects = visibleProjects.slice();
   var activeProjects = (data.projects || []).filter(function(p){ return (p.zone || 'active') === 'active'; });
   var activeCount = activeProjects.length;
+  var launchCount = activeProjects.filter(projectHasLaunch).length;
+  var autoloadCount = activeProjects.filter(projectHasAutoload).length;
   var diamondCount = activeProjects.filter(function(p){ return normalizeProjectClientType(p.clientType) === 'old'; }).length;
   var newCount = activeProjects.filter(function(p){ return normalizeProjectClientType(p.clientType) === 'new'; }).length;
   var returningCount = activeProjects.filter(function(p){ return normalizeProjectClientType(p.clientType) === 'returning'; }).length;
@@ -3796,6 +3818,8 @@ function renderProjectsScreen(opts) {
   var addBtnHtml = '<span class="projects-head-title"><button type="button" class="projects-add-btn" onclick="event.stopPropagation();createNewProjectInActive()">+ ПРОЕКТ</button></span>';
   var chipsHtml = '<span class="projects-head-stats">' +
           '<span class="projects-head-chip active" title="Сбросить группировку типов" onclick="event.stopPropagation();setProjectsTypeSortPriority(null)">🃏 <b>' + activeCount + '</b></span>' +
+          '<span class="projects-head-chip launch' + (_projectsFilterLaunch ? ' is-on' : '') + '" title="Только проекты с запуском" onclick="event.stopPropagation();toggleProjectsFilterLaunch()">🚀 <b>' + launchCount + '</b></span>' +
+          '<span class="projects-head-chip autoload' + (_projectsFilterAutoload ? ' is-on' : '') + '" title="Только проекты с автозагрузкой" onclick="event.stopPropagation();toggleProjectsFilterAutoload()">🅰 <b>' + autoloadCount + '</b></span>' +
           '<span class="projects-head-chip diamond' + (_projectsTypeSortPriority === 'old' ? ' is-on' : '') + '" onclick="event.stopPropagation();setProjectsTypeSortPriority(\'old\')">💎 <b>' + diamondCount + '</b></span>' +
           '<span class="projects-head-chip ret' + (_projectsTypeSortPriority === 'returning' ? ' is-on' : '') + '" onclick="event.stopPropagation();setProjectsTypeSortPriority(\'returning\')">2️⃣ <b>' + returningCount + '</b></span>' +
           '<span class="projects-head-chip new' + (_projectsTypeSortPriority === 'new' ? ' is-on' : '') + '" onclick="event.stopPropagation();setProjectsTypeSortPriority(\'new\')">NEW <b>' + newCount + '</b></span>' +
@@ -3861,9 +3885,17 @@ var toolsRow = '<div class="projects-zone-tabs projects-zone-tabs-bottom">' + ad
         var dayCls = 'projects-cal-day' + (isTodayCell ? ' today' : '') + (isCalSelected ? ' cal-day-selected' : '');
         if (cardsActiveShown) cellHtml = '<div class="cal-cards"><span class="cal-cards-del">×</span><span class="cal-cards-num">' + escAttr(p.cardsActive || '') + '</span></div>';
         else if (mustLaunchShown) cellHtml = '<div class="cal-deadline"><span class="cal-deadline-del">×</span><span class="cal-deadline-icon">!!</span></div>';
-        else if (rocket) { cellHtml = '<div class="cal-launch-tip"></div>'; dayCls += ' day-launch-end'; }
-        else if (launchEvt) { cellHtml = '<div class="cal-launch-bar"></div>'; dayCls += ' day-launch'; }
-        else if (evt) { cellHtml = '<div class="cal-bar"></div>'; dayCls += ' day-active'; }
+        else if (rocket) { cellHtml = '<div class="cal-launch-tip cal-launch-rocket">🚀</div>'; dayCls += ' day-launch-end'; }
+        else if (launchEvt) {
+          var isLaunchLast = (dStr === launchEvt.endDate);
+          cellHtml = isLaunchLast ? '<div class="cal-launch-tip cal-launch-rocket">🚀</div>' : '<div class="cal-launch-bar"></div>';
+          if (isLaunchLast) dayCls += ' day-launch-end'; else dayCls += ' day-launch';
+        }
+        else if (evt) {
+          var isAutoloadLast = (dStr === evt.endDate);
+          if (isAutoloadLast) { cellHtml = '<div class="cal-autoload-a">A</div>'; dayCls += ' day-active day-active-end'; }
+          else { cellHtml = '<div class="cal-bar"></div>'; dayCls += ' day-active'; }
+        }
         if (dayTasks.length > 0) {
           var taskBadges = dayTasks.map(function(t){
             var em = (t.emoji || '&#128221;');
