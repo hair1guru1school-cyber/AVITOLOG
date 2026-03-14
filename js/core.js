@@ -550,7 +550,7 @@ function openAssetsTab() {
   if (typeof window.__renderAssetsPage === 'function') {
     window.__renderAssetsPage();
   } else {
-    if (mc) mc.innerHTML = '<div class="empty-st"><div style="font-size:38px;opacity:.2">&#128176;</div><p>Активы</p><p style="font-size:12px;opacity:.6">Загрузка...</p></div>';
+    if (mc) mc.innerHTML = '<div class="empty-st"><div style="font-size:38px;opacity:.2">&#128176;</div><p>КАССА</p><p style="font-size:12px;opacity:.6">Загрузка...</p></div>';
   }
   updateTopRowButtons();
 }

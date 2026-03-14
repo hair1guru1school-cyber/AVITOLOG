@@ -314,7 +314,7 @@
         var name = row.client || 'Без названия';
         var paid = String(row.paid || '').replace(/\s/g, '');
         var ct = (row.raw && row.raw.isNew === false) ? 'old' : 'new';
-        var item = { emoji: '💰', name: name, paid: paid, expected: row.expected || '', paymentDate: row.date || (row.raw && row.raw.date) || '', clientType: ct, folderLink: row.folderLink || '' };
+        var item = { emoji: '💰', name: name, paid: paid, expected: row.expected || '', paymentDate: row.date || (row.raw && row.raw.date) || '', startDate: '', clientType: ct, folderLink: row.folderLink || '' };
         if (owner === 'me') {
           var arr = getAssetsMy();
           arr.push(item);
@@ -371,18 +371,21 @@
 
   var ASSETS_MY_KEY = 'avitolog_assets_my_v2';
   var ASSETS_SASHA_KEY = 'avitolog_assets_sasha_v2';
+  var ASSETS_FILTER_PAID_KEY = 'avitolog_assets_filter_paid';
+
+  var ASSETS_EMOJIS = ['📦','🪨','🏠','🏗️','🧱','🛋️','🚚','📊','💰','🚀','👷','🛠️','🚜','📚','👩🏻‍🏫','💻','📱','⚡️','🛌','🪟','🎄','🪵','🏎','🪨','🛌','🏠','🚜','👩🏻‍🏫','⚡️','🧱','🪑','🛏️','🏢','🏭','🔧','📐','⭐️','🔥','💎','🎯','✅','📋','📝','🖊️','📷','📡','🔌'];
   var ASSETS_LEGACY_KEY = 'avitolog_assets_projects_v1';
   var ASSETS_USD_RATE = 95;
 
   var DEFAULT_MY = [
-    { emoji: '🪨', name: 'Камни и Пеллеты', paid: '30000', expected: '', paymentDate: '', clientType: 'new' },
-    { emoji: '🛌', name: 'Кирилл Кровати', paid: '30000', expected: '', paymentDate: '', clientType: 'new' },
-    { emoji: '🏠', name: 'Дмитрий Бани Каркасные', paid: '34000', expected: '', paymentDate: '', clientType: 'new' },
-    { emoji: '🚜', name: 'СельхозТехника', paid: '35000', expected: '', paymentDate: '', clientType: 'new' },
-    { emoji: '👩🏻‍🏫', name: 'Ксения Сергеевна', paid: '25000', expected: '', paymentDate: '', clientType: 'new' },
-    { emoji: '⚡️', name: 'Электрик Крым Александр', paid: '56000', expected: '', paymentDate: '', clientType: 'new' },
-    { emoji: '🧱', name: 'Иван Сияр Сендвич панели', paid: '44000', expected: '', paymentDate: '', clientType: 'new' },
-    { emoji: '🧱', name: 'Дома Андрей', paid: '50000', expected: '', paymentDate: '', clientType: 'new' }
+    { emoji: '🪨', name: 'Камни и Пеллеты', paid: '30000', expected: '', paymentDate: '', startDate: '', clientType: 'new' },
+    { emoji: '🛌', name: 'Кирилл Кровати', paid: '30000', expected: '', paymentDate: '', startDate: '', clientType: 'new' },
+    { emoji: '🏠', name: 'Дмитрий Бани Каркасные', paid: '34000', expected: '', paymentDate: '', startDate: '', clientType: 'new' },
+    { emoji: '🚜', name: 'СельхозТехника', paid: '35000', expected: '', paymentDate: '', startDate: '', clientType: 'new' },
+    { emoji: '👩🏻‍🏫', name: 'Ксения Сергеевна', paid: '25000', expected: '', paymentDate: '', startDate: '', clientType: 'new' },
+    { emoji: '⚡️', name: 'Электрик Крым Александр', paid: '56000', expected: '', paymentDate: '', startDate: '', clientType: 'new' },
+    { emoji: '🧱', name: 'Иван Сияр Сендвич панели', paid: '44000', expected: '', paymentDate: '', startDate: '', clientType: 'new' },
+    { emoji: '🧱', name: 'Дома Андрей', paid: '50000', expected: '', paymentDate: '', startDate: '', clientType: 'new' }
   ];
 
   function resolveAssetsClientType(p) {
@@ -442,7 +445,7 @@
       var arr = [];
       Object.keys(legacy).forEach(function(k) {
         var d = legacy[k];
-        if (d && d.owner === 'me') arr.push({ emoji: '📦', name: k, paid: d.paid || '', expected: d.expected || '', paymentDate: d.paymentDate || '', clientType: d.clientType || 'new' });
+        if (d && d.owner === 'me') arr.push({ emoji: '📦', name: k, paid: d.paid || '', expected: d.expected || '', paymentDate: d.paymentDate || '', startDate: d.startDate || '', clientType: d.clientType || 'new' });
       });
       if (arr.length) { saveAssetsMy(arr); return arr; }
       return DEFAULT_MY.slice();
@@ -461,7 +464,7 @@
       var arr = [];
       Object.keys(legacy).forEach(function(k) {
         var d = legacy[k];
-        if (d && d.owner === 'sasha') arr.push({ emoji: '📦', name: k, paid: d.paid || '', expected: d.expected || '', paymentDate: d.paymentDate || '', clientType: d.clientType || 'new' });
+        if (d && d.owner === 'sasha') arr.push({ emoji: '📦', name: k, paid: d.paid || '', expected: d.expected || '', paymentDate: d.paymentDate || '', startDate: d.startDate || '', clientType: d.clientType || 'new' });
       });
       if (arr.length) { saveAssetsSasha(arr); return arr; }
       return [];
@@ -478,7 +481,7 @@
     var emoji = (project && project.emoji) || '📦';
     var paid = (project && (project.mainPrice || project.saleAmount || project.kp_count || '')) ? String(project.mainPrice || project.saleAmount || project.kp_count).replace(/\s/g, '') : '';
     var folderLink = project && (project.folderLink || (project.folderId ? 'https://drive.google.com/drive/folders/' + project.folderId : ''));
-    var item = { emoji: emoji, name: name, paid: paid, expected: '', paymentDate: '', clientType: 'new', folderLink: folderLink || '', crmClientId: (project && project.crmClientId) || (project && project.folderId) || '' };
+    var item = { emoji: emoji, name: name, paid: paid, expected: '', paymentDate: '', startDate: '', clientType: 'new', folderLink: folderLink || '', crmClientId: (project && project.crmClientId) || (project && project.folderId) || '' };
     if (owner === 'me') {
       var arr = getAssetsMy();
       arr.push(item);
@@ -527,13 +530,15 @@
       var valHtml = r.val ? (r.main ? '<span class="assets-summary-val">' + esc(r.val) + ' ₽<span class="assets-summary-usd">$' + fmt(r.valUsd) + '</span></span>' : '<span class="assets-summary-val">' + esc(r.val) + ' ₽</span>') : '<span class="assets-summary-val">—</span>';
       return '<div class="' + rowCls + '"><span class="assets-summary-label">' + r.icon + ' ' + esc(r.label) + '</span>' + valHtml + '</div>';
     }).join('');
+    var filterPaid = !!localStorage.getItem(ASSETS_FILTER_PAID_KEY);
     var paidFirst = myList.filter(function(p) { return !!(p.paid && String(p.paid).replace(/\s/g, '')); });
     var notPaid = myList.filter(function(p) { return !(p.paid && String(p.paid).replace(/\s/g, '')); });
-    var mySorted = paidFirst.concat(notPaid);
+    var mySorted = filterPaid ? paidFirst : (paidFirst.concat(notPaid));
     function renderColRow(p, idx, owner) {
       var paidFmt = (p.paid || '') ? fmt(String(p.paid).replace(/\s/g, '')) : '';
       var expectedFmt = (p.expected || '') ? fmt(String(p.expected).replace(/\s/g, '')) : '';
       var payDate = (p.paymentDate || '').trim();
+      var startDate = (p.startDate || '').trim();
       var barFill = getPaymentBarFill(payDate);
       var isPaid = !!(p.paid && String(p.paid).replace(/\s/g, ''));
       var rowCls = 'assets-col-row' + (owner === 'me' && isPaid ? ' assets-row-paid' : '');
@@ -541,8 +546,9 @@
       var resolvedType = resolveAssetsClientType(p);
       var statusBadge = getStatusBadge(resolvedType);
       var statusCls = resolvedType === 'old' ? 'assets-status-diamond' : (resolvedType === 'returning' ? 'assets-status-2' : 'assets-status-new');
+      var hasFolder = !!(p.folderLink || p.crmClientId);
       return '<div class="' + rowCls + '" data-owner="' + owner + '" data-idx="' + idx + '">' +
-        '<span class="assets-col-emoji">' + (p.emoji || '📦') + '</span>' +
+        '<button type="button" class="assets-col-emoji" onclick="window.__assetsShowEmojiPicker(this,\'' + owner + '\',' + idx + ')" title="Выбрать эмодзи">' + (p.emoji || '📦') + '</button>' +
         '<span class="assets-col-name">' +
           '<span class="assets-col-name-row">' +
             '<input type="text" value="' + esc(p.name || '') + '" placeholder="Проект" data-field="name" onblur="window.__assetsSaveColRow(this)">' +
@@ -550,9 +556,11 @@
           '</span>' +
           '<span class="assets-progress-bar" title="Чем больше ждать до платежа — тем полнее"><span class="assets-progress-fill" style="width:' + barPct + '%"></span></span>' +
         '</span>' +
-        '<span class="assets-col-date"><input type="date" value="' + esc(payDate) + '" data-field="paymentDate" onchange="window.__assetsSaveColRow(this)"></span>' +
+        '<span class="assets-col-date"><input type="date" value="' + esc(startDate) + '" data-field="startDate" onchange="window.__assetsSaveColRow(this)" title="Дата старта"></span>' +
+        '<span class="assets-col-date"><input type="date" value="' + esc(payDate) + '" data-field="paymentDate" onchange="window.__assetsSaveColRow(this)" title="Дата платежа"></span>' +
         '<span class="assets-col-paid"><input type="text" value="' + esc(paidFmt) + '" placeholder="0" data-field="paid" onblur="window.__assetsSaveColRow(this)"></span>' +
         '<span class="assets-col-expected"><input type="text" value="' + esc(expectedFmt) + '" placeholder="0" data-field="expected" onblur="window.__assetsSaveColRow(this)"></span>' +
+        '<button type="button" class="assets-col-folder' + (hasFolder ? ' on' : '') + '" onclick="window.__assetsStartFolderBind(\'' + owner + '\',' + idx + ')" title="Привязать папку из меню слева">' + (hasFolder ? '📁' : '💿') + '</button>' +
         '<button type="button" class="assets-col-remove" onclick="window.__assetsRemoveProject(\'' + owner + '\',' + idx + ')" title="Удалить">✕</button>' +
         '</div>';
     }
@@ -561,13 +569,13 @@
       return renderColRow(p, idx, 'me');
     }).join('');
     var sashaRows = sashaList.map(function(p, idx) { return renderColRow(p, idx, 'sasha'); }).join('');
-    var colHeader = '<div class="assets-col-header"><span class="ac-name">Проект</span><span class="ac-date">Дата платежа</span><span class="ac-paid">Оплатил</span><span class="ac-expected">Ожидать</span><span class="ac-actions"></span></div>';
+    var colHeader = '<div class="assets-col-header"><span class="ac-name">Проект</span><span class="ac-date">Старт</span><span class="ac-date">Платёж</span><span class="ac-paid">Оплатил</span><span class="ac-expected">Ожидать</span><span class="ac-actions"></span></div>';
     mc.innerHTML = '<div class="assets-page-wrap">' +
       '<div class="assets-summary-table">' + summaryHtml + '</div>' +
       '<div class="assets-two-cols">' +
         '<div class="assets-col assets-col-me" id="assetsColMe" data-owner="me">' +
           '<div class="assets-col-title">💰 Мои клиенты <span class="assets-col-total">' + fmt(myTotal) + ' ₽</span></div>' +
-          '<div class="assets-col-filter" title="Те кто оплатил — показываются первыми и подсвечены">💰 оплатили — сверху</div>' +
+          '<button type="button" class="assets-filter-btn' + (filterPaid ? ' on' : '') + '" onclick="window.__assetsToggleFilterPaid && window.__assetsToggleFilterPaid()">💰 оплатили</button>' +
           '<div class="assets-col-list">' + colHeader + myRows + '</div>' +
           '<button type="button" class="assets-col-add" onclick="window.__assetsAddProject(\'me\')">+ Добавить</button>' +
         '</div>' +
@@ -599,7 +607,7 @@
     var owner = row && row.getAttribute('data-owner');
     var idx = row ? parseInt(row.getAttribute('data-idx'), 10) : -1;
     var field = el.getAttribute('data-field');
-    var val = (field === 'name' || field === 'paymentDate') ? String(el.value || '').trim() : String(el.value || '').replace(/\s/g, '');
+    var val = (field === 'name' || field === 'paymentDate' || field === 'startDate') ? String(el.value || '').trim() : String(el.value || '').replace(/\s/g, '');
     if (!owner || idx < 0 || !field) return;
     if (owner === 'me') {
       var arr = getAssetsMy();
@@ -647,6 +655,99 @@
     addAssetsProject(owner, { name: 'Новый проект', emoji: '📦' });
   }
 
+  function toggleFilterPaid() {
+    if (localStorage.getItem(ASSETS_FILTER_PAID_KEY)) localStorage.removeItem(ASSETS_FILTER_PAID_KEY);
+    else localStorage.setItem(ASSETS_FILTER_PAID_KEY, '1');
+    if (typeof window.__renderAssetsPage === 'function') window.__renderAssetsPage();
+  }
+
+  function setAssetsEmoji(owner, idx, em) {
+    if (!em) return;
+    if (owner === 'me') {
+      var arr = getAssetsMy();
+      if (arr[idx]) { arr[idx].emoji = em; saveAssetsMy(arr); }
+    } else {
+      var arr2 = getAssetsSasha();
+      if (arr2[idx]) { arr2[idx].emoji = em; saveAssetsSasha(arr2); }
+    }
+    if (typeof window.__renderAssetsPage === 'function') window.__renderAssetsPage();
+  }
+
+  function showAssetsEmojiPicker(btn, owner, idx) {
+    var existing = document.getElementById('assetsEmojiPicker');
+    if (existing) existing.remove();
+    var picker = document.createElement('div');
+    picker.id = 'assetsEmojiPicker';
+    picker.className = 'assets-emoji-picker';
+    var inp = document.createElement('input');
+    inp.type = 'text';
+    inp.placeholder = 'Вставь эмодзи';
+    inp.className = 'assets-emoji-custom';
+    inp.onkeydown = function(e) {
+      if (e.key === 'Enter') {
+        var v = inp.value.trim();
+        if (v) { setAssetsEmoji(owner, idx, v); picker.remove(); }
+      }
+    };
+    picker.appendChild(inp);
+    ASSETS_EMOJIS.forEach(function(em) {
+      var s = document.createElement('span');
+      s.textContent = em;
+      s.onclick = function() {
+        setAssetsEmoji(owner, idx, em);
+        picker.remove();
+      };
+      picker.appendChild(s);
+    });
+    document.body.appendChild(picker);
+    var r = btn.getBoundingClientRect();
+    picker.style.left = r.left + 'px';
+    picker.style.top = (r.bottom + 4) + 'px';
+    setTimeout(function() {
+      document.addEventListener('click', function close(e) {
+        if (!picker.contains(e.target) && e.target !== btn) { picker.remove(); document.removeEventListener('click', close); }
+      });
+    }, 0);
+  }
+
+  function startFolderBind(owner, idx) {
+    window._assetsFolderBindTarget = { owner: owner, idx: idx };
+    var st = document.getElementById('crmSt');
+    if (st) {
+      st.style.display = 'block';
+      st.className = 'crm-st';
+      st.textContent = '📁 Выбери клиента/папку в меню слева';
+    }
+    var menu = document.getElementById('clientMenu');
+    if (menu && !menu.classList.contains('show')) {
+      if (typeof toggleClientMenu === 'function') toggleClientMenu();
+    }
+  }
+
+  function applyFolderBind(folderId, folderLink, client) {
+    var t = window._assetsFolderBindTarget;
+    if (!t) return;
+    window._assetsFolderBindTarget = null;
+    if (t.owner === 'me') {
+      var arr = getAssetsMy();
+      if (arr[t.idx]) {
+        arr[t.idx].folderLink = folderLink || '';
+        arr[t.idx].crmClientId = (client && client.client_id) || (client && client.folderId) || '';
+        saveAssetsMy(arr);
+      }
+    } else {
+      var arr2 = getAssetsSasha();
+      if (arr2[t.idx]) {
+        arr2[t.idx].folderLink = folderLink || '';
+        arr2[t.idx].crmClientId = (client && client.client_id) || (client && client.folderId) || '';
+        saveAssetsSasha(arr2);
+      }
+    }
+    var st = document.getElementById('crmSt');
+    if (st) { st.style.display = 'block'; st.className = 'crm-st ok'; st.textContent = '✓ Папка привязана'; }
+    if (typeof window.__renderAssetsPage === 'function') window.__renderAssetsPage();
+  }
+
   function cycleAssetsClientType(owner, idx) {
     if (owner === 'me') {
       var arr = getAssetsMy();
@@ -674,5 +775,9 @@
   window.__assetsAddProject = addProjectBlank;
   window.__assetsRemoveProject = removeAssetsProject;
   window.__assetsCycleClientType = cycleAssetsClientType;
+  window.__assetsToggleFilterPaid = toggleFilterPaid;
+  window.__assetsShowEmojiPicker = showAssetsEmojiPicker;
+  window.__assetsStartFolderBind = startFolderBind;
+  window.__assetsApplyFolderBind = applyFolderBind;
   window.__wireAssetsDragTargets = wireAssetsDragTargets;
 })();

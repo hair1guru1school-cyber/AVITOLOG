@@ -3213,6 +3213,10 @@ function selectBrowseFolder() {
     }
     _projectFolderBindTargetId = null;
   }
+  if (window._assetsFolderBindTarget && typeof window.__assetsApplyFolderBind === 'function') {
+    window.__assetsApplyFolderBind(folderId, folderLink, found);
+    window._assetsFolderBindTarget = null;
+  }
   closeClientMenu();
 }
 
@@ -3225,6 +3229,12 @@ function loadClient(idx) {
     c = clients[idx];
   }
   if (!c) return;
+  if (window._assetsFolderBindTarget && c && (c.folderId || c.folderLink) && typeof window.__assetsApplyFolderBind === 'function') {
+    window.__assetsApplyFolderBind(c.folderId || '', c.folderLink || ('https://drive.google.com/drive/folders/' + (c.folderId || '')), c);
+    window._assetsFolderBindTarget = null;
+    document.getElementById('clientMenu').classList.remove('show');
+    return;
+  }
   fillClientForm(c);
   if (idx !== -1) setActiveClient(c);
   document.getElementById('clientMenu').classList.remove('show');

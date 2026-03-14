@@ -560,6 +560,7 @@ body.projects-mode .gen-extra-prompt,body.projects-mode .gen-buttons-row{display
 .btn-projects.is-on::after{content:none}
 .btn-projects.top-tab-dragging{opacity:0.6}
 .btn-projects.top-tab-drop-target{box-shadow:inset 0 0 0 2px rgba(53,208,255,0.6)}
+.btn-assets{font-style:italic}
 #btnAgency.is-on{background:linear-gradient(180deg,#10283a,#0e1d2a);color:#7cf5ff;box-shadow:0 0 20px rgba(53,208,255,0.36),inset 0 0 10px rgba(53,208,255,0.1)}
 .agency-wrap{max-width:980px;margin:12px auto 0;padding:0 8px}
 .agency-title{font-size:18px;font-weight:900;color:#7cf5ff;margin-bottom:10px;letter-spacing:.3px}
@@ -1523,13 +1524,23 @@ body.goals-client-dragging .goal-block-sold{transition:all .18s ease}
 .assets-col-title{font-size:14px;font-weight:800;padding:12px 16px;background:rgba(0,0,0,0.2);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px}
 .assets-col-total{color:#00d97e;font-variant-numeric:tabular-nums}
 .assets-col-sasha .assets-col-total{color:#35d0ff}
-.assets-col-filter{font-size:11px;color:var(--muted);padding:6px 16px;background:rgba(255,220,100,0.08);border-bottom:1px solid var(--border)}
+.assets-filter-btn{font-size:12px;font-weight:700;color:var(--muted);padding:6px 14px;margin:0 16px 8px;background:rgba(255,220,100,0.08);border:1px solid var(--border);border-radius:8px;cursor:pointer;transition:all .15s}
+.assets-filter-btn:hover{background:rgba(255,220,100,0.15);color:var(--text)}
+.assets-filter-btn.on{background:rgba(0,217,126,0.2);border-color:rgba(0,217,126,0.5);color:#00d97e}
+.assets-emoji-picker{position:fixed;z-index:1100;background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:10px;display:flex;flex-wrap:wrap;gap:8px;box-shadow:0 8px 24px rgba(0,0,0,0.4);max-width:280px}
+.assets-emoji-picker span{cursor:pointer;font-size:20px;padding:4px 5px;border-radius:6px;transition:background .12s}
+.assets-emoji-picker span:hover{background:rgba(0,217,126,0.15)}
+.assets-emoji-custom{width:100%;padding:6px 8px;font-size:12px;background:rgba(0,0,0,0.2);border:1px solid var(--border);border-radius:6px;color:var(--text);outline:none;margin-bottom:4px}
+.assets-col-emoji{width:36px;height:36px;display:flex;align-items:center;justify-content:center;font-size:20px;background:rgba(255,255,255,0.05);border:1px solid var(--border);border-radius:8px;cursor:pointer;transition:all .15s}
+.assets-col-emoji:hover{background:rgba(0,217,126,0.15);border-color:rgba(0,217,126,0.4)}
+.assets-col-folder{width:32px;height:32px;display:flex;align-items:center;justify-content:center;font-size:16px;background:transparent;border:1px solid var(--border);border-radius:6px;cursor:pointer;transition:all .15s}
+.assets-col-folder:hover,.assets-col-folder.on{background:rgba(53,208,255,0.15);border-color:rgba(53,208,255,0.5)}
 .assets-col-list{flex:1;overflow-y:auto;min-height:120px}
 .assets-col-header{display:flex;align-items:center;gap:10px;padding:6px 14px;font-size:11px;font-weight:700;color:var(--muted);background:rgba(0,0,0,0.25);border-bottom:1px solid var(--border)}
 .assets-col-header .ac-name{flex:1}
 .assets-col-header .ac-date{min-width:115px}
 .assets-col-header .ac-paid,.assets-col-header .ac-expected{min-width:70px;text-align:right}
-.assets-col-header .ac-actions{min-width:30px}
+.assets-col-header .ac-actions{min-width:70px;display:flex;gap:4px;justify-content:flex-end}
 .assets-col-row{display:flex;align-items:center;gap:10px;padding:6px 14px;border-bottom:1px solid rgba(255,255,255,0.05);font-size:13px}
 .assets-col-row:hover{background:rgba(255,255,255,0.02)}
 .assets-col-row.assets-row-paid{background:rgba(0,217,126,0.08);border-left:3px solid rgba(0,217,126,0.6)}
@@ -1719,7 +1730,7 @@ if (!window.AVITOLOG_GOALS) {
     <button type="button" class="btn-projects" id="btnGoals" data-tab="goals" draggable="true" onclick="openGoalsTab()" ondragstart="topTabDragStart(event,'goals')" ondragover="topTabDragOver(event)" ondragleave="topTabDragLeave(event)" ondrop="topTabDrop(event,'goals')" ondragend="topTabDragEnd(event)">💽 CRM</button>
     <button type="button" class="btn-projects" id="btnProjectsReturn" data-tab="analytics" draggable="true" onclick="openAnalyticsTab()" ondragstart="topTabDragStart(event,'analytics')" ondragover="topTabDragOver(event)" ondragleave="topTabDragLeave(event)" ondrop="topTabDrop(event,'analytics')" ondragend="topTabDragEnd(event)">👤 КЛИЕНТ</button>
     <button type="button" class="btn-projects" id="btnProjects" data-tab="projects" draggable="true" onclick="openProjectsTab()" ondragstart="topTabDragStart(event,'projects')" ondragover="topTabDragOver(event)" ondragleave="topTabDragLeave(event)" ondrop="topTabDrop(event,'projects')" ondragend="topTabDragEnd(event)">📈 ПРОЕКТЫ</button>
-    <button type="button" class="btn-projects" id="btnAssets" data-tab="assets" draggable="true" onclick="openAssetsTab()" ondragstart="topTabDragStart(event,'assets')" ondragover="topTabDragOver(event)" ondragleave="topTabDragLeave(event)" ondrop="topTabDrop(event,'assets')" ondragend="topTabDragEnd(event)">💰 Активы</button>
+    <button type="button" class="btn-projects btn-assets" id="btnAssets" data-tab="assets" draggable="true" onclick="openAssetsTab()" ondragstart="topTabDragStart(event,'assets')" ondragover="topTabDragOver(event)" ondragleave="topTabDragLeave(event)" ondrop="topTabDrop(event,'assets')" ondragend="topTabDragEnd(event)">💰 КАССА</button>
     <button type="button" class="btn-projects" id="btnStrategy" data-tab="strategy" draggable="true" onclick="openStrategyTab()" ondragstart="topTabDragStart(event,'strategy')" ondragover="topTabDragOver(event)" ondragleave="topTabDragLeave(event)" ondrop="topTabDrop(event,'strategy')" ondragend="topTabDragEnd(event)" style="display:none">🧠 СТРАТЕГИЯ</button>
   </div>
   <div class="analytics-control-panel" id="analyticsControlPanel">
