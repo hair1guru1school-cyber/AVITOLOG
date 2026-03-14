@@ -1523,9 +1523,10 @@ body.goals-client-dragging .goal-block-sold{transition:all .18s ease}
 .assets-col.assets-col-drop-over{border-color:rgba(0,217,126,0.5);box-shadow:0 0 20px rgba(0,217,126,0.2)}
 .assets-col-me{border-left:3px solid rgba(0,217,126,0.5)}
 .assets-col-sasha{border-left:3px solid rgba(53,208,255,0.5)}
-.assets-col-title{font-size:14px;font-weight:800;padding:12px 16px;background:rgba(0,0,0,0.2);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px}
+.assets-col-title{font-size:14px;font-weight:800;padding:12px 16px;background:rgba(0,0,0,0.2);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .assets-col-total{color:#00d97e;font-variant-numeric:tabular-nums}
 .assets-col-sasha .assets-col-total{color:#35d0ff}
+.assets-col-breakdown{font-size:11px;font-weight:600;color:var(--muted);margin-left:4px;font-variant-numeric:tabular-nums}
 .assets-filter-btn{font-size:12px;font-weight:700;color:var(--muted);padding:6px 14px;margin:0 16px 8px;background:rgba(255,220,100,0.08);border:1px solid var(--border);border-radius:8px;cursor:pointer;transition:all .15s}
 .assets-filter-btn:hover{background:rgba(255,220,100,0.15);color:var(--text)}
 .assets-filter-btn.on{background:rgba(0,217,126,0.2);border-color:rgba(0,217,126,0.5);color:#00d97e}
@@ -1533,20 +1534,20 @@ body.goals-client-dragging .goal-block-sold{transition:all .18s ease}
 .assets-emoji-picker span{cursor:pointer;font-size:20px;padding:4px 5px;border-radius:6px;transition:background .12s}
 .assets-emoji-picker span:hover{background:rgba(0,217,126,0.15)}
 .assets-emoji-custom{width:100%;padding:6px 8px;font-size:12px;background:rgba(0,0,0,0.2);border:1px solid var(--border);border-radius:6px;color:var(--text);outline:none;margin-bottom:4px}
-.assets-col-emoji{width:36px;height:36px;display:flex;align-items:center;justify-content:center;font-size:20px;background:rgba(255,255,255,0.05);border:1px solid var(--border);border-radius:8px;cursor:pointer;transition:all .15s}
+.assets-col-emoji{width:30px;height:30px;display:flex;align-items:center;justify-content:center;font-size:16px;background:rgba(255,255,255,0.05);border:1px solid var(--border);border-radius:6px;cursor:pointer;transition:all .15s}
 .assets-col-emoji:hover{background:rgba(0,217,126,0.15);border-color:rgba(0,217,126,0.4)}
 .assets-row-folder-inline{display:inline-flex;align-items:center;gap:4px;margin-left:6px;font-size:12px;font-weight:600}
 .assets-row-folder-link{color:#35d0ff;text-decoration:none;padding:2px 6px;border-radius:4px;transition:all .15s}
 .assets-row-folder-link:hover{background:rgba(53,208,255,0.15);color:#7cf5ff}
 .assets-col-list{flex:1;overflow-y:auto;min-height:120px}
-.assets-col-header{display:flex;align-items:center;gap:10px;padding:6px 14px;font-size:11px;font-weight:700;color:var(--muted);background:rgba(0,0,0,0.25);border-bottom:1px solid var(--border)}
+.assets-col-header{display:flex;align-items:center;gap:8px;padding:4px 12px;font-size:11px;font-weight:700;color:var(--muted);background:rgba(0,0,0,0.25);border-bottom:1px solid var(--border)}
 .assets-col-header .ac-name{flex:1}
 .assets-col-header .ac-date{min-width:115px}
 .assets-col-header .ac-paid,.assets-col-header .ac-expected,.assets-col-header .ac-extra{min-width:70px;text-align:right}
 .assets-col-extra{min-width:70px;text-align:right}
 .assets-col-extra input{width:55px;padding:3px 6px;font-size:12px;text-align:right;background:rgba(0,0,0,0.2);border:1px solid var(--border);border-radius:6px;color:var(--text)}
 .assets-col-header .ac-actions{min-width:70px;display:flex;gap:4px;justify-content:flex-end}
-.assets-col-row{display:flex;align-items:center;gap:10px;padding:6px 14px;border-bottom:1px solid rgba(255,255,255,0.05);font-size:13px;cursor:pointer;transition:box-shadow .2s,border-color .2s}
+.assets-col-row{display:flex;align-items:center;gap:8px;padding:4px 12px;border-bottom:1px solid rgba(255,255,255,0.05);font-size:13px;cursor:pointer;transition:box-shadow .2s,border-color .2s;min-height:36px}
 .assets-col-row:hover{background:rgba(255,255,255,0.02)}
 .assets-col-row.assets-row-paid{background:rgba(0,217,126,0.08);border-left:3px solid rgba(0,217,126,0.6)}
 .assets-col-row.assets-row-bind-selected.assets-row-has-folder{box-shadow:inset 0 0 0 2px rgba(0,217,126,0.6);background:rgba(0,217,126,0.15)}
@@ -1554,7 +1555,7 @@ body.goals-client-dragging .goal-block-sold{transition:all .18s ease}
 .assets-col-emoji{font-size:16px}
 .assets-col-name{flex:1;min-width:0}
 .assets-col-name-row{display:flex;align-items:center;gap:6px}
-.assets-col-name-row input{flex:1;min-width:0;padding:6px 10px;font-size:16px;font-weight:700;background:rgba(0,0,0,0.2);border:1px solid var(--border);border-radius:6px;color:var(--text);outline:none}
+.assets-col-name-row input{flex:1;min-width:0;padding:4px 8px;font-size:14px;font-weight:700;background:rgba(0,0,0,0.2);border:1px solid var(--border);border-radius:5px;color:var(--text);outline:none}
 .assets-status-badge{flex-shrink:0;padding:2px 6px;font-size:10px;font-weight:800;border-radius:6px;border:1px solid;cursor:pointer;background:transparent;font-family:inherit;transition:all .15s}
 .assets-status-new{color:#35d0ff;border-color:rgba(53,208,255,0.5)}
 .assets-status-new:hover{background:rgba(53,208,255,0.15)}
@@ -1563,8 +1564,8 @@ body.goals-client-dragging .goal-block-sold{transition:all .18s ease}
 .assets-status-2{color:#c4b8ff;border-color:rgba(196,184,255,0.5)}
 .assets-status-2:hover{background:rgba(196,184,255,0.1)}
 .assets-col-name{display:flex;flex-direction:column;gap:4px}
-.assets-progress-bar{height:6px;background:rgba(255,255,255,0.1);border-radius:3px;overflow:hidden}
-.assets-progress-fill{height:100%;background:linear-gradient(90deg,rgba(0,217,126,0.6),rgba(0,217,126,0.9));border-radius:3px;transition:width .25s}
+.assets-progress-bar{height:3px;background:rgba(255,255,255,0.1);border-radius:2px;overflow:hidden}
+.assets-progress-fill{height:100%;background:linear-gradient(90deg,rgba(0,217,126,0.6),rgba(0,217,126,0.9));border-radius:2px;transition:width .25s}
 .assets-col-sasha .assets-progress-fill{background:linear-gradient(90deg,rgba(53,208,255,0.6),rgba(53,208,255,0.9))}
 .assets-col-date{min-width:115px}
 .assets-col-date input{width:100%;padding:3px 6px;font-size:11px;background:rgba(0,0,0,0.2);border:1px solid var(--border);border-radius:6px;color:var(--text);outline:none}

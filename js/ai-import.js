@@ -421,6 +421,32 @@
     return 'new';
   }
 
+  function isDateInThisMonth(dateStr) {
+    if (!dateStr || !String(dateStr).trim()) return false;
+    var parts = String(dateStr).trim().split(/[-/]/);
+    if (parts.length < 2) return false;
+    var now = new Date();
+    var year = parseInt(parts[0], 10) || now.getFullYear();
+    var month = (parseInt(parts[1], 10) || 1) - 1;
+    return year === now.getFullYear() && month === now.getMonth();
+  }
+
+  function calcNewClientsThisMonth() {
+    var myList = getAssetsMy();
+    var sashaList = getAssetsSasha();
+    var sum = 0;
+    function addIfNewThisMonth(p, amountField) {
+      if (resolveAssetsClientType(p) !== 'new') return;
+      var dateStr = (p.paymentDate || p.startDate || '').trim();
+      if (!dateStr || !isDateInThisMonth(dateStr)) return;
+      var amt = parseInt(String(p[amountField] || '').replace(/\s/g, ''), 10) || 0;
+      sum += amt;
+    }
+    myList.forEach(function(p) { addIfNewThisMonth(p, 'paid'); });
+    sashaList.forEach(function(p) { addIfNewThisMonth(p, 'soldFor'); });
+    return sum;
+  }
+
   function getPaymentBarFill(paymentDateStr) {
     if (!paymentDateStr || !String(paymentDateStr).trim()) return 0;
     var parts = String(paymentDateStr).trim().split(/[-/]/);
@@ -527,13 +553,17 @@
     var sashaTotal = sashaList.reduce(function(a, p) { return a + (parseInt(String(p.soldFor || p.paid || '').replace(/\s/g, ''), 10) || 0); }, 0);
     var totalRub = 338000;
     var totalUsd = Math.round(totalRub / ASSETS_USD_RATE);
+    var newClientsSum = calcNewClientsThisMonth();
+    var newClientsVal = newClientsSum > 0 ? fmt(newClientsSum) : '';
+    var expectedSum = myList.reduce(function(a, p) { return a + (parseInt(String(p.expected || '').replace(/\s/g, ''), 10) || 0); }, 0);
+    var expectedVal = expectedSum > 0 ? fmt(expectedSum) : '';
     var summaryRows = [
       { icon: '💰', label: 'Получено за все', val: '338 000', valUsd: totalUsd, main: true },
       { icon: '✅', label: 'Оплаты клиентов', val: '304 000' },
-      { icon: '🌿', label: 'Ожидается еще', val: '20 000' },
+      { icon: '🌿', label: 'Ожидается еще', val: expectedVal },
       { icon: '📊', label: 'Ожидается за мес', val: '324 000' },
       { icon: '📈', label: 'Агентство AoA %', val: '34 000' },
-      { icon: '🆕', label: 'Новые клиенты', val: '' },
+      { icon: '🆕', label: 'Новые клиенты', val: newClientsVal },
       { icon: '👤', label: 'Активные клиенты', val: '195 000' }
     ];
     var summaryHtml = summaryRows.map(function(r) {
@@ -603,13 +633,13 @@
       '<div class="assets-summary-top"><div class="assets-month-title">' + esc(monthTitle) + '</div><div class="assets-summary-table">' + summaryHtml + '</div></div>' +
       '<div class="assets-two-cols">' +
         '<div class="assets-col assets-col-me" id="assetsColMe" data-owner="me">' +
-          '<div class="assets-col-title">💰 Мои клиенты <span class="assets-col-total">' + fmt(myTotal) + ' ₽</span></div>' +
+          '<div class="assets-col-title">💰 Мои клиенты <span class="assets-col-total">' + fmt(myTotal) + ' ₽</span><span class="assets-col-breakdown">· новые <span class="assets-col-me-new">' + fmt(myList.reduce(function(a,p){var v=parseInt(String(p.paid||'').replace(/\s/g,''),10)||0;return resolveAssetsClientType(p)==='new'?a+v:a;},0)) + '</span> ₽ · старые <span class="assets-col-me-old">' + fmt(myList.reduce(function(a,p){var v=parseInt(String(p.paid||'').replace(/\s/g,''),10)||0;return resolveAssetsClientType(p)!=='new'?a+v:a;},0)) + '</span> ₽</span></div>' +
           '<button type="button" class="assets-filter-btn' + (filterPaid ? ' on' : '') + '" onclick="window.__assetsToggleFilterPaid && window.__assetsToggleFilterPaid()">💰 оплатили</button>' +
           '<div class="assets-col-list">' + colHeaderMe + myRows + '</div>' +
           '<button type="button" class="assets-col-add" onclick="window.__assetsAddProject(\'me\')">+ Добавить</button>' +
         '</div>' +
         '<div class="assets-col assets-col-sasha" id="assetsColSasha" data-owner="sasha">' +
-          '<div class="assets-col-title">👤 Клиенты Саши <span class="assets-col-total">' + fmt(sashaTotal) + ' ₽</span></div>' +
+          '<div class="assets-col-title">👤 Клиенты Саши <span class="assets-col-total">' + fmt(sashaTotal) + ' ₽</span><span class="assets-col-breakdown">· Саше <span class="assets-col-sasha-agent">' + fmt(sashaList.reduce(function(a,p){return a+(parseInt(String(p.toAgent||'').replace(/\s/g,''),10)||0);},0)) + '</span> ₽ · Агентству <span class="assets-col-sasha-agency">' + fmt(sashaList.reduce(function(a,p){return a+(parseInt(String(p.aoaPercent||'').replace(/\s/g,''),10)||0);},0)) + '</span> ₽</span></div>' +
           '<div class="assets-col-list">' + colHeaderSasha + sashaRows + '</div>' +
           '<button type="button" class="assets-col-add" onclick="window.__assetsAddProject(\'sasha\')">+ Добавить</button>' +
         '</div>' +
@@ -655,15 +685,33 @@
 
   function updateColTotals() {
     var fmt = function(n) { return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ' '); };
-    var myTotal = getAssetsMy().reduce(function(a, p) { return a + (parseInt(String(p.paid || '').replace(/\s/g, ''), 10) || 0); }, 0);
-    var sashaTotal = getAssetsSasha().reduce(function(a, p) {
+    var myList = getAssetsMy();
+    var sashaList = getAssetsSasha();
+    var myTotal = myList.reduce(function(a, p) { return a + (parseInt(String(p.paid || '').replace(/\s/g, ''), 10) || 0); }, 0);
+    var myNew = 0, myOld = 0;
+    myList.forEach(function(p) {
+      var v = parseInt(String(p.paid || '').replace(/\s/g, ''), 10) || 0;
+      var t = resolveAssetsClientType(p);
+      if (t === 'new') myNew += v; else myOld += v;
+    });
+    var sashaTotal = sashaList.reduce(function(a, p) {
       var v = parseInt(String(p.soldFor || p.paid || '').replace(/\s/g, ''), 10) || 0;
       return a + v;
     }, 0);
+    var sashaToAgent = sashaList.reduce(function(a, p) { return a + (parseInt(String(p.toAgent || '').replace(/\s/g, ''), 10) || 0); }, 0);
+    var sashaToAgency = sashaList.reduce(function(a, p) { return a + (parseInt(String(p.aoaPercent || '').replace(/\s/g, ''), 10) || 0); }, 0);
     var meEl = document.querySelector('.assets-col-me .assets-col-total');
+    var meNewEl = document.querySelector('.assets-col-me .assets-col-me-new');
+    var meOldEl = document.querySelector('.assets-col-me .assets-col-me-old');
     var sashaEl = document.querySelector('.assets-col-sasha .assets-col-total');
+    var sashaAgentEl = document.querySelector('.assets-col-sasha .assets-col-sasha-agent');
+    var sashaAgencyEl = document.querySelector('.assets-col-sasha .assets-col-sasha-agency');
     if (meEl) meEl.textContent = fmt(myTotal) + ' ₽';
+    if (meNewEl) meNewEl.textContent = fmt(myNew);
+    if (meOldEl) meOldEl.textContent = fmt(myOld);
     if (sashaEl) sashaEl.textContent = fmt(sashaTotal) + ' ₽';
+    if (sashaAgentEl) sashaAgentEl.textContent = fmt(sashaToAgent);
+    if (sashaAgencyEl) sashaAgencyEl.textContent = fmt(sashaToAgency);
   }
 
   function wireAssetsDragTargets() {
