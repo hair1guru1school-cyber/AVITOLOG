@@ -12,6 +12,7 @@
   --bg:#080b12;--bg2:#0d1219;--surface:#111821;--s2:#161f2e;
   --red:#e8001d;--red2:#ff2040;--red-dim:rgba(232,0,29,.12);--red-glow:rgba(232,0,29,.4);
   --cyan:#00cfff;--cyan-dim:rgba(0,207,255,.1);
+  --blue:#35d0ff;--blue-dim:rgba(53,208,255,.08);--blue-glow:rgba(53,208,255,.35);--border-b:rgba(53,208,255,.25);
   --gold:#ffc93c;--text:#f0f4ff;--muted:#7a9abb;
   --border:rgba(255,255,255,.1);--border-r:rgba(232,0,29,.3);--border-c:rgba(0,207,255,.22);
 }
@@ -330,6 +331,49 @@ footer{background:var(--bg);border-top:1px solid var(--border);padding:40px 80px
 .banner-single-img{position:relative;width:100%;line-height:0}
 .banner-single-img img{width:100%;height:auto;display:block;object-fit:cover}
 .banner-single-overlay{position:absolute;inset:0;background:linear-gradient(180deg,transparent 50%,rgba(0,0,0,.3) 100%);pointer-events:none}
+
+/* ─── BLUE accent helpers ─── */
+.sec-lbl.b{color:var(--blue)}
+.sec-lbl.b::before{background:var(--blue);box-shadow:0 0 8px var(--blue)}
+.sec-lbl.b::after{background:linear-gradient(90deg,var(--border-b),transparent)}
+.sec-title .b{color:var(--blue)}
+.btn-blue{background:transparent;color:var(--blue);border:1px solid var(--border-b)}
+.btn-blue:hover{background:var(--blue-dim);box-shadow:0 0 24px var(--blue-glow)}
+/* blue divider line under nav */
+.nav-b-line::after{background:linear-gradient(90deg,transparent,var(--blue),transparent)!important}
+/* section with blue bg tint */
+.bg-blue{background:linear-gradient(180deg,#05091e 0%,var(--bg2) 100%)!important;position:relative}
+.bg-blue::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse 80% 60% at 50% -10%,rgba(53,208,255,.07) 0%,transparent 65%);pointer-events:none}
+/* niches blue hover */
+.niches-grid .nc:hover{border-color:rgba(53,208,255,.35)!important;background:rgba(53,208,255,.04)!important}
+.niches-grid .nc:hover .nc-icon{text-shadow:0 0 16px var(--blue)!important}
+/* process steps blue */
+.pstep:hover{border-left-color:var(--blue)!important;background:var(--blue-dim)!important}
+/* analytics banner section */
+.analytics-visual{width:100%;line-height:0;overflow:hidden;position:relative;margin-bottom:0}
+.analytics-visual img{width:100%;max-height:480px;object-fit:cover;object-position:center;display:block}
+.analytics-visual-overlay{position:absolute;inset:0;background:linear-gradient(180deg,rgba(8,11,18,.2) 0%,transparent 40%,transparent 60%,rgba(8,11,18,.8) 100%);pointer-events:none}
+/* niche banner */
+.niche-visual{width:100%;line-height:0;overflow:hidden;border:1px solid var(--border-b);position:relative;margin-bottom:40px}
+.niche-visual img{width:100%;max-height:380px;object-fit:cover;object-position:center 30%;display:block;filter:brightness(.95) saturate(1.15)}
+.niche-visual-overlay{position:absolute;inset:0;background:linear-gradient(90deg,rgba(8,11,18,.6) 0%,transparent 40%,transparent 60%,rgba(8,11,18,.6) 100%),linear-gradient(180deg,transparent 60%,rgba(8,11,18,.7) 100%);pointer-events:none}
+/* trophy illustration in avwhy */
+.avwhy-layout{display:grid;grid-template-columns:1fr 420px;gap:60px;align-items:center}
+.avwhy-trophy{position:relative;display:flex;align-items:center;justify-content:center}
+.avwhy-trophy img{width:100%;max-width:420px;height:auto;border-radius:12px;border:1px solid var(--border-b);box-shadow:0 0 40px rgba(53,208,255,.15),0 0 80px rgba(53,208,255,.07)}
+.avwhy-trophy::before{content:'';position:absolute;inset:-1px;border-radius:13px;background:linear-gradient(135deg,rgba(53,208,255,.2),transparent 50%,rgba(53,208,255,.1));pointer-events:none;z-index:1}
+/* partnership banner above CTA */
+.partner-visual{width:100%;line-height:0;overflow:hidden;position:relative}
+.partner-visual img{width:100%;max-height:420px;object-fit:cover;object-position:center;display:block}
+.partner-visual-overlay{position:absolute;inset:0;background:linear-gradient(180deg,rgba(8,11,18,.35) 0%,transparent 30%,transparent 70%,rgba(8,11,18,.9) 100%);pointer-events:none}
+@media(max-width:900px){
+  .avwhy-layout{grid-template-columns:1fr}
+  .avwhy-trophy{display:none}
+}
+@media(max-width:768px){
+  .analytics-visual img,.niche-visual img,.partner-visual img{max-height:260px}
+  .avwhy-trophy{display:none}
+}
 </style>
 </head>
 <body>
@@ -381,7 +425,7 @@ footer{background:var(--bg);border-top:1px solid var(--border);padding:40px 80px
 </section>
 
 <!-- ЭКРАН 2: краткий текст + иконки -->
-<section class="sec screen-icons" id="screen2">
+<section class="sec screen-icons bg-blue" id="screen2">
   <div class="sec-lbl">УСЛУГИ</div>
   <h2 class="sec-title">Ведение под ключ — <span>комплексная эффективность</span></h2>
   <p class="sec-desc">Полный цикл работы с Авито — от анализа рынка до сотен заявок в месяц. Договор, гарантия, прозрачность.</p>
@@ -397,12 +441,9 @@ footer{background:var(--bg);border-top:1px solid var(--border);padding:40px 80px
 
 <!-- ЭКРАН 3: баннер Ведение под ключ (1 шт) -->
 <section class="banner-single">
-  <div class="banner-single-img">
-    <picture>
-      <source media="(max-width:768px)" srcset="MOB/под%20ключ.jpg">
-      <img src="PC/banner2.jpg" alt="Ведение под ключ — комплексная эффективность">
-    </picture>
-    <div class="banner-single-overlay"></div>
+  <div class="analytics-visual rev">
+    <img src="analytics-banner.png" alt="Аналитика заявок — Авитолог" loading="lazy">
+    <div class="analytics-visual-overlay"></div>
   </div>
 </section>
 
@@ -428,11 +469,16 @@ footer{background:var(--bg);border-top:1px solid var(--border);padding:40px 80px
 </section>
 
 <!-- NICHES -->
-<section class="sec" id="niches" style="background:var(--bg)">
-  <div class="sec-lbl">Опыт работы</div>
+<section class="sec bg-blue" id="niches">
+  <div class="sec-lbl b">Опыт работы</div>
   <h2 class="sec-title">РАБОТАЮ ВО ВСЕХ<br><span>ПРИБЫЛЬНЫХ НИШАХ</span></h2>
   <p class="sec-desc">Реальные кейсы в каждом направлении — смотрите портфолио ниже</p>
-  <div class="niches-grid">
+  
+  <div class="niche-visual rev">
+    <img src="niche-banner.png" alt="Ниши — строительство, авто, оборудование, мебель" loading="lazy">
+    <div class="niche-visual-overlay"></div>
+  </div>
+<div class="niches-grid">
     <div class="nc rev"><div class="nc-icon">🧱</div><div class="nc-name">Стройматериалы</div><div class="nc-tags"><span class="ntag">Доска</span><span class="ntag">Блоки</span><span class="ntag">Кровля</span></div><div class="nc-stat">17₽<div class="nc-stat-lbl">мин. цена заявки</div></div></div>
     <div class="nc rev"><div class="nc-icon">🏠</div><div class="nc-name">Готовые дома</div><div class="nc-tags"><span class="ntag">Каркасные</span><span class="ntag">Модульные</span></div><div class="nc-stat">820+<div class="nc-stat-lbl">заявок на проект</div></div></div>
     <div class="nc rev"><div class="nc-icon">🔌</div><div class="nc-name">Оборудование</div><div class="nc-tags"><span class="ntag">Майнеры</span><span class="ntag">Станки</span></div><div class="nc-stat">32/сут<div class="nc-stat-lbl">заявок с майнеров</div></div></div>
@@ -445,7 +491,7 @@ footer{background:var(--bg);border-top:1px solid var(--border);padding:40px 80px
 </section>
 
 <!-- PROCESS -->
-<section class="sec" style="background:var(--bg2)">
+<section class="sec bg-blue">
   <div class="sec-lbl">Как работаем</div>
   <h2 class="sec-title">5 ШАГОВ ДО<br><span>ПОТОКА ЗАЯВОК</span></h2>
   <div class="p-steps">
@@ -556,7 +602,8 @@ footer{background:var(--bg);border-top:1px solid var(--border);padding:40px 80px
 </section>
 
 <!-- AVITO WHY -->
-<section class="sec avwhy" id="avito">
+<section class="sec avwhy bg-blue" id="avito">
+  <div class="avwhy-layout">
   <div class="why-c">
     <div class="sec-lbl">Выбор профессионалов</div>
     <h2 class="sec-title">АВИТО —<br><span>ЧЕМПИОН РЫНКА</span></h2>
@@ -569,6 +616,10 @@ footer{background:var(--bg);border-top:1px solid var(--border);padding:40px 80px
       <div class="why-item rev"><div class="why-num">05</div><div class="why-txt"><h4>Магазин растёт годами без спада</h4><p>Отзывы, подписчики, позиции накапливаются. Наш самый долгий клиент — 5+ лет.</p></div></div>
     </div>
   </div>
+  <div class="avwhy-trophy rev">
+    <img src="trophy.png" alt="Авито №1 — лучший маркетплейс" loading="lazy">
+  </div>
+  </div><!-- /avwhy-layout -->
 </section>
 
 <!-- WHY NOW -->
@@ -595,6 +646,11 @@ footer{background:var(--bg);border-top:1px solid var(--border);padding:40px 80px
     </div>
   </div>
 </section>
+
+<div class="partner-visual">
+  <img src="partnership-banner.png" alt="Партнёрство и результаты" loading="lazy">
+  <div class="partner-visual-overlay"></div>
+</div>
 
 <!-- CTA -->
 <div class="cta-big">
