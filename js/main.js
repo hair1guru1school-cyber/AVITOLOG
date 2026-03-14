@@ -115,9 +115,10 @@ function getAnalyticsRecentProjects() {
     if (!Array.isArray(arr)) return [];
     var now = new Date();
     var startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
+    var threeMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 2, 1).getTime();
     arr = arr.filter(function(x) {
       var ts = x && (typeof x.ts === 'number' ? x.ts : (x.ts ? new Date(x.ts).getTime() : 0));
-      return ts >= startOfMonth;
+      return !ts || ts >= threeMonthsAgo;
     }).sort(function(a, b) {
       var ta = a && (typeof a.ts === 'number' ? a.ts : (a.ts ? new Date(a.ts).getTime() : 0));
       var tb = b && (typeof b.ts === 'number' ? b.ts : (b.ts ? new Date(b.ts).getTime() : 0));
