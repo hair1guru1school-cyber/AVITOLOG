@@ -35,9 +35,9 @@ nav::after{content:'';position:absolute;bottom:0;left:0;right:0;height:1px;backg
 .hero{position:relative;min-height:100vh;display:flex;flex-direction:column;justify-content:flex-end;overflow:hidden}
 .hero-bg{position:absolute;inset:0;background:url('PC/hero-banner.png') center 20%/cover no-repeat}
 .hero-bg::before{content:'';position:absolute;inset:0;background:linear-gradient(180deg,rgba(8,11,18,.15) 0%,rgba(8,11,18,.3) 50%,rgba(8,11,18,.75) 68%,rgba(8,11,18,.92) 78%,var(--bg) 100%)}
-.hero-stripe{position:absolute;left:0;right:0;top:75%;height:54px;background:linear-gradient(90deg,var(--red) 0%,#b50016 70%,rgba(180,0,22,.88) 100%);display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:32px;z-index:5;padding:12px 24px;row-gap:8px;border-top:1.5px solid rgba(255,255,255,.15);border-bottom:1.5px solid rgba(255,255,255,.1)}
-.stripe-item{display:flex;align-items:center;gap:8px;flex-shrink:0;font-family:'Oswald',sans-serif;font-size:14px;font-weight:500;letter-spacing:.5px;color:#fff;text-transform:uppercase;white-space:nowrap}
-.s-ico{font-size:18px;opacity:.9}
+.hero-stripe{margin:28px 0 36px;background:linear-gradient(90deg,var(--red) 0%,#b50016 70%,rgba(180,0,22,.88) 100%);display:flex;align-items:center;justify-content:flex-start;flex-wrap:wrap;gap:28px 40px;padding:14px 24px;row-gap:10px;border-top:1.5px solid rgba(255,255,255,.15);border-bottom:1.5px solid rgba(255,255,255,.1)}
+.stripe-item{display:flex;align-items:center;gap:12px;flex-shrink:0;font-family:'Oswald',sans-serif;font-size:18px;font-weight:600;letter-spacing:.5px;color:#fff;text-transform:uppercase;white-space:nowrap}
+.s-ico{font-size:26px;opacity:.95}
 .hero-content{position:relative;z-index:10;padding:0 80px 80px;margin-top:24px}
 .hero-lbl{display:inline-flex;align-items:center;gap:12px;font-size:11px;font-weight:700;letter-spacing:4px;text-transform:uppercase;color:var(--cyan);margin-bottom:20px}
 .hero-lbl::before{content:'';width:32px;height:1px;background:var(--cyan);box-shadow:0 0 8px var(--cyan)}
@@ -208,7 +208,7 @@ footer{background:var(--bg);border-top:1px solid var(--border);padding:40px 80px
 }
 @media(max-width:414px){
   .hero-content{padding:0 16px 48px}
-  .hero-stripe{top:65%;height:auto;min-height:44px;padding:8px 12px;gap:8px}
+  .hero-stripe{margin:20px 0 28px;padding:10px 16px;gap:16px 24px}
   .hero-stripe .stripe-item:nth-child(n+4){display:none}
   .h1{font-size:clamp(36px,10vw,50px)}
   .h1-sub{font-size:clamp(18px,4vw,24px);margin-bottom:24px}
@@ -218,8 +218,8 @@ footer{background:var(--bg);border-top:1px solid var(--border);padding:40px 80px
   .floating-cta{bottom:12px}
 }
 @media(max-width:390px){
-  .hero-stripe .stripe-item{font-size:11px;gap:6px}
-  .s-ico{font-size:14px}
+  .hero-stripe .stripe-item{font-size:14px;gap:8px}
+  .hero-stripe .s-ico{font-size:20px}
 }
 @media(max-width:360px){
   .sec{padding:40px 14px;padding-bottom:120px}
@@ -231,7 +231,7 @@ footer{background:var(--bg);border-top:1px solid var(--border);padding:40px 80px
   .nav-links{display:none}
   .sec{padding:56px 24px}
   .hero-content{padding:0 24px 60px}
-  .hero-stripe{gap:12px;flex-wrap:wrap;height:auto;padding:10px 18px}
+  .hero-stripe{gap:16px 28px;padding:12px 20px}
   .hero-stripe .stripe-item:nth-child(n+6){display:none}
   .banners-row{grid-template-columns:1fr}
   .srv-grid{grid-template-columns:1fr}
@@ -312,14 +312,6 @@ footer{background:var(--bg);border-top:1px solid var(--border);padding:40px 80px
 <!-- HERO -->
 <section class="hero">
   <div class="hero-bg" role="img" aria-label="Фоновое изображение"></div>
-  <div class="hero-stripe">
-    <div class="stripe-item"><span class="s-ico">📋</span>Договор с моим ИП</div>
-    <div class="stripe-item"><span class="s-ico">🔑</span>Ведение под ключ</div>
-    <div class="stripe-item"><span class="s-ico">🛡</span>Гарантия заявок за 7 дней</div>
-    <div class="stripe-item"><span class="s-ico">📊</span>Отчётность и прозрачность</div>
-    <div class="stripe-item"><span class="s-ico">🎨</span>Дизайн и инфографика</div>
-    <div class="stripe-item"><span class="s-ico">⚡</span>Автозагрузка</div>
-  </div>
   <div class="hero-content">
     <div class="hero-lbl">Авитолог · Pro · Агентство</div>
     <h1 class="h1">
@@ -327,6 +319,14 @@ footer{background:var(--bg);border-top:1px solid var(--border);padding:40px 80px
       <span class="h1-r">ЗАЯВОК</span>
     </h1>
     <div class="h1-sub">в 2–10 раз на Авито</div>
+    <div class="hero-stripe">
+      <div class="stripe-item"><span class="s-ico">&#128196;</span>Договор, Приложение — Р/С</div>
+      <div class="stripe-item"><span class="s-ico">&#128273;</span>Ведение под ключ</div>
+      <div class="stripe-item"><span class="s-ico">&#128737;</span>Гарантия заявок за 7 дней</div>
+      <div class="stripe-item"><span class="s-ico">&#128202;</span>Отчетность и прозрачность</div>
+      <div class="stripe-item"><span class="s-ico">&#127912;</span>Дизайн и инфографика</div>
+      <div class="stripe-item"><span class="s-ico">&#11015;</span>Автозагрузка</div>
+    </div>
     <div class="hero-stats">
       <div class="hs"><div class="hs-val">1856+</div><div class="hs-lbl">проектов запущено</div></div>
       <div class="hs"><div class="hs-val">+9 лет</div><div class="hs-lbl">в Авито</div></div>
@@ -369,8 +369,9 @@ footer{background:var(--bg);border-top:1px solid var(--border);padding:40px 80px
 <!-- NICHES -->
 <section class="sec" id="niches" style="background:var(--bg)">
   <div class="sec-lbl">Опыт работы</div>
-  <h2 class="sec-title">РАБОТАЮ ВО ВСЕХ<br><span>ПРИБЫЛЬНЫХ НИШАХ</span></h2>
+  <h2 class="sec-title">УСПЕХИ ВО ВСЕХ<br><span>ПРИБЫЛЬНЫХ НИШАХ</span></h2>
   <p class="sec-desc">Реальные кейсы в каждом направлении — смотрите портфолио ниже</p>
+  <div class="niche-visual" style="margin-bottom:40px;line-height:0"><img src="analytics-banner.png" alt="Успехи в нишах" loading="lazy" style="width:100%;max-height:420px;object-fit:contain;object-position:center top;display:block"></div>
   <div class="niches-grid">
     <div class="nc rev"><div class="nc-icon">🧱</div><div class="nc-name">Стройматериалы</div><div class="nc-tags"><span class="ntag">Доска</span><span class="ntag">Блоки</span><span class="ntag">Кровля</span></div><div class="nc-stat">17₽<div class="nc-stat-lbl">мин. цена заявки</div></div></div>
     <div class="nc rev"><div class="nc-icon">🏠</div><div class="nc-name">Готовые дома</div><div class="nc-tags"><span class="ntag">Каркасные</span><span class="ntag">Модульные</span></div><div class="nc-stat">820+<div class="nc-stat-lbl">заявок на проект</div></div></div>

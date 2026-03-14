@@ -1,0 +1,1052 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Портфолио дизайнов — Aces of Ads</title>
+<link href="https://fonts.googleapis.com/css2?family=Exo+2:wght@300;400;500;600;700;800;900&family=Orbitron:wght@400;600;700;900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #03070f;
+    --bg2: #060d1a;
+    --surface: #0a1628;
+    --surface2: #0d1f35;
+    --cyan: #00d4ff;
+    --cyan-dim: rgba(0,212,255,0.1);
+    --cyan-glow: rgba(0,212,255,0.25);
+    --orange: #ff6b00;
+    --orange-dim: rgba(255,107,0,0.1);
+    --gold: #ffd166;
+    --text: #e8f4ff;
+    --muted: #5a7a99;
+    --border: rgba(0,212,255,0.12);
+    --border-strong: rgba(0,212,255,0.28);
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Exo 2', sans-serif;
+    font-size: 15px;
+    line-height: 1.6;
+    overflow-x: hidden;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.03) 2px, rgba(0,0,0,0.03) 4px);
+    pointer-events: none;
+    z-index: 999;
+  }
+
+  nav {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 200;
+    padding: 0 60px;
+    height: 64px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: rgba(3,7,15,0.9);
+    backdrop-filter: blur(24px);
+    border-bottom: 1px solid var(--border);
+  }
+
+  nav::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--orange), transparent);
+    opacity: 0.5;
+  }
+
+  .nav-logo {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--text);
+    text-decoration: none;
+    letter-spacing: 3px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .nav-logo span { color: var(--cyan); }
+
+  .nav-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--orange);
+    box-shadow: 0 0 12px var(--orange);
+    animation: pulse-dot 2s infinite;
+  }
+
+  @keyframes pulse-dot {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.5; transform: scale(0.7); }
+  }
+
+  .nav-back {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--muted);
+    text-decoration: none;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    padding: 8px 16px;
+    border: 1px solid var(--border);
+    border-radius: 2px;
+    transition: all 0.2s;
+  }
+
+  .nav-back:hover { color: var(--cyan); border-color: var(--cyan); background: var(--cyan-dim); }
+
+  /* HERO */
+  .portfolio-hero {
+    padding: 140px 80px 80px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .portfolio-hero::before {
+    content: '';
+    position: absolute;
+    top: -100px;
+    right: -100px;
+    width: 600px;
+    height: 600px;
+    background: radial-gradient(ellipse, rgba(255,107,0,0.08) 0%, transparent 70%);
+    pointer-events: none;
+  }
+
+  .portfolio-hero::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--orange), transparent);
+    opacity: 0.4;
+  }
+
+  .breadcrumb {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 12px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    margin-bottom: 28px;
+  }
+
+  .breadcrumb a { color: var(--muted); text-decoration: none; transition: color 0.2s; }
+  .breadcrumb a:hover { color: var(--cyan); }
+  .breadcrumb span { color: var(--orange); }
+
+  .section-label {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 16px;
+    font-family: 'Orbitron', sans-serif;
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--orange);
+    letter-spacing: 4px;
+    text-transform: uppercase;
+  }
+
+  .section-label::before {
+    content: '';
+    width: 40px;
+    height: 1px;
+    background: var(--orange);
+    box-shadow: 0 0 8px var(--orange);
+  }
+
+  .section-label::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: linear-gradient(90deg, rgba(255,107,0,0.3), transparent);
+  }
+
+  .page-title {
+    font-family: 'Orbitron', sans-serif;
+    font-size: clamp(32px, 5vw, 72px);
+    font-weight: 900;
+    line-height: 1.05;
+    letter-spacing: -1px;
+    margin-bottom: 24px;
+  }
+
+  .page-title span { color: var(--orange); text-shadow: 0 0 40px rgba(255,107,0,0.4); }
+
+  .page-desc {
+    font-size: 17px;
+    color: rgba(232,244,255,0.55);
+    max-width: 640px;
+    line-height: 1.7;
+    margin-bottom: 48px;
+  }
+
+  .hero-value-props {
+    display: flex;
+    gap: 32px;
+    flex-wrap: wrap;
+  }
+
+  .vp {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 14px;
+    color: var(--text);
+    font-weight: 600;
+  }
+
+  .vp-icon {
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--orange-dim);
+    border: 1px solid rgba(255,107,0,0.25);
+    border-radius: 2px;
+    font-size: 18px;
+    flex-shrink: 0;
+  }
+
+  /* DESIGN PHILOSOPHY */
+  .philosophy {
+    padding: 80px 80px;
+    background: var(--bg2);
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .phil-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 1px;
+    background: var(--border);
+    border: 1px solid var(--border);
+    margin-top: 48px;
+  }
+
+  .phil-item {
+    background: var(--bg2);
+    padding: 36px 28px;
+    position: relative;
+    transition: all 0.3s;
+  }
+
+  .phil-item::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, var(--orange), var(--gold));
+    transform: scaleX(0);
+    transition: transform 0.3s;
+  }
+
+  .phil-item:hover { background: var(--surface); }
+  .phil-item:hover::before { transform: scaleX(1); }
+
+  .phil-num {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 48px;
+    font-weight: 900;
+    color: rgba(255,107,0,0.15);
+    line-height: 1;
+    margin-bottom: 16px;
+  }
+
+  .phil-title {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text);
+    letter-spacing: 1px;
+    margin-bottom: 10px;
+  }
+
+  .phil-desc { font-size: 13px; color: var(--muted); line-height: 1.6; }
+
+  /* PORTFOLIO GRID */
+  .portfolio-section {
+    padding: 80px 80px;
+  }
+
+  .cat-section { margin-bottom: 80px; }
+
+  .cat-head {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 20px 24px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--orange);
+    margin-bottom: 24px;
+  }
+
+  .cat-icon { font-size: 22px; }
+
+  .cat-name {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text);
+    letter-spacing: 1px;
+  }
+
+  .cat-badge {
+    margin-left: auto;
+    font-family: 'Orbitron', sans-serif;
+    font-size: 9px;
+    font-weight: 700;
+    color: var(--orange);
+    background: var(--orange-dim);
+    border: 1px solid rgba(255,107,0,0.25);
+    padding: 5px 14px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+  }
+
+  /* Design sample cards */
+  .design-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+    gap: 20px;
+  }
+
+  .design-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 2px;
+    overflow: hidden;
+    position: relative;
+    transition: all 0.3s;
+    cursor: pointer;
+  }
+
+  .design-card:hover {
+    border-color: rgba(255,107,0,0.35);
+    transform: translateY(-4px);
+    box-shadow: 0 20px 60px rgba(0,0,0,0.5), 0 0 40px rgba(255,107,0,0.06);
+  }
+
+  .design-preview {
+    width: 100%;
+    aspect-ratio: 16/9;
+    background: var(--bg2);
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* Fake banner preview designs */
+  .preview-industrial {
+    background: linear-gradient(135deg, #0a0a14 0%, #1a1a2e 50%, #16213e 100%);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .preview-wood {
+    background: linear-gradient(135deg, #1a0f00 0%, #2d1800 50%, #1a0f00 100%);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .preview-auto {
+    background: linear-gradient(135deg, #0a0014 0%, #1a001f 50%, #0d000f 100%);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .preview-construction {
+    background: linear-gradient(135deg, #001a0a 0%, #001f12 50%, #001208 100%);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .preview-mining {
+    background: linear-gradient(135deg, #00101a 0%, #001a2a 50%, #00101a 100%);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .preview-interior {
+    background: linear-gradient(135deg, #1a1200 0%, #2a1e00 50%, #1a1200 100%);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .preview-tile {
+    background: linear-gradient(135deg, #1a000a 0%, #1a0010 50%, #0f0008 100%);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .preview-laser {
+    background: linear-gradient(135deg, #001a1a 0%, #002a2a 50%, #001515 100%);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .banner-mock {
+    width: 90%;
+    height: 80%;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: 16px;
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 4px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .banner-logo {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .logo-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+  }
+
+  .banner-title {
+    font-family: 'Orbitron', sans-serif;
+    font-weight: 900;
+    line-height: 1.1;
+    letter-spacing: -0.5px;
+  }
+
+  .banner-features {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .banner-feat {
+    font-size: 8px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    opacity: 0.7;
+  }
+
+  .banner-feat::before {
+    content: '▶';
+    font-size: 6px;
+  }
+
+  .banner-cta {
+    font-size: 7px;
+    font-family: 'Orbitron', sans-serif;
+    font-weight: 700;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    padding: 5px 12px;
+    border: 1px solid currentColor;
+    display: inline-block;
+    width: fit-content;
+  }
+
+  /* corner decoration on cards */
+  .banner-mock::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    width: 60px;
+    height: 60px;
+    background: radial-gradient(ellipse at bottom right, currentColor 0%, transparent 70%);
+    opacity: 0.08;
+  }
+
+  .badge-new {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    background: var(--orange);
+    color: #fff;
+    font-family: 'Orbitron', sans-serif;
+    font-size: 8px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    padding: 4px 10px;
+    text-transform: uppercase;
+  }
+
+  .design-info { padding: 20px 24px 24px; }
+
+  .design-name {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text);
+    margin-bottom: 8px;
+    letter-spacing: 0.5px;
+  }
+
+  .design-desc { font-size: 13px; color: var(--muted); line-height: 1.5; margin-bottom: 16px; }
+
+  .design-tags {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+
+  .dtag {
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--orange);
+    background: var(--orange-dim);
+    border: 1px solid rgba(255,107,0,0.2);
+    padding: 3px 10px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+
+  /* PROCESS */
+  .process {
+    padding: 80px 80px;
+    background: var(--bg2);
+    border-top: 1px solid var(--border);
+  }
+
+  .process-steps {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1px;
+    background: var(--border);
+    border: 1px solid var(--border);
+    margin-top: 56px;
+  }
+
+  .step {
+    background: var(--bg2);
+    padding: 32px 24px;
+    position: relative;
+    transition: background 0.3s;
+  }
+
+  .step:hover { background: var(--surface); }
+
+  .step-num {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 40px;
+    font-weight: 900;
+    color: rgba(255,107,0,0.2);
+    line-height: 1;
+    margin-bottom: 16px;
+  }
+
+  .step-title {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text);
+    letter-spacing: 1px;
+    margin-bottom: 10px;
+    text-transform: uppercase;
+  }
+
+  .step-desc { font-size: 13px; color: var(--muted); line-height: 1.6; }
+
+  .step-connector {
+    position: absolute;
+    top: 50%;
+    right: -1px;
+    transform: translateY(-50%);
+    width: 12px;
+    height: 12px;
+    border: 2px solid var(--orange);
+    border-radius: 50%;
+    background: var(--bg2);
+    z-index: 2;
+  }
+
+  /* CTA */
+  .cta-box {
+    margin: 80px;
+    padding: 64px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .cta-box::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--orange), var(--gold), transparent);
+  }
+
+  .cta-box::after {
+    content: '';
+    position: absolute;
+    top: -80px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 400px;
+    height: 200px;
+    background: radial-gradient(ellipse, rgba(255,107,0,0.08) 0%, transparent 70%);
+    pointer-events: none;
+  }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    padding: 14px 32px;
+    font-family: 'Exo 2', sans-serif;
+    font-size: 13px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    text-decoration: none;
+    border-radius: 2px;
+    cursor: pointer;
+    border: none;
+    transition: all 0.25s;
+  }
+
+  .btn-cyan { background: var(--cyan); color: #000; }
+  .btn-cyan:hover { background: #fff; box-shadow: 0 0 40px rgba(0,212,255,0.4); transform: translateY(-2px); }
+  .btn-orange { background: var(--orange); color: #fff; }
+  .btn-orange:hover { box-shadow: 0 0 40px rgba(255,107,0,0.4); transform: translateY(-2px); }
+  .btn-outline { background: transparent; color: var(--text); border: 1px solid var(--border-strong); }
+  .btn-outline:hover { border-color: var(--cyan); color: var(--cyan); background: var(--cyan-dim); }
+
+  footer {
+    background: var(--bg);
+    border-top: 1px solid var(--border);
+    padding: 48px 80px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 24px;
+  }
+
+  .footer-logo {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--text);
+    letter-spacing: 3px;
+  }
+
+  .footer-logo span { color: var(--cyan); text-shadow: 0 0 16px rgba(0,212,255,0.5); }
+
+  .footer-links {
+    display: flex;
+    gap: 24px;
+    flex-wrap: wrap;
+  }
+
+  .footer-links a {
+    color: var(--muted);
+    text-decoration: none;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    transition: color 0.2s;
+  }
+
+  .footer-links a:hover { color: var(--orange); }
+
+  .reveal {
+    opacity: 0;
+    transform: translateY(24px);
+    transition: opacity 0.5s ease, transform 0.5s ease;
+  }
+  .reveal.visible { opacity: 1; transform: translateY(0); }
+
+  @media (max-width: 900px) {
+    nav { padding: 0 24px; }
+    .portfolio-hero { padding: 100px 24px 60px; }
+    .philosophy { padding: 60px 24px; }
+    .portfolio-section { padding: 60px 24px; }
+    .process { padding: 60px 24px; }
+    .process-steps { grid-template-columns: 1fr 1fr; }
+    .phil-grid { grid-template-columns: 1fr; }
+    .cta-box { margin: 24px; padding: 40px 24px; }
+    footer { padding: 32px 24px; }
+  }
+</style>
+</head>
+<body>
+
+<nav>
+  <a href="index.html" class="nav-logo"><div class="nav-dot"></div>ACES <span>OF ADS</span></a>
+  <a href="index.html" class="nav-back">← Назад к кейсам</a>
+</nav>
+
+<!-- HERO -->
+<section class="portfolio-hero">
+  <div class="breadcrumb">
+    <a href="index.html">Aces of Ads</a>
+    <span>/</span>
+    <span>Портфолио дизайнов</span>
+  </div>
+  <div class="section-label">Визуальная упаковка бизнеса</div>
+  <h1 class="page-title">ДИЗАЙН,<br>КОТОРЫЙ <span>ПРОДАЁТ</span></h1>
+  <p class="page-desc">
+    Профессиональная упаковка Авито-магазина — баннеры, инфографика, логотипы — увеличивает конверсию на 30–50% и создаёт образ серьёзного продавца с первого экрана.
+  </p>
+
+  <div class="hero-value-props">
+    <div class="vp"><div class="vp-icon">⚡</div>Скорость: 2–5 дней</div>
+    <div class="vp"><div class="vp-icon">🎯</div>Дизайн под нишу</div>
+    <div class="vp"><div class="vp-icon">📦</div>Полная упаковка</div>
+    <div class="vp"><div class="vp-icon">🔄</div>Правки включены</div>
+  </div>
+</section>
+
+<!-- PHILOSOPHY -->
+<section class="philosophy">
+  <div class="section-label">Подход к дизайну</div>
+  <h2 style="font-family: 'Orbitron', sans-serif; font-size: clamp(24px, 3vw, 40px); font-weight: 900; margin-bottom: 8px; letter-spacing: -1px;">КАК МЫ РАБОТАЕМ</h2>
+  <p style="color: var(--muted); font-size: 15px; max-width: 560px; line-height: 1.7;">Три принципа, которые отличают эффективную упаковку от красивой картинки</p>
+
+  <div class="phil-grid">
+    <div class="phil-item reveal">
+      <div class="phil-num">01</div>
+      <div class="phil-title">ДОВЕРИЕ С ПЕРВОГО ВЗГЛЯДА</div>
+      <div class="phil-desc">Клиент принимает решение "доверять или нет" за 3 секунды. Профессиональный дизайн говорит: "мы здесь всерьёз и надолго".</div>
+    </div>
+    <div class="phil-item reveal">
+      <div class="phil-num">02</div>
+      <div class="phil-title">ВЫГОДЫ, А НЕ ПРОСТО КАРТИНКИ</div>
+      <div class="phil-desc">Каждый элемент дизайна несёт коммерческую нагрузку. Инфографика подчёркивает преимущества — доставка, гарантия, производство, цены.</div>
+    </div>
+    <div class="phil-item reveal">
+      <div class="phil-num">03</div>
+      <div class="phil-title">УЗНАВАЕМОСТЬ БРЕНДА</div>
+      <div class="phil-desc">Единый стиль — логотип, цвета, шрифты — превращает набор объявлений в полноценный магазин с индивидуальностью.</div>
+    </div>
+  </div>
+</section>
+
+<!-- PORTFOLIO SAMPLES -->
+<section class="portfolio-section">
+  <div class="section-label">Примеры работ</div>
+  <h2 style="font-family: 'Orbitron', sans-serif; font-size: clamp(24px, 3vw, 40px); font-weight: 900; margin-bottom: 8px; letter-spacing: -1px;">ВЫПОЛНЕННЫЕ ПРОЕКТЫ</h2>
+  <p style="color: var(--muted); font-size: 15px; max-width: 560px; line-height: 1.7; margin-bottom: 56px;">Реальные баннеры и инфографика, созданные для клиентов агентства</p>
+
+  <!-- ПРОМЫШЛЕННОСТЬ -->
+  <div class="cat-section">
+    <div class="cat-head">
+      <span class="cat-icon">🏭</span>
+      <span class="cat-name">Промышленная мебель и оборудование</span>
+      <span class="cat-badge">реализовано</span>
+    </div>
+    <div class="design-grid">
+      <div class="design-card reveal">
+        <div class="design-preview preview-industrial">
+          <div class="banner-mock" style="color: #7ecfff; border-color: rgba(126,207,255,0.2);">
+            <div class="banner-logo" style="color: #7ecfff;"><div class="logo-dot" style="background: #7ecfff; box-shadow: 0 0 8px #7ecfff;"></div>ПРОМЫШЛЕННАЯ МЕБЕЛЬ</div>
+            <div class="banner-title" style="font-size: 18px; color: #fff;">ПРОЧНОСТЬ.<br>БЕЗОПАСНОСТЬ.<br>ТОЧНОСТЬ!</div>
+            <div class="banner-features" style="color: #aaa;">
+              <div class="banner-feat">15+ лет на рынке</div>
+              <div class="banner-feat">Соответствие ГОСТ и IEC</div>
+              <div class="banner-feat">Готовые комплекты</div>
+            </div>
+            <div class="banner-cta" style="color: #7ecfff;">ЗВОНИТЕ</div>
+          </div>
+        </div>
+        <div class="design-info">
+          <div class="design-name">Промышленная мебель — главный баннер</div>
+          <div class="design-desc">Авито Pro магазин с логотипом, инфографикой преимуществ и профессиональной фотосъёмкой. Создаёт образ серьёзного поставщика B2B.</div>
+          <div class="design-tags"><span class="dtag">Баннер</span><span class="dtag">Инфографика</span><span class="dtag">Логотип</span></div>
+        </div>
+      </div>
+
+      <div class="design-card reveal">
+        <div class="design-preview preview-laser">
+          <div class="banner-mock" style="color: #00ffcc; border-color: rgba(0,255,204,0.2);">
+            <div class="banner-logo" style="color: #00ffcc;"><div class="logo-dot" style="background: #00ffcc; box-shadow: 0 0 8px #00ffcc;"></div>ПРОМСТАН</div>
+            <div class="banner-title" style="font-size: 16px; color: #fff;">ПРОМЫШЛЕННЫЕ<br>СТАНКИ</div>
+            <div class="banner-features" style="color: #aaa;">
+              <div class="banner-feat">Мощность 1500–3000 Вт</div>
+              <div class="banner-feat">Сварка в 5–20 раз быстрее TIG</div>
+              <div class="banner-feat">Гарантия 12 месяцев</div>
+            </div>
+            <div class="banner-cta" style="color: #00ffcc;">ЛАЗЕРНЫЙ 5В1</div>
+          </div>
+        </div>
+        <div class="design-info">
+          <div class="design-name">Лазерное оборудование — ПромСтан</div>
+          <div class="design-desc">Технологичный дизайн для продажи лазерных аппаратов. Акцент на характеристиках, скорости и гарантии. Рейтинг магазина 5.0.</div>
+          <div class="design-tags"><span class="dtag">Баннер</span><span class="dtag">Карточки</span><span class="dtag">B2B</span></div>
+        </div>
+      </div>
+
+      <div class="design-card reveal">
+        <div class="design-preview preview-mining">
+          <div class="banner-mock" style="color: #3399ff; border-color: rgba(51,153,255,0.2);">
+            <div class="banner-logo" style="color: #3399ff;"><div class="logo-dot" style="background: #3399ff;"></div>MINING GROUP</div>
+            <div class="banner-title" style="font-size: 16px; color: #fff;">МАЙНИНГ<br>ПОД КЛЮЧ</div>
+            <div class="banner-features" style="color: #aaa;">
+              <div class="banner-feat">Прямая поставка из Китая</div>
+              <div class="banner-feat">Официальный импорт</div>
+              <div class="banner-feat">Гарантия прозрачности</div>
+            </div>
+            <div class="banner-cta" style="color: #3399ff;">ASIC • ДАТА-ЦЕНТР</div>
+          </div>
+        </div>
+        <div class="design-info">
+          <div class="design-name">Майнинговое оборудование</div>
+          <div class="design-desc">Корпоративная упаковка магазина майнинг-оборудования. Блокчейн-эстетика, инфографика логистики и преимуществ. 32 заявки в сутки.</div>
+          <div class="design-tags"><span class="dtag">Полная упаковка</span><span class="dtag">Логотип</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- СТРОИТЕЛЬСТВО -->
+  <div class="cat-section">
+    <div class="cat-head">
+      <span class="cat-icon">🏗</span>
+      <span class="cat-name">Строительство и стройматериалы</span>
+      <span class="cat-badge">реализовано</span>
+    </div>
+    <div class="design-grid">
+      <div class="design-card reveal">
+        <div class="design-preview preview-construction">
+          <div class="banner-mock" style="color: #44ff88; border-color: rgba(68,255,136,0.2);">
+            <div class="banner-logo" style="color: #44ff88;"><div class="logo-dot" style="background: #44ff88;"></div>ТЕРМОПАНЕЛИ</div>
+            <div class="banner-title" style="font-size: 14px; color: #fff;">ТЕРМОПАНЕЛИ И ГИБКИЙ КЛИНКЕР ОТ ПРОИЗВОДИТЕЛЯ</div>
+            <div class="banner-features" style="color: #aaa;">
+              <div class="banner-feat">Широкий ассортимент</div>
+              <div class="banner-feat">Более 5000+ моделей</div>
+              <div class="banner-feat">Доставка по России</div>
+            </div>
+            <div class="banner-cta" style="color: #44ff88;">ПИШИТЕ · ЗВОНИТЕ</div>
+          </div>
+        </div>
+        <div class="design-info">
+          <div class="design-name">Термопанели — 5 лет на Авито</div>
+          <div class="design-desc">Баннер с акцентом на ассортимент (5000+ моделей) и производителя. Работает в связке с продающими текстами. 5 лет без спада.</div>
+          <div class="design-tags"><span class="dtag">Баннер</span><span class="dtag">Производитель</span></div>
+        </div>
+      </div>
+
+      <div class="design-card reveal">
+        <div class="design-preview preview-construction" style="background: linear-gradient(135deg, #001510 0%, #002218 100%);">
+          <div class="banner-mock" style="color: #88ff44; border-color: rgba(136,255,68,0.2);">
+            <div class="banner-logo" style="color: #88ff44;"><div class="logo-dot" style="background: #88ff44;"></div>СТРОЙМАТЕРИАЛЫ</div>
+            <div class="banner-title" style="font-size: 14px; color: #fff;">ДОСКА И БРУС<br>В НИЖНЕМ<br>НОВГОРОДЕ</div>
+            <div class="banner-features" style="color: #aaa;">
+              <div class="banner-feat">Собственное производство</div>
+              <div class="banner-feat">Гибкие цены</div>
+              <div class="banner-feat">Доставка в день заказа</div>
+            </div>
+            <div class="banner-cta" style="color: #88ff44;">ОСБ · ЦСП · УТЕПЛИТЕЛЬ</div>
+          </div>
+        </div>
+        <div class="design-info">
+          <div class="design-name">Пиломатериалы — Нижний Новгород</div>
+          <div class="design-desc">10 позиций пиломатериалов, единый стиль упаковки магазина. Клиент работает с агентством 5+ лет без спада продаж.</div>
+          <div class="design-tags"><span class="dtag">Мультипозиционный</span><span class="dtag">Регион</span></div>
+        </div>
+      </div>
+
+      <div class="design-card reveal">
+        <div class="design-preview preview-wood">
+          <div class="banner-mock" style="color: #ffcc66; border-color: rgba(255,204,102,0.2);">
+            <div class="banner-logo" style="color: #ffcc66;"><div class="logo-dot" style="background: #ffcc66;"></div>ЛЕСНОЙ МАГНАТ</div>
+            <div class="banner-title" style="font-size: 16px; color: #fff;">ДОСКА<br>ОБРЕЗНАЯ</div>
+            <div class="banner-features" style="color: #aaa;">
+              <div class="banner-feat">Только хвойные породы</div>
+              <div class="banner-feat">Логистика + автопарк</div>
+              <div class="banner-feat">Профессиональная выгрузка</div>
+            </div>
+            <div class="banner-cta" style="color: #ffcc66;">ГАРАНТИЯ КАЧЕСТВА</div>
+          </div>
+        </div>
+        <div class="design-info">
+          <div class="design-name">Доска обрезная — подробная инфографика</div>
+          <div class="design-desc">Детализированная инфографика для товарных позиций: ассортимент, гарантии, логистика, производство. Закрывает все возражения визуально.</div>
+          <div class="design-tags"><span class="dtag">Инфографика</span><span class="dtag">Товарная карточка</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- АВТО И МЕБЕЛЬ -->
+  <div class="cat-section">
+    <div class="cat-head">
+      <span class="cat-icon">🚗</span>
+      <span class="cat-name">Авто-аксессуары, мебель, интерьер</span>
+      <span class="cat-badge">реализовано</span>
+    </div>
+    <div class="design-grid">
+      <div class="design-card reveal">
+        <div class="design-preview preview-auto">
+          <div class="banner-mock" style="color: #ff4466; border-color: rgba(255,68,102,0.2);">
+            <div class="banner-logo" style="color: #ff4466;"><div class="logo-dot" style="background: #ff4466;"></div>АВТОЧЕХЛЫ</div>
+            <div class="banner-title" style="font-size: 15px; color: #fff;">ПРОИЗВОДСТВО КАЧЕСТВЕННЫХ ЧЕХЛОВ НОВОГО ПОКОЛЕНИЯ</div>
+            <div class="banner-features" style="color: #aaa;">
+              <div class="banner-feat">Эффект перетяжки</div>
+              <div class="banner-feat">Рассрочка и постоплата</div>
+              <div class="banner-feat">Доставка за наш счёт</div>
+            </div>
+            <div class="banner-cta" style="color: #ff4466;">1673 ОБЪЯВЛЕНИЯ</div>
+          </div>
+        </div>
+        <div class="design-info">
+          <div class="design-name">Авточехлы — 4+ года, 2 магазина</div>
+          <div class="design-desc">Долгосрочная стратегия для двух магазинов одного клиента. Единый брендбук, разные ценовые сегменты.</div>
+          <div class="design-tags"><span class="dtag">Многолетний проект</span><span class="dtag">2 магазина</span></div>
+        </div>
+      </div>
+
+      <div class="design-card reveal">
+        <div class="design-preview preview-interior">
+          <div class="banner-mock" style="color: #ffaa33; border-color: rgba(255,170,51,0.2);">
+            <div class="banner-logo" style="color: #ffaa33;"><div class="logo-dot" style="background: #ffaa33;"></div>SPIKSHOP</div>
+            <div class="banner-title" style="font-size: 14px; color: #fff;">КОТЛЫ · ПЕЧИ<br>ГРИЛИ · МАНГАЛЫ</div>
+            <div class="banner-features" style="color: #aaa;">
+              <div class="banner-feat">Экономия топлива</div>
+              <div class="banner-feat">Надёжные материалы</div>
+              <div class="banner-feat">Широкий ассортимент 200+</div>
+            </div>
+            <div class="banner-cta" style="color: #ffaa33;">АВТОМАТИЧЕСКОЕ ПОДДЕРЖАНИЕ</div>
+          </div>
+        </div>
+        <div class="design-info">
+          <div class="design-name">Печи и котлы — SPIKSHOP</div>
+          <div class="design-desc">Тёплая атмосферная упаковка магазина отопительного оборудования. Акцент на надёжности и широком ассортименте.</div>
+          <div class="design-tags"><span class="dtag">Атмосфера</span><span class="dtag">Lifestyle</span></div>
+        </div>
+      </div>
+
+      <div class="design-card reveal">
+        <div class="design-preview preview-tile">
+          <div class="banner-mock" style="color: #ff66cc; border-color: rgba(255,102,204,0.2);">
+            <div class="banner-logo" style="color: #ff66cc;"><div class="logo-dot" style="background: #ff66cc;"></div>ECODECOR</div>
+            <div class="banner-title" style="font-size: 14px; color: #fff;">МЕБЕЛЬ ИЗ ЭКОМАТЕРИАЛОВ</div>
+            <div class="banner-features" style="color: #aaa;">
+              <div class="banner-feat">Безвредные компоненты</div>
+              <div class="banner-feat">Натуральный шпон</div>
+              <div class="banner-feat">Пропитка Varathane</div>
+            </div>
+            <div class="banner-cta" style="color: #ff66cc;">ДОСТАВКА ПО Н.НОВГОРОДУ</div>
+          </div>
+        </div>
+        <div class="design-info">
+          <div class="design-name">EcoDecor — мебель из экоматериалов</div>
+          <div class="design-desc">Экологичный бренд с акцентом на натуральность материалов. Инфографика по товарным позициям: столешницы, рейки, фальш-балки.</div>
+          <div class="design-tags"><span class="dtag">Эко-бренд</span><span class="dtag">Инфографика</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- PROCESS -->
+<section class="process">
+  <div class="section-label">Как мы работаем</div>
+  <h2 style="font-family: 'Orbitron', sans-serif; font-size: clamp(24px, 3vw, 40px); font-weight: 900; margin-bottom: 8px; letter-spacing: -1px;">4 ШАГА ДО РЕЗУЛЬТАТА</h2>
+  <p style="color: var(--muted); font-size: 15px; max-width: 560px; line-height: 1.7;">От брифа до готового магазина — чётко, быстро, с примеркой</p>
+
+  <div class="process-steps">
+    <div class="step reveal">
+      <div class="step-num">01</div>
+      <div class="step-title">Брифинг</div>
+      <div class="step-desc">Изучаем нишу, конкурентов и ваши УТП. Определяем цветовую стилистику и ключевые акценты.</div>
+      <div class="step-connector"></div>
+    </div>
+    <div class="step reveal">
+      <div class="step-num">02</div>
+      <div class="step-title">Концепция</div>
+      <div class="step-desc">Разрабатываем главный баннер с логотипом. Согласовываем стиль до начала основной работы.</div>
+      <div class="step-connector"></div>
+    </div>
+    <div class="step reveal">
+      <div class="step-num">03</div>
+      <div class="step-title">Производство</div>
+      <div class="step-desc">Создаём полный комплект: баннер шапки, инфографику для объявлений, карточки товаров.</div>
+      <div class="step-connector"></div>
+    </div>
+    <div class="step reveal">
+      <div class="step-num">04</div>
+      <div class="step-title">Запуск</div>
+      <div class="step-desc">Передаём готовые материалы, помогаем с размещением. Вносим правки при необходимости.</div>
+    </div>
+  </div>
+</section>
+
+<!-- CTA -->
+<div class="cta-box">
+  <div style="font-family: 'Orbitron', sans-serif; font-size: 10px; letter-spacing: 5px; color: var(--orange); margin-bottom: 20px; text-transform: uppercase;">Заказать дизайн</div>
+  <div style="font-family: 'Orbitron', sans-serif; font-size: clamp(24px, 3vw, 44px); font-weight: 900; margin-bottom: 16px; position: relative; z-index: 1;">УПАКУЕМ ВАШ МАГАЗИН</div>
+  <div style="font-size: 16px; color: var(--muted); margin-bottom: 40px; position: relative; z-index: 1;">Профессиональный дизайн под ключ — от брифа до готового магазина за 2–5 дней</div>
+  <div style="display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; position: relative; z-index: 1;">
+    <a href="https://t.me/Aces_Of_Ads_bot" target="_blank" class="btn btn-orange">🤖 Заказать в боте</a>
+    <a href="https://t.me/+LhZY2M4Gc7JmOTYy" target="_blank" class="btn btn-outline">✈️ Канал агентства</a>
+    <a href="index.html" class="btn btn-cyan">← Смотреть кейсы</a>
+  </div>
+</div>
+
+<footer>
+  <div class="footer-logo">ACES <span>OF ADS</span></div>
+  <div class="footer-links">
+    <a href="index.html">Кейсы</a>
+    <a href="index.html#avito-top">Авито №1</a>
+    <a href="https://t.me/Aces_Of_Ads_bot" target="_blank">Бот</a>
+    <a href="https://t.me/+LhZY2M4Gc7JmOTYy" target="_blank">Канал</a>
+  </div>
+</footer>
+
+<script>
+  const revealObserver = new IntersectionObserver((entries) => {
+    entries.forEach((entry, i) => {
+      if (entry.isIntersecting) {
+        setTimeout(() => entry.target.classList.add('visible'), i * 60);
+        revealObserver.unobserve(entry.target);
+      }
+    });
+  }, { threshold: 0.08 });
+
+  document.querySelectorAll('.reveal').forEach(el => revealObserver.observe(el));
+</script>
+</body>
+</html>
