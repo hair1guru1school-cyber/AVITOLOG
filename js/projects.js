@@ -2555,8 +2555,9 @@ function renderProjectsScreen(opts) {
     return '<button type="button" class="projects-zone-tab projects-zone-tab-zone' + (_projectsZoneTab===z ? ' on' : '') + '" data-zone="' + z + '" draggable="true" onclick="event.stopPropagation();setProjectsZoneTab(\'' + z + '\')" ondragstart="zoneTabDragStart(event,\'' + z + '\')" ondragover="zoneTabDragOver(event)" ondragleave="zoneTabDragLeave(event)" ondrop="zoneTabDrop(event,\'' + z + '\')" ondragend="zoneTabDragEnd(event)">' + (zoneLabels[z]||z) + '</button>';
   }).join('');
   var zoneTabsRow = '<div class="projects-zone-tabs projects-zone-tabs-top">' + tabsBtns + '</div>';
-  var addBtnHtml = '<span class="projects-head-title"><button type="button" class="projects-add-btn" onclick="event.stopPropagation();createNewProjectInActive()">+ ПРОЕКТ</button></span>';
+  var addBtnHtml = '<span class="projects-head-chip projects-add-chip" title="Добавить проект" onclick="event.stopPropagation();createNewProjectInActive()">+</span>';
   var chipsRow1 = '<span class="projects-head-stats">' +
+          addBtnHtml +
           '<span class="projects-head-chip active" title="Все проекты" onclick="event.stopPropagation();setProjectsTypeSortPriority(null)">🃏 <b>' + activeCount + '</b></span>' +
           '<span class="projects-head-chip diamond' + (_projectsTypeSortPriority === 'old' ? ' is-on' : '') + '" title="Алмазы" onclick="event.stopPropagation();setProjectsTypeSortPriority(\'old\')">💎 <b>' + diamondCount + '</b></span>' +
           '<span class="projects-head-chip ret' + (_projectsTypeSortPriority === 'returning' ? ' is-on' : '') + '" title="Второй раз" onclick="event.stopPropagation();setProjectsTypeSortPriority(\'returning\')">2️⃣ <b>' + returningCount + '</b></span>' +
@@ -2569,7 +2570,7 @@ function renderProjectsScreen(opts) {
           '<span class="projects-head-chip mustlaunch' + (_projectsFilterMustLaunch ? ' is-on' : '') + '" title="Показать проекты с !! первыми" onclick="event.stopPropagation();toggleProjectsFilterMustLaunch()">!! <b>' + mustLaunchCount + '</b></span>' +
         '</span>';
   var expandCls = (typeof localStorage !== 'undefined' && localStorage.getItem('avitolog_projects_sidebar_hidden') === '1') ? ' on' : '';
-  var toolsRow = '<div class="projects-zone-tabs-wrap"><div class="projects-zone-tabs projects-zone-tabs-bottom projects-zone-tabs-row1">' + addBtnHtml + chipsRow1 + '<button type="button" class="projects-expand-btn' + expandCls + '" onclick="event.stopPropagation();toggleProjectsSidebar()" title="Растянуть таблицу на весь экран / вернуть панель">⛶</button></div><div class="projects-zone-tabs projects-zone-tabs-bottom projects-zone-tabs-row2">' + chipsRow2 + '</div></div>';
+  var toolsRow = '<div class="projects-zone-tabs-wrap"><div class="projects-zone-tabs projects-zone-tabs-bottom projects-zone-tabs-row1">' + chipsRow1 + '</div><div class="projects-zone-tabs projects-zone-tabs-bottom projects-zone-tabs-row2">' + chipsRow2 + '</div></div>';
   var headerSticky =
     '<div class="projects-sticky-head">' +
       zoneTabsRow +
@@ -2698,7 +2699,7 @@ function renderProjectsScreen(opts) {
     });
     hiddenHtml += '</div>';
   });
-  html += '</div></div>';
+  html += '</div><button type="button" class="projects-expand-btn projects-expand-btn-cal' + expandCls + '" onclick="event.stopPropagation();toggleProjectsSidebar()" title="Растянуть таблицу на весь экран / вернуть панель">⛶</button></div>';
   html += '<div class="projects-hidden-strip" title="Календарные (удалённые)">' + (hiddenHtml ? ('<div class="projects-hidden-head">📅</div><div class="projects-hidden-list">' + hiddenHtml + '</div>') : '<div class="projects-hidden-empty">—</div>') + '</div>';
   html += '</div>';
   document.getElementById('mainContent').innerHTML = html;

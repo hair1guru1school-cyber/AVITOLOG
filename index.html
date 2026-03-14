@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+image.png<!DOCTYPE html>
 <html lang="ru">
 <head>
 <meta charset="UTF-8">
@@ -483,7 +483,7 @@ body.projects-mode .gen-extra-prompt,body.projects-mode .gen-buttons-row{display
 /* ——— Экран Проекты ——— */
 .projects-board{display:flex;height:100%;min-height:400px;overflow:hidden;background:var(--bg);transform-origin:0 0}
 .projects-left{width:380px;min-width:380px;flex-shrink:0;background:var(--surface);border-right:1px solid var(--border);overflow-y:auto;display:flex;flex-direction:column}
-.projects-table-wrap{flex:1;overflow:auto;min-width:0}
+.projects-table-wrap{flex:1;overflow:auto;min-width:0;position:relative}
 .projects-zone{ padding:10px 12px;border-bottom:1px solid var(--border)}
 .projects-zone-title{font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--accent);margin-bottom:8px}
 .projects-zone.active .projects-zone-title{color:var(--accent)}
@@ -771,9 +771,9 @@ body.projects-mode.projects-sidebar-hidden .sidebar{min-width:0;width:0;padding:
 .projects-zone-tabs-wrap{display:flex;flex-direction:column;gap:6px;width:100%;min-width:0;flex:1 1 auto}
 .projects-zone-tabs-bottom{width:100%;display:flex;flex-direction:column;align-items:stretch;gap:8px;flex-wrap:nowrap;min-width:0}
 .projects-zone-tabs-row1,.projects-zone-tabs-row2{flex-shrink:0;display:flex;align-items:stretch;gap:8px;width:100%;min-width:0}
-.projects-zone-tabs-row1 .projects-head-title{flex:1 1 0;min-width:0}
-.projects-zone-tabs-row1 .projects-head-title .projects-add-btn{width:100%;min-width:0;flex:1}
-.projects-zone-tabs-row1 .projects-head-stats{flex:4 1 0;display:flex;align-items:stretch;gap:8px;min-width:0}
+.projects-zone-tabs-row1 .projects-head-stats{flex:1 1 0;display:flex;align-items:stretch;gap:8px;min-width:0}
+.projects-add-chip{min-width:32px;font-size:18px;font-weight:700;color:#7cf5ff;border-color:rgba(53,208,255,0.44);background:rgba(18,26,42,0.7)}
+.projects-add-chip:hover{background:rgba(53,208,255,0.15);border-color:#35d0ff}
 .projects-zone-tabs-row1 .projects-head-stats .projects-head-chip{flex:1 1 0;min-width:0}
 .projects-zone-tabs-row2 .projects-head-stats{flex:1 1 0;display:flex;align-items:stretch;gap:8px;min-width:0}
 .projects-zone-tabs-row2 .projects-head-stats .projects-head-chip,.projects-zone-tabs-row2 .projects-tasks-tab{flex:1 1 0;min-width:0}
@@ -798,6 +798,8 @@ body.projects-mode.projects-sidebar-hidden .sidebar{min-width:0;width:0;padding:
 .projects-expand-btn{width:36px;min-width:36px;height:36px;border-radius:8px;border:1px solid rgba(53,208,255,0.35);background:rgba(18,26,42,0.6);color:#7cf5ff;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .18s;flex-shrink:0}
 .projects-expand-btn:hover{background:rgba(53,208,255,0.15);border-color:#35d0ff}
 .projects-expand-btn.on{background:rgba(0,217,126,0.2);border-color:var(--accent);color:var(--accent)}
+.projects-expand-btn-cal{position:absolute;right:6px;bottom:6px;width:24px;min-width:24px;height:24px;opacity:0.2;z-index:20;font-size:12px}
+.projects-expand-btn-cal:hover{opacity:0.6}
 .proj-task-badge{display:inline-flex;align-items:center;justify-content:center;margin-top:4px;padding-top:4px;border-top:1px solid rgba(255,255,255,0.04)}
 .proj-task-count{min-width:18px;height:18px;padding:0 5px;border-radius:50%;background:rgba(0,217,126,0.25);color:var(--accent);font-size:10px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;line-height:1}
 .proj-task-indicators{font-size:10px;color:var(--muted);display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:2px;padding-top:2px;border-top:1px solid rgba(255,255,255,0.04)}
