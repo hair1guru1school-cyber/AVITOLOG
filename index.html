@@ -979,7 +979,10 @@ body.task-panel-font-l .task-panel-content{--tf:1.15}
 .field-expand-btn:hover{border-color:var(--accent);color:var(--accent)}
 .proj-cell-editable.expanded .field-expand-btn{border-color:var(--accent);color:var(--accent);background:rgba(0,217,126,0.12)}
 .proj-optional-row{display:none;width:100%;margin-top:4px;padding-left:24px}
-.proj-cell-editable.expanded{flex-wrap:wrap;white-space:normal;align-items:flex-start}
+.proj-cell-editable.expanded{flex-wrap:wrap;white-space:normal;align-items:flex-start;overflow:visible;min-height:auto}
+.projects-table-row .projects-sticky{align-items:center}
+.projects-table-row:has(.proj-cell-editable.expanded) .projects-sticky{align-items:flex-start}
+.projects-table-row-child .projects-sticky{align-items:flex-start}
 .cal-bar-layer{opacity:.5;background:rgba(124,106,247,0.35)!important}
 .projects-scroll .projects-cal-day.day-active .cal-bar-layer{background:rgba(124,106,247,0.4)!important}
 .proj-cell-editable.expanded .proj-optional-row{display:flex}

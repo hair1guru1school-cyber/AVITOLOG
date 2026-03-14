@@ -144,7 +144,8 @@ function getAnalyticsRecentProjects() {
         folderLink: ac.folderLink || ('https://drive.google.com/drive/folders/' + ac.folderId),
         status: ac.client_type || '',
         tags: (typeof getClientTags === 'function' ? getClientTags(ac) : []) || [],
-        isCurrentLeft: true
+        isCurrentLeft: true,
+        ts: Date.now()
       };
     }
     var seen = {};
@@ -180,9 +181,39 @@ function getAnalyticsRecentProjects() {
         kp_count: c.kp_count || c.kp || '',
         avatar: (typeof getClientAvatar === 'function' ? (getClientAvatar(c) || '') : ''),
         emoji: '📁',
-        folderLink: c.folderLink || ('https://drive.google.com/drive/folders/' + fid)
+        folderLink: c.folderLink || ('https://drive.google.com/drive/folders/' + fid),
+        ts: Date.now()
       });
     });
+    /* По умолчанию: проекты из календаря (открытые в этом месяце) */
+    if (typeof loadProjectsData === 'function') {
+      try {
+        var pd = loadProjectsData();
+        var boardProjects = (pd.projects || []).filter(function(p){ return (p.zone || 'active') === 'active'; });
+        var thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
+        boardProjects.forEach(function(p) {
+          if (!p || !p.id) return;
+          var pid = String(p.id);
+          if (seen[pid]) return;
+          var ts = 0;
+          var m = pid.match(/^p(\d+)$/);
+          if (m) ts = parseInt(m[1], 10);
+          if (!ts || ts < thisMonthStart) return;
+          seen[pid] = true;
+          uniq.push({
+            projectId: pid,
+            folderId: p.folderId || pid,
+            company: p.title || 'Проект',
+            title: p.title || 'Проект',
+            projectTitle: p.title || 'Проект',
+            emoji: p.emoji || '📁',
+            avatar: p.avatar || '',
+            ts: ts
+          });
+        });
+        uniq.sort(function(a,b){ return (b.ts || 0) - (a.ts || 0); });
+      } catch(e) {}
+    }
     var byName = {};
     return uniq.filter(function(p) {
       var name = String(p.company || p.title || p.projectTitle || '').trim().toLowerCase();
