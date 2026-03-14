@@ -2465,12 +2465,14 @@ function renderProjectsScreen(opts) {
   var newCount = activeProjects.filter(function(p){ return normalizeProjectClientType(p.clientType) === 'new'; }).length;
   var returningCount = activeProjects.filter(function(p){ return normalizeProjectClientType(p.clientType) === 'returning'; }).length;
   var stickyW = getSavedProjectsStickyWidth() || getProjectsStickyWidthPx(allProjects);
+  if (_projectsZoneTab === 'second_chance' || _projectsZoneTab === 'archive') stickyW = Math.min(stickyW, 420);
   var rowH = getSavedProjectsRowHeight() || 14;
   var projectsZoom = getSavedProjectsZoom();
   var effectiveRowH = projectsZoom < 1 ? Math.max(6, Math.round(rowH * projectsZoom)) : rowH;
   var tableStyle = '--projects-sticky-width:' + stickyW + 'px;--projects-row-height:' + effectiveRowH + 'px';
   var fitRowsCls = projectsZoom < 1 ? ' projects-fit-rows' : '';
-  var html = '<div class="projects-board' + fitRowsCls + '" style="transform:scale(' + projectsZoom + ');transform-origin:0 0"><div class="projects-table-wrap"><div class="projects-table" style="' + tableStyle + '">';
+  var zoneCls = _projectsZoneTab === 'second_chance' ? ' projects-zone-zzz' : _projectsZoneTab === 'archive' ? ' projects-zone-archive' : '';
+  var html = '<div class="projects-board' + fitRowsCls + zoneCls + '" style="transform:scale(' + projectsZoom + ');transform-origin:0 0"><div class="projects-table-wrap"><div class="projects-table" style="' + tableStyle + '">';
   var tasksCount = visibleProjects.reduce(function(sum,p){ return sum + (typeof getTasksForProject === 'function' ? getTasksForProject(p.id) : []).length; }, 0);
   var tasksLabel = '<button type="button" class="projects-zone-tab projects-tasks-tab' + (_projectsTasksSortOn ? ' on' : '') + '" data-zone="tasks" onclick="event.stopPropagation();toggleTasksSortFilter()" title="' + (_projectsTasksSortOn ? 'Сбросить сортировку по задачам' : 'Сортировать: больше задач — выше') + '"><span class="proj-tasks-count-badge">' + tasksCount + '</span></button>';
   var zoneLabels = { active:'&#9889; Актив', second_chance:'&#128164; Zzz', archive:'&#128230; Архив' };
