@@ -910,13 +910,12 @@ body.task-panel-font-l .task-panel-content{--tf:1.15}
   35%{opacity:1;width:28px;height:4px}
   100%{opacity:0;width:62px;height:1px;filter:brightness(.9)}
 }
-.projects-cal-edge-strip{width:10px;min-width:10px;flex-shrink:0;position:relative;display:flex;align-items:center;justify-content:center;border-right:1px solid rgba(255,255,255,0.08);background:rgba(0,0,0,0.2)}
-.projects-scroll-slider{width:6px;height:36px;border-radius:4px;background:rgba(53,208,255,0.25);border:1px solid rgba(53,208,255,0.4);cursor:pointer;user-select:none;transition:background .15s,border-color .15s;pointer-events:auto}
-.projects-scroll-slider:hover{background:rgba(53,208,255,0.4);border-color:#35d0ff}
-.projects-scroll-slider.scrolling{background:rgba(53,208,255,0.5);border-color:#7cf5ff;box-shadow:0 0 8px rgba(53,208,255,0.35)}
-.projects-cal-header .projects-cal-day{position:relative}
-.cal-cell-width-slider{position:absolute;top:0;left:0;right:0;height:6px;cursor:ew-resize;z-index:10;pointer-events:auto;background:linear-gradient(180deg,rgba(0,217,126,0.35),rgba(0,217,126,0.12));border-radius:2px 2px 0 0;transition:background .15s}
+.projects-cal-slider-row{min-height:10px;border-bottom:none}
+.projects-cal-slider-row .projects-scroll{display:flex;align-items:center}
+.cal-width-slider-wrap{width:100%;height:10px;display:flex;align-items:center;pointer-events:auto}
+.cal-cell-width-slider{height:8px;min-width:24px;cursor:ew-resize;z-index:10;pointer-events:auto;background:linear-gradient(180deg,rgba(0,217,126,0.35),rgba(0,217,126,0.12));border-radius:4px;transition:background .15s;display:flex;align-items:center;justify-content:center;font-size:10px;color:rgba(0,217,126,0.9);font-weight:700}
 .cal-cell-width-slider:hover{background:linear-gradient(180deg,rgba(0,217,126,0.5),rgba(0,217,126,0.2));box-shadow:0 0 8px rgba(0,217,126,0.3)}
+.projects-cal-header .projects-cal-day{position:relative}
 .projects-table .projects-scroll{display:flex;flex-shrink:0}
 .projects-table-row{display:flex;min-height:var(--projects-row-height,14px);border-bottom:1px solid rgba(255,255,255,0.06)}
 .projects-table-row[data-id]{cursor:default}

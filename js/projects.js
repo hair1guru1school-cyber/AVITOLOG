@@ -2383,7 +2383,7 @@ function renderProjectsScreen(opts) {
   })();
   var DAY_PX = getSavedProjectsDayPx() || 28;
   var DAYS_LEFT = 0;
-  var DAYS_RIGHT = 45;
+  var DAYS_RIGHT = 60;
   var today = new Date();
   today.setHours(0,0,0,0);
   var startDate = new Date(today);
@@ -2458,16 +2458,16 @@ var toolsRow = '<div class="projects-zone-tabs projects-zone-tabs-bottom">' + ad
       toolsRow +
     '</div>';
   var dayNames = ['вс','пн','вт','ср','чт','пт','сб'];
-  var headerScroll = '<div class="projects-cal-edge-strip" title="Клик — на сегодня. Зажми — скролл в прошлое"><div class="projects-scroll-slider" id="projectsScrollBackBtn"></div></div>';
+  var sliderRow = '<div class="projects-table-row projects-cal-slider-row"><div class="projects-sticky"></div><div class="projects-scroll"><div class="cal-width-slider-wrap"><div class="cal-cell-width-slider" id="calCellWidthSlider" title="Тяните вправо — шире, влево — уже. Двойной клик — сброс" onmousedown="startCalCellWidthResize(event)" ondblclick="resetCalCellWidth(event)">⇄</div></div></div></div>';
+  var headerScroll = '';
   dates.forEach(function(d, idx) {
     var isToday = (idx === todayIndex) && (toIsoDateLocal(d) === todayStr);
     var mon = ['янв','фев','мар','апр','май','июн','июл','авг','сен','окт','ноя','дек'][d.getMonth()];
     var wd = dayNames[d.getDay()];
     var todayLabel = isToday ? '<span class="cal-today-badge">СЕГОДНЯ</span>' : '';
-    var cellWidthSlider = isToday ? '<div class="cal-cell-width-slider" id="calCellWidthSlider" title="Тяните вправо/влево — ширина ячеек. Двойной клик — сброс" onmousedown="startCalCellWidthResize(event)" ondblclick="resetCalCellWidth(event)"></div>' : '';
-    headerScroll += '<div class="projects-cal-day' + (isToday?' today':'') + '" style="width:' + DAY_PX + 'px;min-width:' + DAY_PX + 'px">' + cellWidthSlider + todayLabel + '<span class="cal-mon">' + mon + '</span><span class="cal-num-wd"><span class="cal-num">' + d.getDate() + '</span><span class="cal-wd">' + wd + '</span></span></div>';
+    headerScroll += '<div class="projects-cal-day' + (isToday?' today':'') + '" style="width:' + DAY_PX + 'px;min-width:' + DAY_PX + 'px">' + todayLabel + '<span class="cal-mon">' + mon + '</span><span class="cal-num-wd"><span class="cal-num">' + d.getDate() + '</span><span class="cal-wd">' + wd + '</span></span></div>';
   });
-  html += '<div class="projects-table-row projects-table-header projects-cal-header"><div class="projects-sticky">' + headerSticky + '</div><div class="projects-scroll">' + headerScroll + '</div></div>';
+  html += sliderRow + '<div class="projects-table-row projects-table-header projects-cal-header"><div class="projects-sticky">' + headerSticky + '</div><div class="projects-scroll">' + headerScroll + '</div></div>';
 
   visibleProjects.forEach(function(p) {
     ensureChildLineEvents(p);
