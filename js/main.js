@@ -1,4 +1,4 @@
-﻿// ── TABS ──
+// ── TABS ──
 function switchTab(tab) {
   if (agencyMode) return;
   currentTab = tab;
@@ -586,6 +586,7 @@ async function refreshClientContents(forceFolder) {
     } else targetFolderId = pid;
   }
   if (!targetFolderId) {
+    if (projectsMode || goalsMode || agencyMode) return;
     var headCtrlOnly = '<div class="client-view-switch" id="analyticsRecentSwitch">' +
       '<button type="button" class="client-view-btn' + (_analyticsRecentLimit === 2 ? ' on' : '') + '" title="2 последние" data-limit="2">2</button>' +
       '<button type="button" class="client-view-btn' + (_analyticsRecentLimit === 3 ? ' on' : '') + '" title="3 последние" data-limit="3">3</button>' +
@@ -609,12 +610,14 @@ async function refreshClientContents(forceFolder) {
   restoreDriveTokenFromStorage();
   if (!_driveToken && !getStoredDriveAuth()) {
     _refreshClientContentsInFlight = false;
+    if (projectsMode || goalsMode || agencyMode) return;
     var headNeedAuth = '<div class="client-contents-head"><div class="client-contents-title">' + (getAnalyticsRecentTitle() || 'Недавние') + '</div></div>';
     mc.innerHTML = '<div class="client-contents">' + headNeedAuth + buildAnalyticsRecentProjectsBlock() +
       '<div class="empty-st" style="padding:24px 0"><div style="font-size:36px;opacity:.2">&#128194;</div><p style="font-size:14px">Войдите в Google Drive</p><p style="font-size:12px;opacity:.7;margin-top:6px">Нажмите кнопку 🔑 Drive в шапке страницы, чтобы загрузить папку</p><button type="button" class="btn-back-inline" onclick="refreshClientContents(true)" style="margin-top:12px">Повторить</button></div></div>';
     wireAnalyticsRecentControls();
     return;
   }
+  if (projectsMode || goalsMode || agencyMode) return;
   mc.innerHTML = '<div class="empty-st"><div class="spinner" style="margin:0 auto"></div><p style="font-size:13px">Загружаю содержимое папки...</p></div>';
   var safetyTmr = setTimeout(function() {
     if (_refreshClientContentsInFlight && !projectsMode && !goalsMode && !agencyMode && mc) {
@@ -3347,3 +3350,170 @@ async function writeToSheets(d) {
       var rContact = normClientField(vals[i] && vals[i][2]);
       var rPhone = normClientField(vals[i] && vals[i][5]);
       if (!targetRow && dCompany && ((dContact && dCompany === rCompany && dContact === rContact) || (dPhone && dCompany === rCompany && dPhone === rPhone))) {
+        targetRow = i + 2;
+      }
+    }
+  }
+  var resp;
+  if (targetRow > 0) {
+    var updRange = sheetName + '!A' + targetRow + ':I' + targetRow;
+    var updUrl = 'https://sheets.googleapis.com/v4/spreadsheets/' + SHEETS_ID + '/values/' + encodeURIComponent(updRange) + '?valueInputOption=USER_ENTERED';
+    resp = await fetch(updUrl, {
+      method: 'PUT',
+      headers: {'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json'},
+      body: JSON.stringify({values: [row]})
+    });
+  } else {
+    var appRange = sheetName + '!A:I';
+    var appUrl = 'https://sheets.googleapis.com/v4/spreadsheets/' + SHEETS_ID + '/values/' + encodeURIComponent(appRange) + ':append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS';
+    resp = await fetch(appUrl, {
+      method: 'POST',
+      headers: {'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json'},
+      body: JSON.stringify({values: [row]})
+    });
+  }
+  if (!resp.ok) {
+    var err = await resp.json().catch(function() { return {}; });
+    throw new Error('Таблица: ' + (err.error && err.error.message ? err.error.message : resp.status + ' ' + resp.statusText));
+  }
+}
+
+// ── TEST FILL ──
+function fillTest() {
+  var tests = [
+    {company:'ТестСтрой',name:'Иван',tg:'@teststroy',phone:'+7 999 111 22 33',category:'Пиломатериалы',city:'Москва, Подольск',usp:'Собственное производство, ГОСТ',extra:'',kp:'100',pos:['Доска обрезная 50х100','Брус 150х150']},
+    {company:'МебельПро',name:'Алексей',tg:'@mebelpro',phone:'+7 900 222 33 44',category:'Кухни на заказ',city:'Санкт-Петербург',usp:'Замер бесплатно, рассрочка 0%, работаем с 2015',extra:'',kp:'250',pos:['Кухня модульная','Шкаф-купе']},
+    {company:'АвтоДеталь',name:'Сергей',tg:'@avtodet',phone:'+7 911 333 44 55',category:'Автозапчасти',city:'Краснодар, Сочи',usp:'Оригинал + аналоги, доставка 1 день',extra:'',kp:'500',pos:['Тормозные колодки','Масляный фильтр','Свечи зажигания']},
+  ];
+  var t = tests[Math.floor(Math.random() * tests.length)];
+  document.getElementById('company').value = t.company;
+  document.getElementById('contact_name').value = t.name;
+  document.getElementById('tg').value = t.tg;
+  document.getElementById('phone').value = t.phone;
+  document.getElementById('category').value = t.category;
+  document.getElementById('city').value = t.city;
+  if (typeof syncGeoFromValue === 'function') syncGeoFromValue();
+  document.getElementById('notes').value = t.usp + (t.extra ? ', ' + t.extra : '');
+  document.querySelectorAll('.kp-tag').forEach(function(b) { b.classList.remove('on'); });
+  var kpBtn = document.querySelector('.kp-tag[data-kp="'+t.kp+'"]');
+  if (kpBtn) kpBtn.classList.add('on');
+  document.getElementById('kp_count').value = t.kp;
+  var list = document.getElementById('posList');
+  if (!list) return;
+  list.innerHTML = '';
+  (t.pos || []).forEach(function(p) {
+    var row = document.createElement('div');
+    row.className = 'pos-row';
+    row.innerHTML = '<input type="text" value="'+p+'" class="pname"><button type="button" class="btn-x" onclick="removePos(this)">×</button>';
+    list.appendChild(row);
+  });
+}
+
+// ── INIT ──
+function toggleDayMode() {
+  var on = document.body.classList.toggle('day-mode');
+  try { localStorage.setItem('avitolog_day_mode', on ? '1' : ''); } catch(e) {}
+  var btn = document.getElementById('dayModeToggle');
+  if (btn) { btn.textContent = on ? '🌙' : '☀️'; btn.setAttribute('title', on ? 'Ночной режим — тёмный интерфейс' : 'Дневной режим — светлый интерфейс'); }
+}
+function initDayMode() {
+  try {
+    var on = localStorage.getItem('avitolog_day_mode') === '1';
+    document.body.classList.toggle('day-mode', on);
+    var btn = document.getElementById('dayModeToggle');
+    if (btn) { btn.textContent = on ? '🌙' : '☀️'; btn.setAttribute('title', on ? 'Ночной режим — тёмный интерфейс' : 'Дневной режим — светлый интерфейс'); }
+  } catch(e) {}
+}
+document.addEventListener('DOMContentLoaded', function() {
+  initDayMode();
+  updateDriveUI();
+  var banner = document.getElementById('githubPagesBanner');
+  if (banner && /github\.io$/i.test(window.location.hostname) && !localStorage.getItem('avito_hide_gh_banner')) {
+    banner.style.display = 'flex';
+  }
+  ['company','contact_name','tg','phone'].forEach(function(id) {
+    var el = document.getElementById(id);
+    if (el) el.setAttribute('name', 'f_' + Math.random().toString(36).slice(2));
+  });
+  function restoreApiKey() {
+    try {
+      var saved = localStorage.getItem('avito_api_key');
+      if (saved) {
+        var ki = document.getElementById('apiKeyInput');
+        if (ki && !ki.value) ki.value = saved;
+      }
+    } catch(e) {}
+  }
+  window.restoreApiKey = restoreApiKey;
+  restoreApiKey();
+  setTimeout(restoreApiKey, 500);
+  var customKP = [];
+  try { customKP = JSON.parse(localStorage.getItem('avito_kp_custom') || '[]') || []; } catch(_) {}
+  if (Array.isArray(customKP)) customKP.forEach(function(val) { addKPTag(val); });
+  initKP();
+  initAC();
+  initSecBar();
+  var ep = document.getElementById('extraPromptInp');
+  if (ep) {
+    ep.addEventListener('input', resizeExtraPromptInp);
+    ep.addEventListener('keydown', function(e) { if (e.key === 'Backspace' || e.key === 'Delete') setTimeout(resizeExtraPromptInp, 0); });
+  }
+  applyAnalyticsModeDefault();
+  applyTopTabOrder();
+  openProjectsTab();
+  switchTab('analysis');
+  _activeClient = getActiveClient();
+  updateClientBadge();
+  updateGenButtonState();
+  if (_activeClient) loadClient(-1);
+  updateProjectsSidebarOffset();
+  window.addEventListener('resize', updateProjectsSidebarOffset);
+  document.addEventListener('visibilitychange', function() {
+    if (!projectsMode) return;
+    if (document.hidden) {
+      stopProjectsSheetPullTimer();
+      stopProjectsDayShiftTimer();
+    } else {
+      startProjectsSheetPullTimer();
+      startProjectsDayShiftTimer();
+    }
+  });
+  document.addEventListener('mouseup', finishCalendarPaint);
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+      _calendarPaintMode = null;
+      _calendarPainting = false;
+      _calendarPaintErase = false;
+      document.body.classList.remove('calendar-launch-mode');
+      document.body.classList.remove('calendar-erase-mode');
+      hideProjectsCalMenu();
+      document.querySelectorAll('.projects-cal-day.cal-launch-preview, .projects-cal-day.cal-launch-preview-last').forEach(function(el) {
+        el.classList.remove('cal-launch-preview', 'cal-launch-preview-last');
+      });
+    }
+  });
+  document.addEventListener('click', function(e) {
+    var menu = document.getElementById('clientMenu');
+    if (menu && menu.classList.contains('show') && !e.target.closest('.client-menu') && !e.target.closest('.crm-row')) {
+      menu.classList.remove('show');
+    }
+  });
+  var crmMenu = document.getElementById('clientMenu');
+  if (crmMenu) {
+    crmMenu.addEventListener('click', function(e) {
+      var item = e.target.closest('.client-item[data-folder-id]');
+      if (!item) return;
+      e.preventDefault();
+      e.stopPropagation();
+      var id = item.getAttribute('data-folder-id');
+      var name = item.getAttribute('data-folder-name') || '';
+      if (id) enterFolder(id, name);
+    }, true);
+  }
+});
+document.addEventListener('DOMContentLoaded', function() {
+  var ci = document.getElementById('chatInp');
+  if (ci) ci.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') { e.preventDefault(); sendChat(); }
+  });
+});
