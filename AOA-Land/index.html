@@ -38,7 +38,7 @@ nav::after{content:'';position:absolute;bottom:0;left:0;right:0;height:1px;backg
 .hero-stripe{position:absolute;left:0;right:0;top:75%;height:54px;background:linear-gradient(90deg,var(--red) 0%,#b50016 70%,rgba(180,0,22,.88) 100%);display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:32px;z-index:5;padding:12px 24px;row-gap:8px;border-top:1.5px solid rgba(255,255,255,.15);border-bottom:1.5px solid rgba(255,255,255,.1)}
 .stripe-item{display:flex;align-items:center;gap:8px;flex-shrink:0;font-family:'Oswald',sans-serif;font-size:14px;font-weight:500;letter-spacing:.5px;color:#fff;text-transform:uppercase;white-space:nowrap}
 .s-ico{font-size:18px;opacity:.9}
-.hero-content{position:relative;z-index:10;padding:0 80px 80px}
+.hero-content{position:relative;z-index:10;padding:0 80px 80px;margin-top:24px}
 .hero-lbl{display:inline-flex;align-items:center;gap:12px;font-size:11px;font-weight:700;letter-spacing:4px;text-transform:uppercase;color:var(--cyan);margin-bottom:20px}
 .hero-lbl::before{content:'';width:32px;height:1px;background:var(--cyan);box-shadow:0 0 8px var(--cyan)}
 .h1{font-family:'Oswald',sans-serif;font-size:clamp(50px,8vw,108px);font-weight:700;line-height:1;letter-spacing:-1px;margin-bottom:12px;margin-top:0}
@@ -258,7 +258,28 @@ footer{background:var(--bg);border-top:1px solid var(--border);padding:40px 80px
 @media(max-width:768px){
 .reviews-sec{padding:48px 24px 60px}
 .reviews-grid{grid-template-columns:1fr}
-}</style>
+}
+/* TURNKEY BANNER - Premium SaaS style */
+.turnkey-banner{position:relative;background:#070b14;padding:80px 24px 100px;overflow:hidden}
+.tk-bg-grid{position:absolute;inset:0;background-image:linear-gradient(rgba(255,255,255,.02) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.02) 1px,transparent 1px);background-size:48px 48px;pointer-events:none}
+.tk-wrap{position:relative;z-index:1;max-width:1200px;margin:0 auto}
+.tk-title{font-family:'Oswald',sans-serif;font-size:clamp(32px,5vw,52px);font-weight:700;text-align:center;line-height:1.15;letter-spacing:-.5px;color:#fff;margin-bottom:16px}
+.tk-title-sub{color:var(--red);display:block;margin-top:8px}
+.tk-subtitle{text-align:center;font-size:clamp(15px,1.8vw,18px);color:rgba(240,244,255,.7);max-width:680px;margin:0 auto 48px;line-height:1.7}
+.tk-metrics{display:flex;justify-content:center;gap:32px;flex-wrap:wrap;margin-bottom:56px}
+.tk-stat{text-align:center;padding:24px 36px;background:rgba(232,0,29,.08);border:1px solid rgba(232,0,29,.2);border-radius:12px;min-width:200px}
+.tk-stat-val{display:block;font-family:'Oswald',sans-serif;font-size:clamp(28px,4vw,42px);font-weight:700;color:var(--red);line-height:1}
+.tk-stat-lbl{display:block;font-size:11px;color:rgba(240,244,255,.6);text-transform:uppercase;letter-spacing:1px;margin-top:8px}
+.tk-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:20px}
+.tk-card{background:#0c1323;border:1px solid rgba(255,255,255,.06);border-radius:14px;padding:28px 24px;transition:all .3s ease}
+.tk-card:hover{transform:translateY(-4px);box-shadow:0 10px 40px rgba(232,0,29,.15);border-color:rgba(232,0,29,.25)}
+.tk-card-ico{width:48px;height:48px;display:flex;align-items:center;justify-content:center;font-size:24px;background:rgba(232,0,29,.12);border:1px solid rgba(232,0,29,.2);border-radius:10px;margin-bottom:16px;box-shadow:0 0 20px rgba(232,0,29,.1)}
+.tk-card-title{font-family:'Oswald',sans-serif;font-size:17px;font-weight:600;color:#fff;margin-bottom:10px;letter-spacing:.3px}
+.tk-card-desc{font-size:14px;color:rgba(240,244,255,.65);line-height:1.6}
+.tk-cta-line{text-align:center;font-family:'Oswald',sans-serif;font-size:clamp(18px,2.5vw,24px);font-weight:600;color:var(--red);letter-spacing:3px;margin-top:48px}
+@media(max-width:900px){.tk-grid{grid-template-columns:repeat(2,1fr)}.tk-metrics{gap:20px}.tk-stat{min-width:160px}}
+@media(max-width:600px){.tk-grid{grid-template-columns:1fr}.tk-metrics{flex-direction:column;align-items:center;gap:16px}.tk-stat{min-width:auto;width:100%;max-width:280px}}
+</style>
 </head>
 <body>
 
@@ -294,10 +315,10 @@ footer{background:var(--bg);border-top:1px solid var(--border);padding:40px 80px
     </h1>
     <div class="h1-sub">в 2–10 раз на Авито</div>
     <div class="hero-stats">
-      <div class="hs"><div class="hs-val">45+</div><div class="hs-lbl">Кейсов</div></div>
-      <div class="hs"><div class="hs-val">5 лет</div><div class="hs-lbl">На Авито</div></div>
-      <div class="hs"><div class="hs-val">1092</div><div class="hs-lbl">Рекорд заявок</div></div>
-      <div class="hs"><div class="hs-val">17₽</div><div class="hs-lbl">Мин. лид</div></div>
+      <div class="hs"><div class="hs-val">1856+</div><div class="hs-lbl">проектов запущено</div></div>
+      <div class="hs"><div class="hs-val">+9 лет</div><div class="hs-lbl">в Авито</div></div>
+      <div class="hs"><div class="hs-val">3+ года</div><div class="hs-lbl">среднее время партнёров</div></div>
+      <div class="hs"><div class="hs-val">54+</div><div class="hs-lbl">ниши в кейсах</div></div>
     </div>
     <div class="hero-btns">
       <a href="https://t.me/Aces_Of_Ads_bot" target="_blank" class="btn btn-red btn-cta-pulse" data-cta-primary>🤖 <span class="cta-default">Оставить заявку</span><span class="cta-ab">Получить расчёт за 15 минут</span></a>
@@ -312,6 +333,31 @@ footer{background:var(--bg);border-top:1px solid var(--border);padding:40px 80px
   <div class="banners-row" style="padding:0 8px;gap:8px">
     <div class="av-banner"><picture><source media="(max-width:768px)" srcset="MOB/под%20ключ.jpg"><img src="PC/banner2.jpg" alt="Ведение под ключ" loading="lazy" width="600" height="338"></picture><div class="av-banner-lbl">Ведение под ключ — комплексная эффективность</div></div>
     <div class="av-banner"><picture><source media="(max-width:768px)" srcset="MOB/аналитика-регина.jpeg"><img src="PC/banner3.jpg" alt="Консультация + аудит" loading="lazy" width="600" height="338"></picture><div class="av-banner-lbl">Консультация + аудит — рассчитаю КП и анализ рынка</div></div>
+  </div>
+</section>
+
+<!-- ВЕДЕНИЕ ПОД КЛЮЧ - FULL WIDTH BANNER -->
+<section class="turnkey-banner" id="turnkey">
+  <div class="tk-bg-grid"></div>
+  <div class="tk-wrap">
+    <h2 class="tk-title">ВЕДЕНИЕ АВИТО ПОД КЛЮЧ<br><span class="tk-title-sub">СИСТЕМА СТАБИЛЬНЫХ ЗАЯВОК</span></h2>
+    <p class="tk-subtitle">Полный цикл работы с Авито — от анализа рынка до масштабирования объявлений и стабильного потока заявок.</p>
+    <div class="tk-metrics">
+      <div class="tk-stat"><span class="tk-stat-val">+180%</span><span class="tk-stat-lbl">рост заявок за 2–4 месяца</span></div>
+      <div class="tk-stat"><span class="tk-stat-val">24/7</span><span class="tk-stat-lbl">контроль аккаунта и позиций</span></div>
+      <div class="tk-stat"><span class="tk-stat-val">до 300+</span><span class="tk-stat-lbl">объявлений в управлении</span></div>
+    </div>
+    <div class="tk-grid">
+      <div class="tk-card"><div class="tk-card-ico">🔎</div><h3 class="tk-card-title">Анализ рынка и конкурентов</h3><p class="tk-card-desc">Глубоко анализируем спрос, конкурентов и поведение клиентов. Формируем стратегию, которая выводит объявления в поток заявок.</p></div>
+      <div class="tk-card"><div class="tk-card-ico">✍️</div><h3 class="tk-card-title">Продающие тексты</h3><p class="tk-card-desc">SEO-описания объявлений, которые повышают кликабельность и превращают просмотры в заявки.</p></div>
+      <div class="tk-card"><div class="tk-card-ico">📸</div><h3 class="tk-card-title">Подбор и обработка фото</h3><p class="tk-card-desc">Профессиональный визуал карточек. Сильное первое впечатление повышает конверсию объявлений.</p></div>
+      <div class="tk-card"><div class="tk-card-ico">🎨</div><h3 class="tk-card-title">Дизайн и инфографика</h3><p class="tk-card-desc">Инфографика, баннеры и карточки с выгодами — повышаем доверие и конверсию на 30–50%.</p></div>
+      <div class="tk-card"><div class="tk-card-ico">🤖</div><h3 class="tk-card-title">Бот и автоответчик</h3><p class="tk-card-desc">Каждый входящий запрос обрабатывается мгновенно — ни одна заявка не теряется.</p></div>
+      <div class="tk-card"><div class="tk-card-ico">⚡</div><h3 class="tk-card-title">Масштабирование объявлений</h3><p class="tk-card-desc">XML-автозагрузка и массовое управление объявлениями. Рост охвата без ручной работы.</p></div>
+      <div class="tk-card"><div class="tk-card-ico">📊</div><h3 class="tk-card-title">Мониторинг 24/7</h3><p class="tk-card-desc">Отслеживаем позиции, просмотры и контакты. Реагируем до того, как падают заявки.</p></div>
+      <div class="tk-card"><div class="tk-card-ico">📈</div><h3 class="tk-card-title">Отчетность и прозрачность</h3><p class="tk-card-desc">Еженедельная аналитика: заявки, позиции, динамика и точки роста.</p></div>
+    </div>
+    <p class="tk-cta-line">СИСТЕМА, КОТОРАЯ ПРИВОДИТ КЛИЕНТОВ</p>
   </div>
 </section>
 
