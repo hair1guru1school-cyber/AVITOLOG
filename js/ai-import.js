@@ -541,6 +541,9 @@
       var valHtml = r.val ? (r.main ? '<span class="assets-summary-val">' + esc(r.val) + ' ₽<span class="assets-summary-usd">$' + fmt(r.valUsd) + '</span></span>' : '<span class="assets-summary-val">' + esc(r.val) + ' ₽</span>') : '<span class="assets-summary-val">—</span>';
       return '<div class="' + rowCls + '"><span class="assets-summary-label">' + r.icon + ' ' + esc(r.label) + '</span>' + valHtml + '</div>';
     }).join('');
+    var monthNames = ['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'];
+    var now = new Date();
+    var monthTitle = monthNames[now.getMonth()] || 'Март';
     var filterPaid = !!localStorage.getItem(ASSETS_FILTER_PAID_KEY);
     var paidFirst = myList.filter(function(p) { return !!(p.paid && String(p.paid).replace(/\s/g, '')); });
     var notPaid = myList.filter(function(p) { return !(p.paid && String(p.paid).replace(/\s/g, '')); });
@@ -597,7 +600,7 @@
     var colHeaderMe = '<div class="assets-col-header"><span class="ac-name">Проект</span><span class="ac-date">Старт</span><span class="ac-date">Платёж</span><span class="ac-paid">Оплатил</span><span class="ac-expected">Ожидать</span><span class="ac-actions"></span></div>';
     var colHeaderSasha = '<div class="assets-col-header"><span class="ac-name">Проект</span><span class="ac-date">Старт</span><span class="ac-date">Платёж</span><span class="ac-extra">Продано за</span><span class="ac-extra">Агенту</span><span class="ac-extra">AoA %</span><span class="ac-actions"></span></div>';
     mc.innerHTML = '<div class="assets-page-wrap">' +
-      '<div class="assets-summary-table">' + summaryHtml + '</div>' +
+      '<div class="assets-summary-top"><div class="assets-month-title">' + esc(monthTitle) + '</div><div class="assets-summary-table">' + summaryHtml + '</div></div>' +
       '<div class="assets-two-cols">' +
         '<div class="assets-col assets-col-me" id="assetsColMe" data-owner="me">' +
           '<div class="assets-col-title">💰 Мои клиенты <span class="assets-col-total">' + fmt(myTotal) + ' ₽</span></div>' +
