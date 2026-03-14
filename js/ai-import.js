@@ -313,7 +313,8 @@
         var owner = (row.raw && row.raw.isSasha) ? 'sasha' : 'me';
         var name = row.client || 'Без названия';
         var paid = String(row.paid || '').replace(/\s/g, '');
-        var item = { emoji: '💰', name: name, paid: paid, expected: row.expected || '', paymentDate: row.date || (row.raw && row.raw.date) || '', folderLink: row.folderLink || '' };
+        var ct = (row.raw && row.raw.isNew === false) ? 'old' : 'new';
+        var item = { emoji: '💰', name: name, paid: paid, expected: row.expected || '', paymentDate: row.date || (row.raw && row.raw.date) || '', clientType: ct, folderLink: row.folderLink || '' };
         if (owner === 'me') {
           var arr = getAssetsMy();
           arr.push(item);
@@ -374,15 +375,47 @@
   var ASSETS_USD_RATE = 95;
 
   var DEFAULT_MY = [
-    { emoji: '🪨', name: 'Камни и Пеллеты', paid: '30000', expected: '', paymentDate: '' },
-    { emoji: '🛌', name: 'Кирилл Кровати', paid: '30000', expected: '', paymentDate: '' },
-    { emoji: '🏠', name: 'Дмитрий Бани Каркасные', paid: '34000', expected: '', paymentDate: '' },
-    { emoji: '🚜', name: 'СельхозТехника', paid: '35000', expected: '', paymentDate: '' },
-    { emoji: '👩🏻‍🏫', name: 'Ксения Сергеевна', paid: '25000', expected: '', paymentDate: '' },
-    { emoji: '⚡️', name: 'Электрик Крым Александр', paid: '56000', expected: '', paymentDate: '' },
-    { emoji: '🧱', name: 'Иван Сияр Сендвич панели', paid: '44000', expected: '', paymentDate: '' },
-    { emoji: '🧱', name: 'Дома Андрей', paid: '50000', expected: '', paymentDate: '' }
+    { emoji: '🪨', name: 'Камни и Пеллеты', paid: '30000', expected: '', paymentDate: '', clientType: 'new' },
+    { emoji: '🛌', name: 'Кирилл Кровати', paid: '30000', expected: '', paymentDate: '', clientType: 'new' },
+    { emoji: '🏠', name: 'Дмитрий Бани Каркасные', paid: '34000', expected: '', paymentDate: '', clientType: 'new' },
+    { emoji: '🚜', name: 'СельхозТехника', paid: '35000', expected: '', paymentDate: '', clientType: 'new' },
+    { emoji: '👩🏻‍🏫', name: 'Ксения Сергеевна', paid: '25000', expected: '', paymentDate: '', clientType: 'new' },
+    { emoji: '⚡️', name: 'Электрик Крым Александр', paid: '56000', expected: '', paymentDate: '', clientType: 'new' },
+    { emoji: '🧱', name: 'Иван Сияр Сендвич панели', paid: '44000', expected: '', paymentDate: '', clientType: 'new' },
+    { emoji: '🧱', name: 'Дома Андрей', paid: '50000', expected: '', paymentDate: '', clientType: 'new' }
   ];
+
+  function resolveAssetsClientType(p) {
+    if (p.clientType && p.clientType !== 'new') return p.clientType;
+    var fromProjects = (typeof loadProjectsData === 'function') ? (loadProjectsData().projects || []) : [];
+    var folderId = '';
+    if (p.folderLink) {
+      var m = String(p.folderLink).match(/\/folders\/([a-zA-Z0-9_-]+)/);
+      if (m) folderId = m[1];
+    }
+    folderId = folderId || p.crmClientId || '';
+    var nameLow = String(p.name || '').trim().toLowerCase();
+    for (var i = 0; i < fromProjects.length; i++) {
+      var pr = fromProjects[i];
+      if (folderId && (String(pr.folderId || '') === folderId || String(pr.crmClientId || '') === folderId)) return (pr.clientType === 'old' || pr.clientType === 'returning') ? pr.clientType : 'new';
+      var prLow = String(pr.title || '').trim().toLowerCase();
+      if (nameLow && prLow && (nameLow === prLow || prLow.indexOf(nameLow) >= 0 || nameLow.indexOf(prLow) >= 0)) return (pr.clientType === 'old' || pr.clientType === 'returning') ? pr.clientType : 'new';
+    }
+    return p.clientType || 'new';
+  }
+
+  function getStatusBadge(clientType) {
+    var t = (clientType || 'new').toLowerCase();
+    if (t === 'old' || t === '💎') return '💎';
+    if (t === 'returning' || t === '2') return '2';
+    return 'NEW';
+  }
+
+  function cycleClientType(clientType) {
+    if (clientType === 'new') return 'old';
+    if (clientType === 'old') return 'returning';
+    return 'new';
+  }
 
   function getPaymentBarFill(paymentDateStr) {
     if (!paymentDateStr || !String(paymentDateStr).trim()) return 0;
@@ -409,7 +442,7 @@
       var arr = [];
       Object.keys(legacy).forEach(function(k) {
         var d = legacy[k];
-        if (d && d.owner === 'me') arr.push({ emoji: '📦', name: k, paid: d.paid || '', expected: d.expected || '', paymentDate: d.paymentDate || '' });
+        if (d && d.owner === 'me') arr.push({ emoji: '📦', name: k, paid: d.paid || '', expected: d.expected || '', paymentDate: d.paymentDate || '', clientType: d.clientType || 'new' });
       });
       if (arr.length) { saveAssetsMy(arr); return arr; }
       return DEFAULT_MY.slice();
@@ -428,7 +461,7 @@
       var arr = [];
       Object.keys(legacy).forEach(function(k) {
         var d = legacy[k];
-        if (d && d.owner === 'sasha') arr.push({ emoji: '📦', name: k, paid: d.paid || '', expected: d.expected || '', paymentDate: d.paymentDate || '' });
+        if (d && d.owner === 'sasha') arr.push({ emoji: '📦', name: k, paid: d.paid || '', expected: d.expected || '', paymentDate: d.paymentDate || '', clientType: d.clientType || 'new' });
       });
       if (arr.length) { saveAssetsSasha(arr); return arr; }
       return [];
@@ -445,7 +478,7 @@
     var emoji = (project && project.emoji) || '📦';
     var paid = (project && (project.mainPrice || project.saleAmount || project.kp_count || '')) ? String(project.mainPrice || project.saleAmount || project.kp_count).replace(/\s/g, '') : '';
     var folderLink = project && (project.folderLink || (project.folderId ? 'https://drive.google.com/drive/folders/' + project.folderId : ''));
-    var item = { emoji: emoji, name: name, paid: paid, expected: '', paymentDate: '', folderLink: folderLink || '', crmClientId: (project && project.crmClientId) || (project && project.folderId) || '' };
+    var item = { emoji: emoji, name: name, paid: paid, expected: '', paymentDate: '', clientType: 'new', folderLink: folderLink || '', crmClientId: (project && project.crmClientId) || (project && project.folderId) || '' };
     if (owner === 'me') {
       var arr = getAssetsMy();
       arr.push(item);
@@ -478,12 +511,16 @@
     var sashaList = getAssetsSasha();
     var myTotal = myList.reduce(function(a, p) { return a + (parseInt(String(p.paid || '').replace(/\s/g, ''), 10) || 0); }, 0);
     var sashaTotal = sashaList.reduce(function(a, p) { return a + (parseInt(String(p.paid || '').replace(/\s/g, ''), 10) || 0); }, 0);
-    var totalRub = myTotal + sashaTotal || 338000;
+    var totalRub = 338000;
     var totalUsd = Math.round(totalRub / ASSETS_USD_RATE);
     var summaryRows = [
-      { icon: '💰', label: 'Получено за все', val: fmt(totalRub), valUsd: totalUsd, main: true },
-      { icon: '✅', label: 'Мои оплаты', val: fmt(myTotal) },
-      { icon: '👤', label: 'Оплаты Саши', val: fmt(sashaTotal) }
+      { icon: '💰', label: 'Получено за все', val: '338 000', valUsd: totalUsd, main: true },
+      { icon: '✅', label: 'Оплаты клиентов', val: '304 000' },
+      { icon: '🌿', label: 'Ожидается еще', val: '20 000' },
+      { icon: '📊', label: 'Ожидается за мес', val: '324 000' },
+      { icon: '📈', label: 'Агентство AoA %', val: '34 000' },
+      { icon: '🆕', label: 'Новые клиенты', val: '' },
+      { icon: '👤', label: 'Активные клиенты', val: '195 000' }
     ];
     var summaryHtml = summaryRows.map(function(r) {
       var rowCls = 'assets-summary-row' + (r.main ? ' assets-summary-main' : '');
@@ -501,13 +538,17 @@
       var isPaid = !!(p.paid && String(p.paid).replace(/\s/g, ''));
       var rowCls = 'assets-col-row' + (owner === 'me' && isPaid ? ' assets-row-paid' : '');
       var barPct = Math.round(barFill * 100);
+      var resolvedType = resolveAssetsClientType(p);
+      var statusBadge = getStatusBadge(resolvedType);
+      var statusCls = resolvedType === 'old' ? 'assets-status-diamond' : (resolvedType === 'returning' ? 'assets-status-2' : 'assets-status-new');
       return '<div class="' + rowCls + '" data-owner="' + owner + '" data-idx="' + idx + '">' +
         '<span class="assets-col-emoji">' + (p.emoji || '📦') + '</span>' +
         '<span class="assets-col-name">' +
-          '<span class="assets-col-name-inner">' +
+          '<span class="assets-col-name-row">' +
             '<input type="text" value="' + esc(p.name || '') + '" placeholder="Проект" data-field="name" onblur="window.__assetsSaveColRow(this)">' +
-            '<span class="assets-progress-bar" title="Чем больше ждать до платежа — тем полнее"><span class="assets-progress-fill" style="width:' + barPct + '%"></span></span>' +
+            '<button type="button" class="assets-status-badge ' + statusCls + '" onclick="window.__assetsCycleClientType(\'' + owner + '\',' + idx + ')" title="Старый/новичок/2-й раз">' + esc(statusBadge) + '</button>' +
           '</span>' +
+          '<span class="assets-progress-bar" title="Чем больше ждать до платежа — тем полнее"><span class="assets-progress-fill" style="width:' + barPct + '%"></span></span>' +
         '</span>' +
         '<span class="assets-col-date"><input type="date" value="' + esc(payDate) + '" data-field="paymentDate" onchange="window.__assetsSaveColRow(this)"></span>' +
         '<span class="assets-col-paid"><input type="text" value="' + esc(paidFmt) + '" placeholder="0" data-field="paid" onblur="window.__assetsSaveColRow(this)"></span>' +
@@ -606,6 +647,23 @@
     addAssetsProject(owner, { name: 'Новый проект', emoji: '📦' });
   }
 
+  function cycleAssetsClientType(owner, idx) {
+    if (owner === 'me') {
+      var arr = getAssetsMy();
+      if (arr[idx]) {
+        arr[idx].clientType = cycleClientType(arr[idx].clientType || 'new');
+        saveAssetsMy(arr);
+      }
+    } else {
+      var arr2 = getAssetsSasha();
+      if (arr2[idx]) {
+        arr2[idx].clientType = cycleClientType(arr2[idx].clientType || 'new');
+        saveAssetsSasha(arr2);
+      }
+    }
+    if (typeof window.__renderAssetsPage === 'function') window.__renderAssetsPage();
+  }
+
   window.__aiImportParse = parseAndShow;
   window.__aiImportRejectRow = rejectRow;
   window.__aiImportConfirm = confirmImport;
@@ -615,5 +673,6 @@
   window.__assetsSaveColRow = saveColRow;
   window.__assetsAddProject = addProjectBlank;
   window.__assetsRemoveProject = removeAssetsProject;
+  window.__assetsCycleClientType = cycleAssetsClientType;
   window.__wireAssetsDragTargets = wireAssetsDragTargets;
 })();
