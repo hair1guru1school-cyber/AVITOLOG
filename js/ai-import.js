@@ -657,7 +657,20 @@
         '<div id="aiImportPreviewTable" style="display:none"></div>' +
       '</div>' +
       '</div>';
-    setTimeout(function() { if (typeof window.__wireAssetsDragTargets === 'function') window.__wireAssetsDragTargets(); }, 50);
+    setTimeout(function() {
+      if (typeof window.__wireAssetsDragTargets === 'function') window.__wireAssetsDragTargets();
+      var sel = window._assetsSelectedProject;
+      if (sel && typeof updateAssetsDetailPanel === 'function') {
+        var row = document.querySelector('.assets-col-row[data-owner="' + (sel.owner || '') + '"][data-idx="' + sel.idx + '"]');
+        if (row) {
+          row.classList.add('assets-row-bind-selected');
+          row.classList.add(row.getAttribute('data-has-folder') === '1' ? 'assets-row-has-folder' : 'assets-row-no-folder');
+        }
+        updateAssetsDetailPanel(sel.owner, sel.idx);
+      } else if (typeof updateAssetsDetailPanel === 'function') {
+        updateAssetsDetailPanel(null, null);
+      }
+    }, 50);
   }
 
   function saveColRow(el) {
@@ -799,7 +812,58 @@
     });
     row.classList.add('assets-row-bind-selected');
     row.classList.add(row.getAttribute('data-has-folder') === '1' ? 'assets-row-has-folder' : 'assets-row-no-folder');
+    window._assetsSelectedProject = { owner: owner, idx: idx };
+    updateAssetsDetailPanel(owner, idx);
     startFolderBind(owner, idx);
+  }
+
+  function updateAssetsDetailPanel(owner, idx) {
+    var panel = document.getElementById('assetsDetailPanel');
+    var content = document.getElementById('assetsDetailContent');
+    if (!panel || !content) return;
+    if (owner == null || idx == null || idx < 0) {
+      content.innerHTML = '<div class="ad-placeholder" style="color:var(--muted);font-size:11px">Выберите проект слева</div>';
+      return;
+    }
+    var fmt = function(n) { return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ' '); };
+    var p = null;
+    if (owner === 'me') {
+      var arr = getAssetsMy();
+      p = arr && arr[idx] ? arr[idx] : null;
+    } else {
+      var arr2 = getAssetsSasha();
+      p = arr2 && arr2[idx] ? arr2[idx] : null;
+    }
+    if (!p) {
+      content.innerHTML = '<div class="ad-placeholder" style="color:var(--muted)">Проект не найден</div>';
+      return;
+    }
+    var paid = parseInt(String(p.paid || '').replace(/\s/g, ''), 10) || 0;
+    var expected = parseInt(String(p.expected || '').replace(/\s/g, ''), 10) || 0;
+    var soldFor = owner === 'sasha' ? (parseInt(String(p.soldFor || '').replace(/\s/g, ''), 10) || 0) : 0;
+    var total = owner === 'me' ? paid : soldFor;
+    var payDate = (p.paymentDate || '').trim();
+    var payDateFmt = payDate ? (function() {
+      var parts = payDate.split(/[-/]/);
+      if (parts.length >= 3) return parts[2] + '.' + parts[1] + '.' + parts[0];
+      return payDate;
+    }()) : '—';
+    var html = '<div class="ad-project">' + esc(p.emoji || '') + ' ' + esc(p.name || 'Проект') + '</div>';
+    html += '<div class="ad-row"><span class="ad-label">Общая сумма оплат</span><span class="ad-val">' + fmt(total) + ' ₽</span></div>';
+    html += '<div class="ad-row"><span class="ad-label">На какой день оплата</span><span class="ad-val">' + esc(payDateFmt) + '</span></div>';
+    html += '<div class="ad-section" style="margin-top:12px;padding-top:8px;border-top:1px solid var(--border)"><div class="ad-label" style="margin-bottom:6px">История оплат</div>';
+    if (owner === 'me' && paid > 0) {
+      html += '<div class="ad-row"><span>' + esc(payDateFmt) + '</span><span class="ad-val">' + fmt(paid) + ' ₽</span></div>';
+    } else if (owner === 'sasha' && soldFor > 0) {
+      html += '<div class="ad-row"><span>' + esc(payDateFmt) + '</span><span class="ad-val">' + fmt(soldFor) + ' ₽</span></div>';
+    } else {
+      html += '<div style="color:var(--muted);font-size:11px">Нет записей</div>';
+    }
+    if (owner === 'me' && expected > 0) {
+      html += '<div class="ad-row" style="margin-top:4px"><span class="ad-label">Ожидать</span><span class="ad-val" style="color:#35d0ff">' + fmt(expected) + ' ₽</span></div>';
+    }
+    html += '</div>';
+    content.innerHTML = html;
   }
 
   function startFolderBind(owner, idx) {

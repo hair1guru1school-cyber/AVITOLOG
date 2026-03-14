@@ -445,8 +445,15 @@ textarea{resize:vertical;min-height:50px;line-height:1.5}
 .client-info-block .ci-thumb-inner.ci-upload-zone:hover::after{content:'';position:absolute;inset:0;background:rgba(0,217,126,0.15);pointer-events:none;border-radius:8px}
 .client-info-block .ci-open-folder{display:inline-flex;align-items:center;gap:3px;padding:3px 8px;background:rgba(0,217,126,0.08);border:1px solid rgba(0,217,126,0.25);border-radius:4px;color:var(--accent);font-size:9px;font-weight:700;cursor:pointer;text-decoration:none;transition:all .2s;flex-shrink:0}
 .client-info-block .ci-open-folder:hover{background:rgba(0,217,126,0.15);border-color:var(--accent)}
-.right-tabs{background:var(--surface);border-left:1px solid var(--border);padding:10px 8px;display:flex;flex-direction:column;gap:6px;overflow-y:auto}
+.right-tabs{background:var(--surface);border-left:1px solid var(--border);padding:10px 8px;display:flex;flex-direction:column;gap:6px;overflow-y:auto;min-width:140px}
 .rtab{display:flex;flex-direction:column;align-items:center;gap:5px;padding:14px 6px;border-radius:10px;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;text-align:center;font-family:Golos Text,sans-serif;font-size:10px;font-weight:700;letter-spacing:0.5px;transition:all 0.2s;width:100%;position:relative;overflow:hidden}
+.assets-detail-panel{flex:1;min-height:0;display:flex;flex-direction:column;overflow:hidden}
+.assets-detail-title{font-size:11px;font-weight:800;letter-spacing:1px;color:var(--muted);margin-bottom:10px;text-transform:uppercase}
+.assets-detail-content{font-size:12px;color:var(--text);line-height:1.5;overflow-y:auto}
+.assets-detail-content .ad-project{font-weight:700;margin-bottom:8px;color:var(--accent)}
+.assets-detail-content .ad-row{margin-bottom:6px;display:flex;justify-content:space-between;gap:12px}
+.assets-detail-content .ad-label{color:var(--muted)}
+.assets-detail-content .ad-val{font-weight:700;color:#00d97e;font-variant-numeric:tabular-nums}
 .depth-bar{display:flex;gap:6px;justify-content:center;padding:8px 0}
 .depth-btn{width:36px;height:36px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;transition:all 0.2s;padding:0}
 .depth-btn:hover{border-color:var(--accent);color:var(--accent)}
@@ -666,7 +673,8 @@ body.agency-mode .sec-bar{display:none !important}
 body.agency-mode .analytics-control-panel{display:none !important}
 body.agency-mode .analytics-tumbler{display:none !important}
 body.agency-mode .gen-extra-prompt,body.agency-mode .gen-buttons-row{display:none !important}
-body.assets-mode .right-tabs{display:none !important}
+body.assets-mode .right-tabs .rtab{display:none}
+body.assets-mode .right-tabs #assetsDetailPanel{display:block}
 body.assets-mode .depth-bar,body.assets-mode .sec-bar{display:none !important}
 body.assets-mode .analytics-control-panel{display:none !important}
 body.assets-mode .gen-extra-prompt,body.assets-mode .gen-buttons-row{display:none !important}
@@ -1780,6 +1788,10 @@ if (!window.AVITOLOG_GOALS) {
 </div>
 
 <div class="right-tabs">
+  <div id="assetsDetailPanel" class="assets-detail-panel" style="display:none">
+    <div class="assets-detail-title">История оплат</div>
+    <div id="assetsDetailContent" class="assets-detail-content"></div>
+  </div>
   <button type="button" class="rtab active" id="tab-analysis" onclick="switchTab('analysis')">
     <span class="rtab-ico">📊</span>
     <span class="rtab-txt" id="txt-analysis">АНАЛИТИКА</span>
