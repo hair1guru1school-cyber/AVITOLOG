@@ -213,11 +213,13 @@
     if (!wrap) return;
 
     if (!rows || !rows.length) {
+      wrap.style.display = 'none';
       if (empty) empty.style.display = '';
       if (table) { table.style.display = 'none'; table.innerHTML = ''; }
       if (loadBtn) loadBtn.disabled = true;
       return;
     }
+    wrap.style.display = '';
 
     var toShow = rows.filter(function(r) { return !r.rejected; });
     if (loadBtn) loadBtn.disabled = toShow.length === 0;
@@ -270,13 +272,15 @@
       alert('Вставь текст с оплатами/клиентами в поле выше.');
       return;
     }
+    var wrap = document.getElementById('aiImportPreviewTableWrap');
     var empty = document.getElementById('aiImportPreviewEmpty');
+    if (wrap) wrap.style.display = '';
     if (empty) {
       empty.innerHTML = '<div class="ai-import-loading">⏳ Разбор текста...</div>';
       empty.style.display = '';
     }
     var table = document.getElementById('aiImportPreviewTable');
-    if (table) table.style.display = 'none';
+    if (table) { table.style.display = 'none'; table.innerHTML = ''; }
 
     parseWithAI(raw).then(function(parsed) {
       _aiImportRows = buildPreviewRows(parsed);
@@ -338,7 +342,9 @@
     _aiImportRows = [];
     if (document.getElementById('aiImportTextarea')) document.getElementById('aiImportTextarea').value = '';
     renderPreviewTable([]);
+    var wrap = document.getElementById('aiImportPreviewTableWrap');
     var empty = document.getElementById('aiImportPreviewEmpty');
+    if (wrap) wrap.style.display = '';
     if (empty) {
       empty.innerHTML = '✓ Импортировано ' + toImport.length + ' записей. Перейди в ЦЕЛИ → Оплачено.';
       empty.style.display = '';
@@ -353,9 +359,58 @@
     confirmImport();
   }
 
+  function renderAssetsPage() {
+    var mc = document.getElementById('mainContent');
+    if (!mc) return;
+    var monthNames = ['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'];
+    var now = new Date();
+    var curMonth = monthNames[now.getMonth()];
+    var fmt = function(n) { return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ' '); };
+    var data = {
+      thisMonth: 338000,
+      jan2026: 49700,
+      feb2026: 788600,
+      mar2026: 338000
+    };
+    mc.innerHTML = '<div class="assets-page-wrap">' +
+      '<div class="assets-summary">' +
+        '<div class="assets-card" style="border-color:rgba(0,217,126,0.35);background:rgba(0,217,126,0.06)">' +
+          '<span class="assets-card-title">Получено за месяц</span>' +
+          '<span class="assets-card-val green">' + fmt(data.thisMonth) + ' ₽</span>' +
+          '<span class="assets-card-title" style="margin-top:4px;opacity:.8">' + curMonth + ' 2026</span>' +
+        '</div>' +
+        '<div class="assets-card">' +
+          '<span class="assets-card-title">Январь 2026</span>' +
+          '<span class="assets-card-val">' + fmt(data.jan2026) + ' ₽</span>' +
+        '</div>' +
+        '<div class="assets-card">' +
+          '<span class="assets-card-title">Февраль 2026</span>' +
+          '<span class="assets-card-val cyan">' + fmt(data.feb2026) + ' ₽</span>' +
+        '</div>' +
+        '<div class="assets-card">' +
+          '<span class="assets-card-title">Март 2026</span>' +
+          '<span class="assets-card-val pink">' + fmt(data.mar2026) + ' ₽</span>' +
+        '</div>' +
+      '</div>' +
+      '<div class="assets-ai-row" id="assetsAiRow">' +
+        '<span class="ai-label">🤖 ИИ-импорт</span>' +
+        '<textarea class="ai-input" id="aiImportTextarea" rows="1" placeholder="Вставь текст оплат/клиентов — ИИ разберёт..."></textarea>' +
+        '<div class="ai-btns">' +
+          '<button type="button" class="ai-import-btn primary" onclick="window.__aiImportParse && window.__aiImportParse()">Разобрать</button>' +
+          '<button type="button" class="ai-import-btn" id="aiImportLoadBtn" onclick="window.__aiImportLoadToTable && window.__aiImportLoadToTable()" disabled>Загрузить</button>' +
+        '</div>' +
+      '</div>' +
+      '<div class="ai-import-preview" id="aiImportPreviewTableWrap" style="display:none">' +
+        '<div class="ai-import-preview-empty" id="aiImportPreviewEmpty"></div>' +
+        '<div id="aiImportPreviewTable" style="display:none"></div>' +
+      '</div>' +
+      '</div>';
+  }
+
   window.__aiImportParse = parseAndShow;
   window.__aiImportRejectRow = rejectRow;
   window.__aiImportConfirm = confirmImport;
   window.__aiImportLoadToTable = loadToTable;
   window.__aiImportRender = renderAiImportContent;
+  window.__renderAssetsPage = renderAssetsPage;
 })();

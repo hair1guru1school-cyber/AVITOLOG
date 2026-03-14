@@ -104,6 +104,7 @@ var projectsMode = false;
 var goalsMode = false;
 var agencyMode = false;
 var strategyMode = false;
+var assetsMode = false;
 var _agencyTabHidden = (function(){ try{ return localStorage.getItem('av_hide_agency_tab') === '1'; } catch(e){ return false; }})();
 function setAgencyTabHidden(hidden) {
   _agencyTabHidden = !!hidden;
@@ -419,10 +420,12 @@ function openGoalsTab() {
   goalsMode = true;
   projectsMode = false;
   agencyMode = false;
+  assetsMode = false;
   if (typeof closeTaskPanel === 'function') closeTaskPanel();
   document.body.classList.remove('projects-mode');
   document.body.classList.remove('projects-sidebar-hidden');
   document.body.classList.remove('agency-mode');
+  document.body.classList.remove('assets-mode');
   document.body.classList.add('goals-mode');
   hideChat();
   stopProjectsSheetPullTimer();
@@ -487,10 +490,12 @@ function openProjectsTab() {
   goalsMode = false;
   agencyMode = false;
   strategyMode = false;
+  assetsMode = false;
   projectsMode = true;
   document.body.classList.remove('goals-mode');
   document.body.classList.remove('agency-mode');
   document.body.classList.remove('strategy-mode');
+  document.body.classList.remove('assets-mode');
   document.body.classList.add('projects-mode');
   if (typeof localStorage !== 'undefined' && localStorage.getItem('avitolog_projects_sidebar_hidden') === '1') document.body.classList.add('projects-sidebar-hidden');
   hideChat();
@@ -504,10 +509,10 @@ function openProjectsTab() {
   updateTopRowButtons();
 }
 function openAnalyticsTab() {
-  if (!projectsMode && !goalsMode && !agencyMode && !strategyMode) return;
   goalsMode = false;
   agencyMode = false;
   strategyMode = false;
+  assetsMode = false;
   projectsMode = false;
   if (typeof closeTaskPanel === 'function') closeTaskPanel();
   document.body.classList.remove('projects-mode');
@@ -515,10 +520,38 @@ function openAnalyticsTab() {
   document.body.classList.remove('goals-mode');
   document.body.classList.remove('agency-mode');
   document.body.classList.remove('strategy-mode');
+  document.body.classList.remove('assets-mode');
   updateProjectsSidebarOffset();
   stopProjectsSheetPullTimer();
   stopProjectsDayShiftTimer();
   if (currentTab === 'analysis' && docReady && currentHtml) { renderDoc(currentHtml); } else { refreshClientContents(); }
+  updateTopRowButtons();
+}
+function openAssetsTab() {
+  if (assetsMode) return;
+  goalsMode = false;
+  projectsMode = false;
+  agencyMode = false;
+  strategyMode = false;
+  assetsMode = true;
+  document.body.classList.remove('projects-mode', 'goals-mode', 'agency-mode', 'strategy-mode');
+  document.body.classList.add('assets-mode');
+  document.body.classList.remove('projects-sidebar-hidden');
+  hideChat();
+  if (typeof closeTaskPanel === 'function') closeTaskPanel();
+  stopProjectsSheetPullTimer();
+  stopProjectsDayShiftTimer();
+  var mc = document.getElementById('mainContent');
+  if (mc) {
+    mc.innerHTML = '';
+    mc.style.display = '';
+    mc.scrollTop = 0;
+  }
+  if (typeof window.__renderAssetsPage === 'function') {
+    window.__renderAssetsPage();
+  } else {
+    if (mc) mc.innerHTML = '<div class="empty-st"><div style="font-size:38px;opacity:.2">&#128176;</div><p>Активы</p><p style="font-size:12px;opacity:.6">Загрузка...</p></div>';
+  }
   updateTopRowButtons();
 }
 function openAgencyTab() {
@@ -527,11 +560,13 @@ function openAgencyTab() {
   goalsMode = false;
   projectsMode = false;
   strategyMode = false;
+  assetsMode = false;
   agencyMode = true;
   document.body.classList.remove('projects-mode');
   document.body.classList.remove('projects-sidebar-hidden');
   document.body.classList.remove('goals-mode');
   document.body.classList.remove('strategy-mode');
+  document.body.classList.remove('assets-mode');
   document.body.classList.add('agency-mode');
   hideChat();
   stopProjectsSheetPullTimer();
@@ -544,12 +579,14 @@ function openStrategyTab() {
   goalsMode = false;
   projectsMode = false;
   agencyMode = false;
+  assetsMode = false;
   strategyMode = true;
   if (typeof closeTaskPanel === 'function') closeTaskPanel();
   document.body.classList.remove('projects-mode');
   document.body.classList.remove('projects-sidebar-hidden');
   document.body.classList.remove('goals-mode');
   document.body.classList.remove('agency-mode');
+  document.body.classList.remove('assets-mode');
   document.body.classList.add('strategy-mode');
   hideChat();
   stopProjectsSheetPullTimer();
@@ -568,13 +605,13 @@ function toggleProjectsScreen() {
   if (projectsMode) openAnalyticsTab();
   else openProjectsTab();
 }
-var _topTabOrder = (function(){ try{ var s=localStorage.getItem('av_top_tab_order'); return s ? JSON.parse(s) : ['goals','analytics','projects','strategy','agency']; }catch(e){ return ['goals','analytics','projects','strategy','agency']; }})();
+var _topTabOrder = (function(){ try{ var s=localStorage.getItem('av_top_tab_order'); return s ? JSON.parse(s) : ['goals','analytics','projects','assets','strategy','agency']; }catch(e){ return ['goals','analytics','projects','assets','strategy','agency']; }})();
 function applyTopTabOrder() {
   var row = document.getElementById('analyticsTopRow');
   if (!row) return;
   var btns = Array.from(row.querySelectorAll('.btn-projects[data-tab]'));
   var order = _topTabOrder.slice();
-  ['goals','analytics','projects','strategy','agency'].forEach(function(t) { if (order.indexOf(t) < 0) order.push(t); });
+  ['goals','analytics','projects','assets','strategy','agency'].forEach(function(t) { if (order.indexOf(t) < 0) order.push(t); });
   var ordered = order.map(function(t){ return btns.find(function(b){ return b.getAttribute('data-tab')===t; }); }).filter(Boolean);
   ordered.forEach(function(b){ row.appendChild(b); });
 }
@@ -589,6 +626,7 @@ function updateTopRowButtons() {
   var btnGoals = document.getElementById('btnGoals');
   var ret = document.getElementById('btnProjectsReturn');
   var btn = document.getElementById('btnProjects');
+  var btnAssets = document.getElementById('btnAssets');
   var btnStrategy = document.getElementById('btnStrategy');
   var btnAgency = document.getElementById('btnAgency');
   var btnAgencyHide = document.getElementById('btnAgencyHide');
@@ -596,8 +634,9 @@ function updateTopRowButtons() {
   if (!row) return;
   row.style.display = 'flex';
   if (btnGoals) btnGoals.classList.toggle('is-on', goalsMode);
-  if (ret) ret.classList.toggle('is-on', !projectsMode && !goalsMode && !agencyMode && !strategyMode);
+  if (ret) ret.classList.toggle('is-on', !projectsMode && !goalsMode && !agencyMode && !strategyMode && !assetsMode);
   if (btn) btn.classList.toggle('is-on', projectsMode);
+  if (btnAssets) btnAssets.classList.toggle('is-on', assetsMode);
   if (btnStrategy) btnStrategy.classList.toggle('is-on', strategyMode);
   var btnStrategyFloat = document.getElementById('btnStrategyFloat');
   if (btnStrategyFloat) btnStrategyFloat.classList.toggle('is-on', strategyMode);

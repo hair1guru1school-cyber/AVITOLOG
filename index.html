@@ -666,6 +666,11 @@ body.agency-mode .sec-bar{display:none !important}
 body.agency-mode .analytics-control-panel{display:none !important}
 body.agency-mode .analytics-tumbler{display:none !important}
 body.agency-mode .gen-extra-prompt,body.agency-mode .gen-buttons-row{display:none !important}
+body.assets-mode .right-tabs{display:none !important}
+body.assets-mode .depth-bar,body.assets-mode .sec-bar{display:none !important}
+body.assets-mode .analytics-control-panel{display:none !important}
+body.assets-mode .gen-extra-prompt,body.assets-mode .gen-buttons-row{display:none !important}
+body.assets-mode .content{padding:16px 20px;background:linear-gradient(180deg,rgba(15,18,28,0.98) 0%,rgba(8,12,22,0.95) 100%)}
 body.projects-mode .gen-extra-prompt,body.projects-mode .gen-buttons-row{display:none !important}
 body.projects-mode .analytics-tumbler{display:none !important}
 body.projects-mode .analytics-control-panel{display:none !important}
@@ -1494,6 +1499,19 @@ body.goals-client-dragging .goal-block-sold{transition:all .18s ease}
 .ai-import-match-none{color:var(--muted);font-style:italic}
 .ai-import-loading{padding:24px;text-align:center;color:var(--muted)}
 .ai-import-confirm-bar{margin-top:16px;padding:14px;border-radius:10px;background:rgba(0,217,126,0.08);border:1px solid rgba(0,217,126,0.25);display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+/* Assets page */
+.assets-page-wrap{max-width:900px;margin:0 auto;padding:24px;display:flex;flex-direction:column;gap:28px}
+.assets-summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px}
+.assets-card{padding:16px 18px;border-radius:12px;border:1px solid var(--border);background:var(--surface2);display:flex;flex-direction:column;gap:6px}
+.assets-card-title{font-size:11px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.5px}
+.assets-card-val{font-size:22px;font-weight:800;color:var(--text)}
+.assets-card-val.green{color:#00d97e}
+.assets-card-val.cyan{color:#35d0ff}
+.assets-card-val.pink{color:#ff6b9d}
+.assets-ai-row{display:flex;align-items:flex-start;gap:12px;padding:14px 18px;border-radius:10px;border:1px solid var(--border);background:var(--surface2);flex-wrap:wrap}
+.assets-ai-row .ai-label{font-size:12px;font-weight:700;color:var(--muted);white-space:nowrap}
+.assets-ai-row .ai-input{flex:1;min-width:200px;padding:8px 12px;font-size:13px;border-radius:8px;border:1px solid var(--border);background:rgba(0,0,0,0.2);color:var(--text);resize:none;min-height:36px}
+.assets-ai-row .ai-btns{display:flex;gap:8px}
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 <script src="https://accounts.google.com/gsi/client" async></script>
@@ -1652,6 +1670,7 @@ if (!window.AVITOLOG_GOALS) {
     <button type="button" class="btn-projects" id="btnGoals" data-tab="goals" draggable="true" onclick="openGoalsTab()" ondragstart="topTabDragStart(event,'goals')" ondragover="topTabDragOver(event)" ondragleave="topTabDragLeave(event)" ondrop="topTabDrop(event,'goals')" ondragend="topTabDragEnd(event)">💽 CRM</button>
     <button type="button" class="btn-projects" id="btnProjectsReturn" data-tab="analytics" draggable="true" onclick="openAnalyticsTab()" ondragstart="topTabDragStart(event,'analytics')" ondragover="topTabDragOver(event)" ondragleave="topTabDragLeave(event)" ondrop="topTabDrop(event,'analytics')" ondragend="topTabDragEnd(event)">👤 КЛИЕНТ</button>
     <button type="button" class="btn-projects" id="btnProjects" data-tab="projects" draggable="true" onclick="openProjectsTab()" ondragstart="topTabDragStart(event,'projects')" ondragover="topTabDragOver(event)" ondragleave="topTabDragLeave(event)" ondrop="topTabDrop(event,'projects')" ondragend="topTabDragEnd(event)">📈 ПРОЕКТЫ</button>
+    <button type="button" class="btn-projects" id="btnAssets" data-tab="assets" draggable="true" onclick="openAssetsTab()" ondragstart="topTabDragStart(event,'assets')" ondragover="topTabDragOver(event)" ondragleave="topTabDragLeave(event)" ondrop="topTabDrop(event,'assets')" ondragend="topTabDragEnd(event)">💰 Активы</button>
     <button type="button" class="btn-projects" id="btnStrategy" data-tab="strategy" draggable="true" onclick="openStrategyTab()" ondragstart="topTabDragStart(event,'strategy')" ondragover="topTabDragOver(event)" ondragleave="topTabDragLeave(event)" ondrop="topTabDrop(event,'strategy')" ondragend="topTabDragEnd(event)" style="display:none">🧠 СТРАТЕГИЯ</button>
   </div>
   <div class="analytics-control-panel" id="analyticsControlPanel">
@@ -1707,11 +1726,6 @@ if (!window.AVITOLOG_GOALS) {
     <span class="rtab-ico">🏆</span>
     <span class="rtab-txt" id="txt-avito1">AVITO №1</span>
     <div class="rtab-bar" id="bar-avito1"></div>
-  </button>
-  <button type="button" class="rtab" id="tab-assets" onclick="switchTab('assets')">
-    <span class="rtab-ico">💰</span>
-    <span class="rtab-txt" id="txt-assets">АКТИВЫ</span>
-    <div class="rtab-bar" id="bar-assets"></div>
   </button>
 </div>
 
