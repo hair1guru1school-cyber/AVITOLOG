@@ -567,8 +567,8 @@
       var folderLink = p.folderLink || (p.crmClientId ? 'https://drive.google.com/drive/folders/' + p.crmClientId : '');
       var folderHtml = hasFolder && folderLink
         ? '<span class="assets-row-folder-inline"><a href="' + esc(folderLink) + '" target="_blank" rel="noopener" class="assets-row-folder-link" onclick="event.stopPropagation()" title="Открыть папку">📁</a></span>'
-        : '<span class="assets-row-folder-inline"><span class="assets-row-folder-bind" onclick="event.stopPropagation();window.__assetsStartFolderBind(\'' + owner + '\',' + idx + ')" title="Привязать папку — выбери в меню слева">💿 привязать</span></span>';
-      var base = '<div class="' + rowCls + '" data-owner="' + owner + '" data-idx="' + idx + '">' +
+        : '';
+      var base = '<div class="' + rowCls + '" data-owner="' + owner + '" data-idx="' + idx + '" data-has-folder="' + (hasFolder ? '1' : '0') + '" onclick="window.__assetsRowClicked(event,\'' + owner + '\',' + idx + ')" title="Клик — выбрать для привязки папки из меню слева">' +
         '<button type="button" class="assets-col-emoji" onclick="window.__assetsShowEmojiPicker(this,\'' + owner + '\',' + idx + ')" title="Выбрать эмодзи">' + (p.emoji || '📦') + '</button>' +
         '<span class="assets-col-name">' +
           '<span class="assets-col-name-row">' +
@@ -742,6 +742,18 @@
     }, 0);
   }
 
+  function rowClicked(evt, owner, idx) {
+    if (evt.target.closest('input, button, a')) return;
+    var row = evt.currentTarget;
+    if (!row || !row.classList) return;
+    document.querySelectorAll('.assets-col-row.assets-row-bind-selected').forEach(function(r) {
+      r.classList.remove('assets-row-bind-selected', 'assets-row-has-folder', 'assets-row-no-folder');
+    });
+    row.classList.add('assets-row-bind-selected');
+    row.classList.add(row.getAttribute('data-has-folder') === '1' ? 'assets-row-has-folder' : 'assets-row-no-folder');
+    startFolderBind(owner, idx);
+  }
+
   function startFolderBind(owner, idx) {
     window._assetsFolderBindTarget = { owner: owner, idx: idx };
     var st = document.getElementById('crmSt');
@@ -809,6 +821,7 @@
   window.__assetsCycleClientType = cycleAssetsClientType;
   window.__assetsToggleFilterPaid = toggleFilterPaid;
   window.__assetsShowEmojiPicker = showAssetsEmojiPicker;
+  window.__assetsRowClicked = rowClicked;
   window.__assetsStartFolderBind = startFolderBind;
   window.__assetsApplyFolderBind = applyFolderBind;
   window.__wireAssetsDragTargets = wireAssetsDragTargets;
