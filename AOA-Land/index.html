@@ -70,7 +70,27 @@ nav::after{content:'';position:absolute;bottom:0;left:0;right:0;height:1px;backg
 .sec-title span{color:var(--red)}
 .sec-desc{font-size:16px;color:var(--muted);max-width:560px;line-height:1.8;margin-bottom:50px}
 
-/* BANNERS ROW */
+
+/* С НАМИ РАСТУТ - Carousel */
+.grow-carousel{position:relative;background:var(--bg2);padding:56px 24px 72px;overflow:hidden}
+.grow-carousel .sec-lbl{margin-bottom:14px}
+.grow-carousel .sec-title{margin-bottom:20px}
+.grow-wrap{position:relative;max-width:900px;margin:0 auto}
+.grow-track{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;scroll-behavior:smooth;-webkit-overflow-scrolling:touch;gap:20px;padding:12px 0;scrollbar-width:none}
+.grow-track::-webkit-scrollbar{display:none}
+.grow-slide{flex:0 0 85%;scroll-snap-align:center;min-width:280px;max-width:400px}
+.grow-slide img{width:100%;height:auto;display:block;border-radius:12px;border:1px solid var(--border-r);box-shadow:0 8px 32px rgba(0,0,0,.4);object-fit:cover;aspect-ratio:16/10}
+.grow-nav{position:absolute;top:50%;transform:translateY(-50%);width:48px;height:48px;border-radius:50%;background:rgba(232,0,29,.9);border:1px solid var(--red);color:#fff;font-size:24px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .25s;z-index:10}
+.grow-nav:hover{background:var(--red);box-shadow:0 0 24px var(--red-glow);transform:translateY(-50%) scale(1.05)}
+.grow-nav.prev{left:-20px}
+.grow-nav.next{right:-20px}
+.grow-dots{display:flex;justify-content:center;gap:10px;margin-top:24px}
+.grow-dot{width:10px;height:10px;border-radius:50%;border:2px solid var(--red);background:transparent;cursor:pointer;transition:all .25s}
+.grow-dot:hover,.grow-dot.active{background:var(--red);box-shadow:0 0 12px var(--red-glow)}
+@media(max-width:768px){
+.grow-slide{flex:0 0 90%;min-width:260px}
+.grow-nav{width:40px;height:40px;font-size:20px;left:-8px}.grow-nav.next{right:-8px}
+}/* BANNERS ROW */
 .banners-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;background:var(--bg);padding:0 0 0 0}
 .av-banner{border:1px solid var(--border-r);overflow:hidden;position:relative}
 .av-banner img{width:100%;display:block;max-height:280px;object-fit:cover;object-position:center 20%;aspect-ratio:16/9}
@@ -362,8 +382,34 @@ footer{background:var(--bg);border-top:1px solid var(--border);padding:40px 80px
       <div class="tk-card"><div class="tk-card-ico">📊</div><h3 class="tk-card-title">Мониторинг 24/7</h3><p class="tk-card-desc">Отслеживаем позиции, просмотры и контакты. Реагируем до того, как падают заявки.</p></div>
       <div class="tk-card"><div class="tk-card-ico">📈</div><h3 class="tk-card-title">Отчетность и прозрачность</h3><p class="tk-card-desc">Еженедельная аналитика: заявки, позиции, динамика и точки роста.</p></div>
     </div>
-    <p class="tk-cta-line">СИСТЕМА, КОТОРАЯ ПРИВОДИТ КЛИЕНТОВ</p>
   </div>
+</section>
+
+<!-- С НАМИ РАСТУТ -->
+<section class="sec grow-carousel" id="grow">
+  <div class="sec-lbl">Кейсы</div>
+  <h2 class="sec-title">С НАМИ РАСТУТ</h2>
+  <p class="sec-desc">Реальные результаты — смотрите портфолио</p>
+  <div class="grow-wrap">
+    <button type="button" class="grow-nav prev" aria-label="Назад">‹</button>
+    <div class="grow-track" id="growTrack">
+    <div class="grow-slide"><img src="Кейсы -статитик/11.png" alt="Кейс 11" loading="lazy"></div>
+    <div class="grow-slide"><img src="Кейсы -статитик/13.png" alt="Кейс 13" loading="lazy"></div>
+    <div class="grow-slide"><img src="Кейсы -статитик/14.png" alt="Кейс 14" loading="lazy"></div>
+    <div class="grow-slide"><img src="Кейсы -статитик/15.png" alt="Кейс 15" loading="lazy"></div>
+    <div class="grow-slide"><img src="Кейсы -статитик/16.png" alt="Кейс 16" loading="lazy"></div>
+    <div class="grow-slide"><img src="Кейсы -статитик/17.png" alt="Кейс 17" loading="lazy"></div>
+    <div class="grow-slide"><img src="Кейсы -статитик/18.png" alt="Кейс 18" loading="lazy"></div>
+    <div class="grow-slide"><img src="Кейсы -статитик/19.png" alt="Кейс 19" loading="lazy"></div>
+    <div class="grow-slide"><img src="Кейсы -статитик/20.png" alt="Кейс 20" loading="lazy"></div>
+    <div class="grow-slide"><img src="Кейсы -статитик/21.png" alt="Кейс 21" loading="lazy"></div>
+    <div class="grow-slide"><img src="Кейсы -статитик/23.png" alt="Кейс 23" loading="lazy"></div>
+    <div class="grow-slide"><img src="Кейсы -статитик/25.png" alt="Кейс 25" loading="lazy"></div>
+    <div class="grow-slide"><img src="Кейсы -статитик/26.png" alt="Кейс 26" loading="lazy"></div>
+    </div>
+    <button type="button" class="grow-nav next" aria-label="Вперёд">›</button>
+  </div>
+  <div class="grow-dots" id="growDots"></div>
 </section>
 
 <!-- NICHES -->
@@ -611,6 +657,20 @@ function filterCases(){
 }
 const ro=new IntersectionObserver(es=>{es.forEach((e,i)=>{if(e.isIntersecting){setTimeout(()=>e.target.classList.add('on'),i*50);ro.unobserve(e.target)}})},{threshold:.07});
 document.querySelectorAll('.rev').forEach(el=>ro.observe(el));
+</script>
+
+<!-- Carousel С НАМИ РАСТУТ -->
+<script>
+(function(){
+var t=document.getElementById("growTrack"), d=document.getElementById("growDots"), prev=document.querySelector(".grow-nav.prev"), next=document.querySelector(".grow-nav.next");
+if(!t||!d)return;
+var slides=t.querySelectorAll(".grow-slide"), n=slides.length, idx=0;
+for(var i=0;i<n;i++){var dot=document.createElement("button");dot.type="button";dot.className="grow-dot"+(i===0?" active":"");dot.setAttribute("aria-label","Слайд "+(i+1));dot.onclick=(function(j){return function(){goTo(j)}})(i);d.appendChild(dot)}
+function goTo(i){idx=Math.max(0,Math.min(i,n-1));t.scrollTo({left:slides[idx].offsetLeft-t.offsetLeft,behavior:"smooth"});d.querySelectorAll(".grow-dot").forEach(function(el,k){el.classList.toggle("active",k===idx)})}
+if(prev)prev.onclick=function(){goTo(idx-1)};
+if(next)next.onclick=function(){goTo(idx+1)};
+t.addEventListener("scroll",function(){var w=slides[0].offsetWidth+20;var i=Math.round(t.scrollLeft/w);if(i!==idx){idx=i;d.querySelectorAll(".grow-dot").forEach(function(el,k){el.classList.toggle("active",k===idx)})}},{passive:true});
+})();
 </script>
 </body>
 </html>
