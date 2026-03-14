@@ -1470,6 +1470,33 @@ function clearProjectAutoloadForRow(projectId, childLineIdx) {
   rerenderProjectsPreserveScroll();
   syncProjectToActiveSheet(projectId, 'autoload_range_clear');
 }
+function clearProjectAutoloadRangeForRow(projectId, childLineIdx, startDate, endDate) {
+  var data = loadProjectsData();
+  var p = data.projects.find(function(x){ return x.id === projectId; });
+  if (!p) return;
+  var s = startDate <= endDate ? startDate : endDate;
+  var e = startDate <= endDate ? endDate : startDate;
+  var clIdx = (childLineIdx != null && childLineIdx >= 0) ? childLineIdx : -1;
+  var targetEvents = (clIdx >= 0) ? ((ensureChildLineEvents(p), p.childLineEvents || [])[clIdx] || []) : (p.events || []);
+  var activeRanges = targetEvents.filter(function(ev){ return ev && ev.type === 'active_range'; });
+  if (!activeRanges.length) return;
+  var nextRanges = [];
+  activeRanges.forEach(function(rg){
+    var rs = String(rg.startDate || '');
+    var re = String(rg.endDate || '');
+    if (!rs || !re) return;
+    if (re < s || rs > e) { nextRanges.push({type:'active_range', startDate:rs, endDate:re}); return; }
+    if (rs < s) nextRanges.push({type:'active_range', startDate:rs, endDate:addDaysISO(s, -1)});
+    if (re > e) nextRanges.push({type:'active_range', startDate:addDaysISO(e, 1), endDate:re});
+  });
+  targetEvents = targetEvents.filter(function(ev){ return ev.type !== 'active_range'; });
+  nextRanges.forEach(function(rg){ targetEvents.push(rg); });
+  if (clIdx >= 0) { ensureChildLineEvents(p); p.childLineEvents[clIdx] = targetEvents; }
+  else p.events = targetEvents;
+  saveProjectsData(data);
+  rerenderProjectsPreserveScroll();
+  syncProjectToActiveSheet(projectId, 'autoload_range_partial_clear');
+}
 function getCalendarCellFromEventTarget(t) {
   return t && t.closest ? t.closest('.projects-cal-day[data-project-id][data-date]') : null;
 }
@@ -1560,6 +1587,16 @@ function bindProjectsCalendarInteractions() {
       e.preventDefault();
       e.stopPropagation();
       removeProjectCardsActive(pid);
+      return;
+    }
+    if (e.target && e.target.closest && e.target.closest('.cal-cards-num')) {
+      e.preventDefault();
+      e.stopPropagation();
+      var cell = e.target.closest('.projects-cal-day');
+      var numSpan = e.target.closest('.cal-cards-num');
+      var cpid = cell && cell.getAttribute('data-project-id');
+      var cdt = cell && cell.getAttribute('data-date');
+      if (cpid && cdt && numSpan) startCardsNumInlineEdit(cpid, cdt, numSpan);
       return;
     }
     if (e.target && e.target.closest && e.target.closest('.cal-cards')) {
@@ -2171,6 +2208,36 @@ function setTaskPanelWidth(w) {
   if (el) el.style.width = w + 'px';
 }
 
+function getSelectedCellInfo(projectId, dateStr, childLineIdx) {
+  var data = loadProjectsData();
+  var p = data.projects.find(function(x){ return x.id === projectId; });
+  if (!p || !dateStr) return null;
+  var clIdx = (childLineIdx != null && childLineIdx >= 0) ? childLineIdx : -1;
+  var events = (clIdx >= 0) ? ((p.childLineEvents || [])[clIdx] || []) : (p.events || []);
+  var dStr = String(dateStr);
+  if (clIdx < 0 && p.cardsActive && (p.cardsActiveDate || '') === dStr)
+    return { type: 'cards', label: 'АКТИВ карточек', value: p.cardsActive, icon: '🃏' };
+  if (clIdx < 0 && p.mustLaunchRequired && (p.mustLaunchDate || getTodayISOmsk()) === dStr)
+    return { type: 'mustlaunch', label: 'Должен быть запущен', icon: '!!' };
+  var launchEvt = (events || []).find(function(e){ return e.type === 'launch_range' && dStr >= e.startDate && dStr <= e.endDate; });
+  if (launchEvt) return { type: 'launch', label: 'Запуск', icon: '🚀' };
+  var activeEvt = (events || []).find(function(e){ return e.type === 'active_range' && dStr >= e.startDate && dStr <= e.endDate; });
+  if (activeEvt) return { type: 'autoload', label: 'Автозагрузка', icon: 'A' };
+  return null;
+}
+function deleteSelectedCalCell() {
+  if (!_selectedCalCell) return;
+  var pid = _selectedCalCell.projectId, d = _selectedCalCell.dateStr, clIdx = _selectedCalCell.childLineIdx;
+  var info = getSelectedCellInfo(pid, d, clIdx);
+  if (!info) return;
+  if (info.type === 'cards') removeProjectCardsActive(pid);
+  else if (info.type === 'mustlaunch') removeProjectMustLaunchRequired(pid);
+  else if (info.type === 'launch') clearProjectLaunchRange(pid, d, d, clIdx);
+  else if (info.type === 'autoload') clearProjectAutoloadRangeForRow(pid, clIdx != null ? clIdx : -1, d, d);
+  _selectedCalCell = null;
+  if (typeof renderTaskPanel === 'function') renderTaskPanel();
+  if (typeof rerenderProjectsPreserveScroll === 'function') rerenderProjectsPreserveScroll();
+}
 function renderTaskPanel() {
   var wrap = document.getElementById('taskPanelWrap');
   if (!wrap) {
@@ -2244,6 +2311,14 @@ function renderTaskPanel() {
     doneTasks.forEach(function(t){ listHtml += renderTaskRow(t); });
   }
 
+  var cellSectionHtml = '';
+  if (pid && _selectedCalCell && _selectedCalCell.projectId === pid && _selectedCalCell.dateStr) {
+    var info = getSelectedCellInfo(pid, _selectedCalCell.dateStr, _selectedCalCell.childLineIdx);
+    if (info) {
+      var cellLabel = info.icon + ' ' + info.label + (info.value ? ': ' + info.value : '');
+      cellSectionHtml = '<div class="task-panel-selected-cell"><div class="task-panel-section-title">КЛЕТКА КАЛЕНДАРЯ</div><div class="task-panel-cell-row"><span class="task-panel-cell-info">' + escAttr(cellLabel) + '</span><button type="button" class="task-panel-cell-del" onclick="deleteSelectedCalCell()" title="Удалить из календаря">×</button></div></div>';
+    }
+  }
   var linkDayHtml = '';
   if (pid && _selectedCalCell && _selectedCalCell.projectId === pid && _selectedCalCell.dateStr) {
     var selDateStr = _selectedCalCell.dateStr;
@@ -2272,7 +2347,7 @@ function renderTaskPanel() {
   var fontBtns = '<span class="task-panel-font-btns"><button type="button" class="task-panel-font-btn' + (fontSize==='s'?' active':'') + '" onclick="setTaskPanelFontSize(\'s\')" title="Мелкий шрифт">A−</button><button type="button" class="task-panel-font-btn' + (fontSize==='m'?' active':'') + '" onclick="setTaskPanelFontSize(\'m\')" title="Обычный">A</button><button type="button" class="task-panel-font-btn' + (fontSize==='l'?' active':'') + '" onclick="setTaskPanelFontSize(\'l\')" title="Крупный">A+</button></span>';
 
   var aiRowHtml = pid ? '<div class="task-panel-ai-row" title="ИИ записывает задачи, дедлайны и фиксирует историю в проекте">&#129302; ИИ — задачи, дедлайны, история</div>' : '';
-wrap.innerHTML = '<div id="taskPanelDrawer" class="task-panel-drawer' + (pid ? ' open' : '') + '" style="width:' + getTaskPanelWidth() + 'px"><div class="task-panel-resizer" onmousedown="startTaskPanelResize(event)" title="Тяните — ширину и шрифт"></div><div class="task-panel-header"><span class="task-panel-title">' + (project ? escAttr(String(project.emoji || '') + ' ' + (project.title || 'Без названия')) : 'Задачи') + '</span><div style="display:flex;align-items:center;gap:8px">' + fontBtns + '<button type="button" class="task-panel-close" onclick="closeTaskPanel()" title="Закрыть">×</button></div></div>' + aiRowHtml + '<div class="task-panel-content">' + (linkDayHtml || '') + templatesHtml + listSectionHtml + '<button type="button" class="task-panel-add-btn" onclick="showAddTaskForm(\'' + (pid || '') + '\')">+ ЗАДАЧА</button></div></div>';
+wrap.innerHTML = '<div id="taskPanelDrawer" class="task-panel-drawer' + (pid ? ' open' : '') + '" style="width:' + getTaskPanelWidth() + 'px"><div class="task-panel-resizer" onmousedown="startTaskPanelResize(event)" title="Тяните — ширину и шрифт"></div><div class="task-panel-header"><span class="task-panel-title">' + (project ? escAttr(String(project.emoji || '') + ' ' + (project.title || 'Без названия')) : 'Задачи') + '</span><div style="display:flex;align-items:center;gap:8px">' + fontBtns + '<button type="button" class="task-panel-close" onclick="closeTaskPanel()" title="Закрыть">×</button></div></div>' + aiRowHtml + '<div class="task-panel-content">' + (cellSectionHtml || '') + (linkDayHtml || '') + templatesHtml + listSectionHtml + '<button type="button" class="task-panel-add-btn" onclick="showAddTaskForm(\'' + (pid || '') + '\')">+ ЗАДАЧА</button></div></div>';
 
   setTaskPanelFontSize(fontSize);
   var addModal = document.getElementById('taskAddModal');
@@ -2819,6 +2894,30 @@ function toggleProjectCardsBadge(projectId) {
     _projectJokerDetachArmedId = null;
   }
   rerenderProjectsPreserveScroll();
+}
+function startCardsNumInlineEdit(projectId, dateStr, numSpan) {
+  if (!numSpan || numSpan.classList.contains('cal-cards-num-editing')) return;
+  var curVal = (numSpan.textContent || '').trim();
+  numSpan.classList.add('cal-cards-num-editing');
+  var inp = document.createElement('input');
+  inp.type = 'text';
+  inp.className = 'cal-cards-num-input';
+  inp.value = curVal;
+  inp.style.cssText = 'width:100%;max-width:80px;font:inherit;font-weight:600;background:rgba(0,0,0,0.3);border:1px solid rgba(100,180,255,0.5);border-radius:4px;padding:2px 4px;color:inherit;text-align:center';
+  function done() {
+    numSpan.classList.remove('cal-cards-num-editing');
+    var v = (inp.value || '').trim();
+    if (inp.parentNode) inp.parentNode.replaceChild(numSpan, inp);
+    setProjectCardsActiveWithDate(projectId, v, dateStr);
+  }
+  inp.onblur = done;
+  inp.onkeydown = function(e) {
+    if (e.key === 'Enter') { e.preventDefault(); inp.blur(); }
+    if (e.key === 'Escape') { inp.value = curVal; inp.blur(); }
+  };
+  numSpan.parentNode.replaceChild(inp, numSpan);
+  inp.focus();
+  inp.select();
 }
 function removeProjectCardsActive(projectId) {
   var data = loadProjectsData();
