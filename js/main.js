@@ -221,9 +221,9 @@ function buildAnalyticsRecentProjectsBlock() {
   var esc = function(s) { return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); };
   var all = getAnalyticsRecentProjects();
   if (!all.length) return '<div class="recent-projects-list"><div class="empty-st" style="padding:14px 0"><p style="font-size:12px;opacity:.6">Ещё нет недавних генераций</p></div></div>';
-  var limit = _analyticsRecentLimit < 0 ? all.length : (_analyticsRecentLimit === 2 ? 2 : (_analyticsRecentLimit === 3 ? 3 : (_analyticsRecentLimit === 8 ? 8 : (_analyticsRecentLimit === 10 ? 10 : 5))));
+  var limit = _analyticsRecentLimit < 0 ? all.length : (_analyticsRecentLimit === 2 ? 2 : (_analyticsRecentLimit === 3 ? 3 : (_analyticsRecentLimit === 5 ? 5 : (_analyticsRecentLimit === 8 ? 8 : (_analyticsRecentLimit === 10 ? 10 : (_analyticsRecentLimit === 15 ? 15 : (_analyticsRecentLimit === 20 ? 20 : 10)))))));
   var shown = all.slice(0, limit);
-  var cols = _analyticsRecentLimit < 0 ? Math.min(5, Math.max(1, shown.length)) : Math.max(1, Math.min(5, limit > 5 ? 5 : limit));
+  var cols = _analyticsRecentLimit < 0 ? Math.min(5, Math.max(1, shown.length)) : Math.max(1, Math.min(5, limit >= 10 ? 5 : (limit >= 5 ? 5 : limit)));
   var isModeFive = cols === 5;
   var isModeTwo = cols === 2;
   var isModeThree = cols === 3;
@@ -536,7 +536,7 @@ function wireAnalyticsRecentControls() {
         if (raw === 'all') _analyticsRecentLimit = -1;
         else {
           var lim = parseInt(raw, 10);
-          _analyticsRecentLimit = (lim === 2 || lim === 3 || lim === 5 || lim === 8 || lim === 10) ? lim : 10;
+          _analyticsRecentLimit = (lim === 2 || lim === 3 || lim === 5 || lim === 8 || lim === 10 || lim === 15 || lim === 20) ? lim : 10;
         }
         refreshClientContents(true);
       };
@@ -591,9 +591,11 @@ async function refreshClientContents(forceFolder) {
     var headCtrlOnly = '<div class="client-view-switch" id="analyticsRecentSwitch">' +
       '<button type="button" class="client-view-btn' + (_analyticsRecentLimit === 2 ? ' on' : '') + '" title="2 последние" data-limit="2">2</button>' +
       '<button type="button" class="client-view-btn' + (_analyticsRecentLimit === 3 ? ' on' : '') + '" title="3 последние" data-limit="3">3</button>' +
-      '<button type="button" class="client-view-btn' + (_analyticsRecentLimit === 5 ? ' on' : '') + '" title="5 последние" data-limit="5">5</button>' +
+      '<button type="button" class="client-view-btn' + (_analyticsRecentLimit === 5 ? ' on' : '') + '" title="5 последних" data-limit="5">5</button>' +
       '<button type="button" class="client-view-btn' + (_analyticsRecentLimit === 8 ? ' on' : '') + '" title="8 последних" data-limit="8">8</button>' +
       '<button type="button" class="client-view-btn' + (_analyticsRecentLimit === 10 ? ' on' : '') + '" title="10 последних" data-limit="10">10</button>' +
+      '<button type="button" class="client-view-btn' + (_analyticsRecentLimit === 15 ? ' on' : '') + '" title="15 последних" data-limit="15">15</button>' +
+      '<button type="button" class="client-view-btn' + (_analyticsRecentLimit === 20 ? ' on' : '') + '" title="20 последних" data-limit="20">20</button>' +
       '<button type="button" class="client-view-btn' + (_analyticsRecentLimit < 0 ? ' on' : '') + '" title="Все" data-limit="all">&#8734;</button>' +
       '</div>';
     var headHtmlOnly = '<div class="client-contents-head"><div class="client-contents-title">Содержимое клиента — Недавние</div>' + headCtrlOnly + '</div>';
@@ -623,7 +625,7 @@ async function refreshClientContents(forceFolder) {
   var safetyTmr = setTimeout(function() {
     if (_refreshClientContentsInFlight && !projectsMode && !goalsMode && !agencyMode && mc) {
       _refreshClientContentsInFlight = false;
-      var headCtrlSt = '<div class="client-view-switch" id="analyticsRecentSwitch"><button type="button" class="client-view-btn" data-limit="2">2</button><button type="button" class="client-view-btn" data-limit="3">3</button><button type="button" class="client-view-btn" data-limit="5">5</button><button type="button" class="client-view-btn" data-limit="8">8</button><button type="button" class="client-view-btn" data-limit="10">10</button><button type="button" class="client-view-btn" data-limit="all">&#8734;</button></div>';
+      var headCtrlSt = '<div class="client-view-switch" id="analyticsRecentSwitch"><button type="button" class="client-view-btn" data-limit="2">2</button><button type="button" class="client-view-btn" data-limit="3">3</button><button type="button" class="client-view-btn" data-limit="5">5</button><button type="button" class="client-view-btn" data-limit="8">8</button><button type="button" class="client-view-btn" data-limit="10">10</button><button type="button" class="client-view-btn" data-limit="15">15</button><button type="button" class="client-view-btn" data-limit="20">20</button><button type="button" class="client-view-btn" data-limit="all">&#8734;</button></div>';
       var headSt = '<div class="client-contents-head"><div class="client-contents-title">' + (getAnalyticsRecentTitle() || 'Недавние') + '</div>' + headCtrlSt + '</div>';
       mc.innerHTML = '<div class="client-contents">' + headSt + buildAnalyticsRecentProjectsBlock() +
         '<div class="empty-st" style="padding:24px 0"><div style="font-size:36px;opacity:.2">&#9888;</div><p style="font-size:14px">Таймаут загрузки</p><p style="font-size:12px;opacity:.7">Попробуйте снова</p><button type="button" class="btn-back-inline" onclick="refreshClientContents(true)" style="margin-top:12px">Повторить</button></div></div>';
@@ -649,6 +651,8 @@ async function refreshClientContents(forceFolder) {
           '<button type="button" class="client-view-btn' + (_analyticsRecentLimit === 5 ? ' on' : '') + '" data-limit="5">5</button>' +
           '<button type="button" class="client-view-btn' + (_analyticsRecentLimit === 8 ? ' on' : '') + '" data-limit="8">8</button>' +
           '<button type="button" class="client-view-btn' + (_analyticsRecentLimit === 10 ? ' on' : '') + '" data-limit="10">10</button>' +
+          '<button type="button" class="client-view-btn' + (_analyticsRecentLimit === 15 ? ' on' : '') + '" data-limit="15">15</button>' +
+          '<button type="button" class="client-view-btn' + (_analyticsRecentLimit === 20 ? ' on' : '') + '" data-limit="20">20</button>' +
           '<button type="button" class="client-view-btn' + (_analyticsRecentLimit < 0 ? ' on' : '') + '" data-limit="all">&#8734;</button></div>';
         var errMsg = (loadErr && loadErr.name === 'AbortError') ? 'Таймаут загрузки. Проверь интернет.' : (loadErr && loadErr.message === 'Нажмите 🔑 Drive' ? 'Войдите в Google Drive (кнопка 🔑 в шапке)' : String(loadErr && loadErr.message || loadErr));
         var headHtmlErr = '<div class="client-contents-head"><div class="client-contents-title">' + (getAnalyticsRecentTitle() || 'Недавние') + '</div>' + headCtrlErr + '</div>';
@@ -681,9 +685,11 @@ async function refreshClientContents(forceFolder) {
   var headCtrl = '<div class="client-view-switch" id="analyticsRecentSwitch">' +
     '<button type="button" class="client-view-btn' + (_analyticsRecentLimit === 2 ? ' on' : '') + '" title="2 последние" data-limit="2">2</button>' +
     '<button type="button" class="client-view-btn' + (_analyticsRecentLimit === 3 ? ' on' : '') + '" title="3 последние" data-limit="3">3</button>' +
-    '<button type="button" class="client-view-btn' + (_analyticsRecentLimit === 5 ? ' on' : '') + '" title="5 последние" data-limit="5">5</button>' +
+    '<button type="button" class="client-view-btn' + (_analyticsRecentLimit === 5 ? ' on' : '') + '" title="5 последних" data-limit="5">5</button>' +
     '<button type="button" class="client-view-btn' + (_analyticsRecentLimit === 8 ? ' on' : '') + '" title="8 последних" data-limit="8">8</button>' +
     '<button type="button" class="client-view-btn' + (_analyticsRecentLimit === 10 ? ' on' : '') + '" title="10 последних" data-limit="10">10</button>' +
+    '<button type="button" class="client-view-btn' + (_analyticsRecentLimit === 15 ? ' on' : '') + '" title="15 последних" data-limit="15">15</button>' +
+    '<button type="button" class="client-view-btn' + (_analyticsRecentLimit === 20 ? ' on' : '') + '" title="20 последних" data-limit="20">20</button>' +
     '<button type="button" class="client-view-btn' + (_analyticsRecentLimit < 0 ? ' on' : '') + '" title="Все" data-limit="all">&#8734;</button>' +
     '</div>';
   var backBtnInline = selectedKey ? '<div class="client-contents-back-wrap"><button type="button" class="btn-back-inline" onclick="showClientContentsBack()">← К другим папкам</button></div>' : '';
