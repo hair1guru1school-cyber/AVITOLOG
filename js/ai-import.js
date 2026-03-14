@@ -561,11 +561,16 @@
       var statusBadge = getStatusBadge(resolvedType);
       var statusCls = resolvedType === 'old' ? 'assets-status-diamond' : (resolvedType === 'returning' ? 'assets-status-2' : 'assets-status-new');
       var hasFolder = !!(p.folderLink || p.crmClientId);
+      var folderLink = p.folderLink || (p.crmClientId ? 'https://drive.google.com/drive/folders/' + p.crmClientId : '');
+      var folderHtml = hasFolder && folderLink
+        ? '<span class="assets-row-folder-inline"><a href="' + esc(folderLink) + '" target="_blank" rel="noopener" class="assets-row-folder-link" onclick="event.stopPropagation()" title="Открыть папку">📁</a></span>'
+        : '<span class="assets-row-folder-inline"><span class="assets-row-folder-bind" onclick="event.stopPropagation();window.__assetsStartFolderBind(\'' + owner + '\',' + idx + ')" title="Привязать папку — выбери в меню слева">💿 привязать</span></span>';
       var base = '<div class="' + rowCls + '" data-owner="' + owner + '" data-idx="' + idx + '">' +
         '<button type="button" class="assets-col-emoji" onclick="window.__assetsShowEmojiPicker(this,\'' + owner + '\',' + idx + ')" title="Выбрать эмодзи">' + (p.emoji || '📦') + '</button>' +
         '<span class="assets-col-name">' +
           '<span class="assets-col-name-row">' +
             '<input type="text" value="' + esc(p.name || '') + '" placeholder="Проект" data-field="name" onblur="window.__assetsSaveColRow(this)">' +
+            folderHtml +
             '<button type="button" class="assets-status-badge ' + statusCls + '" onclick="window.__assetsCycleClientType(\'' + owner + '\',' + idx + ')" title="Старый/новичок/2-й раз">' + esc(statusBadge) + '</button>' +
           '</span>' +
           '<span class="assets-progress-bar" title="Чем больше ждать до платежа — тем полнее"><span class="assets-progress-fill" style="width:' + barPct + '%"></span></span>' +
@@ -580,8 +585,7 @@
         base += '<span class="assets-col-paid"><input type="text" value="' + esc(paidFmt) + '" placeholder="0" data-field="paid" onblur="window.__assetsSaveColRow(this)"></span>' +
           '<span class="assets-col-expected"><input type="text" value="' + esc(expectedFmt) + '" placeholder="0" data-field="expected" onblur="window.__assetsSaveColRow(this)"></span>';
       }
-      base += '<button type="button" class="assets-col-folder' + (hasFolder ? ' on' : '') + '" onclick="window.__assetsStartFolderBind(\'' + owner + '\',' + idx + ')" title="Привязать папку из меню слева">' + (hasFolder ? '📁' : '💿') + '</button>' +
-        '<button type="button" class="assets-col-remove" onclick="window.__assetsRemoveProject(\'' + owner + '\',' + idx + ')" title="Удалить">✕</button>' +
+      base += '<button type="button" class="assets-col-remove" onclick="window.__assetsRemoveProject(\'' + owner + '\',' + idx + ')" title="Удалить">✕</button>' +
         '</div>';
       return base;
     }
