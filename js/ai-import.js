@@ -353,45 +353,78 @@
     if (window.AVITOLOG_GOALS && typeof window.AVITOLOG_GOALS.render === 'function') {
       window.AVITOLOG_GOALS.render();
     }
+    if (typeof assetsMode !== 'undefined' && assetsMode && typeof window.__renderAssetsPage === 'function') {
+      window.__renderAssetsPage();
+    }
   }
 
   function loadToTable() {
     confirmImport();
   }
 
+  var ASSETS_PROJECTS = [
+    { emoji: '🎄', name: 'Андрей Молл Строй' },
+    { emoji: '🎄', name: 'Иван Пиломатериалы' },
+    { emoji: '🪨', name: 'Камни и Пеллеты' },
+    { emoji: '🛋', name: 'Mebel Fan' },
+    { emoji: '🪟', name: 'Денис Ворота' },
+    { emoji: '🏎', name: 'Вячеслав АвтоВыкуп' },
+    { emoji: '🧱', name: 'Руслан Kuga Термо' },
+    { emoji: '🏠', name: 'Модуль Воронеж' },
+    { emoji: '🛌', name: 'Кирилл Кровати' },
+    { emoji: '👷‍♂️', name: 'Александр Крым' },
+    { emoji: '👷‍♂️', name: 'Артем Паколь' },
+    { emoji: '📊', name: 'Виктория Гибсокартон' },
+    { emoji: '🏠', name: 'Дмитрий Бани Каркасные' },
+    { emoji: '🏗', name: 'Наталья Дома ВашДом' },
+    { emoji: '🚜', name: 'СельхозТехника' },
+    { emoji: '👩🏻‍🏫', name: 'Ксения Сергеевна' },
+    { emoji: '⚡️', name: 'Электрик Крым Александр' },
+    { emoji: '🧱', name: 'Иван Сияр Сендвич панели' },
+    { emoji: '🧱', name: 'Дома Андрей' }
+  ];
+
+  function findProjectAmount(projName, soldProjects) {
+    if (!soldProjects || !soldProjects.length) return null;
+    var n = String(projName || '').trim().toLowerCase();
+    for (var i = 0; i < soldProjects.length; i++) {
+      var p = soldProjects[i];
+      var pn = String(p.name || '').trim().toLowerCase();
+      if (pn && (pn === n || pn.indexOf(n) >= 0 || n.indexOf(pn) >= 0)) {
+        var v = p.saleAmount || p.mainPrice || (p.priceOptions && p.priceOptions[0]);
+        return v ? String(v).replace(/\s/g, '') : null;
+      }
+    }
+    return null;
+  }
+
   function renderAssetsPage() {
     var mc = document.getElementById('mainContent');
     if (!mc) return;
-    var monthNames = ['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'];
-    var now = new Date();
-    var curMonth = monthNames[now.getMonth()];
     var fmt = function(n) { return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ' '); };
-    var data = {
-      thisMonth: 338000,
-      jan2026: 49700,
-      feb2026: 788600,
-      mar2026: 338000
-    };
+    var goalsData = getGoalsData();
+    var sold = (goalsData.projects || []).filter(function(p) { return p && p.stage === 'sold'; });
+    var summaryRows = [
+      { icon: '💰', label: 'Получено за все', val: '338 000' },
+      { icon: '✅', label: 'Оплаты клиентов', val: '304 000' },
+      { icon: '🌿', label: 'Ожидается еще', val: '20 000' },
+      { icon: '📊', label: 'Ожидается за мес', val: '324 000' },
+      { icon: '📈', label: 'Агентство AoA %', val: '34 000' },
+      { icon: '🆕', label: 'Новые клиенты', val: '' },
+      { icon: '👤', label: 'Активные клиенты', val: '195 000' }
+    ];
+    var summaryHtml = summaryRows.map(function(r) {
+      return '<div class="assets-summary-row"><span class="assets-summary-label">' + r.icon + ' ' + esc(r.label) + '</span><span class="assets-summary-val">' + (r.val ? esc(r.val) + ' ₽' : '—') + '</span></div>';
+    }).join('');
+    var projectRows = ASSETS_PROJECTS.map(function(p) {
+      var amt = findProjectAmount(p.name, sold);
+      var amtStr = amt ? fmt(amt) + ' ₽' : '—';
+      return '<div class="assets-project-row"><span class="assets-project-emoji">' + p.emoji + '</span><span class="assets-project-name">' + esc(p.name) + '</span><span class="assets-project-amount">' + amtStr + '</span></div>';
+    }).join('');
     mc.innerHTML = '<div class="assets-page-wrap">' +
-      '<div class="assets-summary">' +
-        '<div class="assets-card" style="border-color:rgba(0,217,126,0.35);background:rgba(0,217,126,0.06)">' +
-          '<span class="assets-card-title">Получено за месяц</span>' +
-          '<span class="assets-card-val green">' + fmt(data.thisMonth) + ' ₽</span>' +
-          '<span class="assets-card-title" style="margin-top:4px;opacity:.8">' + curMonth + ' 2026</span>' +
-        '</div>' +
-        '<div class="assets-card">' +
-          '<span class="assets-card-title">Январь 2026</span>' +
-          '<span class="assets-card-val">' + fmt(data.jan2026) + ' ₽</span>' +
-        '</div>' +
-        '<div class="assets-card">' +
-          '<span class="assets-card-title">Февраль 2026</span>' +
-          '<span class="assets-card-val cyan">' + fmt(data.feb2026) + ' ₽</span>' +
-        '</div>' +
-        '<div class="assets-card">' +
-          '<span class="assets-card-title">Март 2026</span>' +
-          '<span class="assets-card-val pink">' + fmt(data.mar2026) + ' ₽</span>' +
-        '</div>' +
-      '</div>' +
+      '<div class="assets-summary-table">' + summaryHtml + '</div>' +
+      '<div class="assets-projects-title">Проекты (цены складываются в общую сумму за март 338 000 ₽)</div>' +
+      '<div class="assets-projects-list" id="assetsProjectsList">' + projectRows + '</div>' +
       '<div class="assets-ai-row" id="assetsAiRow">' +
         '<span class="ai-label">🤖 ИИ-импорт</span>' +
         '<textarea class="ai-input" id="aiImportTextarea" rows="1" placeholder="Вставь текст оплат/клиентов — ИИ разберёт..."></textarea>' +
