@@ -272,6 +272,8 @@ footer{background:var(--bg);border-top:1px solid var(--border);padding:40px 80px
 }
 /* TURNKEY BANNER - Premium SaaS style */
 .turnkey-banner{position:relative;background:#070b14;padding:80px 24px 100px;overflow:hidden}
+.turnkey-banner::before{content:"";position:absolute;inset:0;background:linear-gradient(90deg,#070b14 0%,transparent 12%,transparent 88%,#070b14 100%);pointer-events:none;z-index:2}
+.turnkey-banner::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,#070b14 0%,transparent 8%,transparent 92%,#070b14 100%);pointer-events:none;z-index:2}
 .tk-bg-grid{position:absolute;inset:0;background-image:linear-gradient(rgba(255,255,255,.02) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.02) 1px,transparent 1px);background-size:48px 48px;pointer-events:none}
 .tk-wrap{position:relative;z-index:1;max-width:1200px;margin:0 auto}
 .tk-title{font-family:'Oswald',sans-serif;font-size:clamp(32px,5vw,52px);font-weight:700;text-align:center;line-height:1.15;letter-spacing:-.5px;color:#fff;margin-bottom:16px}
@@ -339,16 +341,8 @@ footer{background:var(--bg);border-top:1px solid var(--border);padding:40px 80px
   </div>
 </section>
 
-<!-- BANNERS ROW -->
-<section style="background:var(--bg);padding:8px 0 0">
-  <div class="banners-row" style="padding:0 8px;gap:8px">
-    <div class="av-banner"><picture><source media="(max-width:768px)" srcset="MOB/под%20ключ.jpg"><img src="PC/banner2.jpg" alt="Ведение под ключ" loading="lazy" width="600" height="338"></picture><div class="av-banner-lbl">Ведение под ключ — комплексная эффективность</div></div>
-    <div class="av-banner"><picture><source media="(max-width:768px)" srcset="MOB/аналитика-регина.jpeg"><img src="PC/banner3.jpg" alt="Консультация + аудит" loading="lazy" width="600" height="338"></picture><div class="av-banner-lbl">Консультация + аудит — рассчитаю КП и анализ рынка</div></div>
-  </div>
-</section>
-
 <!-- ВЕДЕНИЕ ПОД КЛЮЧ - FULL WIDTH BANNER -->
-<section class="turnkey-banner" id="turnkey">
+<section class="turnkey-banner" id="services">
   <div class="tk-bg-grid"></div>
   <div class="tk-wrap">
     <h2 class="tk-title">ВЕДЕНИЕ АВИТО ПОД КЛЮЧ<br><span class="tk-title-sub">СИСТЕМА СТАБИЛЬНЫХ ЗАЯВОК</span></h2>
@@ -356,7 +350,7 @@ footer{background:var(--bg);border-top:1px solid var(--border);padding:40px 80px
     <div class="tk-metrics">
       <div class="tk-stat"><span class="tk-stat-val">+180%</span><span class="tk-stat-lbl">рост заявок за 2–4 месяца</span></div>
       <div class="tk-stat"><span class="tk-stat-val">24/7</span><span class="tk-stat-lbl">контроль аккаунта и позиций</span></div>
-      <div class="tk-stat"><span class="tk-stat-val">до 300+</span><span class="tk-stat-lbl">объявлений в управлении</span></div>
+      <div class="tk-stat"><span class="tk-stat-val">27</span><span class="tk-stat-lbl">собственных IT решений</span></div>
     </div>
     <div class="tk-grid">
       <div class="tk-card"><div class="tk-card-ico">🔎</div><h3 class="tk-card-title">Анализ рынка и конкурентов</h3><p class="tk-card-desc">Глубоко анализируем спрос, конкурентов и поведение клиентов. Формируем стратегию, которая выводит объявления в поток заявок.</p></div>
@@ -369,27 +363,6 @@ footer{background:var(--bg);border-top:1px solid var(--border);padding:40px 80px
       <div class="tk-card"><div class="tk-card-ico">📈</div><h3 class="tk-card-title">Отчетность и прозрачность</h3><p class="tk-card-desc">Еженедельная аналитика: заявки, позиции, динамика и точки роста.</p></div>
     </div>
     <p class="tk-cta-line">СИСТЕМА, КОТОРАЯ ПРИВОДИТ КЛИЕНТОВ</p>
-  </div>
-</section>
-
-<!-- SERVICES -->
-<section class="sec" id="services" style="background:var(--bg2)">
-  <div class="sec-lbl">Что входит</div>
-  <h2 class="sec-title">ВЕДЕНИЕ ПОД КЛЮЧ —<br><span>КОМПЛЕКСНАЯ ЭФФЕКТИВНОСТЬ</span></h2>
-  <p class="sec-desc">Полный цикл работы с Авито — от анализа рынка до сотен заявок в месяц. Договор, гарантия, прозрачность.</p>
-  <div class="srv-grid">
-    <div class="srv-item rev"><div class="srv-icon">🔍</div><div><div class="srv-title">Анализ рынка и клиентов</div><div class="srv-desc">Изучаем потребности покупателей, анализируем конкурентов, находим точки роста в вашей нише.</div></div></div>
-    <div class="srv-item rev"><div class="srv-icon">🎨</div><div><div class="srv-title">Дизайн и инфографика</div><div class="srv-desc">Вовлекающие баннеры, инфографика с выгодами, профессиональные обложки — конверсия +30–50%.</div></div></div>
-    <div class="srv-item rev"><div class="srv-icon">✍️</div><div><div class="srv-title">Продающие тексты</div><div class="srv-desc">SEO-оптимизированные описания объявлений и профиля — клиент не просто видит, он звонит.</div></div></div>
-    <div class="srv-item rev"><div class="srv-icon">🤖</div><div><div class="srv-title">Бот с автоответом и сценариями</div><div class="srv-desc">Каждый входящий запрос обрабатывается мгновенно — ни одна заявка не потеряется.</div></div></div>
-    <div class="srv-item rev"><div class="srv-icon">📸</div><div><div class="srv-title">Поиск и профи отрисовка топ-фото</div><div class="srv-desc">Профессиональный подбор и обработка фотографий — первое впечатление = первая заявка.</div></div></div>
-    <div class="srv-item rev"><div class="srv-icon">⚡</div><div><div class="srv-title">Масштабирование — автозагрузка</div><div class="srv-desc">Автоматическая загрузка сотен объявлений через XML. Охват растёт, бюджет под контролем.</div></div></div>
-    <div class="srv-item rev"><div class="srv-icon">📡</div><div><div class="srv-title">24/7 мониторинг аккаунта</div><div class="srv-desc">Постоянно отслеживаем позиции, статистику и конкурентов. Реагируем до просадки заявок.</div></div></div>
-    <div class="srv-item rev"><div class="srv-icon">📊</div><div><div class="srv-title">Отчётность и прозрачность</div><div class="srv-desc">Еженедельные отчёты: заявки, расходы, позиции, рост. Вы всегда знаете, за что платите.</div></div></div>
-  </div>
-  <div class="guar-bar">
-    <div><div class="guar-t">📋 Прописываем договор с моим ИП</div><div class="guar-s">100% гарантия на все работы · Гарантия заявок в течение 7 дней после запуска</div></div>
-    <a href="https://t.me/Aces_Of_Ads_bot" target="_blank" class="btn btn-cyan">🤖 Обсудить проект</a>
   </div>
 </section>
 
