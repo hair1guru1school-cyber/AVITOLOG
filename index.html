@@ -744,6 +744,10 @@ body.projects-mode.projects-sidebar-hidden .sidebar{min-width:0;width:0;padding:
 .projects-cal-cell.num{display:flex;align-items:center;justify-content:center;font-weight:400;color:var(--accent3)}
 /* Проекты: фикс. левая колонка + редактируемые ячейки */
 .projects-table-wrap{overflow:auto;flex:1;min-height:0}
+.projects-board.projects-fit-rows .projects-table-wrap{overflow-y:hidden;display:flex;flex-direction:column}
+.projects-board.projects-fit-rows .projects-table{flex:1;min-height:0;display:flex;flex-direction:column}
+.projects-board.projects-fit-rows .projects-table .projects-table-header{flex-shrink:0}
+.projects-board.projects-fit-rows .projects-table .projects-table-row[data-id]{flex:1 1 0;min-height:6px}
 .projects-hidden-strip{display:none !important}
 .projects-hidden-strip:hover{opacity:1;width:72px;min-width:72px;transition:width .2s,opacity .2s}
 .projects-hidden-head{font-size:14px;padding:8px 0;opacity:0.7}
@@ -3730,7 +3734,10 @@ function saveProjectsZoom(z) {
   z = Math.max(0.25, Math.min(2, z));
   localStorage.setItem(PROJECTS_ZOOM_KEY, String(z));
   var board = document.querySelector('.projects-board');
-  if (board) board.style.transform = 'scale(' + z + ')';
+  if (board) {
+    board.style.transform = 'scale(' + z + ')';
+    board.classList.toggle('projects-fit-rows', z < 1);
+  }
   var table = document.querySelector('.projects-table');
   if (table) {
     var rowH = getSavedProjectsRowHeight() || 14;
@@ -5450,7 +5457,8 @@ function renderProjectsScreen(opts) {
   var projectsZoom = getSavedProjectsZoom();
   var effectiveRowH = projectsZoom < 1 ? Math.max(6, Math.round(rowH * projectsZoom)) : rowH;
   var tableStyle = '--projects-sticky-width:' + stickyW + 'px;--projects-row-height:' + effectiveRowH + 'px';
-  var html = '<div class="projects-board" style="transform:scale(' + projectsZoom + ');transform-origin:0 0"><div class="projects-table-wrap"><div class="projects-table" style="' + tableStyle + '">';
+  var fitRowsCls = projectsZoom < 1 ? ' projects-fit-rows' : '';
+  var html = '<div class="projects-board' + fitRowsCls + '" style="transform:scale(' + projectsZoom + ');transform-origin:0 0"><div class="projects-table-wrap"><div class="projects-table" style="' + tableStyle + '">';
   var tasksCount = visibleProjects.reduce(function(sum,p){ return sum + (typeof getTasksForProject === 'function' ? getTasksForProject(p.id) : []).length; }, 0);
   var tasksLabel = '<button type="button" class="projects-zone-tab projects-tasks-tab' + (_projectsTasksSortOn ? ' on' : '') + '" data-zone="tasks" onclick="event.stopPropagation();toggleTasksSortFilter()" title="' + (_projectsTasksSortOn ? 'Сбросить сортировку по задачам' : 'Сортировать: больше задач — выше') + '"><span class="proj-tasks-count-badge">' + tasksCount + '</span></button>';
   var zoneLabels = { active:'&#9889; Актив', second_chance:'&#128164; Zzz', archive:'&#128230; Архив' };
@@ -9495,7 +9503,7 @@ document.addEventListener('DOMContentLoaded', function() {
   }
   applyAnalyticsModeDefault();
   applyTopTabOrder();
-  openGoalsTab();
+  openProjectsTab();
   switchTab('analysis');
   // Восстанавливаем активного клиента
   _activeClient = getActiveClient();
