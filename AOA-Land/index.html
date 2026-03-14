@@ -75,11 +75,11 @@ nav::after{content:'';position:absolute;bottom:0;left:0;right:0;height:1px;backg
 .grow-carousel{position:relative;background:var(--bg2);padding:56px 24px 72px;overflow:hidden}
 .grow-carousel .sec-lbl{margin-bottom:14px}
 .grow-carousel .sec-title{margin-bottom:20px}
-.grow-wrap{position:relative;max-width:900px;margin:0 auto}
-.grow-track{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;scroll-behavior:smooth;-webkit-overflow-scrolling:touch;gap:20px;padding:12px 0;scrollbar-width:none}
+.grow-wrap{position:relative;max-width:1100px;margin:0 auto}
+.grow-track{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;scroll-behavior:smooth;scroll-padding:0 24px;-webkit-overflow-scrolling:touch;gap:20px;padding:12px 0;scrollbar-width:none}
 .grow-track::-webkit-scrollbar{display:none}
-.grow-slide{flex:0 0 85%;scroll-snap-align:center;min-width:280px;max-width:400px}
-.grow-slide img{width:100%;height:auto;display:block;border-radius:12px;border:1px solid var(--border-r);box-shadow:0 8px 32px rgba(0,0,0,.4);object-fit:cover;aspect-ratio:16/10}
+.grow-slide{flex:0 0 70%;scroll-snap-align:center;scroll-snap-stop:always;min-width:360px;max-width:500px}
+.grow-slide:hover img{transform:scale(1.02)}.grow-slide img{width:100%;height:auto;display:block;border-radius:14px;border:1px solid var(--border-r);box-shadow:0 12px 40px rgba(0,0,0,.5);object-fit:cover;aspect-ratio:16/10;transition:transform .4s cubic-bezier(.25,.46,.45,.94)}
 .grow-nav{position:absolute;top:50%;transform:translateY(-50%);width:48px;height:48px;border-radius:50%;background:rgba(232,0,29,.9);border:1px solid var(--red);color:#fff;font-size:24px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .25s;z-index:10}
 .grow-nav:hover{background:var(--red);box-shadow:0 0 24px var(--red-glow);transform:translateY(-50%) scale(1.05)}
 .grow-nav.prev{left:-20px}
@@ -88,7 +88,7 @@ nav::after{content:'';position:absolute;bottom:0;left:0;right:0;height:1px;backg
 .grow-dot{width:10px;height:10px;border-radius:50%;border:2px solid var(--red);background:transparent;cursor:pointer;transition:all .25s}
 .grow-dot:hover,.grow-dot.active{background:var(--red);box-shadow:0 0 12px var(--red-glow)}
 @media(max-width:768px){
-.grow-slide{flex:0 0 90%;min-width:260px}
+.grow-slide{flex:0 0 90%;min-width:320px}
 .grow-nav{width:40px;height:40px;font-size:20px;left:-8px}.grow-nav.next{right:-8px}
 }/* BANNERS ROW */
 .banners-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;background:var(--bg);padding:0 0 0 0}
