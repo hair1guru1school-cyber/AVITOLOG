@@ -315,6 +315,7 @@
         var paid = String(row.paid || '').replace(/\s/g, '');
         var ct = (row.raw && row.raw.isNew === false) ? 'old' : 'new';
         var item = { emoji: '💰', name: name, paid: paid, expected: row.expected || '', paymentDate: row.date || (row.raw && row.raw.date) || '', startDate: '', clientType: ct, folderLink: row.folderLink || '' };
+        if (owner === 'sasha') { item.soldFor = paid; item.toAgent = ''; item.aoaPercent = ''; }
         if (owner === 'me') {
           var arr = getAssetsMy();
           arr.push(item);
@@ -469,7 +470,7 @@
       var arr = [];
       Object.keys(legacy).forEach(function(k) {
         var d = legacy[k];
-        if (d && d.owner === 'sasha') arr.push({ emoji: '📦', name: k, paid: d.paid || '', expected: d.expected || '', paymentDate: d.paymentDate || '', startDate: d.startDate || '', clientType: d.clientType || 'new' });
+        if (d && d.owner === 'sasha') arr.push({ emoji: '📦', name: k, paid: d.paid || '', expected: d.expected || '', paymentDate: d.paymentDate || '', startDate: d.startDate || '', clientType: d.clientType || 'new', soldFor: d.soldFor || '', toAgent: d.toAgent || '', aoaPercent: d.aoaPercent || '' });
       });
       if (arr.length) { saveAssetsSasha(arr); return arr; }
       return [];
@@ -487,6 +488,11 @@
     var paid = (project && (project.mainPrice || project.saleAmount || project.kp_count || '')) ? String(project.mainPrice || project.saleAmount || project.kp_count).replace(/\s/g, '') : '';
     var folderLink = project && (project.folderLink || (project.folderId ? 'https://drive.google.com/drive/folders/' + project.folderId : ''));
     var item = { emoji: emoji, name: name, paid: paid, expected: '', paymentDate: '', startDate: '', clientType: 'new', folderLink: folderLink || '', crmClientId: (project && project.crmClientId) || (project && project.folderId) || '' };
+    if (owner === 'sasha') {
+      item.soldFor = '';
+      item.toAgent = '';
+      item.aoaPercent = '';
+    }
     if (owner === 'me') {
       var arr = getAssetsMy();
       arr.push(item);
@@ -518,7 +524,7 @@
     var myList = getAssetsMy();
     var sashaList = getAssetsSasha();
     var myTotal = myList.reduce(function(a, p) { return a + (parseInt(String(p.paid || '').replace(/\s/g, ''), 10) || 0); }, 0);
-    var sashaTotal = sashaList.reduce(function(a, p) { return a + (parseInt(String(p.paid || '').replace(/\s/g, ''), 10) || 0); }, 0);
+    var sashaTotal = sashaList.reduce(function(a, p) { return a + (parseInt(String(p.soldFor || p.paid || '').replace(/\s/g, ''), 10) || 0); }, 0);
     var totalRub = 338000;
     var totalUsd = Math.round(totalRub / ASSETS_USD_RATE);
     var summaryRows = [
@@ -542,6 +548,9 @@
     function renderColRow(p, idx, owner) {
       var paidFmt = (p.paid || '') ? fmt(String(p.paid).replace(/\s/g, '')) : '';
       var expectedFmt = (p.expected || '') ? fmt(String(p.expected).replace(/\s/g, '')) : '';
+      var soldForFmt = (p.soldFor || '') ? fmt(String(p.soldFor).replace(/\s/g, '')) : '';
+      var toAgentFmt = (p.toAgent || '') ? fmt(String(p.toAgent).replace(/\s/g, '')) : '';
+      var aoaFmt = (p.aoaPercent || '') ? fmt(String(p.aoaPercent).replace(/\s/g, '')) : '';
       var payDate = (p.paymentDate || '').trim();
       var startDate = (p.startDate || '').trim();
       var barFill = getPaymentBarFill(payDate);
@@ -552,7 +561,7 @@
       var statusBadge = getStatusBadge(resolvedType);
       var statusCls = resolvedType === 'old' ? 'assets-status-diamond' : (resolvedType === 'returning' ? 'assets-status-2' : 'assets-status-new');
       var hasFolder = !!(p.folderLink || p.crmClientId);
-      return '<div class="' + rowCls + '" data-owner="' + owner + '" data-idx="' + idx + '">' +
+      var base = '<div class="' + rowCls + '" data-owner="' + owner + '" data-idx="' + idx + '">' +
         '<button type="button" class="assets-col-emoji" onclick="window.__assetsShowEmojiPicker(this,\'' + owner + '\',' + idx + ')" title="Выбрать эмодзи">' + (p.emoji || '📦') + '</button>' +
         '<span class="assets-col-name">' +
           '<span class="assets-col-name-row">' +
@@ -562,31 +571,39 @@
           '<span class="assets-progress-bar" title="Чем больше ждать до платежа — тем полнее"><span class="assets-progress-fill" style="width:' + barPct + '%"></span></span>' +
         '</span>' +
         '<span class="assets-col-date"><input type="date" value="' + esc(startDate) + '" data-field="startDate" onchange="window.__assetsSaveColRow(this)" title="Дата старта"></span>' +
-        '<span class="assets-col-date"><input type="date" value="' + esc(payDate) + '" data-field="paymentDate" onchange="window.__assetsSaveColRow(this)" title="Дата платежа"></span>' +
-        '<span class="assets-col-paid"><input type="text" value="' + esc(paidFmt) + '" placeholder="0" data-field="paid" onblur="window.__assetsSaveColRow(this)"></span>' +
-        '<span class="assets-col-expected"><input type="text" value="' + esc(expectedFmt) + '" placeholder="0" data-field="expected" onblur="window.__assetsSaveColRow(this)"></span>' +
-        '<button type="button" class="assets-col-folder' + (hasFolder ? ' on' : '') + '" onclick="window.__assetsStartFolderBind(\'' + owner + '\',' + idx + ')" title="Привязать папку из меню слева">' + (hasFolder ? '📁' : '💿') + '</button>' +
+        '<span class="assets-col-date"><input type="date" value="' + esc(payDate) + '" data-field="paymentDate" onchange="window.__assetsSaveColRow(this)" title="Дата платежа"></span>';
+      if (owner === 'sasha') {
+        base += '<span class="assets-col-extra"><input type="text" value="' + esc(soldForFmt) + '" placeholder="0" data-field="soldFor" onblur="window.__assetsSaveColRow(this)" title="Продано за"></span>' +
+          '<span class="assets-col-extra"><input type="text" value="' + esc(toAgentFmt) + '" placeholder="0" data-field="toAgent" onblur="window.__assetsSaveColRow(this)" title="Агенту"></span>' +
+          '<span class="assets-col-extra"><input type="text" value="' + esc(aoaFmt) + '" placeholder="0" data-field="aoaPercent" onblur="window.__assetsSaveColRow(this)" title="AoA %"></span>';
+      } else {
+        base += '<span class="assets-col-paid"><input type="text" value="' + esc(paidFmt) + '" placeholder="0" data-field="paid" onblur="window.__assetsSaveColRow(this)"></span>' +
+          '<span class="assets-col-expected"><input type="text" value="' + esc(expectedFmt) + '" placeholder="0" data-field="expected" onblur="window.__assetsSaveColRow(this)"></span>';
+      }
+      base += '<button type="button" class="assets-col-folder' + (hasFolder ? ' on' : '') + '" onclick="window.__assetsStartFolderBind(\'' + owner + '\',' + idx + ')" title="Привязать папку из меню слева">' + (hasFolder ? '📁' : '💿') + '</button>' +
         '<button type="button" class="assets-col-remove" onclick="window.__assetsRemoveProject(\'' + owner + '\',' + idx + ')" title="Удалить">✕</button>' +
         '</div>';
+      return base;
     }
     var myRows = mySorted.map(function(p, i) {
       var idx = myList.indexOf(p);
       return renderColRow(p, idx, 'me');
     }).join('');
     var sashaRows = sashaList.map(function(p, idx) { return renderColRow(p, idx, 'sasha'); }).join('');
-    var colHeader = '<div class="assets-col-header"><span class="ac-name">Проект</span><span class="ac-date">Старт</span><span class="ac-date">Платёж</span><span class="ac-paid">Оплатил</span><span class="ac-expected">Ожидать</span><span class="ac-actions"></span></div>';
+    var colHeaderMe = '<div class="assets-col-header"><span class="ac-name">Проект</span><span class="ac-date">Старт</span><span class="ac-date">Платёж</span><span class="ac-paid">Оплатил</span><span class="ac-expected">Ожидать</span><span class="ac-actions"></span></div>';
+    var colHeaderSasha = '<div class="assets-col-header"><span class="ac-name">Проект</span><span class="ac-date">Старт</span><span class="ac-date">Платёж</span><span class="ac-extra">Продано за</span><span class="ac-extra">Агенту</span><span class="ac-extra">AoA %</span><span class="ac-actions"></span></div>';
     mc.innerHTML = '<div class="assets-page-wrap">' +
       '<div class="assets-summary-table">' + summaryHtml + '</div>' +
       '<div class="assets-two-cols">' +
         '<div class="assets-col assets-col-me" id="assetsColMe" data-owner="me">' +
           '<div class="assets-col-title">💰 Мои клиенты <span class="assets-col-total">' + fmt(myTotal) + ' ₽</span></div>' +
           '<button type="button" class="assets-filter-btn' + (filterPaid ? ' on' : '') + '" onclick="window.__assetsToggleFilterPaid && window.__assetsToggleFilterPaid()">💰 оплатили</button>' +
-          '<div class="assets-col-list">' + colHeader + myRows + '</div>' +
+          '<div class="assets-col-list">' + colHeaderMe + myRows + '</div>' +
           '<button type="button" class="assets-col-add" onclick="window.__assetsAddProject(\'me\')">+ Добавить</button>' +
         '</div>' +
         '<div class="assets-col assets-col-sasha" id="assetsColSasha" data-owner="sasha">' +
           '<div class="assets-col-title">👤 Клиенты Саши <span class="assets-col-total">' + fmt(sashaTotal) + ' ₽</span></div>' +
-          '<div class="assets-col-list">' + colHeader + sashaRows + '</div>' +
+          '<div class="assets-col-list">' + colHeaderSasha + sashaRows + '</div>' +
           '<button type="button" class="assets-col-add" onclick="window.__assetsAddProject(\'sasha\')">+ Добавить</button>' +
         '</div>' +
       '</div>' +
@@ -632,7 +649,10 @@
   function updateColTotals() {
     var fmt = function(n) { return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ' '); };
     var myTotal = getAssetsMy().reduce(function(a, p) { return a + (parseInt(String(p.paid || '').replace(/\s/g, ''), 10) || 0); }, 0);
-    var sashaTotal = getAssetsSasha().reduce(function(a, p) { return a + (parseInt(String(p.paid || '').replace(/\s/g, ''), 10) || 0); }, 0);
+    var sashaTotal = getAssetsSasha().reduce(function(a, p) {
+      var v = parseInt(String(p.soldFor || p.paid || '').replace(/\s/g, ''), 10) || 0;
+      return a + v;
+    }, 0);
     var meEl = document.querySelector('.assets-col-me .assets-col-total');
     var sashaEl = document.querySelector('.assets-col-sasha .assets-col-total');
     if (meEl) meEl.textContent = fmt(myTotal) + ' ₽';
