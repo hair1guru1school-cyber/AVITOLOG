@@ -1,5 +1,8 @@
 ﻿# Reduce Cursor load - prevents crashes
 backups/
+exports/
+temp/
+ОТХОДЫ/
 __pycache__/
 .git/
 
@@ -7,6 +10,8 @@ docs/
 .github/
 agent-transcripts/
 *.log
+*.zip
+*.mp4
 node_modules/
 
 # Site / build outputs (many files)
