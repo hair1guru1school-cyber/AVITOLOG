@@ -1,4 +1,4 @@
-﻿// ── PROJECTS SCREEN ──
+// ── PROJECTS SCREEN ──
 var PROJECTS_DATA_KEY = 'avitolog_projects';
 var PROJECT_STATUSES = ['Ожидают','В работе','Готово!','ЛИМИТ','OFF','След. мес.','Жду','ПАРКУЙ','О бюджете'];
 var PROJECT_STATUS_COLORS = {'Ожидают':'#7c6af7','В работе':'#00d97e','Готово!':'#00d97e','ЛИМИТ':'#ff6b35','OFF':'#666','След. мес.':'#ffcc00','Жду':'#ffcc00','ПАРКУЙ':'#666','О бюджете':'#ff6b35'};
@@ -578,6 +578,22 @@ function getProjectLaunchRange(p) {
   if (!ranges.length) return {start:'', end:''};
   ranges.sort(function(a,b){ return String(a.startDate||'').localeCompare(String(b.startDate||'')); });
   return {start: ranges[0].startDate || '', end: ranges[ranges.length - 1].endDate || ''};
+}
+function getAggregatedAutoloadEventsForCollapsed(p) {
+  var all = [];
+  (p.events || []).forEach(function(ev){ if (ev && ev.type === 'active_range') all.push(ev); });
+  (p.childLineEvents || []).forEach(function(arr){
+    if (!Array.isArray(arr)) return;
+    arr.forEach(function(ev){ if (ev && ev.type === 'active_range') all.push(ev); });
+  });
+  all.sort(function(a,b){
+    var sa = String(a.startDate||''), ea = String(a.endDate||'');
+    var sb = String(b.startDate||''), eb = String(b.endDate||'');
+    var lenA = sa && ea ? (ea.localeCompare(sa) || 1) : 0;
+    var lenB = sb && eb ? (eb.localeCompare(sb) || 1) : 0;
+    return lenB - lenA;
+  });
+  return all.length ? all : (p.events || []);
 }
 function escAttr(v) {
   return String(v == null ? '' : v).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
@@ -1168,6 +1184,7 @@ function showProjectsCalMenu(x, y, projectId, dateStr, childLineIndex) {
     '</div>' +
     '<div class="menu-item has-sub" data-action="autoload-menu">🅰️ Автозагрузка <span>▶</span>' +
       '<div class="menu-sub">' +
+        '<div class="menu-item" data-action="autoload-until-cell">✓ До этой даты</div>' +
         [3,4,5,7,10,12,14].map(function(n){
           return '<div class="menu-item" data-action="autoload-days" data-days="' + n + '">до + ' + n + ' дн.</div>';
         }).join('') +
@@ -1233,9 +1250,14 @@ function showProjectsCalMenu(x, y, projectId, dateStr, childLineIndex) {
           hideProjectsCalMenu();
         }
       });
+    } else if (action === 'autoload-until-cell') {
+      var todayIso = typeof getTodayISO === 'function' ? getTodayISO() : new Date().toISOString().slice(0, 10);
+      applyProjectAutoloadRangeForRow(pid, clIdx >= 0 ? clIdx : -1, todayIso, dt);
+      hideProjectsCalMenu();
     } else if (action === 'autoload-days') {
       var na = parseInt(item.getAttribute('data-days') || '0', 10);
-      applyProjectAutoloadRange(pid, dt, addDaysISO(dt, Math.max(0, na)));
+      var todayIso = typeof getTodayISO === 'function' ? getTodayISO() : new Date().toISOString().slice(0, 10);
+      applyProjectAutoloadRangeForRow(pid, clIdx >= 0 ? clIdx : -1, todayIso, addDaysISO(todayIso, Math.max(0, na)));
       hideProjectsCalMenu();
     } else if (action === 'autoload-date') {
       var menuRect = menu.getBoundingClientRect();
@@ -1250,13 +1272,14 @@ function showProjectsCalMenu(x, y, projectId, dateStr, childLineIndex) {
             alert('Неверный формат даты. Пример: 2026-03-15 или 15.03.2026');
             return;
           }
-          applyProjectAutoloadRange(pid, dt, v);
+          var todayIso = typeof getTodayISO === 'function' ? getTodayISO() : new Date().toISOString().slice(0, 10);
+          applyProjectAutoloadRangeForRow(pid, clIdx >= 0 ? clIdx : -1, todayIso, v);
           if (promptEl) promptEl.remove();
           hideProjectsCalMenu();
         }
       });
     } else if (action === 'autoload-clear') {
-      clearProjectAutoload(pid);
+      clearProjectAutoloadForRow(pid, clIdx >= 0 ? clIdx : -1);
       hideProjectsCalMenu();
     } else if (action === 'cards-active') {
       var existingCards = '';
@@ -1381,27 +1404,47 @@ function clearProjectLaunchRange(projectId, startDate, endDate, childLineIndex) 
   syncProjectToActiveSheet(projectId, 'launch_range_partial_clear');
 }
 function applyProjectAutoloadRange(projectId, startDate, endDate) {
+  applyProjectAutoloadRangeForRow(projectId, -1, startDate, endDate);
+}
+function applyProjectAutoloadRangeForRow(projectId, childLineIdx, startDate, endDate) {
   var data = loadProjectsData();
   var p = data.projects.find(function(x){ return x.id === projectId; });
   if (!p) return;
   var s = startDate <= endDate ? startDate : endDate;
   var e = startDate <= endDate ? endDate : startDate;
   var todayIso = getTodayISO();
-  p.events = (p.events || []).filter(function(ev) { return ev.type !== 'active_range'; });
-  p.events.push({type:'active_range', startDate:s, endDate:e});
-  if (p.mustLaunchRequired && e > todayIso) {
-    p.mustLaunchRequired = false;
-    _projectMustLaunchDetachArmedId = null;
+  if (childLineIdx >= 0) {
+    ensureChildLineEvents(p);
+    var evts = p.childLineEvents[childLineIdx] || [];
+    evts = evts.filter(function(ev){ return ev.type !== 'active_range'; });
+    evts.push({type:'active_range', startDate:s, endDate:e});
+    p.childLineEvents[childLineIdx] = evts;
+  } else {
+    p.events = (p.events || []).filter(function(ev) { return ev.type !== 'active_range'; });
+    p.events.push({type:'active_range', startDate:s, endDate:e});
+    if (p.mustLaunchRequired && e > todayIso) {
+      p.mustLaunchRequired = false;
+      _projectMustLaunchDetachArmedId = null;
+    }
   }
   saveProjectsData(data);
   rerenderProjectsPreserveScroll();
   syncProjectToActiveSheet(projectId, 'autoload_range_set');
 }
 function clearProjectAutoload(projectId) {
+  clearProjectAutoloadForRow(projectId, -1);
+}
+function clearProjectAutoloadForRow(projectId, childLineIdx) {
   var data = loadProjectsData();
   var p = data.projects.find(function(x){ return x.id === projectId; });
   if (!p) return;
-  p.events = (p.events || []).filter(function(ev) { return ev.type !== 'active_range'; });
+  if (childLineIdx >= 0) {
+    ensureChildLineEvents(p);
+    var evts = (p.childLineEvents[childLineIdx] || []).filter(function(ev){ return ev.type !== 'active_range'; });
+    p.childLineEvents[childLineIdx] = evts;
+  } else {
+    p.events = (p.events || []).filter(function(ev) { return ev.type !== 'active_range'; });
+  }
   saveProjectsData(data);
   rerenderProjectsPreserveScroll();
   syncProjectToActiveSheet(projectId, 'autoload_range_clear');
@@ -2433,7 +2476,8 @@ var toolsRow = '<div class="projects-zone-tabs projects-zone-tabs-bottom">' + ad
     var normType = normalizeProjectClientType(p.clientType);
     var typeHtml = (normType==='old') ? '<span class="proj-type-diamond">💎</span>' : (normType==='returning') ? '<span class="proj-type-2">2</span>' : '<span class="proj-type-new">NEW</span>';
     var hasChildLines = (p.childLines || []).some(function(v){ return String(v || '').trim() !== ''; });
-    var expandContent = hasChildLines ? '&#9660;' : '';
+    var expandContent = hasChildLines ? (showPositionRows ? '&#9660;' : '&#9654;') : '';
+    var expandArrowOnclick = hasChildLines ? ' onclick="event.stopPropagation();toggleProjectPositions(\'' + p.id + '\')" title="Свернуть/развернуть позиции"' : '';
     var expandBtnName = '<button type="button" class="field-expand-btn" title="Раскрыть доп. поле" onclick="event.stopPropagation();toggleProjectOptional(this,\'' + p.id + '\')">&#9662;</button>';
     var driveClass = 'proj-drive-btn' + (p.folderLink ? ' on' : '');
     var catName = getCategoryNameById(p.categoryFolderId);
@@ -2447,17 +2491,18 @@ var toolsRow = '<div class="projects-zone-tabs projects-zone-tabs-bottom">' + ad
     if (hasChildLines && _expandedProjectIds[p.id] === undefined) _expandedProjectIds[p.id] = true;
     var showPositionRows = hasChildLines && _expandedProjectIds[p.id];
     var extraLinesHtml = typeof renderProjectChildLinesHtml === 'function' ? renderProjectChildLinesHtml(p) : '';
-    var stickyHtml = '<div class="proj-col-expand">' + dragHandle + '<span class="proj-col-expand-arrow">' + expandContent + '</span></div><div class="proj-col-type" onclick="event.stopPropagation();cycleProjectClientType(\'' + p.id + '\')" title="Старые/новички/2-й раз">' + typeHtml + '</div><button type="button" class="' + driveClass + '" title="' + driveTitle + '" onclick="event.stopPropagation();openProjectDriveFolder(\'' + p.id + '\')">💿</button><div class="proj-cell-editable' + expandedClass + '" data-id="' + p.id + '" onclick="editProjectCell(this)">' + hoverPop + '<div class="proj-main-line"><button type="button" class="proj-emoji-btn" onclick="event.stopPropagation();showProjEmojiPicker(this,\'' + p.id + '\')">' + emHtml + '</button><input type="text" value="' + (p.title||'').replace(/"/g,'&quot;') + '" readonly style="pointer-events:none">' + expandBtnName + '<span class="project-path">' + pathHtml + '</span><button type="button" class="proj-status-btn project-status" onclick="event.stopPropagation();showProjectStatusPicker(this,\'' + p.id + '\')" style="background:' + (PROJECT_STATUS_COLORS[p.status]||'#666') + '22;color:' + (PROJECT_STATUS_COLORS[p.status]||'#999') + '">' + (p.status||'В работе') + '</button>' + moveBtn + '</div>' + (hasChildLines ? '' : '<div class="proj-optional-row">' + (typeof renderProjectChildLinesHtml === 'function' ? renderProjectChildLinesHtml(p) : '') + '</div>') + taskIndicatorsHtml + '</div>';
+    var stickyHtml = '<div class="proj-col-expand">' + dragHandle + '<span class="proj-col-expand-arrow"' + (expandArrowOnclick || '') + '>' + expandContent + '</span></div><div class="proj-col-type" onclick="event.stopPropagation();cycleProjectClientType(\'' + p.id + '\')" title="Старые/новички/2-й раз">' + typeHtml + '</div><button type="button" class="' + driveClass + '" title="' + driveTitle + '" onclick="event.stopPropagation();openProjectDriveFolder(\'' + p.id + '\')">💿</button><div class="proj-cell-editable' + expandedClass + '" data-id="' + p.id + '" onclick="editProjectCell(this)">' + hoverPop + '<div class="proj-main-line"><button type="button" class="proj-emoji-btn" onclick="event.stopPropagation();showProjEmojiPicker(this,\'' + p.id + '\')">' + emHtml + '</button><input type="text" value="' + (p.title||'').replace(/"/g,'&quot;') + '" readonly style="pointer-events:none">' + expandBtnName + '<span class="project-path">' + pathHtml + '</span><button type="button" class="proj-status-btn project-status" onclick="event.stopPropagation();showProjectStatusPicker(this,\'' + p.id + '\')" style="background:' + (PROJECT_STATUS_COLORS[p.status]||'#666') + '22;color:' + (PROJECT_STATUS_COLORS[p.status]||'#999') + '">' + (p.status||'В работе') + '</button>' + moveBtn + '</div>' + (hasChildLines ? '' : '<div class="proj-optional-row">' + (typeof renderProjectChildLinesHtml === 'function' ? renderProjectChildLinesHtml(p) : '') + '</div>') + taskIndicatorsHtml + '</div>';
     var selectedClass = (_selectedProjectId === p.id) ? ' selected' : '';
     var groupedClass = (_projectsTypeSortPriority && normalizeProjectClientType(p.clientType) === _projectsTypeSortPriority) ? ' group-match' : '';
     var newFromGoalsClass = p._newFromGoals ? ' project-row-new-from-goals' : '';
-    function renderRowCells(events, childLineIdx) {
+    function renderRowCells(events, childLineIdx, isCollapsedLayers) {
       var out = '';
       dates.forEach(function(d) {
         var dStr = toIsoDateLocal(d);
         var cellHtml = '';
         var launchEvt = (events||[]).find(function(e){ return e.type==='launch_range' && dStr>=e.startDate && dStr<=e.endDate; });
-        var evt = (events||[]).find(function(e){ return e.type==='active_range' && dStr>=e.startDate && dStr<=e.endDate; });
+        var evts = (events||[]).filter(function(e){ return e.type==='active_range' && dStr>=e.startDate && dStr<=e.endDate; });
+        var evt = evts[0] || null;
         var rocket = (events||[]).find(function(e){ return e.type==='not_launched_project_marker' && e.date===dStr; });
         var isTodayCell = (dStr === todayStr);
         var cardsActiveDate = (p.cardsActiveDate || '') && String(p.cardsActive || '').trim();
@@ -2470,7 +2515,14 @@ var toolsRow = '<div class="projects-zone-tabs projects-zone-tabs-bottom">' + ad
         else if (mustLaunchShown) cellHtml = '<div class="cal-deadline"><span class="cal-deadline-del">×</span><span class="cal-deadline-icon">!!</span></div>';
         else if (rocket) { cellHtml = '<div class="cal-launch-tip"></div>'; dayCls += ' day-launch-end'; }
         else if (launchEvt) { cellHtml = '<div class="cal-launch-bar"></div>'; dayCls += ' day-launch'; }
-        else if (evt) { cellHtml = '<div class="cal-bar"></div>'; dayCls += ' day-active'; }
+        else if (evt) {
+          if (isCollapsedLayers && evts.length > 1) {
+            cellHtml = evts.slice(1).map(function(){ return '<div class="cal-bar cal-bar-layer"></div>'; }).join('') + '<div class="cal-bar"></div>';
+          } else {
+            cellHtml = '<div class="cal-bar"></div>';
+          }
+          dayCls += ' day-active';
+        }
         if (dayTasks.length > 0) {
           var taskBadges = dayTasks.map(function(t){
             var em = (t.emoji || '&#128221;');
@@ -2480,12 +2532,14 @@ var toolsRow = '<div class="projects-zone-tabs projects-zone-tabs-bottom">' + ad
           cellHtml = (cellHtml || '') + '<div class="cal-tasks-badges">' + taskBadges + '</div>';
         }
         var clIdx = childLineIdx >= 0 ? String(childLineIdx) : '-1';
-        out += '<div class="' + dayCls + '" data-project-id="' + p.id + '" data-child-line-index="' + clIdx + '" data-date="' + dStr + '" style="width:' + DAY_PX + 'px;min-width:' + DAY_PX + 'px;max-width:' + DAY_PX + 'px">' + cellHtml + '</div>';
+        var dayNum = '<span class="cal-cell-num" title="' + escAttr(dStr) + '">' + d.getDate() + '</span>';
+        out += '<div class="' + dayCls + '" data-project-id="' + p.id + '" data-child-line-index="' + clIdx + '" data-date="' + dStr + '" style="width:' + DAY_PX + 'px;min-width:' + DAY_PX + 'px;max-width:' + DAY_PX + 'px">' + dayNum + cellHtml + '</div>';
       });
       return out;
     }
     var mainEvents = getEventsForProjectRow(p, -1);
-    var rowHtml = '<div class="projects-table-row' + selectedClass + groupedClass + newFromGoalsClass + '" data-id="' + p.id + '" data-child-line-index="-1" draggable="true" onclick="selectProjectRow(\'' + p.id + '\')" ondragstart="startProjectRowDrag(event,\'' + p.id + '\')" ondragover="handleProjectRowDragOver(event,this,\'' + p.id + '\')" ondragleave="handleProjectRowDragLeave(event,this)" ondrop="handleProjectRowDrop(event,\'' + p.id + '\')" ondragend="endProjectRowDrag(event)"><div class="projects-sticky">' + stickyHtml + '</div><div class="projects-scroll">' + renderRowCells(mainEvents, -1) + '</div></div>';
+    var eventsForMainRow = (hasChildLines && !showPositionRows) ? getAggregatedAutoloadEventsForCollapsed(p) : mainEvents;
+    var rowHtml = '<div class="projects-table-row' + selectedClass + groupedClass + newFromGoalsClass + '" data-id="' + p.id + '" data-child-line-index="-1" draggable="true" onclick="selectProjectRow(\'' + p.id + '\')" ondragstart="startProjectRowDrag(event,\'' + p.id + '\')" ondragover="handleProjectRowDragOver(event,this,\'' + p.id + '\')" ondragleave="handleProjectRowDragLeave(event,this)" ondrop="handleProjectRowDrop(event,\'' + p.id + '\')" ondragend="endProjectRowDrag(event)"><div class="projects-sticky">' + stickyHtml + '</div><div class="projects-scroll">' + renderRowCells(eventsForMainRow, -1, hasChildLines && !showPositionRows) + '</div></div>';
     html += rowHtml;
     var childLines = getProjectChildLines(p);
     if (hasChildLines) {
@@ -2877,6 +2931,11 @@ function toggleProjectMustLaunchBadge(projectId) {
 }
 function removeProjectMustLaunchRequired(projectId) {
   setProjectMustLaunchWithDate(projectId, false, null);
+}
+function toggleProjectPositions(projectId) {
+  if (!projectId) return;
+  _expandedProjectIds[projectId] = !_expandedProjectIds[projectId];
+  if (typeof rerenderProjectsPreserveScroll === 'function') rerenderProjectsPreserveScroll();
 }
 function toggleProjectOptional(btn, projectId) {
   var cell = btn.closest('.proj-cell-editable');
