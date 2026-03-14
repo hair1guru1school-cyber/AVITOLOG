@@ -380,11 +380,11 @@
   var DEFAULT_MY = [
     { emoji: '🪨', name: 'Камни и Пеллеты', paid: '30000', expected: '', paymentDate: '', startDate: '', clientType: 'new' },
     { emoji: '🛌', name: 'Кирилл Кровати', paid: '30000', expected: '', paymentDate: '', startDate: '', clientType: 'new' },
-    { emoji: '🏠', name: 'Дмитрий Бани Каркасные', paid: '34000', expected: '', paymentDate: '', startDate: '', clientType: 'new' },
+    { emoji: '🏠', name: 'Дмитрий Бани Каркасные', paid: '34000', expected: '0', paymentDate: '', startDate: '', clientType: 'new' },
     { emoji: '🚜', name: 'СельхозТехника', paid: '35000', expected: '', paymentDate: '', startDate: '', clientType: 'new' },
     { emoji: '👩🏻‍🏫', name: 'Ксения Сергеевна', paid: '25000', expected: '', paymentDate: '', startDate: '', clientType: 'new' },
     { emoji: '⚡️', name: 'Электрик Крым Александр', paid: '56000', expected: '', paymentDate: '', startDate: '', clientType: 'new' },
-    { emoji: '🧱', name: 'Иван Сияр Сендвич панели', paid: '44000', expected: '', paymentDate: '', startDate: '', clientType: 'new' },
+    { emoji: '🧱', name: 'Иван Сияр Сендвич', paid: '44000', expected: '', paymentDate: '', startDate: '', clientType: 'new' },
     { emoji: '🧱', name: 'Дома Андрей', paid: '50000', expected: '', paymentDate: '', startDate: '', clientType: 'new' }
   ];
 
@@ -440,7 +440,11 @@
   function getAssetsMy() {
     try {
       var s = localStorage.getItem(ASSETS_MY_KEY);
-      if (s) return JSON.parse(s);
+      if (s) {
+        var arr = JSON.parse(s);
+        if (arr.length === 0) { saveAssetsMy(DEFAULT_MY.slice()); return DEFAULT_MY.slice(); }
+        return arr;
+      }
       var legacy = JSON.parse(localStorage.getItem(ASSETS_LEGACY_KEY) || '{}');
       var arr = [];
       Object.keys(legacy).forEach(function(k) {
@@ -448,8 +452,9 @@
         if (d && d.owner === 'me') arr.push({ emoji: '📦', name: k, paid: d.paid || '', expected: d.expected || '', paymentDate: d.paymentDate || '', startDate: d.startDate || '', clientType: d.clientType || 'new' });
       });
       if (arr.length) { saveAssetsMy(arr); return arr; }
+      saveAssetsMy(DEFAULT_MY.slice());
       return DEFAULT_MY.slice();
-    } catch (e) { return DEFAULT_MY.slice(); }
+    } catch (e) { saveAssetsMy(DEFAULT_MY.slice()); return DEFAULT_MY.slice(); }
   }
 
   function saveAssetsMy(arr) {
