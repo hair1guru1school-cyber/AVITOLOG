@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Aces of Ads — Авитолог №1 | Увеличу поток заявок в 2-10 раз</title>
+<link href="https://fonts.googleapis.com/css2?family=Exo+2:wght@300;400;600;700;800;900&family=Oswald:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#080b12;--bg2:#0d1219;--surface:#111821;--s2:#161f2e;
+  --red:#e8001d;--red2:#ff2040;--red-dim:rgba(232,0,29,.12);--red-glow:rgba(232,0,29,.4);
+  --cyan:#00cfff;--cyan-dim:rgba(0,207,255,.1);
+  --gold:#ffc93c;--text:#f0f4ff;--muted:#5d7a9a;
+  --border:rgba(255,255,255,.07);--border-r:rgba(232,0,29,.25);--border-c:rgba(0,207,255,.18);
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--text);font-family:'Exo 2',sans-serif;font-size:15px;line-height:1.6;overflow-x:hidden}
+body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 3px,rgba(0,0,0,.04) 3px,rgba(0,0,0,.04) 4px);pointer-events:none;z-index:9999}
+
+/* NAV */
+nav{position:fixed;top:0;left:0;right:0;z-index:500;height:60px;padding:0 48px;display:flex;align-items:center;justify-content:space-between;background:rgba(8,11,18,.92);backdrop-filter:blur(20px);border-bottom:1px solid var(--border)}
+nav::after{content:'';position:absolute;bottom:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,var(--red),transparent);opacity:.6}
+.nav-logo{font-family:'Oswald',sans-serif;font-size:22px;font-weight:700;color:var(--text);text-decoration:none;letter-spacing:3px;display:flex;align-items:center;gap:10px}
+.logo-badge{background:var(--red);color:#fff;font-size:8px;font-weight:700;letter-spacing:2px;padding:3px 8px;text-transform:uppercase}
+.nav-links{display:flex;gap:4px;list-style:none}
+.nav-links a{color:var(--muted);text-decoration:none;font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;padding:7px 14px;border:1px solid transparent;transition:all .2s}
+.nav-links a:hover{color:var(--text);border-color:var(--border-r);background:var(--red-dim)}
+.nav-cta{background:var(--red)!important;color:#fff!important;border-color:var(--red)!important;padding:9px 20px!important;font-weight:800!important}
+.nav-cta:hover{background:var(--red2)!important;box-shadow:0 0 24px var(--red-glow)!important}
+
+/* HERO */
+.hero{position:relative;min-height:100vh;display:flex;flex-direction:column;justify-content:flex-end;overflow:hidden}
+.hero-bg{position:absolute;inset:0;background:url('hero-banner.png') center 20%/cover no-repeat}
+.hero-bg::before{content:'';position:absolute;inset:0;background:linear-gradient(180deg,rgba(8,11,18,.15) 0%,rgba(8,11,18,.3) 50%,rgba(8,11,18,.92) 82%,var(--bg) 100%)}
+.hero-stripe{position:absolute;left:0;right:0;top:52%;height:54px;background:linear-gradient(90deg,var(--red) 0%,#b50016 70%,rgba(180,0,22,.88) 100%);display:flex;align-items:center;justify-content:center;gap:48px;z-index:5;border-top:1.5px solid rgba(255,255,255,.15);border-bottom:1.5px solid rgba(255,255,255,.1)}
+.stripe-item{display:flex;align-items:center;gap:9px;font-family:'Oswald',sans-serif;font-size:14px;font-weight:500;letter-spacing:.5px;color:#fff;text-transform:uppercase;white-space:nowrap}
+.s-ico{font-size:18px;opacity:.9}
+.hero-content{position:relative;z-index:10;padding:0 80px 80px}
+.hero-lbl{display:inline-flex;align-items:center;gap:12px;font-size:11px;font-weight:700;letter-spacing:4px;text-transform:uppercase;color:var(--cyan);margin-bottom:20px}
+.hero-lbl::before{content:'';width:32px;height:1px;background:var(--cyan);box-shadow:0 0 8px var(--cyan)}
+.h1{font-family:'Oswald',sans-serif;font-size:clamp(50px,8vw,108px);font-weight:700;line-height:.95;letter-spacing:-1px;margin-bottom:10px}
+.h1-w{color:#fff;display:block}
+.h1-r{color:var(--red);display:block;text-shadow:0 0 60px rgba(232,0,29,.5),0 0 120px rgba(232,0,29,.2)}
+.h1-sub{font-family:'Oswald',sans-serif;font-size:clamp(22px,3.5vw,46px);font-weight:400;color:rgba(240,244,255,.7);letter-spacing:2px;margin-bottom:36px}
+.hero-stats{display:flex;gap:0;margin-bottom:40px;flex-wrap:wrap}
+.hs{padding:16px 30px;border:1px solid var(--border-r);border-right:none;background:rgba(232,0,29,.07);position:relative}
+.hs:first-child{border-left:3px solid var(--red)}
+.hs:last-child{border-right:1px solid var(--border-r)}
+.hs-val{font-family:'Oswald',sans-serif;font-size:34px;font-weight:700;color:var(--red);text-shadow:0 0 20px var(--red-glow);line-height:1}
+.hs-lbl{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-top:4px}
+.hero-btns{display:flex;gap:12px;flex-wrap:wrap}
+.btn{display:inline-flex;align-items:center;gap:9px;padding:13px 28px;font-family:'Exo 2',sans-serif;font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:2px;text-decoration:none;cursor:pointer;border:none;transition:all .25s;clip-path:polygon(0 0,calc(100% - 10px) 0,100% 10px,100% 100%,10px 100%,0 calc(100% - 10px))}
+.btn-red{background:var(--red);color:#fff}
+.btn-red:hover{background:var(--red2);box-shadow:0 0 40px var(--red-glow),0 8px 30px rgba(0,0,0,.5);transform:translateY(-2px)}
+.btn-ghost{background:transparent;color:var(--text);border:1px solid var(--border-c);clip-path:none}
+.btn-ghost:hover{border-color:var(--cyan);color:var(--cyan);background:var(--cyan-dim)}
+.btn-cyan{background:var(--cyan);color:#000;clip-path:none}
+.btn-cyan:hover{box-shadow:0 0 40px rgba(0,207,255,.4);transform:translateY(-2px)}
+
+/* SECTION */
+.sec{padding:88px 80px;position:relative}
+.sec-lbl{display:flex;align-items:center;gap:14px;font-size:10px;font-weight:700;letter-spacing:4px;text-transform:uppercase;color:var(--red);margin-bottom:14px}
+.sec-lbl::before{content:'';width:36px;height:2px;background:var(--red);box-shadow:0 0 8px var(--red)}
+.sec-lbl::after{content:'';flex:1;height:1px;background:linear-gradient(90deg,var(--border-r),transparent);max-width:160px}
+.sec-title{font-family:'Oswald',sans-serif;font-size:clamp(28px,4.5vw,58px);font-weight:700;letter-spacing:-.5px;line-height:1.05;margin-bottom:10px}
+.sec-title span{color:var(--red)}
+.sec-desc{font-size:16px;color:var(--muted);max-width:560px;line-height:1.75;margin-bottom:50px}
+
+/* BANNERS ROW */
+.banners-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;background:var(--bg);padding:0 0 0 0}
+.av-banner{border:1px solid var(--border-r);overflow:hidden;position:relative}
+.av-banner img{width:100%;display:block;max-height:280px;object-fit:cover;object-position:center 20%}
+.av-banner-lbl{position:absolute;bottom:0;left:0;right:0;background:linear-gradient(0deg,rgba(8,11,18,.95) 0%,transparent 100%);padding:20px 18px 14px;font-family:'Oswald',sans-serif;font-size:13px;font-weight:600;color:var(--text);letter-spacing:.5px;text-transform:uppercase}
+
+/* SERVICES */
+.srv-grid{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--border);border:1px solid var(--border);margin-bottom:36px}
+.srv-item{background:var(--bg2);padding:26px 30px;display:flex;gap:16px;align-items:flex-start;transition:background .2s;border-left:3px solid transparent}
+.srv-item:hover{background:var(--s2);border-left-color:var(--red)}
+.srv-icon{width:46px;height:46px;flex-shrink:0;display:flex;align-items:center;justify-content:center;background:var(--red-dim);border:1px solid var(--border-r);font-size:22px}
+.srv-title{font-family:'Oswald',sans-serif;font-size:16px;font-weight:600;color:var(--text);margin-bottom:6px;letter-spacing:.5px}
+.srv-desc{font-size:13px;color:var(--muted);line-height:1.6}
+.guar-bar{background:linear-gradient(90deg,var(--red),#a00012);padding:20px 36px;display:flex;align-items:center;justify-content:space-between;gap:20px;flex-wrap:wrap}
+.guar-t{font-family:'Oswald',sans-serif;font-size:20px;font-weight:700;color:#fff;letter-spacing:1px;text-transform:uppercase}
+.guar-s{font-size:12px;color:rgba(255,255,255,.7);margin-top:3px}
+
+/* NICHES */
+.niches-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--border);border:1px solid var(--border)}
+.nc{background:var(--bg2);padding:26px 22px;display:flex;flex-direction:column;gap:10px;transition:all .25s;position:relative;overflow:hidden;cursor:default}
+.nc::after{content:'';position:absolute;bottom:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--red),var(--gold));transform:scaleX(0);transform-origin:left;transition:transform .3s}
+.nc:hover{background:var(--s2)}
+.nc:hover::after{transform:scaleX(1)}
+.nc-icon{font-size:30px}
+.nc-name{font-family:'Oswald',sans-serif;font-size:18px;font-weight:600;color:var(--text);letter-spacing:.5px}
+.nc-tags{display:flex;flex-wrap:wrap;gap:5px}
+.ntag{font-size:9px;font-weight:700;color:var(--muted);background:rgba(255,255,255,.04);border:1px solid var(--border);padding:2px 9px;text-transform:uppercase;letter-spacing:.5px}
+.nc-stat{font-family:'Oswald',sans-serif;font-size:26px;font-weight:700;color:var(--red);text-shadow:0 0 16px var(--red-glow);margin-top:auto}
+.nc-stat-lbl{font-size:10px;color:var(--muted)}
+
+/* PROCESS */
+.p-steps{display:grid;grid-template-columns:repeat(5,1fr);gap:0;position:relative;margin-top:56px}
+.p-steps::before{content:'';position:absolute;top:40px;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--red),rgba(232,0,29,.15));z-index:0}
+.pstep{padding:0 22px;position:relative;z-index:1}
+.p-num{width:78px;height:78px;display:flex;align-items:center;justify-content:center;background:var(--s2);border:2px solid var(--red);font-family:'Oswald',sans-serif;font-size:30px;font-weight:700;color:var(--red);text-shadow:0 0 16px var(--red-glow);margin-bottom:20px;clip-path:polygon(12px 0,100% 0,100% calc(100% - 12px),calc(100% - 12px) 100%,0 100%,0 12px)}
+.p-title{font-family:'Oswald',sans-serif;font-size:14px;font-weight:600;color:var(--text);letter-spacing:.5px;margin-bottom:8px}
+.p-desc{font-size:12px;color:var(--muted);line-height:1.6}
+
+/* CASES */
+.toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:38px}
+.fbtn{padding:8px 16px;background:transparent;border:1px solid var(--border);color:var(--muted);font-family:'Exo 2',sans-serif;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;cursor:pointer;transition:all .2s}
+.fbtn:hover,.fbtn.active{background:var(--red-dim);border-color:var(--red);color:var(--red)}
+.srch-w{position:relative;flex:1;min-width:200px;max-width:280px}
+.srch-ico{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:13px;pointer-events:none}
+.srch-in{width:100%;background:var(--surface);border:1px solid var(--border);padding:9px 12px 9px 34px;color:var(--text);font-family:'Exo 2',sans-serif;font-size:13px;outline:none;transition:border-color .2s}
+.srch-in::placeholder{color:var(--muted)}
+.srch-in:focus{border-color:var(--red)}
+.cat-group{margin-bottom:52px}
+.cat-hd{display:flex;align-items:center;gap:12px;padding:13px 18px;background:var(--surface);border:1px solid var(--border);border-left:3px solid var(--red);margin-bottom:14px}
+.cat-ico{font-size:19px}
+.cat-nm{font-family:'Oswald',sans-serif;font-size:15px;font-weight:600;color:var(--text);letter-spacing:.5px}
+.cat-cnt{margin-left:auto;font-size:10px;color:var(--red);background:var(--red-dim);border:1px solid var(--border-r);padding:3px 10px;font-weight:700}
+.cards-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:1px;background:var(--border);border:1px solid var(--border)}
+.ccard{background:var(--bg2);padding:20px;text-decoration:none;color:inherit;display:flex;flex-direction:column;gap:10px;transition:all .25s;position:relative;overflow:hidden}
+.ccard::before{content:'';position:absolute;top:0;left:0;width:2px;height:0;background:var(--red);box-shadow:2px 0 12px var(--red);transition:height .3s}
+.ccard:hover{background:var(--s2)}
+.ccard:hover::before{height:100%}
+.cc-emoji{font-size:22px}
+.cc-title{font-size:13px;font-weight:600;color:var(--text);line-height:1.4}
+.cc-foot{margin-top:auto;display:flex;align-items:center;justify-content:space-between}
+.ctag{font-size:9px;font-weight:700;color:var(--red);background:var(--red-dim);border:1px solid var(--border-r);padding:3px 8px;text-transform:uppercase;letter-spacing:1.5px}
+.ctag.bl{color:var(--cyan);background:var(--cyan-dim);border-color:var(--border-c)}
+.carrow{font-size:15px;color:var(--muted);transition:all .2s}
+.ccard:hover .carrow{color:var(--red);transform:translateX(5px)}
+.no-res{display:none;grid-column:1/-1;padding:60px;text-align:center;color:var(--muted);font-family:'Oswald',sans-serif;font-size:12px;letter-spacing:3px;border:1px dashed var(--border)}
+
+/* AVITO WHY */
+.avwhy{position:relative;overflow:hidden;background:var(--bg)}
+.avwhy::before{content:'';position:absolute;top:0;right:0;width:50%;height:100%;background:url('trophy.png') center/cover no-repeat;opacity:.32}
+.avwhy::after{content:'';position:absolute;top:0;right:0;width:55%;height:100%;background:linear-gradient(90deg,var(--bg) 20%,transparent 100%)}
+.why-c{position:relative;z-index:10;max-width:58%}
+.why-list{display:flex;flex-direction:column;gap:14px;margin-top:32px}
+.why-item{display:flex;gap:16px;align-items:flex-start;padding:16px 20px;background:rgba(8,11,18,.7);border:1px solid var(--border);border-left:3px solid var(--red);backdrop-filter:blur(8px);transition:all .2s}
+.why-item:hover{background:rgba(232,0,29,.05);transform:translateX(4px)}
+.why-num{font-family:'Oswald',sans-serif;font-size:30px;font-weight:700;color:var(--red);opacity:.8;width:42px;flex-shrink:0;line-height:1}
+.why-txt h4{font-size:14px;font-weight:700;color:var(--text);margin-bottom:4px}
+.why-txt p{font-size:12px;color:var(--muted);line-height:1.5}
+
+/* NOW */
+.now-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:0}
+.nc2{background:var(--surface);border:1px solid var(--border);padding:30px;position:relative;overflow:hidden;transition:all .3s}
+.nc2::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--red),var(--gold));transform:scaleX(0);transform-origin:left;transition:transform .3s}
+.nc2:hover{border-color:var(--border-r);transform:translateY(-3px);box-shadow:0 14px 40px rgba(0,0,0,.4)}
+.nc2:hover::before{transform:scaleX(1)}
+.nc2-icon{font-size:34px;margin-bottom:14px;display:block}
+.nc2-title{font-family:'Oswald',sans-serif;font-size:16px;font-weight:600;color:var(--text);margin-bottom:8px;letter-spacing:.5px}
+.nc2-desc{font-size:13px;color:var(--muted);line-height:1.7;margin-bottom:14px}
+.nc2-val{font-family:'Oswald',sans-serif;font-size:30px;font-weight:700;color:var(--red);text-shadow:0 0 16px var(--red-glow)}
+.nc2-lbl{font-size:10px;color:var(--muted)}
+.split-block{grid-column:span 2;display:grid;grid-template-columns:1fr 1fr;background:var(--surface);border:1px solid var(--border);overflow:hidden}
+.split-img{position:relative;min-height:300px}
+.split-img img{width:100%;height:100%;object-fit:cover;object-position:center top}
+.split-img::after{content:'';position:absolute;inset:0;background:linear-gradient(90deg,transparent 60%,var(--surface) 100%)}
+.split-txt{padding:40px 36px;display:flex;flex-direction:column;justify-content:center;gap:18px;position:relative}
+.split-txt::before{content:'';position:absolute;top:0;bottom:0;left:0;width:2px;background:linear-gradient(180deg,transparent,var(--red),transparent)}
+
+/* CTA */
+.cta-big{position:relative;padding:76px;text-align:center;overflow:hidden;background:var(--surface);border-top:1px solid var(--border-r);border-bottom:1px solid var(--border-r)}
+.cta-big::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--red),var(--gold),transparent)}
+.cta-big::after{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at 50% 0%,rgba(232,0,29,.06) 0%,transparent 60%);pointer-events:none}
+.cta-eye{font-size:10px;font-weight:700;letter-spacing:5px;color:var(--red);text-transform:uppercase;margin-bottom:14px}
+.cta-title{font-family:'Oswald',sans-serif;font-size:clamp(26px,4vw,54px);font-weight:700;color:#fff;margin-bottom:12px;position:relative;z-index:1}
+.cta-sub{font-size:15px;color:var(--muted);margin-bottom:38px;position:relative;z-index:1}
+.cta-row{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;position:relative;z-index:1}
+
+/* FOOTER */
+footer{background:var(--bg);border-top:1px solid var(--border);padding:40px 80px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:20px}
+.f-logo{font-family:'Oswald',sans-serif;font-size:20px;font-weight:700;color:var(--text);letter-spacing:3px}
+.f-logo span{color:var(--red)}
+.f-links{display:flex;gap:22px;flex-wrap:wrap}
+.f-links a{color:var(--muted);text-decoration:none;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;transition:color .2s}
+.f-links a:hover{color:var(--red)}
+
+/* REVEAL */
+.rev{opacity:0;transform:translateY(26px);transition:opacity .55s ease,transform .55s ease}
+.rev.on{opacity:1;transform:translateY(0)}
+
+/* RESPONSIVE */
+@media(max-width:900px){
+  nav{padding:0 20px}
+  .nav-links{display:none}
+  .sec{padding:56px 24px}
+  .hero-content{padding:0 24px 60px}
+  .hero-stripe{gap:12px;flex-wrap:wrap;height:auto;padding:10px 18px}
+  .banners-row{grid-template-columns:1fr}
+  .srv-grid{grid-template-columns:1fr}
+  .niches-grid{grid-template-columns:1fr 1fr}
+  .p-steps{grid-template-columns:1fr 1fr;gap:24px}
+  .p-steps::before{display:none}
+  .avwhy::before,.avwhy::after{display:none}
+  .why-c{max-width:100%}
+  .now-grid{grid-template-columns:1fr}
+  .split-block{grid-column:span 1;grid-template-columns:1fr}
+  .split-img{min-height:200px}
+  .split-img::after{background:linear-gradient(180deg,transparent 60%,var(--surface) 100%)}
+  .cta-big{padding:56px 24px}
+  footer{padding:32px 24px;flex-direction:column;align-items:flex-start}
+  .hero-stats{flex-wrap:wrap}
+  .hs{flex:1;min-width:120px}
+}
+</style>
+</head>
+<body>
+
+<nav>
+  <a href="#" class="nav-logo">ACES <span class="logo-badge">OF ADS</span></a>
+  <ul class="nav-links">
+    <li><a href="#services">Услуги</a></li>
+    <li><a href="#niches">Ниши</a></li>
+    <li><a href="#cases">Кейсы</a></li>
+    <li><a href="#avito">Авито №1</a></li>
+    <li><a href="portfolio.html">Дизайн</a></li>
+    <li><a href="https://t.me/Aces_Of_Ads_bot" target="_blank" class="nav-cta">🤖 Написать</a></li>
+  </ul>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-bg"></div>
+  <div class="hero-stripe">
+    <div class="stripe-item"><span class="s-ico">📋</span>Договор с моим ИП</div>
+    <div class="stripe-item"><span class="s-ico">🔑</span>Ведение под ключ</div>
+    <div class="stripe-item"><span class="s-ico">🛡</span>Гарантия заявок за 7 дней</div>
+    <div class="stripe-item"><span class="s-ico">📊</span>Отчётность и прозрачность</div>
+    <div class="stripe-item"><span class="s-ico">🎨</span>Дизайн и инфографика</div>
+    <div class="stripe-item"><span class="s-ico">⚡</span>Автозагрузка</div>
+  </div>
+  <div class="hero-content">
+    <div class="hero-lbl">Авитолог · Pro · Агентство</div>
+    <h1 class="h1">
+      <span class="h1-w">УВЕЛИЧУ ПОТОК</span>
+      <span class="h1-r">ЗАЯВОК</span>
+    </h1>
+    <div class="h1-sub">в 2–10 раз на Авито</div>
+    <div class="hero-stats">
+      <div class="hs"><div class="hs-val">45+</div><div class="hs-lbl">Кейсов</div></div>
+      <div class="hs"><div class="hs-val">5 лет</div><div class="hs-lbl">На Авито</div></div>
+      <div class="hs"><div class="hs-val">1092</div><div class="hs-lbl">Рекорд заявок</div></div>
+      <div class="hs"><div class="hs-val">17₽</div><div class="hs-lbl">Мин. лид</div></div>
+    </div>
+    <div class="hero-btns">
+      <a href="https://t.me/Aces_Of_Ads_bot" target="_blank" class="btn btn-red">🤖 Получить консультацию</a>
+      <a href="#cases" class="btn btn-ghost">→ Смотреть кейсы</a>
+      <a href="portfolio.html" class="btn btn-ghost">🎨 Портфолио дизайнов</a>
+    </div>
+  </div>
+</section>
+
+<!-- BANNERS ROW -->
+<section style="background:var(--bg);padding:8px 0 0">
+  <div class="banners-row" style="padding:0 8px;gap:8px">
+    <div class="av-banner"><img src="banner2.png" alt="Ведение под ключ" loading="lazy"><div class="av-banner-lbl">Ведение под ключ — комплексная эффективность</div></div>
+    <div class="av-banner"><img src="banner3.png" alt="Консультация + аудит" loading="lazy"><div class="av-banner-lbl">Консультация + аудит — рассчитаю КП и анализ рынка</div></div>
+  </div>
+</section>
+
+<!-- SERVICES -->
+<section class="sec" id="services" style="background:var(--bg2)">
+  <div class="sec-lbl">Что входит</div>
+  <h2 class="sec-title">ВЕДЕНИЕ ПОД КЛЮЧ —<br><span>КОМПЛЕКСНАЯ ЭФФЕКТИВНОСТЬ</span></h2>
+  <p class="sec-desc">Полный цикл работы с Авито — от анализа рынка до сотен заявок в месяц. Договор, гарантия, прозрачность.</p>
+  <div class="srv-grid">
+    <div class="srv-item rev"><div class="srv-icon">🔍</div><div><div class="srv-title">Анализ рынка и клиентов</div><div class="srv-desc">Изучаем потребности покупателей, анализируем конкурентов, находим точки роста в вашей нише.</div></div></div>
+    <div class="srv-item rev"><div class="srv-icon">🎨</div><div><div class="srv-title">Дизайн и инфографика</div><div class="srv-desc">Вовлекающие баннеры, инфографика с выгодами, профессиональные обложки — конверсия +30–50%.</div></div></div>
+    <div class="srv-item rev"><div class="srv-icon">✍️</div><div><div class="srv-title">Продающие тексты</div><div class="srv-desc">SEO-оптимизированные описания объявлений и профиля — клиент не просто видит, он звонит.</div></div></div>
+    <div class="srv-item rev"><div class="srv-icon">🤖</div><div><div class="srv-title">Бот с автоответом и сценариями</div><div class="srv-desc">Каждый входящий запрос обрабатывается мгновенно — ни одна заявка не потеряется.</div></div></div>
+    <div class="srv-item rev"><div class="srv-icon">📸</div><div><div class="srv-title">Поиск и профи отрисовка топ-фото</div><div class="srv-desc">Профессиональный подбор и обработка фотографий — первое впечатление = первая заявка.</div></div></div>
+    <div class="srv-item rev"><div class="srv-icon">⚡</div><div><div class="srv-title">Масштабирование — автозагрузка</div><div class="srv-desc">Автоматическая загрузка сотен объявлений через XML. Охват растёт, бюджет под контролем.</div></div></div>
+    <div class="srv-item rev"><div class="srv-icon">📡</div><div><div class="srv-title">24/7 мониторинг аккаунта</div><div class="srv-desc">Постоянно отслеживаем позиции, статистику и конкурентов. Реагируем до просадки заявок.</div></div></div>
+    <div class="srv-item rev"><div class="srv-icon">📊</div><div><div class="srv-title">Отчётность и прозрачность</div><div class="srv-desc">Еженедельные отчёты: заявки, расходы, позиции, рост. Вы всегда знаете, за что платите.</div></div></div>
+  </div>
+  <div class="guar-bar">
+    <div><div class="guar-t">📋 Прописываем договор с моим ИП</div><div class="guar-s">100% гарантия на все работы · Гарантия заявок в течение 7 дней после запуска</div></div>
+    <a href="https://t.me/Aces_Of_Ads_bot" target="_blank" class="btn btn-cyan">🤖 Обсудить проект</a>
+  </div>
+</section>
+
+<!-- NICHES -->
+<section class="sec" id="niches" style="background:var(--bg)">
+  <div class="sec-lbl">Опыт работы</div>
+  <h2 class="sec-title">РАБОТАЮ ВО ВСЕХ<br><span>ПРИБЫЛЬНЫХ НИШАХ</span></h2>
+  <p class="sec-desc">Реальные кейсы в каждом направлении — смотрите портфолио ниже</p>
+  <div class="niches-grid">
+    <div class="nc rev"><div class="nc-icon">🧱</div><div class="nc-name">Стройматериалы</div><div class="nc-tags"><span class="ntag">Доска</span><span class="ntag">Блоки</span><span class="ntag">Кровля</span></div><div class="nc-stat">17₽<div class="nc-stat-lbl">мин. цена заявки</div></div></div>
+    <div class="nc rev"><div class="nc-icon">🏠</div><div class="nc-name">Готовые дома</div><div class="nc-tags"><span class="ntag">Каркасные</span><span class="ntag">Модульные</span></div><div class="nc-stat">820+<div class="nc-stat-lbl">заявок на проект</div></div></div>
+    <div class="nc rev"><div class="nc-icon">🔌</div><div class="nc-name">Оборудование</div><div class="nc-tags"><span class="ntag">Майнеры</span><span class="ntag">Станки</span></div><div class="nc-stat">32/сут<div class="nc-stat-lbl">заявок с майнеров</div></div></div>
+    <div class="nc rev"><div class="nc-icon">🛋</div><div class="nc-name">Мебель</div><div class="nc-tags"><span class="ntag">Корпусная</span><span class="ntag">Кровати</span></div><div class="nc-stat">3 года<div class="nc-stat-lbl">стабильный рост</div></div></div>
+    <div class="nc rev"><div class="nc-icon">🚗</div><div class="nc-name">Авто</div><div class="nc-tags"><span class="ntag">Чехлы</span><span class="ntag">Выкуп</span><span class="ntag">Мото</span></div><div class="nc-stat">4+ года<div class="nc-stat-lbl">2 магазина клиента</div></div></div>
+    <div class="nc rev"><div class="nc-icon">👷</div><div class="nc-name">Услуги стройки</div><div class="nc-tags"><span class="ntag">Фундамент</span><span class="ntag">Кровля</span></div><div class="nc-stat">1092<div class="nc-stat-lbl">заявок — рекорд</div></div></div>
+    <div class="nc rev"><div class="nc-icon">👤</div><div class="nc-name">Вакансии</div><div class="nc-tags"><span class="ntag">Аутсорсинг</span><span class="ntag">Подбор</span></div><div class="nc-stat">100<div class="nc-stat-lbl">контактов за 5 дней</div></div></div>
+    <div class="nc rev"><div class="nc-icon">🪵</div><div class="nc-name">Пиломатериалы</div><div class="nc-tags"><span class="ntag">Доска</span><span class="ntag">Брус</span><span class="ntag">Пеллеты</span></div><div class="nc-stat">5 лет<div class="nc-stat-lbl">самый долгий клиент</div></div></div>
+  </div>
+</section>
+
+<!-- PROCESS -->
+<section class="sec" style="background:var(--bg2)">
+  <div class="sec-lbl">Как работаем</div>
+  <h2 class="sec-title">5 ШАГОВ ДО<br><span>ПОТОКА ЗАЯВОК</span></h2>
+  <div class="p-steps">
+    <div class="pstep rev"><div class="p-num">01</div><div class="p-title">Консультация и аудит</div><div class="p-desc">Разбираем нишу, анализируем конкурентов, считаем потенциал. КП и анализ рынка — бесплатно.</div></div>
+    <div class="pstep rev"><div class="p-num">02</div><div class="p-title">Стратегия и договор</div><div class="p-desc">Прописываем план, фиксируем KPI в договоре с ИП. Никаких устных договорённостей.</div></div>
+    <div class="pstep rev"><div class="p-num">03</div><div class="p-title">Упаковка магазина</div><div class="p-desc">Дизайн, тексты, фото, инфографика — магазин, которому доверяют покупатели.</div></div>
+    <div class="pstep rev"><div class="p-num">04</div><div class="p-title">Запуск и масштаб</div><div class="p-desc">Автозагрузка, бот, реклама — первые заявки в течение 7 дней с гарантией.</div></div>
+    <div class="pstep rev"><div class="p-num">05</div><div class="p-title">Рост и отчётность</div><div class="p-desc">24/7 мониторинг, еженедельные отчёты, постоянная оптимизация — заявки только растут.</div></div>
+  </div>
+</section>
+
+<!-- CASES -->
+<section class="sec cases-section" id="cases" style="background:var(--bg)">
+  <div class="sec-lbl">Портфолио</div>
+  <h2 class="sec-title">КЕЙСЫ — <span>РЕАЛЬНЫЕ ЦИФРЫ</span></h2>
+  <p class="sec-desc">Нажмите на кейс для подробного отчёта со скринами и деталями</p>
+  <div class="toolbar">
+    <div class="srch-w"><span class="srch-ico">🔍</span><input type="text" class="srch-in" id="searchInput" placeholder="Поиск..." oninput="filterCases()"></div>
+    <button class="fbtn active" onclick="setFilter('all',this)">Все</button>
+    <button class="fbtn" onclick="setFilter('tovary',this)">Товары</button>
+    <button class="fbtn" onclick="setFilter('uslugi',this)">Услуги</button>
+    <button class="fbtn" onclick="setFilter('dom',this)">Дома/Стройка</button>
+    <button class="fbtn" onclick="setFilter('les',this)">Пиломатериалы</button>
+    <button class="fbtn" onclick="setFilter('mebel',this)">Мебель</button>
+    <button class="fbtn" onclick="setFilter('avto',this)">Авто</button>
+  </div>
+  <div id="casesContainer">
+
+    <div class="cat-group" data-cats="tovary dom"><div class="cat-hd"><span class="cat-ico">🏠</span><span class="cat-nm">Дома и модульные конструкции</span><span class="cat-cnt">4 кейса</span></div><div class="cards-grid">
+      <a class="ccard" href="https://teletype.in/@avitolog_fil/dsvzrMj8W9M" target="_blank" data-cats="tovary dom"><div class="cc-emoji">🏠</div><div class="cc-title">Каркасные дома — Домкомплекты</div><div class="cc-foot"><span class="ctag">Товары</span><span class="carrow">→</span></div></a>
+      <a class="ccard" href="https://teletype.in/@avitolog_fil/nD2C4-ZSvDS" target="_blank" data-cats="tovary dom"><div class="cc-emoji">🏠</div><div class="cc-title">Каркасные дома / Модульные</div><div class="cc-foot"><span class="ctag">Товары</span><span class="carrow">→</span></div></a>
+      <a class="ccard" href="https://teletype.in/@avitolog_fil/hy8EF31IdRX" target="_blank" data-cats="tovary dom"><div class="cc-emoji">🏠</div><div class="cc-title">Каркасные / Брус Дома РФ</div><div class="cc-foot"><span class="ctag">Товары</span><span class="carrow">→</span></div></a>
+      <a class="ccard" href="https://teletype.in/@avitolog_fil/CblpFccmNBs" target="_blank" data-cats="tovary dom"><div class="cc-emoji">🏠</div><div class="cc-title">Бытовки / Модульные дома</div><div class="cc-foot"><span class="ctag">Товары</span><span class="carrow">→</span></div></a>
+    </div></div>
+
+    <div class="cat-group" data-cats="tovary dom"><div class="cat-hd"><span class="cat-ico">🚪</span><span class="cat-nm">Ворота, металл и стройматериалы</span><span class="cat-cnt">5 кейсов</span></div><div class="cards-grid">
+      <a class="ccard" href="https://teletype.in/@avitolog_fil/sBgpPUnnMtT" target="_blank" data-cats="tovary dom"><div class="cc-emoji">🏠</div><div class="cc-title">Ворота автоматические — Уфа</div><div class="cc-foot"><span class="ctag">Товары</span><span class="carrow">→</span></div></a>
+      <a class="ccard" href="https://teletype.in/@avitolog_fil/_4IUA7ctozJ" target="_blank" data-cats="tovary dom"><div class="cc-emoji">🏪</div><div class="cc-title">Каркасные ворота под ключ</div><div class="cc-foot"><span class="ctag">Товары</span><span class="carrow">→</span></div></a>
+      <a class="ccard" href="https://teletype.in/@avitolog_fil/3CummhwxrjE" target="_blank" data-cats="tovary dom"><div class="cc-emoji">🧱</div><div class="cc-title">Стройматериалы — Москва и МО</div><div class="cc-foot"><span class="ctag">Товары</span><span class="carrow">→</span></div></a>
+      <a class="ccard" href="https://teletype.in/@avitolog_fil/RsxU4MevJ4E" target="_blank" data-cats="tovary dom"><div class="cc-emoji">🔩</div><div class="cc-title">Металлопрокат — Москва и МО</div><div class="cc-foot"><span class="ctag">Товары</span><span class="carrow">→</span></div></a>
+      <a class="ccard" href="https://telegra.ph/Kak-prevratit-14k-reklamnogo-byudzheta-v-400k-prodazh-10-13" target="_blank" data-cats="tovary dom"><div class="cc-emoji">💦</div><div class="cc-title">Полимерные бассейны — 400 000₽ продаж</div><div class="cc-foot"><span class="ctag">Товары</span><span class="carrow">→</span></div></a>
+    </div></div>
+
+    <div class="cat-group" data-cats="tovary avto"><div class="cat-hd"><span class="cat-ico">🚗</span><span class="cat-nm">Авто и аксессуары</span><span class="cat-cnt">3 кейса</span></div><div class="cards-grid">
+      <a class="ccard" href="https://teletype.in/@avitolog_fil/kns82LsHwD3" target="_blank" data-cats="tovary avto"><div class="cc-emoji">🏍</div><div class="cc-title">Мотоциклы и квадроциклы</div><div class="cc-foot"><span class="ctag">Товары</span><span class="carrow">→</span></div></a>
+      <a class="ccard" href="https://teletype.in/@avitolog_fil/FgwoERr00Z3" target="_blank" data-cats="tovary avto"><div class="cc-emoji">💺</div><div class="cc-title">4+ года — 2 магазина по авточехлам</div><div class="cc-foot"><span class="ctag">Товары</span><span class="carrow">→</span></div></a>
+      <a class="ccard" href="https://teletype.in/@avitolog_fil/hCvjhelmkGN" target="_blank" data-cats="tovary avto"><div class="cc-emoji">💺</div><div class="cc-title">Авточехлы и 3D коврики</div><div class="cc-foot"><span class="ctag">Товары</span><span class="carrow">→</span></div></a>
+    </div></div>
+
+    <div class="cat-group" data-cats="tovary mebel"><div class="cat-hd"><span class="cat-ico">🛋</span><span class="cat-nm">Мебель и интерьер</span><span class="cat-cnt">3 кейса</span></div><div class="cards-grid">
+      <a class="ccard" href="https://teletype.in/@avitolog_fil/RT5TMJbKk4e" target="_blank" data-cats="tovary mebel"><div class="cc-emoji">🗄</div><div class="cc-title">Корпусная мебель — 3 года</div><div class="cc-foot"><span class="ctag">Товары</span><span class="carrow">→</span></div></a>
+      <a class="ccard" href="https://teletype.in/@avitolog_fil/hLv4fOMTM0V" target="_blank" data-cats="tovary mebel"><div class="cc-emoji">🛏</div><div class="cc-title">Кровати — Москва</div><div class="cc-foot"><span class="ctag">Товары</span><span class="carrow">→</span></div></a>
+      <a class="ccard" href="https://teletype.in/@avitolog_fil/8oQB7GPpv_x" target="_blank" data-cats="tovary mebel"><div class="cc-emoji">🛋</div><div class="cc-title">Реклайнеры в салон</div><div class="cc-foot"><span class="ctag">Товары</span><span class="carrow">→</span></div></a>
+    </div></div>
+
+    <div class="cat-group" data-cats="tovary les"><div class="cat-hd"><span class="cat-ico">🪵</span><span class="cat-nm">Пиломатериалы и древесина</span><span class="cat-cnt">8 кейсов</span></div><div class="cards-grid">
+      <a class="ccard" href="https://teletype.in/@avitolog_fil/iusxDl7CxSj" target="_blank" data-cats="tovary les"><div class="cc-emoji">🪵</div><div class="cc-title">ОПТ — Пиломатериалы</div><div class="cc-foot"><span class="ctag">Товары</span><span class="carrow">→</span></div></a>
+      <a class="ccard" href="https://telegra.ph/Doska-i-Brus-po-Moskve-i-Oblasti-01-21" target="_blank" data-cats="tovary les"><div class="cc-emoji">🪵</div><div class="cc-title">Доска и Брус — Москва и МО</div><div class="cc-foot"><span class="ctag">Товары</span><span class="carrow">→</span></div></a>
+      <a class="ccard" href="https://teletype.in/@avitolog_fil/z0Tnl4tFb75" target="_blank" data-cats="tovary les"><div class="cc-emoji">🪵</div><div class="cc-title">Пиломатериалы — Байкал</div><div class="cc-foot"><span class="ctag">Товары</span><span class="carrow">→</span></div></a>
+      <a class="ccard" href="https://telegra.ph/Doska-i-Brus-v-MSK-i-MO-01-21" target="_blank" data-cats="tovary les"><div class="cc-emoji">🪵</div><div class="cc-title">Доска — Москва и МО</div><div class="cc-foot"><span class="ctag">Товары</span><span class="carrow">→</span></div></a>
+      <a class="ccard" href="https://telegra.ph/Doska-i-Brus-v-Novosibirske-01-21" target="_blank" data-cats="tovary les"><div class="cc-emoji">🪵</div><div class="cc-title">Доска и Брус — Новосибирск</div><div class="cc-foot"><span class="ctag">Товары</span><span class="carrow">→</span></div></a>
+      <a class="ccard" href="https://telegra.ph/10-pozicij-pilomaterialov-v-Nizhnem-Novgorode-01-21" target="_blank" data-cats="tovary les"><div class="cc-emoji">🪵</div><div class="cc-title">Пиломатериалы — Нижний, 5 лет</div><div class="cc-foot"><span class="ctag">Товары</span><span class="carrow">→</span></div></a>
+      <a class="ccard" href="https://telegra.ph/Zayavki-po-17-rublej-na-Dosku-i-Brus-01-19" target="_blank" data-cats="tovary les"><div class="cc-emoji">🪵</div><div class="cc-title">Брус и Доска — Крым (17₽/заявка)</div><div class="cc-foot"><span class="ctag">Товары</span><span class="carrow">→</span></div></a>
+      <a class="ccard" href="https://telegra.ph/Pellety-po-RF-01-19" target="_blank" data-cats="tovary les"><div class="cc-emoji">🔥</div><div class="cc-title">Биотопливо — Пеллеты по РФ</div><div class="cc-foot"><span class="ctag">Товары</span><span class="carrow">→</span></div></a>
+    </div></div>
+
+    <div class="cat-group" data-cats="tovary dom"><div class="cat-hd"><span class="cat-ico">🧱</span><span class="cat-nm">Плитка, ЖБИ и термопанели</span><span class="cat-cnt">5 кейсов</span></div><div class="cards-grid">
+      <a class="ccard" href="https://teletype.in/@avitolog_fil/CTI_Fx3eKDI" target="_blank" data-cats="tovary dom"><div class="cc-emoji">🧱</div><div class="cc-title">Плитка тротуарная</div><div class="cc-foot"><span class="ctag">Товары</span><span class="carrow">→</span></div></a>
+      <a class="ccard" href="https://teletype.in/@avitolog_fil/hv_R6i-0Yz2" target="_blank" data-cats="tovary dom"><div class="cc-emoji">🪨</div><div class="cc-title">ЖБИ завод — Уфа</div><div class="cc-foot"><span class="ctag">Товары</span><span class="carrow">→</span></div></a>
+      <a class="ccard" href="https://telegra.ph/Termopaneli-po-vsej-Rossii-10-16" target="_blank" data-cats="tovary dom"><div class="cc-emoji">🧱</div><div class="cc-title">Термопанели по всей России — 5 лет</div><div class="cc-foot"><span class="ctag">Товары</span><span class="carrow">→</span></div></a>
+      <a class="ccard" href="https://teletype.in/@avitolog_fil/LKRdhxger8N" target="_blank" data-cats="tovary dom"><div class="cc-emoji">🧱</div><div class="cc-title">Термопанели — Казань</div><div class="cc-foot"><span class="ctag">Товары</span><span class="carrow">→</span></div></a>
+      <a class="ccard" href="https://telegra.ph/Stroitelnyj-bok-3v1-10-16" target="_blank" data-cats="tovary dom"><div class="cc-emoji">🧱</div><div class="cc-title">Газосиликатный блок 3в1</div><div class="cc-foot"><span class="ctag">Товары</span><span class="carrow">→</span></div></a>
+    </div></div>
+
+    <div class="cat-group" data-cats="tovary"><div class="cat-hd"><span class="cat-ico">🔌</span><span class="cat-nm">Оборудование и электроника</span><span class="cat-cnt">3 кейса</span></div><div class="cards-grid">
+      <a class="ccard" href="https://teletype.in/@avitolog_fil/GS5zWsrEObE" target="_blank" data-cats="tovary"><div class="cc-emoji">🔌</div><div class="cc-title">Оборудование — 25 000₽ бюджет</div><div class="cc-foot"><span class="ctag">Товары</span><span class="carrow">→</span></div></a>
+      <a class="ccard" href="https://teletype.in/@avitolog_fil/0OvbUL3HdCd" target="_blank" data-cats="tovary"><div class="cc-emoji">🔌</div><div class="cc-title">Майнеры — 32 заявки / сутки</div><div class="cc-foot"><span class="ctag">Товары</span><span class="carrow">→</span></div></a>
+      <a class="ccard" href="https://teletype.in/@avitolog_fil/B2pLxA_2n5M" target="_blank" data-cats="tovary"><div class="cc-emoji">🔌</div><div class="cc-title">Интернет и сигнализации</div><div class="cc-foot"><span class="ctag">Товары</span><span class="carrow">→</span></div></a>
+    </div></div>
+
+    <div class="cat-group" data-cats="uslugi dom"><div class="cat-hd"><span class="cat-ico">👷</span><span class="cat-nm">Строительство — услуги</span><span class="cat-cnt">12 кейсов</span></div><div class="cards-grid">
+      <a class="ccard" href="https://teletype.in/@avitolog_fil/R8ZKTfIO492" target="_blank" data-cats="uslugi dom"><div class="cc-emoji">👷‍♂️</div><div class="cc-title">1092 заявки — рекорд строительства</div><div class="cc-foot"><span class="ctag bl">Услуги</span><span class="carrow">→</span></div></a>
+      <a class="ccard" href="https://teletype.in/@avitolog_fil/A32mMNTuRf1" target="_blank" data-cats="uslugi dom"><div class="cc-emoji">👷‍♂️</div><div class="cc-title">820 заявок — Строительство</div><div class="cc-foot"><span class="ctag bl">Услуги</span><span class="carrow">→</span></div></a>
+      <a class="ccard" href="https://teletype.in/@avitolog_fil/yIuvRaI1zKk" target="_blank" data-cats="uslugi dom"><div class="cc-emoji">👷‍♂️</div><div class="cc-title">500 заявок — Строительство Москва</div><div class="cc-foot"><span class="ctag bl">Услуги</span><span class="carrow">→</span></div></a>
+      <a class="ccard" href="https://teletype.in/@avitolog_fil/n4qttDn1P6F" target="_blank" data-cats="uslugi dom"><div class="cc-emoji">👷‍♂️</div><div class="cc-title">100 контактов за 5 дней</div><div class="cc-foot"><span class="ctag bl">Услуги</span><span class="carrow">→</span></div></a>
+      <a class="ccard" href="https://teletype.in/@avitolog_fil/uvDeH4-YB8f" target="_blank" data-cats="uslugi dom"><div class="cc-emoji">👷‍♂️</div><div class="cc-title">Строительство — Крым</div><div class="cc-foot"><span class="ctag bl">Услуги</span><span class="carrow">→</span></div></a>
+      <a class="ccard" href="https://teletype.in/@avitolog_fil/WmQ63UF-onL" target="_blank" data-cats="uslugi dom"><div class="cc-emoji">👷‍♂️</div><div class="cc-title">Строительство — Воронеж и МО</div><div class="cc-foot"><span class="ctag bl">Услуги</span><span class="carrow">→</span></div></a>
+      <a class="ccard" href="https://teletype.in/@avitolog_fil/CdaBG6BATWO" target="_blank" data-cats="uslugi dom"><div class="cc-emoji">🏗</div><div class="cc-title">Строительство — Пермь</div><div class="cc-foot"><span class="ctag bl">Услуги</span><span class="carrow">→</span></div></a>
+      <a class="ccard" href="https://teletype.in/@avitolog_fil/GNa77T9LNxL" target="_blank" data-cats="uslugi dom"><div class="cc-emoji">💨</div><div class="cc-title">Вентиляция ОВиК — Уфа</div><div class="cc-foot"><span class="ctag bl">Услуги</span><span class="carrow">→</span></div></a>
+      <a class="ccard" href="https://teletype.in/@avitolog_fil/1mBu3owbTvI" target="_blank" data-cats="uslugi dom"><div class="cc-emoji">🏘</div><div class="cc-title">Мягкая кровля под ключ</div><div class="cc-foot"><span class="ctag bl">Услуги</span><span class="carrow">→</span></div></a>
+      <a class="ccard" href="https://teletype.in/@avitolog_fil/editor/zg2bqecstY5" target="_blank" data-cats="uslugi dom"><div class="cc-emoji">🏠</div><div class="cc-title">Строительство — Москва</div><div class="cc-foot"><span class="ctag bl">Услуги</span><span class="carrow">→</span></div></a>
+      <a class="ccard" href="https://teletype.in/@avitolog_fil/SlF_MRrznbf" target="_blank" data-cats="uslugi dom"><div class="cc-emoji">🏠</div><div class="cc-title">Фундамент под ключ</div><div class="cc-foot"><span class="ctag bl">Услуги</span><span class="carrow">→</span></div></a>
+      <a class="ccard" href="https://teletype.in/@avitolog_fil/YwRsnGHpxV1" target="_blank" data-cats="uslugi dom"><div class="cc-emoji">🏠</div><div class="cc-title">Кровля промышленных объектов</div><div class="cc-foot"><span class="ctag bl">Услуги</span><span class="carrow">→</span></div></a>
+    </div></div>
+
+    <div class="cat-group" data-cats="uslugi avto"><div class="cat-hd"><span class="cat-ico">🏎</span><span class="cat-nm">Авто — услуги</span><span class="cat-cnt">2 кейса</span></div><div class="cards-grid">
+      <a class="ccard" href="https://teletype.in/@avitolog_fil/4b0i0cvGpMO" target="_blank" data-cats="uslugi avto"><div class="cc-emoji">🏎</div><div class="cc-title">Выкуп авто</div><div class="cc-foot"><span class="ctag bl">Услуги</span><span class="carrow">→</span></div></a>
+      <a class="ccard" href="https://teletype.in/@avitolog_fil/xiwHG0Jie9f" target="_blank" data-cats="uslugi avto"><div class="cc-emoji">🚗</div><div class="cc-title">Авто под заказ</div><div class="cc-foot"><span class="ctag bl">Услуги</span><span class="carrow">→</span></div></a>
+    </div></div>
+
+    <div class="cat-group" data-cats="uslugi"><div class="cat-hd"><span class="cat-ico">👤</span><span class="cat-nm">Вакансии и аутсорсинг</span><span class="cat-cnt">2 кейса</span></div><div class="cards-grid">
+      <a class="ccard" href="https://teletype.in/@avitolog_fil/AJnxQ2SzkNR" target="_blank" data-cats="uslugi"><div class="cc-emoji">👤</div><div class="cc-title">Вакансии — аутсорсинг</div><div class="cc-foot"><span class="ctag bl">Услуги</span><span class="carrow">→</span></div></a>
+      <a class="ccard" href="https://teletype.in/@avitolog_fil/ARXJcAPSSo3" target="_blank" data-cats="uslugi"><div class="cc-emoji">👤</div><div class="cc-title">Вакансии — разнорабочие</div><div class="cc-foot"><span class="ctag bl">Услуги</span><span class="carrow">→</span></div></a>
+    </div></div>
+
+    <div class="no-res" id="noResults">// НИЧЕГО НЕ НАЙДЕНО — ИЗМЕНИТЕ ЗАПРОС</div>
+  </div>
+</section>
+
+<!-- AVITO WHY -->
+<section class="sec avwhy" id="avito">
+  <div class="why-c">
+    <div class="sec-lbl">Выбор профессионалов</div>
+    <h2 class="sec-title">АВИТО —<br><span>ЧЕМПИОН РЫНКА</span></h2>
+    <p class="sec-desc">Пока конкуренты сливают бюджеты в Яндекс, умный бизнес берёт заявки по 17₽</p>
+    <div class="why-list">
+      <div class="why-item rev"><div class="why-num">01</div><div class="why-txt"><h4>60+ млн живых пользователей в месяц</h4><p>Крупнейший классифайд России с реальным покупательским трафиком.</p></div></div>
+      <div class="why-item rev"><div class="why-num">02</div><div class="why-txt"><h4>Горячий спрос — человек ищет сам</h4><p>В отличие от таргета, на Авито человек уже хочет купить. Намерение = заявка.</p></div></div>
+      <div class="why-item rev"><div class="why-num">03</div><div class="why-txt"><h4>Лид в 3–10 раз дешевле конкурентов</h4><p>Реальный рекорд — 17₽ за заявку. В Яндексе в тех же нишах — сотни и тысячи.</p></div></div>
+      <div class="why-item rev"><div class="why-num">04</div><div class="why-txt"><h4>Работает там, где другие сдались</h4><p>Стройка, пиломатериалы, авто, мебель — Авито собирает покупателей именно здесь.</p></div></div>
+      <div class="why-item rev"><div class="why-num">05</div><div class="why-txt"><h4>Магазин растёт годами без спада</h4><p>Отзывы, подписчики, позиции накапливаются. Наш самый долгий клиент — 5+ лет.</p></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- WHY NOW -->
+<section class="sec" style="background:var(--bg2)">
+  <div class="sec-lbl">Действуйте сейчас</div>
+  <h2 class="sec-title">ПОЧЕМУ СТОИТ<br><span>НАЧАТЬ ПРЯМО СЕЙЧАС</span></h2>
+  <p class="sec-desc" style="margin-bottom:28px">Каждый день без Авито — это заявки, которые уходят тем, кто уже там работает</p>
+  <div class="now-grid">
+    <div class="nc2 rev"><span class="nc2-icon">📈</span><div class="nc2-title">+30–50% к конверсии сразу</div><div class="nc2-desc">Правильная упаковка увеличивает конверсию из просмотра в заявку с первых дней работы.</div><div class="nc2-val">+50%</div><div class="nc2-lbl">рост конверсии при профессиональной упаковке</div></div>
+    <div class="nc2 rev"><span class="nc2-icon">🏆</span><div class="nc2-title">Ранний старт = долгосрочное лидерство</div><div class="nc2-desc">Алгоритмы Авито дают приоритет магазинам с историей. Кто заходит раньше — выигрывает годами.</div><div class="nc2-val">5 лет</div><div class="nc2-lbl">работает наш самый долгий клиент без спада</div></div>
+    <div class="nc2 rev"><span class="nc2-icon">🎯</span><div class="nc2-title">Конкуренты ещё не проснулись</div><div class="nc2-desc">В большинстве ниш Авито недооценён. Пока другие думают — вы собираете заявки по 17₽.</div><div class="nc2-val">17₽</div><div class="nc2-lbl">рекорд стоимости заявки в нашей практике</div></div>
+    <div class="nc2 rev"><span class="nc2-icon">⚙️</span><div class="nc2-title">Системный рост вместо хаоса</div><div class="nc2-desc">Правильная стратегия с первого шага — 45+ кейсов и вся боль уже пройдена за вас.</div><div class="nc2-val">45+</div><div class="nc2-lbl">задокументированных кейсов с цифрами</div></div>
+    <div class="split-block rev">
+      <div class="split-img"><img src="station.png" alt="Авитолог" loading="lazy"></div>
+      <div class="split-txt">
+        <div class="sec-lbl" style="margin-bottom:0">Время решает</div>
+        <div class="nc2-title" style="font-family:'Oswald',sans-serif;font-size:19px;letter-spacing:.5px">КАЖДЫЙ ЧАС — ЭТО ПОТЕРЯННЫЕ ЗАЯВКИ</div>
+        <div class="nc2-desc">Пока вы ждёте подходящего момента, конкурент набирает отзывы и занимает топ. Запускаем магазин под ключ — быстро и с гарантией результата за 7 дней.</div>
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <a href="https://t.me/Aces_Of_Ads_bot" target="_blank" class="btn btn-red">🤖 Получить консультацию</a>
+          <a href="portfolio.html" class="btn btn-ghost">🎨 Портфолио дизайнов →</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CTA -->
+<div class="cta-big">
+  <div class="cta-eye">Следующий шаг</div>
+  <div class="cta-title">ГОТОВЫ УВЕЛИЧИТЬ<br>ПОТОК ЗАЯВОК?</div>
+  <div class="cta-sub">Напишите в бот — разберём нишу, рассчитаем КП и предложим стратегию бесплатно</div>
+  <div class="cta-row">
+    <a href="https://t.me/Aces_Of_Ads_bot" target="_blank" class="btn btn-red">🤖 Написать в бот</a>
+    <a href="https://t.me/+LhZY2M4Gc7JmOTYy" target="_blank" class="btn btn-ghost">✈️ Канал агентства</a>
+    <a href="portfolio.html" class="btn btn-cyan">🎨 Портфолио дизайнов</a>
+  </div>
+</div>
+
+<footer>
+  <div class="f-logo">ACES <span>OF ADS</span></div>
+  <div class="f-links">
+    <a href="#services">Услуги</a><a href="#niches">Ниши</a><a href="#cases">Кейсы</a>
+    <a href="#avito">Авито №1</a><a href="portfolio.html">Дизайн</a>
+    <a href="https://t.me/Aces_Of_Ads_bot" target="_blank">Бот</a>
+    <a href="https://t.me/+LhZY2M4Gc7JmOTYy" target="_blank">Канал</a>
+  </div>
+</footer>
+
+<script>
+let af='all';
+function setFilter(f,b){af=f;document.querySelectorAll('.fbtn').forEach(x=>x.classList.remove('active'));b.classList.add('active');filterCases()}
+function filterCases(){
+  const q=document.getElementById('searchInput').value.toLowerCase();
+  let tot=0;
+  document.querySelectorAll('.cat-group').forEach(g=>{
+    const gc=g.dataset.cats||'';const gm=af==='all'||gc.includes(af);let gh=false;
+    g.querySelectorAll('.ccard').forEach(c=>{
+      const cc=c.dataset.cats||'';const t=c.querySelector('.cc-title').textContent.toLowerCase();
+      const show=gm&&(af==='all'||cc.includes(af))&&(!q||t.includes(q));
+      c.style.display=show?'':'none';if(show){gh=true;tot++}
+    });
+    g.style.display=gm&&gh?'':'none';
+  });
+  document.getElementById('noResults').style.display=tot===0?'block':'none';
+}
+const ro=new IntersectionObserver(es=>{es.forEach((e,i)=>{if(e.isIntersecting){setTimeout(()=>e.target.classList.add('on'),i*50);ro.unobserve(e.target)}})},{threshold:.07});
+document.querySelectorAll('.rev').forEach(el=>ro.observe(el));
+</script>
+</body>
+</html>
