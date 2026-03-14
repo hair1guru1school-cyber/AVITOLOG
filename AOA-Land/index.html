@@ -255,9 +255,20 @@ footer{background:var(--bg);border-top:1px solid var(--border);padding:40px 80px
 .reviews-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:20px;margin-top:24px}
 .rv-card{border:1px solid var(--border-r);overflow:hidden;background:var(--bg2);border-radius:4px}
 .rv-card img,.rv-card picture{width:100%;display:block}.rv-card img{height:auto;object-fit:cover}
+.rv-cta{margin-bottom:32px}
+.rv-top3{background:rgba(232,0,29,.06);border:1px solid rgba(232,0,29,.2);border-radius:12px;padding:24px 28px;margin-bottom:28px;max-width:640px}
+.rv-top3-title{font-family:'Oswald',sans-serif;font-size:14px;font-weight:600;color:var(--red);letter-spacing:2px;margin-bottom:14px;text-transform:uppercase}
+.rv-top3-list{display:flex;flex-direction:column;gap:10px}
+.rv-top3-item{font-size:15px;color:rgba(240,244,255,.85);line-height:1.5}
+.rv-top3-item .rv-q{color:var(--red);font-weight:700}
+.rv-avito-snippet{margin-bottom:24px}
+.rv-avito-link{font-size:12px;color:var(--cyan);text-decoration:none;border:1px solid rgba(0,207,255,.25);padding:6px 12px;border-radius:6px;transition:all .2s}
+.rv-avito-link:hover{color:#fff;border-color:var(--cyan);background:rgba(0,207,255,.1)}
 @media(max-width:768px){
 .reviews-sec{padding:48px 24px 60px}
 .reviews-grid{grid-template-columns:1fr}
+.rv-top3{padding:18px 20px}
+.rv-top3-title{font-size:12px}
 }
 /* TURNKEY BANNER - Premium SaaS style */
 .turnkey-banner{position:relative;background:#070b14;padding:80px 24px 100px;overflow:hidden}
@@ -573,11 +584,25 @@ footer{background:var(--bg);border-top:1px solid var(--border);padding:40px 80px
   <div class="sec-lbl">ОТЗЫВЫ</div>
   <h2 class="sec-title">Отзывы клиентов · <span>5,0</span> · 64 отзыва</h2>
   <p class="sec-desc">Реальные отзывы с нашей страницы на Авито. Fil AI Маркетинг — 280+ проектов, 95% клиентов остаются на годы.</p>
-  <a href="https://www.avito.ru/brands/ai_avitolog_fil_ai/all/predlozheniya_uslug?sellerId=241c5696fd902c120ad3a93df31bc039" target="_blank" rel="noopener" class="btn btn-red" style="margin-bottom:32px">Смотреть все отзывы на Авито</a>
+  <a href="https://www.avito.ru/brands/ai_avitolog_fil_ai/all/predlozheniya_uslug?sellerId=241c5696fd902c120ad3a93df31bc039" target="_blank" rel="noopener" class="btn btn-red rv-cta">Смотреть все отзывы на Авито</a>
+  
+  <div class="rv-top3">
+    <h3 class="rv-top3-title">Топ-3, что пишут клиенты</h3>
+    <div class="rv-top3-list">
+      <div class="rv-top3-item"><span class="rv-q">Заявки пошли</span> — результат и рост обращений с первых недель</div>
+      <div class="rv-top3-item"><span class="rv-q">Всегда на связи</span> — оперативность и профессионализм</div>
+      <div class="rv-top3-item"><span class="rv-q">Рекомендую</span> — 95% клиентов остаются на годы</div>
+    </div>
+  </div>
+
+  <div class="rv-avito-snippet">
+    <a href="https://www.avito.ru/brands/ai_avitolog_fil_ai/all/predlozheniya_uslug?sellerId=241c5696fd902c120ad3a93df31bc039" target="_blank" rel="noopener" class="rv-avito-link">avito.ru/brands/ai_avitolog_fil_ai</a>
+  </div>
+
   <div class="reviews-grid">
-    <div class="rv-card"><picture><source media="(max-width:768px)" srcset="MOB/hf_20260130_100016_6c394b84-67dc-4913-a322-70537d2acf54%20(2).png"><img src="PC/hf_20260130_100013_3ab61574-7982-4a5b-a4dd-2f18b0d9dc2c%20(2).png" alt="Отзыв"></picture></div>
-    <div class="rv-card"><picture><source media="(max-width:768px)" srcset="MOB/hf_20260314_160318_7f100f57-9f7c-4f82-923f-520abefd61a4.png"><img src="MOB/hf_20260314_160318_7f100f57-9f7c-4f82-923f-520abefd61a4.png" alt="Отзыв"></picture></div>
-    <div class="rv-card"><img src="MOB/ниши.jpg" alt="Отзыв по нише"></div>
+    <div class="rv-card"><img src="Скрины-Отзывы/photo_2025-06-17_20-46-07.jpg" alt="Отзыв клиента"></div>
+    <div class="rv-card"><img src="Скрины-Отзывы/photo_2025-06-18_07-49-56.jpg" alt="Отзыв клиента"></div>
+    <div class="rv-card"><img src="Скрины-Отзывы/photo_2025-06-18_07-51-08.jpg" alt="Отзыв клиента"></div>
   </div>
 </section>
 <footer>
