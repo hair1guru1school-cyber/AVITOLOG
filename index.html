@@ -2169,9 +2169,7 @@ function openProjectsTab() {
   updateProjectsSidebarOffset();
   _projectsZoneTab = 'active';
   _projectsDidInitialCenter = false;
-  requestAnimationFrame(function() {
-    renderProjectsScreen();
-  });
+  renderProjectsScreen();
   startProjectsSheetPullTimer();
   startProjectsDayShiftTimer();
   syncActiveProjectsSheetExact('calendar_snapshot_open').catch(function(){});
@@ -7630,6 +7628,12 @@ function setDriveConnectedUiState() {
   if (typeof restoreApiKey === 'function') restoreApiKey();
   var st = document.getElementById('crmSt');
   if (st) { st.className = 'crm-st'; st.textContent = ''; }
+  // При появлении приложения — открыть ПРОЕКТЫ, если это стартовая вкладка
+  if (projectsMode && typeof renderProjectsScreen === 'function') {
+    renderProjectsScreen();
+  } else if (!goalsMode && !agencyMode && typeof openProjectsTab === 'function') {
+    openProjectsTab();
+  }
 }
 function applyOAuthHash(hash) {
   if (!hash || hash.indexOf('access_token=') < 0) return false;
