@@ -385,7 +385,20 @@
   ];
 
   var ASSETS_STORAGE_KEY = 'avitolog_assets_projects_v1';
+  var ASSETS_MY_MONTH_KEY = 'avitolog_assets_my_month_v1';
+  var ASSETS_SASHA_KEY = 'avitolog_assets_sasha_v1';
   var ASSETS_USD_RATE = 95;
+
+  var MY_PAYMENTS_THIS_MONTH = [
+    { emoji: '🪨', name: 'Камни и Пеллеты', amount: '30000' },
+    { emoji: '🛌', name: 'Кирилл Кровати', amount: '30000' },
+    { emoji: '🏠', name: 'Дмитрий Бани Каркасные', amount: '34000' },
+    { emoji: '🚜', name: 'СельхозТехника', amount: '35000' },
+    { emoji: '👩🏻‍🏫', name: 'Ксения Сергеевна', amount: '25000' },
+    { emoji: '⚡️', name: 'Электрик Крым Александр', amount: '56000' },
+    { emoji: '🧱', name: 'Иван Сияр Сендвич', amount: '44000' },
+    { emoji: '🧱', name: 'Дома Андрей', amount: '50000' }
+  ];
 
   function getAssetsData() {
     try {
@@ -395,6 +408,28 @@
 
   function saveAssetsData(data) {
     try { localStorage.setItem(ASSETS_STORAGE_KEY, JSON.stringify(data)); } catch (e) {}
+  }
+
+  function getMyMonthData() {
+    try {
+      var s = localStorage.getItem(ASSETS_MY_MONTH_KEY);
+      return s ? JSON.parse(s) : {};
+    } catch (e) { return {}; }
+  }
+
+  function saveMyMonthData(data) {
+    try { localStorage.setItem(ASSETS_MY_MONTH_KEY, JSON.stringify(data)); } catch (e) {}
+  }
+
+  function getSashaData() {
+    try {
+      var s = localStorage.getItem(ASSETS_SASHA_KEY);
+      return s ? JSON.parse(s) : [];
+    } catch (e) { return []; }
+  }
+
+  function saveSashaData(arr) {
+    try { localStorage.setItem(ASSETS_SASHA_KEY, JSON.stringify(arr)); } catch (e) {}
   }
 
   function findProjectAmount(projName, soldProjects) {
@@ -434,6 +469,38 @@
       var valHtml = r.val ? (r.main ? '<span class="assets-summary-val">' + esc(r.val) + ' ₽<span class="assets-summary-usd">$' + fmt(r.valUsd) + '</span></span>' : '<span class="assets-summary-val">' + esc(r.val) + ' ₽</span>') : '<span class="assets-summary-val">—</span>';
       return '<div class="' + rowCls + '"><span class="assets-summary-label">' + r.icon + ' ' + esc(r.label) + '</span>' + valHtml + '</div>';
     }).join('');
+    var myMonthData = getMyMonthData();
+    var myPaymentsHtml = MY_PAYMENTS_THIS_MONTH.map(function(p) {
+      var stored = myMonthData[p.name] || {};
+      var amountVal = stored.amount !== undefined ? stored.amount : (p.amount || '');
+      var amountFmt = amountVal ? fmt(String(amountVal).replace(/\s/g, '')) : '';
+      return '<div class="assets-my-payment-row" data-name="' + esc(p.name) + '">' +
+        '<span class="assets-project-emoji">' + p.emoji + '</span>' +
+        '<span class="assets-project-name">' + esc(p.name) + '</span>' +
+        '<span class="assets-project-paid"><input type="text" value="' + esc(amountFmt) + '" placeholder="0" data-field="amount" onblur="window.__assetsSaveMyMonth(this)"></span>' +
+        '</div>';
+    }).join('');
+    var myMonthTotal = MY_PAYMENTS_THIS_MONTH.reduce(function(acc, p) {
+      var d = myMonthData[p.name] || {};
+      var v = d.amount || p.amount || 0;
+      return acc + (parseInt(String(v).replace(/\s/g, ''), 10) || 0);
+    }, 0);
+    var sashaData = getSashaData();
+    var sashaPaymentsHtml = '';
+    if (sashaData && sashaData.length) {
+      sashaPaymentsHtml = sashaData.map(function(p, idx) {
+        var amountFmt = (p.amount || '') ? fmt(String(p.amount).replace(/\s/g, '')) : '';
+        return '<div class="assets-sasha-payment-row" data-idx="' + idx + '">' +
+          '<span class="assets-project-emoji">' + (p.emoji || '📦') + '</span>' +
+          '<span class="assets-project-name"><input type="text" value="' + esc(p.name || '') + '" placeholder="Название" data-field="name" onblur="window.__assetsSaveSasha(this)"></span>' +
+          '<span class="assets-project-paid"><input type="text" value="' + esc(amountFmt) + '" placeholder="0" data-field="amount" onblur="window.__assetsSaveSasha(this)"></span>' +
+          '<button type="button" class="assets-row-remove" onclick="window.__assetsRemoveSasha(' + idx + ')" title="Удалить">✕</button>' +
+          '</div>';
+      }).join('');
+    }
+    var sashaTotal = (sashaData || []).reduce(function(acc, p) {
+      return acc + (parseInt(String(p.amount || '').replace(/\s/g, ''), 10) || 0);
+    }, 0);
     var headerRow = '<div class="assets-projects-header"><span class="ap-name">Проект</span><span class="ap-paid">Оплатил</span><span class="ap-expected">Ожидать в мес</span></div>';
     var projectRows = ASSETS_PROJECTS.map(function(p, idx) {
       var key = p.name;
@@ -452,6 +519,20 @@
     }).join('');
     mc.innerHTML = '<div class="assets-page-wrap">' +
       '<div class="assets-summary-table">' + summaryHtml + '</div>' +
+      '<div class="assets-block assets-my-payments">' +
+        '<div class="assets-projects-title">💰 Мои оплаты в этом месяце <span class="assets-block-total">' + fmt(myMonthTotal) + ' ₽</span></div>' +
+        '<div class="assets-payments-list">' +
+          '<div class="assets-payments-header"><span class="ap-name">Проект</span><span class="ap-paid">Сумма</span></div>' +
+          myPaymentsHtml +
+        '</div>' +
+      '</div>' +
+      '<div class="assets-block assets-sasha-payments">' +
+        '<div class="assets-projects-title">👤 Оплаты Саши <span class="assets-block-total">' + fmt(sashaTotal) + ' ₽</span></div>' +
+        '<div class="assets-payments-list" id="assetsSashaList">' +
+          (sashaData.length ? '<div class="assets-payments-header"><span class="ap-name">Проект</span><span class="ap-paid">Сумма</span></div>' + sashaPaymentsHtml : '<div class="assets-sasha-empty">Пока пусто</div>') +
+        '</div>' +
+        '<button type="button" class="assets-add-sasha" onclick="window.__assetsAddSasha && window.__assetsAddSasha()">+ Добавить оплату Саши</button>' +
+      '</div>' +
       '<div class="assets-projects-title">Проекты — чек клиента и оплата</div>' +
       '<div class="assets-projects-list" id="assetsProjectsList">' + headerRow + projectRows + '</div>' +
       '<div class="assets-ai-row" id="assetsAiRow">' +
@@ -482,6 +563,49 @@
     saveAssetsData(data);
   }
 
+  function saveMyMonthField(inputEl) {
+    if (!inputEl) return;
+    var row = inputEl.closest('.assets-my-payment-row');
+    var name = row && row.getAttribute('data-name');
+    var field = inputEl.getAttribute('data-field');
+    var val = String(inputEl.value || '').replace(/\s/g, '');
+    if (!name || !field) return;
+    var data = getMyMonthData();
+    data[name] = data[name] || {};
+    data[name][field] = val ? val : '';
+    saveMyMonthData(data);
+  }
+
+  function saveSashaField(inputEl) {
+    if (!inputEl) return;
+    var row = inputEl.closest('.assets-sasha-payment-row');
+    var idx = row ? parseInt(row.getAttribute('data-idx'), 10) : -1;
+    if (idx < 0) return;
+    var field = inputEl.getAttribute('data-field');
+    var val = String(inputEl.value || '').replace(/\s/g, '');
+    var arr = getSashaData();
+    if (arr[idx]) {
+      arr[idx][field] = val ? val : '';
+      saveSashaData(arr);
+    }
+  }
+
+  function addSashaPayment() {
+    var arr = getSashaData();
+    arr.push({ emoji: '📦', name: 'Новая оплата', amount: '' });
+    saveSashaData(arr);
+    if (typeof window.__renderAssetsPage === 'function') window.__renderAssetsPage();
+  }
+
+  function removeSashaPayment(idx) {
+    var arr = getSashaData();
+    if (idx >= 0 && idx < arr.length) {
+      arr.splice(idx, 1);
+      saveSashaData(arr);
+      if (typeof window.__renderAssetsPage === 'function') window.__renderAssetsPage();
+    }
+  }
+
   window.__aiImportParse = parseAndShow;
   window.__aiImportRejectRow = rejectRow;
   window.__aiImportConfirm = confirmImport;
@@ -489,4 +613,8 @@
   window.__aiImportRender = renderAiImportContent;
   window.__renderAssetsPage = renderAssetsPage;
   window.__assetsSaveProject = saveProjectField;
+  window.__assetsSaveMyMonth = saveMyMonthField;
+  window.__assetsSaveSasha = saveSashaField;
+  window.__assetsAddSasha = addSashaPayment;
+  window.__assetsRemoveSasha = removeSashaPayment;
 })();
