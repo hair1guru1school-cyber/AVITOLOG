@@ -307,36 +307,48 @@
       alert('Нет записей для импорта. Убери отметки отклонения или разбери текст заново.');
       return;
     }
-    var goalsData = getGoalsData();
-    goalsData.projects = goalsData.projects || [];
-    var today = getTodayStr();
-    var weekIndex = Math.ceil(new Date().getDate() / 7);
-    if (weekIndex > 4) weekIndex = 4;
-
-    toImport.forEach(function(row) {
-      var saleAmount = String(row.paid || '').replace(/\s/g, '');
-      var goalProject = {
-        id: generateId(),
-        name: row.client || 'Без названия',
-        emoji: '💰',
-        folderLink: row.folderLink || '',
-        date: row.date || today,
-        weekIndex: weekIndex,
-        mainPrice: saleAmount,
-        priceOptions: [saleAmount || '—'],
-        status: ['paid'],
-        stage: 'sold',
-        saleAmount: saleAmount,
-        sourceNote: '🤖 AI Import: ' + (row.raw && row.raw.comments ? row.raw.comments : '')
-      };
-      goalsData.projects.push(goalProject);
-    });
-
-    try {
-      localStorage.setItem('avitolog_goals_v1', JSON.stringify(goalsData));
-    } catch (e) {
-      alert('Ошибка сохранения: ' + (e.message || e));
-      return;
+    var inAssets = typeof assetsMode !== 'undefined' && assetsMode;
+    if (inAssets && typeof getAssetsMy === 'function' && typeof getAssetsSasha === 'function') {
+      toImport.forEach(function(row) {
+        var owner = (row.raw && row.raw.isSasha) ? 'sasha' : 'me';
+        var name = row.client || 'Без названия';
+        var paid = String(row.paid || '').replace(/\s/g, '');
+        var item = { emoji: '💰', name: name, paid: paid, expected: row.expected || '', paymentDate: row.date || (row.raw && row.raw.date) || '', folderLink: row.folderLink || '' };
+        if (owner === 'me') {
+          var arr = getAssetsMy();
+          arr.push(item);
+          saveAssetsMy(arr);
+        } else {
+          var arr2 = getAssetsSasha();
+          arr2.push(item);
+          saveAssetsSasha(arr2);
+        }
+      });
+    } else {
+      var goalsData = getGoalsData();
+      goalsData.projects = goalsData.projects || [];
+      var today = getTodayStr();
+      var weekIndex = Math.ceil(new Date().getDate() / 7);
+      if (weekIndex > 4) weekIndex = 4;
+      toImport.forEach(function(row) {
+        var saleAmount = String(row.paid || '').replace(/\s/g, '');
+        goalsData.projects.push({
+          id: generateId(),
+          name: row.client || 'Без названия',
+          emoji: '💰',
+          folderLink: row.folderLink || '',
+          date: row.date || today,
+          weekIndex: weekIndex,
+          mainPrice: saleAmount,
+          priceOptions: [saleAmount || '—'],
+          status: ['paid'],
+          stage: 'sold',
+          saleAmount: saleAmount,
+          sourceNote: '🤖 AI Import: ' + (row.raw && row.raw.comments ? row.raw.comments : '')
+        });
+      });
+      try { localStorage.setItem('avitolog_goals_v1', JSON.stringify(goalsData)); } catch (e) {}
+      if (window.AVITOLOG_GOALS && typeof window.AVITOLOG_GOALS.render === 'function') window.AVITOLOG_GOALS.render();
     }
 
     _aiImportRows = [];
@@ -346,186 +358,184 @@
     var empty = document.getElementById('aiImportPreviewEmpty');
     if (wrap) wrap.style.display = '';
     if (empty) {
-      empty.innerHTML = '✓ Импортировано ' + toImport.length + ' записей. Перейди в ЦЕЛИ → Оплачено.';
+      empty.innerHTML = inAssets ? '✓ Импортировано в колонки' : '✓ Импортировано. Перейди в ЦЕЛИ → Оплачено.';
       empty.style.display = '';
     }
-
-    if (window.AVITOLOG_GOALS && typeof window.AVITOLOG_GOALS.render === 'function') {
-      window.AVITOLOG_GOALS.render();
-    }
-    if (typeof assetsMode !== 'undefined' && assetsMode && typeof window.__renderAssetsPage === 'function') {
-      window.__renderAssetsPage();
-    }
+    if (typeof window.__renderAssetsPage === 'function') window.__renderAssetsPage();
   }
 
   function loadToTable() {
     confirmImport();
   }
 
-  var ASSETS_PROJECTS = [
-    { emoji: '🎄', name: 'Андрей Молл Строй' },
-    { emoji: '🎄', name: 'Иван Пиломатериалы' },
-    { emoji: '🪨', name: 'Камни и Пеллеты' },
-    { emoji: '🛋', name: 'Mebel Fan' },
-    { emoji: '🪟', name: 'Денис Ворота' },
-    { emoji: '🏎', name: 'Вячеслав АвтоВыкуп' },
-    { emoji: '🧱', name: 'Руслан Kuga Термо' },
-    { emoji: '🏠', name: 'Модуль Воронеж' },
-    { emoji: '🛌', name: 'Кирилл Кровати' },
-    { emoji: '👷‍♂️', name: 'Александр Крым' },
-    { emoji: '👷‍♂️', name: 'Артем Паколь' },
-    { emoji: '📊', name: 'Виктория Гибсокартон' },
-    { emoji: '🏠', name: 'Дмитрий Бани Каркасные' },
-    { emoji: '🏗', name: 'Наталья Дома ВашДом' },
-    { emoji: '🚜', name: 'СельхозТехника' },
-    { emoji: '👩🏻‍🏫', name: 'Ксения Сергеевна' },
-    { emoji: '⚡️', name: 'Электрик Крым Александр' },
-    { emoji: '🧱', name: 'Иван Сияр Сендвич панели' },
-    { emoji: '🧱', name: 'Дома Андрей' }
-  ];
-
-  var ASSETS_STORAGE_KEY = 'avitolog_assets_projects_v1';
+  var ASSETS_MY_KEY = 'avitolog_assets_my_v2';
+  var ASSETS_SASHA_KEY = 'avitolog_assets_sasha_v2';
+  var ASSETS_LEGACY_KEY = 'avitolog_assets_projects_v1';
   var ASSETS_USD_RATE = 95;
 
-  var DEFAULT_MY_PAYMENTS = {
-    'Камни и Пеллеты': '30000',
-    'Кирилл Кровати': '30000',
-    'Дмитрий Бани Каркасные': '34000',
-    'СельхозТехника': '35000',
-    'Ксения Сергеевна': '25000',
-    'Электрик Крым Александр': '56000',
-    'Иван Сияр Сендвич панели': '44000',
-    'Дома Андрей': '50000'
-  };
+  var DEFAULT_MY = [
+    { emoji: '🪨', name: 'Камни и Пеллеты', paid: '30000', expected: '', paymentDate: '' },
+    { emoji: '🛌', name: 'Кирилл Кровати', paid: '30000', expected: '', paymentDate: '' },
+    { emoji: '🏠', name: 'Дмитрий Бани Каркасные', paid: '34000', expected: '', paymentDate: '' },
+    { emoji: '🚜', name: 'СельхозТехника', paid: '35000', expected: '', paymentDate: '' },
+    { emoji: '👩🏻‍🏫', name: 'Ксения Сергеевна', paid: '25000', expected: '', paymentDate: '' },
+    { emoji: '⚡️', name: 'Электрик Крым Александр', paid: '56000', expected: '', paymentDate: '' },
+    { emoji: '🧱', name: 'Иван Сияр Сендвич панели', paid: '44000', expected: '', paymentDate: '' },
+    { emoji: '🧱', name: 'Дома Андрей', paid: '50000', expected: '', paymentDate: '' }
+  ];
 
-  function findProjectKey(name) {
-    if (!name) return null;
-    var n = String(name).trim().toLowerCase();
-    for (var i = 0; i < ASSETS_PROJECTS.length; i++) {
-      var pn = (ASSETS_PROJECTS[i].name || '').toLowerCase();
-      if (pn === n || pn.indexOf(n) >= 0 || n.indexOf(pn) >= 0) return ASSETS_PROJECTS[i].name;
-    }
-    return null;
+  function getPaymentBarFill(paymentDateStr) {
+    if (!paymentDateStr || !String(paymentDateStr).trim()) return 0;
+    var parts = String(paymentDateStr).trim().split(/[-/]/);
+    if (parts.length < 3) return 0;
+    var year = parseInt(parts[0], 10) || new Date().getFullYear();
+    var month = (parseInt(parts[1], 10) || 1) - 1;
+    var day = parseInt(parts[2], 10) || 1;
+    var payDate = new Date(year, month, day);
+    var today = new Date();
+    today.setHours(0, 0, 0, 0);
+    payDate.setHours(0, 0, 0, 0);
+    var daysUntil = Math.ceil((payDate - today) / (24 * 60 * 60 * 1000));
+    if (daysUntil <= 0) return 0;
+    var maxDays = 60;
+    return Math.min(1, daysUntil / maxDays);
   }
 
-  function getAssetsData() {
+  function getAssetsMy() {
     try {
-      var data = JSON.parse(localStorage.getItem(ASSETS_STORAGE_KEY) || '{}');
-      var myMonth = {};
-      try { myMonth = JSON.parse(localStorage.getItem('avitolog_assets_my_month_v1') || '{}'); } catch (e) {}
-      var sashaArr = [];
-      try { sashaArr = JSON.parse(localStorage.getItem('avitolog_assets_sasha_v1') || '[]'); } catch (e) {}
-      var migrated = false;
-      Object.keys(myMonth).forEach(function(k) {
-        var amt = myMonth[k] && myMonth[k].amount;
-        if (!amt) return;
-        var key = findProjectKey(k) || k;
-        data[key] = data[key] || {};
-        data[key].paid = amt;
-        data[key].owner = 'me';
-        migrated = true;
+      var s = localStorage.getItem(ASSETS_MY_KEY);
+      if (s) return JSON.parse(s);
+      var legacy = JSON.parse(localStorage.getItem(ASSETS_LEGACY_KEY) || '{}');
+      var arr = [];
+      Object.keys(legacy).forEach(function(k) {
+        var d = legacy[k];
+        if (d && d.owner === 'me') arr.push({ emoji: '📦', name: k, paid: d.paid || '', expected: d.expected || '', paymentDate: d.paymentDate || '' });
       });
-      sashaArr.forEach(function(p) {
-        var name = (p.name || '').trim();
-        if (!name) return;
-        var key = findProjectKey(name) || name;
-        data[key] = data[key] || {};
-        data[key].paid = data[key].paid || p.amount || '';
-        data[key].owner = 'sasha';
-        migrated = true;
-      });
-      if (migrated) {
-        try {
-          localStorage.removeItem('avitolog_assets_my_month_v1');
-          localStorage.removeItem('avitolog_assets_sasha_v1');
-        } catch (e) {}
-        saveAssetsData(data);
-      }
-      Object.keys(DEFAULT_MY_PAYMENTS).forEach(function(name) {
-        if (!data[name]) data[name] = { paid: DEFAULT_MY_PAYMENTS[name], owner: 'me' };
-      });
-      return data;
-    } catch (e) { return {}; }
+      if (arr.length) { saveAssetsMy(arr); return arr; }
+      return DEFAULT_MY.slice();
+    } catch (e) { return DEFAULT_MY.slice(); }
   }
 
-  function saveAssetsData(data) {
-    try { localStorage.setItem(ASSETS_STORAGE_KEY, JSON.stringify(data)); } catch (e) {}
+  function saveAssetsMy(arr) {
+    try { localStorage.setItem(ASSETS_MY_KEY, JSON.stringify(arr)); } catch (e) {}
   }
 
-  function findProjectAmount(projName, soldProjects) {
-    if (!soldProjects || !soldProjects.length) return null;
-    var n = String(projName || '').trim().toLowerCase();
-    for (var i = 0; i < soldProjects.length; i++) {
-      var p = soldProjects[i];
-      var pn = String(p.name || '').trim().toLowerCase();
-      if (pn && (pn === n || pn.indexOf(n) >= 0 || n.indexOf(pn) >= 0)) {
-        var v = p.saleAmount || p.mainPrice || (p.priceOptions && p.priceOptions[0]);
-        return v ? String(v).replace(/\s/g, '') : null;
-      }
+  function getAssetsSasha() {
+    try {
+      var s = localStorage.getItem(ASSETS_SASHA_KEY);
+      if (s) return JSON.parse(s);
+      var legacy = JSON.parse(localStorage.getItem(ASSETS_LEGACY_KEY) || '{}');
+      var arr = [];
+      Object.keys(legacy).forEach(function(k) {
+        var d = legacy[k];
+        if (d && d.owner === 'sasha') arr.push({ emoji: '📦', name: k, paid: d.paid || '', expected: d.expected || '', paymentDate: d.paymentDate || '' });
+      });
+      if (arr.length) { saveAssetsSasha(arr); return arr; }
+      return [];
+    } catch (e) { return []; }
+  }
+
+  function saveAssetsSasha(arr) {
+    try { localStorage.setItem(ASSETS_SASHA_KEY, JSON.stringify(arr)); } catch (e) {}
+  }
+
+  function addAssetsProject(owner, project) {
+    var name = (project && (project.name || project.company || project.contact_name)) || 'Новый проект';
+    name = String(name).trim() || 'Новый проект';
+    var emoji = (project && project.emoji) || '📦';
+    var paid = (project && (project.mainPrice || project.saleAmount || project.kp_count || '')) ? String(project.mainPrice || project.saleAmount || project.kp_count).replace(/\s/g, '') : '';
+    var folderLink = project && (project.folderLink || (project.folderId ? 'https://drive.google.com/drive/folders/' + project.folderId : ''));
+    var item = { emoji: emoji, name: name, paid: paid, expected: '', paymentDate: '', folderLink: folderLink || '', crmClientId: (project && project.crmClientId) || (project && project.folderId) || '' };
+    if (owner === 'me') {
+      var arr = getAssetsMy();
+      arr.push(item);
+      saveAssetsMy(arr);
+    } else {
+      var arr2 = getAssetsSasha();
+      arr2.push(item);
+      saveAssetsSasha(arr2);
     }
-    return null;
+    if (typeof window.__renderAssetsPage === 'function') window.__renderAssetsPage();
+    if (typeof window.__wireAssetsDragTargets === 'function') window.__wireAssetsDragTargets();
+  }
+
+  function removeAssetsProject(owner, idx) {
+    if (owner === 'me') {
+      var arr = getAssetsMy();
+      if (idx >= 0 && idx < arr.length) { arr.splice(idx, 1); saveAssetsMy(arr); }
+    } else {
+      var arr2 = getAssetsSasha();
+      if (idx >= 0 && idx < arr2.length) { arr2.splice(idx, 1); saveAssetsSasha(arr2); }
+    }
+    if (typeof window.__renderAssetsPage === 'function') window.__renderAssetsPage();
   }
 
   function renderAssetsPage() {
     var mc = document.getElementById('mainContent');
     if (!mc) return;
     var fmt = function(n) { return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ' '); };
-    var goalsData = getGoalsData();
-    var sold = (goalsData.projects || []).filter(function(p) { return p && p.stage === 'sold'; });
-    var assetsData = getAssetsData();
-    var totalRub = 338000;
+    var myList = getAssetsMy();
+    var sashaList = getAssetsSasha();
+    var myTotal = myList.reduce(function(a, p) { return a + (parseInt(String(p.paid || '').replace(/\s/g, ''), 10) || 0); }, 0);
+    var sashaTotal = sashaList.reduce(function(a, p) { return a + (parseInt(String(p.paid || '').replace(/\s/g, ''), 10) || 0); }, 0);
+    var totalRub = myTotal + sashaTotal || 338000;
     var totalUsd = Math.round(totalRub / ASSETS_USD_RATE);
     var summaryRows = [
-      { icon: '💰', label: 'Получено за все', val: '338 000', valUsd: totalUsd, main: true },
-      { icon: '✅', label: 'Оплаты клиентов', val: '304 000' },
-      { icon: '🌿', label: 'Ожидается еще', val: '20 000' },
-      { icon: '📊', label: 'Ожидается за мес', val: '324 000' },
-      { icon: '📈', label: 'Агентство AoA %', val: '34 000' },
-      { icon: '🆕', label: 'Новые клиенты', val: '' },
-      { icon: '👤', label: 'Активные клиенты', val: '195 000' }
+      { icon: '💰', label: 'Получено за все', val: fmt(totalRub), valUsd: totalUsd, main: true },
+      { icon: '✅', label: 'Мои оплаты', val: fmt(myTotal) },
+      { icon: '👤', label: 'Оплаты Саши', val: fmt(sashaTotal) }
     ];
-    var myMonthTotal = 0;
-    var sashaTotal = 0;
-    ASSETS_PROJECTS.forEach(function(p) {
-      var d = assetsData[p.name] || {};
-      if (d.owner === 'me') myMonthTotal += parseInt(String(d.paid || '').replace(/\s/g, ''), 10) || 0;
-      if (d.owner === 'sasha') sashaTotal += parseInt(String(d.paid || '').replace(/\s/g, ''), 10) || 0;
-    });
     var summaryHtml = summaryRows.map(function(r) {
       var rowCls = 'assets-summary-row' + (r.main ? ' assets-summary-main' : '');
       var valHtml = r.val ? (r.main ? '<span class="assets-summary-val">' + esc(r.val) + ' ₽<span class="assets-summary-usd">$' + fmt(r.valUsd) + '</span></span>' : '<span class="assets-summary-val">' + esc(r.val) + ' ₽</span>') : '<span class="assets-summary-val">—</span>';
       return '<div class="' + rowCls + '"><span class="assets-summary-label">' + r.icon + ' ' + esc(r.label) + '</span>' + valHtml + '</div>';
     }).join('');
-    var headerRow = '<div class="assets-projects-header"><span class="ap-name">Проект</span><span class="ap-paid">Оплатил</span><span class="ap-expected">Ожидать в мес</span><span class="ap-owner">Чей</span></div>';
-    var projectRows = ASSETS_PROJECTS.map(function(p) {
-      var key = p.name;
-      var stored = assetsData[key] || {};
-      var paidFromGoals = findProjectAmount(p.name, sold);
-      var paidVal = stored.paid || paidFromGoals || '';
-      var expectedVal = stored.expected || '';
-      var ownerVal = stored.owner || '';
-      var paidFmt = paidVal ? fmt(String(paidVal).replace(/\s/g, '')) : '';
-      var expectedFmt = expectedVal ? fmt(String(expectedVal).replace(/\s/g, '')) : '';
-      return '<div class="assets-project-row" data-name="' + esc(key) + '">' +
-        '<span class="assets-project-emoji">' + p.emoji + '</span>' +
-        '<span class="assets-project-name">' + esc(p.name) + '</span>' +
-        '<span class="assets-project-paid"><input type="text" value="' + esc(paidFmt) + '" placeholder="0" data-field="paid" onblur="window.__assetsSaveProject(this)"></span>' +
-        '<span class="assets-project-expected"><input type="text" value="' + esc(expectedFmt) + '" placeholder="0" data-field="expected" onblur="window.__assetsSaveProject(this)"></span>' +
-        '<span class="assets-project-owner"><select data-field="owner" onchange="window.__assetsSaveProject(this)">' +
-          '<option value=""' + (ownerVal === '' ? ' selected' : '') + '>—</option>' +
-          '<option value="me"' + (ownerVal === 'me' ? ' selected' : '') + '>Мои</option>' +
-          '<option value="sasha"' + (ownerVal === 'sasha' ? ' selected' : '') + '>Саши</option>' +
-        '</select></span>' +
+    var paidFirst = myList.filter(function(p) { return !!(p.paid && String(p.paid).replace(/\s/g, '')); });
+    var notPaid = myList.filter(function(p) { return !(p.paid && String(p.paid).replace(/\s/g, '')); });
+    var mySorted = paidFirst.concat(notPaid);
+    function renderColRow(p, idx, owner) {
+      var paidFmt = (p.paid || '') ? fmt(String(p.paid).replace(/\s/g, '')) : '';
+      var expectedFmt = (p.expected || '') ? fmt(String(p.expected).replace(/\s/g, '')) : '';
+      var payDate = (p.paymentDate || '').trim();
+      var barFill = getPaymentBarFill(payDate);
+      var isPaid = !!(p.paid && String(p.paid).replace(/\s/g, ''));
+      var rowCls = 'assets-col-row' + (owner === 'me' && isPaid ? ' assets-row-paid' : '');
+      var barPct = Math.round(barFill * 100);
+      return '<div class="' + rowCls + '" data-owner="' + owner + '" data-idx="' + idx + '">' +
+        '<span class="assets-col-emoji">' + (p.emoji || '📦') + '</span>' +
+        '<span class="assets-col-name">' +
+          '<span class="assets-col-name-inner">' +
+            '<input type="text" value="' + esc(p.name || '') + '" placeholder="Проект" data-field="name" onblur="window.__assetsSaveColRow(this)">' +
+            '<span class="assets-progress-bar" title="Чем больше ждать до платежа — тем полнее"><span class="assets-progress-fill" style="width:' + barPct + '%"></span></span>' +
+          '</span>' +
+        '</span>' +
+        '<span class="assets-col-date"><input type="date" value="' + esc(payDate) + '" data-field="paymentDate" onchange="window.__assetsSaveColRow(this)"></span>' +
+        '<span class="assets-col-paid"><input type="text" value="' + esc(paidFmt) + '" placeholder="0" data-field="paid" onblur="window.__assetsSaveColRow(this)"></span>' +
+        '<span class="assets-col-expected"><input type="text" value="' + esc(expectedFmt) + '" placeholder="0" data-field="expected" onblur="window.__assetsSaveColRow(this)"></span>' +
+        '<button type="button" class="assets-col-remove" onclick="window.__assetsRemoveProject(\'' + owner + '\',' + idx + ')" title="Удалить">✕</button>' +
         '</div>';
+    }
+    var myRows = mySorted.map(function(p, i) {
+      var idx = myList.indexOf(p);
+      return renderColRow(p, idx, 'me');
     }).join('');
+    var sashaRows = sashaList.map(function(p, idx) { return renderColRow(p, idx, 'sasha'); }).join('');
+    var colHeader = '<div class="assets-col-header"><span class="ac-name">Проект</span><span class="ac-date">Дата платежа</span><span class="ac-paid">Оплатил</span><span class="ac-expected">Ожидать</span><span class="ac-actions"></span></div>';
     mc.innerHTML = '<div class="assets-page-wrap">' +
       '<div class="assets-summary-table">' + summaryHtml + '</div>' +
-      '<div class="assets-owner-totals">' +
-        '<span class="assets-owner-me">💰 Мои: ' + fmt(myMonthTotal) + ' ₽</span>' +
-        '<span class="assets-owner-sasha">👤 Саши: ' + fmt(sashaTotal) + ' ₽</span>' +
+      '<div class="assets-two-cols">' +
+        '<div class="assets-col assets-col-me" id="assetsColMe" data-owner="me">' +
+          '<div class="assets-col-title">💰 Мои клиенты <span class="assets-col-total">' + fmt(myTotal) + ' ₽</span></div>' +
+          '<div class="assets-col-filter" title="Те кто оплатил — показываются первыми и подсвечены">💰 оплатили — сверху</div>' +
+          '<div class="assets-col-list">' + colHeader + myRows + '</div>' +
+          '<button type="button" class="assets-col-add" onclick="window.__assetsAddProject(\'me\')">+ Добавить</button>' +
+        '</div>' +
+        '<div class="assets-col assets-col-sasha" id="assetsColSasha" data-owner="sasha">' +
+          '<div class="assets-col-title">👤 Клиенты Саши <span class="assets-col-total">' + fmt(sashaTotal) + ' ₽</span></div>' +
+          '<div class="assets-col-list">' + colHeader + sashaRows + '</div>' +
+          '<button type="button" class="assets-col-add" onclick="window.__assetsAddProject(\'sasha\')">+ Добавить</button>' +
+        '</div>' +
       '</div>' +
-      '<div class="assets-projects-title">Проекты — каждая строка = один проект</div>' +
-      '<div class="assets-projects-list" id="assetsProjectsList">' + headerRow + projectRows + '</div>' +
       '<div class="assets-ai-row" id="assetsAiRow">' +
         '<span class="ai-label">🤖 ИИ-импорт</span>' +
         '<textarea class="ai-input" id="aiImportTextarea" rows="1" placeholder="Вставь текст оплат/клиентов — ИИ разберёт..."></textarea>' +
@@ -539,36 +549,61 @@
         '<div id="aiImportPreviewTable" style="display:none"></div>' +
       '</div>' +
       '</div>';
+    setTimeout(function() { if (typeof window.__wireAssetsDragTargets === 'function') window.__wireAssetsDragTargets(); }, 50);
   }
 
-  function saveProjectField(el) {
+  function saveColRow(el) {
     if (!el) return;
-    var row = el.closest('.assets-project-row');
-    var name = row && row.getAttribute('data-name');
+    var row = el.closest('.assets-col-row');
+    var owner = row && row.getAttribute('data-owner');
+    var idx = row ? parseInt(row.getAttribute('data-idx'), 10) : -1;
     var field = el.getAttribute('data-field');
-    var val = el.tagName === 'SELECT' ? (el.value || '') : String(el.value || '').replace(/\s/g, '');
-    if (!name || !field) return;
-    var data = getAssetsData();
-    data[name] = data[name] || {};
-    data[name][field] = val;
-    saveAssetsData(data);
-    if (field === 'owner' || field === 'paid') updateOwnerTotals();
+    var val = (field === 'name' || field === 'paymentDate') ? String(el.value || '').trim() : String(el.value || '').replace(/\s/g, '');
+    if (!owner || idx < 0 || !field) return;
+    if (owner === 'me') {
+      var arr = getAssetsMy();
+      if (arr[idx]) { arr[idx][field] = val; saveAssetsMy(arr); }
+    } else {
+      var arr2 = getAssetsSasha();
+      if (arr2[idx]) { arr2[idx][field] = val; saveAssetsSasha(arr2); }
+    }
+    updateColTotals();
+    if (field === 'paymentDate') {
+      var fill = getPaymentBarFill(val);
+      var fillEl = row && row.querySelector('.assets-progress-fill');
+      if (fillEl) fillEl.style.width = Math.round(fill * 100) + '%';
+    }
   }
 
-  function updateOwnerTotals() {
+  function updateColTotals() {
     var fmt = function(n) { return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ' '); };
-    var assetsData = getAssetsData();
-    var myTotal = 0;
-    var sashaTotal = 0;
-    ASSETS_PROJECTS.forEach(function(p) {
-      var d = assetsData[p.name] || {};
-      if (d.owner === 'me') myTotal += parseInt(String(d.paid || '').replace(/\s/g, ''), 10) || 0;
-      if (d.owner === 'sasha') sashaTotal += parseInt(String(d.paid || '').replace(/\s/g, ''), 10) || 0;
-    });
-    var meEl = document.querySelector('.assets-owner-me');
-    var sashaEl = document.querySelector('.assets-owner-sasha');
-    if (meEl) meEl.textContent = '💰 Мои: ' + fmt(myTotal) + ' ₽';
-    if (sashaEl) sashaEl.textContent = '👤 Саши: ' + fmt(sashaTotal) + ' ₽';
+    var myTotal = getAssetsMy().reduce(function(a, p) { return a + (parseInt(String(p.paid || '').replace(/\s/g, ''), 10) || 0); }, 0);
+    var sashaTotal = getAssetsSasha().reduce(function(a, p) { return a + (parseInt(String(p.paid || '').replace(/\s/g, ''), 10) || 0); }, 0);
+    var meEl = document.querySelector('.assets-col-me .assets-col-total');
+    var sashaEl = document.querySelector('.assets-col-sasha .assets-col-total');
+    if (meEl) meEl.textContent = fmt(myTotal) + ' ₽';
+    if (sashaEl) sashaEl.textContent = fmt(sashaTotal) + ' ₽';
+  }
+
+  function wireAssetsDragTargets() {
+    var meCol = document.getElementById('assetsColMe');
+    var sashaCol = document.getElementById('assetsColSasha');
+    function allowDrop(e) { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; if (e.currentTarget) e.currentTarget.classList.add('assets-col-drop-over'); }
+    function leaveDrop(e) { if (e.currentTarget) e.currentTarget.classList.remove('assets-col-drop-over'); }
+    function doDrop(owner, e) {
+      e.preventDefault();
+      if (e.currentTarget) e.currentTarget.classList.remove('assets-col-drop-over');
+      if (typeof document.body !== 'undefined') document.body.classList.remove('goals-client-dragging');
+      if (typeof window.__goalsClientDragEnd === 'function') window.__goalsClientDragEnd();
+      var client = (typeof getGoalsDropClient === 'function') ? getGoalsDropClient() : null;
+      if (client) addAssetsProject(owner, client);
+    }
+    if (meCol) { meCol.ondragover = allowDrop; meCol.ondragleave = leaveDrop; meCol.ondrop = function(e) { doDrop('me', e); }; }
+    if (sashaCol) { sashaCol.ondragover = allowDrop; sashaCol.ondragleave = leaveDrop; sashaCol.ondrop = function(e) { doDrop('sasha', e); }; }
+  }
+
+  function addProjectBlank(owner) {
+    addAssetsProject(owner, { name: 'Новый проект', emoji: '📦' });
   }
 
   window.__aiImportParse = parseAndShow;
@@ -577,5 +612,8 @@
   window.__aiImportLoadToTable = loadToTable;
   window.__aiImportRender = renderAiImportContent;
   window.__renderAssetsPage = renderAssetsPage;
-  window.__assetsSaveProject = saveProjectField;
+  window.__assetsSaveColRow = saveColRow;
+  window.__assetsAddProject = addProjectBlank;
+  window.__assetsRemoveProject = removeAssetsProject;
+  window.__wireAssetsDragTargets = wireAssetsDragTargets;
 })();
