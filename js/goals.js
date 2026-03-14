@@ -35,6 +35,12 @@
     if (day >= 15 && day <= 21) return 3;
     return 4;
   }
+  function hasWeekStarted(weekNum, todayDay) {
+    if (weekNum === 1) return true;
+    if (weekNum === 2) return todayDay >= 8;
+    if (weekNum === 3) return todayDay >= 15;
+    return todayDay >= 22;
+  }
   function getWeekDateRange(weekNum, year, month) {
     var monthNames = ['января','февраля','марта','апреля','мая','июня','июля','августа','сентября','октября','ноября','декабря'];
     var m = month >= 0 && month < 12 ? month : 0;
@@ -655,10 +661,10 @@
       '</div>' +
       '<div class="goals-weeks-wrap">' +
         '<div class="goals-weeks">' +
-          renderWeekSection(4, week4, sold, activeClient, currentWeekNum, y, m) +
-          renderWeekSection(3, week3, sold, activeClient, currentWeekNum, y, m) +
-          renderWeekSection(2, week2, sold, activeClient, currentWeekNum, y, m) +
-          renderWeekSection(1, week1, sold, activeClient, currentWeekNum, y, m) +
+          (hasWeekStarted(4, now.getDate()) ? renderWeekSection(4, week4, sold, activeClient, currentWeekNum, y, m) : '') +
+          (hasWeekStarted(3, now.getDate()) ? renderWeekSection(3, week3, sold, activeClient, currentWeekNum, y, m) : '') +
+          (hasWeekStarted(2, now.getDate()) ? renderWeekSection(2, week2, sold, activeClient, currentWeekNum, y, m) : '') +
+          (hasWeekStarted(1, now.getDate()) ? renderWeekSection(1, week1, sold, activeClient, currentWeekNum, y, m) : '') +
         '</div>' +
       '</div>' +
       '<div class="goals-work-wrap">' +

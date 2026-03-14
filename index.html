@@ -930,6 +930,8 @@ body.task-panel-font-l .task-panel-content{--tf:1.15}
 .projects-table-row[data-id].drop-after .projects-scroll{box-shadow:inset 0 -2px 0 var(--accent),0 8px 16px -12px rgba(0,217,126,0.85)}
 .projects-table-row .projects-sticky{display:flex;align-items:center}
 .projects-table-row .projects-scroll{flex:1;min-width:0}
+.projects-table-row-child .projects-sticky{background:rgba(0,0,0,0.15)}
+.projects-table-row-child.selected .projects-sticky{background:rgba(17,26,26,0.9)}
 .proj-cell-editable{cursor:pointer;padding:2px 8px;border-radius:6px;min-height:var(--projects-row-height,14px);display:flex;flex-wrap:nowrap;align-items:center;gap:4px;transition:background 0.15s;white-space:nowrap;overflow:hidden}
 .proj-cell-editable{position:relative}
 .proj-hover-pop{position:absolute;right:6px;top:-22px;opacity:0;pointer-events:none;transform:translateY(3px);transition:all 0.12s;z-index:30}
@@ -3084,6 +3086,7 @@ var _calendarPaintMode = null; // null | 'launch'
 var _calendarPainting = false;
 var _calendarPaintErase = false;
 var _calendarPaintProjectId = null;
+var _calendarPaintChildLineIndex = -1;
 var _calendarPaintDates = [];
 var _projectJokerDetachArmedId = null;
 var _cardsActivePlacement = null; // { value: string } - ghost follows mouse, click cell to place
@@ -3753,6 +3756,18 @@ function getProjectChildLines(p) {
   if (!arr.length) arr = [''];
   return arr;
 }
+function ensureChildLineEvents(p) {
+  var lines = getProjectChildLines(p);
+  if (!p.childLineEvents || !Array.isArray(p.childLineEvents)) p.childLineEvents = [];
+  while (p.childLineEvents.length < lines.length) p.childLineEvents.push([]);
+  if (p.childLineEvents.length > lines.length) p.childLineEvents.length = lines.length;
+}
+function getEventsForProjectRow(p, childLineIdx) {
+  if (childLineIdx >= 0 && p && p.childLineEvents && Array.isArray(p.childLineEvents) && p.childLineEvents[childLineIdx]) {
+    return p.childLineEvents[childLineIdx];
+  }
+  return (p && p.events) || [];
+}
 function renderProjectChildLinesHtml(p) {
   var lines = getProjectChildLines(p);
   return '<div class="proj-extra-lines">' + lines.map(function(line, idx) {
@@ -4152,10 +4167,11 @@ function hideProjectsCalMenu() {
     window._projectsCalMenuOutsideHandler = null;
   }
 }
-function showProjectsCalMenu(x, y, projectId, dateStr) {
+function showProjectsCalMenu(x, y, projectId, dateStr, childLineIndex) {
   hideProjectsCalMenu();
   _calendarCtx.projectId = projectId;
   _calendarCtx.date = dateStr;
+  _calendarCtx.childLineIndex = childLineIndex != null ? parseInt(childLineIndex, 10) : -1;
   var menu = document.createElement('div');
   menu.id = 'projectsCalMenu';
   menu.className = 'projects-cal-menu';
@@ -4201,6 +4217,7 @@ function showProjectsCalMenu(x, y, projectId, dateStr) {
     var action = item.getAttribute('data-action');
     var pid = _calendarCtx.projectId;
     var dt = _calendarCtx.date;
+    var clIdx = (_calendarCtx.childLineIndex != null ? _calendarCtx.childLineIndex : -1);
     if (!pid || !dt) return;
     if (action === 'launch-mode' || action === 'autoload-menu') {
       var host = item.classList.contains('has-sub') ? item : item.closest('.has-sub');
@@ -4213,7 +4230,7 @@ function showProjectsCalMenu(x, y, projectId, dateStr) {
       return;
     } else if (action === 'launch-days') {
       var n = parseInt(item.getAttribute('data-days') || '0', 10);
-      applyProjectLaunchRange(pid, dt, addDaysISO(dt, Math.max(0, n)));
+      applyProjectLaunchRange(pid, dt, addDaysISO(dt, Math.max(0, n)), clIdx);
       hideProjectsCalMenu();
     } else if (action === 'launch-days-custom') {
       var menuRectCustom = menu.getBoundingClientRect();
@@ -4229,7 +4246,7 @@ function showProjectsCalMenu(x, y, projectId, dateStr) {
             alert('Введите число дней. Например: 9');
             return;
           }
-          applyProjectLaunchRange(pid, dt, addDaysISO(dt, nCustom));
+          applyProjectLaunchRange(pid, dt, addDaysISO(dt, nCustom), clIdx);
           if (promptEl) promptEl.remove();
           hideProjectsCalMenu();
         }
@@ -4288,44 +4305,65 @@ function showProjectsCalMenu(x, y, projectId, dateStr) {
       document.body.classList.remove('calendar-erase-mode');
       hideProjectsCalMenu();
     } else if (action === 'launch-clear') {
-      clearProjectLaunch(pid);
+      clearProjectLaunch(pid, clIdx);
       hideProjectsCalMenu();
     }
   };
 }
-function applyProjectLaunchRange(projectId, startDate, endDate) {
+function applyProjectLaunchRange(projectId, startDate, endDate, childLineIndex) {
   var data = loadProjectsData();
   var p = data.projects.find(function(x){ return x.id === projectId; });
   if (!p) return;
   var s = startDate <= endDate ? startDate : endDate;
   var e = startDate <= endDate ? endDate : startDate;
-  p.events = (p.events || []).filter(function(ev) {
+  var clIdx = (childLineIndex != null && childLineIndex >= 0) ? childLineIndex : -1;
+  var targetEvents = (clIdx >= 0) ? (ensureChildLineEvents(p), (p.childLineEvents || [])[clIdx] || (p.childLineEvents[clIdx] = [])) : (p.events || []);
+  targetEvents = targetEvents.filter(function(ev) {
     return ev.type !== 'launch_range' && ev.type !== 'not_launched_project_marker';
   });
-  p.events.push({type:'launch_range', startDate:s, endDate:e});
-  p.events.push({type:'not_launched_project_marker', date:e});
+  targetEvents.push({type:'launch_range', startDate:s, endDate:e});
+  targetEvents.push({type:'not_launched_project_marker', date:e});
+  if (clIdx >= 0) {
+    ensureChildLineEvents(p);
+    p.childLineEvents[clIdx] = targetEvents;
+  } else {
+    p.events = targetEvents;
+  }
   saveProjectsData(data);
   rerenderProjectsPreserveScroll();
   syncProjectToActiveSheet(projectId, 'launch_range_set');
 }
-function clearProjectLaunch(projectId) {
+function clearProjectLaunch(projectId, childLineIndex) {
   var data = loadProjectsData();
   var p = data.projects.find(function(x){ return x.id === projectId; });
   if (!p) return;
-  p.events = (p.events || []).filter(function(ev) {
-    return ev.type !== 'launch_range' && ev.type !== 'not_launched_project_marker';
-  });
+  var clIdx = (childLineIndex != null && childLineIndex >= 0) ? childLineIndex : -1;
+  if (clIdx >= 0) {
+    ensureChildLineEvents(p);
+    var arr = (p.childLineEvents || [])[clIdx];
+    if (Array.isArray(arr)) {
+      p.childLineEvents[clIdx] = arr.filter(function(ev) {
+        return ev.type !== 'launch_range' && ev.type !== 'not_launched_project_marker';
+      });
+    }
+  } else {
+    p.events = (p.events || []).filter(function(ev) {
+      return ev.type !== 'launch_range' && ev.type !== 'not_launched_project_marker';
+    });
+  }
   saveProjectsData(data);
   rerenderProjectsPreserveScroll();
   syncProjectToActiveSheet(projectId, 'launch_range_clear');
 }
-function clearProjectLaunchRange(projectId, startDate, endDate) {
+function clearProjectLaunchRange(projectId, startDate, endDate, childLineIndex) {
   var data = loadProjectsData();
   var p = data.projects.find(function(x){ return x.id === projectId; });
   if (!p) return;
   var s = startDate <= endDate ? startDate : endDate;
   var e = startDate <= endDate ? endDate : startDate;
-  var launchRanges = (p.events || []).filter(function(ev){ return ev && ev.type === 'launch_range'; });
+  var clIdx = (childLineIndex != null && childLineIndex >= 0) ? childLineIndex : -1;
+  var targetEvents = (clIdx >= 0) ? ((ensureChildLineEvents(p), p.childLineEvents || [])[clIdx] || []) : (p.events || []);
+  var launchRanges = targetEvents.filter(function(ev){ return ev && ev.type === 'launch_range'; });
   if (!launchRanges.length) return;
   var nextRanges = [];
   launchRanges.forEach(function(rg){
@@ -4343,13 +4381,19 @@ function clearProjectLaunchRange(projectId, startDate, endDate) {
       nextRanges.push({type:'launch_range', startDate:addDaysISO(e, 1), endDate:re});
     }
   });
-  p.events = (p.events || []).filter(function(ev){
+  targetEvents = targetEvents.filter(function(ev){
     return ev.type !== 'launch_range' && ev.type !== 'not_launched_project_marker';
   });
   nextRanges.forEach(function(rg){
-    p.events.push(rg);
-    p.events.push({type:'not_launched_project_marker', date:rg.endDate});
+    targetEvents.push(rg);
+    targetEvents.push({type:'not_launched_project_marker', date:rg.endDate});
   });
+  if (clIdx >= 0) {
+    ensureChildLineEvents(p);
+    p.childLineEvents[clIdx] = targetEvents;
+  } else {
+    p.events = targetEvents;
+  }
   saveProjectsData(data);
   rerenderProjectsPreserveScroll();
   syncProjectToActiveSheet(projectId, 'launch_range_partial_clear');
@@ -4395,8 +4439,9 @@ function previewLaunchDates(dates) {
   document.querySelectorAll('.projects-cal-day.cal-launch-preview, .projects-cal-day.cal-launch-preview-last').forEach(function(el) {
     el.classList.remove('cal-launch-preview', 'cal-launch-preview-last');
   });
+  var clIdx = (_calendarPaintChildLineIndex != null && _calendarPaintChildLineIndex >= 0) ? String(_calendarPaintChildLineIndex) : '-1';
   dates.forEach(function(d, idx) {
-    var sel = '.projects-cal-day[data-project-id="' + _calendarPaintProjectId + '"][data-date="' + d + '"]';
+    var sel = '.projects-cal-day[data-project-id="' + _calendarPaintProjectId + '"][data-child-line-index="' + clIdx + '"][data-date="' + d + '"]';
     var cell = document.querySelector(sel);
     if (!cell) return;
     cell.classList.add('cal-launch-preview');
@@ -4444,6 +4489,8 @@ function bindProjectsCalendarInteractions() {
       _calendarPainting = true;
       _calendarPaintErase = false;
       _calendarPaintProjectId = pid;
+      var clAttr = cell.getAttribute('data-child-line-index');
+      _calendarPaintChildLineIndex = (clAttr != null && clAttr !== '') ? parseInt(clAttr, 10) : -1;
       _calendarPaintDates = [cell.getAttribute('data-date')];
       document.body.classList.remove('calendar-erase-mode');
       previewLaunchDates(_calendarPaintDates);
@@ -4455,7 +4502,9 @@ function bindProjectsCalendarInteractions() {
     var pid = cell.getAttribute('data-project-id');
     if (!e.target.closest('.cal-cards-del') && !e.target.closest('.cal-deadline-del') && !e.target.closest('.cal-task-item') && pid && typeof openTaskPanel === 'function' && typeof selectProjectRow === 'function') {
       var dt = cell.getAttribute('data-date');
-      _selectedCalCell = dt ? { projectId: pid, dateStr: dt } : null;
+      var clAttr = cell.getAttribute('data-child-line-index');
+      var childLineIdx = (clAttr != null && clAttr !== '') ? parseInt(clAttr, 10) : null;
+      _selectedCalCell = dt ? { projectId: pid, dateStr: dt, childLineIdx: childLineIdx } : null;
       _selectedProjectId = pid;
       markProjectRowSelection(pid);
       openTaskPanel(pid);
@@ -4499,13 +4548,15 @@ function bindProjectsCalendarInteractions() {
       _calendarPainting = true;
       _calendarPaintErase = true;
       _calendarPaintProjectId = cell.getAttribute('data-project-id');
+      var clAttr = cell.getAttribute('data-child-line-index');
+      _calendarPaintChildLineIndex = (clAttr != null && clAttr !== '') ? parseInt(clAttr, 10) : -1;
       _calendarPaintDates = [cell.getAttribute('data-date')];
       document.body.classList.add('calendar-erase-mode');
       previewLaunchDates(_calendarPaintDates);
       return;
     }
     e.preventDefault();
-    showProjectsCalMenu(e.clientX, e.clientY, cell.getAttribute('data-project-id'), cell.getAttribute('data-date'));
+    showProjectsCalMenu(e.clientX, e.clientY, cell.getAttribute('data-project-id'), cell.getAttribute('data-date'), cell.getAttribute('data-child-line-index'));
   };
   wrap.onmouseout = function(e) {
     if (e.relatedTarget && e.relatedTarget.closest && e.relatedTarget.closest('.cal-task-item')) return;
@@ -4526,6 +4577,9 @@ function bindProjectsCalendarInteractions() {
     if (!cell) return;
     var pid = cell.getAttribute('data-project-id');
     if (pid !== _calendarPaintProjectId) return;
+    var clAttr = cell.getAttribute('data-child-line-index');
+    var cellClIdx = (clAttr != null && clAttr !== '') ? parseInt(clAttr, 10) : -1;
+    if (cellClIdx !== _calendarPaintChildLineIndex) return;
     var d = cell.getAttribute('data-date');
     _calendarPaintDates.push(d);
     var range = dateRangeFromPaint(_calendarPaintDates);
@@ -4585,9 +4639,11 @@ function finishCalendarPaint() {
     el.classList.remove('cal-launch-preview', 'cal-launch-preview-last');
   });
   if (range && projectId) {
-    if (eraseMode) clearProjectLaunchRange(projectId, range.start, range.end);
-    else applyProjectLaunchRange(projectId, range.start, range.end);
+    var clIdx = (_calendarPaintChildLineIndex != null && _calendarPaintChildLineIndex >= 0) ? _calendarPaintChildLineIndex : -1;
+    if (eraseMode) clearProjectLaunchRange(projectId, range.start, range.end, clIdx);
+    else applyProjectLaunchRange(projectId, range.start, range.end, clIdx);
   }
+  _calendarPaintChildLineIndex = -1;
 }
 function clearProjectDropMarks() {
   document.querySelectorAll('.projects-table-row.drop-before, .projects-table-row.drop-after').forEach(function(r) {
@@ -5388,6 +5444,7 @@ var toolsRow = '<div class="projects-zone-tabs projects-zone-tabs-bottom">' + ad
   html += '<div class="projects-table-row projects-table-header projects-cal-header"><div class="projects-sticky">' + headerSticky + '</div><div class="projects-scroll">' + headerScroll + '</div></div>';
 
   visibleProjects.forEach(function(p) {
+    ensureChildLineEvents(p);
     var emHtml = getProjectEmojiButtonHtml(p);
     var pathHtml = pathLabels.map(function(pl){ return '<button type="button" class="proj-path-btn' + (p.clientPath&&p.clientPath[pl.k]?' on':'') + '" title="' + pl.l + '" onclick="event.stopPropagation();toggleProjectPath(\'' + p.id + '\',\'' + pl.k + '\')">' + (pl.e||pl.l.slice(0,1)) + '</button>'; }).join('');
     var normType = normalizeProjectClientType(p.clientType);
@@ -5409,37 +5466,52 @@ var toolsRow = '<div class="projects-zone-tabs projects-zone-tabs-bottom">' + ad
     var selectedClass = (_selectedProjectId === p.id) ? ' selected' : '';
     var groupedClass = (_projectsTypeSortPriority && normalizeProjectClientType(p.clientType) === _projectsTypeSortPriority) ? ' group-match' : '';
     var newFromGoalsClass = p._newFromGoals ? ' project-row-new-from-goals' : '';
-    var rowHtml = '<div class="projects-table-row' + selectedClass + groupedClass + newFromGoalsClass + '" data-id="' + p.id + '" draggable="true" onclick="selectProjectRow(\'' + p.id + '\')" ondragstart="startProjectRowDrag(event,\'' + p.id + '\')" ondragover="handleProjectRowDragOver(event,this,\'' + p.id + '\')" ondragleave="handleProjectRowDragLeave(event,this)" ondrop="handleProjectRowDrop(event,\'' + p.id + '\')" ondragend="endProjectRowDrag(event)"><div class="projects-sticky">' + stickyHtml + '</div><div class="projects-scroll">';
-    dates.forEach(function(d, idx) {
-      var dStr = toIsoDateLocal(d);
-      var cellHtml = '';
-      var launchEvt = (p.events||[]).find(function(e){ return e.type==='launch_range' && dStr>=e.startDate && dStr<=e.endDate; });
-      var evt = (p.events||[]).find(function(e){ return e.type==='active_range' && dStr>=e.startDate && dStr<=e.endDate; });
-      var rocket = (p.events||[]).find(function(e){ return e.type==='not_launched_project_marker' && e.date===dStr; });
-      var isTodayCell = (dStr === todayStr);
-      var cardsActiveDate = (p.cardsActiveDate || '') && String(p.cardsActive || '').trim();
-      var cardsActiveShown = cardsActiveDate && (dStr === p.cardsActiveDate);
-      var mustLaunchShown = !!p.mustLaunchRequired && (dStr === (p.mustLaunchDate || todayStr));
-      var dayTasks = typeof getTasksForProjectAndDate === 'function' ? getTasksForProjectAndDate(p.id, dStr) : [];
-      var isCalSelected = _selectedCalCell && _selectedCalCell.projectId === p.id && _selectedCalCell.dateStr === dStr;
-      var dayCls = 'projects-cal-day' + (isTodayCell ? ' today' : '') + (isCalSelected ? ' cal-day-selected' : '');
-      if (cardsActiveShown) cellHtml = '<div class="cal-cards"><span class="cal-cards-del">×</span><span class="cal-cards-num">' + escAttr(p.cardsActive || '') + '</span></div>';
-      else if (mustLaunchShown) cellHtml = '<div class="cal-deadline"><span class="cal-deadline-del">×</span><span class="cal-deadline-icon">!!</span></div>';
-      else if (rocket) { cellHtml = '<div class="cal-launch-tip"></div>'; dayCls += ' day-launch-end'; }
-      else if (launchEvt) { cellHtml = '<div class="cal-launch-bar"></div>'; dayCls += ' day-launch'; }
-      else if (evt) { cellHtml = '<div class="cal-bar"></div>'; dayCls += ' day-active'; }
-      if (dayTasks.length > 0) {
-        var taskBadges = dayTasks.map(function(t){
-          var em = (t.emoji || '&#128221;');
-          var tit = escAttr(t.title || 'Задача');
-          return '<span class="cal-task-item" data-task-id="' + escAttr(t.id) + '" data-task-title="' + tit + '" title="' + tit + '" onclick="event.stopPropagation()">' + em + '</span>';
-        }).join('');
-        cellHtml = (cellHtml || '') + '<div class="cal-tasks-badges">' + taskBadges + '</div>';
-      }
-      rowHtml += '<div class="' + dayCls + '" data-project-id="' + p.id + '" data-date="' + dStr + '" style="width:' + DAY_PX + 'px;min-width:' + DAY_PX + 'px;max-width:' + DAY_PX + 'px">' + cellHtml + '</div>';
-    });
-    rowHtml += '</div></div>';
+    function renderRowCells(events, childLineIdx) {
+      var out = '';
+      dates.forEach(function(d) {
+        var dStr = toIsoDateLocal(d);
+        var cellHtml = '';
+        var launchEvt = (events||[]).find(function(e){ return e.type==='launch_range' && dStr>=e.startDate && dStr<=e.endDate; });
+        var evt = (events||[]).find(function(e){ return e.type==='active_range' && dStr>=e.startDate && dStr<=e.endDate; });
+        var rocket = (events||[]).find(function(e){ return e.type==='not_launched_project_marker' && e.date===dStr; });
+        var isTodayCell = (dStr === todayStr);
+        var cardsActiveDate = (p.cardsActiveDate || '') && String(p.cardsActive || '').trim();
+        var cardsActiveShown = (childLineIdx < 0) && cardsActiveDate && (dStr === p.cardsActiveDate);
+        var mustLaunchShown = (childLineIdx < 0) && !!p.mustLaunchRequired && (dStr === (p.mustLaunchDate || todayStr));
+        var dayTasks = typeof getTasksForProjectAndDate === 'function' ? getTasksForProjectAndDate(p.id, dStr) : [];
+        var isCalSelected = _selectedCalCell && _selectedCalCell.projectId === p.id && _selectedCalCell.dateStr === dStr && ((childLineIdx < 0 && (_selectedCalCell.childLineIdx == null || _selectedCalCell.childLineIdx < 0)) || (childLineIdx >= 0 && _selectedCalCell.childLineIdx === childLineIdx));
+        var dayCls = 'projects-cal-day' + (isTodayCell ? ' today' : '') + (isCalSelected ? ' cal-day-selected' : '');
+        if (cardsActiveShown) cellHtml = '<div class="cal-cards"><span class="cal-cards-del">×</span><span class="cal-cards-num">' + escAttr(p.cardsActive || '') + '</span></div>';
+        else if (mustLaunchShown) cellHtml = '<div class="cal-deadline"><span class="cal-deadline-del">×</span><span class="cal-deadline-icon">!!</span></div>';
+        else if (rocket) { cellHtml = '<div class="cal-launch-tip"></div>'; dayCls += ' day-launch-end'; }
+        else if (launchEvt) { cellHtml = '<div class="cal-launch-bar"></div>'; dayCls += ' day-launch'; }
+        else if (evt) { cellHtml = '<div class="cal-bar"></div>'; dayCls += ' day-active'; }
+        if (dayTasks.length > 0) {
+          var taskBadges = dayTasks.map(function(t){
+            var em = (t.emoji || '&#128221;');
+            var tit = escAttr(t.title || 'Задача');
+            return '<span class="cal-task-item" data-task-id="' + escAttr(t.id) + '" data-task-title="' + tit + '" title="' + tit + '" onclick="event.stopPropagation()">' + em + '</span>';
+          }).join('');
+          cellHtml = (cellHtml || '') + '<div class="cal-tasks-badges">' + taskBadges + '</div>';
+        }
+        var clIdx = childLineIdx >= 0 ? String(childLineIdx) : '-1';
+        out += '<div class="' + dayCls + '" data-project-id="' + p.id + '" data-child-line-index="' + clIdx + '" data-date="' + dStr + '" style="width:' + DAY_PX + 'px;min-width:' + DAY_PX + 'px;max-width:' + DAY_PX + 'px">' + cellHtml + '</div>';
+      });
+      return out;
+    }
+    var mainEvents = getEventsForProjectRow(p, -1);
+    var rowHtml = '<div class="projects-table-row' + selectedClass + groupedClass + newFromGoalsClass + '" data-id="' + p.id + '" data-child-line-index="-1" draggable="true" onclick="selectProjectRow(\'' + p.id + '\')" ondragstart="startProjectRowDrag(event,\'' + p.id + '\')" ondragover="handleProjectRowDragOver(event,this,\'' + p.id + '\')" ondragleave="handleProjectRowDragLeave(event,this)" ondrop="handleProjectRowDrop(event,\'' + p.id + '\')" ondragend="endProjectRowDrag(event)"><div class="projects-sticky">' + stickyHtml + '</div><div class="projects-scroll">' + renderRowCells(mainEvents, -1) + '</div></div>';
     html += rowHtml;
+    var childLines = (p.childLines || []).filter(function(v){ return String(v || '').trim() !== ''; });
+    childLines.forEach(function(lineName, posIdx) {
+      var origIdx = -1;
+      for (var i = 0; i < (p.childLines || []).length; i++) { if (String((p.childLines[i]||'')).trim() === String(lineName||'').trim()) { origIdx = i; break; } }
+      if (origIdx < 0) return;
+      var childEvents = getEventsForProjectRow(p, origIdx);
+      var childSticky = '<div class="proj-col-expand"></div><div class="proj-col-type"></div><span class="proj-drive-btn" style="pointer-events:none;opacity:0"></span><div class="proj-cell-editable proj-child-line-cell" data-id="' + p.id + '" data-child-line-index="' + origIdx + '"><div class="proj-main-line" style="padding-left:24px;opacity:.9"><span class="proj-child-line-label">' + escAttr(lineName) + '</span></div></div>';
+      var childRowHtml = '<div class="projects-table-row projects-table-row-child' + selectedClass + '" data-id="' + p.id + '" data-child-line-index="' + origIdx + '" onclick="selectProjectRow(\'' + p.id + '\')"><div class="projects-sticky">' + childSticky + '</div><div class="projects-scroll">' + renderRowCells(childEvents, origIdx) + '</div></div>';
+      html += childRowHtml;
+    });
   });
   var hiddenList = (data.hiddenProjects || []).slice(0, 50);
   var hiddenByMonth = {};
@@ -5854,9 +5926,11 @@ function addProjectChildLine(projectId, idx) {
   var data = loadProjectsData();
   var p = data.projects.find(function(x){ return x.id===projectId; });
   if (!p) return;
+  ensureChildLineEvents(p);
   var lines = getProjectChildLines(p);
   var insertAt = Math.max(0, Math.min(lines.length, idx + 1));
   lines.splice(insertAt, 0, '');
+  p.childLineEvents.splice(insertAt, 0, []);
   p.childLines = lines;
   _expandedProjectIds[projectId] = true;
   _projectChildFocusKey = projectId + ':' + insertAt;
@@ -5868,11 +5942,14 @@ function removeProjectChildLine(projectId, idx) {
   var data = loadProjectsData();
   var p = data.projects.find(function(x){ return x.id===projectId; });
   if (!p) return;
+  ensureChildLineEvents(p);
   var lines = getProjectChildLines(p);
   if (lines.length <= 1) {
     lines[0] = '';
+    if (p.childLineEvents.length) p.childLineEvents[0] = [];
   } else {
     lines.splice(idx, 1);
+    p.childLineEvents.splice(idx, 1);
   }
   p.childLines = lines;
   _expandedProjectIds[projectId] = true;
