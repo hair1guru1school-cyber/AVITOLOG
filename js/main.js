@@ -2,7 +2,7 @@
 function switchTab(tab) {
   if (agencyMode) return;
   currentTab = tab;
-  ['analysis','presale','avito1'].forEach(function(t) {
+  ['analysis','presale','avito1','assets'].forEach(function(t) {
     var el = document.getElementById('tab-'+t);
     if (el) el.classList.toggle('active', t===tab);
   });
@@ -16,6 +16,31 @@ function switchTab(tab) {
     }
     return;
   }
+  if (tab === 'assets') {
+    var bar = document.getElementById('depthBar');
+    var secBar = document.getElementById('secBar');
+    var genRow = document.getElementById('genButtonsRow');
+    var genExtra = document.getElementById('genExtraPrompt');
+    if (bar) bar.style.display = 'none';
+    if (secBar) secBar.style.display = 'none';
+    if (genRow) genRow.style.display = 'none';
+    if (genExtra) genExtra.style.display = 'none';
+    if (typeof window.__aiImportRender === 'function') {
+      setContent('<div id="aiImportPreview"></div>');
+      setTimeout(function() {
+        var c = document.getElementById('mainContent');
+        if (c) c.innerHTML = '<div id="aiImportPreview"></div>';
+        window.__aiImportRender();
+      }, 0);
+    } else {
+      setContent('<div class="ai-import-wrap"><div class="ai-import-title">🤖 ИИ-импорт</div><p style="color:var(--muted)">Модуль ai-import.js не загружен.</p></div>');
+    }
+    return;
+  }
+  var genRow = document.getElementById('genButtonsRow');
+  var genExtra = document.getElementById('genExtraPrompt');
+  if (genRow) genRow.style.display = '';
+  if (genExtra) genExtra.style.display = '';
   var bar = document.getElementById('depthBar');
   if (bar) bar.style.display = 'flex';
   var btns = bar ? bar.querySelectorAll('.depth-btn') : [];

@@ -1467,6 +1467,33 @@ body.goals-client-dragging .goal-block-sold{transition:all .18s ease}
 .goal-sale-opts{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:8px}
 .goal-sale-opt-btn{padding:8px 14px;border-radius:8px;border:1px solid rgba(0,217,126,0.4);background:rgba(0,217,126,0.08);color:#00d97e;font-size:13px;font-weight:700;cursor:pointer;transition:all .15s}
 .goal-sale-opt-btn:hover{background:rgba(0,217,126,0.2);border-color:var(--accent)}
+
+/* 🤖 AI Import (АКТИВЫ) */
+.ai-import-wrap{max-width:800px;margin:0 auto;padding:24px;display:flex;flex-direction:column;gap:20px}
+.ai-import-title{font-size:18px;font-weight:800;color:var(--text);display:flex;align-items:center;gap:10px}
+.ai-import-textarea{min-height:140px;padding:14px;border-radius:10px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-family:Golos Text,sans-serif;font-size:13px;resize:vertical;outline:none}
+.ai-import-textarea:focus{border-color:var(--accent);box-shadow:0 0 0 2px rgba(0,217,126,0.15)}
+.ai-import-btns{display:flex;gap:10px;flex-wrap:wrap}
+.ai-import-btn{padding:10px 20px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-weight:700;font-size:13px;cursor:pointer;transition:all .15s}
+.ai-import-btn:hover{background:rgba(0,217,126,0.12);border-color:var(--accent);color:var(--accent)}
+.ai-import-btn.primary{background:rgba(0,217,126,0.15);border-color:var(--accent);color:var(--accent)}
+.ai-import-btn.primary:hover{background:rgba(0,217,126,0.25)}
+.ai-import-btn:disabled{opacity:.5;cursor:not-allowed}
+.ai-import-preview{margin-top:12px;border:1px solid var(--border);border-radius:10px;overflow:hidden;background:var(--surface2)}
+.ai-import-preview-empty{padding:24px;text-align:center;color:var(--muted);font-size:13px}
+.ai-import-table{width:100%;border-collapse:collapse;font-size:12px}
+.ai-import-table th{background:rgba(0,0,0,.2);padding:10px 12px;text-align:left;font-weight:600;border-bottom:1px solid var(--border);color:var(--muted)}
+.ai-import-table td{padding:8px 12px;border-bottom:1px solid rgba(255,255,255,0.04)}
+.ai-import-table tr:hover td{background:rgba(255,255,255,0.02)}
+.ai-import-table tr.rejected td{opacity:.4;text-decoration:line-through}
+.ai-import-row-actions{display:flex;gap:4px}
+.ai-import-row-btn{width:28px;height:28px;border-radius:6px;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;font-size:12px;display:flex;align-items:center;justify-content:center;transition:all .15s}
+.ai-import-row-btn:hover{background:rgba(0,217,126,0.15);border-color:var(--accent);color:var(--accent)}
+.ai-import-row-btn.reject:hover{background:rgba(255,68,68,0.15);border-color:#ff4444;color:#ff4444}
+.ai-import-match{font-size:11px;color:var(--accent);max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ai-import-match-none{color:var(--muted);font-style:italic}
+.ai-import-loading{padding:24px;text-align:center;color:var(--muted)}
+.ai-import-confirm-bar{margin-top:16px;padding:14px;border-radius:10px;background:rgba(0,217,126,0.08);border:1px solid rgba(0,217,126,0.25);display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 <script src="https://accounts.google.com/gsi/client" async></script>
@@ -1681,6 +1708,11 @@ if (!window.AVITOLOG_GOALS) {
     <span class="rtab-txt" id="txt-avito1">AVITO №1</span>
     <div class="rtab-bar" id="bar-avito1"></div>
   </button>
+  <button type="button" class="rtab" id="tab-assets" onclick="switchTab('assets')">
+    <span class="rtab-ico">💰</span>
+    <span class="rtab-txt" id="txt-assets">АКТИВЫ</span>
+    <div class="rtab-bar" id="bar-assets"></div>
+  </button>
 </div>
 
 <div class="chat-float" id="chatFloat" style="display:none">
@@ -1703,6 +1735,7 @@ if (!window.AVITOLOG_GOALS) {
 <script src="js/hero-asset.js"></script>
 <script src="js/core.js"></script>
 <script src="js/projects.js"></script>
+<script src="js/ai-import.js"></script>
 <script src="js/main.js"></script>
 </body>
 </html>
