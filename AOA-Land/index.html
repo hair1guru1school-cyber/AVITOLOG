@@ -35,10 +35,10 @@ nav::after{content:'';position:absolute;bottom:0;left:0;right:0;height:1px;backg
 .hero{position:relative;min-height:100vh;display:flex;flex-direction:column;justify-content:flex-end;overflow:hidden}
 .hero-bg{position:absolute;inset:0;background:url('PC/hero-banner.png') center 20%/cover no-repeat}
 .hero-bg::before{content:'';position:absolute;inset:0;background:linear-gradient(180deg,rgba(8,11,18,.15) 0%,rgba(8,11,18,.3) 50%,rgba(8,11,18,.75) 68%,rgba(8,11,18,.92) 78%,var(--bg) 100%)}
-.hero-stripe{margin:28px 0 36px;background:linear-gradient(90deg,var(--red) 0%,#b50016 70%,rgba(180,0,22,.88) 100%);display:flex;align-items:center;justify-content:flex-start;flex-wrap:wrap;gap:28px 40px;padding:14px 24px;row-gap:10px;border-top:1.5px solid rgba(255,255,255,.15);border-bottom:1.5px solid rgba(255,255,255,.1)}
+.hero-stripe{margin:28px 0 36px;background:linear-gradient(90deg,var(--red) 0%,#b50016 70%,rgba(180,0,22,.88) 100%);display:flex;align-items:center;justify-content:flex-start;flex-wrap:wrap;gap:28px 40px;padding:18px 24px 18px 32px;row-gap:10px;border-top:1.5px solid rgba(255,255,255,.15);border-bottom:1.5px solid rgba(255,255,255,.1)}
 .stripe-item{display:flex;align-items:center;gap:12px;flex-shrink:0;font-family:'Oswald',sans-serif;font-size:18px;font-weight:600;letter-spacing:.5px;color:#fff;text-transform:uppercase;white-space:nowrap}
 .s-ico{font-size:26px;opacity:.95}
-.hero-content{position:relative;z-index:10;padding:0 80px 80px;margin-top:24px}
+.hero-content{position:relative;z-index:10;padding:20px 80px 80px;margin-top:24px}
 .hero-lbl{display:inline-flex;align-items:center;gap:12px;font-size:11px;font-weight:700;letter-spacing:4px;text-transform:uppercase;color:var(--cyan);margin-bottom:20px}
 .hero-lbl::before{content:'';width:32px;height:1px;background:var(--cyan);box-shadow:0 0 8px var(--cyan)}
 .h1{font-family:'Oswald',sans-serif;font-size:clamp(50px,8vw,108px);font-weight:700;line-height:1;letter-spacing:-1px;margin-bottom:12px;margin-top:0}
@@ -208,7 +208,7 @@ footer{background:var(--bg);border-top:1px solid var(--border);padding:40px 80px
 }
 @media(max-width:414px){
   .hero-content{padding:0 16px 48px}
-  .hero-stripe{margin:20px 0 28px;padding:10px 16px;gap:16px 24px}
+  .hero-stripe{margin:20px 0 28px;padding:14px 20px 14px 24px;gap:16px 24px}
   .hero-stripe .stripe-item:nth-child(n+4){display:none}
   .h1{font-size:clamp(36px,10vw,50px)}
   .h1-sub{font-size:clamp(18px,4vw,24px);margin-bottom:24px}
@@ -231,7 +231,7 @@ footer{background:var(--bg);border-top:1px solid var(--border);padding:40px 80px
   .nav-links{display:none}
   .sec{padding:56px 24px}
   .hero-content{padding:0 24px 60px}
-  .hero-stripe{gap:16px 28px;padding:12px 20px}
+  .hero-stripe{gap:16px 28px;padding:14px 24px 14px 28px}
   .hero-stripe .stripe-item:nth-child(n+6){display:none}
   .banners-row{grid-template-columns:1fr}
   .srv-grid{grid-template-columns:1fr}
@@ -371,7 +371,7 @@ footer{background:var(--bg);border-top:1px solid var(--border);padding:40px 80px
   <div class="sec-lbl">Опыт работы</div>
   <h2 class="sec-title">УСПЕХИ ВО ВСЕХ<br><span>ПРИБЫЛЬНЫХ НИШАХ</span></h2>
   <p class="sec-desc">Реальные кейсы в каждом направлении — смотрите портфолио ниже</p>
-  <div class="niche-visual" style="margin-bottom:40px;line-height:0"><img src="analytics-banner.png" alt="Успехи в нишах" loading="lazy" style="width:100%;max-height:420px;object-fit:contain;object-position:center top;display:block"></div>
+  <div class="niche-visual" style="margin:0 0 40px;width:100vw;max-width:100vw;position:relative;overflow:hidden;line-height:0;margin-left:50%;transform:translateX(-50%)"><img src="analytics-banner.png" alt="Успехи в нишах" loading="lazy" style="width:100%;max-height:480px;object-fit:cover;object-position:center top;display:block;filter:brightness(0.4)"><div style="position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.5) 0%,rgba(0,0,0,.7) 100%);pointer-events:none"></div><div style="position:absolute;top:32px;left:32px;font-family:'Oswald',sans-serif;font-size:clamp(28px,4vw,42px);font-weight:700;color:#fff;letter-spacing:2px;text-transform:uppercase;text-shadow:0 2px 12px rgba(0,0,0,.8);line-height:1.2">Ниши — кейсы</div></div>
   <div class="niches-grid">
     <div class="nc rev"><div class="nc-icon">🧱</div><div class="nc-name">Стройматериалы</div><div class="nc-tags"><span class="ntag">Доска</span><span class="ntag">Блоки</span><span class="ntag">Кровля</span></div><div class="nc-stat">17₽<div class="nc-stat-lbl">мин. цена заявки</div></div></div>
     <div class="nc rev"><div class="nc-icon">🏠</div><div class="nc-name">Готовые дома</div><div class="nc-tags"><span class="ntag">Каркасные</span><span class="ntag">Модульные</span></div><div class="nc-stat">820+<div class="nc-stat-lbl">заявок на проект</div></div></div>
