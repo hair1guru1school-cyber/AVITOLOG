@@ -821,6 +821,13 @@
     addAssetsProject('me', p);
   }
 
+  function removeFromBase(idx) {
+    var base = getAssetsBase();
+    if (idx < 0 || idx >= base.length) return;
+    base.splice(idx, 1);
+    saveAssetsBase(base);
+  }
+
   function showAssetsBasePicker(btn) {
     var existing = document.getElementById('assetsBasePicker');
     if (existing) { existing.remove(); return; }
@@ -843,7 +850,7 @@
         var realIdx = base.indexOf(p);
         var paidFmt = (p.paid || '') ? fmt(String(p.paid).replace(/\s/g, '')) : '';
         var dt = [p.startDate||'', p.paymentDate||''].filter(Boolean).join(' / ') || '—';
-        return '<div class="assets-base-row" data-idx="' + realIdx + '"><span class="ab-col-name">' + (p.emoji || '') + ' ' + esc(p.name || '—') + '</span><span class="ab-col-date">' + esc(dt) + '</span><span class="ab-col-paid">' + esc(paidFmt || '—') + ' ₽</span><button type="button" class="ab-add-btn" title="В Мои клиенты">+</button></div>';
+        return '<div class="assets-base-row" data-idx="' + realIdx + '"><span class="ab-col-name">' + (p.emoji || '') + ' ' + esc(p.name || '—') + '</span><span class="ab-col-date">' + esc(dt) + '</span><span class="ab-col-paid">' + esc(paidFmt || '—') + ' ₽</span><button type="button" class="ab-add-btn" title="В Мои клиенты">+</button><button type="button" class="ab-del-btn" title="Удалить из базы">✕</button></div>';
       }).join('');
       var listEl = wrap.querySelector('.assets-base-list');
       if (listEl) listEl.innerHTML = rows || '<div class="assets-base-empty">База пуста. Вставь данные в ИИ-импорт или «+ в базу»</div>';
@@ -923,8 +930,15 @@
     };
     wrap.querySelector('.base-picker-close').onclick = function() { wrap.remove(); };
     wrap.onclick = function(e) {
+      var delBtn = e.target.closest('.ab-del-btn');
+      if (delBtn) {
+        e.stopPropagation();
+        var row = delBtn.closest('.assets-base-row');
+        if (row) { removeFromBase(parseInt(row.getAttribute('data-idx'), 10)); renderList(); }
+        return;
+      }
       var row = e.target.closest('.assets-base-row');
-      if (row) {
+      if (row && !e.target.closest('.ab-del-btn')) {
         e.stopPropagation();
         addFromBaseToActive(parseInt(row.getAttribute('data-idx'), 10));
         wrap.remove();
