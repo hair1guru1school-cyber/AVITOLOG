@@ -854,9 +854,11 @@
     var wrap = document.createElement('div');
     wrap.id = 'assetsBasePicker';
     wrap.className = 'assets-base-picker';
-    var w = Math.min(480, Math.max(380, Math.floor(window.innerWidth * 0.28)));
-    var h = window.innerHeight;
-    wrap.style.cssText = 'right:0;top:0;width:' + w + 'px;height:' + h + 'px;left:auto';
+    var w = Math.min(480, Math.max(420, Math.floor(window.innerWidth * 0.32)));
+    var h = Math.min(520, Math.max(400, Math.floor(window.innerHeight * 0.7)));
+    var rightPos = 24;
+    var topPos = Math.max(24, (window.innerHeight - h) / 2);
+    wrap.style.cssText = 'right:' + rightPos + 'px;top:' + topPos + 'px;width:' + w + 'px;height:' + h + 'px;left:auto';
     var searchVal = '';
     var _basePickerAiRows = [];
 
@@ -964,14 +966,31 @@
       }
     };
 
+    var dragEl = wrap.querySelector('.assets-base-picker-header');
     var resizeEl = wrap.querySelector('.assets-base-picker-resize');
+    dragEl.onmousedown = function(e) {
+      if (e.target.closest('.base-picker-close')) return;
+      e.preventDefault();
+      var startRight = parseInt(wrap.style.right, 10) || 24;
+      var startTop = parseInt(wrap.style.top, 10) || topPos;
+      var startX = e.clientX, startY = e.clientY;
+      function move(ev) {
+        wrap.style.right = Math.max(0, startRight - (ev.clientX - startX)) + 'px';
+        wrap.style.left = 'auto';
+        wrap.style.top = Math.max(0, startTop + (ev.clientY - startY)) + 'px';
+      }
+      function up() { document.removeEventListener('mousemove', move); document.removeEventListener('mouseup', up); }
+      document.addEventListener('mousemove', move);
+      document.addEventListener('mouseup', up);
+    };
     resizeEl.onmousedown = function(e) {
       e.preventDefault();
-      var startW = wrap.offsetWidth, startX = e.clientX;
+      var startW = wrap.offsetWidth, startH = wrap.offsetHeight, startX = e.clientX, startY = e.clientY;
       function move(ev) {
-        var dw = startX - ev.clientX;
-        var w = Math.max(360, Math.min(600, startW + dw));
+        var w = Math.max(420, startW + ev.clientX - startX);
+        var h = Math.max(300, startH + ev.clientY - startY);
         wrap.style.width = w + 'px';
+        wrap.style.height = h + 'px';
       }
       function up() { document.removeEventListener('mousemove', move); document.removeEventListener('mouseup', up); }
       document.addEventListener('mousemove', move);
