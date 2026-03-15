@@ -486,22 +486,36 @@
 
   function getAssetsMy() {
     try {
+      var isSasha = !!(typeof window !== 'undefined' && window.AVITOLOG_IS_SASHA);
       var s = localStorage.getItem(ASSETS_MY_KEY);
       if (s) {
         var arr = JSON.parse(s);
-        if (arr.length === 0) { saveAssetsMy(DEFAULT_MY.slice()); return DEFAULT_MY.slice(); }
+        if (arr.length === 0) {
+          if (isSasha) { return []; }
+          saveAssetsMy(DEFAULT_MY.slice());
+          return DEFAULT_MY.slice();
+        }
         return arr;
       }
       var legacy = JSON.parse(localStorage.getItem(ASSETS_LEGACY_KEY) || '{}');
       var arr = [];
+      var ownerFilter = isSasha ? 'sasha' : 'me';
       Object.keys(legacy).forEach(function(k) {
         var d = legacy[k];
-        if (d && d.owner === 'me') arr.push({ emoji: '📦', name: k, paid: d.paid || '', expected: d.expected || '', paymentDate: d.paymentDate || '', startDate: d.startDate || '', clientType: d.clientType || 'new' });
+        if (d && d.owner === ownerFilter) {
+          var paid = d.paid || (isSasha ? d.soldFor : '') || '';
+          arr.push({ emoji: '📦', name: k, paid: paid, expected: d.expected || '', paymentDate: d.paymentDate || '', startDate: d.startDate || '', clientType: d.clientType || 'new' });
+        }
       });
       if (arr.length) { saveAssetsMy(arr); return arr; }
+      if (isSasha) return [];
       saveAssetsMy(DEFAULT_MY.slice());
       return DEFAULT_MY.slice();
-    } catch (e) { saveAssetsMy(DEFAULT_MY.slice()); return DEFAULT_MY.slice(); }
+    } catch (e) {
+      if (typeof window !== 'undefined' && window.AVITOLOG_IS_SASHA) return [];
+      saveAssetsMy(DEFAULT_MY.slice());
+      return DEFAULT_MY.slice();
+    }
   }
 
   function saveAssetsMy(arr) {
@@ -509,6 +523,7 @@
   }
 
   function getAssetsSasha() {
+    if (typeof window !== 'undefined' && window.AVITOLOG_IS_SASHA) return [];
     try {
       var s = localStorage.getItem(ASSETS_SASHA_KEY);
       if (s) return JSON.parse(s);
@@ -587,20 +602,22 @@
     var sashaList = getAssetsSasha();
     var myTotal = myList.reduce(function(a, p) { return a + (parseInt(String(p.paid || '').replace(/\s/g, ''), 10) || 0); }, 0);
     var sashaTotal = sashaList.reduce(function(a, p) { return a + (parseInt(String(p.soldFor || p.paid || '').replace(/\s/g, ''), 10) || 0); }, 0);
-    var totalRub = 338000;
+    var isSashaView = !!(typeof window !== 'undefined' && window.AVITOLOG_IS_SASHA);
+    var totalRub = myTotal + (isSashaView ? 0 : sashaTotal);
     var totalUsd = Math.round(totalRub / ASSETS_USD_RATE);
     var newClientsSum = calcNewClientsThisMonth();
     var newClientsVal = newClientsSum > 0 ? fmt(newClientsSum) : '';
     var activeClientsSum = calcActiveClientsThisMonth();
     var activeClientsVal = activeClientsSum > 0 ? fmt(activeClientsSum) : '';
-    var expectedSum = myList.reduce(function(a, p) { return a + (parseInt(String(p.expected || '').replace(/\s/g, ''), 10) || 0); }, 0);
+    var expectedSum = myList.reduce(function(a, p) { return a + (parseInt(String(p.expected || '').replace(/\s/g, ''), 10) || 0); }, 0) + (isSashaView ? 0 : sashaList.reduce(function(a, p) { return a + (parseInt(String(p.expected || '').replace(/\s/g, ''), 10) || 0); }, 0));
     var expectedVal = expectedSum > 0 ? fmt(expectedSum) : '';
+    var aoaSum = isSashaView ? 0 : sashaList.reduce(function(a, p) { return a + (parseInt(String(p.aoaPercent || '').replace(/\s/g, ''), 10) || 0); }, 0);
     var summaryRows = [
-      { icon: '💰', label: 'Получено за все', val: '338 000', valUsd: totalUsd, main: true },
-      { icon: '✅', label: 'Оплаты клиентов', val: '304 000' },
+      { icon: '💰', label: 'Получено за все', val: totalRub > 0 ? fmt(totalRub) : '', valUsd: totalUsd, main: true },
+      { icon: '✅', label: 'Оплаты клиентов', val: totalRub > 0 ? fmt(totalRub) : '', valUsd: null },
       { icon: '🌿', label: 'Ожидается еще', val: expectedVal },
-      { icon: '📊', label: 'Ожидается за мес', val: '324 000' },
-      { icon: '📈', label: 'Агентство AoA %', val: '34 000' },
+      { icon: '📊', label: 'Ожидается за мес', val: expectedVal },
+      { icon: '📈', label: 'Агентство AoA %', val: aoaSum > 0 ? fmt(aoaSum) : '' },
       { icon: '🆕', label: 'Новые клиенты', val: newClientsVal },
       { icon: '👤', label: 'Активные клиенты', val: activeClientsVal }
     ];
@@ -667,20 +684,23 @@
     var sashaRows = sashaList.map(function(p, idx) { return renderColRow(p, idx, 'sasha'); }).join('');
     var colHeaderMe = '<div class="assets-col-header"><span class="ac-name">Проект</span><span class="ac-date">Старт</span><span class="ac-date">Платёж</span><span class="ac-paid">Оплатил</span><span class="ac-expected">Ожидать</span><span class="ac-actions"></span></div>';
     var colHeaderSasha = '<div class="assets-col-header"><span class="ac-name">Проект</span><span class="ac-date">Старт</span><span class="ac-date">Платёж</span><span class="ac-extra">Продано за</span><span class="ac-extra">Агенту</span><span class="ac-extra">AoA %</span><span class="ac-actions"></span></div>';
+    var sashaColHtml = isSashaView ? '' : (
+        '<div class="assets-col assets-col-sasha" id="assetsColSasha" data-owner="sasha">' +
+          '<div class="assets-col-title">👤 Клиенты Саши <span class="assets-col-total">' + fmt(sashaTotal) + ' ₽</span><span class="assets-col-breakdown">· Саше <span class="assets-col-sasha-agent">' + fmt(sashaList.reduce(function(a,p){return a+(parseInt(String(p.toAgent||'').replace(/\s/g,''),10)||0);},0)) + '</span> ₽ · Агентству <span class="assets-col-sasha-agency">' + fmt(sashaList.reduce(function(a,p){return a+(parseInt(String(p.aoaPercent||'').replace(/\s/g,''),10)||0);},0)) + '</span> ₽</span></div>' +
+          '<div class="assets-col-list">' + colHeaderSasha + sashaRows + '</div>' +
+          '<div class="assets-col-add-row"><button type="button" class="assets-col-add" onclick="window.__assetsAddProject(\'sasha\')">+ Добавить</button><button type="button" class="assets-col-add assets-col-add-base" onclick="window.__assetsShowBasePicker(this)" title="Выбрать из базы">+ из базы</button></div>' +
+        '</div>'
+      );
     mc.innerHTML = '<div class="assets-page-wrap">' +
       '<div class="assets-summary-top"><div class="assets-month-title">' + esc(monthTitle) + '</div><div class="assets-summary-table">' + summaryHtml + '</div></div>' +
-      '<div class="assets-two-cols">' +
+      '<div class="assets-two-cols' + (isSashaView ? ' assets-single-col' : '') + '">' +
         '<div class="assets-col assets-col-me" id="assetsColMe" data-owner="me">' +
           '<div class="assets-col-title">💰 Мои клиенты <span class="assets-col-total">' + fmt(myTotal) + ' ₽</span><span class="assets-col-breakdown">· новые <span class="assets-col-me-new">' + fmt(myList.reduce(function(a,p){var v=parseInt(String(p.paid||'').replace(/\s/g,''),10)||0;return resolveAssetsClientType(p)==='new'?a+v:a;},0)) + '</span> ₽ · старые <span class="assets-col-me-old">' + fmt(myList.reduce(function(a,p){var v=parseInt(String(p.paid||'').replace(/\s/g,''),10)||0;return resolveAssetsClientType(p)!=='new'?a+v:a;},0)) + '</span> ₽</span></div>' +
           '<button type="button" class="assets-filter-btn' + (filterPaid ? ' on' : '') + '" onclick="window.__assetsToggleFilterPaid && window.__assetsToggleFilterPaid()">💰 оплатили</button>' +
           '<div class="assets-col-list">' + colHeaderMe + myRows + '</div>' +
           '<div class="assets-col-add-row"><button type="button" class="assets-col-add assets-col-add-new" onclick="window.__assetsAddProject(\'me\')">Добавить NEW</button><button type="button" class="assets-col-add assets-col-add-base" onclick="window.__assetsShowBasePicker(this)" title="Выбрать из базы">+ из базы</button></div>' +
         '</div>' +
-        '<div class="assets-col assets-col-sasha" id="assetsColSasha" data-owner="sasha">' +
-          '<div class="assets-col-title">👤 Клиенты Саши <span class="assets-col-total">' + fmt(sashaTotal) + ' ₽</span><span class="assets-col-breakdown">· Саше <span class="assets-col-sasha-agent">' + fmt(sashaList.reduce(function(a,p){return a+(parseInt(String(p.toAgent||'').replace(/\s/g,''),10)||0);},0)) + '</span> ₽ · Агентству <span class="assets-col-sasha-agency">' + fmt(sashaList.reduce(function(a,p){return a+(parseInt(String(p.aoaPercent||'').replace(/\s/g,''),10)||0);},0)) + '</span> ₽</span></div>' +
-          '<div class="assets-col-list">' + colHeaderSasha + sashaRows + '</div>' +
-          '<div class="assets-col-add-row"><button type="button" class="assets-col-add" onclick="window.__assetsAddProject(\'sasha\')">+ Добавить</button><button type="button" class="assets-col-add assets-col-add-base" onclick="window.__assetsShowBasePicker(this)" title="Выбрать из базы">+ из базы</button></div>' +
-        '</div>' +
+        sashaColHtml +
       '</div>' +
       '<div class="assets-ai-row" id="assetsAiRow">' +
         '<span class="ai-label">🤖 ИИ-импорт</span>' +
@@ -834,10 +854,9 @@
     var wrap = document.createElement('div');
     wrap.id = 'assetsBasePicker';
     wrap.className = 'assets-base-picker';
-    var r = btn ? btn.getBoundingClientRect() : { left: 80, bottom: 120 };
-    var w = Math.min(560, Math.max(420, window.innerWidth - 80));
-    var h = Math.min(520, Math.max(380, window.innerHeight - 100));
-    wrap.style.cssText = 'left:' + (r.left || 80) + 'px;top:' + ((r.bottom || 120) + 6) + 'px;width:' + w + 'px;height:' + h + 'px';
+    var w = Math.min(480, Math.max(380, Math.floor(window.innerWidth * 0.28)));
+    var h = window.innerHeight;
+    wrap.style.cssText = 'right:0;top:0;width:' + w + 'px;height:' + h + 'px;left:auto';
     var searchVal = '';
     var _basePickerAiRows = [];
 
@@ -878,9 +897,9 @@
       btnAdd.disabled = false;
     }
 
-    wrap.innerHTML = '<div class="assets-base-picker-drag" id="basePickerDrag"><span class="base-picker-title">📋 База проектов</span><button type="button" class="base-picker-close" title="Закрыть">✕</button></div>' +
+    wrap.innerHTML = '<div class="assets-base-picker-header"><span class="base-picker-title">📋 База проектов</span><button type="button" class="base-picker-close" title="Закрыть">✕</button></div>' +
       '<div class="assets-base-picker-inner">' +
-      '<div class="assets-base-picker-header"><input type="search" class="assets-base-search" placeholder="Поиск по названию..."><button type="button" class="assets-base-add-row" title="Добавить строку в базу">+ в базу</button></div>' +
+      '<div class="assets-base-picker-toolbar"><input type="search" class="assets-base-search" placeholder="Поиск по названию..."><button type="button" class="assets-base-add-row" title="Добавить строку в базу">+ в базу</button></div>' +
       '<div class="assets-base-table"><div class="assets-base-header"><span class="ab-col-name">Проект</span><span class="ab-col-date">Старт / Платёж</span><span class="ab-col-paid">Оплатил</span><span class="ab-col-act"></span></div>' +
       '<div class="assets-base-list"></div></div>' +
       '<div class="assets-base-picker-ai" style="padding:10px 12px;border-top:1px solid var(--border);background:rgba(0,0,0,0.2)">' +
@@ -923,7 +942,7 @@
 
     var searchInp = wrap.querySelector('.assets-base-search');
     searchInp.oninput = function() { searchVal = searchInp.value; renderList(); };
-    searchInp.onkeydown = function(e) { if (e.key === 'Escape') wrap.remove(); };
+    searchInp.onkeydown = function(e) { if (e.key === 'Escape') { e.preventDefault(); wrap.querySelector('.base-picker-close').click(); } };
     wrap.querySelector('.assets-base-add-row').onclick = function() {
       addToBaseFromPicker({ emoji: '📦', name: 'Новый в базе', paid: '', expected: '', paymentDate: '', startDate: '', clientType: 'new', folderLink: '', crmClientId: '' });
       renderList();
@@ -945,30 +964,14 @@
       }
     };
 
-    var dragEl = wrap.querySelector('#basePickerDrag');
     var resizeEl = wrap.querySelector('.assets-base-picker-resize');
-    dragEl.onmousedown = function(e) {
-      if (e.target.closest('.base-picker-close')) return;
-      e.preventDefault();
-      var dx = e.clientX - wrap.offsetLeft, dy = e.clientY - wrap.offsetTop;
-      function move(ev) {
-        var x = Math.max(0, ev.clientX - dx);
-        var y = Math.max(0, ev.clientY - dy);
-        wrap.style.left = x + 'px';
-        wrap.style.top = y + 'px';
-      }
-      function up() { document.removeEventListener('mousemove', move); document.removeEventListener('mouseup', up); }
-      document.addEventListener('mousemove', move);
-      document.addEventListener('mouseup', up);
-    };
     resizeEl.onmousedown = function(e) {
       e.preventDefault();
-      var startW = wrap.offsetWidth, startH = wrap.offsetHeight, startX = e.clientX, startY = e.clientY;
+      var startW = wrap.offsetWidth, startX = e.clientX;
       function move(ev) {
-        var w = Math.max(420, startW + ev.clientX - startX);
-        var h = Math.max(300, startH + ev.clientY - startY);
+        var dw = startX - ev.clientX;
+        var w = Math.max(360, Math.min(600, startW + dw));
         wrap.style.width = w + 'px';
-        wrap.style.height = h + 'px';
       }
       function up() { document.removeEventListener('mousemove', move); document.removeEventListener('mouseup', up); }
       document.addEventListener('mousemove', move);
@@ -976,11 +979,6 @@
     };
 
     renderList();
-    setTimeout(function() {
-      document.addEventListener('click', function close(ev) {
-        if (!wrap.contains(ev.target) && ev.target !== btn && !ev.target.closest('.assets-col-add-base')) { wrap.remove(); document.removeEventListener('click', close); }
-      });
-    }, 0);
   }
 
   function toggleFilterPaid() {
