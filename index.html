@@ -1618,16 +1618,20 @@ body.goals-client-dragging .goal-block-sold{transition:all .18s ease}
 .assets-base-search{flex:1;min-width:0;padding:8px 12px;font-size:13px;border-radius:8px;border:1px solid var(--border);background:rgba(0,0,0,0.2);color:var(--text);outline:none}
 .assets-base-add-row{padding:8px 14px;font-size:12px;font-weight:700;color:#35d0ff;background:rgba(53,208,255,0.1);border:1px solid rgba(53,208,255,0.4);border-radius:8px;cursor:pointer;white-space:nowrap}
 .assets-base-add-row:hover{background:rgba(53,208,255,0.2)}
-.assets-base-table{display:flex;flex-direction:column;min-height:0;flex:1}
+.assets-base-table{display:flex;flex-direction:column;min-height:0;flex:1;min-width:0}
 .assets-base-header{display:flex;align-items:center;gap:12px;padding:6px 12px;font-size:11px;font-weight:700;color:var(--muted);background:rgba(0,0,0,0.25);border-bottom:1px solid var(--border)}
 .assets-base-header .ab-col-name{flex:1;min-width:0}
 .assets-base-header .ab-col-date{min-width:120px}
 .assets-base-header .ab-col-paid{min-width:70px;text-align:right}
 .assets-base-header .ab-col-act{width:64px;text-align:right}
-.assets-base-list{overflow-y:auto;max-height:320px;min-height:80px}
-.assets-base-row{display:flex;align-items:center;gap:12px;padding:8px 12px;border-bottom:1px solid rgba(255,255,255,0.05);cursor:pointer;font-size:13px;transition:background .15s}
+.assets-base-list{flex:1;min-height:120px;overflow-y:auto;overflow-x:auto;scrollbar-width:8px;scrollbar-color:rgba(0,217,126,0.5) rgba(0,0,0,0.2)}
+.assets-base-list::-webkit-scrollbar{width:8px;height:6px}
+.assets-base-list::-webkit-scrollbar-track{background:rgba(0,0,0,0.25)}
+.assets-base-list::-webkit-scrollbar-thumb{background:rgba(0,217,126,0.5);border-radius:4px}
+.assets-base-list::-webkit-scrollbar-thumb:hover{background:rgba(0,217,126,0.7)}
+.assets-base-row{display:flex;align-items:center;gap:10px;padding:6px 12px;border-bottom:1px solid rgba(255,255,255,0.05);cursor:pointer;font-size:12px;transition:background .15s;flex-shrink:0;min-width:min-content}
 .assets-base-row:hover{background:rgba(0,217,126,0.1)}
-.assets-base-row .ab-col-name{flex:1;min-width:0}
+.assets-base-row .ab-col-name{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .assets-base-row .ab-col-date{min-width:120px;font-size:11px;color:var(--muted)}
 .assets-base-row .ab-col-paid{min-width:70px;text-align:right;font-weight:700;color:#00d97e}
 .assets-base-row .ab-add-btn{width:28px;height:28px;border-radius:6px;border:1px solid var(--accent);background:rgba(0,217,126,0.15);color:var(--accent);cursor:pointer;font-size:16px;line-height:1;flex-shrink:0}
@@ -1635,7 +1639,8 @@ body.goals-client-dragging .goal-block-sold{transition:all .18s ease}
 .assets-base-row .ab-del-btn{width:24px;height:24px;border-radius:6px;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;font-size:12px;flex-shrink:0;margin-left:4px}
 .assets-base-row .ab-del-btn:hover{background:rgba(255,68,68,0.15);border-color:#ff4444;color:#ff4444}
 .assets-base-empty{padding:20px;text-align:center;color:var(--muted);font-size:12px}
-.assets-base-picker-ai textarea.assets-base-ai-inp{width:100%;padding:8px 10px;font-size:12px;border-radius:8px;border:1px solid var(--border);background:rgba(0,0,0,0.2);color:var(--text);resize:vertical;min-height:48px;font-family:inherit}
+.assets-base-picker-ai{flex-shrink:0}
+.assets-base-picker-ai textarea.assets-base-ai-inp{width:100%;padding:8px 10px;font-size:12px;border-radius:8px;border:1px solid var(--border);background:rgba(0,0,0,0.2);color:var(--text);resize:vertical;min-height:52px;max-height:100px;font-family:inherit;box-sizing:border-box}
 .assets-ai-row{display:flex;align-items:flex-start;gap:12px;padding:14px 18px;border-radius:18px;border:1px solid var(--border);background:var(--surface2);flex-wrap:wrap;box-shadow:0 2px 16px rgba(0,0,0,0.1);align-self:stretch}
 .assets-ai-row .ai-label{font-size:12px;font-weight:700;color:var(--muted);white-space:nowrap}
 .assets-ai-row .ai-input{flex:1;min-width:200px;padding:8px 12px;font-size:13px;border-radius:8px;border:1px solid var(--border);background:rgba(0,0,0,0.2);color:var(--text);resize:none;min-height:36px}
