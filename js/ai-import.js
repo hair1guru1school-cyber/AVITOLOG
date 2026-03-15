@@ -127,10 +127,11 @@
     return result;
   }
 
-  var AI_IMPORT_PROMPT = 'Ты парсер текста оплат и клиентов. Пользователь вставляет сырой текст (комменты, заметки об оплатах). \
-Извлеки ВСЕ записи и верни JSON массив objects. Каждый объект: { "client": "имя клиента", "project": "название проекта или пусто", "paid": число или строка, "expected": число или пусто, "currency": "₽" или "руб" и т.п., "date": "YYYY-MM-DD" или пусто, "isSasha": true/false если клиент Саши, "isNew": true/false новый/старый, "comments": "произвольный комментарий" }. \
-Числа: paid и expected — суммы в рублях, извлекай числа из текста. date — если есть дата. isSasha — ищи упоминания Саша/Саши. isNew — новый клиент или нет. \
-Ответь ТОЛЬКО валидным JSON массивом, без markdown и пояснений. Пример: [{"client":"ООО Ромашка","paid":50000,"currency":"₽","comments":"предоплата"}]';
+  var AI_IMPORT_PROMPT = 'Ты парсер текста оплат и клиентов. Пользователь вставляет сырой текст: таблицы, заметки, комменты об оплатах. \
+Часто формат: эмодзи + название проекта + сумма оплаты/чека (например: 🏠 Дмитрий Бани 34 000 или 📦 Камни 30 000 р). \
+Извлеки ВСЕ записи и верни JSON массив. Каждый объект: { "client": "имя/название клиента или проекта", "project": "название проекта или пусто", "emoji": "один эмодзи если есть в строке (🏠📦💰⚡ и т.д.)", "paid": число рублей, "expected": число или пусто, "currency": "₽", "date": "YYYY-MM-DD" если есть дата, "isSasha": true/false, "isNew": true/false, "comments": "комментарий" }. \
+Числа: paid и expected — суммы в рублях из текста. Эмодзи — первый подходящий (🏠🪨📦⚡🚚💰 и т.д.). client = основное название. \
+Ответь ТОЛЬКО валидным JSON массивом. Пример: [{"client":"Дмитрий Бани","emoji":"🏠","paid":34000,"currency":"₽"}]';
 
   function parseWithAI(rawText) {
     if (typeof callAPI !== 'function') {
@@ -149,6 +150,7 @@
           return {
             client: o.client || o.name || '',
             project: o.project || '',
+            emoji: o.emoji || '📦',
             paid: o.paid != null ? String(o.paid) : '',
             expected: o.expected != null ? String(o.expected) : '',
             currency: o.currency || '₽',
@@ -315,7 +317,7 @@
         var name = row.client || 'Без названия';
         var paid = String(row.paid || '').replace(/\s/g, '');
         var ct = (row.raw && row.raw.isNew === false) ? 'old' : 'new';
-        var item = { emoji: '💰', name: name, paid: paid, expected: row.expected || '', paymentDate: row.date || (row.raw && row.raw.date) || '', startDate: '', clientType: ct, folderLink: row.folderLink || '' };
+        var item = { emoji: (row.raw && row.raw.emoji) || '💰', name: name, paid: paid, expected: row.expected || '', paymentDate: row.date || (row.raw && row.raw.date) || '', startDate: '', clientType: ct, folderLink: row.folderLink || '', crmClientId: row.folderId || '' };
         if (owner === 'sasha') { item.soldFor = paid; item.toAgent = ''; item.aoaPercent = ''; }
         if (owner === 'me') {
           var arr = getAssetsMy();
@@ -792,6 +794,26 @@
     if (typeof window.__renderAssetsBasePicker === 'function') window.__renderAssetsBasePicker();
   }
 
+  function confirmImportToBase(rows) {
+    if (!rows || !rows.length) return;
+    rows.forEach(function(row) {
+      var name = row.client || row.project || 'Без названия';
+      var match = findMatchesForRow(row.raw || row);
+      var item = {
+        emoji: (row.raw && row.raw.emoji) || '📦',
+        name: name,
+        paid: String(row.paid || '').replace(/\s/g, ''),
+        expected: row.expected || '',
+        paymentDate: row.date || getTodayStr(),
+        startDate: '',
+        clientType: (row.raw && row.raw.isNew === false) ? 'old' : 'new',
+        folderLink: (match && match.folderLink) || row.folderLink || '',
+        crmClientId: (match && match.folderId) || row.folderId || ''
+      };
+      addToBaseFromPicker(item);
+    });
+  }
+
   function addFromBaseToActive(idx) {
     var base = getAssetsBase();
     if (idx < 0 || idx >= base.length) return;
@@ -805,9 +827,13 @@
     var wrap = document.createElement('div');
     wrap.id = 'assetsBasePicker';
     wrap.className = 'assets-base-picker';
-    var r = btn.getBoundingClientRect();
-    wrap.style.cssText = 'position:fixed;left:' + r.left + 'px;top:' + (r.bottom + 6) + 'px;z-index:9999;min-width:420px;max-width:90vw';
+    var r = btn ? btn.getBoundingClientRect() : { left: 80, bottom: 120 };
+    var w = Math.min(560, Math.max(420, window.innerWidth - 80));
+    var h = Math.min(520, Math.max(380, window.innerHeight - 100));
+    wrap.style.cssText = 'left:' + (r.left || 80) + 'px;top:' + ((r.bottom || 120) + 6) + 'px;width:' + w + 'px;height:' + h + 'px';
     var searchVal = '';
+    var _basePickerAiRows = [];
+
     function renderList() {
       var base = getAssetsBase();
       var q = String(searchVal || '').trim().toLowerCase();
@@ -820,12 +846,74 @@
         return '<div class="assets-base-row" data-idx="' + realIdx + '"><span class="ab-col-name">' + (p.emoji || '') + ' ' + esc(p.name || '—') + '</span><span class="ab-col-date">' + esc(dt) + '</span><span class="ab-col-paid">' + esc(paidFmt || '—') + ' ₽</span><button type="button" class="ab-add-btn" title="В Мои клиенты">+</button></div>';
       }).join('');
       var listEl = wrap.querySelector('.assets-base-list');
-      if (listEl) listEl.innerHTML = rows || '<div class="assets-base-empty">База пуста. Нажми «+ в базу»</div>';
+      if (listEl) listEl.innerHTML = rows || '<div class="assets-base-empty">База пуста. Вставь данные в ИИ-импорт или «+ в базу»</div>';
     }
-    wrap.innerHTML = '<div class="assets-base-picker-header"><input type="search" class="assets-base-search" placeholder="Поиск по названию..."><button type="button" class="assets-base-add-row" title="Добавить строку в базу">+ в базу</button></div>' +
+
+    function renderBasePickerAiPreview(rows) {
+      var pre = wrap.querySelector('.base-picker-ai-preview');
+      var btnAdd = wrap.querySelector('#basePickerAddBtn');
+      if (!pre || !btnAdd) return;
+      var toAdd = rows && rows.length ? rows.filter(function(r) { return !r.rejected; }) : [];
+      if (!toAdd.length) {
+        pre.innerHTML = '<span style="color:var(--muted);font-size:11px">Нажми «Разобрать» после вставки текста из таблицы</span>';
+        pre.style.display = '';
+        btnAdd.disabled = true;
+        return;
+      }
+      pre.style.display = '';
+      pre.innerHTML = '<div style="font-size:11px;color:var(--accent);margin-bottom:4px">Найдено ' + toAdd.length + ' записей. Папки Drive подставляются по названию.</div>' +
+        toAdd.slice(0, 5).map(function(r) {
+          var n = r.client || r.project || '—';
+          var f = r.folderLink || r.matchedFolder ? '✓ папка' : '';
+          return '<div style="font-size:11px;margin:2px 0">' + esc((r.raw && r.raw.emoji) || '') + ' ' + esc(n) + ' — ' + esc(r.paid || '') + ' ₽ ' + f + '</div>';
+        }).join('') +
+        (toAdd.length > 5 ? '<div style="font-size:10px;color:var(--muted)">...и ещё ' + (toAdd.length - 5) + '</div>' : '');
+      btnAdd.disabled = false;
+    }
+
+    wrap.innerHTML = '<div class="assets-base-picker-drag" id="basePickerDrag"><span class="base-picker-title">📋 База проектов</span><button type="button" class="base-picker-close" title="Закрыть">✕</button></div>' +
+      '<div class="assets-base-picker-inner">' +
+      '<div class="assets-base-picker-header"><input type="search" class="assets-base-search" placeholder="Поиск по названию..."><button type="button" class="assets-base-add-row" title="Добавить строку в базу">+ в базу</button></div>' +
       '<div class="assets-base-table"><div class="assets-base-header"><span class="ab-col-name">Проект</span><span class="ab-col-date">Старт / Платёж</span><span class="ab-col-paid">Оплатил</span><span class="ab-col-act"></span></div>' +
-      '<div class="assets-base-list"></div></div>';
+      '<div class="assets-base-list"></div></div>' +
+      '<div class="assets-base-picker-ai" style="padding:10px 12px;border-top:1px solid var(--border);background:rgba(0,0,0,0.2)">' +
+      '<div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:6px">🤖 ИИ-импорт — вставь из таблицы (название + эмодзи + сумма)</div>' +
+      '<textarea class="assets-base-ai-inp" rows="2" placeholder="Пример: 🏠 Дмитрий Бани 34 000&#10;📦 Камни 30 000&#10;⚡ Электрик 25 000 — ИИ найдёт папку на Drive"></textarea>' +
+      '<div style="display:flex;gap:8px;margin-top:6px;align-items:center">' +
+      '<button type="button" class="ai-import-btn primary" onclick="window.__basePickerParse && window.__basePickerParse()">Разобрать</button>' +
+      '<button type="button" class="ai-import-btn" id="basePickerAddBtn" onclick="window.__basePickerAddToBase && window.__basePickerAddToBase()" disabled>Добавить в базу</button>' +
+      '</div>' +
+      '<div class="base-picker-ai-preview" style="margin-top:8px;font-size:11px"></div>' +
+      '</div>' +
+      '</div>' +
+      '<div class="assets-base-picker-resize" title="Потяни — изменить размер"></div>';
     document.body.appendChild(wrap);
+
+    window.__renderAssetsBasePicker = renderList;
+    window.__basePickerParse = function() {
+      var ta = wrap.querySelector('.assets-base-ai-inp');
+      var raw = (ta && ta.value || '').trim();
+      if (!raw) { alert('Вставь текст из таблицы в поле ИИ-импорт.'); return; }
+      var pre = wrap.querySelector('.base-picker-ai-preview');
+      if (pre) pre.innerHTML = '<span style="color:var(--muted)">⏳ Разбор...</span>';
+      parseWithAI(raw).then(function(parsed) {
+        _basePickerAiRows = buildPreviewRows(parsed);
+        renderBasePickerAiPreview(_basePickerAiRows);
+      }).catch(function(e) {
+        if (pre) pre.innerHTML = '<span style="color:#ff8080">Ошибка: ' + esc(e.message || e) + '</span>';
+      });
+    };
+    window.__basePickerAddToBase = function() {
+      var toAdd = _basePickerAiRows.filter(function(r) { return !r.rejected; });
+      if (!toAdd.length) return;
+      confirmImportToBase(toAdd);
+      renderList();
+      _basePickerAiRows = [];
+      var ta = wrap.querySelector('.assets-base-ai-inp');
+      if (ta) ta.value = '';
+      renderBasePickerAiPreview([]);
+    };
+
     var searchInp = wrap.querySelector('.assets-base-search');
     searchInp.oninput = function() { searchVal = searchInp.value; renderList(); };
     searchInp.onkeydown = function(e) { if (e.key === 'Escape') wrap.remove(); };
@@ -833,6 +921,7 @@
       addToBaseFromPicker({ emoji: '📦', name: 'Новый в базе', paid: '', expected: '', paymentDate: '', startDate: '', clientType: 'new', folderLink: '', crmClientId: '' });
       renderList();
     };
+    wrap.querySelector('.base-picker-close').onclick = function() { wrap.remove(); };
     wrap.onclick = function(e) {
       var row = e.target.closest('.assets-base-row');
       if (row) {
@@ -841,10 +930,41 @@
         wrap.remove();
       }
     };
+
+    var dragEl = wrap.querySelector('#basePickerDrag');
+    var resizeEl = wrap.querySelector('.assets-base-picker-resize');
+    dragEl.onmousedown = function(e) {
+      if (e.target.closest('.base-picker-close')) return;
+      e.preventDefault();
+      var dx = e.clientX - wrap.offsetLeft, dy = e.clientY - wrap.offsetTop;
+      function move(ev) {
+        var x = Math.max(0, ev.clientX - dx);
+        var y = Math.max(0, ev.clientY - dy);
+        wrap.style.left = x + 'px';
+        wrap.style.top = y + 'px';
+      }
+      function up() { document.removeEventListener('mousemove', move); document.removeEventListener('mouseup', up); }
+      document.addEventListener('mousemove', move);
+      document.addEventListener('mouseup', up);
+    };
+    resizeEl.onmousedown = function(e) {
+      e.preventDefault();
+      var startW = wrap.offsetWidth, startH = wrap.offsetHeight, startX = e.clientX, startY = e.clientY;
+      function move(ev) {
+        var w = Math.max(420, startW + ev.clientX - startX);
+        var h = Math.max(300, startH + ev.clientY - startY);
+        wrap.style.width = w + 'px';
+        wrap.style.height = h + 'px';
+      }
+      function up() { document.removeEventListener('mousemove', move); document.removeEventListener('mouseup', up); }
+      document.addEventListener('mousemove', move);
+      document.addEventListener('mouseup', up);
+    };
+
     renderList();
     setTimeout(function() {
       document.addEventListener('click', function close(ev) {
-        if (!wrap.contains(ev.target) && ev.target !== btn) { wrap.remove(); document.removeEventListener('click', close); }
+        if (!wrap.contains(ev.target) && ev.target !== btn && !ev.target.closest('.assets-col-add-base')) { wrap.remove(); document.removeEventListener('click', close); }
       });
     }, 0);
   }
@@ -1040,23 +1160,6 @@
   window.__assetsShowBasePicker = showAssetsBasePicker;
   window.__wireAssetsDragTargets = wireAssetsDragTargets;
 
-  function renderAssetsBaseGrid() {
-    var grid = document.getElementById('assetsBaseGrid');
-    if (!grid) return;
-    var base = getAssetsBase();
-    var recent = base.slice(-16);
-    var fmt = function(n) { return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ' '); };
-    grid.innerHTML = recent.map(function(p, i) {
-      var idx = base.indexOf(p);
-      var n = esc((p.emoji || '') + ' ' + (p.name || '—'));
-      return '<div class="assets-base-card" data-idx="' + idx + '" title="Клик — добавить в Мои клиенты">' + n + '</div>';
-    }).join('');
-    grid.onclick = function(e) {
-      var card = e.target.closest('.assets-base-card');
-      if (card) { addFromBaseToActive(parseInt(card.getAttribute('data-idx'), 10)); }
-    };
-  }
-
   function initRightPanelAssets() {
     var wrap = document.getElementById('rightPanelWrap');
     var grip = document.getElementById('rightResizeGrip');
@@ -1097,7 +1200,6 @@
   }
 
   function assetsPagePostRender() {
-    renderAssetsBaseGrid();
     if (!window._assetsRightPanelInited) {
       window._assetsRightPanelInited = true;
       initRightPanelAssets();
