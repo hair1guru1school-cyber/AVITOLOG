@@ -1028,7 +1028,7 @@ body.task-panel-font-l .task-panel-content{--tf:1.15}
 .proj-emoji-btn{width:28px;min-width:28px;height:28px;flex-shrink:0;border:none;border-radius:0;background:transparent;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:24px;line-height:1;font-weight:600;padding:0;transition:transform 0.15s,filter 0.15s;overflow:hidden}
 .proj-emoji-btn:hover{transform:scale(1.08);filter:drop-shadow(0 0 8px rgba(122,106,247,0.45))}
 .proj-emoji-btn img{width:24px;height:24px;object-fit:cover;border-radius:4px;display:block}
-.proj-emoji-picker{position:absolute;background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:10px;display:flex;flex-wrap:wrap;gap:8px;z-index:100;box-shadow:0 8px 24px rgba(0,0,0,0.4);max-width:320px}
+.proj-emoji-picker{position:absolute;background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:10px;display:flex;flex-wrap:wrap;gap:8px;z-index:100;box-shadow:0 8px 24px rgba(0,0,0,0.4);max-width:320px;max-height:70vh;overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain}
 .proj-emoji-picker span{cursor:pointer;font-size:22px;padding:4px 5px;border-radius:6px;transition:background 0.12s}
 .proj-emoji-picker span:hover{background:rgba(0,217,126,0.15)}
 .proj-emoji-picker .emoji-upload{font-size:12px;font-weight:800;padding:6px 8px;border:1px dashed var(--accent3);border-radius:8px;color:#d8ccff}
@@ -1332,7 +1332,7 @@ body.goals-client-dragging .goal-block-sold{transition:all .18s ease}
 .goal-name-inline{flex:1;min-width:0;background:transparent;border:none;color:var(--text);font-size:16px;font-weight:800;font-family:inherit;outline:none;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis;line-height:1.1}
 .goal-name-display{display:block;pointer-events:none}
 .goal-name-edit{pointer-events:auto;width:100%}
-.goal-emoji-picker-popup{position:fixed;z-index:1100;background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:10px;display:flex;flex-wrap:wrap;gap:8px;box-shadow:0 8px 24px rgba(0,0,0,0.4);max-width:280px}
+.goal-emoji-picker-popup{position:fixed;z-index:1100;background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:10px;display:flex;flex-wrap:wrap;gap:8px;box-shadow:0 8px 24px rgba(0,0,0,0.4);max-width:280px;max-height:70vh;overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain}
 .goal-emoji-pick-btn{cursor:pointer;font-size:22px;padding:6px 8px;border-radius:8px;transition:background .15s}
 .goal-emoji-pick-btn:hover{background:rgba(0,217,126,0.2)}
 .goal-more-btn{width:22px;height:22px;border:1px solid rgba(255,255,255,0.08);background:transparent;color:var(--muted);border-radius:4px;cursor:pointer;font-size:16px;line-height:1;display:flex;align-items:center;justify-content:center;padding:0;flex-shrink:0;transition:all .12s}
@@ -1556,7 +1556,7 @@ body.goals-client-dragging .goal-block-sold{transition:all .18s ease}
 .assets-filter-btn{font-size:12px;font-weight:700;color:var(--muted);padding:6px 14px;margin:0 16px 8px;background:rgba(255,220,100,0.08);border:1px solid var(--border);border-radius:8px;cursor:pointer;transition:all .15s}
 .assets-filter-btn:hover{background:rgba(255,220,100,0.15);color:var(--text)}
 .assets-filter-btn.on{background:rgba(0,217,126,0.2);border-color:rgba(0,217,126,0.5);color:#00d97e}
-.assets-emoji-picker{position:fixed;z-index:1100;background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:10px;display:flex;flex-wrap:wrap;gap:8px;box-shadow:0 8px 24px rgba(0,0,0,0.4);max-width:280px}
+.assets-emoji-picker{position:fixed;z-index:1100;background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:10px;display:flex;flex-wrap:wrap;gap:8px;box-shadow:0 8px 24px rgba(0,0,0,0.4);max-width:280px;max-height:70vh;overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain}
 .assets-emoji-picker span{cursor:pointer;font-size:20px;padding:4px 5px;border-radius:6px;transition:background .12s}
 .assets-emoji-picker span:hover{background:rgba(0,217,126,0.15)}
 .assets-emoji-custom{width:100%;padding:6px 8px;font-size:12px;background:rgba(0,0,0,0.2);border:1px solid var(--border);border-radius:6px;color:var(--text);outline:none;margin-bottom:4px}
