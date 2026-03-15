@@ -1593,7 +1593,7 @@ var OAUTH_SCOPE = window.AVITOLOG_GOOGLE_SCOPE || 'https://www.googleapis.com/au
 var _driveToken = null;
 var _driveUserEmail = null;
 var SASHA_EMAIL = 'cyplakovaleksandr153@gmail.com';
-var DRIVE_AUTH_KEY = 'avitolog_drive_auth_v1';
+var DRIVE_AUTH_KEY = (typeof window.AVITOLOG_KEY === 'function') ? window.AVITOLOG_KEY('avitolog_drive_auth_v1') : 'avitolog_drive_auth_v1';
 
 function getStoredDriveAuth() {
   try { return JSON.parse(localStorage.getItem(DRIVE_AUTH_KEY) || 'null'); } catch(e) { return null; }
@@ -1611,10 +1611,17 @@ function restoreDriveTokenFromStorage() {
   _driveToken = s.token;
   return true;
 }
-function persistDriveToken(token, expiresInSec) {
+function persistDriveToken(token, expiresInSec, storageKey) {
   if (!token) return;
+  var key = storageKey || DRIVE_AUTH_KEY;
   var exp = Date.now() + (Math.max(60, Number(expiresInSec) || 3600) - 60) * 1000;
-  try { localStorage.setItem(DRIVE_AUTH_KEY, JSON.stringify({token: token, exp: exp})); } catch(e) {}
+  try { localStorage.setItem(key, JSON.stringify({token: token, exp: exp})); } catch(e) {}
+}
+function fetchDriveUserEmail(token) {
+  return fetch('https://www.googleapis.com/oauth2/v2/userinfo', { headers: { Authorization: 'Bearer ' + token } })
+    .then(function(r) { return r.ok ? r.json() : null; })
+    .then(function(u) { return (u && u.email) ? String(u.email).toLowerCase() : null; })
+    .catch(function() { return null; });
 }
 function setDriveConnectedUiState() {
   updateDriveUI();
@@ -1634,9 +1641,23 @@ function applyOAuthHash(hash) {
   if (!hash || hash.indexOf('access_token=') < 0) return false;
   var m = hash.match(/access_token=([^&]+)/);
   if (!m) return false;
-  _driveToken = m[1];
+  var token = m[1];
   var ex = hash.match(/expires_in=([^&]+)/);
-  persistDriveToken(_driveToken, ex ? parseInt(ex[1], 10) : 3600);
+  var expiresIn = ex ? parseInt(ex[1], 10) : 3600;
+  fetchDriveUserEmail(token).then(function(email) {
+    var m2 = (location.search || '').match(/[?&]user=(sasha|fil)/i);
+    var user = (m2 ? m2[1].toLowerCase() : null) || ((email && email === SASHA_EMAIL) ? 'sasha' : 'fil');
+    try { localStorage.setItem('avitolog_current_user', user); } catch(e) {}
+    var authKey = 'avitolog_drive_auth_v1' + (user === 'sasha' ? '_sasha' : '');
+    persistDriveToken(token, expiresIn, authKey);
+    history.replaceState(null, '', location.pathname + '?user=' + user);
+    location.reload();
+  }).catch(function() {
+    try { localStorage.setItem('avitolog_current_user', 'fil'); } catch(e) {}
+    persistDriveToken(token, expiresIn, 'avitolog_drive_auth_v1');
+    history.replaceState(null, '', location.pathname);
+    location.reload();
+  });
   return true;
 }
 function buildAuthUrl() {
@@ -1729,9 +1750,27 @@ function startAuthGIS() {
             scope: scp,
             callback: function(r) {
               if (r && r.access_token) {
-                _driveToken = r.access_token;
-                persistDriveToken(_driveToken, r.expires_in ? parseInt(r.expires_in, 10) : 3600);
-                setDriveConnectedUiState();
+                var token = r.access_token;
+                var expiresIn = r.expires_in ? parseInt(r.expires_in, 10) : 3600;
+                fetchDriveUserEmail(token).then(function(email) {
+                  var m = (location.search || '').match(/[?&]user=(sasha|fil)/i);
+                  var user = (m ? m[1].toLowerCase() : null) || ((email && email === SASHA_EMAIL) ? 'sasha' : 'fil');
+                  try { localStorage.setItem('avitolog_current_user', user); } catch(e) {}
+                  var authKey = 'avitolog_drive_auth_v1' + (user === 'sasha' ? '_sasha' : '');
+                  persistDriveToken(token, expiresIn, authKey);
+                  if (!m) {
+                    history.replaceState(null, '', location.pathname + '?user=' + user);
+                    location.reload();
+                    return;
+                  }
+                  _driveToken = token;
+                  setDriveConnectedUiState();
+                }).catch(function() {
+                  try { localStorage.setItem('avitolog_current_user', 'fil'); } catch(e) {}
+                  persistDriveToken(token, expiresIn, 'avitolog_drive_auth_v1');
+                  _driveToken = token;
+                  setDriveConnectedUiState();
+                });
               } else { alert('Ошибка: ' + (r && r.error ? r.error : 'нет токена')); }
             },
             error_callback: function(e) {
@@ -2881,18 +2920,19 @@ function findClientIndexByData(list, d) {
   });
 }
 
+function _ck(k) { return (typeof window.AVITOLOG_KEY === 'function' ? window.AVITOLOG_KEY(k) : k); }
 function getCrmClients() {
-  try { return JSON.parse(localStorage.getItem('avitolog_clients') || '[]'); } catch(e) { return []; }
+  try { return JSON.parse(localStorage.getItem(_ck('avitolog_clients')) || '[]'); } catch(e) { return []; }
 }
 function saveCrmClients(list) {
-  localStorage.setItem('avitolog_clients', JSON.stringify(list));
+  localStorage.setItem(_ck('avitolog_clients'), JSON.stringify(list));
 }
 function getActiveClient() {
-  try { return JSON.parse(localStorage.getItem('avitolog_active_client')); } catch(e) { return null; }
+  try { return JSON.parse(localStorage.getItem(_ck('avitolog_active_client'))); } catch(e) { return null; }
 }
 function setActiveClient(client) {
   _activeClient = client;
-  localStorage.setItem('avitolog_active_client', JSON.stringify(client));
+  localStorage.setItem(_ck('avitolog_active_client'), JSON.stringify(client));
   updateClientBadge();
   if (!projectsMode && !goalsMode && !agencyMode && !assetsMode && ['analysis','presale','avito1'].indexOf(currentTab) >= 0 && !docReady) refreshClientContents();
   if (goalsMode && window.AVITOLOG_GOALS && typeof window.AVITOLOG_GOALS.render === 'function') window.AVITOLOG_GOALS.render();
@@ -2997,7 +3037,7 @@ window.__goalsGetActiveClientAvatar = function() {
 };
 function clearActiveClient() {
   _activeClient = null;
-  localStorage.removeItem('avitolog_active_client');
+  localStorage.removeItem(_ck('avitolog_active_client'));
   updateClientBadge();
   if (goalsMode && window.AVITOLOG_GOALS && typeof window.AVITOLOG_GOALS.render === 'function') window.AVITOLOG_GOALS.render();
   if (!projectsMode && !goalsMode && !agencyMode && !assetsMode && ['analysis','presale','avito1'].indexOf(currentTab) >= 0 && !docReady) refreshClientContents();
@@ -3472,9 +3512,19 @@ function initDayMode() {
     if (btn) { btn.textContent = on ? '🌙' : '☀️'; btn.setAttribute('title', on ? 'Ночной режим — тёмный интерфейс' : 'Дневной режим — светлый интерфейс'); }
   } catch(e) {}
 }
+function switchUser(u) {
+  if (!u || (window.AVITOLOG_USER || '').toLowerCase() === String(u).toLowerCase()) return;
+  try { localStorage.setItem('avitolog_current_user', String(u).toLowerCase()); } catch(e) {}
+  window.location.href = 'index.html?user=' + String(u).toLowerCase();
+}
 document.addEventListener('DOMContentLoaded', function() {
   initDayMode();
   updateDriveUI();
+  var u = (window.AVITOLOG_USER || 'fil').toLowerCase();
+  var filBtn = document.getElementById('userFil');
+  var sashaBtn = document.getElementById('userSasha');
+  if (filBtn) filBtn.classList.toggle('active', u === 'fil');
+  if (sashaBtn) sashaBtn.classList.toggle('active', u === 'sasha');
   var banner = document.getElementById('githubPagesBanner');
   if (banner && /github\.io$/i.test(window.location.hostname) && !localStorage.getItem('avito_hide_gh_banner')) {
     banner.style.display = 'flex';

@@ -1,5 +1,5 @@
 // ── PROJECTS SCREEN ──
-var PROJECTS_DATA_KEY = 'avitolog_projects';
+var PROJECTS_DATA_KEY = (typeof window.AVITOLOG_KEY === 'function') ? window.AVITOLOG_KEY('avitolog_projects') : 'avitolog_projects';
 var PROJECT_STATUSES = ['Ожидают','В работе','Готово!','ЛИМИТ','OFF','След. мес.','Жду','ПАРКУЙ','О бюджете'];
 var PROJECT_STATUS_COLORS = {'Ожидают':'#7c6af7','В работе':'#00d97e','Готово!':'#00d97e','ЛИМИТ':'#ff6b35','OFF':'#666','След. мес.':'#ffcc00','Жду':'#ffcc00','ПАРКУЙ':'#666','О бюджете':'#ff6b35'};
 var PROJECT_EMOJIS = [
@@ -15,10 +15,10 @@ var _projectsDidInitialCenter = false;
 var _selectedProjectId = null;
 var _expandedProjectIds = {};
 var _projectChildFocusKey = null;
-var PROJECTS_STICKY_WIDTH_KEY = 'avitolog_projects_sticky_width';
-var PROJECTS_ROW_HEIGHT_KEY = 'avitolog_projects_row_height';
-var PROJECTS_DAY_PX_KEY = 'avitolog_projects_day_px';
-var PROJECTS_ZOOM_KEY = 'avitolog_projects_zoom';
+var PROJECTS_STICKY_WIDTH_KEY = (typeof window.AVITOLOG_KEY === 'function') ? window.AVITOLOG_KEY('avitolog_projects_sticky_width') : 'avitolog_projects_sticky_width';
+var PROJECTS_ROW_HEIGHT_KEY = (typeof window.AVITOLOG_KEY === 'function') ? window.AVITOLOG_KEY('avitolog_projects_row_height') : 'avitolog_projects_row_height';
+var PROJECTS_DAY_PX_KEY = (typeof window.AVITOLOG_KEY === 'function') ? window.AVITOLOG_KEY('avitolog_projects_day_px') : 'avitolog_projects_day_px';
+var PROJECTS_ZOOM_KEY = (typeof window.AVITOLOG_KEY === 'function') ? window.AVITOLOG_KEY('avitolog_projects_zoom') : 'avitolog_projects_zoom';
 var _dragProjectId = null;
 var _projectFolderBindTargetId = null;
 var _calendarCtx = { projectId: null, date: null };
@@ -43,11 +43,11 @@ var _projectsFilterLaunch = false;
 var _projectsFilterAutoload = false;
 var _projectsFilterMustLaunch = false;
 var _projectsZoneTab = 'active'; // active | second_chance | archive
-var TASKS_LAYER_ON_KEY = 'avitolog_tasks_layer_on';
-var TASK_PANEL_FONT_KEY = 'avitolog_task_panel_font';
-var TASK_PANEL_WIDTH_KEY = 'avitolog_task_panel_width';
+var TASKS_LAYER_ON_KEY = (typeof window.AVITOLOG_KEY === 'function') ? window.AVITOLOG_KEY('avitolog_tasks_layer_on') : 'avitolog_tasks_layer_on';
+var TASK_PANEL_FONT_KEY = (typeof window.AVITOLOG_KEY === 'function') ? window.AVITOLOG_KEY('avitolog_task_panel_font') : 'avitolog_task_panel_font';
+var TASK_PANEL_WIDTH_KEY = (typeof window.AVITOLOG_KEY === 'function') ? window.AVITOLOG_KEY('avitolog_task_panel_width') : 'avitolog_task_panel_width';
 var _tasksLayerOn = (function(){ try{ var v=localStorage.getItem(TASKS_LAYER_ON_KEY); return v!=='0'; }catch(e){ return true; }})();
-var TASKS_SORT_ON_KEY = 'avitolog_projects_tasks_sort_v1';
+var TASKS_SORT_ON_KEY = (typeof window.AVITOLOG_KEY === 'function') ? window.AVITOLOG_KEY('avitolog_projects_tasks_sort_v1') : 'avitolog_projects_tasks_sort_v1';
 var _projectsTasksSortOn = (function(){ try{ return localStorage.getItem(TASKS_SORT_ON_KEY)==='1'; }catch(e){ return false; }})();
 var _taskPanelProjectId = null;
 var _selectedCalCell = null;
@@ -718,7 +718,7 @@ function saveProjectsZoom(z) {
 }
 function toggleProjectsSidebar() {
   var hidden = document.body.classList.toggle('projects-sidebar-hidden');
-  try { localStorage.setItem('avitolog_projects_sidebar_hidden', hidden ? '1' : '0'); } catch(e) {}
+  try { localStorage.setItem((typeof window.AVITOLOG_KEY === 'function' ? window.AVITOLOG_KEY('avitolog_projects_sidebar_hidden') : 'avitolog_projects_sidebar_hidden'), hidden ? '1' : '0'); } catch(e) {}
   var btn = document.querySelector('.projects-expand-btn');
   if (btn) btn.classList.toggle('on', hidden);
   if (typeof rerenderProjectsPreserveScroll === 'function') rerenderProjectsPreserveScroll();
@@ -1094,7 +1094,7 @@ function selectProjectRow(projectId) {
       }
     } else {
       _activeClient = null;
-      localStorage.removeItem('avitolog_active_client');
+      localStorage.removeItem((typeof window.AVITOLOG_KEY === 'function' ? window.AVITOLOG_KEY('avitolog_active_client') : 'avitolog_active_client'));
       showClientQuestionState(p);
     }
   }
@@ -2569,7 +2569,7 @@ function renderProjectsScreen(opts) {
           '<span class="projects-head-chip autoload' + (_projectsFilterAutoload ? ' is-on' : '') + '" title="Показать проекты с автозагрузкой первыми" onclick="event.stopPropagation();toggleProjectsFilterAutoload()">🅰 <b>' + autoloadCount + '</b></span>' +
           '<span class="projects-head-chip mustlaunch' + (_projectsFilterMustLaunch ? ' is-on' : '') + '" title="Показать проекты с !! первыми" onclick="event.stopPropagation();toggleProjectsFilterMustLaunch()">!! <b>' + mustLaunchCount + '</b></span>' +
         '</span>';
-  var expandCls = (typeof localStorage !== 'undefined' && localStorage.getItem('avitolog_projects_sidebar_hidden') === '1') ? ' on' : '';
+  var expandCls = (typeof localStorage !== 'undefined' && localStorage.getItem((typeof window.AVITOLOG_KEY === 'function' ? window.AVITOLOG_KEY('avitolog_projects_sidebar_hidden') : 'avitolog_projects_sidebar_hidden')) === '1') ? ' on' : '';
   var toolsRow = '<div class="projects-zone-tabs-wrap"><div class="projects-zone-tabs projects-zone-tabs-bottom projects-zone-tabs-row1">' + chipsRow1 + '</div><div class="projects-zone-tabs projects-zone-tabs-bottom projects-zone-tabs-row2">' + chipsRow2 + '</div></div>';
   var headerSticky =
     '<div class="projects-sticky-head">' +

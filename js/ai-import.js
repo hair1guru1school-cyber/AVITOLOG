@@ -25,14 +25,15 @@
 
   function getGoalsData() {
     try {
-      var s = localStorage.getItem('avitolog_goals_v1');
+      var s = localStorage.getItem((typeof window.AVITOLOG_KEY === 'function' ? window.AVITOLOG_KEY('avitolog_goals_v1') : 'avitolog_goals_v1'));
       return s ? JSON.parse(s) : { projects: [] };
     } catch (e) { return { projects: [] }; }
   }
 
   function getCrmClients() {
     try {
-      return JSON.parse(localStorage.getItem('avitolog_clients') || '[]');
+      var k = (typeof window.AVITOLOG_KEY === 'function') ? window.AVITOLOG_KEY('avitolog_clients') : 'avitolog_clients';
+      return JSON.parse(localStorage.getItem(k) || '[]');
     } catch (e) { return []; }
   }
 
@@ -349,7 +350,7 @@
           sourceNote: '🤖 AI Import: ' + (row.raw && row.raw.comments ? row.raw.comments : '')
         });
       });
-      try { localStorage.setItem('avitolog_goals_v1', JSON.stringify(goalsData)); } catch (e) {}
+      try { localStorage.setItem((typeof window.AVITOLOG_KEY === 'function' ? window.AVITOLOG_KEY('avitolog_goals_v1') : 'avitolog_goals_v1'), JSON.stringify(goalsData)); } catch (e) {}
       if (window.AVITOLOG_GOALS && typeof window.AVITOLOG_GOALS.render === 'function') window.AVITOLOG_GOALS.render();
     }
 
@@ -370,10 +371,10 @@
     confirmImport();
   }
 
-  var ASSETS_MY_KEY = 'avitolog_assets_my_v2';
-  var ASSETS_SASHA_KEY = 'avitolog_assets_sasha_v2';
-  var ASSETS_BASE_KEY = 'avitolog_assets_base_v2';
-  var ASSETS_FILTER_PAID_KEY = 'avitolog_assets_filter_paid';
+  var ASSETS_MY_KEY = (typeof window.AVITOLOG_KEY === 'function') ? window.AVITOLOG_KEY('avitolog_assets_my_v2') : 'avitolog_assets_my_v2';
+  var ASSETS_SASHA_KEY = (typeof window.AVITOLOG_KEY === 'function') ? window.AVITOLOG_KEY('avitolog_assets_sasha_v2') : 'avitolog_assets_sasha_v2';
+  var ASSETS_BASE_KEY = (typeof window.AVITOLOG_KEY === 'function' ? window.AVITOLOG_KEY('avitolog_assets_base_v2', true) : 'avitolog_assets_base_v2');
+  var ASSETS_FILTER_PAID_KEY = (typeof window.AVITOLOG_KEY === 'function') ? window.AVITOLOG_KEY('avitolog_assets_filter_paid') : 'avitolog_assets_filter_paid';
 
   var ASSETS_EMOJIS = ['📦','🪨','🏠','🏗️','🧱','🛋️','🚚','📊','💰','🚀','👷','🛠️','🚜','📚','👩🏻‍🏫','💻','📱','⚡️','🛌','🪟','🎄','🪵','🏎','🪨','🛌','🏠','🚜','👩🏻‍🏫','⚡️','🧱','🪑','🛏️','🏢','🏭','🔧','📐','⭐️','🔥','💎','🎯','✅','📋','📝','🖊️','📷','📡','🔌'];
   var ASSETS_LEGACY_KEY = 'avitolog_assets_projects_v1';
@@ -640,8 +641,8 @@
             '<input type="text" value="' + esc(p.name || '') + '" placeholder="Проект" data-field="name" onblur="window.__assetsSaveColRow(this)">' +
             folderHtml +
             '<button type="button" class="assets-status-badge ' + statusCls + '" onclick="window.__assetsCycleClientType(\'' + owner + '\',' + idx + ')" title="Старый/новичок/2-й раз">' + esc(statusBadge) + '</button>' +
+            '<span class="assets-progress-bar" title="След. платёж — чем ближе, тем короче шкала"><span class="assets-progress-fill" style="width:' + barPct + '%"></span></span>' +
           '</span>' +
-          '<span class="assets-progress-bar" title="Чем больше ждать до платежа — тем полнее"><span class="assets-progress-fill" style="width:' + barPct + '%"></span></span>' +
         '</span>' +
         '<span class="assets-col-date"><input type="date" value="' + esc(startDate) + '" data-field="startDate" onchange="window.__assetsSaveColRow(this)" title="Дата старта"></span>' +
         '<span class="assets-col-date"><input type="date" value="' + esc(payDate) + '" data-field="paymentDate" onchange="window.__assetsSaveColRow(this)" title="Дата платежа"></span>';
@@ -676,7 +677,7 @@
         '<div class="assets-col assets-col-sasha" id="assetsColSasha" data-owner="sasha">' +
           '<div class="assets-col-title">👤 Клиенты Саши <span class="assets-col-total">' + fmt(sashaTotal) + ' ₽</span><span class="assets-col-breakdown">· Саше <span class="assets-col-sasha-agent">' + fmt(sashaList.reduce(function(a,p){return a+(parseInt(String(p.toAgent||'').replace(/\s/g,''),10)||0);},0)) + '</span> ₽ · Агентству <span class="assets-col-sasha-agency">' + fmt(sashaList.reduce(function(a,p){return a+(parseInt(String(p.aoaPercent||'').replace(/\s/g,''),10)||0);},0)) + '</span> ₽</span></div>' +
           '<div class="assets-col-list">' + colHeaderSasha + sashaRows + '</div>' +
-          '<button type="button" class="assets-col-add" onclick="window.__assetsAddProject(\'sasha\')">+ Добавить</button>' +
+          '<div class="assets-col-add-row"><button type="button" class="assets-col-add" onclick="window.__assetsAddProject(\'sasha\')">+ Добавить</button><button type="button" class="assets-col-add assets-col-add-base" onclick="window.__assetsShowBasePicker(this)" title="Выбрать из базы">+ из базы</button></div>' +
         '</div>' +
       '</div>' +
       '<div class="assets-ai-row" id="assetsAiRow">' +
@@ -705,6 +706,7 @@
       } else if (typeof updateAssetsDetailPanel === 'function') {
         updateAssetsDetailPanel(null, null);
       }
+      if (typeof window.__assetsPagePostRender === 'function') window.__assetsPagePostRender();
     }, 50);
   }
 
@@ -1037,4 +1039,70 @@
   window.__assetsApplyFolderBind = applyFolderBind;
   window.__assetsShowBasePicker = showAssetsBasePicker;
   window.__wireAssetsDragTargets = wireAssetsDragTargets;
+
+  function renderAssetsBaseGrid() {
+    var grid = document.getElementById('assetsBaseGrid');
+    if (!grid) return;
+    var base = getAssetsBase();
+    var recent = base.slice(-16);
+    var fmt = function(n) { return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ' '); };
+    grid.innerHTML = recent.map(function(p, i) {
+      var idx = base.indexOf(p);
+      var n = esc((p.emoji || '') + ' ' + (p.name || '—'));
+      return '<div class="assets-base-card" data-idx="' + idx + '" title="Клик — добавить в Мои клиенты">' + n + '</div>';
+    }).join('');
+    grid.onclick = function(e) {
+      var card = e.target.closest('.assets-base-card');
+      if (card) { addFromBaseToActive(parseInt(card.getAttribute('data-idx'), 10)); }
+    };
+  }
+
+  function initRightPanelAssets() {
+    var wrap = document.getElementById('rightPanelWrap');
+    var grip = document.getElementById('rightResizeGrip');
+    if (wrap && grip) {
+      var w = parseInt(localStorage.getItem('av_right_panel_w') || '155', 10);
+      wrap.style.width = Math.min(380, Math.max(120, w)) + 'px';
+      grip.onmousedown = function(e) {
+        e.preventDefault();
+        grip.classList.add('active');
+        var startX = e.clientX, startW = wrap.offsetWidth;
+        function move(ev) {
+          var dx = startX - ev.clientX;
+          var nw = Math.min(380, Math.max(120, startW + dx));
+          wrap.style.width = nw + 'px';
+          try { localStorage.setItem('av_right_panel_w', String(nw)); } catch(ex) {}
+        }
+        function up() {
+          grip.classList.remove('active');
+          document.removeEventListener('mousemove', move);
+          document.removeEventListener('mouseup', up);
+        }
+        document.addEventListener('mousemove', move);
+        document.addEventListener('mouseup', up);
+      };
+    }
+    var content = document.getElementById('assetsDetailContent');
+    var fs = localStorage.getItem('av_assets_font_size') || 'm';
+    if (content) content.className = 'assets-detail-content font-' + fs;
+    document.querySelectorAll('.assets-font-btn').forEach(function(btn) {
+      btn.classList.toggle('on', btn.getAttribute('data-size') === fs);
+      btn.onclick = function() {
+        var s = btn.getAttribute('data-size');
+        document.querySelectorAll('.assets-font-btn').forEach(function(b) { b.classList.remove('on'); if (b.getAttribute('data-size') === s) b.classList.add('on'); });
+        if (content) content.className = 'assets-detail-content font-' + s;
+        try { localStorage.setItem('av_assets_font_size', s); } catch(ex) {}
+      };
+    });
+  }
+
+  function assetsPagePostRender() {
+    renderAssetsBaseGrid();
+    if (!window._assetsRightPanelInited) {
+      window._assetsRightPanelInited = true;
+      initRightPanelAssets();
+    }
+  }
+
+  window.__assetsPagePostRender = assetsPagePostRender;
 })();

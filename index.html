@@ -106,7 +106,7 @@ body{font-family:'Golos Text',sans-serif;background:var(--bg);color:var(--text);
 #pgfill{height:100%;width:0%;background:linear-gradient(90deg,var(--accent),var(--accent3));box-shadow:0 0 8px var(--accent);transition:width 0.4s ease}
 header{background:var(--surface);border-bottom:none;padding:0 22px;display:flex;align-items:center;height:52px;position:sticky;top:3px;z-index:100;gap:12px}
 .logo{font-family:'Bebas Neue',sans-serif;font-size:28px;letter-spacing:5px;color:var(--accent);white-space:nowrap}
-.layout{display:grid;grid-template-columns:340px 1fr 155px;height:calc(100vh - 55px)}
+.layout{display:grid;grid-template-columns:340px 1fr auto;height:calc(100vh - 55px)}
 .sidebar{background:var(--surface);border-right:1px solid var(--border);padding:14px;overflow-y:auto;display:flex;flex-direction:column}
 .side-tabs{display:flex;flex-direction:column;gap:5px;margin-bottom:14px;padding-bottom:14px;border-bottom:1px solid var(--border)}
 .side-tab{display:flex;flex-direction:column;background:var(--surface2);border:1px solid var(--border);color:var(--muted);border-radius:10px;cursor:pointer;font-family:'Bebas Neue',sans-serif;transition:all 0.18s;width:100%;overflow:hidden;padding:0}
@@ -445,10 +445,25 @@ textarea{resize:vertical;min-height:50px;line-height:1.5}
 .client-info-block .ci-thumb-inner.ci-upload-zone:hover::after{content:'';position:absolute;inset:0;background:rgba(0,217,126,0.15);pointer-events:none;border-radius:8px}
 .client-info-block .ci-open-folder{display:inline-flex;align-items:center;gap:3px;padding:3px 8px;background:rgba(0,217,126,0.08);border:1px solid rgba(0,217,126,0.25);border-radius:4px;color:var(--accent);font-size:9px;font-weight:700;cursor:pointer;text-decoration:none;transition:all .2s;flex-shrink:0}
 .client-info-block .ci-open-folder:hover{background:rgba(0,217,126,0.15);border-color:var(--accent)}
-.right-tabs{background:var(--surface);border-left:1px solid var(--border);padding:10px 8px;display:flex;flex-direction:column;gap:6px;overflow-y:auto;min-width:140px}
+.right-panel-wrap{display:flex;width:155px;min-width:120px;max-width:380px;position:relative}
+.right-resize-grip{width:4px;flex-shrink:0;cursor:col-resize;background:transparent;transition:background .15s}
+.right-resize-grip:hover,.right-resize-grip.active{background:rgba(0,217,126,0.3)}
+.right-tabs{background:var(--surface);border-left:1px solid var(--border);padding:10px 8px;display:flex;flex-direction:column;gap:6px;overflow-y:auto;min-width:120px;flex:1;min-width:0}
 .rtab{display:flex;flex-direction:column;align-items:center;gap:5px;padding:14px 6px;border-radius:10px;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;text-align:center;font-family:Golos Text,sans-serif;font-size:10px;font-weight:700;letter-spacing:0.5px;transition:all 0.2s;width:100%;position:relative;overflow:hidden}
 .assets-detail-panel{flex:1;min-height:0;display:flex;flex-direction:column;overflow:hidden}
-.assets-detail-title{font-size:11px;font-weight:800;letter-spacing:1px;color:var(--muted);margin-bottom:10px;text-transform:uppercase}
+.assets-detail-title{font-size:11px;font-weight:800;letter-spacing:1px;color:var(--muted);text-transform:uppercase}
+.assets-font-size-btns{display:flex;gap:2px}
+.assets-font-btn{width:22px;height:22px;padding:0;font-size:10px;font-weight:700;border:1px solid var(--border);background:transparent;color:var(--muted);border-radius:4px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s}
+.assets-font-btn:hover{border-color:var(--accent);color:var(--accent)}
+.assets-font-btn.on{background:rgba(0,217,126,0.2);border-color:var(--accent);color:var(--accent)}
+.assets-detail-content.font-s{font-size:11px}
+.assets-detail-content.font-m{font-size:12px}
+.assets-detail-content.font-l{font-size:14px}
+.assets-base-grid-wrap{margin-top:12px;padding-top:10px;border-top:1px solid var(--border);display:none}
+.assets-base-grid-title{font-size:10px;font-weight:700;letter-spacing:0.5px;color:var(--muted);margin-bottom:8px;text-transform:uppercase}
+.assets-base-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;max-height:200px;overflow-y:auto}
+.assets-base-grid .assets-base-card{padding:6px 8px;font-size:10px;background:rgba(0,0,0,0.2);border:1px solid var(--border);border-radius:6px;cursor:pointer;transition:all .15s;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.assets-base-grid .assets-base-card:hover{background:rgba(0,217,126,0.15);border-color:var(--accent);color:var(--accent)}
 .assets-detail-content{font-size:12px;color:var(--text);line-height:1.5;overflow-y:auto}
 .assets-detail-content .ad-project{font-weight:700;margin-bottom:8px;color:var(--accent)}
 .assets-detail-content .ad-row{margin-bottom:6px;display:flex;justify-content:space-between;gap:12px}
@@ -478,6 +493,13 @@ textarea{resize:vertical;min-height:50px;line-height:1.5}
 .analytics-tumbler button:not(:first-child){border-left:none}
 .analytics-tumbler button.on{border-color:var(--accent);background:rgba(0,217,126,0.15);color:var(--accent)}
 .analytics-tumbler button:hover:not(.on){border-color:var(--accent);color:var(--accent)}
+/* ——— Переключатель пользователя (Фил / Саша) ——— */
+.user-switcher{display:flex;align-items:center;gap:0;background:var(--surface2);border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-left:12px}
+.user-switcher button{border:none;background:transparent;color:var(--muted);padding:6px 12px;font-size:12px;font-weight:600;font-family:'Golos Text',sans-serif;cursor:pointer;transition:all 0.2s}
+.user-switcher button:hover{color:var(--accent)}
+.user-switcher button.active{background:rgba(0,217,126,0.15);color:var(--accent)}
+body.day-mode .user-switcher{background:var(--surface2);border-color:var(--border)}
+body.day-mode .user-switcher button.active{background:rgba(0,136,92,0.15);color:var(--accent)}
 .analytics-top-row{display:flex;justify-content:center;padding:8px 0 4px;flex-shrink:0;border-bottom:1px solid var(--border);margin-bottom:4px}
 .analytics-top-row:empty{display:none}
 .btn-projects{border:1px solid var(--border);background:var(--surface2);color:var(--muted);padding:8px 20px;font-size:13px;font-weight:700;font-family:'Golos Text',sans-serif;cursor:pointer;border-radius:10px;transition:all 0.2s}
@@ -675,6 +697,7 @@ body.agency-mode .analytics-tumbler{display:none !important}
 body.agency-mode .gen-extra-prompt,body.agency-mode .gen-buttons-row{display:none !important}
 body.assets-mode .right-tabs .rtab{display:none}
 body.assets-mode .right-tabs #assetsDetailPanel{display:flex!important}
+body.assets-mode .right-tabs #assetsBaseGridWrap{display:block!important}
 .assets-detail-panel{display:none}
 body.assets-mode .depth-bar,body.assets-mode .sec-bar{display:none !important}
 body.assets-mode .analytics-control-panel{display:none !important}
@@ -1549,14 +1572,14 @@ body.goals-client-dragging .goal-block-sold{transition:all .18s ease}
 .assets-row-folder-link{color:#35d0ff;text-decoration:none;padding:2px 6px;border-radius:4px;transition:all .15s}
 .assets-row-folder-link:hover{background:rgba(53,208,255,0.15);color:#7cf5ff}
 .assets-col-list{flex:1;overflow-y:auto;min-height:120px}
-.assets-col-header{display:flex;align-items:center;gap:8px;padding:4px 12px;font-size:11px;font-weight:700;color:var(--muted);background:rgba(0,0,0,0.25);border-bottom:1px solid var(--border)}
+.assets-col-header{display:flex;align-items:center;gap:6px;padding:2px 10px;font-size:10px;font-weight:700;color:var(--muted);background:rgba(0,0,0,0.25);border-bottom:1px solid var(--border)}
 .assets-col-header .ac-name{flex:1}
 .assets-col-header .ac-date{min-width:115px}
 .assets-col-header .ac-paid,.assets-col-header .ac-expected,.assets-col-header .ac-extra{min-width:70px;text-align:right}
 .assets-col-extra{min-width:70px;text-align:right}
 .assets-col-extra input{width:55px;padding:3px 6px;font-size:12px;text-align:right;background:rgba(0,0,0,0.2);border:1px solid var(--border);border-radius:6px;color:var(--text)}
 .assets-col-header .ac-actions{min-width:70px;display:flex;gap:4px;justify-content:flex-end}
-.assets-col-row{display:flex;align-items:center;gap:8px;padding:4px 12px;border-bottom:1px solid rgba(255,255,255,0.05);font-size:13px;cursor:pointer;transition:box-shadow .2s,border-color .2s;min-height:36px}
+.assets-col-row{display:flex;align-items:center;gap:6px;padding:2px 10px;border-bottom:1px solid rgba(255,255,255,0.05);font-size:12px;cursor:pointer;transition:box-shadow .2s,border-color .2s;min-height:26px}
 .assets-col-row:hover{background:rgba(255,255,255,0.02)}
 .assets-col-row.assets-row-paid{background:rgba(0,217,126,0.08);border-left:3px solid rgba(0,217,126,0.6)}
 .assets-col-row.assets-row-bind-selected.assets-row-has-folder{box-shadow:inset 0 0 0 2px rgba(0,217,126,0.6);background:rgba(0,217,126,0.15)}
@@ -1564,7 +1587,7 @@ body.goals-client-dragging .goal-block-sold{transition:all .18s ease}
 .assets-col-emoji{font-size:16px}
 .assets-col-name{flex:1;min-width:0}
 .assets-col-name-row{display:flex;align-items:center;gap:6px}
-.assets-col-name-row input{flex:1;min-width:0;padding:4px 8px;font-size:14px;font-weight:700;background:rgba(0,0,0,0.2);border:1px solid var(--border);border-radius:5px;color:var(--text);outline:none}
+.assets-col-name-row input{flex:1;min-width:0;padding:2px 6px;font-size:12px;font-weight:700;background:rgba(0,0,0,0.2);border:1px solid var(--border);border-radius:5px;color:var(--text);outline:none}
 .assets-status-badge{flex-shrink:0;padding:2px 6px;font-size:10px;font-weight:800;border-radius:6px;border:1px solid;cursor:pointer;background:transparent;font-family:inherit;transition:all .15s}
 .assets-status-new{color:#35d0ff;border-color:rgba(53,208,255,0.5)}
 .assets-status-new:hover{background:rgba(53,208,255,0.15)}
@@ -1572,8 +1595,10 @@ body.goals-client-dragging .goal-block-sold{transition:all .18s ease}
 .assets-status-diamond:hover{background:rgba(255,215,0,0.1)}
 .assets-status-2{color:#c4b8ff;border-color:rgba(196,184,255,0.5)}
 .assets-status-2:hover{background:rgba(196,184,255,0.1)}
-.assets-col-name{display:flex;flex-direction:column;gap:4px}
-.assets-progress-bar{height:3px;background:rgba(255,255,255,0.1);border-radius:2px;overflow:hidden}
+.assets-col-name{flex:1;min-width:0}
+.assets-col-name-row{display:flex;align-items:center;gap:6px}
+.assets-progress-bar{background:rgba(255,255,255,0.1);border-radius:2px;overflow:hidden}
+.assets-col-name-row .assets-progress-bar{flex:0 0 50px;min-width:40px;height:4px;align-self:center;margin-left:4px}
 .assets-progress-fill{height:100%;background:linear-gradient(90deg,rgba(0,217,126,0.6),rgba(0,217,126,0.9));border-radius:2px;transition:width .25s}
 .assets-col-sasha .assets-progress-fill{background:linear-gradient(90deg,rgba(53,208,255,0.6),rgba(53,208,255,0.9))}
 .assets-col-date{min-width:115px}
@@ -1639,6 +1664,10 @@ if (!window.AVITOLOG_GOALS) {
 <header>
   <button type="button" class="header-menu-btn" id="headerMenuBtn" onclick="toggleMobileSidebar()" title="Меню" aria-label="Меню">☰</button>
   <div class="logo">🃏AVITOBO$$</div>
+  <div class="user-switcher" id="userSwitcher">
+    <button type="button" id="userFil" onclick="switchUser('fil')">Фил</button>
+    <button type="button" id="userSasha" onclick="switchUser('sasha')">Саша</button>
+  </div>
   <div style="flex:1"></div>
   <button type="button" id="dayModeToggle" class="header-day-toggle" onclick="toggleDayMode()" title="Дневной режим — светлый интерфейс">☀️</button>
   <form onsubmit="return false" style="display:flex;align-items:center;gap:8px">
@@ -1811,10 +1840,23 @@ if (!window.AVITOLOG_GOALS) {
   </div>
 </div>
 
-<div class="right-tabs">
+<div class="right-panel-wrap" id="rightPanelWrap">
+  <div class="right-resize-grip" id="rightResizeGrip" title="Потяни — изменить ширину"></div>
+  <div class="right-tabs">
   <div id="assetsDetailPanel" class="assets-detail-panel">
-    <div class="assets-detail-title">История оплат</div>
+    <div class="assets-detail-header" style="display:flex;align-items:center;justify-content:space-between;gap:6px;margin-bottom:6px">
+      <span class="assets-detail-title">История оплат</span>
+      <div class="assets-font-size-btns">
+        <button type="button" class="assets-font-btn" data-size="s" title="Мелкий шрифт">A</button>
+        <button type="button" class="assets-font-btn on" data-size="m" title="Средний">A</button>
+        <button type="button" class="assets-font-btn" data-size="l" title="Крупный">A</button>
+      </div>
+    </div>
     <div id="assetsDetailContent" class="assets-detail-content"></div>
+  </div>
+  <div id="assetsBaseGridWrap" class="assets-base-grid-wrap">
+    <div class="assets-base-grid-title">Из базы — клик добавит</div>
+    <div id="assetsBaseGrid" class="assets-base-grid"></div>
   </div>
   <button type="button" class="rtab active" id="tab-analysis" onclick="switchTab('analysis')">
     <span class="rtab-ico">📊</span>
@@ -1831,6 +1873,7 @@ if (!window.AVITOLOG_GOALS) {
     <span class="rtab-txt" id="txt-avito1">AVITO №1</span>
     <div class="rtab-bar" id="bar-avito1"></div>
   </button>
+  </div>
 </div>
 
 <div class="chat-float" id="chatFloat" style="display:none">
@@ -1850,6 +1893,7 @@ if (!window.AVITOLOG_GOALS) {
 </div>
 
 </div><!-- /mainApp -->
+<script src="js/user-config.js"></script>
 <script src="js/hero-asset.js"></script>
 <script src="js/core.js"></script>
 <script src="js/projects.js"></script>

@@ -5,7 +5,7 @@
 (function() {
   'use strict';
 
-  const STORAGE_KEY = 'avitolog_goals_v1';
+  const STORAGE_KEY = (typeof window.AVITOLOG_KEY === 'function') ? window.AVITOLOG_KEY('avitolog_goals_v1') : 'avitolog_goals_v1';
   var STATUS_LEGACY = { kp_sent:'kp', invoice_sent:'invoice', contract_sent:'contract', instruction_sent:'instruction', deal_discussion:'negotiations' };
   const STATUS_OPTIONS = [
     { id: 'kp', label: 'КП', color: '#35d0ff' },

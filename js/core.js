@@ -2,7 +2,7 @@
 (function(){
   window.AVITOLOG_GOOGLE_CLIENT_ID = '98192715547-1a7jrfa6a53e1u7k5lojss8ji12q4432.apps.googleusercontent.com';
   window.AVITOLOG_GOOGLE_REDIRECT = 'https://hair1guru1school-cyber.github.io/AVITOLOG/index.html';
-  window.AVITOLOG_GOOGLE_SCOPE = 'https://www.googleapis.com/auth/drive https://www.googleapis.com/auth/spreadsheets';
+  window.AVITOLOG_GOOGLE_SCOPE = 'https://www.googleapis.com/auth/drive https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/userinfo.email';
 })();
 const API = 'https://api.anthropic.com/v1/messages';
 const API_CORS_FALLBACKS = [
@@ -43,7 +43,8 @@ var projectsMode = false;
 var analysisSections = {demand:true, audience:true, pains:true, behavior:true, keywords:true, geo:true, summary:true};
 // Восстанавливаем из localStorage (только если saved — валидный объект)
 try {
-  var saved = JSON.parse(localStorage.getItem('avitolog_analysis_sections') || 'null');
+  var asKey = (typeof window.AVITOLOG_KEY === 'function') ? window.AVITOLOG_KEY('avitolog_analysis_sections') : 'avitolog_analysis_sections';
+  var saved = JSON.parse(localStorage.getItem(asKey) || 'null');
   if (saved && typeof saved === 'object' && !Array.isArray(saved)) analysisSections = saved;
 } catch(e) {}
 var _timer = null, _secs = 0;
@@ -74,7 +75,7 @@ function toggleSec(btn) {
   var sec = btn.getAttribute('data-sec');
   analysisSections[sec] = !analysisSections[sec];
   btn.classList.toggle('on', analysisSections[sec]);
-  try { localStorage.setItem('avitolog_analysis_sections', JSON.stringify(analysisSections)); } catch(e) {}
+  try { localStorage.setItem((typeof window.AVITOLOG_KEY === 'function' ? window.AVITOLOG_KEY('avitolog_analysis_sections') : 'avitolog_analysis_sections'), JSON.stringify(analysisSections)); } catch(e) {}
 }
 function initSecBar() {
   document.querySelectorAll('.sec-btn').forEach(function(b) {
@@ -85,7 +86,7 @@ function initSecBar() {
 
 function setAnalyticsMode(mode) {
   analyticsMode = mode;
-  try { localStorage.setItem('avitolog_analytics_mode', mode); } catch(e) {}
+  try { localStorage.setItem((typeof window.AVITOLOG_KEY === 'function' ? window.AVITOLOG_KEY('avitolog_analytics_mode') : 'avitolog_analytics_mode'), mode); } catch(e) {}
   var sashaBtn = document.getElementById('tumblerSasha');
   var filBtn = document.getElementById('tumblerFil');
   var reginaBtn = document.getElementById('tumblerRegina');
@@ -157,7 +158,7 @@ function patchGoalsRenderWithFunnelSync() {
 function installGoalsInlinePriceHandler() {
   window.__goalsSaveInlinePrice = function(pid, val) {
     var data;
-    try { data = JSON.parse(localStorage.getItem('avitolog_goals_v1') || '{"projects":[]}'); } catch (e) { data = { projects: [] }; }
+    try { data = JSON.parse(localStorage.getItem((typeof window.AVITOLOG_KEY === 'function' ? window.AVITOLOG_KEY('avitolog_goals_v1') : 'avitolog_goals_v1')) || '{"projects":[]}'); } catch (e) { data = { projects: [] }; }
     data.projects = Array.isArray(data.projects) ? data.projects : [];
     var p = data.projects.find(function(x) { return x && x.id === pid; });
     if (!p) return;
@@ -175,7 +176,7 @@ function installGoalsInlinePriceHandler() {
       var min = Math.min.apply(null, nums);
       p.mainPrice = String(min); // в строке показываем минимальную КП
     }
-    localStorage.setItem('avitolog_goals_v1', JSON.stringify(data));
+    localStorage.setItem((typeof window.AVITOLOG_KEY === 'function' ? window.AVITOLOG_KEY('avitolog_goals_v1') : 'avitolog_goals_v1'), JSON.stringify(data));
     if (window.AVITOLOG_GOALS && typeof window.AVITOLOG_GOALS.render === 'function') {
       try { window.AVITOLOG_GOALS.render(); } catch (e2) {}
     }
@@ -231,7 +232,7 @@ function addGoalsProjectFromLeft(weekNum, beforeProjectId, targetStage) {
     project.status = ['paid'];
   }
   var data;
-  try { data = JSON.parse(localStorage.getItem('avitolog_goals_v1') || '{"projects":[]}'); } catch (e) { data = { projects: [] }; }
+  try { data = JSON.parse(localStorage.getItem((typeof window.AVITOLOG_KEY === 'function' ? window.AVITOLOG_KEY('avitolog_goals_v1') : 'avitolog_goals_v1')) || '{"projects":[]}'); } catch (e) { data = { projects: [] }; }
   data.projects = Array.isArray(data.projects) ? data.projects : [];
   var keyFolder = folderId ? String(folderId) : '';
   var keyName = String(name || '').trim().toLowerCase();
@@ -252,7 +253,7 @@ function addGoalsProjectFromLeft(weekNum, beforeProjectId, targetStage) {
       ex.status = ['paid'];
     }
     if (price && !ex.mainPrice) ex.mainPrice = price;
-    localStorage.setItem('avitolog_goals_v1', JSON.stringify(data));
+    localStorage.setItem((typeof window.AVITOLOG_KEY === 'function' ? window.AVITOLOG_KEY('avitolog_goals_v1') : 'avitolog_goals_v1'), JSON.stringify(data));
     if (window.AVITOLOG_GOALS && typeof window.AVITOLOG_GOALS.render === 'function') {
       try { window.AVITOLOG_GOALS.render(); } catch (e2) {}
     }
@@ -267,7 +268,7 @@ function addGoalsProjectFromLeft(weekNum, beforeProjectId, targetStage) {
   } else {
     data.projects.unshift(project);
   }
-  localStorage.setItem('avitolog_goals_v1', JSON.stringify(data));
+  localStorage.setItem((typeof window.AVITOLOG_KEY === 'function' ? window.AVITOLOG_KEY('avitolog_goals_v1') : 'avitolog_goals_v1'), JSON.stringify(data));
   if (window.AVITOLOG_GOALS && typeof window.AVITOLOG_GOALS.render === 'function') {
     try { window.AVITOLOG_GOALS.render(); } catch (e2) {}
   }
@@ -277,7 +278,7 @@ function addGoalsProjectFromLeft(weekNum, beforeProjectId, targetStage) {
 function quickEditGoalPrice(projectId) {
   if (!projectId) return;
   var data;
-  try { data = JSON.parse(localStorage.getItem('avitolog_goals_v1') || '{"projects":[]}'); } catch (e) { data = { projects: [] }; }
+  try { data = JSON.parse(localStorage.getItem((typeof window.AVITOLOG_KEY === 'function' ? window.AVITOLOG_KEY('avitolog_goals_v1') : 'avitolog_goals_v1')) || '{"projects":[]}'); } catch (e) { data = { projects: [] }; }
   data.projects = Array.isArray(data.projects) ? data.projects : [];
   var p = data.projects.find(function(x) { return x && x.id === projectId; });
   if (!p) return;
@@ -287,7 +288,7 @@ function quickEditGoalPrice(projectId) {
   var clean = String(next).replace(/\s/g, '').replace(/[^\d.]/g, '');
   p.mainPrice = clean || '';
   p.priceOptions = clean ? [clean] : [];
-  localStorage.setItem('avitolog_goals_v1', JSON.stringify(data));
+  localStorage.setItem((typeof window.AVITOLOG_KEY === 'function' ? window.AVITOLOG_KEY('avitolog_goals_v1') : 'avitolog_goals_v1'), JSON.stringify(data));
   if (window.AVITOLOG_GOALS && typeof window.AVITOLOG_GOALS.render === 'function') {
     try { window.AVITOLOG_GOALS.render(); } catch (e2) {}
   }
@@ -333,7 +334,7 @@ function addGoalsProjectToActiveProjects(goalProject, addAtTopAndHighlight) {
 window.__onGoalsProjectSentToActive = addGoalsProjectToActiveProjects;
 function __goalsCreateActiveFromSold(goalProjectId) {
   var data;
-  try { data = JSON.parse(localStorage.getItem('avitolog_goals_v1') || '{"projects":[]}'); } catch (e) { return; }
+  try { data = JSON.parse(localStorage.getItem((typeof window.AVITOLOG_KEY === 'function' ? window.AVITOLOG_KEY('avitolog_goals_v1') : 'avitolog_goals_v1')) || '{"projects":[]}'); } catch (e) { return; }
   var p = (data.projects || []).find(function(x){ return x && x.id === goalProjectId && x.stage === 'sold'; });
   if (!p) return;
   addGoalsProjectToActiveProjects(p, true);
@@ -1408,10 +1409,11 @@ async function loadAgencyAvitoKpis(token, accountJson) {
 }
 
 function applyAnalyticsModeDefault() {
-  var override = localStorage.getItem('avitolog_analytics_mode');
+  var amKey = (typeof window.AVITOLOG_KEY === 'function') ? window.AVITOLOG_KEY('avitolog_analytics_mode') : 'avitolog_analytics_mode';
+  var override = localStorage.getItem(amKey);
   if (override === 'sasha' || override === 'fil' || override === 'regina') {
     analyticsMode = override;
-  } else if (_driveUserEmail === SASHA_EMAIL) {
+  } else if (window.AVITOLOG_IS_SASHA || (typeof _driveUserEmail !== 'undefined' && _driveUserEmail === (typeof SASHA_EMAIL !== 'undefined' ? SASHA_EMAIL : ''))) {
     analyticsMode = 'sasha';
   } else {
     analyticsMode = 'fil';
