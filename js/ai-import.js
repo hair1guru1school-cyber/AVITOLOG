@@ -372,6 +372,7 @@
 
   var ASSETS_MY_KEY = 'avitolog_assets_my_v2';
   var ASSETS_SASHA_KEY = 'avitolog_assets_sasha_v2';
+  var ASSETS_BASE_KEY = 'avitolog_assets_base_v2';
   var ASSETS_FILTER_PAID_KEY = 'avitolog_assets_filter_paid';
 
   var ASSETS_EMOJIS = ['📦','🪨','🏠','🏗️','🧱','🛋️','🚚','📊','💰','🚀','👷','🛠️','🚜','📚','👩🏻‍🏫','💻','📱','⚡️','🛌','🪟','🎄','🪵','🏎','🪨','🛌','🏠','🚜','👩🏻‍🏫','⚡️','🧱','🪑','🛏️','🏢','🏭','🔧','📐','⭐️','🔥','💎','🎯','✅','📋','📝','🖊️','📷','📡','🔌'];
@@ -447,6 +448,22 @@
     return sum;
   }
 
+  function calcActiveClientsThisMonth() {
+    var myList = getAssetsMy();
+    var sashaList = getAssetsSasha();
+    var sum = 0;
+    function addIfActiveThisMonth(p, amountField) {
+      if (resolveAssetsClientType(p) === 'new') return;
+      var dateStr = (p.paymentDate || p.startDate || '').trim();
+      if (!dateStr || !isDateInThisMonth(dateStr)) return;
+      var amt = parseInt(String(p[amountField] || '').replace(/\s/g, ''), 10) || 0;
+      sum += amt;
+    }
+    myList.forEach(function(p) { addIfActiveThisMonth(p, 'paid'); });
+    sashaList.forEach(function(p) { addIfActiveThisMonth(p, 'soldFor'); });
+    return sum;
+  }
+
   function getPaymentBarFill(paymentDateStr) {
     if (!paymentDateStr || !String(paymentDateStr).trim()) return 0;
     var parts = String(paymentDateStr).trim().split(/[-/]/);
@@ -507,6 +524,17 @@
     try { localStorage.setItem(ASSETS_SASHA_KEY, JSON.stringify(arr)); } catch (e) {}
   }
 
+  function getAssetsBase() {
+    try {
+      var s = localStorage.getItem(ASSETS_BASE_KEY);
+      return s ? JSON.parse(s) : [];
+    } catch (e) { return []; }
+  }
+
+  function saveAssetsBase(arr) {
+    try { localStorage.setItem(ASSETS_BASE_KEY, JSON.stringify(arr)); } catch (e) {}
+  }
+
   function addAssetsProject(owner, project) {
     var name = (project && (project.name || project.company || project.contact_name)) || 'Новый проект';
     name = String(name).trim() || 'Новый проект';
@@ -535,7 +563,12 @@
   function removeAssetsProject(owner, idx) {
     if (owner === 'me') {
       var arr = getAssetsMy();
-      if (idx >= 0 && idx < arr.length) { arr.splice(idx, 1); saveAssetsMy(arr); }
+      if (idx >= 0 && idx < arr.length) {
+        var p = arr[idx];
+        addToBaseFromPicker(p);
+        arr.splice(idx, 1);
+        saveAssetsMy(arr);
+      }
     } else {
       var arr2 = getAssetsSasha();
       if (idx >= 0 && idx < arr2.length) { arr2.splice(idx, 1); saveAssetsSasha(arr2); }
@@ -555,6 +588,8 @@
     var totalUsd = Math.round(totalRub / ASSETS_USD_RATE);
     var newClientsSum = calcNewClientsThisMonth();
     var newClientsVal = newClientsSum > 0 ? fmt(newClientsSum) : '';
+    var activeClientsSum = calcActiveClientsThisMonth();
+    var activeClientsVal = activeClientsSum > 0 ? fmt(activeClientsSum) : '';
     var expectedSum = myList.reduce(function(a, p) { return a + (parseInt(String(p.expected || '').replace(/\s/g, ''), 10) || 0); }, 0);
     var expectedVal = expectedSum > 0 ? fmt(expectedSum) : '';
     var summaryRows = [
@@ -564,7 +599,7 @@
       { icon: '📊', label: 'Ожидается за мес', val: '324 000' },
       { icon: '📈', label: 'Агентство AoA %', val: '34 000' },
       { icon: '🆕', label: 'Новые клиенты', val: newClientsVal },
-      { icon: '👤', label: 'Активные клиенты', val: '195 000' }
+      { icon: '👤', label: 'Активные клиенты', val: activeClientsVal }
     ];
     var summaryHtml = summaryRows.map(function(r) {
       var rowCls = 'assets-summary-row' + (r.main ? ' assets-summary-main' : '');
@@ -636,7 +671,7 @@
           '<div class="assets-col-title">💰 Мои клиенты <span class="assets-col-total">' + fmt(myTotal) + ' ₽</span><span class="assets-col-breakdown">· новые <span class="assets-col-me-new">' + fmt(myList.reduce(function(a,p){var v=parseInt(String(p.paid||'').replace(/\s/g,''),10)||0;return resolveAssetsClientType(p)==='new'?a+v:a;},0)) + '</span> ₽ · старые <span class="assets-col-me-old">' + fmt(myList.reduce(function(a,p){var v=parseInt(String(p.paid||'').replace(/\s/g,''),10)||0;return resolveAssetsClientType(p)!=='new'?a+v:a;},0)) + '</span> ₽</span></div>' +
           '<button type="button" class="assets-filter-btn' + (filterPaid ? ' on' : '') + '" onclick="window.__assetsToggleFilterPaid && window.__assetsToggleFilterPaid()">💰 оплатили</button>' +
           '<div class="assets-col-list">' + colHeaderMe + myRows + '</div>' +
-          '<button type="button" class="assets-col-add" onclick="window.__assetsAddProject(\'me\')">+ Добавить</button>' +
+          '<div class="assets-col-add-row"><button type="button" class="assets-col-add assets-col-add-new" onclick="window.__assetsAddProject(\'me\')">Добавить NEW</button><button type="button" class="assets-col-add assets-col-add-base" onclick="window.__assetsShowBasePicker(this)" title="Выбрать из базы">+ из базы</button></div>' +
         '</div>' +
         '<div class="assets-col assets-col-sasha" id="assetsColSasha" data-owner="sasha">' +
           '<div class="assets-col-title">👤 Клиенты Саши <span class="assets-col-total">' + fmt(sashaTotal) + ' ₽</span><span class="assets-col-breakdown">· Саше <span class="assets-col-sasha-agent">' + fmt(sashaList.reduce(function(a,p){return a+(parseInt(String(p.toAgent||'').replace(/\s/g,''),10)||0);},0)) + '</span> ₽ · Агентству <span class="assets-col-sasha-agency">' + fmt(sashaList.reduce(function(a,p){return a+(parseInt(String(p.aoaPercent||'').replace(/\s/g,''),10)||0);},0)) + '</span> ₽</span></div>' +
@@ -746,6 +781,70 @@
 
   function addProjectBlank(owner) {
     addAssetsProject(owner, { name: 'Новый проект', emoji: '📦' });
+  }
+
+  function addToBaseFromPicker(p) {
+    var arr = getAssetsBase();
+    arr.push({ emoji: p.emoji || '📦', name: p.name || '', paid: p.paid || '', expected: p.expected || '', paymentDate: p.paymentDate || '', startDate: p.startDate || '', clientType: p.clientType || 'new', folderLink: p.folderLink || '', crmClientId: p.crmClientId || '' });
+    saveAssetsBase(arr);
+    if (typeof window.__renderAssetsBasePicker === 'function') window.__renderAssetsBasePicker();
+  }
+
+  function addFromBaseToActive(idx) {
+    var base = getAssetsBase();
+    if (idx < 0 || idx >= base.length) return;
+    var p = base[idx];
+    addAssetsProject('me', p);
+  }
+
+  function showAssetsBasePicker(btn) {
+    var existing = document.getElementById('assetsBasePicker');
+    if (existing) { existing.remove(); return; }
+    var wrap = document.createElement('div');
+    wrap.id = 'assetsBasePicker';
+    wrap.className = 'assets-base-picker';
+    var r = btn.getBoundingClientRect();
+    wrap.style.cssText = 'position:fixed;left:' + r.left + 'px;top:' + (r.bottom + 6) + 'px;z-index:9999;min-width:420px;max-width:90vw';
+    var searchVal = '';
+    function renderList() {
+      var base = getAssetsBase();
+      var q = String(searchVal || '').trim().toLowerCase();
+      var filtered = q ? base.filter(function(p) { var n = String(p.name || '').toLowerCase(); return n.indexOf(q) >= 0; }) : base;
+      var fmt = function(n) { return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ' '); };
+      var rows = filtered.map(function(p) {
+        var realIdx = base.indexOf(p);
+        var paidFmt = (p.paid || '') ? fmt(String(p.paid).replace(/\s/g, '')) : '';
+        var dt = [p.startDate||'', p.paymentDate||''].filter(Boolean).join(' / ') || '—';
+        return '<div class="assets-base-row" data-idx="' + realIdx + '"><span class="ab-col-name">' + (p.emoji || '') + ' ' + esc(p.name || '—') + '</span><span class="ab-col-date">' + esc(dt) + '</span><span class="ab-col-paid">' + esc(paidFmt || '—') + ' ₽</span><button type="button" class="ab-add-btn" title="В Мои клиенты">+</button></div>';
+      }).join('');
+      var listEl = wrap.querySelector('.assets-base-list');
+      if (listEl) listEl.innerHTML = rows || '<div class="assets-base-empty">База пуста. Нажми «+ в базу»</div>';
+    }
+    wrap.innerHTML = '<div class="assets-base-picker-header"><input type="search" class="assets-base-search" placeholder="Поиск по названию..."><button type="button" class="assets-base-add-row" title="Добавить строку в базу">+ в базу</button></div>' +
+      '<div class="assets-base-table"><div class="assets-base-header"><span class="ab-col-name">Проект</span><span class="ab-col-date">Старт / Платёж</span><span class="ab-col-paid">Оплатил</span><span class="ab-col-act"></span></div>' +
+      '<div class="assets-base-list"></div></div>';
+    document.body.appendChild(wrap);
+    var searchInp = wrap.querySelector('.assets-base-search');
+    searchInp.oninput = function() { searchVal = searchInp.value; renderList(); };
+    searchInp.onkeydown = function(e) { if (e.key === 'Escape') wrap.remove(); };
+    wrap.querySelector('.assets-base-add-row').onclick = function() {
+      addToBaseFromPicker({ emoji: '📦', name: 'Новый в базе', paid: '', expected: '', paymentDate: '', startDate: '', clientType: 'new', folderLink: '', crmClientId: '' });
+      renderList();
+    };
+    wrap.onclick = function(e) {
+      var row = e.target.closest('.assets-base-row');
+      if (row) {
+        e.stopPropagation();
+        addFromBaseToActive(parseInt(row.getAttribute('data-idx'), 10));
+        wrap.remove();
+      }
+    };
+    renderList();
+    setTimeout(function() {
+      document.addEventListener('click', function close(ev) {
+        if (!wrap.contains(ev.target) && ev.target !== btn) { wrap.remove(); document.removeEventListener('click', close); }
+      });
+    }, 0);
   }
 
   function toggleFilterPaid() {
@@ -936,5 +1035,6 @@
   window.__assetsRowClicked = rowClicked;
   window.__assetsStartFolderBind = startFolderBind;
   window.__assetsApplyFolderBind = applyFolderBind;
+  window.__assetsShowBasePicker = showAssetsBasePicker;
   window.__wireAssetsDragTargets = wireAssetsDragTargets;
 })();
