@@ -742,10 +742,18 @@
     if (!owner || idx < 0 || !field) return;
     if (owner === 'me') {
       var arr = getAssetsMy();
-      if (arr[idx]) { arr[idx][field] = val; saveAssetsMy(arr); }
+      if (arr[idx]) {
+        arr[idx][field] = val;
+        if (field === 'paid') { var amt = parseInt(val.replace(/\s/g, ''), 10) || 0; var d = new Date(); arr[idx].paymentHistory = amt > 0 ? [{ date: (arr[idx].paymentDate || '').trim() || (d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate())), amount: amt }] : []; }
+        saveAssetsMy(arr);
+      }
     } else {
       var arr2 = getAssetsSasha();
-      if (arr2[idx]) { arr2[idx][field] = val; saveAssetsSasha(arr2); }
+      if (arr2[idx]) {
+        arr2[idx][field] = val;
+        if (field === 'soldFor') { var amt = parseInt(val.replace(/\s/g, ''), 10) || 0; var d = new Date(); arr2[idx].paymentHistory = amt > 0 ? [{ date: (arr2[idx].paymentDate || '').trim() || (d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate())), amount: amt }] : []; }
+        saveAssetsSasha(arr2);
+      }
     }
     updateColTotals();
     if (field === 'paymentDate') {
@@ -1069,7 +1077,81 @@
     startFolderBind(owner, idx);
   }
 
+  function getPaymentHistoryEntries(p, owner) {
+    var hist = p.paymentHistory;
+    if (Array.isArray(hist) && hist.length > 0) return hist;
+    var amount = owner === 'me' ? (parseInt(String(p.paid || '').replace(/\s/g, ''), 10) || 0) : (parseInt(String(p.soldFor || '').replace(/\s/g, ''), 10) || 0);
+    if (amount > 0 && (p.paymentDate || p.startDate)) return [{ date: (p.paymentDate || p.startDate || '').trim(), amount: amount }];
+    return [];
+  }
+
+  function recalcPaidFromHistory(p, owner) {
+    var hist = p.paymentHistory;
+    if (!Array.isArray(hist) || hist.length === 0) return;
+    var sum = hist.reduce(function(a, e) { return a + (parseInt(String(e.amount || '').replace(/\s/g, ''), 10) || 0); }, 0);
+    var lastDate = '';
+    hist.forEach(function(e) {
+      var d = (e.date || '').trim();
+      if (d && (!lastDate || d > lastDate)) lastDate = d;
+    });
+    if (owner === 'me') {
+      p.paid = String(sum).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+      if (lastDate) p.paymentDate = lastDate;
+    } else {
+      p.soldFor = String(sum).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+      if (lastDate) p.paymentDate = lastDate;
+    }
+  }
+
+  function addPaymentToHistory(owner, idx) {
+    var sel = window._assetsSelectedProject;
+    if (!sel || sel.owner !== owner || sel.idx !== idx) return;
+    var p = null;
+    if (owner === 'me') {
+      var arr = getAssetsMy();
+      p = arr && arr[idx] ? arr[idx] : null;
+    } else {
+      var arr2 = getAssetsSasha();
+      p = arr2 && arr2[idx] ? arr2[idx] : null;
+    }
+    if (!p) return;
+    var d = new Date();
+    var inp = prompt('Добавить оплату. Введите дату (ГГГГ-ММ-ДД) и сумму через пробел:\nНапример: 2026-01-15 17000', '2026-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate()) + ' ');
+    if (!inp || !inp.trim()) return;
+    var parts = inp.trim().split(/\s+/);
+    var dateStr = '';
+    var amount = 0;
+    if (parts.length >= 2) {
+      dateStr = parts[0];
+      amount = parseInt(String(parts[1]).replace(/\s/g, ''), 10) || 0;
+    } else if (parts.length === 1) {
+      var num = parseInt(String(parts[0]).replace(/\s/g, ''), 10);
+      if (!isNaN(num)) { var dd = new Date(); amount = num; dateStr = dd.getFullYear() + '-' + pad2(dd.getMonth() + 1) + '-' + pad2(dd.getDate()); }
+    }
+    if (amount <= 0) return;
+    if (!dateStr || !/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) { var dd = new Date(); dateStr = dd.getFullYear() + '-' + pad2(dd.getMonth() + 1) + '-' + pad2(dd.getDate()); }
+    if (!Array.isArray(p.paymentHistory)) p.paymentHistory = [];
+    if (p.paymentHistory.length === 0) {
+      var prev = getPaymentHistoryEntries(p, owner);
+      prev.forEach(function(e) { p.paymentHistory.push({ date: e.date, amount: e.amount }); });
+    }
+    p.paymentHistory.push({ date: dateStr, amount: amount });
+    recalcPaidFromHistory(p, owner);
+    if (owner === 'me') {
+      var arr = getAssetsMy();
+      if (arr[idx]) arr[idx] = p;
+      saveAssetsMy(arr);
+    } else {
+      var arr2 = getAssetsSasha();
+      if (arr2[idx]) arr2[idx] = p;
+      saveAssetsSasha(arr2);
+    }
+    if (typeof window.__renderAssetsPage === 'function') window.__renderAssetsPage();
+    updateAssetsDetailPanel(owner, idx);
+  }
+
   function updateAssetsDetailPanel(owner, idx) {
+    window._assetsSelectedProject = owner != null && idx != null && idx >= 0 ? { owner: owner, idx: idx } : null;
     var panel = document.getElementById('assetsDetailPanel');
     var content = document.getElementById('assetsDetailContent');
     if (!panel || !content) return;
@@ -1090,10 +1172,9 @@
       content.innerHTML = '<div class="ad-placeholder" style="color:var(--muted)">Проект не найден</div>';
       return;
     }
-    var paid = parseInt(String(p.paid || '').replace(/\s/g, ''), 10) || 0;
+    var entries = getPaymentHistoryEntries(p, owner);
+    var total = entries.reduce(function(a, e) { return a + (parseInt(String(e.amount || '').replace(/\s/g, ''), 10) || 0); }, 0);
     var expected = parseInt(String(p.expected || '').replace(/\s/g, ''), 10) || 0;
-    var soldFor = owner === 'sasha' ? (parseInt(String(p.soldFor || '').replace(/\s/g, ''), 10) || 0) : 0;
-    var total = owner === 'me' ? paid : soldFor;
     var payDate = (p.paymentDate || '').trim();
     var payDateFmt = payDate ? (function() {
       var parts = payDate.split(/[-/]/);
@@ -1104,12 +1185,18 @@
     html += '<div class="ad-row"><span class="ad-label">Общая сумма оплат</span><span class="ad-val">' + fmt(total) + ' ₽</span></div>';
     html += '<div class="ad-row"><span class="ad-label">На какой день оплата</span><span class="ad-val">' + esc(payDateFmt) + '</span></div>';
     html += '<div class="ad-section" style="margin-top:12px;padding-top:8px;border-top:1px solid var(--border)"><div class="ad-label" style="margin-bottom:6px">История оплат</div>';
-    if (owner === 'me' && paid > 0) {
-      html += '<div class="ad-row"><span>' + esc(payDateFmt) + '</span><span class="ad-val">' + fmt(paid) + ' ₽</span></div>';
-    } else if (owner === 'sasha' && soldFor > 0) {
-      html += '<div class="ad-row"><span>' + esc(payDateFmt) + '</span><span class="ad-val">' + fmt(soldFor) + ' ₽</span></div>';
+    if (entries.length > 0) {
+      entries.sort(function(a, b) { return (b.date || '').localeCompare(a.date || ''); });
+      entries.forEach(function(e) {
+        var df = (e.date || '').trim();
+        if (df) {
+          var pt = df.split(/[-/]/);
+          if (pt.length >= 3) df = pt[2] + '.' + pt[1] + '.' + pt[0];
+        } else df = '—';
+        html += '<div class="ad-row"><span>' + esc(df) + '</span><span class="ad-val">' + fmt(e.amount || 0) + ' ₽</span></div>';
+      });
     } else {
-      html += '<div style="color:var(--muted);font-size:11px">Нет записей</div>';
+      html += '<div style="color:var(--muted);font-size:11px">Нет записей. Нажмите + выше, чтобы добавить.</div>';
     }
     if (owner === 'me' && expected > 0) {
       html += '<div class="ad-row" style="margin-top:4px"><span class="ad-label">Ожидать</span><span class="ad-val" style="color:#35d0ff">' + fmt(expected) + ' ₽</span></div>';
@@ -1188,6 +1275,11 @@
   window.__assetsRowClicked = rowClicked;
   window.__assetsStartFolderBind = startFolderBind;
   window.__assetsApplyFolderBind = applyFolderBind;
+  window.__assetsAddPayment = function() {
+    var sel = window._assetsSelectedProject;
+    if (sel) addPaymentToHistory(sel.owner, sel.idx);
+    else alert('Сначала выберите проект слева');
+  };
   window.__assetsShowBasePicker = showAssetsBasePicker;
   window.__wireAssetsDragTargets = wireAssetsDragTargets;
 
