@@ -116,6 +116,27 @@
     var t = String(text || '');
     var out = {};
     var pairs = [];
+    function normKey(s) {
+      return String(s || '')
+        .toLowerCase()
+        .replace(/ё/g, 'е')
+        .replace(/[«»"']/g, '')
+        .replace(/\s+/g, ' ')
+        .trim();
+    }
+    function setIfEmpty(field, value) {
+      if (!value) return;
+      if (!out[field]) out[field] = String(value).trim();
+    }
+    function extractEmail(v) {
+      var m = String(v || '').match(/[a-z0-9._%+\-]+@[a-z0-9.\-]+\.[a-z]{2,}/ig);
+      return m && m.length ? m[0] : '';
+    }
+    function extractPhone(v) {
+      var m = String(v || '').match(/\+?\d[\d\s\-()]{7,}\d/g);
+      return m && m.length ? m[0].replace(/\s+/g, ' ').trim() : '';
+    }
+
     t.split(/\r?\n/).forEach(function(lineRaw) {
       var line = String(lineRaw || '').trim();
       if (!line) return;
@@ -130,57 +151,81 @@
       pairs.push({ key: left.trim(), value: right.trim() });
     });
 
-    function setIfEmpty(field, value) {
-      if (!value) return;
-      if (!out[field]) out[field] = String(value).trim();
-    }
+    var rules = [
+      { field: 'fullName', rx: /(полное наименование|наименование организации|официальное наименование)/ },
+      { field: 'shortName', rx: /(сокращенн(ое|ое) наименование|краткое наименование|сокр\.? наименование)/ },
+      { field: 'legalAddress', rx: /(юридическ(ий|ого) адрес|адрес регистрации|юр\.? адрес)/ },
+      { field: 'postalAddress', rx: /(почтов(ый|ого) адрес)/ },
+      { field: 'actualAddress', rx: /(фактическ(ий|ого) адрес|факт\.? адрес|адрес компании)/ },
+      { field: 'ceo', rx: /(генеральн(ый|ого) директор|директор|руководитель)/ },
+      { field: 'accountingContacts', rx: /(бухгалтер|бухгалтерия|телефон.*бухгалтер)/ },
+      { field: 'contacts', rx: /(телефон|эл\.?\s*почта|email|e-mail|контакт)/ },
+      { field: 'innKpp', rx: /(инн\s*\/\s*кпп|инн кпп)/ },
+      { field: 'inn', rx: /\bинн\b/ },
+      { field: 'kpp', rx: /\bкпп\b/ },
+      { field: 'ogrn', rx: /(огрн|огрнип)/ },
+      { field: 'account', rx: /(расчетн(ый|ого) счет|расч[её]тн(ый|ого) сч[её]т|р\/с)/ },
+      { field: 'corrAccount', rx: /(корреспондентск(ий|ого) счет|корреспондентск(ий|ого) сч[её]т|к\/с|кор\.?\s*сч)/ },
+      { field: 'bik', rx: /(бик|бик банка)/ },
+      { field: 'bank', rx: /^банк$|^банк\s/ },
+      { field: 'edoGuid', rx: /(идентификатор участника эдо|guid|эдо)/ }
+    ];
 
     pairs.forEach(function(p) {
-      var k = p.key.toLowerCase().replace(/ё/g, 'е').replace(/\s+/g, ' ').trim();
-      var v = p.value.trim();
+      var k = normKey(p.key);
+      var v = String(p.value || '').trim();
       if (!v) return;
-      if (k.indexOf('полное наименование') >= 0) setIfEmpty('fullName', v);
-      else if (k.indexOf('сокращенное наименование') >= 0 || k.indexOf('сокращённое наименование') >= 0) setIfEmpty('shortName', v);
-      else if (k.indexOf('юридический адрес') >= 0) setIfEmpty('legalAddress', v);
-      else if (k.indexOf('почтовый адрес') >= 0) setIfEmpty('postalAddress', v);
-      else if (k.indexOf('фактический адрес') >= 0) setIfEmpty('actualAddress', v);
-      else if (k.indexOf('генеральный директор') >= 0 || k.indexOf('директор') >= 0) setIfEmpty('ceo', v);
-      else if (k.indexOf('телефон/ эл.почта бухгалтерия') >= 0 || k.indexOf('телефон/эл.почта бухгалтерия') >= 0 || k.indexOf('бухгалтер') >= 0) setIfEmpty('accountingContacts', v);
-      else if (k.indexOf('телефон / эл. почта') >= 0 || k.indexOf('телефон/ эл. почта') >= 0 || k.indexOf('телефон') >= 0) setIfEmpty('contacts', v);
-      else if (k.indexOf('инн/кпп') >= 0 || k.indexOf('инн кпп') >= 0) {
+      var rule = rules.find(function(r) { return r.rx.test(k); });
+      if (!rule) return;
+      if (rule.field === 'innKpp') {
         var innKpp = v.match(/(\d{10,12})\s*\/\s*(\d{9})/);
         if (innKpp) {
           setIfEmpty('inn', innKpp[1]);
           setIfEmpty('kpp', innKpp[2]);
         } else setIfEmpty('innKpp', v);
+        return;
       }
-      else if (k.indexOf('инн') >= 0) setIfEmpty('inn', (v.match(/\d{10,12}/) || [v])[0]);
-      else if (k.indexOf('огрн') >= 0) setIfEmpty('ogrn', (v.match(/\d{13,15}/) || [v])[0]);
-      else if (k.indexOf('расчетный счет') >= 0 || k.indexOf('расчётный счет') >= 0 || k.indexOf('расчетный счёт') >= 0 || k.indexOf('расчётный счёт') >= 0) setIfEmpty('account', (v.match(/\d{20}/) || [v])[0]);
-      else if (k.indexOf('корреспондентский счет') >= 0 || k.indexOf('корреспондентский счёт') >= 0 || k.indexOf('кор. счет') >= 0 || k.indexOf('кор. счёт') >= 0) setIfEmpty('corrAccount', (v.match(/\d{20}/) || [v])[0]);
-      else if (k.indexOf('бик') >= 0) setIfEmpty('bik', (v.match(/\d{9}/) || [v])[0]);
-      else if (k === 'банк' || k.indexOf('банк') >= 0) setIfEmpty('bank', v);
-      else if (k.indexOf('идентификатор участника эдо') >= 0 || k.indexOf('guid') >= 0) setIfEmpty('edoGuid', v);
+      if (rule.field === 'inn') { setIfEmpty('inn', (v.match(/\d{10,12}/) || [v])[0]); return; }
+      if (rule.field === 'kpp') { setIfEmpty('kpp', (v.match(/\d{9}/) || [v])[0]); return; }
+      if (rule.field === 'ogrn') { setIfEmpty('ogrn', (v.match(/\d{13,15}/) || [v])[0]); return; }
+      if (rule.field === 'account') { setIfEmpty('account', (v.match(/\d{20}/) || [v])[0]); return; }
+      if (rule.field === 'corrAccount') { setIfEmpty('corrAccount', (v.match(/\d{20}/) || [v])[0]); return; }
+      if (rule.field === 'bik') { setIfEmpty('bik', (v.match(/\d{9}/) || [v])[0]); return; }
+      if (rule.field === 'contacts') {
+        setIfEmpty('contacts', v);
+        setIfEmpty('phone', extractPhone(v));
+        setIfEmpty('email', extractEmail(v));
+        return;
+      }
+      if (rule.field === 'accountingContacts') {
+        setIfEmpty('accountingContacts', v);
+        setIfEmpty('accountingPhone', extractPhone(v));
+        setIfEmpty('accountingEmail', extractEmail(v));
+        return;
+      }
+      setIfEmpty(rule.field, v);
     });
 
     var m;
     m = t.match(/\bИНН[\s:]*(\d{10,12})/i); if (m) setIfEmpty('inn', m[1]);
+    m = t.match(/\bКПП[\s:]*(\d{9})/i); if (m) setIfEmpty('kpp', m[1]);
     m = t.match(/\bОГРН[\s:]*(\d{13,15})/i); if (m) setIfEmpty('ogrn', m[1]);
     m = t.match(/\bОГРНИП[\s:]*(\d{13,15})/i); if (m) setIfEmpty('ogrn', m[1]);
     m = t.match(/\b[р\/\s]*сч[её]т[\s:]*(\d{20})/i) || t.match(/\bр\/с[\s:]*(\d{20})/i) || t.match(/\b(\d{20})\b/); if (m) setIfEmpty('account', m[1]);
     m = t.match(/\bБИК[\s:]*(\d{9})/i); if (m) setIfEmpty('bik', m[1]);
     m = t.match(/\bк[оа]р[.\s]*сч[её]т[\s:]*(\d{20})/i) || t.match(/\bк\/с[\s:]*(\d{20})/i); if (m) setIfEmpty('corrAccount', m[1]);
-    m = t.match(/\bпаспорт[\s:]*(\d{4}\s*\d{6})/i) || t.match(/\b(\d{4}\s\d{6})\b/); if (m) setIfEmpty('passport', m[1].replace(/\s/g, ' '));
-    var nameMatch = t.match(/(?:ООО|АО|ПАО)\s*[«\"].+?[»\"]/i) ||
-      t.match(/(?:ИП)\s+[А-Яа-яЁё\s\-]+/i) ||
-      t.match(/(?:Заказчик|Клиент)[\s:]+([А-Яа-яЁё\s\-]+)/i) ||
-      t.match(/([А-ЯЁ][а-яё]+\s+[А-ЯЁ][а-яё]+\s+[А-ЯЁ][а-яё]+)/);
-    if (nameMatch) {
-      var nm = nameMatch[1] || nameMatch[0];
-      setIfEmpty('fio', String(nm).trim());
-    }
+    m = t.match(/[a-z0-9._%+\-]+@[a-z0-9.\-]+\.[a-z]{2,}/ig); if (m && m.length) setIfEmpty('email', m[0]);
+    m = t.match(/\+?\d[\d\s\-()]{7,}\d/g); if (m && m.length) setIfEmpty('phone', m[0].replace(/\s+/g, ' ').trim());
+    m = t.match(/(?:ООО|АО|ПАО)\s*[«\"].+?[»\"]/i) || t.match(/(?:ИП)\s+[А-Яа-яЁё\s\-]+/i); if (m) setIfEmpty('shortName', m[0]);
     var bankMatch = t.match(/\b(ПАО СБЕРБАНК|СБЕРБАНК|Т-БАНК|ТБАНК|ВТБ|АЛЬФА-БАНК|[А-Яа-яЁё\s\-]+БАНК[а-яё]*)/i);
     if (bankMatch) setIfEmpty('bank', bankMatch[1].trim());
+    if (!out.actualAddress) {
+      var addr = t.match(/\d{6}\s*,?\s*РОССИЯ[^,\n]*(?:,\s*[^,\n]+){2,}/i);
+      if (addr) setIfEmpty('actualAddress', addr[0]);
+    }
+    if (!out.legalAddress && out.actualAddress) setIfEmpty('legalAddress', out.actualAddress);
+    if (!out.postalAddress && out.actualAddress) setIfEmpty('postalAddress', out.actualAddress);
+    if (!out.contacts && (out.phone || out.email)) setIfEmpty('contacts', [out.phone, out.email].filter(Boolean).join(' / '));
     out.__pairs = pairs;
     return out;
   }
@@ -316,7 +361,14 @@
       var box = document.getElementById('contractParsedRequisites');
       if (!box) return;
       var rows = [];
-      function add(label, val) { if (val != null && String(val).trim()) rows.push({ label: label, value: String(val).trim() }); }
+      var used = {};
+      function add(label, val) {
+        if (val == null || !String(val).trim()) return;
+        var sig = String(label).toLowerCase() + '::' + String(val).trim();
+        if (used[sig]) return;
+        used[sig] = true;
+        rows.push({ label: label, value: String(val).trim() });
+      }
       add('Полное наименование', parsed.fullName);
       add('Сокращенное наименование', parsed.shortName || parsed.fio);
       add('Юридический адрес', parsed.legalAddress);
@@ -324,15 +376,23 @@
       add('Фактический адрес', parsed.actualAddress);
       add('Генеральный директор', parsed.ceo);
       add('Телефон / эл. почта', parsed.contacts);
+      add('Телефон', parsed.phone);
+      add('E-mail', parsed.email);
       add('Телефон / эл. почта бухгалтерия', parsed.accountingContacts);
+      add('Телефон бухгалтерии', parsed.accountingPhone);
+      add('E-mail бухгалтерии', parsed.accountingEmail);
       add('ИНН', parsed.inn);
       add('КПП', parsed.kpp);
+      add('ИНН/КПП', parsed.innKpp);
       add('ОГРН', parsed.ogrn);
       add('Расчетный счет', parsed.account);
       add('Корреспондентский счет', parsed.corrAccount);
       add('БИК Банка', parsed.bik);
       add('Банк', parsed.bank);
       add('GUID (ЭДО)', parsed.edoGuid);
+      (parsed.__pairs || []).forEach(function(p) {
+        add(p.key, p.value);
+      });
       if (!rows.length) {
         box.style.display = 'none';
         box.innerHTML = '';
