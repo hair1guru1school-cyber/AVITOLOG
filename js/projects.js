@@ -644,7 +644,7 @@ function persistProjectTypeNormalization(data) {
   if (changed) saveProjectsData(data);
 }
 function setProjectsStickyWidthPx(width) {
-  var w = Math.max(320, Math.min(600, Math.round(width || 0)));
+  var w = Math.max(320, Math.min(2200, Math.round(width || 0)));
   localStorage.setItem(PROJECTS_STICKY_WIDTH_KEY, String(w));
   var table = document.querySelector('.projects-table');
   if (table) table.style.setProperty('--projects-sticky-width', w + 'px');
@@ -708,7 +708,7 @@ function startProjectsStickyWidthResize(e) {
   var lastW = startW;
   function onMove(ev) {
     var dx = ev.clientX - startX;
-    var w = Math.max(280, Math.min(600, startW + dx));
+    var w = Math.max(280, Math.min(2200, startW + dx));
     lastW = w;
     if (table) table.style.setProperty('--projects-sticky-width', w + 'px');
   }
@@ -841,7 +841,7 @@ function getProjectsStickyWidthPx(projects) {
   // Base controls width: expand/type/drive + emoji + path buttons + status + paddings/gaps.
   var fixedControlsPx = 320;
   var w = fixedControlsPx + titlePx;
-  return Math.max(360, Math.min(600, w));
+  return Math.max(360, Math.min(2200, w));
 }
 async function ensureActiveProjectsSheet() {
   var readUrl = 'https://sheets.googleapis.com/v4/spreadsheets/' + SHEETS_ID + '/values/' + encodeURIComponent(PROJECTS_ACTIVE_SHEET_NAME + '!A1:A1');
@@ -2563,8 +2563,9 @@ function renderProjectsScreen(opts) {
   var diamondCount = activeProjects.filter(function(p){ return normalizeProjectClientType(p.clientType) === 'old'; }).length;
   var newCount = activeProjects.filter(function(p){ return normalizeProjectClientType(p.clientType) === 'new'; }).length;
   var returningCount = activeProjects.filter(function(p){ return normalizeProjectClientType(p.clientType) === 'returning'; }).length;
-  var stickyW = getSavedProjectsStickyWidth() || getProjectsStickyWidthPx(allProjects);
-  if (_projectsZoneTab === 'second_chance' || _projectsZoneTab === 'archive') stickyW = Math.min(stickyW, 420);
+  var stickyAuto = getProjectsStickyWidthPx(allProjects);
+  var stickySaved = getSavedProjectsStickyWidth();
+  var stickyW = stickySaved ? Math.max(stickySaved, stickyAuto) : stickyAuto;
   var rowH = getSavedProjectsRowHeight() || 14;
   var projectsZoom = getSavedProjectsZoom();
   var effectiveRowH = projectsZoom < 1 ? Math.max(6, Math.round(rowH * projectsZoom)) : rowH;

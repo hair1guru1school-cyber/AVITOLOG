@@ -564,6 +564,12 @@
 
     var html = '<div class="contract-form-wrap">' +
       '<div class="contract-toolbar">' +
+      '<div class="contract-toolbar-row contract-toolbar-row-primary">' +
+      '<button type="button" class="contract-toolbar-btn contract-btn-load contract-btn-load-main" onclick="document.getElementById(\'contract-file-inp\').click()">📄 Загрузить реквизиты</button>' +
+      '<input type="file" id="contract-file-inp" accept=".txt,.docx,.pdf" style="display:none">' +
+      '</div>' +
+      '<div class="contract-client-caption" id="contractClientCaption">ФИО: —</div>' +
+      '<div class="contract-toolbar-row contract-toolbar-row-secondary" id="contractToolbarSecondary" style="display:none">' +
       '<button type="button" class="btn-gen contract-toolbar-btn" style="width:auto;min-width:0;flex:0 0 auto;display:inline-flex;padding:6px 12px;margin:0;border-radius:8px" onclick="window.__contractGenerate&&window.__contractGenerate()"><span>&#9889;</span> Сгенерировать договор</button>' +
       '<div class="contract-gender-switch" id="contractGenderSwitch" title="Выбор картинки в шапке">' +
       '<button type="button" class="contract-gender-btn on" data-gender="m">👨 M</button>' +
@@ -571,10 +577,10 @@
       '</div>' +
       '<input type="hidden" id="contract-headerGender" value="m">' +
       '<button type="button" class="contract-toolbar-btn contract-btn-savew" id="contractSaveWBtn" style="display:none" onclick="window.__contractSaveW&&window.__contractSaveW()">🟦 Сохранить в W</button>' +
-      '<button type="button" class="contract-toolbar-btn contract-btn-load" onclick="document.getElementById(\'contract-file-inp\').click()">📄 Загрузить реквизиты</button>' +
-      '<input type="file" id="contract-file-inp" accept=".txt,.docx,.pdf" style="display:none">' +
+      '<button type="button" class="contract-toolbar-btn contract-btn-pdf" id="contractSavePdfBtn" onclick="window.__contractSavePdf&&window.__contractSavePdf()">📕 Сохранить PDF</button>' +
       '<button type="button" class="contract-toolbar-btn contract-btn-clear" onclick="window.__contractClear&&window.__contractClear()">Очистить</button>' +
       '<span class="contract-save-status" id="contractSaveStatus"></span>' +
+      '</div>' +
       '</div>' +
       '<div class="contract-form">' +
       '<div class="contract-form-section contract-requisites-section">' +
@@ -617,6 +623,20 @@
     var todayStr = today.getFullYear() + '-' + pad2(today.getMonth() + 1) + '-' + pad2(today.getDate());
     var startEl = document.getElementById('contract-startDate');
     if (startEl) startEl.value = todayStr;
+    var secondaryToolbar = document.getElementById('contractToolbarSecondary');
+    var fioEl = document.getElementById('contract-fio');
+    var captionEl = document.getElementById('contractClientCaption');
+    function setSecondaryVisible(v) {
+      if (secondaryToolbar) secondaryToolbar.style.display = v ? 'flex' : 'none';
+    }
+    function refreshClientCaption() {
+      if (!captionEl) return;
+      var fio = fioEl ? String(fioEl.value || '').trim() : '';
+      captionEl.textContent = 'ФИО: ' + (fio || '—');
+      if (fio) setSecondaryVisible(true);
+    }
+    if (fioEl) fioEl.addEventListener('input', refreshClientCaption);
+    refreshClientCaption();
     var genderInp = document.getElementById('contract-headerGender');
     var genderSwitch = document.getElementById('contractGenderSwitch');
     function setHeaderGender(val) {
@@ -656,6 +676,8 @@
         if (el) el.value = '';
       });
       setHeaderGender('m');
+      refreshClientCaption();
+      setSecondaryVisible(false);
       _contractScreenshots = [];
       renderContractScreenshots();
       var startEl = document.getElementById('contract-startDate');
@@ -713,6 +735,8 @@
         var parsed = parseRequisitesFromText(text);
         applyParsed(parsed);
         renderParsedRequisites(parsed);
+        refreshClientCaption();
+        setSecondaryVisible(true);
         if (typeof window.__showToast === 'function') window.__showToast('Реквизиты загружены');
         else alert('Реквизиты извлечены и заполнены');
       });
@@ -824,17 +848,22 @@
 
     var formArea = document.getElementById('contractFormArea');
     var previewArea = document.getElementById('contractPreviewArea');
+    if (previewArea) previewArea.style.display = 'none';
 
     renderContractForm(formArea, function(data) {
       var html = generateContract(data);
       lastGeneratedHtml = html;
       lastGeneratedData = data || null;
+      if (previewArea) previewArea.style.display = '';
       renderContractPreview(previewArea, html);
       updateSaveButtonState();
     }, function() {
       lastGeneratedHtml = '';
       lastGeneratedData = null;
-      renderContractPreview(previewArea, '');
+      if (previewArea) {
+        previewArea.innerHTML = '';
+        previewArea.style.display = 'none';
+      }
       updateSaveButtonState();
     });
 
@@ -874,6 +903,42 @@
         if (st) st.textContent = 'Ошибка сохранения: ' + String((e && e.message) || e);
       } finally {
         if (btn) btn.disabled = false;
+      }
+    };
+
+    window.__contractSavePdf = async function() {
+      var st = document.getElementById('contractSaveStatus');
+      if (!lastGeneratedHtml) {
+        if (typeof window.__contractGenerate === 'function') window.__contractGenerate();
+      }
+      if (!lastGeneratedHtml) {
+        if (st) st.textContent = 'Сначала сгенерируйте договор';
+        return;
+      }
+      if (typeof html2pdf !== 'function') {
+        if (st) st.textContent = 'PDF модуль недоступен';
+        return;
+      }
+      var wrapTmp = document.createElement('div');
+      wrapTmp.style.cssText = 'position:fixed;left:-99999px;top:0;width:794px;background:#fff;color:#000;padding:20px;box-sizing:border-box;';
+      wrapTmp.innerHTML = lastGeneratedHtml;
+      document.body.appendChild(wrapTmp);
+      try {
+        if (st) st.textContent = 'Готовлю PDF...';
+        var who = (lastGeneratedData && (lastGeneratedData.fio || lastGeneratedData.companyName)) || 'Клиент';
+        await html2pdf().set({
+          margin: [8, 8, 8, 8],
+          filename: 'Договор — ' + String(who) + '.pdf',
+          image: { type: 'jpeg', quality: 0.95 },
+          html2canvas: { scale: 1.8, useCORS: true, allowTaint: true },
+          jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+          pagebreak: { mode: ['css', 'legacy'] }
+        }).from(wrapTmp).save();
+        if (st) st.textContent = '✓ PDF сохранен';
+      } catch (e) {
+        if (st) st.textContent = 'Ошибка PDF: ' + String((e && e.message) || e);
+      } finally {
+        document.body.removeChild(wrapTmp);
       }
     };
 
