@@ -115,20 +115,73 @@
   function parseRequisitesFromText(text) {
     var t = String(text || '');
     var out = {};
+    var pairs = [];
+    t.split(/\r?\n/).forEach(function(lineRaw) {
+      var line = String(lineRaw || '').trim();
+      if (!line) return;
+      var mTab = line.match(/^([^\t]+)\t+(.+)$/);
+      var mColon = line.match(/^([^:]{2,}?):\s*(.+)$/);
+      var m2sp = line.match(/^(.+?)\s{2,}(.+)$/);
+      var left = '', right = '';
+      if (mTab) { left = mTab[1]; right = mTab[2]; }
+      else if (mColon) { left = mColon[1]; right = mColon[2]; }
+      else if (m2sp) { left = m2sp[1]; right = m2sp[2]; }
+      if (!left || !right) return;
+      pairs.push({ key: left.trim(), value: right.trim() });
+    });
+
+    function setIfEmpty(field, value) {
+      if (!value) return;
+      if (!out[field]) out[field] = String(value).trim();
+    }
+
+    pairs.forEach(function(p) {
+      var k = p.key.toLowerCase().replace(/ё/g, 'е').replace(/\s+/g, ' ').trim();
+      var v = p.value.trim();
+      if (!v) return;
+      if (k.indexOf('полное наименование') >= 0) setIfEmpty('fullName', v);
+      else if (k.indexOf('сокращенное наименование') >= 0 || k.indexOf('сокращённое наименование') >= 0) setIfEmpty('shortName', v);
+      else if (k.indexOf('юридический адрес') >= 0) setIfEmpty('legalAddress', v);
+      else if (k.indexOf('почтовый адрес') >= 0) setIfEmpty('postalAddress', v);
+      else if (k.indexOf('фактический адрес') >= 0) setIfEmpty('actualAddress', v);
+      else if (k.indexOf('генеральный директор') >= 0 || k.indexOf('директор') >= 0) setIfEmpty('ceo', v);
+      else if (k.indexOf('телефон/ эл.почта бухгалтерия') >= 0 || k.indexOf('телефон/эл.почта бухгалтерия') >= 0 || k.indexOf('бухгалтер') >= 0) setIfEmpty('accountingContacts', v);
+      else if (k.indexOf('телефон / эл. почта') >= 0 || k.indexOf('телефон/ эл. почта') >= 0 || k.indexOf('телефон') >= 0) setIfEmpty('contacts', v);
+      else if (k.indexOf('инн/кпп') >= 0 || k.indexOf('инн кпп') >= 0) {
+        var innKpp = v.match(/(\d{10,12})\s*\/\s*(\d{9})/);
+        if (innKpp) {
+          setIfEmpty('inn', innKpp[1]);
+          setIfEmpty('kpp', innKpp[2]);
+        } else setIfEmpty('innKpp', v);
+      }
+      else if (k.indexOf('инн') >= 0) setIfEmpty('inn', (v.match(/\d{10,12}/) || [v])[0]);
+      else if (k.indexOf('огрн') >= 0) setIfEmpty('ogrn', (v.match(/\d{13,15}/) || [v])[0]);
+      else if (k.indexOf('расчетный счет') >= 0 || k.indexOf('расчётный счет') >= 0 || k.indexOf('расчетный счёт') >= 0 || k.indexOf('расчётный счёт') >= 0) setIfEmpty('account', (v.match(/\d{20}/) || [v])[0]);
+      else if (k.indexOf('корреспондентский счет') >= 0 || k.indexOf('корреспондентский счёт') >= 0 || k.indexOf('кор. счет') >= 0 || k.indexOf('кор. счёт') >= 0) setIfEmpty('corrAccount', (v.match(/\d{20}/) || [v])[0]);
+      else if (k.indexOf('бик') >= 0) setIfEmpty('bik', (v.match(/\d{9}/) || [v])[0]);
+      else if (k === 'банк' || k.indexOf('банк') >= 0) setIfEmpty('bank', v);
+      else if (k.indexOf('идентификатор участника эдо') >= 0 || k.indexOf('guid') >= 0) setIfEmpty('edoGuid', v);
+    });
+
     var m;
-    m = t.match(/\bИНН[\s:]*(\d{10,12})/i); if (m) out.inn = m[1];
-    m = t.match(/\bОГРН[\s:]*(\d{13,15})/i); if (m) out.ogrn = m[1];
-    m = t.match(/\bОГРНИП[\s:]*(\d{13,15})/i); if (m) out.ogrn = m[1];
-    m = t.match(/\b[р\/\s]*счёт[\s:]*(\d{20})/i) || t.match(/\bр\/с[\s:]*(\d{20})/i) || t.match(/\b(\d{20})\b/); if (m) out.account = m[1];
-    m = t.match(/\bБИК[\s:]*(\d{9})/i); if (m) out.bik = m[1];
-    m = t.match(/\bк[оа]р[.\s]*счёт[\s:]*(\d{20})/i) || t.match(/\bк\/с[\s:]*(\d{20})/i); if (m) out.corrAccount = m[1];
-    m = t.match(/\bпаспорт[\s:]*(\d{4}\s*\d{6})/i) || t.match(/\b(\d{4}\s\d{6})\b/); if (m) out.passport = m[1].replace(/\s/g, ' ');
-    var nameMatch = t.match(/(?:ИП|ООО|АО|ПАО)\s+([А-Яа-яЁё\s\-]+?)(?:\s+ИНН|\s*\d|$)/) ||
+    m = t.match(/\bИНН[\s:]*(\d{10,12})/i); if (m) setIfEmpty('inn', m[1]);
+    m = t.match(/\bОГРН[\s:]*(\d{13,15})/i); if (m) setIfEmpty('ogrn', m[1]);
+    m = t.match(/\bОГРНИП[\s:]*(\d{13,15})/i); if (m) setIfEmpty('ogrn', m[1]);
+    m = t.match(/\b[р\/\s]*сч[её]т[\s:]*(\d{20})/i) || t.match(/\bр\/с[\s:]*(\d{20})/i) || t.match(/\b(\d{20})\b/); if (m) setIfEmpty('account', m[1]);
+    m = t.match(/\bБИК[\s:]*(\d{9})/i); if (m) setIfEmpty('bik', m[1]);
+    m = t.match(/\bк[оа]р[.\s]*сч[её]т[\s:]*(\d{20})/i) || t.match(/\bк\/с[\s:]*(\d{20})/i); if (m) setIfEmpty('corrAccount', m[1]);
+    m = t.match(/\bпаспорт[\s:]*(\d{4}\s*\d{6})/i) || t.match(/\b(\d{4}\s\d{6})\b/); if (m) setIfEmpty('passport', m[1].replace(/\s/g, ' '));
+    var nameMatch = t.match(/(?:ООО|АО|ПАО)\s*[«\"].+?[»\"]/i) ||
+      t.match(/(?:ИП)\s+[А-Яа-яЁё\s\-]+/i) ||
       t.match(/(?:Заказчик|Клиент)[\s:]+([А-Яа-яЁё\s\-]+)/i) ||
       t.match(/([А-ЯЁ][а-яё]+\s+[А-ЯЁ][а-яё]+\s+[А-ЯЁ][а-яё]+)/);
-    if (nameMatch) out.fio = nameMatch[1].trim();
-    var bankMatch = t.match(/\b(ПАО СБЕРБАНК|СБЕРБАНК|Т-БАНК|ВТБ|АЛЬФА-БАНК|[А-Яа-яЁё\s\-]+БАНК[а-яё]*)/i);
-    if (bankMatch) out.bank = bankMatch[1].trim();
+    if (nameMatch) {
+      var nm = nameMatch[1] || nameMatch[0];
+      setIfEmpty('fio', String(nm).trim());
+    }
+    var bankMatch = t.match(/\b(ПАО СБЕРБАНК|СБЕРБАНК|Т-БАНК|ТБАНК|ВТБ|АЛЬФА-БАНК|[А-Яа-яЁё\s\-]+БАНК[а-яё]*)/i);
+    if (bankMatch) setIfEmpty('bank', bankMatch[1].trim());
+    out.__pairs = pairs;
     return out;
   }
 
@@ -250,7 +303,45 @@
       if (parsed.bik) document.getElementById('contract-bik').value = parsed.bik;
       if (parsed.corrAccount) document.getElementById('contract-corrAccount').value = parsed.corrAccount;
       if (parsed.passport) document.getElementById('contract-passport').value = parsed.passport;
-      if (parsed.fio) document.getElementById('contract-fio').value = parsed.fio;
+      if (parsed.shortName) document.getElementById('contract-fio').value = parsed.shortName;
+      else if (parsed.fullName) document.getElementById('contract-fio').value = parsed.fullName;
+      else if (parsed.fio) document.getElementById('contract-fio').value = parsed.fio;
+    }
+
+    function escHtml(s) {
+      return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
+    function renderParsedRequisites(parsed) {
+      var box = document.getElementById('contractParsedRequisites');
+      if (!box) return;
+      var rows = [];
+      function add(label, val) { if (val != null && String(val).trim()) rows.push({ label: label, value: String(val).trim() }); }
+      add('Полное наименование', parsed.fullName);
+      add('Сокращенное наименование', parsed.shortName || parsed.fio);
+      add('Юридический адрес', parsed.legalAddress);
+      add('Почтовый адрес', parsed.postalAddress);
+      add('Фактический адрес', parsed.actualAddress);
+      add('Генеральный директор', parsed.ceo);
+      add('Телефон / эл. почта', parsed.contacts);
+      add('Телефон / эл. почта бухгалтерия', parsed.accountingContacts);
+      add('ИНН', parsed.inn);
+      add('КПП', parsed.kpp);
+      add('ОГРН', parsed.ogrn);
+      add('Расчетный счет', parsed.account);
+      add('Корреспондентский счет', parsed.corrAccount);
+      add('БИК Банка', parsed.bik);
+      add('Банк', parsed.bank);
+      add('GUID (ЭДО)', parsed.edoGuid);
+      if (!rows.length) {
+        box.style.display = 'none';
+        box.innerHTML = '';
+        return;
+      }
+      box.style.display = 'block';
+      box.innerHTML = '<div class="contract-parsed-title">Распознано из файла</div><table class="contract-parsed-table"><tbody>' +
+        rows.map(function(r) { return '<tr><td>' + escHtml(r.label) + '</td><td>' + escHtml(r.value) + '</td></tr>'; }).join('') +
+        '</tbody></table>';
     }
 
     var html = '<div class="contract-form-wrap">' +
@@ -274,6 +365,7 @@
       '<div class="fg"><label>Паспорт (физлицо)</label><input type="text" id="contract-passport" placeholder="1234 567890"></div>' +
       '</div>' +
       '<div class="contract-drop-zone" id="contract-drop-zone">Перетащите файл реквизитов (docx, pdf, txt) сюда</div>' +
+      '<div class="contract-parsed-wrap" id="contractParsedRequisites" style="display:none"></div>' +
       '</div>' +
       '<div class="contract-extra-panel">' +
       '<h4 class="contract-form-title">Дополнительные параметры договора</h4>' +
@@ -378,6 +470,7 @@
         }
         var parsed = parseRequisitesFromText(text);
         applyParsed(parsed);
+        renderParsedRequisites(parsed);
         if (typeof window.__showToast === 'function') window.__showToast('Реквизиты загружены');
         else alert('Реквизиты извлечены и заполнены');
       });
