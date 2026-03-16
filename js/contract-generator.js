@@ -56,6 +56,10 @@
     if (rest) parts.push(triadToWords(rest, false));
     return parts.join(' ').replace(/\s+/g, ' ').trim();
   }
+  function normalizeMoneyValue(v) {
+    var n = parseInt(String(v == null ? '' : v).replace(/[^\d]/g, ''), 10);
+    return Number.isFinite(n) ? n : 0;
+  }
 
   // Шаблоны договора (на основе документов пользователя)
   function getContractMainTemplate(data) {
@@ -65,8 +69,9 @@
     var endDate = data.endDate || '—';
     var daysCreate = data.daysCreate || '—';
     var daysManage = data.daysManage || '—';
-    var costFmt = String(data.cost || '0').replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
-    var costWords = numberToWordsRu(data.cost);
+    var costNum = normalizeMoneyValue(data.cost);
+    var costFmt = String(costNum || 0).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+    var costWords = numberToWordsRu(costNum);
 
     return '' +
       '<h2 style="text-align:center;font-size:15pt;margin:8px 0 10px;letter-spacing:.2px">ДОГОВОР ВОЗМЕЗДНОГО ОКАЗАНИЯ УСЛУГ</h2>' +
@@ -176,8 +181,22 @@
     var body = headerHtml + '<div class="contract-doc-body">' + getContractMainTemplate(data) + '</div>';
     var sigImg = 'assets/contract_sign.png';
     try { sigImg = new URL('assets/contract_sign.png', window.location.href).href; } catch (e) {}
-    var sigHtml = '<div class="contract-doc-sign"><img src="' + esc(sigImg) + '" alt="" onerror="this.style.display=\'none\'" style="max-width:240px;height:auto;opacity:0.95"></div>';
-    return '<div class="contract-document">' + body + sigHtml + '</div>';
+    var footerHtml =
+      '<div class="contract-doc-footer">' +
+        '<table style="width:100%;border-collapse:collapse;table-layout:fixed">' +
+          '<tr>' +
+            '<td style="width:50%;font-size:11pt;color:#4b4b4b;vertical-align:top;padding:0 16px 0 0">От имени Заказчика</td>' +
+            '<td style="width:50%;font-size:11pt;color:#4b4b4b;vertical-align:top;text-align:center;padding:0">От имени Исполнителя</td>' +
+          '</tr>' +
+          '<tr>' +
+            '<td style="height:120px"></td>' +
+            '<td style="height:120px;vertical-align:top;text-align:center">' +
+              '<img src="' + esc(sigImg) + '" alt="" onerror="this.style.display=\'none\'" style="max-width:260px;height:auto;opacity:0.95;display:inline-block;margin-top:-12px">' +
+            '</td>' +
+          '</tr>' +
+        '</table>' +
+      '</div>';
+    return '<div class="contract-document">' + body + footerHtml + '</div>';
   }
 
   function detectClientType(data) {
@@ -429,6 +448,7 @@
         d[k] = el ? el.value.trim() : '';
       });
       if (!d.headerGender) d.headerGender = 'm';
+      d.cost = String(normalizeMoneyValue(d.cost || '50000') || 0);
       d.companyName = d.fio;
       d.clientType = detectClientType(d);
       d.screenshots = (_contractScreenshots || []).slice();
@@ -601,7 +621,7 @@
       '<div class="contract-form-grid">' +
       '<div class="fg"><label>Дата начала работ</label><input type="date" id="contract-startDate"></div>' +
       '<div class="fg"><label>Дата окончания работ</label><input type="date" id="contract-endDate"></div>' +
-      '<div class="fg"><label>Дней на создание рекламы</label><input type="number" id="contract-daysCreate" placeholder="14" min="1"></div>' +
+      '<div class="fg"><label>Дней на создание рекламы</label><input type="number" id="contract-daysCreate" placeholder="12" min="1"></div>' +
       '<div class="fg"><label>Дней ведения рекламы</label><input type="number" id="contract-daysManage" placeholder="30" min="1"></div>' +
       '<div class="fg"><label>Стоимость договора, руб.</label><input type="number" id="contract-cost" placeholder="50000" min="0"></div>' +
       '<div class="fg"><label>Кол-во проданных объявлений</label><input type="number" id="contract-soldCount" placeholder="5" min="0"></div>' +
@@ -623,6 +643,30 @@
     var todayStr = today.getFullYear() + '-' + pad2(today.getMonth() + 1) + '-' + pad2(today.getDate());
     var startEl = document.getElementById('contract-startDate');
     if (startEl) startEl.value = todayStr;
+    var daysCreateEl = document.getElementById('contract-daysCreate');
+    var daysManageEl = document.getElementById('contract-daysManage');
+    var endEl = document.getElementById('contract-endDate');
+    var costEl = document.getElementById('contract-cost');
+    if (daysCreateEl && !daysCreateEl.value) daysCreateEl.value = '12';
+    if (daysManageEl && !daysManageEl.value) daysManageEl.value = '30';
+    if (costEl && !costEl.value) costEl.value = '50000';
+    function recalcEndDate() {
+      if (!startEl || !endEl) return;
+      var s = String(startEl.value || '').trim();
+      if (!s) return;
+      var d1 = parseInt((daysCreateEl && daysCreateEl.value) || '12', 10);
+      var d2 = parseInt((daysManageEl && daysManageEl.value) || '30', 10);
+      if (!Number.isFinite(d1) || d1 < 0) d1 = 12;
+      if (!Number.isFinite(d2) || d2 < 0) d2 = 30;
+      var base = new Date(s + 'T00:00:00');
+      if (isNaN(base.getTime())) return;
+      base.setDate(base.getDate() + d1 + d2);
+      endEl.value = base.getFullYear() + '-' + pad2(base.getMonth() + 1) + '-' + pad2(base.getDate());
+    }
+    if (startEl) startEl.addEventListener('input', recalcEndDate);
+    if (daysCreateEl) daysCreateEl.addEventListener('input', recalcEndDate);
+    if (daysManageEl) daysManageEl.addEventListener('input', recalcEndDate);
+    recalcEndDate();
     var secondaryToolbar = document.getElementById('contractToolbarSecondary');
     var fioEl = document.getElementById('contract-fio');
     var captionEl = document.getElementById('contractClientCaption');
@@ -676,12 +720,16 @@
         if (el) el.value = '';
       });
       setHeaderGender('m');
+      if (daysCreateEl) daysCreateEl.value = '12';
+      if (daysManageEl) daysManageEl.value = '30';
+      if (costEl) costEl.value = '50000';
       refreshClientCaption();
       setSecondaryVisible(false);
       _contractScreenshots = [];
       renderContractScreenshots();
       var startEl = document.getElementById('contract-startDate');
       if (startEl) startEl.value = todayStr;
+      recalcEndDate();
       onClear && onClear();
     };
 

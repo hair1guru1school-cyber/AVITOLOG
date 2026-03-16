@@ -715,7 +715,7 @@ body.contract-tab .analytics-control-panel,body.contract-tab .sec-bar,body.contr
 .contract-toolbar-btn{padding:6px 12px;font-size:12px;font-weight:700;border-radius:8px;cursor:pointer;transition:all .15s;font-family:inherit;border:1px solid var(--border);background:var(--surface2);color:var(--text);flex-shrink:0;white-space:nowrap}
 .contract-toolbar .btn-gen{width:auto;min-width:0;margin:0;padding:6px 12px;font-size:12px;font-weight:700;border-radius:8px;letter-spacing:0}
 .contract-toolbar-btn:hover{border-color:var(--accent);color:var(--accent)}
-.contract-btn-load-main{width:100%;max-width:460px;min-height:42px;font-size:14px;font-weight:800;letter-spacing:.2px}
+.contract-btn-load-main{width:100%;max-width:460px;min-height:48px;padding:10px 16px;display:inline-flex;align-items:center;justify-content:center;line-height:1.2;font-size:14px;font-weight:800;letter-spacing:.2px;white-space:normal;text-align:center}
 .contract-client-caption{font-size:12px;color:#9dc6ff;text-align:center;padding:0 4px}
 .contract-gender-switch{display:inline-flex;align-items:center;gap:6px;padding:3px;background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:9px}
 .contract-gender-btn{height:28px;min-width:42px;padding:0 8px;border:1px solid transparent;border-radius:7px;background:transparent;color:var(--muted);font-size:12px;font-weight:700;cursor:pointer;transition:all .15s}
@@ -750,10 +750,14 @@ body.contract-tab .analytics-control-panel,body.contract-tab .sec-bar,body.contr
 .contract-parsed-table td{padding:8px 10px;border-top:1px solid rgba(255,255,255,0.06);vertical-align:top}
 .contract-parsed-table td:first-child{width:34%;color:#a8c4ff;font-weight:700;border-right:1px solid rgba(255,255,255,0.08)}
 .contract-parsed-table td:last-child{color:var(--text)}
-.contract-extra-panel{background:rgba(53,208,255,0.06);border:1px solid rgba(53,208,255,0.25);border-radius:12px;padding:16px;margin-top:16px}
-.contract-extra-hint{font-size:11px;color:var(--muted);margin-bottom:12px;line-height:1.4}
-.contract-extra-services-wrap{margin-top:12px}
-.contract-extra-services-wrap textarea{min-height:60px;resize:vertical}
+.contract-extra-panel{background:rgba(53,208,255,0.06);border:1px solid rgba(53,208,255,0.25);border-radius:12px;padding:12px;margin-top:12px}
+.contract-extra-panel .contract-form-grid{grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:8px}
+.contract-extra-panel .fg{margin:0}
+.contract-extra-panel .fg label{font-size:10px;line-height:1.2;margin-bottom:4px;color:#9dc6ff}
+.contract-extra-panel .fg input,.contract-extra-panel .fg textarea{height:30px;padding:4px 8px;font-size:12px;border-radius:7px}
+.contract-extra-hint{font-size:10px;color:var(--muted);margin-bottom:8px;line-height:1.3}
+.contract-extra-services-wrap{margin-top:8px}
+.contract-extra-services-wrap textarea{min-height:52px;height:auto;resize:vertical}
 .contract-screenshots-zone{margin-top:16px}
 .contract-screenshots-drop{border:2px dashed rgba(124,245,255,0.3);border-radius:10px;padding:20px;text-align:center;color:var(--muted);font-size:12px;cursor:pointer;transition:all .2s;display:flex;flex-direction:column;align-items:center;gap:8px}
 .contract-screenshots-drop:hover,.contract-screenshots-drop.contract-drop-over{border-color:var(--accent);color:var(--accent);background:rgba(0,217,126,0.05)}
@@ -765,11 +769,10 @@ body.contract-tab .analytics-control-panel,body.contract-tab .sec-bar,body.contr
 .contract-screenshot-rm:hover{opacity:1}
 .contract-preview-wrap{background:#fff;border-radius:12px;box-shadow:0 4px 24px rgba(0,0,0,0.4);overflow:hidden;padding:14px 18px 20px}
 .contract-preview-inner{max-width:210mm;margin:0 auto;color:#1a1a1a;font-family:'Golos Text',sans-serif}
-.contract-document{background:#fff;color:#1a1a1a;padding:16mm 14mm 14mm;min-height:297mm;box-sizing:border-box}
+.contract-document{background:#fff;color:#1a1a1a;padding:16mm 14mm 14mm;min-height:297mm;box-sizing:border-box;display:flex;flex-direction:column}
 .contract-doc-header img{display:block;margin:0 auto 12px;max-width:100%}
-.contract-doc-body{font-size:10.5pt;line-height:1.55}
-.contract-doc-sign{margin-top:26px;padding-top:0;text-align:right}
-.contract-doc-sign img{max-width:240px;height:auto;opacity:0.95}
+.contract-doc-body{font-size:10.5pt;line-height:1.55;flex:1 0 auto}
+.contract-doc-footer{margin-top:auto;padding-top:18px}
 /* ——— Ads page ——— */
 .ads-page{display:flex;flex-direction:column;gap:16px;height:100%;min-height:0;padding:16px}
 .ads-header{font-size:18px;font-weight:900;color:var(--accent);letter-spacing:.5px}
