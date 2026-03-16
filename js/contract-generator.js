@@ -132,6 +132,24 @@
     return out;
   }
 
+  function getMammoth(cb) {
+    var m = (typeof window !== 'undefined' && window.mammoth) || (typeof mammoth !== 'undefined' ? mammoth : null);
+    if (m && typeof m.extractRawText === 'function') {
+      cb(null, m);
+      return;
+    }
+    var s = document.createElement('script');
+    s.src = 'https://unpkg.com/mammoth@1.6.0/mammoth.min.js';
+    s.onload = function() {
+      var mm = window.mammoth;
+      cb(mm && typeof mm.extractRawText === 'function' ? null : new Error('mammoth не инициализировалась'), mm);
+    };
+    s.onerror = function() {
+      cb(new Error('Не удалось загрузить mammoth. Проверьте подключение к интернету и обновите страницу.'), null);
+    };
+    document.head.appendChild(s);
+  }
+
   function readFileAsText(file, callback) {
     var reader = new FileReader();
     reader.onload = function() { callback(null, reader.result); };
@@ -139,16 +157,18 @@
     if (file.name.toLowerCase().endsWith('.txt')) {
       reader.readAsText(file, 'UTF-8');
     } else if (file.name.toLowerCase().endsWith('.docx')) {
-      if (typeof mammoth !== 'undefined') {
+      getMammoth(function(err, mammoth) {
+        if (err || !mammoth) {
+          callback(err || new Error('Библиотека mammoth недоступна. Обновите страницу.'));
+          return;
+        }
         reader.onload = function() {
           mammoth.extractRawText({ arrayBuffer: reader.result }).then(function(r) {
             callback(null, r.value);
-          }).catch(function(err) { callback(err); });
+          }).catch(function(e) { callback(e); });
         };
         reader.readAsArrayBuffer(file);
-      } else {
-        callback(new Error('Для .docx нужна библиотека mammoth. Пока поддерживается только .txt'));
-      }
+      });
     } else if (file.name.toLowerCase().endsWith('.pdf')) {
       callback(new Error('PDF пока не поддерживается. Используйте .txt или .docx'));
     } else {
@@ -212,7 +232,8 @@
       '<button type="button" class="contract-toolbar-btn contract-btn-clear" onclick="window.__contractClear&&window.__contractClear()">Очистить</button>' +
       '</div>' +
       '<div class="contract-form">' +
-      '<div class="contract-form-section"><h4 class="contract-form-title">Реквизиты заказчика</h4>' +
+      '<div class="contract-form-section contract-requisites-section"><h4 class="contract-form-title">Реквизиты заказчика</h4>' +
+      '<p class="contract-requisites-hint">Заполните вручную или загрузите файл с реквизитами ниже</p>' +
       '<div class="contract-form-grid">' +
       '<div class="fg"><label>ФИО / Название компании</label><input type="text" id="contract-fio" placeholder="Иванов Иван Иванович или ИП Иванов"></div>' +
       '<div class="fg"><label>ИНН</label><input type="text" id="contract-inn" placeholder="10 или 12 цифр"></div>' +
@@ -317,6 +338,9 @@
     wrap.innerHTML = '<div class="contract-generator-form" id="contractFormArea"></div><div class="contract-generator-preview" id="contractPreviewArea"></div>';
     mainContentEl.innerHTML = '';
     mainContentEl.appendChild(wrap);
+    mainContentEl.scrollTop = 0;
+    var wrapEl = mainContentEl.closest('.content-wrap');
+    if (wrapEl) wrapEl.scrollTop = 0;
 
     var formArea = document.getElementById('contractFormArea');
     var previewArea = document.getElementById('contractPreviewArea');
