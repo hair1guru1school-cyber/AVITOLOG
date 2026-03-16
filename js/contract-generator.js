@@ -395,14 +395,31 @@
       if (!box) return;
       var valueToLabels = {};
       var valueOrder = [];
+      var normalizedValueToDisplayValue = {};
+      function normContactValue(v) {
+        return String(v || '').toLowerCase().replace(/\s+/g, ' ').trim();
+      }
+      function normValue(v) {
+        return String(v || '')
+          .toLowerCase()
+          .replace(/ё/g, 'е')
+          .replace(/\s*,\s*/g, ', ')
+          .replace(/\s+/g, ' ')
+          .trim();
+      }
       function add(label, val) {
         var value = String(val || '').trim();
         if (!value) return;
-        if (!valueToLabels[value]) {
-          valueToLabels[value] = [];
-          valueOrder.push(value);
+        var valueNorm = normValue(value);
+        var displayValue = normalizedValueToDisplayValue[valueNorm] || value;
+        if (!normalizedValueToDisplayValue[valueNorm]) {
+          normalizedValueToDisplayValue[valueNorm] = displayValue;
         }
-        if (valueToLabels[value].indexOf(label) < 0) valueToLabels[value].push(label);
+        if (!valueToLabels[displayValue]) {
+          valueToLabels[displayValue] = [];
+          valueOrder.push(displayValue);
+        }
+        if (valueToLabels[displayValue].indexOf(label) < 0) valueToLabels[displayValue].push(label);
       }
 
       add('Полное наименование', parsed.fullName);
@@ -411,8 +428,12 @@
       add('Почтовый адрес', parsed.postalAddress);
       add('Фактический адрес', parsed.actualAddress);
       add('Генеральный директор', parsed.ceo);
-      add('Телефон / эл. почта', parsed.contacts);
-      add('Телефон / эл. почта бухгалтерия', parsed.accountingContacts);
+      var contactsMerged = String(parsed.contacts || '').trim() || [parsed.phone, parsed.email].filter(Boolean).join(' / ').trim();
+      var accountingMerged = String(parsed.accountingContacts || '').trim() || [parsed.accountingPhone, parsed.accountingEmail].filter(Boolean).join(' / ').trim();
+      add('Телефон / эл. почта', contactsMerged);
+      if (accountingMerged && normContactValue(accountingMerged) !== normContactValue(contactsMerged)) {
+        add('Телефон / эл. почта бухгалтерия', accountingMerged);
+      }
       add('ИНН', parsed.inn);
       add('КПП', parsed.kpp);
       add('ИНН/КПП', parsed.innKpp);
@@ -424,7 +445,35 @@
       add('GUID (ЭДО)', parsed.edoGuid);
 
       var rows = valueOrder.map(function(value) {
-        return { label: valueToLabels[value].join(', '), value: value };
+        var labels = valueToLabels[value].slice();
+        var hasLegal = labels.indexOf('Юридический адрес') >= 0;
+        var hasPostal = labels.indexOf('Почтовый адрес') >= 0;
+        var hasActual = labels.indexOf('Фактический адрес') >= 0;
+        if (hasLegal || hasPostal || hasActual) {
+          labels = labels.filter(function(l) {
+            return l !== 'Юридический адрес' && l !== 'Почтовый адрес' && l !== 'Фактический адрес';
+          });
+          var addrParts = [];
+          if (hasLegal) addrParts.push('Юридический');
+          if (hasPostal) addrParts.push('Почтовый');
+          if (hasActual) addrParts.push('Фактический');
+          labels.unshift(addrParts.join(', ') + ' адрес');
+        }
+        if (labels.indexOf('Телефон / эл. почта') >= 0) {
+          labels = labels.filter(function(l) {
+            var ll = String(l || '').toLowerCase();
+            return ll !== 'телефон' && ll !== 'e-mail' && ll !== 'email' && ll !== 'эл. почта' && ll !== 'эл почта';
+          });
+        }
+        if (labels.indexOf('Телефон / эл. почта бухгалтерия') >= 0) {
+          labels = labels.filter(function(l) {
+            var ll = String(l || '').toLowerCase();
+            return ll !== 'телефон бухгалтерии' && ll !== 'e-mail бухгалтерии' && ll !== 'email бухгалтерии' && ll !== 'эл. почта бухгалтерии';
+          });
+        }
+        return { label: labels.join(', '), value: value };
+      }).filter(function(row) {
+        return String(row.label || '').trim().length > 0;
       });
 
       if (!rows.length) {
@@ -433,7 +482,7 @@
         return;
       }
       box.style.display = 'block';
-      box.innerHTML = '<div class="contract-parsed-title">Распознано из файла</div><table class="contract-parsed-table"><tbody>' +
+      box.innerHTML = '<table class="contract-parsed-table"><tbody>' +
         rows.map(function(r) { return '<tr><td>' + escHtml(r.label) + '</td><td>' + escHtml(r.value) + '</td></tr>'; }).join('') +
         '</tbody></table>';
     }
@@ -446,9 +495,8 @@
       '<button type="button" class="contract-toolbar-btn contract-btn-clear" onclick="window.__contractClear&&window.__contractClear()">Очистить</button>' +
       '</div>' +
       '<div class="contract-form">' +
-      '<div class="contract-form-section contract-requisites-section"><h4 class="contract-form-title">Реквизиты заказчика</h4>' +
-      '<p class="contract-requisites-hint">Загрузите файл с реквизитами — данные будут распознаны автоматически</p>' +
-      '<input type="hidden" id="contract-fio">' +
+      '<div class="contract-form-section contract-requisites-section">' +
+      '<div class="contract-mini-client-row"><label for="contract-fio">ФИО (если физлицо)</label><input type="text" id="contract-fio" placeholder="Иванов Иван Иванович"></div>' +
       '<input type="hidden" id="contract-inn">' +
       '<input type="hidden" id="contract-ogrn">' +
       '<input type="hidden" id="contract-account">' +

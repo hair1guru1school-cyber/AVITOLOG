@@ -221,77 +221,133 @@
     return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
   }
 
-  function renderLinksPanel(container, links) {
-    var html = '<div class="ads-links-title">🔗 Быстрые ссылки</div><div class="ads-links-grid">';
-    links.forEach(function(item, i) {
-      var hasUrl = item.url && String(item.url).trim().length;
-      var cls = hasUrl ? 'ads-link-btn' : 'ads-link-btn ads-link-btn-empty';
-      var safeUrl = hasUrl ? escapeHtml(item.url) : '#';
-      html += '<div class="ads-link-wrap">';
-      html += '<a href="' + safeUrl + '" target="_blank" rel="noopener" class="' + cls + '" data-idx="' + i + '">';
-      html += '<span class="ads-link-icon">' + escapeHtml(item.icon) + '</span>';
-      html += '<span class="ads-link-label">' + escapeHtml(item.label || '') + '</span>';
-      html += '</a>';
-      html += '<button type="button" class="ads-link-edit" data-idx="' + i + '" title="Изменить ссылку">✎</button>';
-      html += '</div>';
-    });
-    html += '</div>';
+  function getLinksCategory(item) {
+    var id = String(item.id || '').toLowerCase();
+    var label = String(item.label || '').toLowerCase();
+    if (id.indexOf('channel') >= 0 || label.indexOf('канал') >= 0) return 'channels';
+    if (id.indexOf('bot') >= 0 || label.indexOf('бот') >= 0) return 'bots';
+    if (id.indexOf('site') >= 0 || label.indexOf('сайт') >= 0) return 'sites';
+    if (id.indexOf('avito') >= 0 || label.indexOf('авито') >= 0) return 'avito';
+    return 'other';
+  }
 
-    var channels = links.filter(function(item) {
-      var id = String(item.id || '').toLowerCase();
-      var label = String(item.label || '').toLowerCase();
-      return id.indexOf('channel') >= 0 || label.indexOf('канал') >= 0;
+  function readImageAsDataURL(file, cb) {
+    if (!file || !file.type.match(/^image\/(png|jpeg|jpg|webp|gif)$/i)) {
+      cb(new Error('Выберите изображение (png/jpg/webp/gif)'));
+      return;
+    }
+    var reader = new FileReader();
+    reader.onload = function() { cb(null, reader.result); };
+    reader.onerror = function() { cb(new Error('Не удалось прочитать изображение')); };
+    reader.readAsDataURL(file);
+  }
+
+  function renderLinksPanel(container, links) {
+    var editingIdx = Number.isInteger(renderLinksPanel._editingIdx) ? renderLinksPanel._editingIdx : -1;
+    var groups = [
+      { id: 'channels', title: '📚 Каналы' },
+      { id: 'bots', title: '🤖 Боты' },
+      { id: 'sites', title: '🌐 Сайты' },
+      { id: 'avito', title: '🛒 Avito аккаунты' },
+      { id: 'other', title: '🔗 Прочее' }
+    ];
+    var grouped = { channels: [], bots: [], sites: [], avito: [], other: [] };
+    links.forEach(function(item, idx) {
+      var cat = getLinksCategory(item);
+      grouped[cat].push({ item: item, idx: idx });
     });
-    if (channels.length) {
-      html += '<div class="ads-channels-title">📚 Каналы</div><div class="ads-channels-grid">';
-      channels.forEach(function(item) {
-        var idx = links.indexOf(item);
+
+    var html = '<div class="ads-links-title">🔗 Быстрые ссылки</div>';
+    groups.forEach(function(g) {
+      if (!grouped[g.id].length) return;
+      html += '<div class="ads-snippet-group"><div class="ads-snippet-group-title">' + g.title + '</div><div class="ads-snippet-grid">';
+      grouped[g.id].forEach(function(w) {
+        var item = w.item;
+        var idx = w.idx;
         var hasUrl = item.url && String(item.url).trim().length;
-        html += '<div class="ads-channel-wrap">';
-        html += '<button type="button" class="ads-channel-card" data-idx="' + idx + '"' + (hasUrl ? '' : ' title="Добавьте ссылку"') + '>';
-        if (item.avatar && String(item.avatar).trim()) {
-          html += '<span class="ads-channel-avatar"><img src="' + escapeHtml(item.avatar) + '" alt=""></span>';
-        } else {
-          html += '<span class="ads-channel-avatar ads-channel-avatar-fallback">' + escapeHtml(item.icon || '📣') + '</span>';
-        }
-        html += '<span class="ads-channel-meta"><span class="ads-channel-name">' + escapeHtml(item.label || '') + '</span><span class="ads-channel-snippet">' + escapeHtml(item.snippet || 'Добавьте сниппет') + '</span></span>';
+        var avatar = item.avatar && String(item.avatar).trim();
+        html += '<div class="ads-snippet-card" data-idx="' + idx + '">';
+        html += '<button type="button" class="ads-snippet-main" data-open="' + idx + '"' + (hasUrl ? '' : ' title="Добавьте ссылку"') + '>';
+        if (avatar) html += '<span class="ads-snippet-avatar"><img src="' + escapeHtml(item.avatar) + '" alt=""></span>';
+        else html += '<span class="ads-snippet-avatar ads-snippet-avatar-fallback">' + escapeHtml(item.icon || '🔗') + '</span>';
+        html += '<span class="ads-snippet-meta"><span class="ads-snippet-name">' + escapeHtml(item.label || '') + '</span><span class="ads-snippet-sub">' + escapeHtml(item.snippet || 'Добавьте сниппет') + '</span></span>';
         html += '</button>';
-        html += '<button type="button" class="ads-link-edit" data-idx="' + idx + '" title="Изменить ссылку">✎</button>';
+        html += '<button type="button" class="ads-snippet-edit-btn" data-edit="' + idx + '" title="Редактировать">✎</button>';
+        if (editingIdx === idx) {
+          html += '<div class="ads-snippet-editor">' +
+            '<input type="text" class="ads-editor-input ads-editor-url" data-field="url" data-idx="' + idx + '" placeholder="https://..." value="' + escapeHtml(item.url || '') + '">' +
+            '<input type="text" class="ads-editor-input ads-editor-snippet" data-field="snippet" data-idx="' + idx + '" placeholder="Сниппет" value="' + escapeHtml(item.snippet || '') + '">' +
+            '<input type="text" class="ads-editor-input ads-editor-avatar" data-field="avatar" data-idx="' + idx + '" placeholder="URL аватарки" value="' + escapeHtml(item.avatar || '') + '">' +
+            '<label class="ads-editor-upload" title="Загрузить картинку"><input type="file" class="ads-editor-file" data-idx="' + idx + '" accept="image/png,image/jpeg,image/jpg,image/webp,image/gif">🖼</label>' +
+            '<button type="button" class="ads-editor-save" data-save="' + idx + '">OK</button>' +
+            '<button type="button" class="ads-editor-cancel" data-cancel="1">✕</button>' +
+          '</div>';
+        }
         html += '</div>';
       });
-      html += '</div>';
-    }
+      html += '</div></div>';
+    });
 
     container.innerHTML = html;
 
-    container.querySelectorAll('.ads-link-edit').forEach(function(btn) {
-      btn.addEventListener('click', function(e) {
-        e.preventDefault();
-        var idx = parseInt(btn.getAttribute('data-idx'), 10);
-        openLinkEdit(links, idx, container);
-      });
-    });
-
-    container.querySelectorAll('.ads-link-btn').forEach(function(a) {
-      a.addEventListener('click', function(e) {
-        var idx = parseInt(a.getAttribute('data-idx'), 10);
-        var url = (links[idx] && links[idx].url) ? String(links[idx].url).trim() : '';
-        if (!url) {
-          e.preventDefault();
-          openLinkEdit(links, idx, container);
-        }
-      });
-    });
-
-    container.querySelectorAll('.ads-channel-card').forEach(function(btn) {
+    container.querySelectorAll('[data-open]').forEach(function(btn) {
       btn.addEventListener('click', function() {
-        var idx = parseInt(btn.getAttribute('data-idx'), 10);
+        var idx = parseInt(btn.getAttribute('data-open'), 10);
         var url = (links[idx] && links[idx].url) ? String(links[idx].url).trim() : '';
-        if (url) {
-          window.open(url, '_blank', 'noopener');
-        } else {
-          openLinkEdit(links, idx, container);
+        if (url) window.open(url, '_blank', 'noopener');
+        else {
+          renderLinksPanel._editingIdx = idx;
+          renderLinksPanel(container, links);
         }
+      });
+    });
+
+    container.querySelectorAll('[data-edit]').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        renderLinksPanel._editingIdx = parseInt(btn.getAttribute('data-edit'), 10);
+        renderLinksPanel(container, links);
+      });
+    });
+
+    container.querySelectorAll('[data-cancel]').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        renderLinksPanel._editingIdx = -1;
+        renderLinksPanel(container, links);
+      });
+    });
+
+    container.querySelectorAll('[data-save]').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        var idx = parseInt(btn.getAttribute('data-save'), 10);
+        var item = links[idx];
+        if (!item) return;
+        var urlInp = container.querySelector('.ads-editor-url[data-idx="' + idx + '"]');
+        var snInp = container.querySelector('.ads-editor-snippet[data-idx="' + idx + '"]');
+        var avInp = container.querySelector('.ads-editor-avatar[data-idx="' + idx + '"]');
+        item.url = urlInp ? String(urlInp.value || '').trim() : '';
+        item.snippet = snInp ? String(snInp.value || '').trim() : '';
+        item.avatar = avInp ? String(avInp.value || '').trim() : '';
+        saveLinks(links);
+        renderLinksPanel._editingIdx = -1;
+        renderLinksPanel(container, links);
+      });
+    });
+
+    container.querySelectorAll('.ads-editor-file').forEach(function(inp) {
+      inp.addEventListener('change', function() {
+        var idx = parseInt(inp.getAttribute('data-idx'), 10);
+        var file = inp.files && inp.files[0];
+        if (!file || !links[idx]) return;
+        readImageAsDataURL(file, function(err, dataUrl) {
+          if (err) {
+            alert(err.message || 'Ошибка загрузки изображения');
+            return;
+          }
+          links[idx].avatar = dataUrl;
+          saveLinks(links);
+          renderLinksPanel._editingIdx = idx;
+          renderLinksPanel(container, links);
+        });
       });
     });
   }

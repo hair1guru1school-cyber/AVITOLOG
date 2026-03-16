@@ -720,13 +720,18 @@ body.contract-tab .analytics-control-panel,body.contract-tab .sec-bar,body.contr
 .contract-form{background:rgba(0,0,0,0.15);border:1px solid var(--border);border-radius:12px;padding:16px}
 .contract-form-section{margin-bottom:16px}
 .contract-form-section:last-child{margin-bottom:0}
+.contract-requisites-section{max-width:980px;margin:0 auto 16px}
 .contract-form-title{font-size:11px;font-weight:800;letter-spacing:1px;color:var(--accent);margin-bottom:8px;text-transform:uppercase}
 .contract-requisites-hint{font-size:11px;color:var(--muted);margin-bottom:12px;line-height:1.4}
 .contract-requisites-section .contract-form-grid{display:grid !important;visibility:visible !important;min-height:auto !important}
 .contract-form-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px}
-.contract-drop-zone{border:2px dashed rgba(124,245,255,0.3);border-radius:10px;padding:24px;text-align:center;color:var(--muted);font-size:12px;margin-top:14px;cursor:pointer;transition:all .2s}
+.contract-mini-client-row{display:flex;align-items:center;gap:10px;margin-bottom:10px;padding:8px 10px;background:rgba(53,208,255,0.06);border:1px solid rgba(53,208,255,0.22);border-radius:10px}
+.contract-mini-client-row label{font-size:11px;font-weight:700;color:#9dc6ff;white-space:nowrap}
+.contract-mini-client-row input{flex:1;min-width:180px;height:30px;padding:5px 10px;font-size:12px;border-radius:8px;border:1px solid var(--border);background:rgba(0,0,0,0.22);color:var(--text);outline:none}
+.contract-mini-client-row input:focus{border-color:var(--accent)}
+.contract-drop-zone{max-width:980px;width:100%;margin:14px auto 0;border:2px dashed rgba(124,245,255,0.3);border-radius:10px;padding:24px;text-align:center;color:var(--muted);font-size:12px;cursor:pointer;transition:all .2s}
 .contract-drop-zone:hover,.contract-drop-zone.contract-drop-over{border-color:var(--accent);color:var(--accent);background:rgba(0,217,126,0.05)}
-.contract-parsed-wrap{margin-top:12px;border:1px solid rgba(124,245,255,0.25);border-radius:10px;background:rgba(0,0,0,0.2);overflow:hidden}
+.contract-parsed-wrap{max-width:980px;width:100%;margin:12px auto 0;border:1px solid rgba(124,245,255,0.25);border-radius:10px;background:rgba(0,0,0,0.2);overflow:hidden}
 .contract-parsed-title{padding:8px 10px;font-size:11px;font-weight:800;letter-spacing:.6px;color:#7cf5ff;text-transform:uppercase;border-bottom:1px solid rgba(124,245,255,0.2)}
 .contract-parsed-table{width:100%;border-collapse:collapse;font-size:12px}
 .contract-parsed-table td{padding:8px 10px;border-top:1px solid rgba(255,255,255,0.06);vertical-align:top}
@@ -781,26 +786,32 @@ body.contract-tab .analytics-control-panel,body.contract-tab .sec-bar,body.contr
 .ads-total-label{color:var(--muted)}
 .ads-total-val{font-weight:700;color:var(--text)}
 .ads-total-all{color:var(--accent);font-size:15px}
-.ads-links-title{font-size:11px;font-weight:800;letter-spacing:1px;color:var(--accent);margin-bottom:12px;text-transform:uppercase}
-.ads-links-grid{display:flex;flex-direction:column;gap:8px}
-.ads-link-wrap{display:flex;align-items:center;gap:8px}
-.ads-link-btn{flex:1;display:flex;align-items:center;gap:8px;padding:10px 12px;background:rgba(0,217,126,0.08);border:1px solid rgba(0,217,126,0.3);border-radius:10px;color:var(--accent);text-decoration:none;font-size:13px;font-weight:600;transition:all .2s}
-.ads-link-btn:hover{background:rgba(0,217,126,0.15);border-color:var(--accent);box-shadow:0 0 12px rgba(0,217,126,0.2)}
-.ads-link-btn-empty{opacity:.7;border-style:dashed}
-.ads-link-icon{font-size:18px}
-.ads-link-edit{width:32px;height:32px;display:flex;align-items:center;justify-content:center;border:1px solid var(--border);background:var(--surface2);color:var(--muted);border-radius:8px;cursor:pointer;font-size:14px;transition:all .15s;flex-shrink:0}
-.ads-link-edit:hover{border-color:var(--accent);color:var(--accent);background:rgba(0,217,126,0.1)}
-.ads-channels-title{font-size:11px;font-weight:800;letter-spacing:1px;color:#7cf5ff;margin:14px 0 10px;text-transform:uppercase}
-.ads-channels-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px}
-.ads-channel-wrap{display:flex;align-items:center;gap:8px}
-.ads-channel-card{flex:1;display:flex;align-items:center;gap:10px;text-align:left;padding:10px;background:rgba(53,208,255,0.08);border:1px solid rgba(53,208,255,0.28);border-radius:10px;cursor:pointer;transition:all .2s;color:var(--text)}
-.ads-channel-card:hover{background:rgba(53,208,255,0.16);border-color:rgba(53,208,255,0.5);box-shadow:0 0 14px rgba(53,208,255,0.2)}
-.ads-channel-avatar{width:44px;height:44px;min-width:44px;border-radius:50%;overflow:hidden;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.14)}
-.ads-channel-avatar img{width:100%;height:100%;object-fit:cover;display:block}
-.ads-channel-avatar-fallback{font-size:22px}
-.ads-channel-meta{display:flex;flex-direction:column;min-width:0;gap:2px}
-.ads-channel-name{font-size:14px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.ads-channel-snippet{font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ads-links-title{font-size:11px;font-weight:800;letter-spacing:1px;color:var(--accent);margin-bottom:10px;text-transform:uppercase}
+.ads-snippet-group{margin-bottom:12px}
+.ads-snippet-group-title{font-size:11px;font-weight:800;letter-spacing:1px;color:#7cf5ff;margin:0 0 8px;text-transform:uppercase}
+.ads-snippet-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:8px}
+.ads-snippet-card{display:flex;align-items:center;gap:8px;min-width:0;background:rgba(53,208,255,0.05);border:1px solid rgba(53,208,255,0.22);border-radius:10px;padding:6px 6px 6px 8px;transition:all .2s}
+.ads-snippet-card:hover{background:rgba(53,208,255,0.1);border-color:rgba(53,208,255,0.45);box-shadow:0 0 12px rgba(53,208,255,0.18)}
+.ads-snippet-main{flex:1;display:flex;align-items:center;gap:10px;min-width:0;background:none;border:none;padding:0;color:var(--text);text-align:left;cursor:pointer}
+.ads-snippet-avatar{width:40px;height:40px;min-width:40px;border-radius:50%;overflow:hidden;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.14)}
+.ads-snippet-avatar img{width:100%;height:100%;object-fit:cover;display:block}
+.ads-snippet-avatar-fallback{font-size:20px}
+.ads-snippet-meta{display:flex;flex-direction:column;gap:2px;min-width:0}
+.ads-snippet-name{font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ads-snippet-sub{font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ads-snippet-edit-btn{width:28px;height:28px;display:flex;align-items:center;justify-content:center;border:1px solid var(--border);background:var(--surface2);color:var(--muted);border-radius:8px;cursor:pointer;font-size:13px;transition:all .15s;flex-shrink:0}
+.ads-snippet-edit-btn:hover{border-color:var(--accent);color:var(--accent);background:rgba(0,217,126,0.1)}
+.ads-snippet-editor{display:flex;align-items:center;gap:6px;width:100%;padding-top:8px;overflow-x:auto}
+.ads-editor-input{height:28px;padding:4px 8px;border:1px solid var(--border);border-radius:8px;background:rgba(0,0,0,0.18);color:var(--text);font-size:12px;outline:none}
+.ads-editor-input:focus{border-color:rgba(53,208,255,0.6)}
+.ads-editor-url{flex:1 1 180px;min-width:140px}
+.ads-editor-snippet{flex:0 0 160px;min-width:120px}
+.ads-editor-avatar{flex:0 0 150px;min-width:120px}
+.ads-editor-upload{width:28px;height:28px;min-width:28px;display:flex;align-items:center;justify-content:center;border:1px dashed rgba(53,208,255,0.45);border-radius:50%;cursor:pointer;background:rgba(53,208,255,0.08);font-size:13px;color:#8fefff}
+.ads-editor-upload input{display:none}
+.ads-editor-save,.ads-editor-cancel{height:28px;min-width:36px;padding:0 8px;border:1px solid var(--border);border-radius:8px;background:var(--surface2);color:var(--text);cursor:pointer;font-size:12px}
+.ads-editor-save:hover{border-color:var(--accent);color:var(--accent)}
+.ads-editor-cancel:hover{border-color:#ff7b7b;color:#ff7b7b}
 body.projects-mode .gen-extra-prompt,body.projects-mode .gen-buttons-row{display:none !important}
 body.projects-mode .analytics-tumbler{display:none !important}
 body.projects-mode .analytics-control-panel{display:none !important}
