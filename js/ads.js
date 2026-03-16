@@ -128,7 +128,7 @@
     if (td) td.textContent = total ? total.toLocaleString('ru') : '0';
   }
 
-  function updateTotalsPanel(container, state) {
+  function computeTotals(state) {
     var totals = { main: 0, new: 0, both: 0, kp: 0 };
     ROW_KEYS.forEach(function(rowKey) {
       for (var d = 1; d <= 31; d++) {
@@ -137,15 +137,35 @@
         totals[rowKey] += parseNum(v);
       }
     });
-    var totalAll = totals.main + totals.new + totals.both + totals.kp;
+    totals.all = totals.main + totals.new + totals.both + totals.kp;
+    return totals;
+  }
+
+  function updateTotalsPanel(container, state) {
+    var totals = computeTotals(state);
 
     container.innerHTML =
       '<div class="ads-totals-title">Итоги</div>' +
-      '<div class="ads-total-row"><span class="ads-total-label">Всего</span><span class="ads-total-val ads-total-all">' + (totalAll ? totalAll.toLocaleString('ru') : '0') + '</span></div>' +
+      '<div class="ads-total-row"><span class="ads-total-label">Всего</span><span class="ads-total-val ads-total-all">' + (totals.all ? totals.all.toLocaleString('ru') : '0') + '</span></div>' +
       '<div class="ads-total-row"><span class="ads-total-label">Основной</span><span class="ads-total-val">' + (totals.main ? totals.main.toLocaleString('ru') : '0') + '</span></div>' +
       '<div class="ads-total-row"><span class="ads-total-label">Новый</span><span class="ads-total-val">' + (totals.new ? totals.new.toLocaleString('ru') : '0') + '</span></div>' +
       '<div class="ads-total-row"><span class="ads-total-label">Оба</span><span class="ads-total-val">' + (totals.both ? totals.both.toLocaleString('ru') : '0') + '</span></div>' +
       '<div class="ads-total-row"><span class="ads-total-label">КП</span><span class="ads-total-val">' + (totals.kp ? totals.kp.toLocaleString('ru') : '0') + '</span></div>';
+  }
+
+  function updateAdsTopSummary(container, state) {
+    if (!container) return;
+    var totals = computeTotals(state);
+    var fmt = function(n) { return n ? n.toLocaleString('ru') : '0'; };
+    var set = function(id, val) {
+      var el = container.querySelector('[data-ads-val="' + id + '"]');
+      if (el) el.textContent = fmt(val || 0);
+    };
+    set('all', totals.all);
+    set('main', totals.main);
+    set('new', totals.new);
+    set('both', totals.both);
+    set('kp', totals.kp);
   }
 
   function openLinkEdit(links, index, container, onSave) {
@@ -209,6 +229,13 @@
     wrap.className = 'ads-page';
     wrap.innerHTML =
       '<div class="ads-header">📢 Рекламные расходы</div>' +
+      '<div class="ads-top-summary" id="adsTopSummary">' +
+        '<div class="ads-summary-card ads-summary-all"><span class="ads-summary-label">Всего</span><span class="ads-summary-val" data-ads-val="all">0</span></div>' +
+        '<div class="ads-summary-card"><span class="ads-summary-label">Основной</span><span class="ads-summary-val" data-ads-val="main">0</span></div>' +
+        '<div class="ads-summary-card"><span class="ads-summary-label">Новый</span><span class="ads-summary-val" data-ads-val="new">0</span></div>' +
+        '<div class="ads-summary-card"><span class="ads-summary-label">Оба</span><span class="ads-summary-val" data-ads-val="both">0</span></div>' +
+        '<div class="ads-summary-card"><span class="ads-summary-label">КП</span><span class="ads-summary-val" data-ads-val="kp">0</span></div>' +
+      '</div>' +
       '<div class="ads-body">' +
         '<div class="ads-main">' +
           '<div class="ads-card ads-expenses-card">' +
@@ -235,10 +262,12 @@
 
     function refreshTotals() {
       updateTotalsPanel(totalsContainer, state);
+      updateAdsTopSummary(wrap.querySelector('#adsTopSummary'), state);
     }
 
     renderExpensesTable(expensesContainer, state, refreshTotals);
     updateTotalsPanel(totalsContainer, state);
+    updateAdsTopSummary(wrap.querySelector('#adsTopSummary'), state);
     renderLinksPanel(linksContainer, links);
   }
 

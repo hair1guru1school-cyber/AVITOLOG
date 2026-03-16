@@ -106,6 +106,7 @@ var goalsMode = false;
 var agencyMode = false;
 var strategyMode = false;
 var assetsMode = false;
+var adsMode = false;
 var _agencyTabHidden = (function(){ try{ return localStorage.getItem('av_hide_agency_tab') === '1'; } catch(e){ return false; }})();
 function setAgencyTabHidden(hidden) {
   _agencyTabHidden = !!hidden;
@@ -427,6 +428,7 @@ function openGoalsTab() {
   document.body.classList.remove('projects-sidebar-hidden');
   document.body.classList.remove('agency-mode');
   document.body.classList.remove('assets-mode');
+  document.body.classList.remove('ads-mode');
   document.body.classList.add('goals-mode');
   hideChat();
   stopProjectsSheetPullTimer();
@@ -497,6 +499,7 @@ function openProjectsTab() {
   document.body.classList.remove('agency-mode');
   document.body.classList.remove('strategy-mode');
   document.body.classList.remove('assets-mode');
+  document.body.classList.remove('ads-mode');
   document.body.classList.add('projects-mode');
   if (typeof localStorage !== 'undefined' && localStorage.getItem('avitolog_projects_sidebar_hidden') === '1') document.body.classList.add('projects-sidebar-hidden');
   hideChat();
@@ -522,6 +525,7 @@ function openAnalyticsTab() {
   document.body.classList.remove('agency-mode');
   document.body.classList.remove('strategy-mode');
   document.body.classList.remove('assets-mode');
+  document.body.classList.remove('ads-mode');
   updateProjectsSidebarOffset();
   stopProjectsSheetPullTimer();
   stopProjectsDayShiftTimer();
@@ -534,8 +538,9 @@ function openAssetsTab() {
   projectsMode = false;
   agencyMode = false;
   strategyMode = false;
+  adsMode = false;
   assetsMode = true;
-  document.body.classList.remove('projects-mode', 'goals-mode', 'agency-mode', 'strategy-mode');
+  document.body.classList.remove('projects-mode', 'goals-mode', 'agency-mode', 'strategy-mode', 'ads-mode');
   document.body.classList.add('assets-mode');
   document.body.classList.remove('projects-sidebar-hidden');
   hideChat();
@@ -555,6 +560,34 @@ function openAssetsTab() {
   }
   updateTopRowButtons();
 }
+function openAdsTab() {
+  if (adsMode) return;
+  goalsMode = false;
+  projectsMode = false;
+  agencyMode = false;
+  strategyMode = false;
+  assetsMode = false;
+  adsMode = true;
+  document.body.classList.remove('projects-mode', 'goals-mode', 'agency-mode', 'strategy-mode', 'assets-mode');
+  document.body.classList.add('ads-mode');
+  document.body.classList.remove('projects-sidebar-hidden');
+  hideChat();
+  if (typeof closeTaskPanel === 'function') closeTaskPanel();
+  stopProjectsSheetPullTimer();
+  stopProjectsDayShiftTimer();
+  var mc = document.getElementById('mainContent');
+  if (mc) {
+    mc.innerHTML = '';
+    mc.style.display = '';
+    mc.scrollTop = 0;
+    if (typeof window.__showAdsPage === 'function') {
+      window.__showAdsPage(mc);
+    } else {
+      mc.innerHTML = '<div class="empty-st"><div style="font-size:38px;opacity:.2">&#128226;</div><p>ADS</p><p style="font-size:12px;opacity:.6">Загрузка...</p></div>';
+    }
+  }
+  updateTopRowButtons();
+}
 function openAgencyTab() {
   if (_agencyTabHidden) return;
   if (agencyMode) return;
@@ -562,12 +595,14 @@ function openAgencyTab() {
   projectsMode = false;
   strategyMode = false;
   assetsMode = false;
+  adsMode = false;
   agencyMode = true;
   document.body.classList.remove('projects-mode');
   document.body.classList.remove('projects-sidebar-hidden');
   document.body.classList.remove('goals-mode');
   document.body.classList.remove('strategy-mode');
   document.body.classList.remove('assets-mode');
+  document.body.classList.remove('ads-mode');
   document.body.classList.add('agency-mode');
   hideChat();
   stopProjectsSheetPullTimer();
@@ -581,6 +616,7 @@ function openStrategyTab() {
   projectsMode = false;
   agencyMode = false;
   assetsMode = false;
+  adsMode = false;
   strategyMode = true;
   if (typeof closeTaskPanel === 'function') closeTaskPanel();
   document.body.classList.remove('projects-mode');
@@ -588,6 +624,7 @@ function openStrategyTab() {
   document.body.classList.remove('goals-mode');
   document.body.classList.remove('agency-mode');
   document.body.classList.remove('assets-mode');
+  document.body.classList.remove('ads-mode');
   document.body.classList.add('strategy-mode');
   hideChat();
   stopProjectsSheetPullTimer();
@@ -606,13 +643,13 @@ function toggleProjectsScreen() {
   if (projectsMode) openAnalyticsTab();
   else openProjectsTab();
 }
-var _topTabOrder = (function(){ try{ var s=localStorage.getItem('av_top_tab_order'); return s ? JSON.parse(s) : ['goals','analytics','projects','assets','strategy','agency']; }catch(e){ return ['goals','analytics','projects','assets','strategy','agency']; }})();
+var _topTabOrder = (function(){ try{ var s=localStorage.getItem('av_top_tab_order'); return s ? JSON.parse(s) : ['goals','analytics','projects','assets','ads','strategy','agency']; }catch(e){ return ['goals','analytics','projects','assets','ads','strategy','agency']; }})();
 function applyTopTabOrder() {
   var row = document.getElementById('analyticsTopRow');
   if (!row) return;
   var btns = Array.from(row.querySelectorAll('.btn-projects[data-tab]'));
   var order = _topTabOrder.slice();
-  ['goals','analytics','projects','assets','strategy','agency'].forEach(function(t) { if (order.indexOf(t) < 0) order.push(t); });
+  ['goals','analytics','projects','assets','ads','strategy','agency'].forEach(function(t) { if (order.indexOf(t) < 0) order.push(t); });
   var ordered = order.map(function(t){ return btns.find(function(b){ return b.getAttribute('data-tab')===t; }); }).filter(Boolean);
   ordered.forEach(function(b){ row.appendChild(b); });
 }
@@ -635,9 +672,11 @@ function updateTopRowButtons() {
   if (!row) return;
   row.style.display = 'flex';
   if (btnGoals) btnGoals.classList.toggle('is-on', goalsMode);
-  if (ret) ret.classList.toggle('is-on', !projectsMode && !goalsMode && !agencyMode && !strategyMode && !assetsMode);
+  if (ret) ret.classList.toggle('is-on', !projectsMode && !goalsMode && !agencyMode && !strategyMode && !assetsMode && !adsMode);
   if (btn) btn.classList.toggle('is-on', projectsMode);
   if (btnAssets) btnAssets.classList.toggle('is-on', assetsMode);
+  var btnAds = document.getElementById('btnAds');
+  if (btnAds) btnAds.classList.toggle('is-on', adsMode);
   if (btnStrategy) btnStrategy.classList.toggle('is-on', strategyMode);
   var btnStrategyFloat = document.getElementById('btnStrategyFloat');
   if (btnStrategyFloat) btnStrategyFloat.classList.toggle('is-on', strategyMode);
