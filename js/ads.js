@@ -6,9 +6,10 @@
   'use strict';
 
   var EXPENSES_KEY = 'crm_ads_expenses_v1';
+  var BRAINS_SPEND_KEY = 'BRAINS_ads_spend_v1';
   var LINKS_KEY = 'crm_ads_links_v1';
-  var ROW_KEYS = ['main', 'new', 'both', 'kp'];
-  var ROW_LABELS = { main: 'Основной', new: 'Новый', both: 'Оба', kp: 'КП' };
+  var ROW_KEYS = ['main', 'new', 'both'];
+  var ROW_LABELS = { main: 'Основной', new: 'Новый', both: 'Оба' };
 
   var DEFAULT_LINKS = [
     { id: 'channel_clients', icon: '📣', label: 'Канал для клиентов', url: '' },
@@ -42,6 +43,23 @@
         cells: state.data
       };
       localStorage.setItem(EXPENSES_KEY, JSON.stringify(payload));
+    } catch (e) {}
+  }
+
+  function loadBrainsSpend() {
+    try {
+      var raw = localStorage.getItem(BRAINS_SPEND_KEY);
+      if (raw) {
+        var data = JSON.parse(raw);
+        return { data: data && data.cells ? data.cells : {} };
+      }
+    } catch (e) {}
+    return { data: {} };
+  }
+
+  function saveBrainsSpend(state) {
+    try {
+      localStorage.setItem(BRAINS_SPEND_KEY, JSON.stringify({ cells: state.data || {} }));
     } catch (e) {}
   }
 
@@ -117,6 +135,45 @@
     });
   }
 
+  function renderBrainsSpendTable(container, state, onChange) {
+    var days = 31;
+    var html = '<div class="ads-expenses-wrap"><table class="ads-expenses-table"><thead><tr><th class="ads-th-label">Ряд</th>';
+    for (var d = 1; d <= days; d++) html += '<th class="ads-th-day">' + d + '</th>';
+    html += '<th class="ads-th-total">Итог</th></tr></thead><tbody>';
+    html += '<tr data-row="brains"><td class="ads-td-label">Траты</td>';
+    var total = 0;
+    for (var i = 1; i <= days; i++) {
+      var key = getCellKey('brains', i);
+      var val = state.data[key] != null ? state.data[key] : '';
+      var displayVal = formatNum(parseNum(val));
+      total += parseNum(val);
+      html += '<td class="ads-td-cell"><input type="text" inputmode="decimal" class="ads-cell-inp brains-cell" data-day="' + i + '" value="' + (displayVal ? String(displayVal) : '') + '"></td>';
+    }
+    html += '<td class="ads-td-row-total" data-row="brains">' + (total ? total.toLocaleString('ru') : '0') + '</td></tr></tbody></table></div>';
+    container.innerHTML = html;
+
+    container.querySelectorAll('.brains-cell').forEach(function(inp) {
+      inp.addEventListener('input', function() {
+        var day = parseInt(inp.getAttribute('data-day'), 10);
+        var key = getCellKey('brains', day);
+        state.data[key] = inp.value.trim() || null;
+        saveBrainsSpend(state);
+        var row = container.querySelector('tr[data-row="brains"]');
+        if (row) {
+          var sum = 0;
+          row.querySelectorAll('.brains-cell').forEach(function(el) { sum += parseNum(el.value); });
+          var totalTd = row.querySelector('.ads-td-row-total');
+          if (totalTd) totalTd.textContent = sum ? sum.toLocaleString('ru') : '0';
+        }
+        if (typeof onChange === 'function') onChange();
+      });
+      inp.addEventListener('blur', function() {
+        var v = parseNum(inp.value);
+        if (v !== 0) inp.value = formatNum(v);
+      });
+    });
+  }
+
   function updateRowTotal(container, state, rowKey) {
     var row = container.querySelector('tr[data-row="' + rowKey + '"]');
     if (!row) return;
@@ -129,7 +186,7 @@
   }
 
   function computeTotals(state) {
-    var totals = { main: 0, new: 0, both: 0, kp: 0 };
+    var totals = { main: 0, new: 0, both: 0 };
     ROW_KEYS.forEach(function(rowKey) {
       for (var d = 1; d <= 31; d++) {
         var key = getCellKey(rowKey, d);
@@ -137,7 +194,7 @@
         totals[rowKey] += parseNum(v);
       }
     });
-    totals.all = totals.main + totals.new + totals.both + totals.kp;
+    totals.all = totals.main + totals.new + totals.both;
     return totals;
   }
 
@@ -149,8 +206,7 @@
       '<div class="ads-total-row"><span class="ads-total-label">Всего</span><span class="ads-total-val ads-total-all">' + (totals.all ? totals.all.toLocaleString('ru') : '0') + '</span></div>' +
       '<div class="ads-total-row"><span class="ads-total-label">Основной</span><span class="ads-total-val">' + (totals.main ? totals.main.toLocaleString('ru') : '0') + '</span></div>' +
       '<div class="ads-total-row"><span class="ads-total-label">Новый</span><span class="ads-total-val">' + (totals.new ? totals.new.toLocaleString('ru') : '0') + '</span></div>' +
-      '<div class="ads-total-row"><span class="ads-total-label">Оба</span><span class="ads-total-val">' + (totals.both ? totals.both.toLocaleString('ru') : '0') + '</span></div>' +
-      '<div class="ads-total-row"><span class="ads-total-label">КП</span><span class="ads-total-val">' + (totals.kp ? totals.kp.toLocaleString('ru') : '0') + '</span></div>';
+      '<div class="ads-total-row"><span class="ads-total-label">Оба</span><span class="ads-total-val">' + (totals.both ? totals.both.toLocaleString('ru') : '0') + '</span></div>';
   }
 
   function updateAdsTopSummary(container, state) {
@@ -165,7 +221,6 @@
     set('main', totals.main);
     set('new', totals.new);
     set('both', totals.both);
-    set('kp', totals.kp);
   }
 
   function openLinkEdit(links, index, container, onSave) {
@@ -223,6 +278,7 @@
 
   function renderAdsPage(mainContentEl) {
     var state = loadExpenses();
+    var brainsSpendState = loadBrainsSpend();
     var links = loadLinks();
 
     var wrap = document.createElement('div');
@@ -234,13 +290,16 @@
         '<div class="ads-summary-card"><span class="ads-summary-label">Основной</span><span class="ads-summary-val" data-ads-val="main">0</span></div>' +
         '<div class="ads-summary-card"><span class="ads-summary-label">Новый</span><span class="ads-summary-val" data-ads-val="new">0</span></div>' +
         '<div class="ads-summary-card"><span class="ads-summary-label">Оба</span><span class="ads-summary-val" data-ads-val="both">0</span></div>' +
-        '<div class="ads-summary-card"><span class="ads-summary-label">КП</span><span class="ads-summary-val" data-ads-val="kp">0</span></div>' +
       '</div>' +
       '<div class="ads-body">' +
         '<div class="ads-main">' +
           '<div class="ads-card ads-expenses-card">' +
             '<div class="ads-card-title">Расходы по дням</div>' +
             '<div class="ads-expenses-container" id="adsExpensesContainer"></div>' +
+          '</div>' +
+          '<div class="ads-card ads-expenses-card">' +
+            '<div class="ads-card-title">Траты на рекламу (BRAINS)</div>' +
+            '<div class="ads-expenses-container" id="adsBrainsSpendContainer"></div>' +
           '</div>' +
           '<div class="ads-card ads-links-card">' +
             '<div id="adsLinksContainer"></div>' +
@@ -257,6 +316,7 @@
     mainContentEl.appendChild(wrap);
 
     var expensesContainer = document.getElementById('adsExpensesContainer');
+    var brainsSpendContainer = document.getElementById('adsBrainsSpendContainer');
     var totalsContainer = document.getElementById('adsTotalsContainer');
     var linksContainer = document.getElementById('adsLinksContainer');
 
@@ -266,6 +326,7 @@
     }
 
     renderExpensesTable(expensesContainer, state, refreshTotals);
+    renderBrainsSpendTable(brainsSpendContainer, brainsSpendState, null);
     updateTotalsPanel(totalsContainer, state);
     updateAdsTopSummary(wrap.querySelector('#adsTopSummary'), state);
     renderLinksPanel(linksContainer, links);

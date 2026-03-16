@@ -132,22 +132,43 @@
     return out;
   }
 
+  var MAMMOTH_CDNS = [
+    'https://unpkg.com/mammoth@1.6.0/mammoth.min.js',
+    'https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js',
+    'https://cdn.jsdelivr.net/npm/mammoth@1.6.0/mammoth.min.js'
+  ];
+
   function getMammoth(cb) {
     var m = (typeof window !== 'undefined' && window.mammoth) || (typeof mammoth !== 'undefined' ? mammoth : null);
     if (m && typeof m.extractRawText === 'function') {
       cb(null, m);
       return;
     }
-    var s = document.createElement('script');
-    s.src = 'https://unpkg.com/mammoth@1.6.0/mammoth.min.js';
-    s.onload = function() {
-      var mm = window.mammoth;
-      cb(mm && typeof mm.extractRawText === 'function' ? null : new Error('mammoth не инициализировалась'), mm);
-    };
-    s.onerror = function() {
-      cb(new Error('Не удалось загрузить mammoth. Проверьте подключение к интернету и обновите страницу.'), null);
-    };
-    document.head.appendChild(s);
+    var idx = 0;
+    var done = false;
+    function finish(err, mm) {
+      if (done) return;
+      done = true;
+      cb(err, mm || null);
+    }
+    function tryNext() {
+      if (idx >= MAMMOTH_CDNS.length) {
+        finish(new Error('Не удалось загрузить mammoth. Проверьте интернет или используйте .txt файл.'), null);
+        return;
+      }
+      var src = MAMMOTH_CDNS[idx++];
+      var s = document.createElement('script');
+      s.src = src;
+      s.async = true;
+      s.onload = function() {
+        var mm = window.mammoth;
+        if (mm && typeof mm.extractRawText === 'function') finish(null, mm);
+        else tryNext();
+      };
+      s.onerror = function() { tryNext(); };
+      document.head.appendChild(s);
+    }
+    tryNext();
   }
 
   function readFileAsText(file, callback) {
