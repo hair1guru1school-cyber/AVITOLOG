@@ -171,13 +171,15 @@
       { field: 'edoGuid', rx: /(идентификатор участника эдо|guid|эдо)/ }
     ];
 
-    pairs.forEach(function(p) {
-      var k = normKey(p.key);
-      var v = String(p.value || '').trim();
+    function isLabelLine(line) {
+      var k = normKey(line);
+      return rules.some(function(r) { return r.rx.test(k); });
+    }
+
+    function applyFieldValue(field, rawValue) {
+      var v = String(rawValue || '').trim();
       if (!v) return;
-      var rule = rules.find(function(r) { return r.rx.test(k); });
-      if (!rule) return;
-      if (rule.field === 'innKpp') {
+      if (field === 'innKpp') {
         var innKpp = v.match(/(\d{10,12})\s*\/\s*(\d{9})/);
         if (innKpp) {
           setIfEmpty('inn', innKpp[1]);
@@ -185,26 +187,52 @@
         } else setIfEmpty('innKpp', v);
         return;
       }
-      if (rule.field === 'inn') { setIfEmpty('inn', (v.match(/\d{10,12}/) || [v])[0]); return; }
-      if (rule.field === 'kpp') { setIfEmpty('kpp', (v.match(/\d{9}/) || [v])[0]); return; }
-      if (rule.field === 'ogrn') { setIfEmpty('ogrn', (v.match(/\d{13,15}/) || [v])[0]); return; }
-      if (rule.field === 'account') { setIfEmpty('account', (v.match(/\d{20}/) || [v])[0]); return; }
-      if (rule.field === 'corrAccount') { setIfEmpty('corrAccount', (v.match(/\d{20}/) || [v])[0]); return; }
-      if (rule.field === 'bik') { setIfEmpty('bik', (v.match(/\d{9}/) || [v])[0]); return; }
-      if (rule.field === 'contacts') {
+      if (field === 'inn') { setIfEmpty('inn', (v.match(/\d{10,12}/) || [v])[0]); return; }
+      if (field === 'kpp') { setIfEmpty('kpp', (v.match(/\d{9}/) || [v])[0]); return; }
+      if (field === 'ogrn') { setIfEmpty('ogrn', (v.match(/\d{13,15}/) || [v])[0]); return; }
+      if (field === 'account') { setIfEmpty('account', (v.match(/\d{20}/) || [v])[0]); return; }
+      if (field === 'corrAccount') { setIfEmpty('corrAccount', (v.match(/\d{20}/) || [v])[0]); return; }
+      if (field === 'bik') { setIfEmpty('bik', (v.match(/\d{9}/) || [v])[0]); return; }
+      if (field === 'contacts') {
         setIfEmpty('contacts', v);
         setIfEmpty('phone', extractPhone(v));
         setIfEmpty('email', extractEmail(v));
         return;
       }
-      if (rule.field === 'accountingContacts') {
+      if (field === 'accountingContacts') {
         setIfEmpty('accountingContacts', v);
         setIfEmpty('accountingPhone', extractPhone(v));
         setIfEmpty('accountingEmail', extractEmail(v));
         return;
       }
-      setIfEmpty(rule.field, v);
+      if (field === 'bank') {
+        var vv = v.replace(/^БИК\s*Банка$/i, '').trim();
+        if (vv) setIfEmpty('bank', vv);
+        return;
+      }
+      setIfEmpty(field, v);
+    }
+
+    pairs.forEach(function(p) {
+      var k = normKey(p.key);
+      var v = String(p.value || '').trim();
+      if (!v) return;
+      var rule = rules.find(function(r) { return r.rx.test(k); });
+      if (!rule) return;
+      applyFieldValue(rule.field, v);
     });
+
+    // 2nd pass: for DOCX tables that become "key line" + "value line"
+    var lines = t.split(/\r?\n/).map(function(s) { return String(s || '').trim(); }).filter(Boolean);
+    for (var i = 0; i < lines.length - 1; i++) {
+      var keyNorm = normKey(lines[i]);
+      var rule2 = rules.find(function(r) { return r.rx.test(keyNorm); });
+      if (!rule2) continue;
+      var next = String(lines[i + 1] || '').trim();
+      if (!next) continue;
+      if (isLabelLine(next)) continue;
+      applyFieldValue(rule2.field, next);
+    }
 
     var m;
     m = t.match(/\bИНН[\s:]*(\d{10,12})/i); if (m) setIfEmpty('inn', m[1]);
@@ -217,6 +245,10 @@
     m = t.match(/[a-z0-9._%+\-]+@[a-z0-9.\-]+\.[a-z]{2,}/ig); if (m && m.length) setIfEmpty('email', m[0]);
     m = t.match(/\+?\d[\d\s\-()]{7,}\d/g); if (m && m.length) setIfEmpty('phone', m[0].replace(/\s+/g, ' ').trim());
     m = t.match(/(?:ООО|АО|ПАО)\s*[«\"].+?[»\"]/i) || t.match(/(?:ИП)\s+[А-Яа-яЁё\s\-]+/i); if (m) setIfEmpty('shortName', m[0]);
+    if (!out.fullName) {
+      m = t.match(/Общество с ограниченной ответственностью\s+[«\"].+?[»\"]/i);
+      if (m) setIfEmpty('fullName', m[0]);
+    }
     var bankMatch = t.match(/\b(ПАО СБЕРБАНК|СБЕРБАНК|Т-БАНК|ТБАНК|ВТБ|АЛЬФА-БАНК|[А-Яа-яЁё\s\-]+БАНК[а-яё]*)/i);
     if (bankMatch) setIfEmpty('bank', bankMatch[1].trim());
     if (!out.actualAddress) {
@@ -226,6 +258,7 @@
     if (!out.legalAddress && out.actualAddress) setIfEmpty('legalAddress', out.actualAddress);
     if (!out.postalAddress && out.actualAddress) setIfEmpty('postalAddress', out.actualAddress);
     if (!out.contacts && (out.phone || out.email)) setIfEmpty('contacts', [out.phone, out.email].filter(Boolean).join(' / '));
+    if (!out.accountingContacts && (out.accountingPhone || out.accountingEmail)) setIfEmpty('accountingContacts', [out.accountingPhone, out.accountingEmail].filter(Boolean).join(' / '));
     out.__pairs = pairs;
     return out;
   }
@@ -406,7 +439,7 @@
 
     var html = '<div class="contract-form-wrap">' +
       '<div class="contract-toolbar">' +
-      '<button type="button" class="btn-gen contract-toolbar-btn" onclick="window.__contractGenerate&&window.__contractGenerate()"><span>&#9889;</span> Сгенерировать договор</button>' +
+      '<button type="button" class="btn-gen contract-toolbar-btn" style="width:auto;min-width:0;flex:0 0 auto;display:inline-flex;padding:6px 12px;margin:0;border-radius:8px" onclick="window.__contractGenerate&&window.__contractGenerate()"><span>&#9889;</span> Сгенерировать договор</button>' +
       '<button type="button" class="contract-toolbar-btn contract-btn-load" onclick="document.getElementById(\'contract-file-inp\').click()">📄 Загрузить реквизиты</button>' +
       '<input type="file" id="contract-file-inp" accept=".txt,.docx,.pdf" style="display:none">' +
       '<button type="button" class="contract-toolbar-btn contract-btn-clear" onclick="window.__contractClear&&window.__contractClear()">Очистить</button>' +

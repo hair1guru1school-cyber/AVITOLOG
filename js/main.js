@@ -47,7 +47,7 @@ function switchTab(tab) {
     }
   }
   if (tab !== 'analysis' && currentDepth === 'max') { setDepth('mid'); }
-  if (!docReady && !projectsMode && !goalsMode && !agencyMode && !assetsMode) {
+  if (!docReady && !projectsMode && !goalsMode && !agencyMode && !assetsMode && !adsMode) {
     refreshClientContents();
   }
 }
@@ -2946,7 +2946,7 @@ function setActiveClient(client) {
   _activeClient = client;
   localStorage.setItem(_ck('avitolog_active_client'), JSON.stringify(client));
   updateClientBadge();
-  if (!projectsMode && !goalsMode && !agencyMode && !assetsMode && ['analysis','presale','avito1'].indexOf(currentTab) >= 0 && !docReady) refreshClientContents();
+  if (!projectsMode && !goalsMode && !agencyMode && !assetsMode && !adsMode && ['analysis','presale','avito1'].indexOf(currentTab) >= 0 && !docReady) refreshClientContents();
   if (goalsMode && window.AVITOLOG_GOALS && typeof window.AVITOLOG_GOALS.render === 'function') window.AVITOLOG_GOALS.render();
 }
 
@@ -3052,7 +3052,7 @@ function clearActiveClient() {
   localStorage.removeItem(_ck('avitolog_active_client'));
   updateClientBadge();
   if (goalsMode && window.AVITOLOG_GOALS && typeof window.AVITOLOG_GOALS.render === 'function') window.AVITOLOG_GOALS.render();
-  if (!projectsMode && !goalsMode && !agencyMode && !assetsMode && ['analysis','presale','avito1'].indexOf(currentTab) >= 0 && !docReady) refreshClientContents();
+  if (!projectsMode && !goalsMode && !agencyMode && !assetsMode && !adsMode && ['analysis','presale','avito1'].indexOf(currentTab) >= 0 && !docReady) refreshClientContents();
   // Очищаем форму
   ['company','contact_name','phone','tg','avito_account','category','city','notes','kp_count'].forEach(function(id) {
     var el = document.getElementById(id);

@@ -517,6 +517,7 @@ function openAnalyticsTab() {
   agencyMode = false;
   strategyMode = false;
   assetsMode = false;
+  adsMode = false;
   projectsMode = false;
   if (typeof closeTaskPanel === 'function') closeTaskPanel();
   document.body.classList.remove('projects-mode');
