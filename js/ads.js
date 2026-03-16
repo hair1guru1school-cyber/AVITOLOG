@@ -76,7 +76,17 @@
     return n === 0 ? '' : String(n);
   }
 
+  function recomputeBothRow(state) {
+    for (var d = 1; d <= 31; d++) {
+      var mainVal = parseNum(state.data[getCellKey('main', d)]);
+      var newVal = parseNum(state.data[getCellKey('new', d)]);
+      state.data[getCellKey('both', d)] = (mainVal + newVal) || null;
+    }
+  }
+
   function renderExpensesTable(container, state, onChange) {
+    recomputeBothRow(state);
+    saveExpenses(state);
     var days = 31;
     var html = '<div class="ads-expenses-wrap"><table class="ads-expenses-table"><thead><tr><th class="ads-th-label">Ряд</th>';
     for (var d = 1; d <= days; d++) {
@@ -92,7 +102,8 @@
         var val = state.data[key] != null ? state.data[key] : '';
         var displayVal = formatNum(parseNum(val));
         rowTotal += parseNum(val);
-        html += '<td class="ads-td-cell"><input type="text" inputmode="decimal" class="ads-cell-inp" data-row="' + rowKey + '" data-day="' + d + '" value="' + (displayVal ? String(displayVal) : '') + '"></td>';
+        var isBoth = rowKey === 'both';
+        html += '<td class="ads-td-cell"><input type="text" inputmode="decimal" class="ads-cell-inp' + (isBoth ? ' ads-cell-auto' : '') + '" data-row="' + rowKey + '" data-day="' + d + '" value="' + (displayVal ? String(displayVal) : '') + '"' + (isBoth ? ' readonly tabindex=\"-1\" title=\"Авто: Основной + Новый\"' : '') + '></td>';
       }
       html += '<td class="ads-td-row-total" data-row="' + rowKey + '">' + (rowTotal ? rowTotal.toLocaleString('ru') : '0') + '</td></tr>';
     });
@@ -103,11 +114,16 @@
     container.querySelectorAll('.ads-cell-inp').forEach(function(inp) {
       inp.addEventListener('input', function() {
         var row = inp.getAttribute('data-row');
+        if (row === 'both') return;
         var day = parseInt(inp.getAttribute('data-day'), 10);
         var key = getCellKey(row, day);
         state.data[key] = inp.value.trim() || null;
+        recomputeBothRow(state);
         saveExpenses(state);
         updateRowTotal(container, state, row);
+        updateRowTotal(container, state, 'both');
+        var bothInp = container.querySelector('.ads-cell-inp[data-row="both"][data-day="' + day + '"]');
+        if (bothInp) bothInp.value = formatNum(parseNum(state.data[getCellKey('both', day)]));
         if (typeof onChange === 'function') onChange();
       });
       inp.addEventListener('blur', function() {
@@ -129,6 +145,7 @@
   }
 
   function computeTotals(state) {
+    recomputeBothRow(state);
     var totals = { main: 0, new: 0, both: 0 };
     ROW_KEYS.forEach(function(rowKey) {
       for (var d = 1; d <= 31; d++) {
