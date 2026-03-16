@@ -2,10 +2,22 @@
 function switchTab(tab) {
   if (agencyMode || assetsMode) return;
   currentTab = tab;
-  ['analysis','presale','avito1'].forEach(function(t) {
+  ['analysis','presale','avito1','contract'].forEach(function(t) {
     var el = document.getElementById('tab-'+t);
     if (el) el.classList.toggle('active', t===tab);
   });
+  document.body.classList.toggle('contract-tab', tab === 'contract');
+  if (tab === 'contract') {
+    var bar = document.getElementById('depthBar');
+    var secBar = document.getElementById('secBar');
+    if (bar) bar.style.display = 'none';
+    if (secBar) secBar.style.display = 'none';
+    var mc = document.getElementById('mainContent');
+    if (mc && typeof window.__showContractGenerator === 'function') {
+      window.__showContractGenerator(mc);
+    }
+    return;
+  }
   if (tab === 'goals') {
     var bar = document.getElementById('depthBar');
     var secBar = document.getElementById('secBar');

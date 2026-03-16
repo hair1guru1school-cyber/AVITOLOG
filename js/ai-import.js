@@ -484,6 +484,35 @@
     return Math.min(1, daysUntil / maxDays);
   }
 
+  function formatDateDDMM(dateStr) {
+    if (!dateStr || !String(dateStr).trim()) return '—';
+    var parts = String(dateStr).trim().split(/[-/]/);
+    if (parts.length < 3) return '—';
+    var d = parts[2].length >= 2 ? parts[2] : '0' + parts[2];
+    var m = parts[1].length >= 2 ? parts[1] : '0' + parts[1];
+    return d + '.' + m;
+  }
+
+  function formatDaysUntilPayment(dateStr) {
+    if (!dateStr || !String(dateStr).trim()) return '—';
+    var parts = String(dateStr).trim().split(/[-/]/);
+    if (parts.length < 3) return '—';
+    var year = parseInt(parts[0], 10) || new Date().getFullYear();
+    var month = (parseInt(parts[1], 10) || 1) - 1;
+    var day = parseInt(parts[2], 10) || 1;
+    var payDate = new Date(year, month, day);
+    var today = new Date();
+    today.setHours(0, 0, 0, 0);
+    payDate.setHours(0, 0, 0, 0);
+    var days = Math.ceil((payDate - today) / (24 * 60 * 60 * 1000));
+    if (days === 0) return 'сегодня';
+    if (days === 1) return 'завтра';
+    if (days === -1) return 'вчера';
+    if (days > 1 && days <= 60) return days + ' д';
+    if (days < -1 && days >= -30) return Math.abs(days) + ' д назад';
+    return formatDateDDMM(dateStr);
+  }
+
   function getAssetsMy() {
     try {
       var isSasha = !!(typeof window !== 'undefined' && window.AVITOLOG_IS_SASHA);
@@ -653,6 +682,8 @@
       var folderHtml = hasFolder && folderLink
         ? '<span class="assets-row-folder-inline"><a href="' + esc(folderLink) + '" target="_blank" rel="noopener" class="assets-row-folder-link" onclick="event.stopPropagation()" title="Открыть папку">📁</a></span>'
         : '';
+      var startDdm = formatDateDDMM(startDate);
+      var payDays = formatDaysUntilPayment(payDate);
       var base = '<div class="' + rowCls + '" data-owner="' + owner + '" data-idx="' + idx + '" data-has-folder="' + (hasFolder ? '1' : '0') + '" onclick="window.__assetsRowClicked(event,\'' + owner + '\',' + idx + ')" title="Клик — выбрать для привязки папки из меню слева">' +
         '<button type="button" class="assets-col-emoji" onclick="window.__assetsShowEmojiPicker(this,\'' + owner + '\',' + idx + ')" title="Выбрать эмодзи">' + (p.emoji || '📦') + '</button>' +
         '<span class="assets-col-name">' +
@@ -660,11 +691,10 @@
             '<input type="text" value="' + esc(p.name || '') + '" placeholder="Проект" data-field="name" onblur="window.__assetsSaveColRow(this)">' +
             folderHtml +
             '<button type="button" class="assets-status-badge ' + statusCls + '" onclick="window.__assetsCycleClientType(\'' + owner + '\',' + idx + ')" title="Старый/новичок/2-й раз">' + esc(statusBadge) + '</button>' +
-            '<span class="assets-progress-bar" title="След. платёж — чем ближе, тем короче шкала"><span class="assets-progress-fill" style="width:' + barPct + '%"></span></span>' +
           '</span>' +
         '</span>' +
-        '<span class="assets-col-date"><input type="date" value="' + esc(startDate) + '" data-field="startDate" onchange="window.__assetsSaveColRow(this)" title="Дата старта"></span>' +
-        '<span class="assets-col-date"><input type="date" value="' + esc(payDate) + '" data-field="paymentDate" onchange="window.__assetsSaveColRow(this)" title="Дата платежа"></span>';
+        '<span class="assets-col-start"><span class="assets-progress-bar" title="След. платёж"><span class="assets-progress-fill" style="width:' + barPct + '%"></span></span><span class="assets-start-wrap" title="Дата старта — клик для выбора"><input type="date" value="' + esc(startDate) + '" data-field="startDate" onchange="window.__assetsSaveColRow(this);if(window.__renderAssetsPage)window.__renderAssetsPage()" class="assets-date-inp"><span class="assets-start-display">' + esc(startDdm) + '</span></span></span>' +
+        '<span class="assets-col-payment" title="Дата платежа — клик для выбора"><span class="assets-payment-wrap"><input type="date" value="' + esc(payDate) + '" data-field="paymentDate" onchange="window.__assetsSaveColRow(this);if(window.__renderAssetsPage)window.__renderAssetsPage()" class="assets-date-inp"><span class="assets-payment-display">' + esc(payDays) + '</span></span></span>';
       if (owner === 'sasha') {
         base += '<span class="assets-col-extra"><input type="text" value="' + esc(soldForFmt) + '" placeholder="0" data-field="soldFor" onblur="window.__assetsSaveColRow(this)" title="Продано за"></span>' +
           '<span class="assets-col-extra"><input type="text" value="' + esc(toAgentFmt) + '" placeholder="0" data-field="toAgent" onblur="window.__assetsSaveColRow(this)" title="Агенту"></span>' +
@@ -682,8 +712,8 @@
       return renderColRow(p, idx, 'me');
     }).join('');
     var sashaRows = sashaList.map(function(p, idx) { return renderColRow(p, idx, 'sasha'); }).join('');
-    var colHeaderMe = '<div class="assets-col-header"><span class="ac-emoji"></span><span class="ac-name">Проект</span><span class="ac-date">Старт</span><span class="ac-date">Платёж</span><span class="ac-paid">Оплатил</span><span class="ac-expected">Ожидать</span><span class="ac-actions"></span></div>';
-    var colHeaderSasha = '<div class="assets-col-header"><span class="ac-emoji"></span><span class="ac-name">Проект</span><span class="ac-date">Старт</span><span class="ac-date">Платёж</span><span class="ac-extra">Продано за</span><span class="ac-extra">Агенту</span><span class="ac-extra">AoA %</span><span class="ac-actions"></span></div>';
+    var colHeaderMe = '<div class="assets-col-header"><span class="ac-emoji"></span><span class="ac-name">Проект</span><span class="ac-start">Старт</span><span class="ac-payment">Платёж</span><span class="ac-paid">Оплатил</span><span class="ac-expected">Ожидать</span><span class="ac-actions"></span></div>';
+    var colHeaderSasha = '<div class="assets-col-header"><span class="ac-emoji"></span><span class="ac-name">Проект</span><span class="ac-start">Старт</span><span class="ac-payment">Платёж</span><span class="ac-extra">Продано за</span><span class="ac-extra">Агенту</span><span class="ac-extra">AoA %</span><span class="ac-actions"></span></div>';
     var sashaColHtml = isSashaView ? '' : (
         '<div class="assets-col assets-col-sasha" id="assetsColSasha" data-owner="sasha">' +
           '<div class="assets-col-title">👤 Клиенты Саши <span class="assets-col-total">' + fmt(sashaTotal) + ' ₽</span><span class="assets-col-breakdown">· Саше <span class="assets-col-sasha-agent">' + fmt(sashaList.reduce(function(a,p){return a+(parseInt(String(p.toAgent||'').replace(/\s/g,''),10)||0);},0)) + '</span> ₽ · Агентству <span class="assets-col-sasha-agency">' + fmt(sashaList.reduce(function(a,p){return a+(parseInt(String(p.aoaPercent||'').replace(/\s/g,''),10)||0);},0)) + '</span> ₽</span></div>' +

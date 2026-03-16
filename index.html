@@ -699,6 +699,31 @@ body.assets-mode .depth-bar,body.assets-mode .sec-bar{display:none !important}
 body.assets-mode .analytics-control-panel{display:none !important}
 body.assets-mode .gen-extra-prompt,body.assets-mode .gen-buttons-row{display:none !important}
 body.assets-mode .content{padding:16px 20px;background:linear-gradient(180deg,rgba(15,18,28,0.98) 0%,rgba(8,12,22,0.95) 100%)}
+body.contract-tab .analytics-control-panel,body.contract-tab .sec-bar,body.contract-tab .gen-extra-prompt,body.contract-tab .gen-buttons-row{display:none !important}
+.contract-generator{display:flex;flex-direction:column;gap:16px;height:100%;min-height:0;padding:16px}
+.contract-generator-form{flex:0 0 auto}
+.contract-generator-preview{flex:1;min-height:200px;overflow-y:auto}
+.contract-toolbar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:16px;padding:10px 14px;background:rgba(0,0,0,0.2);border-radius:10px;border:1px solid var(--border)}
+.contract-toolbar-btn{padding:8px 16px;font-size:12px;font-weight:700;border-radius:8px;cursor:pointer;transition:all .15s;font-family:inherit;border:1px solid var(--border);background:var(--surface2);color:var(--text)}
+.contract-toolbar-btn:hover{border-color:var(--accent);color:var(--accent)}
+.contract-btn-load{background:rgba(53,208,255,0.1);border-color:rgba(53,208,255,0.4);color:#7cf5ff}
+.contract-btn-load:hover{background:rgba(53,208,255,0.2);border-color:rgba(53,208,255,0.6)}
+.contract-btn-clear{background:rgba(255,80,80,0.08);border-color:rgba(255,80,80,0.3);color:#ff8080}
+.contract-btn-clear:hover{background:rgba(255,80,80,0.15);border-color:rgba(255,80,80,0.5)}
+.contract-form{background:rgba(0,0,0,0.15);border:1px solid var(--border);border-radius:12px;padding:16px}
+.contract-form-section{margin-bottom:16px}
+.contract-form-section:last-child{margin-bottom:0}
+.contract-form-title{font-size:11px;font-weight:800;letter-spacing:1px;color:var(--accent);margin-bottom:12px;text-transform:uppercase}
+.contract-form-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px}
+.contract-drop-zone{border:2px dashed rgba(124,245,255,0.3);border-radius:10px;padding:24px;text-align:center;color:var(--muted);font-size:12px;margin-top:14px;cursor:pointer;transition:all .2s}
+.contract-drop-zone:hover,.contract-drop-zone.contract-drop-over{border-color:var(--accent);color:var(--accent);background:rgba(0,217,126,0.05)}
+.contract-preview-wrap{background:#fff;border-radius:12px;box-shadow:0 4px 24px rgba(0,0,0,0.4);overflow:hidden;padding:24px}
+.contract-preview-inner{max-width:210mm;margin:0 auto;color:#1a1a1a;font-family:'Golos Text',sans-serif}
+.contract-document{background:#fff;color:#1a1a1a;padding:24px;min-height:297mm;box-sizing:border-box}
+.contract-doc-header img{display:block;margin:0 auto 20px}
+.contract-doc-body{font-size:11pt;line-height:1.6}
+.contract-doc-sign{margin-top:32px;padding-top:20px;border-top:1px solid #ddd;text-align:right}
+.contract-doc-sign img{max-width:180px;height:auto;opacity:0.85}
 body.projects-mode .gen-extra-prompt,body.projects-mode .gen-buttons-row{display:none !important}
 body.projects-mode .analytics-tumbler{display:none !important}
 body.projects-mode .analytics-control-panel{display:none !important}
@@ -1574,7 +1599,7 @@ body.goals-client-dragging .goal-block-sold{transition:all .18s ease}
 .assets-col-header{display:flex;align-items:center;gap:4px;padding:2px 10px;font-size:10px;font-weight:700;color:var(--muted);background:rgba(0,0,0,0.25);border-bottom:1px solid var(--border)}
 .assets-col-header .ac-emoji{width:30px;min-width:30px;flex-shrink:0}
 .assets-col-header .ac-name{flex:1;min-width:0;text-align:left}
-.assets-col-header .ac-date{min-width:96px;text-align:left}
+.assets-col-header .ac-date,.assets-col-header .ac-start,.assets-col-header .ac-payment{min-width:52px;text-align:left}
 .assets-col-header .ac-paid,.assets-col-header .ac-expected,.assets-col-header .ac-extra{min-width:70px;text-align:right}
 .assets-col-extra{min-width:70px;text-align:right}
 .assets-col-extra input{width:55px;padding:3px 6px;font-size:12px;text-align:right;background:rgba(0,0,0,0.2);border:1px solid var(--border);border-radius:6px;color:var(--text)}
@@ -1603,6 +1628,16 @@ body.goals-client-dragging .goal-block-sold{transition:all .18s ease}
 .assets-col-sasha .assets-progress-fill{background:linear-gradient(90deg,rgba(53,208,255,0.6),rgba(53,208,255,0.9))}
 .assets-col-date{min-width:96px}
 .assets-col-date input{width:100%;padding:2px 4px;font-size:11px;background:rgba(0,0,0,0.2);border:1px solid var(--border);border-radius:6px;color:var(--text);outline:none;max-width:96px;box-sizing:border-box}
+.assets-col-start{display:flex;align-items:center;gap:4px;min-width:62px;flex-shrink:0}
+.assets-col-start .assets-progress-bar{flex:0 0 24px;min-width:22px;height:4px;border-radius:2px;overflow:hidden;background:rgba(255,255,255,0.1)}
+.assets-col-start .assets-start-wrap{position:relative;min-width:44px;height:24px;display:flex;align-items:center;cursor:pointer}
+.assets-col-start .assets-date-inp{position:absolute;inset:0;opacity:0;cursor:pointer;font-size:10px;width:100%;height:100%}
+.assets-col-start .assets-start-display{font-size:11px;font-weight:600;color:var(--text);pointer-events:none}
+.assets-col-payment{min-width:52px;flex-shrink:0}
+.assets-col-payment .assets-payment-wrap{position:relative;min-width:48px;height:24px;display:flex;align-items:center;cursor:pointer;padding:0 4px;border-radius:6px;border:1px solid transparent;transition:border-color .15s}
+.assets-col-payment .assets-payment-wrap:hover{border-color:var(--border);background:rgba(0,0,0,0.1)}
+.assets-col-payment .assets-date-inp{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+.assets-col-payment .assets-payment-display{font-size:11px;font-weight:600;color:#35d0ff;pointer-events:none;white-space:nowrap}
 .assets-col-paid input,.assets-col-expected input{width:56px;padding:2px 4px;font-size:12px;text-align:right;background:rgba(0,0,0,0.2);border:1px solid var(--border);border-radius:6px;color:var(--text)}
 .assets-col-paid{min-width:70px;text-align:right;font-weight:700;color:#00d97e}
 .assets-col-expected{min-width:70px;text-align:right;font-weight:700;color:#35d0ff}
@@ -1886,6 +1921,11 @@ if (!window.AVITOLOG_GOALS) {
     <span class="rtab-txt" id="txt-avito1">AVITO №1</span>
     <div class="rtab-bar" id="bar-avito1"></div>
   </button>
+  <button type="button" class="rtab" id="tab-contract" onclick="switchTab('contract')">
+    <span class="rtab-ico">📜</span>
+    <span class="rtab-txt" id="txt-contract">ДОГОВОР</span>
+    <div class="rtab-bar" id="bar-contract"></div>
+  </button>
   </div>
 </div>
 
@@ -1906,11 +1946,13 @@ if (!window.AVITOLOG_GOALS) {
 </div>
 
 </div><!-- /mainApp -->
+<script src="https://unpkg.com/mammoth@1.6.0/mammoth.min.js"></script>
 <script src="js/user-config.js"></script>
 <script src="js/hero-asset.js"></script>
 <script src="js/core.js"></script>
 <script src="js/projects.js"></script>
 <script src="js/ai-import.js"></script>
+<script src="js/contract-generator.js"></script>
 <script src="js/main.js"></script>
 </body>
 </html>
