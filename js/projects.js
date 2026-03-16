@@ -697,6 +697,30 @@ function resetCalCellWidth(e) {
   e.stopPropagation();
   saveProjectsDayPx(28);
 }
+function startProjectsStickyWidthResize(e) {
+  if (e.button !== 0) return;
+  e.preventDefault();
+  e.stopPropagation();
+  var startX = e.clientX;
+  var table = document.querySelector('.projects-table');
+  var stickyEl = document.querySelector('.projects-sticky');
+  var startW = stickyEl ? stickyEl.offsetWidth : (getSavedProjectsStickyWidth() || 360);
+  var lastW = startW;
+  function onMove(ev) {
+    var dx = ev.clientX - startX;
+    var w = Math.max(280, Math.min(600, startW + dx));
+    lastW = w;
+    if (table) table.style.setProperty('--projects-sticky-width', w + 'px');
+  }
+  function onUp() {
+    document.removeEventListener('mousemove', onMove);
+    document.removeEventListener('mouseup', onUp);
+    var w = stickyEl ? stickyEl.offsetWidth : lastW;
+    setProjectsStickyWidthPx(w);
+  }
+  document.addEventListener('mousemove', onMove);
+  document.addEventListener('mouseup', onUp);
+}
 function getSavedProjectsZoom() {
   var z = parseFloat(localStorage.getItem(PROJECTS_ZOOM_KEY) || '1');
   return (isNaN(z) || z < 0.25 || z > 2) ? 1 : z;
@@ -2575,7 +2599,8 @@ function renderProjectsScreen(opts) {
     '<div class="projects-sticky-head">' +
       zoneTabsRow +
       toolsRow +
-    '</div>';
+    '</div>' +
+    '<div class="projects-sticky-resize-grip" id="projectsStickyResizeGrip" title="Тяните для настройки ширины колонки" onmousedown="startProjectsStickyWidthResize(event)"></div>';
   var dayNames = ['вс','пн','вт','ср','чт','пт','сб'];
   var sliderRow = '<div class="projects-table-row projects-cal-slider-row"><div class="projects-sticky"></div><div class="projects-scroll"><div class="cal-width-slider-wrap"><div class="cal-cell-width-slider" id="calCellWidthSlider" title="Тяните вправо — шире, влево — уже. Двойной клик — сброс" onmousedown="startCalCellWidthResize(event)" ondblclick="resetCalCellWidth(event)">⇄</div></div></div></div>';
   var headerScroll = '';

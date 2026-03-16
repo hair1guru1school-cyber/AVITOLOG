@@ -194,20 +194,28 @@
       cost: ''
     };
 
+    var _contractScreenshots = [];
+
     function getFormData() {
       var d = {};
-      ['fio', 'inn', 'ogrn', 'account', 'bank', 'bik', 'corrAccount', 'passport', 'startDate', 'endDate', 'daysCreate', 'daysManage', 'cost'].forEach(function(k) {
+      ['fio', 'inn', 'ogrn', 'account', 'bank', 'bik', 'corrAccount', 'passport', 'startDate', 'endDate', 'daysCreate', 'daysManage', 'cost', 'soldCount', 'extraServices'].forEach(function(k) {
         var el = document.getElementById('contract-' + k);
         d[k] = el ? el.value.trim() : '';
       });
       d.companyName = d.fio;
       d.clientType = detectClientType(d);
+      d.screenshots = (_contractScreenshots || []).slice();
       return d;
     }
 
     function setFormData(d) {
       if (!d) return;
       Object.keys(d).forEach(function(k) {
+        if (k === 'screenshots') {
+          _contractScreenshots = Array.isArray(d[k]) ? d[k].slice() : [];
+          renderContractScreenshots();
+          return;
+        }
         var el = document.getElementById('contract-' + k);
         if (el && d[k] !== undefined) el.value = d[k];
       });
@@ -246,13 +254,25 @@
       '</div>' +
       '<div class="contract-drop-zone" id="contract-drop-zone">Перетащите файл реквизитов (docx, pdf, txt) сюда</div>' +
       '</div>' +
-      '<div class="contract-form-section"><h4 class="contract-form-title">Дополнительные параметры договора</h4>' +
+      '<div class="contract-extra-panel">' +
+      '<h4 class="contract-form-title">Дополнительные параметры договора</h4>' +
+      '<p class="contract-extra-hint">Стратегия продажи, скриншоты, кол-во объявлений и доп. услуги для приложения</p>' +
       '<div class="contract-form-grid">' +
       '<div class="fg"><label>Дата начала работ</label><input type="date" id="contract-startDate"></div>' +
       '<div class="fg"><label>Дата окончания работ</label><input type="date" id="contract-endDate"></div>' +
       '<div class="fg"><label>Дней на создание рекламы</label><input type="number" id="contract-daysCreate" placeholder="14" min="1"></div>' +
       '<div class="fg"><label>Дней ведения рекламы</label><input type="number" id="contract-daysManage" placeholder="30" min="1"></div>' +
       '<div class="fg"><label>Стоимость договора, руб.</label><input type="number" id="contract-cost" placeholder="50000" min="0"></div>' +
+      '<div class="fg"><label>Кол-во проданных объявлений</label><input type="number" id="contract-soldCount" placeholder="5" min="0"></div>' +
+      '</div>' +
+      '<div class="fg contract-extra-services-wrap"><label>Доп. услуги для приложения</label><textarea id="contract-extraServices" placeholder="Фотосъёмка, инфографика, доп. продвижение..." rows="2"></textarea></div>' +
+      '<div class="contract-screenshots-zone">' +
+      '<div class="contract-screenshots-drop" id="contract-screenshots-drop">' +
+      '<span class="contract-screenshots-drop-icon">📷</span>' +
+      '<span>Перетащите скриншоты стратегии (png, jpg)</span>' +
+      '</div>' +
+      '<input type="file" id="contract-screenshots-inp" accept="image/png,image/jpeg,image/jpg,image/webp" multiple style="display:none">' +
+      '<div class="contract-screenshots-list" id="contract-screenshots-list"></div>' +
       '</div></div></div></div>';
 
     container.innerHTML = html;
@@ -277,14 +297,48 @@
     };
 
     window.__contractClear = function() {
-      ['fio', 'inn', 'ogrn', 'account', 'bank', 'bik', 'corrAccount', 'passport', 'startDate', 'endDate', 'daysCreate', 'daysManage', 'cost'].forEach(function(k) {
+      ['fio', 'inn', 'ogrn', 'account', 'bank', 'bik', 'corrAccount', 'passport', 'startDate', 'endDate', 'daysCreate', 'daysManage', 'cost', 'soldCount', 'extraServices'].forEach(function(k) {
         var el = document.getElementById('contract-' + k);
         if (el) el.value = '';
       });
+      _contractScreenshots = [];
+      renderContractScreenshots();
       var startEl = document.getElementById('contract-startDate');
       if (startEl) startEl.value = todayStr;
       onClear && onClear();
     };
+
+    function renderContractScreenshots() {
+      var list = document.getElementById('contract-screenshots-list');
+      if (!list) return;
+      if (!_contractScreenshots.length) {
+        list.innerHTML = '';
+        list.style.display = 'none';
+        return;
+      }
+      list.style.display = 'flex';
+      list.innerHTML = _contractScreenshots.map(function(dataUrl, i) {
+        return '<div class="contract-screenshot-thumb" data-i="' + i + '">' +
+          '<img src="' + dataUrl + '" alt="Скрин ' + (i + 1) + '">' +
+          '<button type="button" class="contract-screenshot-rm" onclick="window.__contractRemoveScreenshot&&window.__contractRemoveScreenshot(' + i + ')" title="Удалить">×</button>' +
+          '</div>';
+      }).join('');
+    }
+
+    window.__contractRemoveScreenshot = function(i) {
+      _contractScreenshots.splice(i, 1);
+      renderContractScreenshots();
+    };
+
+    function addContractScreenshot(file) {
+      if (!file || !file.type.match(/^image\/(png|jpeg|jpg|webp)$/i)) return;
+      var reader = new FileReader();
+      reader.onload = function() {
+        _contractScreenshots.push(reader.result);
+        renderContractScreenshots();
+      };
+      reader.readAsDataURL(file);
+    }
 
     var fileInp = document.getElementById('contract-file-inp');
     var dropZone = document.getElementById('contract-drop-zone');
@@ -321,6 +375,27 @@
         dropZone.classList.remove('contract-drop-over');
         var f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
         handleFile(f);
+      });
+    }
+
+    var screenshotsDrop = document.getElementById('contract-screenshots-drop');
+    var screenshotsInp = document.getElementById('contract-screenshots-inp');
+    if (screenshotsDrop) {
+      screenshotsDrop.addEventListener('click', function() { screenshotsInp && screenshotsInp.click(); });
+      screenshotsDrop.addEventListener('dragover', function(e) { e.preventDefault(); screenshotsDrop.classList.add('contract-drop-over'); });
+      screenshotsDrop.addEventListener('dragleave', function() { screenshotsDrop.classList.remove('contract-drop-over'); });
+      screenshotsDrop.addEventListener('drop', function(e) {
+        e.preventDefault();
+        screenshotsDrop.classList.remove('contract-drop-over');
+        var files = e.dataTransfer && e.dataTransfer.files;
+        if (files) for (var i = 0; i < files.length; i++) addContractScreenshot(files[i]);
+      });
+    }
+    if (screenshotsInp) {
+      screenshotsInp.addEventListener('change', function() {
+        var files = screenshotsInp.files;
+        if (files) for (var i = 0; i < files.length; i++) addContractScreenshot(files[i]);
+        screenshotsInp.value = '';
       });
     }
 

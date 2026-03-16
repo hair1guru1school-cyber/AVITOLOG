@@ -720,6 +720,19 @@ body.ads-tab .analytics-control-panel,body.ads-tab .sec-bar,body.ads-tab .gen-ex
 .contract-form-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px}
 .contract-drop-zone{border:2px dashed rgba(124,245,255,0.3);border-radius:10px;padding:24px;text-align:center;color:var(--muted);font-size:12px;margin-top:14px;cursor:pointer;transition:all .2s}
 .contract-drop-zone:hover,.contract-drop-zone.contract-drop-over{border-color:var(--accent);color:var(--accent);background:rgba(0,217,126,0.05)}
+.contract-extra-panel{background:rgba(53,208,255,0.06);border:1px solid rgba(53,208,255,0.25);border-radius:12px;padding:16px;margin-top:16px}
+.contract-extra-hint{font-size:11px;color:var(--muted);margin-bottom:12px;line-height:1.4}
+.contract-extra-services-wrap{margin-top:12px}
+.contract-extra-services-wrap textarea{min-height:60px;resize:vertical}
+.contract-screenshots-zone{margin-top:16px}
+.contract-screenshots-drop{border:2px dashed rgba(124,245,255,0.3);border-radius:10px;padding:20px;text-align:center;color:var(--muted);font-size:12px;cursor:pointer;transition:all .2s;display:flex;flex-direction:column;align-items:center;gap:8px}
+.contract-screenshots-drop:hover,.contract-screenshots-drop.contract-drop-over{border-color:var(--accent);color:var(--accent);background:rgba(0,217,126,0.05)}
+.contract-screenshots-drop-icon{font-size:28px;opacity:.7}
+.contract-screenshots-list{display:flex;flex-wrap:wrap;gap:10px;margin-top:12px}
+.contract-screenshot-thumb{position:relative;width:80px;height:80px;border-radius:8px;overflow:hidden;border:1px solid var(--border);flex-shrink:0}
+.contract-screenshot-thumb img{width:100%;height:100%;object-fit:cover;display:block}
+.contract-screenshot-rm{position:absolute;top:2px;right:2px;width:22px;height:22px;border:none;border-radius:50%;background:rgba(255,80,80,0.9);color:#fff;font-size:16px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;opacity:.9;transition:opacity .15s}
+.contract-screenshot-rm:hover{opacity:1}
 .contract-preview-wrap{background:#fff;border-radius:12px;box-shadow:0 4px 24px rgba(0,0,0,0.4);overflow:hidden;padding:24px}
 .contract-preview-inner{max-width:210mm;margin:0 auto;color:#1a1a1a;font-family:'Golos Text',sans-serif}
 .contract-document{background:#fff;color:#1a1a1a;padding:24px;min-height:297mm;box-sizing:border-box}
@@ -857,6 +870,9 @@ body.projects-mode.projects-sidebar-hidden .sidebar{min-width:0;width:0;padding:
 .projects-hidden-empty{font-size:10px;color:rgba(255,255,255,0.3);padding:12px 4px}
 .projects-table{display:flex;flex-direction:column;min-width:max-content}
 .projects-table .projects-sticky{position:sticky;left:0;z-index:4;background:#10131b;border-right:1px solid rgba(255,255,255,0.06);min-width:var(--projects-sticky-width,360px);width:var(--projects-sticky-width,360px);flex-shrink:0;box-shadow:2px 0 10px rgba(0,0,0,0.35)}
+.projects-sticky-resize-grip{position:absolute;right:0;top:0;bottom:0;width:6px;cursor:col-resize;z-index:5;opacity:0.12;transition:opacity .15s}
+.projects-sticky-resize-grip:hover,.projects-sticky-resize-grip:active{opacity:0.45}
+.projects-sticky-resize-grip::after{content:'';position:absolute;right:2px;top:8px;bottom:8px;width:1px;background:rgba(124,245,255,0.5);border-radius:1px}
 .projects-sticky-head{position:relative;padding:6px 10px 6px;font-size:10px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:1px;background:linear-gradient(180deg,#070b14 0%,#0b1220 56%,transparent 100%);display:flex;flex-direction:column;align-items:stretch;gap:4px;overflow:hidden;width:100%;min-width:0}
 .projects-zone-tabs{display:flex;align-items:center;gap:10px;margin:0;position:relative;flex-wrap:nowrap;min-width:0}
 .projects-zone-tabs::before{content:none}
