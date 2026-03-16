@@ -17,31 +17,61 @@
 
   // Шаблоны договора (на основе документов пользователя)
   function getContractMainTemplate(data) {
-    var isCompany = !!(data.inn && String(data.inn).replace(/\s/g, '').length);
-    var clientLabel = isCompany ? (data.companyName || data.fio || 'Заказчик') : (data.fio || 'Заказчик');
-    var clientDetails = isCompany
-      ? 'ИНН ' + (data.inn || '') + (data.ogrn ? ', ОГРН/ОГРНИП ' + data.ogrn : '') + ', р/с ' + (data.account || '') + ', ' + (data.bank || '') + (data.bik ? ', БИК ' + data.bik : '') + (data.corrAccount ? ', корсчёт ' + data.corrAccount : '')
-      : (data.fio || '') + (data.passport ? ', паспорт ' + data.passport : '');
-    var costFmt = String(data.cost || '0').replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+    var clientName = data.companyName || data.fio || 'Заказчик';
+    var contractDate = data.contractDate || data.startDate || '—';
     var startDate = data.startDate || '—';
     var endDate = data.endDate || '—';
     var daysCreate = data.daysCreate || '—';
     var daysManage = data.daysManage || '—';
+    var costFmt = String(data.cost || '0').replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+    var clientRequisites = [
+      data.inn ? 'ИНН ' + data.inn : '',
+      data.kpp ? 'КПП ' + data.kpp : '',
+      data.ogrn ? 'ОГРН ' + data.ogrn : '',
+      data.account ? 'Р/С ' + data.account : '',
+      data.bank || '',
+      data.bik ? 'БИК ' + data.bik : '',
+      data.corrAccount ? 'К/С ' + data.corrAccount : '',
+      data.contacts || ''
+    ].filter(Boolean).join('<br>');
 
-    return '<h2 style="text-align:center;font-size:16pt;margin:24px 0 16px">Договор возмездного оказания услуг</h2>' +
-      '<p style="text-align:center;font-size:11pt;color:#333;margin-bottom:20px">от ' + (data.contractDate || startDate) + '</p>' +
-      '<p style="font-size:11pt;line-height:1.6;margin-bottom:12px"><strong>Стороны:</strong></p>' +
-      '<p style="font-size:11pt;line-height:1.6;margin-bottom:8px;margin-left:20px"><strong>Исполнитель:</strong> ' + EXECUTOR.name + ', ИНН ' + EXECUTOR.inn + ', ОГРН ' + EXECUTOR.ogrn + ', РС ' + EXECUTOR.account + ', ' + EXECUTOR.bank + ', ' + EXECUTOR.phone + '</p>' +
-      '<p style="font-size:11pt;line-height:1.6;margin-bottom:16px;margin-left:20px"><strong>Заказчик:</strong> ' + clientLabel + ' — ' + clientDetails + '</p>' +
-      '<p style="font-size:11pt;line-height:1.6;margin-bottom:12px"><strong>Основные условия:</strong></p>' +
-      '<ol style="font-size:11pt;line-height:1.7;margin:0 0 16px 20px;padding:0">' +
-      '<li style="margin-bottom:8px"><strong>Предмет договора:</strong> услуги по созданию, размещению и ведению рекламной кампании на Avito.ru. Детали — в Приложении № 1 и № 2.</li>' +
-      '<li style="margin-bottom:8px"><strong>Сроки:</strong> начало ' + startDate + ', окончание ' + endDate + '. ' + daysCreate + ' дней на создание рекламы + ' + daysManage + ' дней ведения аккаунта.</li>' +
-      '<li style="margin-bottom:8px"><strong>Оплата:</strong> ' + costFmt + ' руб. (фиксированная стоимость), 100 % предоплата.</li>' +
-      '<li style="margin-bottom:8px"><strong>Особенности:</strong> расходы на размещение и продвижение на Avito оплачиваются заказчиком отдельно.</li>' +
-      '</ol>' +
-      '<p style="font-size:11pt;line-height:1.6;margin-top:20px">Исполнитель: _____________________ / ИП Шинков Ф.А. /</p>' +
-      '<p style="font-size:11pt;line-height:1.6;margin-top:8px">Заказчик: _____________________ / ' + (data.fio || clientLabel) + ' /</p>';
+    return '' +
+      '<h2 style="text-align:center;font-size:15pt;margin:8px 0 10px;letter-spacing:.2px">ДОГОВОР ВОЗМЕЗДНОГО ОКАЗАНИЯ УСЛУГ</h2>' +
+      '<p style="text-align:center;font-size:10.5pt;margin:0 0 14px">от ' + contractDate + '</p>' +
+      '<p style="font-size:10.5pt;line-height:1.55;margin:0 0 12px">Я, ' + EXECUTOR.name + ', именуемый в дальнейшем «Исполнитель», с одной стороны, и <strong>' + clientName + '</strong>, именуемый(ая) в дальнейшем «Заказчик», с другой стороны, заключили настоящий договор о нижеследующем:</p>' +
+      '<div style="border:1px solid #d8d8d8;border-radius:4px;padding:8px 10px;margin:0 0 14px">' +
+        '<div style="font-size:10pt;font-weight:700;margin-bottom:6px">Реквизиты сторон</div>' +
+        '<table style="width:100%;border-collapse:collapse;font-size:9.8pt">' +
+          '<tr>' +
+            '<td style="width:50%;vertical-align:top;border-right:1px solid #e3e3e3;padding-right:10px">' +
+              '<div style="font-weight:700;margin-bottom:4px">Исполнитель</div>' +
+              'ИП Шинков Филипп Аркадьевич<br>ИНН ' + EXECUTOR.inn + '<br>ОГРН ' + EXECUTOR.ogrn + '<br>Р/С ' + EXECUTOR.account + '<br>' + EXECUTOR.bank + '<br>Тел. ' + EXECUTOR.phone +
+            '</td>' +
+            '<td style="width:50%;vertical-align:top;padding-left:10px">' +
+              '<div style="font-weight:700;margin-bottom:4px">Заказчик</div>' +
+              clientName + (clientRequisites ? '<br>' + clientRequisites : '') +
+            '</td>' +
+          '</tr>' +
+        '</table>' +
+      '</div>' +
+      '<p style="font-size:10.5pt;line-height:1.55;margin:0 0 8px"><strong>1. ПРЕДМЕТ ДОГОВОРА. СРОКИ ОКАЗАНИЯ УСЛУГ</strong></p>' +
+      '<p style="font-size:10.5pt;line-height:1.55;margin:0 0 6px">1.1. Исполнитель обязуется по заданию Заказчика оказывать услуги по созданию и ведению рекламной кампании на сайте Avito.ru, а Заказчик обязуется оплатить услуги в полном объеме.</p>' +
+      '<p style="font-size:10.5pt;line-height:1.55;margin:0 0 6px">1.2. Сроки оказания услуг: начало — ' + startDate + ', окончание — ' + endDate + '.</p>' +
+      '<p style="font-size:10.5pt;line-height:1.55;margin:0 0 10px">1.3. Порядок услуг: ' + daysCreate + ' дней на создание рекламы + ' + daysManage + ' дней ведения аккаунта.</p>' +
+      '<p style="font-size:10.5pt;line-height:1.55;margin:0 0 8px"><strong>2. ПРАВА И ОБЯЗАННОСТИ СТОРОН</strong></p>' +
+      '<p style="font-size:10.5pt;line-height:1.55;margin:0 0 6px">2.1. Исполнитель обязуется оказать услуги качественно и в согласованные сроки.</p>' +
+      '<p style="font-size:10.5pt;line-height:1.55;margin:0 0 10px">2.2. Заказчик обязуется предоставить необходимые материалы и своевременно произвести оплату.</p>' +
+      '<p style="font-size:10.5pt;line-height:1.55;margin:0 0 8px"><strong>3. ЦЕНА ДОГОВОРА И ПОРЯДОК РАСЧЕТОВ</strong></p>' +
+      '<p style="font-size:10.5pt;line-height:1.55;margin:0 0 6px">3.1. Стоимость услуг по настоящему договору составляет <strong>' + costFmt + ' руб.</strong> и является фиксированной.</p>' +
+      '<p style="font-size:10.5pt;line-height:1.55;margin:0 0 10px">3.2. Оплата осуществляется в формате 100% предоплаты. Расходы на размещение и продвижение объявлений на платформе Avito оплачиваются Заказчиком отдельно.</p>' +
+      '<p style="font-size:10.5pt;line-height:1.55;margin:0 0 8px"><strong>4. ОТВЕТСТВЕННОСТЬ СТОРОН</strong></p>' +
+      '<p style="font-size:10.5pt;line-height:1.55;margin:0 0 10px">4.1. Стороны несут ответственность за неисполнение обязательств в соответствии с законодательством РФ.</p>' +
+      '<p style="font-size:10.5pt;line-height:1.55;margin:0 0 8px"><strong>5. ПРОЧИЕ УСЛОВИЯ</strong></p>' +
+      '<p style="font-size:10.5pt;line-height:1.55;margin:0 0 14px">5.1. Настоящий договор вступает в силу с момента подписания и действует до полного исполнения обязательств сторонами.</p>' +
+      '<table style="width:100%;border-collapse:collapse;font-size:10.5pt;margin-top:20px">' +
+        '<tr><td style="width:50%;vertical-align:top;padding-right:16px">Исполнитель:<br><br>_____________________ / ИП Шинков Ф.А. /</td>' +
+        '<td style="width:50%;vertical-align:top">Заказчик:<br><br>_____________________ / ' + clientName + ' /</td></tr>' +
+      '</table>';
   }
 
   function getAppendix1Template(data) {
@@ -94,16 +124,10 @@
       headerImg = new URL('assets/contract_header.png', window.location.href).href;
     } catch (e) {}
     var headerHtml = '<div class="contract-doc-header"><img src="' + esc(headerImg) + '" alt="" onerror="this.style.display=\'none\'" style="max-width:100%;height:auto"></div>';
-    var body = headerHtml + '<div class="contract-doc-body">' +
-      getContractMainTemplate(data) +
-      '<div style="page-break-before:always"></div>' +
-      getAppendix1Template(data) +
-      '<div style="page-break-before:always"></div>' +
-      getAppendix2Template(data) +
-      '</div>';
+    var body = headerHtml + '<div class="contract-doc-body">' + getContractMainTemplate(data) + '</div>';
     var sigImg = 'assets/contract_sign.png';
     try { sigImg = new URL('assets/contract_sign.png', window.location.href).href; } catch (e) {}
-    var sigHtml = '<div class="contract-doc-sign"><img src="' + esc(sigImg) + '" alt="" onerror="this.style.display=\'none\'" style="max-width:200px;height:auto;opacity:0.9"></div>';
+    var sigHtml = '<div class="contract-doc-sign"><img src="' + esc(sigImg) + '" alt="" onerror="this.style.display=\'none\'" style="max-width:240px;height:auto;opacity:0.95"></div>';
     return '<div class="contract-document">' + body + sigHtml + '</div>';
   }
 
