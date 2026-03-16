@@ -11,13 +11,13 @@
   var ROW_LABELS = { main: 'Основной', new: 'Новый', both: 'Оба' };
 
   var DEFAULT_LINKS = [
-    { id: 'channel_clients', icon: '📣', label: 'Канал для клиентов', url: '' },
-    { id: 'bot_clients', icon: '🤖', label: 'Бот для клиентов', url: '' },
-    { id: 'channel_learn', icon: '🎓', label: 'Канал обучения', url: '' },
-    { id: 'bot_learn', icon: '🤖', label: 'Бот обучения', url: '' },
-    { id: 'site', icon: '🌐', label: 'Сайт агентства', url: '' },
-    { id: 'avito1', icon: '🛒', label: 'Авито аккаунт 1', url: '' },
-    { id: 'avito2', icon: '🛒', label: 'Авито аккаунт 2', url: '' }
+    { id: 'channel_clients', icon: '📣', label: 'Канал для клиентов', url: '', snippet: '', avatar: '' },
+    { id: 'bot_clients', icon: '🤖', label: 'Бот для клиентов', url: '', snippet: '', avatar: '' },
+    { id: 'channel_learn', icon: '🎓', label: 'Канал обучения', url: '', snippet: '', avatar: '' },
+    { id: 'bot_learn', icon: '🤖', label: 'Бот обучения', url: '', snippet: '', avatar: '' },
+    { id: 'site', icon: '🌐', label: 'Сайт агентства', url: '', snippet: '', avatar: '' },
+    { id: 'avito1', icon: '🛒', label: 'Авито аккаунт 1', url: '', snippet: '', avatar: '' },
+    { id: 'avito2', icon: '🛒', label: 'Авито аккаунт 2', url: '', snippet: '', avatar: '' }
   ];
 
   function loadExpenses() {
@@ -50,7 +50,20 @@
       var raw = localStorage.getItem(LINKS_KEY);
       if (raw) {
         var arr = JSON.parse(raw);
-        if (Array.isArray(arr) && arr.length) return arr;
+        if (Array.isArray(arr) && arr.length) {
+          var byId = {};
+          arr.forEach(function(item) {
+            if (item && item.id) byId[item.id] = item;
+          });
+          var merged = DEFAULT_LINKS.map(function(def) {
+            return Object.assign({}, def, byId[def.id] || {});
+          });
+          arr.forEach(function(item) {
+            if (!item || !item.id) return;
+            if (!merged.some(function(m) { return m.id === item.id; })) merged.push(item);
+          });
+          return merged;
+        }
       }
     } catch (e) {}
     return DEFAULT_LINKS.map(function(l) { return Object.assign({}, l); });
@@ -190,12 +203,17 @@
   function openLinkEdit(links, index, container, onSave) {
     var item = links[index];
     var url = prompt('URL для: ' + item.label, item.url || 'https://');
-    if (url !== null) {
-      item.url = (url || '').trim();
-      saveLinks(links);
-      renderLinksPanel(container, links);
-      if (typeof onSave === 'function') onSave();
-    }
+    if (url === null) return;
+    var snippet = prompt('Сниппет для карточки (например: 637 подписчиков)', item.snippet || '');
+    if (snippet === null) return;
+    var avatar = prompt('URL аватарки канала (опционально)', item.avatar || '');
+    if (avatar === null) return;
+    item.url = (url || '').trim();
+    item.snippet = (snippet || '').trim();
+    item.avatar = (avatar || '').trim();
+    saveLinks(links);
+    renderLinksPanel(container, links);
+    if (typeof onSave === 'function') onSave();
   }
 
   function escapeHtml(s) {
@@ -218,6 +236,32 @@
       html += '</div>';
     });
     html += '</div>';
+
+    var channels = links.filter(function(item) {
+      var id = String(item.id || '').toLowerCase();
+      var label = String(item.label || '').toLowerCase();
+      return id.indexOf('channel') >= 0 || label.indexOf('канал') >= 0;
+    });
+    if (channels.length) {
+      html += '<div class="ads-channels-title">📚 Каналы</div><div class="ads-channels-grid">';
+      channels.forEach(function(item) {
+        var idx = links.indexOf(item);
+        var hasUrl = item.url && String(item.url).trim().length;
+        html += '<div class="ads-channel-wrap">';
+        html += '<button type="button" class="ads-channel-card" data-idx="' + idx + '"' + (hasUrl ? '' : ' title="Добавьте ссылку"') + '>';
+        if (item.avatar && String(item.avatar).trim()) {
+          html += '<span class="ads-channel-avatar"><img src="' + escapeHtml(item.avatar) + '" alt=""></span>';
+        } else {
+          html += '<span class="ads-channel-avatar ads-channel-avatar-fallback">' + escapeHtml(item.icon || '📣') + '</span>';
+        }
+        html += '<span class="ads-channel-meta"><span class="ads-channel-name">' + escapeHtml(item.label || '') + '</span><span class="ads-channel-snippet">' + escapeHtml(item.snippet || 'Добавьте сниппет') + '</span></span>';
+        html += '</button>';
+        html += '<button type="button" class="ads-link-edit" data-idx="' + idx + '" title="Изменить ссылку">✎</button>';
+        html += '</div>';
+      });
+      html += '</div>';
+    }
+
     container.innerHTML = html;
 
     container.querySelectorAll('.ads-link-edit').forEach(function(btn) {
@@ -234,6 +278,18 @@
         var url = (links[idx] && links[idx].url) ? String(links[idx].url).trim() : '';
         if (!url) {
           e.preventDefault();
+          openLinkEdit(links, idx, container);
+        }
+      });
+    });
+
+    container.querySelectorAll('.ads-channel-card').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        var idx = parseInt(btn.getAttribute('data-idx'), 10);
+        var url = (links[idx] && links[idx].url) ? String(links[idx].url).trim() : '';
+        if (url) {
+          window.open(url, '_blank', 'noopener');
+        } else {
           openLinkEdit(links, idx, container);
         }
       });

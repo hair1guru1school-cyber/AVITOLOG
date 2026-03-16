@@ -790,6 +790,17 @@ body.contract-tab .analytics-control-panel,body.contract-tab .sec-bar,body.contr
 .ads-link-icon{font-size:18px}
 .ads-link-edit{width:32px;height:32px;display:flex;align-items:center;justify-content:center;border:1px solid var(--border);background:var(--surface2);color:var(--muted);border-radius:8px;cursor:pointer;font-size:14px;transition:all .15s;flex-shrink:0}
 .ads-link-edit:hover{border-color:var(--accent);color:var(--accent);background:rgba(0,217,126,0.1)}
+.ads-channels-title{font-size:11px;font-weight:800;letter-spacing:1px;color:#7cf5ff;margin:14px 0 10px;text-transform:uppercase}
+.ads-channels-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px}
+.ads-channel-wrap{display:flex;align-items:center;gap:8px}
+.ads-channel-card{flex:1;display:flex;align-items:center;gap:10px;text-align:left;padding:10px;background:rgba(53,208,255,0.08);border:1px solid rgba(53,208,255,0.28);border-radius:10px;cursor:pointer;transition:all .2s;color:var(--text)}
+.ads-channel-card:hover{background:rgba(53,208,255,0.16);border-color:rgba(53,208,255,0.5);box-shadow:0 0 14px rgba(53,208,255,0.2)}
+.ads-channel-avatar{width:44px;height:44px;min-width:44px;border-radius:50%;overflow:hidden;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.14)}
+.ads-channel-avatar img{width:100%;height:100%;object-fit:cover;display:block}
+.ads-channel-avatar-fallback{font-size:22px}
+.ads-channel-meta{display:flex;flex-direction:column;min-width:0;gap:2px}
+.ads-channel-name{font-size:14px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ads-channel-snippet{font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 body.projects-mode .gen-extra-prompt,body.projects-mode .gen-buttons-row{display:none !important}
 body.projects-mode .analytics-tumbler{display:none !important}
 body.projects-mode .analytics-control-panel{display:none !important}
