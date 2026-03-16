@@ -1,6 +1,10 @@
 // ── TABS ──
 function switchTab(tab) {
   if (agencyMode || assetsMode || adsMode) return;
+  // If CRM/Projects mode is active, force switch back to client workspace first.
+  if ((goalsMode || projectsMode || strategyMode) && tab !== 'goals' && typeof openAnalyticsTab === 'function') {
+    openAnalyticsTab();
+  }
   currentTab = tab;
   ['analysis','presale','avito1','contract'].forEach(function(t) {
     var el = document.getElementById('tab-'+t);
