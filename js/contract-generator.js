@@ -393,15 +393,18 @@
     function renderParsedRequisites(parsed) {
       var box = document.getElementById('contractParsedRequisites');
       if (!box) return;
-      var rows = [];
-      var used = {};
+      var valueToLabels = {};
+      var valueOrder = [];
       function add(label, val) {
-        if (val == null || !String(val).trim()) return;
-        var sig = String(label).toLowerCase() + '::' + String(val).trim();
-        if (used[sig]) return;
-        used[sig] = true;
-        rows.push({ label: label, value: String(val).trim() });
+        var value = String(val || '').trim();
+        if (!value) return;
+        if (!valueToLabels[value]) {
+          valueToLabels[value] = [];
+          valueOrder.push(value);
+        }
+        if (valueToLabels[value].indexOf(label) < 0) valueToLabels[value].push(label);
       }
+
       add('Полное наименование', parsed.fullName);
       add('Сокращенное наименование', parsed.shortName || parsed.fio);
       add('Юридический адрес', parsed.legalAddress);
@@ -409,11 +412,7 @@
       add('Фактический адрес', parsed.actualAddress);
       add('Генеральный директор', parsed.ceo);
       add('Телефон / эл. почта', parsed.contacts);
-      add('Телефон', parsed.phone);
-      add('E-mail', parsed.email);
       add('Телефон / эл. почта бухгалтерия', parsed.accountingContacts);
-      add('Телефон бухгалтерии', parsed.accountingPhone);
-      add('E-mail бухгалтерии', parsed.accountingEmail);
       add('ИНН', parsed.inn);
       add('КПП', parsed.kpp);
       add('ИНН/КПП', parsed.innKpp);
@@ -423,9 +422,11 @@
       add('БИК Банка', parsed.bik);
       add('Банк', parsed.bank);
       add('GUID (ЭДО)', parsed.edoGuid);
-      (parsed.__pairs || []).forEach(function(p) {
-        add(p.key, p.value);
+
+      var rows = valueOrder.map(function(value) {
+        return { label: valueToLabels[value].join(', '), value: value };
       });
+
       if (!rows.length) {
         box.style.display = 'none';
         box.innerHTML = '';
@@ -446,17 +447,15 @@
       '</div>' +
       '<div class="contract-form">' +
       '<div class="contract-form-section contract-requisites-section"><h4 class="contract-form-title">Реквизиты заказчика</h4>' +
-      '<p class="contract-requisites-hint">Заполните вручную или загрузите файл с реквизитами ниже</p>' +
-      '<div class="contract-form-grid">' +
-      '<div class="fg"><label>ФИО / Название компании</label><input type="text" id="contract-fio" placeholder="Иванов Иван Иванович или ИП Иванов"></div>' +
-      '<div class="fg"><label>ИНН</label><input type="text" id="contract-inn" placeholder="10 или 12 цифр"></div>' +
-      '<div class="fg"><label>ОГРН / ОГРНИП</label><input type="text" id="contract-ogrn" placeholder="13-15 цифр"></div>' +
-      '<div class="fg"><label>Расчётный счёт</label><input type="text" id="contract-account" placeholder="20 цифр"></div>' +
-      '<div class="fg"><label>Банк</label><input type="text" id="contract-bank" placeholder="ПАО Сбербанк"></div>' +
-      '<div class="fg"><label>БИК</label><input type="text" id="contract-bik" placeholder="9 цифр"></div>' +
-      '<div class="fg"><label>Корр. счёт</label><input type="text" id="contract-corrAccount" placeholder="20 цифр"></div>' +
-      '<div class="fg"><label>Паспорт (физлицо)</label><input type="text" id="contract-passport" placeholder="1234 567890"></div>' +
-      '</div>' +
+      '<p class="contract-requisites-hint">Загрузите файл с реквизитами — данные будут распознаны автоматически</p>' +
+      '<input type="hidden" id="contract-fio">' +
+      '<input type="hidden" id="contract-inn">' +
+      '<input type="hidden" id="contract-ogrn">' +
+      '<input type="hidden" id="contract-account">' +
+      '<input type="hidden" id="contract-bank">' +
+      '<input type="hidden" id="contract-bik">' +
+      '<input type="hidden" id="contract-corrAccount">' +
+      '<input type="hidden" id="contract-passport">' +
       '<div class="contract-drop-zone" id="contract-drop-zone">Перетащите файл реквизитов (docx, pdf, txt) сюда</div>' +
       '<div class="contract-parsed-wrap" id="contractParsedRequisites" style="display:none"></div>' +
       '</div>' +
