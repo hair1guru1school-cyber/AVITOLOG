@@ -103,7 +103,11 @@
         var displayVal = formatNum(parseNum(val));
         rowTotal += parseNum(val);
         var isBoth = rowKey === 'both';
-        html += '<td class="ads-td-cell"><input type="text" inputmode="decimal" class="ads-cell-inp' + (isBoth ? ' ads-cell-auto' : '') + '" data-row="' + rowKey + '" data-day="' + d + '" value="' + (displayVal ? String(displayVal) : '') + '"' + (isBoth ? ' readonly tabindex=\"-1\" title=\"Авто: Основной + Новый\"' : '') + '></td>';
+        if (isBoth) {
+          html += '<td class="ads-td-cell ads-td-cell-auto" title="Авто: Основной + Новый">' + (displayVal ? String(displayVal) : '') + '</td>';
+        } else {
+          html += '<td class="ads-td-cell"><input type="text" inputmode="numeric" class="ads-cell-inp" data-row="' + rowKey + '" data-day="' + d + '" value="' + (displayVal ? String(displayVal) : '') + '"></td>';
+        }
       }
       html += '<td class="ads-td-row-total" data-row="' + rowKey + '">' + (rowTotal ? rowTotal.toLocaleString('ru') : '0') + '</td></tr>';
     });
@@ -122,8 +126,8 @@
         saveExpenses(state);
         updateRowTotal(container, state, row);
         updateRowTotal(container, state, 'both');
-        var bothInp = container.querySelector('.ads-cell-inp[data-row="both"][data-day="' + day + '"]');
-        if (bothInp) bothInp.value = formatNum(parseNum(state.data[getCellKey('both', day)]));
+        var bothTd = container.querySelector('tr[data-row="both"] .ads-td-cell:nth-child(' + (day + 1) + ')');
+        if (bothTd) bothTd.textContent = formatNum(parseNum(state.data[getCellKey('both', day)]));
         if (typeof onChange === 'function') onChange();
       });
       inp.addEventListener('blur', function() {
@@ -154,7 +158,7 @@
         totals[rowKey] += parseNum(v);
       }
     });
-    totals.all = totals.main + totals.new + totals.both;
+    totals.all = totals.both;
     return totals;
   }
 
