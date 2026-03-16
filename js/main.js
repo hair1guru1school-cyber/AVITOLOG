@@ -3001,6 +3001,9 @@ function updateClientBadge() {
     if (avatarEl) avatarEl.innerHTML = '';
   }
   updateGenButtonState();
+  if (typeof window.__contractRefreshSaveButton === 'function') {
+    try { window.__contractRefreshSaveButton(); } catch (e) {}
+  }
 }
 
 function openClientFolder() {
