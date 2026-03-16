@@ -700,7 +700,6 @@ body.assets-mode .analytics-control-panel{display:none !important}
 body.assets-mode .gen-extra-prompt,body.assets-mode .gen-buttons-row{display:none !important}
 body.assets-mode .content{padding:16px 20px;background:linear-gradient(180deg,rgba(15,18,28,0.98) 0%,rgba(8,12,22,0.95) 100%)}
 body.contract-tab .analytics-control-panel,body.contract-tab .sec-bar,body.contract-tab .gen-extra-prompt,body.contract-tab .gen-buttons-row{display:none !important}
-body.ads-tab .analytics-control-panel,body.ads-tab .sec-bar,body.ads-tab .gen-extra-prompt,body.ads-tab .gen-buttons-row{display:none !important}
 .contract-generator{display:flex;flex-direction:column;gap:16px;height:100%;min-height:0;padding:16px}
 .contract-generator-form{flex:0 0 auto}
 .contract-generator-preview{flex:1;min-height:200px;overflow-y:auto}
@@ -725,37 +724,6 @@ body.ads-tab .analytics-control-panel,body.ads-tab .sec-bar,body.ads-tab .gen-ex
 .contract-doc-body{font-size:11pt;line-height:1.6}
 .contract-doc-sign{margin-top:32px;padding-top:20px;border-top:1px solid #ddd;text-align:right}
 .contract-doc-sign img{max-width:180px;height:auto;opacity:0.85}
-/* ——— Ads page ——— */
-.ads-page{display:flex;flex-direction:column;gap:16px;height:100%;min-height:0;padding:16px}
-.ads-header{font-size:18px;font-weight:900;color:var(--accent);letter-spacing:.5px}
-.ads-body{display:flex;gap:20px;flex:1;min-height:0}
-.ads-main{flex:1;min-width:0;display:flex;flex-direction:column;gap:16px}
-.ads-sidebar{flex:0 0 200px;display:flex;flex-direction:column}
-.ads-card{background:rgba(0,0,0,0.2);border:1px solid var(--border);border-radius:12px;padding:16px;backdrop-filter:blur(8px)}
-.ads-card-title{font-size:11px;font-weight:800;letter-spacing:1px;color:var(--accent);margin-bottom:12px;text-transform:uppercase}
-.ads-expenses-wrap{overflow-x:auto;overflow-y:auto;max-height:280px}
-.ads-expenses-table{border-collapse:collapse;font-size:12px;min-width:max-content}
-.ads-expenses-table th,.ads-expenses-table td{border:1px solid var(--border);padding:4px 6px;text-align:center}
-.ads-th-label,.ads-td-label{min-width:80px;text-align:left;font-weight:700;color:var(--text);background:rgba(0,0,0,0.15)}
-.ads-th-day,.ads-td-cell{min-width:50px;max-width:60px}
-.ads-th-total,.ads-td-row-total{min-width:70px;font-weight:700;color:var(--accent);background:rgba(0,217,126,0.06)}
-.ads-cell-inp{width:100%;min-width:0;padding:4px 5px;font-size:11px;border:none;background:rgba(255,255,255,0.04);color:var(--text);border-radius:4px;text-align:center}
-.ads-cell-inp:focus{outline:none;background:rgba(0,217,126,0.08);border:1px solid rgba(0,217,126,0.3)}
-.ads-totals-card .ads-totals-title{font-size:11px;font-weight:800;letter-spacing:1px;color:var(--accent);margin-bottom:12px;text-transform:uppercase}
-.ads-total-row{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border);font-size:13px}
-.ads-total-row:last-child{border-bottom:none}
-.ads-total-label{color:var(--muted)}
-.ads-total-val{font-weight:700;color:var(--text)}
-.ads-total-all{color:var(--accent);font-size:15px}
-.ads-links-title{font-size:11px;font-weight:800;letter-spacing:1px;color:var(--accent);margin-bottom:12px;text-transform:uppercase}
-.ads-links-grid{display:flex;flex-direction:column;gap:8px}
-.ads-link-wrap{display:flex;align-items:center;gap:8px}
-.ads-link-btn{flex:1;display:flex;align-items:center;gap:8px;padding:10px 12px;background:rgba(0,217,126,0.08);border:1px solid rgba(0,217,126,0.3);border-radius:10px;color:var(--accent);text-decoration:none;font-size:13px;font-weight:600;transition:all .2s}
-.ads-link-btn:hover{background:rgba(0,217,126,0.15);border-color:var(--accent);box-shadow:0 0 12px rgba(0,217,126,0.2)}
-.ads-link-btn-empty{opacity:.7;border-style:dashed}
-.ads-link-icon{font-size:18px}
-.ads-link-edit{width:32px;height:32px;display:flex;align-items:center;justify-content:center;border:1px solid var(--border);background:var(--surface2);color:var(--muted);border-radius:8px;cursor:pointer;font-size:14px;transition:all .15s;flex-shrink:0}
-.ads-link-edit:hover{border-color:var(--accent);color:var(--accent);background:rgba(0,217,126,0.1)}
 body.projects-mode .gen-extra-prompt,body.projects-mode .gen-buttons-row{display:none !important}
 body.projects-mode .analytics-tumbler{display:none !important}
 body.projects-mode .analytics-control-panel{display:none !important}
@@ -1955,11 +1923,6 @@ if (!window.AVITOLOG_GOALS) {
     <span class="rtab-txt" id="txt-contract">ДОГОВОР</span>
     <div class="rtab-bar" id="bar-contract"></div>
   </button>
-  <button type="button" class="rtab" id="tab-ads" onclick="switchTab('ads')">
-    <span class="rtab-ico">📢</span>
-    <span class="rtab-txt" id="txt-ads">ADS</span>
-    <div class="rtab-bar" id="bar-ads"></div>
-  </button>
   </div>
 </div>
 
@@ -1987,7 +1950,6 @@ if (!window.AVITOLOG_GOALS) {
 <script src="js/projects.js"></script>
 <script src="js/ai-import.js"></script>
 <script src="js/contract-generator.js"></script>
-<script src="js/ads.js"></script>
 <script src="js/main.js"></script>
 </body>
 </html>
