@@ -183,18 +183,13 @@
     try { sigImg = new URL('assets/contract_sign.png', window.location.href).href; } catch (e) {}
     var footerHtml =
       '<div class="contract-doc-footer">' +
-        '<table style="width:100%;border-collapse:collapse;table-layout:fixed">' +
-          '<tr>' +
-            '<td style="width:50%;font-size:11pt;color:#4b4b4b;vertical-align:top;padding:0 16px 0 0">От имени Заказчика</td>' +
-            '<td style="width:50%;font-size:11pt;color:#4b4b4b;vertical-align:top;text-align:center;padding:0">От имени Исполнителя</td>' +
-          '</tr>' +
-          '<tr>' +
-            '<td style="height:120px"></td>' +
-            '<td style="height:120px;vertical-align:top;text-align:center">' +
-              '<img src="' + esc(sigImg) + '" alt="" onerror="this.style.display=\'none\'" style="max-width:260px;height:auto;opacity:0.95;display:inline-block;margin-top:-12px">' +
-            '</td>' +
-          '</tr>' +
-        '</table>' +
+        '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:24px;min-height:140px">' +
+          '<div style="flex:1;font-size:11pt;color:#4b4b4b;padding-top:4px">От имени Заказчика</div>' +
+          '<div style="flex:1;position:relative;min-height:140px;text-align:center">' +
+            '<div style="position:relative;z-index:2;font-size:11pt;color:#4b4b4b;padding-top:4px">От имени Исполнителя</div>' +
+            '<img src="' + esc(sigImg) + '" alt="" onerror="this.style.display=\'none\'" style="position:absolute;right:6px;top:0;width:240px;max-width:240px;height:auto;opacity:0.95;z-index:1;pointer-events:none">' +
+          '</div>' +
+        '</div>' +
       '</div>';
     return '<div class="contract-document">' + body + footerHtml + '</div>';
   }
