@@ -17,6 +17,7 @@
 
 - `GET /api/health` - проверка, что сервер жив.
 - `POST /api/avito/proxy` - прокси-запрос к Avito API.
+- `POST /api/perplexity/chat` - запрос в Perplexity для анализа данных.
 
 ### Пример body для `/api/avito/proxy`
 
@@ -31,6 +32,17 @@
 Можно передать:
 - `query` - объект query-параметров,
 - `body` - тело запроса для `POST/PUT/PATCH`.
+
+### Пример body для `/api/perplexity/chat`
+
+```json
+{
+  "apiKey": "PPLX_KEY",
+  "model": "sonar",
+  "prompt": "Сделай короткий отчёт",
+  "context": "{...данные Avito...}"
+}
+```
 
 ## Важно по безопасности
 

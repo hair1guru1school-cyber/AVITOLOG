@@ -10,6 +10,9 @@
   var AVITO_KEY_LS = 'crm_ads_avito_api_key_v1';
   var AVITO_BASE_LS = 'crm_ads_avito_backend_base_v1';
   var AVITO_PATH_LS = 'crm_ads_avito_path_v1';
+  var PPLX_KEY_LS = 'crm_ads_pplx_api_key_v1';
+  var PPLX_MODEL_LS = 'crm_ads_pplx_model_v1';
+  var PPLX_PROMPT_LS = 'crm_ads_pplx_prompt_v1';
   var ROW_KEYS = ['main', 'new', 'both'];
   var ROW_LABELS = { main: 'Основной', new: 'Новый', both: 'Оба' };
 
@@ -448,10 +451,24 @@
           '</div>' +
           '<div class="ads-api-actions">' +
             '<button type="button" class="ads-api-btn" id="adsApiLoadBtn">Загрузить данные</button>' +
+            '<button type="button" class="ads-api-btn ads-api-btn-ghost" id="adsApiProfileBtn">Профиль</button>' +
+            '<button type="button" class="ads-api-btn ads-api-btn-ghost" id="adsApiItemsBtn">Объявления</button>' +
+            '<button type="button" class="ads-api-btn ads-api-btn-ghost" id="adsApiStatsBtn">Статистика</button>' +
             '<button type="button" class="ads-api-btn ads-api-btn-ghost" id="adsApiSaveBtn">Сохранить настройки</button>' +
           '</div>' +
           '<div class="ads-api-status" id="adsApiStatus">Готово к подключению. Введите ключ и нажмите "Загрузить данные".</div>' +
           '<pre class="ads-api-result" id="adsApiResult">Ответ API появится здесь.</pre>' +
+          '<div class="ads-card-title" style="margin-top:14px">Perplexity AI</div>' +
+          '<div class="ads-api-grid">' +
+            '<label class="ads-api-field"><span>Perplexity API key</span><input type="password" id="adsPplxKeyInput" placeholder="pplx-..."></label>' +
+            '<label class="ads-api-field"><span>Модель</span><input type="text" id="adsPplxModelInput" placeholder="sonar"></label>' +
+            '<label class="ads-api-field ads-api-field-path"><span>Промпт анализа</span><textarea id="adsPplxPromptInput" rows="3" placeholder="Коротко: что происходит в аккаунте, риски, что делать дальше"></textarea></label>' +
+          '</div>' +
+          '<div class="ads-api-actions">' +
+            '<button type="button" class="ads-api-btn" id="adsPplxAnalyzeBtn">Анализировать ответ Avito</button>' +
+          '</div>' +
+          '<div class="ads-api-status" id="adsPplxStatus">AI-анализ будет использовать последний ответ Avito выше.</div>' +
+          '<pre class="ads-api-result" id="adsPplxResult">Результат анализа Perplexity появится здесь.</pre>' +
         '</div>' +
       '</div>';
 
@@ -498,41 +515,61 @@
     var pathInp = root.querySelector('#adsApiPathInput');
     var saveBtn = root.querySelector('#adsApiSaveBtn');
     var loadBtn = root.querySelector('#adsApiLoadBtn');
+    var profileBtn = root.querySelector('#adsApiProfileBtn');
+    var itemsBtn = root.querySelector('#adsApiItemsBtn');
+    var statsBtn = root.querySelector('#adsApiStatsBtn');
     var st = root.querySelector('#adsApiStatus');
     var out = root.querySelector('#adsApiResult');
-    if (!baseInp || !keyInp || !pathInp || !saveBtn || !loadBtn || !st || !out) return;
+    var pplxKeyInp = root.querySelector('#adsPplxKeyInput');
+    var pplxModelInp = root.querySelector('#adsPplxModelInput');
+    var pplxPromptInp = root.querySelector('#adsPplxPromptInput');
+    var pplxAnalyzeBtn = root.querySelector('#adsPplxAnalyzeBtn');
+    var pplxSt = root.querySelector('#adsPplxStatus');
+    var pplxOut = root.querySelector('#adsPplxResult');
+    if (!baseInp || !keyInp || !pathInp || !saveBtn || !loadBtn || !st || !out || !pplxKeyInp || !pplxModelInp || !pplxPromptInp || !pplxAnalyzeBtn || !pplxSt || !pplxOut) return;
 
     baseInp.value = localStorage.getItem(AVITO_BASE_LS) || 'http://localhost:8787/api';
     keyInp.value = localStorage.getItem(AVITO_KEY_LS) || '';
     pathInp.value = localStorage.getItem(AVITO_PATH_LS) || '/core/v1/accounts/self';
+    pplxKeyInp.value = localStorage.getItem(PPLX_KEY_LS) || '';
+    pplxModelInp.value = localStorage.getItem(PPLX_MODEL_LS) || 'sonar';
+    pplxPromptInp.value = localStorage.getItem(PPLX_PROMPT_LS) || 'Сделай короткий отчёт по данным аккаунта Avito: ключевые цифры, проблемы, и 3 конкретных шага на сегодня.';
 
     function setStatus(text, isErr) {
       st.textContent = text;
       st.classList.toggle('is-error', !!isErr);
+    }
+    function setPplxStatus(text, isErr) {
+      pplxSt.textContent = text;
+      pplxSt.classList.toggle('is-error', !!isErr);
     }
 
     function saveSettings() {
       localStorage.setItem(AVITO_BASE_LS, String(baseInp.value || '').trim());
       localStorage.setItem(AVITO_KEY_LS, String(keyInp.value || '').trim());
       localStorage.setItem(AVITO_PATH_LS, String(pathInp.value || '').trim());
+      localStorage.setItem(PPLX_KEY_LS, String(pplxKeyInp.value || '').trim());
+      localStorage.setItem(PPLX_MODEL_LS, String(pplxModelInp.value || '').trim());
+      localStorage.setItem(PPLX_PROMPT_LS, String(pplxPromptInp.value || '').trim());
       setStatus('Настройки сохранены локально.', false);
     }
 
     saveBtn.addEventListener('click', saveSettings);
 
-    loadBtn.addEventListener('click', function() {
+    function loadAvitoPath(apiPath) {
       var backendBase = String(baseInp.value || '').trim().replace(/\/+$/, '');
       var apiKey = String(keyInp.value || '').trim();
-      var apiPath = String(pathInp.value || '').trim();
+      apiPath = String(apiPath || pathInp.value || '').trim();
       if (!backendBase || !apiKey || !apiPath) {
         setStatus('Заполните Backend URL, API ключ и API путь.', true);
-        return;
+        return Promise.resolve(null);
       }
+      pathInp.value = apiPath;
       saveSettings();
       setStatus('Загрузка данных из Avito...', false);
       out.textContent = '...';
 
-      fetch(backendBase + '/avito/proxy', {
+      return fetch(backendBase + '/avito/proxy', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -549,14 +586,80 @@
         if (payload.status >= 400 || payload.data.ok === false) {
           setStatus('Ошибка загрузки: ' + (payload.data.error || ('HTTP ' + payload.status)), true);
           out.textContent = JSON.stringify(payload.data, null, 2);
-          return;
+          return payload;
         }
         setStatus('Данные успешно получены.', false);
         out.textContent = JSON.stringify(payload.data, null, 2);
+        return payload;
       })
       .catch(function(err) {
         setStatus('Сеть/сервер недоступен: ' + (err && err.message ? err.message : 'unknown error'), true);
         out.textContent = String(err && err.stack ? err.stack : err);
+        return null;
+      });
+    }
+
+    loadBtn.addEventListener('click', function() {
+      loadAvitoPath(pathInp.value);
+    });
+    if (profileBtn) profileBtn.addEventListener('click', function() {
+      loadAvitoPath('/core/v1/accounts/self');
+    });
+    if (itemsBtn) itemsBtn.addEventListener('click', function() {
+      loadAvitoPath('/core/v1/items');
+    });
+    if (statsBtn) statsBtn.addEventListener('click', function() {
+      loadAvitoPath('/stats/v1/accounts/items');
+    });
+
+    pplxAnalyzeBtn.addEventListener('click', function() {
+      var backendBase = String(baseInp.value || '').trim().replace(/\/+$/, '');
+      var pplxKey = String(pplxKeyInp.value || '').trim();
+      var pplxModel = String(pplxModelInp.value || '').trim() || 'sonar';
+      var pplxPrompt = String(pplxPromptInp.value || '').trim();
+      var avitoPayload = String(out.textContent || '').trim();
+      if (!backendBase || !pplxKey || !pplxPrompt) {
+        setPplxStatus('Заполните Backend URL, ключ Perplexity и промпт.', true);
+        return;
+      }
+      if (!avitoPayload || avitoPayload === '...' || avitoPayload.indexOf('Ответ API появится здесь.') >= 0) {
+        setPplxStatus('Сначала загрузите данные Avito.', true);
+        return;
+      }
+      saveSettings();
+      setPplxStatus('Отправляю в Perplexity...', false);
+      pplxOut.textContent = '...';
+      fetch(backendBase + '/perplexity/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          apiKey: pplxKey,
+          model: pplxModel,
+          prompt: pplxPrompt,
+          context: avitoPayload
+        })
+      })
+      .then(function(res) {
+        return res.json().catch(function() { return { ok: false, error: 'Invalid JSON from backend' }; })
+          .then(function(data) { return { status: res.status, data: data }; });
+      })
+      .then(function(payload) {
+        if (payload.status >= 400 || payload.data.ok === false) {
+          setPplxStatus('Ошибка AI: ' + (payload.data.error || ('HTTP ' + payload.status)), true);
+          pplxOut.textContent = JSON.stringify(payload.data, null, 2);
+          return;
+        }
+        setPplxStatus('AI-анализ готов.', false);
+        var t = payload.data && payload.data.text ? String(payload.data.text) : '';
+        var cites = payload.data && Array.isArray(payload.data.citations) ? payload.data.citations : [];
+        pplxOut.textContent = t || JSON.stringify(payload.data, null, 2);
+        if (cites.length) {
+          pplxOut.textContent += '\n\nИсточники:\n' + cites.map(function(c, i) { return (i + 1) + '. ' + c; }).join('\n');
+        }
+      })
+      .catch(function(err) {
+        setPplxStatus('Сеть/сервер недоступен: ' + (err && err.message ? err.message : 'unknown error'), true);
+        pplxOut.textContent = String(err && err.stack ? err.stack : err);
       });
     });
   }

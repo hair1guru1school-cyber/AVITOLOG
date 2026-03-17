@@ -592,8 +592,39 @@ function ensureAdsRendererLoaded(onReady, onFail) {
   };
   document.head.appendChild(s);
 }
+function renderAdsIntoMainContent(mc) {
+  if (!mc) return;
+  mc.innerHTML = '';
+  mc.style.display = '';
+  mc.scrollTop = 0;
+  if (typeof window.__showAdsPage === 'function') {
+    try {
+      window.__showAdsPage(mc);
+    } catch (e) {
+      mc.innerHTML = '<div class="empty-st"><div style="font-size:38px;opacity:.25">&#9888;</div><p>ADS</p><p style="font-size:12px;opacity:.7">Ошибка рендера ADS: ' + esc(String((e && e.message) || e || 'unknown')) + '</p></div>';
+    }
+  } else {
+    mc.innerHTML = '<div class="empty-st"><div style="font-size:38px;opacity:.2">&#128226;</div><p>ADS</p><p style="font-size:12px;opacity:.6">Загрузка...</p></div>';
+    ensureAdsRendererLoaded(function() {
+      if (!adsMode) return;
+      if (typeof window.__showAdsPage === 'function') {
+        try { window.__showAdsPage(mc); }
+        catch (e) {
+          mc.innerHTML = '<div class="empty-st"><div style="font-size:38px;opacity:.25">&#9888;</div><p>ADS</p><p style="font-size:12px;opacity:.7">Ошибка рендера ADS: ' + esc(String((e && e.message) || e || 'unknown')) + '</p></div>';
+        }
+      }
+    }, function() {
+      if (!adsMode) return;
+      mc.innerHTML = '<div class="empty-st"><div style="font-size:38px;opacity:.25">&#9888;</div><p>ADS</p><p style="font-size:12px;opacity:.65">Не удалось загрузить модуль ADS</p></div>';
+    });
+  }
+}
 function openAdsTab() {
-  if (adsMode) return;
+  if (adsMode) {
+    renderAdsIntoMainContent(document.getElementById('mainContent'));
+    updateTopRowButtons();
+    return;
+  }
   goalsMode = false;
   projectsMode = false;
   agencyMode = false;
@@ -608,23 +639,7 @@ function openAdsTab() {
   stopProjectsSheetPullTimer();
   stopProjectsDayShiftTimer();
   var mc = document.getElementById('mainContent');
-  if (mc) {
-    mc.innerHTML = '';
-    mc.style.display = '';
-    mc.scrollTop = 0;
-    if (typeof window.__showAdsPage === 'function') {
-      window.__showAdsPage(mc);
-    } else {
-      mc.innerHTML = '<div class="empty-st"><div style="font-size:38px;opacity:.2">&#128226;</div><p>ADS</p><p style="font-size:12px;opacity:.6">Загрузка...</p></div>';
-      ensureAdsRendererLoaded(function() {
-        if (!adsMode) return;
-        if (typeof window.__showAdsPage === 'function') window.__showAdsPage(mc);
-      }, function() {
-        if (!adsMode) return;
-        mc.innerHTML = '<div class="empty-st"><div style="font-size:38px;opacity:.25">&#9888;</div><p>ADS</p><p style="font-size:12px;opacity:.65">Не удалось загрузить модуль ADS</p></div>';
-      });
-    }
-  }
+  renderAdsIntoMainContent(mc);
   updateTopRowButtons();
 }
 function openAgencyTab() {
