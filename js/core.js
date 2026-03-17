@@ -561,6 +561,37 @@ function openAssetsTab() {
   }
   updateTopRowButtons();
 }
+function ensureAdsRendererLoaded(onReady, onFail) {
+  if (typeof window.__showAdsPage === 'function') {
+    if (typeof onReady === 'function') onReady();
+    return;
+  }
+  var existing = document.querySelector('script[data-ads-loader="1"]');
+  if (existing) {
+    existing.addEventListener('load', function() {
+      if (typeof window.__showAdsPage === 'function') {
+        if (typeof onReady === 'function') onReady();
+      } else if (typeof onFail === 'function') onFail();
+    }, { once: true });
+    existing.addEventListener('error', function() {
+      if (typeof onFail === 'function') onFail();
+    }, { once: true });
+    return;
+  }
+  var s = document.createElement('script');
+  s.src = 'js/ads.js?v=' + Date.now();
+  s.async = false;
+  s.setAttribute('data-ads-loader', '1');
+  s.onload = function() {
+    if (typeof window.__showAdsPage === 'function') {
+      if (typeof onReady === 'function') onReady();
+    } else if (typeof onFail === 'function') onFail();
+  };
+  s.onerror = function() {
+    if (typeof onFail === 'function') onFail();
+  };
+  document.head.appendChild(s);
+}
 function openAdsTab() {
   if (adsMode) return;
   goalsMode = false;
@@ -585,6 +616,13 @@ function openAdsTab() {
       window.__showAdsPage(mc);
     } else {
       mc.innerHTML = '<div class="empty-st"><div style="font-size:38px;opacity:.2">&#128226;</div><p>ADS</p><p style="font-size:12px;opacity:.6">Загрузка...</p></div>';
+      ensureAdsRendererLoaded(function() {
+        if (!adsMode) return;
+        if (typeof window.__showAdsPage === 'function') window.__showAdsPage(mc);
+      }, function() {
+        if (!adsMode) return;
+        mc.innerHTML = '<div class="empty-st"><div style="font-size:38px;opacity:.25">&#9888;</div><p>ADS</p><p style="font-size:12px;opacity:.65">Не удалось загрузить модуль ADS</p></div>';
+      });
     }
   }
   updateTopRowButtons();
