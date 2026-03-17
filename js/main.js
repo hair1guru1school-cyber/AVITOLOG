@@ -3095,6 +3095,77 @@ function toggleMobileSidebar() {
 function closeMobileSidebar() {
   document.body.classList.remove('sidebar-open-mobile');
 }
+var MOBILE_WEBVIEW_ON_KEY = 'avitolog_mobile_webview_on';
+var MOBILE_WEBVIEW_SCALE_KEY = 'avitolog_mobile_webview_scale';
+function isMobileViewport() {
+  return window.matchMedia && window.matchMedia('(max-width: 768px)').matches;
+}
+function getMobileWebviewScale() {
+  var raw = parseFloat(localStorage.getItem(MOBILE_WEBVIEW_SCALE_KEY) || '0.58');
+  if (!isFinite(raw)) raw = 0.58;
+  return Math.max(0.35, Math.min(1, raw));
+}
+function setMobileWebviewScale(nextScale) {
+  var s = Math.max(0.35, Math.min(1, Number(nextScale) || 1));
+  localStorage.setItem(MOBILE_WEBVIEW_SCALE_KEY, String(s));
+  applyMobileWebviewMode();
+}
+function applyMobileWebviewMode() {
+  var enabled = false;
+  try { enabled = localStorage.getItem(MOBILE_WEBVIEW_ON_KEY) === '1'; } catch(e) {}
+  var mobile = isMobileViewport();
+  var on = enabled && mobile;
+  var app = document.getElementById('mainApp');
+  var controls = document.getElementById('mobileWebviewControls');
+  var btn = document.getElementById('mobileWebviewToggleBtn');
+  var scaleEl = document.getElementById('mobileWebviewScaleVal');
+  var scale = getMobileWebviewScale();
+
+  document.body.classList.toggle('mobile-webview-on', on);
+  if (!on) document.body.classList.remove('sidebar-open-mobile');
+
+  if (app) {
+    if (on) {
+      app.style.transformOrigin = 'top left';
+      app.style.transform = 'scale(' + scale + ')';
+      app.style.width = (100 / scale) + '%';
+      app.style.minHeight = 'calc(100vh / ' + scale + ')';
+    } else {
+      app.style.transform = '';
+      app.style.transformOrigin = '';
+      app.style.width = '';
+      app.style.minHeight = '';
+    }
+  }
+  if (controls) controls.style.display = mobile ? 'flex' : 'none';
+  if (controls) {
+    controls.style.transformOrigin = 'left bottom';
+    controls.style.transform = on ? ('scale(' + (1 / scale) + ')') : '';
+  }
+  if (btn) btn.textContent = on ? 'WEB ON' : 'WEB';
+  if (scaleEl) scaleEl.textContent = Math.round(scale * 100) + '%';
+}
+function toggleMobileWebviewMode() {
+  var cur = localStorage.getItem(MOBILE_WEBVIEW_ON_KEY) === '1';
+  localStorage.setItem(MOBILE_WEBVIEW_ON_KEY, cur ? '0' : '1');
+  applyMobileWebviewMode();
+}
+function mobileWebviewZoomOut() {
+  if (localStorage.getItem(MOBILE_WEBVIEW_ON_KEY) !== '1') localStorage.setItem(MOBILE_WEBVIEW_ON_KEY, '1');
+  setMobileWebviewScale(getMobileWebviewScale() - 0.08);
+}
+function mobileWebviewZoomIn() {
+  if (localStorage.getItem(MOBILE_WEBVIEW_ON_KEY) !== '1') localStorage.setItem(MOBILE_WEBVIEW_ON_KEY, '1');
+  setMobileWebviewScale(getMobileWebviewScale() + 0.08);
+}
+function mobileWebviewZoomReset() {
+  if (localStorage.getItem(MOBILE_WEBVIEW_ON_KEY) !== '1') localStorage.setItem(MOBILE_WEBVIEW_ON_KEY, '1');
+  setMobileWebviewScale(0.58);
+}
+window.toggleMobileWebviewMode = toggleMobileWebviewMode;
+window.mobileWebviewZoomOut = mobileWebviewZoomOut;
+window.mobileWebviewZoomIn = mobileWebviewZoomIn;
+window.mobileWebviewZoomReset = mobileWebviewZoomReset;
 
 async function browseFolder(folderId, folderName) {
   _browseCurrentId = folderId;
@@ -3538,6 +3609,8 @@ function switchUser(u) {
 }
 document.addEventListener('DOMContentLoaded', function() {
   initDayMode();
+  applyMobileWebviewMode();
+  window.addEventListener('resize', applyMobileWebviewMode);
   updateDriveUI();
   var u = (window.AVITOLOG_USER || 'fil').toLowerCase();
   var filBtn = document.getElementById('userFil');

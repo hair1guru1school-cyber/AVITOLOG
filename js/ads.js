@@ -17,6 +17,7 @@
     { id: 'channel_clients', icon: '📣', label: 'Канал для клиентов', url: '', snippet: '', avatar: '' },
     { id: 'bot_clients', icon: '🤖', label: 'Бот для клиентов', url: '', snippet: '', avatar: '' },
     { id: 'channel_learn', icon: '🎓', label: 'Канал обучения', url: '', snippet: '', avatar: '' },
+    { id: 'channel_vk_blog', icon: '🟦', label: 'Личный блог ВК', url: 'https://vk.com/fil_the_bizz', snippet: 'VK блог', avatar: '' },
     { id: 'bot_learn', icon: '🤖', label: 'Бот обучения', url: '', snippet: '', avatar: '' },
     { id: 'site', icon: '🌐', label: 'Сайт агентства', url: '', snippet: '', avatar: '' },
     { id: 'avito1', icon: '🛒', label: 'Авито аккаунт 1', url: '', snippet: '', avatar: '' },

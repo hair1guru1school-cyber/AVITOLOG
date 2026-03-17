@@ -570,8 +570,21 @@ body.projects-mode .gen-extra-prompt,body.projects-mode .gen-buttons-row{display
 .sidebar-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:350;opacity:0;pointer-events:none;transition:opacity 0.2s}
 .header-menu-btn{display:none;align-items:center;justify-content:center;width:44px;height:44px;border:1px solid var(--border);background:var(--surface2);color:var(--text);border-radius:10px;cursor:pointer;font-size:20px;margin-right:8px}
 .header-menu-btn:hover{background:rgba(0,217,126,0.15);border-color:var(--accent);color:var(--accent)}
+.mobile-webview-controls{display:none;position:fixed;left:10px;bottom:12px;z-index:420;align-items:center;gap:6px;padding:6px;border:1px solid var(--border);border-radius:12px;background:rgba(8,12,22,0.9);backdrop-filter:blur(8px)}
+.mobile-webview-btn{height:30px;min-width:30px;padding:0 10px;border:1px solid var(--border);border-radius:8px;background:var(--surface2);color:var(--text);font-size:12px;font-weight:700;cursor:pointer}
+.mobile-webview-btn.main{min-width:58px;border-color:rgba(53,208,255,0.45);color:#7cf5ff;background:rgba(53,208,255,0.12)}
+.mobile-webview-scale{min-width:44px;text-align:center;font-size:11px;color:var(--muted);font-weight:700}
 .header-day-toggle{width:38px;height:38px;border:1px solid var(--border);background:var(--surface2);color:var(--text);border-radius:10px;cursor:pointer;font-size:18px;display:flex;align-items:center;justify-content:center;transition:all .2s}
 .header-day-toggle:hover{background:rgba(0,217,126,0.15);border-color:var(--accent);color:var(--accent)}
+@media (max-width: 768px) {
+  .mobile-webview-controls{display:flex}
+  body.mobile-webview-on .layout{grid-template-columns:340px 1fr auto;grid-template-areas:none}
+  body.mobile-webview-on .sidebar{position:relative;left:auto;top:auto;bottom:auto;width:auto;z-index:auto;transform:none !important;transition:none;box-shadow:none}
+  body.mobile-webview-on .header-menu-btn{display:none !important}
+  body.mobile-webview-on .sidebar-overlay{display:none !important}
+  body.mobile-webview-on .content-wrap{grid-area:auto;min-width:0;padding-bottom:0}
+  body.mobile-webview-on .right-tabs{position:relative;bottom:auto;left:auto;right:auto;height:auto;flex-direction:column;justify-content:flex-start;padding:10px 8px;border-top:none;border-left:1px solid var(--border)}
+}
 /* ——— Проекты (экран) ——— */
 .analytics-top-row{display:flex;justify-content:flex-start;align-items:flex-end;padding:8px 10px 0;flex-shrink:0;border-bottom:none;margin-bottom:0;gap:8px;background:linear-gradient(180deg,#070b14,#0b1220)}
 .analytics-control-panel{display:flex;justify-content:center;align-items:center;gap:10px;padding:8px 10px 7px;margin:2px auto 0;max-width:max-content;border:1px solid rgba(120,138,176,0.34);border-radius:12px;background:linear-gradient(180deg,rgba(18,24,40,0.78),rgba(13,18,30,0.86));box-shadow:inset 0 0 0 1px rgba(255,255,255,0.02)}
@@ -1865,6 +1878,13 @@ if (!window.AVITOLOG_GOALS) {
   <button type="button" onclick="this.parentElement.style.display='none';try{localStorage.setItem('avito_hide_gh_banner','1')}catch(e){}" style="margin-left:auto;background:transparent;border:1px solid rgba(255,255,255,0.2);color:inherit;padding:4px 10px;border-radius:6px;cursor:pointer;font-size:11px">Скрыть</button>
 </div>
 <div class="sidebar-overlay" id="sidebarOverlay" onclick="closeMobileSidebar()"></div>
+<div class="mobile-webview-controls" id="mobileWebviewControls">
+  <button type="button" class="mobile-webview-btn main" id="mobileWebviewToggleBtn" onclick="toggleMobileWebviewMode()">WEB</button>
+  <button type="button" class="mobile-webview-btn" onclick="mobileWebviewZoomOut()">−</button>
+  <span class="mobile-webview-scale" id="mobileWebviewScaleVal">100%</span>
+  <button type="button" class="mobile-webview-btn" onclick="mobileWebviewZoomIn()">+</button>
+  <button type="button" class="mobile-webview-btn" onclick="mobileWebviewZoomReset()">100</button>
+</div>
 <div class="layout">
 
 <div class="sidebar">
