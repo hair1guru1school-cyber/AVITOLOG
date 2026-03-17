@@ -579,7 +579,8 @@ function ensureAdsRendererLoaded(onReady, onFail) {
     return;
   }
   var s = document.createElement('script');
-  s.src = 'js/ads.js?v=' + Date.now();
+  // Keep plain path so it works in file:// mode too.
+  s.src = 'js/ads.js';
   s.async = false;
   s.setAttribute('data-ads-loader', '1');
   s.onload = function() {
