@@ -81,6 +81,45 @@ var CRM_TASKS_KEY = 'crm_tasks_v1';
 var _crmTaskFilter = 'all';
 
 function crmTaskNowIso() { return new Date().toISOString(); }
+function crmTaskEnsureBlock() {
+  if (document.getElementById('crmTasksWrap')) return;
+  var saveBtn = document.getElementById('saveClientBtn');
+  if (!saveBtn || !saveBtn.parentElement) return;
+  var host = saveBtn.parentElement;
+  var wrap = document.createElement('div');
+  wrap.className = 'crm-tasks-wrap';
+  wrap.id = 'crmTasksWrap';
+  wrap.innerHTML =
+    '<div class="crm-tasks-head">' +
+      '<div class="crm-tasks-title">📋 ЗАДАЧИ</div>' +
+      '<button type="button" class="crm-task-new-btn" onclick="crmTaskToggleForm()">+ Новая задача</button>' +
+    '</div>' +
+    '<div class="crm-task-form" id="crmTaskForm">' +
+      '<div class="crm-task-form-grid">' +
+        '<div class="fg"><label>Название</label><input type="text" id="crmTaskTitleInp" placeholder="Например: Выставить счёт"></div>' +
+        '<div class="fg"><label>Клиент / проект</label><input type="text" id="crmTaskProjectInp" placeholder="Проект или клиент"></div>' +
+        '<div class="fg"><label>Тип</label><select id="crmTaskTypeInp"><option value="normal">normal</option><option value="money">money</option><option value="urgent">urgent</option></select></div>' +
+        '<div class="fg"><label>Дедлайн</label><input type="datetime-local" id="crmTaskDeadlineInp"></div>' +
+      '</div>' +
+      '<div class="crm-task-form-actions">' +
+        '<button type="button" class="crm-task-act" onclick="crmTaskCreate()">Создать</button>' +
+        '<button type="button" class="crm-task-act" onclick="crmTaskToggleForm(false)">Отмена</button>' +
+      '</div>' +
+    '</div>' +
+    '<div class="crm-task-filters" id="crmTaskFilters">' +
+      '<button type="button" class="crm-task-filter-btn on" data-filter="all" onclick="crmTaskSetFilter(\'all\')">Все</button>' +
+      '<button type="button" class="crm-task-filter-btn" data-filter="today" onclick="crmTaskSetFilter(\'today\')">Сегодня</button>' +
+      '<button type="button" class="crm-task-filter-btn" data-filter="money" onclick="crmTaskSetFilter(\'money\')">Деньги 💰</button>' +
+      '<button type="button" class="crm-task-filter-btn" data-filter="overdue" onclick="crmTaskSetFilter(\'overdue\')">Просрочено</button>' +
+      '<button type="button" class="crm-task-filter-btn" data-filter="projects" onclick="crmTaskSetFilter(\'projects\')">Проекты</button>' +
+    '</div>' +
+    '<div class="crm-task-summary" id="crmTaskSummary"></div>' +
+    '<div class="crm-task-list-title">✔ Выполненные сегодня</div><div class="crm-task-list" id="crmTaskDoneList"></div>' +
+    '<div class="crm-task-list-title">⏳ В работе</div><div class="crm-task-list" id="crmTaskActiveList"></div>' +
+    '<div class="crm-task-list-title">❌ Просроченные</div><div class="crm-task-list" id="crmTaskOverdueList"></div>' +
+    '<div class="crm-task-list-title">💰 ЗАДАЧИ С ДЕНЬГАМИ</div><div class="crm-task-list" id="crmTaskMoneyList"></div>';
+  host.insertBefore(wrap, saveBtn);
+}
 function crmTaskEsc(s) {
   if (!s) return '';
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
@@ -3822,6 +3861,7 @@ document.addEventListener('DOMContentLoaded', function() {
   if (Array.isArray(customKP)) customKP.forEach(function(val) { addKPTag(val); });
   initKP();
   initAC();
+  crmTaskEnsureBlock();
   crmTaskRender();
   initSecBar();
   var ep = document.getElementById('extraPromptInp');
