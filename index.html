@@ -788,14 +788,20 @@ body.contract-tab .analytics-control-panel,body.contract-tab .sec-bar,body.contr
 .ads-card{background:rgba(0,0,0,0.2);border:1px solid var(--border);border-radius:12px;padding:16px;backdrop-filter:blur(8px)}
 .ads-card-title{font-size:11px;font-weight:800;letter-spacing:1px;color:var(--accent);margin-bottom:12px;text-transform:uppercase}
 .ads-expenses-wrap{overflow-x:auto;overflow-y:auto;max-height:280px}
-.ads-expenses-table{border-collapse:collapse;font-size:12px;min-width:max-content}
-.ads-expenses-table th,.ads-expenses-table td{border:1px solid var(--border);padding:4px 6px;text-align:center}
-.ads-th-label,.ads-td-label{min-width:80px;text-align:left;font-weight:700;color:var(--text);background:rgba(0,0,0,0.15)}
-.ads-th-day,.ads-td-cell{min-width:50px;max-width:60px}
-.ads-th-total,.ads-td-row-total{min-width:70px;font-weight:700;color:var(--accent);background:rgba(0,217,126,0.06)}
-.ads-cell-inp{width:100%;min-width:0;height:24px;padding:2px 4px;font-size:12px;font-weight:400;font-variant-numeric:tabular-nums;border:1px solid rgba(255,255,255,0.12);background:rgba(255,255,255,0.02);color:var(--text);border-radius:0;text-align:center}
-.ads-cell-inp:focus{outline:none;background:rgba(0,217,126,0.06);border-color:rgba(0,217,126,0.45)}
-.ads-td-cell-auto{font-size:12px;font-weight:400;font-variant-numeric:tabular-nums;color:#7cf5ff;background:rgba(53,208,255,0.06)}
+.ads-expenses-table{border-collapse:separate;border-spacing:4px;font-size:12px;min-width:max-content}
+.ads-expenses-table th,.ads-expenses-table td{border:none;padding:0;text-align:center;height:30px;vertical-align:middle}
+.ads-th-label,.ads-td-label{min-width:80px;text-align:left;font-weight:700;color:var(--text);background:rgba(255,255,255,0.04);padding:0 10px;border-radius:9px}
+.ads-th-day,.ads-td-cell{min-width:52px;max-width:62px;background:rgba(255,255,255,0.03);border-radius:9px;font-variant-numeric:tabular-nums}
+.ads-th-total,.ads-td-row-total{min-width:72px;font-weight:700;color:var(--accent);background:rgba(0,217,126,0.08);border-radius:9px;padding:0 10px}
+.ads-td-cell-auto{font-size:12px;font-weight:500;font-variant-numeric:tabular-nums;color:#7cf5ff;background:rgba(53,208,255,0.09)}
+.ads-td-cell-editable{cursor:text;transition:background .15s,box-shadow .15s}
+.ads-td-cell-editable:hover{background:rgba(0,217,126,0.08)}
+.ads-td-cell-editing{background:rgba(0,217,126,0.1)!important;box-shadow:inset 0 0 0 1px rgba(0,217,126,0.45)}
+.ads-cell-base-val{opacity:.82}
+.ads-cell-plus-sep{margin:0 4px;opacity:.72}
+.ads-cell-inline-editor{display:inline-block;min-width:12px;outline:none;color:#7cf5ff}
+.ads-cell-inline-editor:empty::after{content:'|';animation:adsCaretBlink .9s step-end infinite;color:#7cf5ff}
+@keyframes adsCaretBlink{50%{opacity:0}}
 .ads-totals-card .ads-totals-title{font-size:11px;font-weight:800;letter-spacing:1px;color:var(--accent);margin-bottom:12px;text-transform:uppercase}
 .ads-total-row{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border);font-size:13px}
 .ads-total-row:last-child{border-bottom:none}

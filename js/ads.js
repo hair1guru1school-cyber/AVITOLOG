@@ -119,7 +119,7 @@
         if (isBoth) {
           html += '<td class="ads-td-cell ads-td-cell-auto" title="Авто: Основной + Новый">' + (displayVal ? String(displayVal) : '') + '</td>';
         } else {
-          html += '<td class="ads-td-cell"><input type="text" inputmode="numeric" class="ads-cell-inp" data-row="' + rowKey + '" data-day="' + d + '" value="' + (displayVal ? String(displayVal) : '') + '"></td>';
+          html += '<td class="ads-td-cell ads-td-cell-editable" data-row="' + rowKey + '" data-day="' + d + '" title="ПКМ: добавить сумму к этому дню">' + (displayVal ? String(displayVal) : '') + '</td>';
         }
       }
       html += '<td class="ads-td-row-total" data-row="' + rowKey + '">' + (rowTotal ? rowTotal.toLocaleString('ru') : '0') + '</td></tr>';
@@ -128,37 +128,72 @@
     html += '</tbody></table></div>';
     container.innerHTML = html;
 
-    container.querySelectorAll('.ads-cell-inp').forEach(function(inp) {
-      inp.addEventListener('input', function() {
-        var row = inp.getAttribute('data-row');
-        if (row === 'both') return;
-        var day = parseInt(inp.getAttribute('data-day'), 10);
-        var key = getCellKey(row, day);
-        state.data[key] = inp.value.trim() || null;
-        recomputeBothRow(state);
-        saveExpenses(state);
-        updateRowTotal(container, state, row);
-        updateRowTotal(container, state, 'both');
-        var bothTd = container.querySelector('tr[data-row="both"] .ads-td-cell:nth-child(' + (day + 1) + ')');
-        if (bothTd) bothTd.textContent = formatNum(parseNum(state.data[getCellKey('both', day)]));
-        if (typeof onChange === 'function') onChange();
-      });
-      inp.addEventListener('blur', function() {
-        var v = parseNum(inp.value);
-        if (v !== 0) inp.value = formatNum(v);
+    container.querySelectorAll('.ads-td-cell-editable').forEach(function(td) {
+      td.addEventListener('contextmenu', function(e) {
+        e.preventDefault();
+        var row = td.getAttribute('data-row');
+        if (!row || row === 'both') return;
+        var day = parseInt(td.getAttribute('data-day'), 10);
+        if (!day) return;
+        startCellAddMode(td, container, state, row, day, onChange);
       });
     });
   }
 
-  function updateRowTotal(container, state, rowKey) {
-    var row = container.querySelector('tr[data-row="' + rowKey + '"]');
-    if (!row) return;
-    var total = 0;
-    row.querySelectorAll('.ads-cell-inp').forEach(function(inp) {
-      total += parseNum(inp.value);
+  function startCellAddMode(td, container, state, row, day, onChange) {
+    if (!td) return;
+    var key = getCellKey(row, day);
+    var baseVal = parseNum(state.data[key]);
+    td.classList.add('ads-td-cell-editing');
+    td.innerHTML =
+      '<span class="ads-cell-base-val">' + (baseVal ? formatNum(baseVal) : '0') + '</span>' +
+      '<span class="ads-cell-plus-sep">+</span>' +
+      '<span class="ads-cell-inline-editor" contenteditable="true" inputmode="numeric"></span>';
+
+    var editor = td.querySelector('.ads-cell-inline-editor');
+    if (!editor) return;
+
+    var close = function(apply) {
+      document.removeEventListener('mousedown', onDocMouseDown, true);
+      td.classList.remove('ads-td-cell-editing');
+
+      if (apply) {
+        var raw = String(editor.textContent || '').trim();
+        var addVal = parseNum(raw);
+        if (raw && addVal !== 0) {
+          var nextVal = baseVal + addVal;
+          state.data[key] = nextVal || null;
+          recomputeBothRow(state);
+          saveExpenses(state);
+          renderExpensesTable(container, state, onChange);
+          if (typeof onChange === 'function') onChange();
+          return;
+        }
+      }
+
+      td.textContent = baseVal ? formatNum(baseVal) : '';
+    };
+
+    var onDocMouseDown = function(evt) {
+      if (!td.contains(evt.target)) close(true);
+    };
+
+    editor.addEventListener('keydown', function(evt) {
+      if (evt.key === 'Enter') {
+        evt.preventDefault();
+        close(true);
+      } else if (evt.key === 'Escape') {
+        evt.preventDefault();
+        close(false);
+      }
     });
-    var td = row.querySelector('.ads-td-row-total');
-    if (td) td.textContent = total ? total.toLocaleString('ru') : '0';
+
+    editor.addEventListener('blur', function() {
+      close(true);
+    });
+
+    document.addEventListener('mousedown', onDocMouseDown, true);
+    editor.focus();
   }
 
   function computeTotals(state) {
