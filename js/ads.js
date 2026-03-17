@@ -7,6 +7,9 @@
 
   var EXPENSES_KEY = 'crm_ads_expenses_v1';
   var LINKS_KEY = 'crm_ads_links_v1';
+  var AVITO_KEY_LS = 'crm_ads_avito_api_key_v1';
+  var AVITO_BASE_LS = 'crm_ads_avito_backend_base_v1';
+  var AVITO_PATH_LS = 'crm_ads_avito_path_v1';
   var ROW_KEYS = ['main', 'new', 'both'];
   var ROW_LABELS = { main: 'Основной', new: 'Новый', both: 'Оба' };
 
@@ -89,6 +92,14 @@
     return n === 0 ? '' : String(n);
   }
 
+  function getTodayDayForState(state) {
+    var now = new Date();
+    var currentYear = String(now.getFullYear());
+    var currentMonth = String(now.getMonth() + 1);
+    if (!state || String(state.year) !== currentYear || String(state.month) !== currentMonth) return 0;
+    return now.getDate();
+  }
+
   function recomputeBothRow(state) {
     for (var d = 1; d <= 31; d++) {
       var mainVal = parseNum(state.data[getCellKey('main', d)]);
@@ -101,9 +112,11 @@
     recomputeBothRow(state);
     saveExpenses(state);
     var days = 31;
+    var todayDay = getTodayDayForState(state);
     var html = '<div class="ads-expenses-wrap"><table class="ads-expenses-table"><thead><tr><th class="ads-th-label">Ряд</th>';
     for (var d = 1; d <= days; d++) {
-      html += '<th class="ads-th-day">' + d + '</th>';
+      var todayHeadClass = d === todayDay ? ' ads-day-today' : '';
+      html += '<th class="ads-th-day' + todayHeadClass + '">' + d + '</th>';
     }
     html += '<th class="ads-th-total">Итог</th></tr></thead><tbody>';
 
@@ -116,10 +129,11 @@
         var displayVal = formatNum(parseNum(val));
         rowTotal += parseNum(val);
         var isBoth = rowKey === 'both';
+        var todayCellClass = d === todayDay ? ' ads-day-today' : '';
         if (isBoth) {
-          html += '<td class="ads-td-cell ads-td-cell-auto" title="Авто: Основной + Новый">' + (displayVal ? String(displayVal) : '') + '</td>';
+          html += '<td class="ads-td-cell ads-td-cell-auto' + todayCellClass + '" title="Авто: Основной + Новый">' + (displayVal ? String(displayVal) : '') + '</td>';
         } else {
-          html += '<td class="ads-td-cell ads-td-cell-editable" data-row="' + rowKey + '" data-day="' + d + '" title="ПКМ: добавить сумму к этому дню">' + (displayVal ? String(displayVal) : '') + '</td>';
+          html += '<td class="ads-td-cell ads-td-cell-editable' + todayCellClass + '" data-row="' + rowKey + '" data-day="' + d + '" title="ПКМ: добавить сумму к этому дню">' + (displayVal ? String(displayVal) : '') + '</td>';
         }
       }
       html += '<td class="ads-td-row-total" data-row="' + rowKey + '">' + (rowTotal ? rowTotal.toLocaleString('ru') : '0') + '</td></tr>';
@@ -395,26 +409,48 @@
     wrap.className = 'ads-page';
     wrap.innerHTML =
       '<div class="ads-header">📢 Рекламные расходы</div>' +
-      '<div class="ads-top-summary" id="adsTopSummary">' +
-        '<div class="ads-summary-card ads-summary-all"><span class="ads-summary-label">Всего</span><span class="ads-summary-val" data-ads-val="all">0</span></div>' +
-        '<div class="ads-summary-card"><span class="ads-summary-label">Основной</span><span class="ads-summary-val" data-ads-val="main">0</span></div>' +
-        '<div class="ads-summary-card"><span class="ads-summary-label">Новый</span><span class="ads-summary-val" data-ads-val="new">0</span></div>' +
-        '<div class="ads-summary-card"><span class="ads-summary-label">Оба</span><span class="ads-summary-val" data-ads-val="both">0</span></div>' +
+      '<div class="ads-subtabs">' +
+        '<button type="button" class="ads-subtab-btn on" data-ads-subtab="expenses">Расходы</button>' +
+        '<button type="button" class="ads-subtab-btn" data-ads-subtab="api">Avito API</button>' +
       '</div>' +
-      '<div class="ads-body">' +
-        '<div class="ads-main">' +
-          '<div class="ads-card ads-expenses-card">' +
-            '<div class="ads-card-title">Расходы по дням</div>' +
-            '<div class="ads-expenses-container" id="adsExpensesContainer"></div>' +
-          '</div>' +
-          '<div class="ads-card ads-links-card">' +
-            '<div id="adsLinksContainer"></div>' +
-          '</div>' +
+      '<div class="ads-subtab-page on" data-ads-page="expenses">' +
+        '<div class="ads-top-summary" id="adsTopSummary">' +
+          '<div class="ads-summary-card ads-summary-all"><span class="ads-summary-label">Всего</span><span class="ads-summary-val" data-ads-val="all">0</span></div>' +
+          '<div class="ads-summary-card"><span class="ads-summary-label">Основной</span><span class="ads-summary-val" data-ads-val="main">0</span></div>' +
+          '<div class="ads-summary-card"><span class="ads-summary-label">Новый</span><span class="ads-summary-val" data-ads-val="new">0</span></div>' +
+          '<div class="ads-summary-card"><span class="ads-summary-label">Оба</span><span class="ads-summary-val" data-ads-val="both">0</span></div>' +
         '</div>' +
-        '<div class="ads-sidebar">' +
-          '<div class="ads-card ads-totals-card">' +
-            '<div id="adsTotalsContainer"></div>' +
+        '<div class="ads-body">' +
+          '<div class="ads-main">' +
+            '<div class="ads-card ads-expenses-card">' +
+              '<div class="ads-card-title">Расходы по дням</div>' +
+              '<div class="ads-expenses-container" id="adsExpensesContainer"></div>' +
+            '</div>' +
+            '<div class="ads-card ads-links-card">' +
+              '<div id="adsLinksContainer"></div>' +
+            '</div>' +
           '</div>' +
+          '<div class="ads-sidebar">' +
+            '<div class="ads-card ads-totals-card">' +
+              '<div id="adsTotalsContainer"></div>' +
+            '</div>' +
+          '</div>' +
+        </div>' +
+      '</div>' +
+      '<div class="ads-subtab-page" data-ads-page="api">' +
+        '<div class="ads-card ads-api-card">' +
+          '<div class="ads-card-title">Интеграция Avito API</div>' +
+          '<div class="ads-api-grid">' +
+            '<label class="ads-api-field"><span>Backend URL</span><input type="text" id="adsApiBackendBase" placeholder="http://localhost:8787/api"></label>' +
+            '<label class="ads-api-field"><span>Ключ API</span><input type="password" id="adsApiKeyInput" placeholder="Вставьте ваш Avito API key"></label>' +
+            '<label class="ads-api-field ads-api-field-path"><span>API путь</span><input type="text" id="adsApiPathInput" placeholder="/core/v1/accounts/self"></label>' +
+          '</div>' +
+          '<div class="ads-api-actions">' +
+            '<button type="button" class="ads-api-btn" id="adsApiLoadBtn">Загрузить данные</button>' +
+            '<button type="button" class="ads-api-btn ads-api-btn-ghost" id="adsApiSaveBtn">Сохранить настройки</button>' +
+          '</div>' +
+          '<div class="ads-api-status" id="adsApiStatus">Готово к подключению. Введите ключ и нажмите "Загрузить данные".</div>' +
+          '<pre class="ads-api-result" id="adsApiResult">Ответ API появится здесь.</pre>' +
         '</div>' +
       '</div>';
 
@@ -434,6 +470,94 @@
     updateTotalsPanel(totalsContainer, state);
     updateAdsTopSummary(wrap.querySelector('#adsTopSummary'), state);
     renderLinksPanel(linksContainer, links);
+
+    setupAdsSubtabs(wrap);
+    setupAdsApiPanel(wrap);
+  }
+
+  function setupAdsSubtabs(root) {
+    if (!root) return;
+    var btns = root.querySelectorAll('[data-ads-subtab]');
+    var pages = root.querySelectorAll('[data-ads-page]');
+    btns.forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        var id = btn.getAttribute('data-ads-subtab');
+        btns.forEach(function(b) { b.classList.toggle('on', b === btn); });
+        pages.forEach(function(p) {
+          p.classList.toggle('on', p.getAttribute('data-ads-page') === id);
+        });
+      });
+    });
+  }
+
+  function setupAdsApiPanel(root) {
+    if (!root) return;
+    var baseInp = root.querySelector('#adsApiBackendBase');
+    var keyInp = root.querySelector('#adsApiKeyInput');
+    var pathInp = root.querySelector('#adsApiPathInput');
+    var saveBtn = root.querySelector('#adsApiSaveBtn');
+    var loadBtn = root.querySelector('#adsApiLoadBtn');
+    var st = root.querySelector('#adsApiStatus');
+    var out = root.querySelector('#adsApiResult');
+    if (!baseInp || !keyInp || !pathInp || !saveBtn || !loadBtn || !st || !out) return;
+
+    baseInp.value = localStorage.getItem(AVITO_BASE_LS) || 'http://localhost:8787/api';
+    keyInp.value = localStorage.getItem(AVITO_KEY_LS) || '';
+    pathInp.value = localStorage.getItem(AVITO_PATH_LS) || '/core/v1/accounts/self';
+
+    function setStatus(text, isErr) {
+      st.textContent = text;
+      st.classList.toggle('is-error', !!isErr);
+    }
+
+    function saveSettings() {
+      localStorage.setItem(AVITO_BASE_LS, String(baseInp.value || '').trim());
+      localStorage.setItem(AVITO_KEY_LS, String(keyInp.value || '').trim());
+      localStorage.setItem(AVITO_PATH_LS, String(pathInp.value || '').trim());
+      setStatus('Настройки сохранены локально.', false);
+    }
+
+    saveBtn.addEventListener('click', saveSettings);
+
+    loadBtn.addEventListener('click', function() {
+      var backendBase = String(baseInp.value || '').trim().replace(/\/+$/, '');
+      var apiKey = String(keyInp.value || '').trim();
+      var apiPath = String(pathInp.value || '').trim();
+      if (!backendBase || !apiKey || !apiPath) {
+        setStatus('Заполните Backend URL, API ключ и API путь.', true);
+        return;
+      }
+      saveSettings();
+      setStatus('Загрузка данных из Avito...', false);
+      out.textContent = '...';
+
+      fetch(backendBase + '/avito/proxy', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          apiKey: apiKey,
+          path: apiPath,
+          method: 'GET'
+        })
+      })
+      .then(function(res) {
+        return res.json().catch(function() { return { ok: false, error: 'Invalid JSON from backend' }; })
+          .then(function(data) { return { status: res.status, data: data }; });
+      })
+      .then(function(payload) {
+        if (payload.status >= 400 || payload.data.ok === false) {
+          setStatus('Ошибка загрузки: ' + (payload.data.error || ('HTTP ' + payload.status)), true);
+          out.textContent = JSON.stringify(payload.data, null, 2);
+          return;
+        }
+        setStatus('Данные успешно получены.', false);
+        out.textContent = JSON.stringify(payload.data, null, 2);
+      })
+      .catch(function(err) {
+        setStatus('Сеть/сервер недоступен: ' + (err && err.message ? err.message : 'unknown error'), true);
+        out.textContent = String(err && err.stack ? err.stack : err);
+      });
+    });
   }
 
   window.__showAdsPage = renderAdsPage;

@@ -776,6 +776,12 @@ body.contract-tab .analytics-control-panel,body.contract-tab .sec-bar,body.contr
 /* ——— Ads page ——— */
 .ads-page{display:flex;flex-direction:column;gap:16px;height:100%;min-height:0;padding:16px}
 .ads-header{font-size:18px;font-weight:900;color:var(--accent);letter-spacing:.5px}
+.ads-subtabs{display:flex;gap:8px;flex-wrap:wrap}
+.ads-subtab-btn{height:32px;padding:0 14px;border-radius:9px;border:1px solid var(--border);background:rgba(255,255,255,0.03);color:var(--muted);font-size:12px;font-weight:700;cursor:pointer;transition:all .15s}
+.ads-subtab-btn:hover{border-color:rgba(0,217,126,0.5);color:var(--text)}
+.ads-subtab-btn.on{background:rgba(0,217,126,0.16);border-color:rgba(0,217,126,0.55);color:var(--accent)}
+.ads-subtab-page{display:none;min-height:0}
+.ads-subtab-page.on{display:block}
 .ads-top-summary{display:flex;flex-wrap:wrap;gap:12px;margin-bottom:8px;flex-shrink:0}
 .ads-summary-card{background:rgba(0,217,126,0.12);border:1px solid rgba(0,217,126,0.35);border-radius:12px;padding:14px 20px;display:flex;flex-direction:column;align-items:center;gap:4px;min-width:100px}
 .ads-summary-card.ads-summary-all{background:rgba(53,208,255,0.15);border-color:rgba(53,208,255,0.5);box-shadow:0 0 14px rgba(53,208,255,0.2)}
@@ -793,6 +799,7 @@ body.contract-tab .analytics-control-panel,body.contract-tab .sec-bar,body.contr
 .ads-th-label,.ads-td-label{min-width:80px;text-align:left;font-weight:700;color:var(--text);background:rgba(255,255,255,0.04);padding:0 10px;border-radius:9px}
 .ads-th-day,.ads-td-cell{min-width:52px;max-width:62px;background:rgba(255,255,255,0.03);border-radius:9px;font-variant-numeric:tabular-nums}
 .ads-th-total,.ads-td-row-total{min-width:72px;font-weight:700;color:var(--accent);background:rgba(0,217,126,0.08);border-radius:9px;padding:0 10px}
+.ads-th-day.ads-day-today,.ads-td-cell.ads-day-today{background:rgba(53,208,255,0.18);box-shadow:inset 0 0 0 1px rgba(53,208,255,0.45)}
 .ads-td-cell-auto{font-size:12px;font-weight:500;font-variant-numeric:tabular-nums;color:#7cf5ff;background:rgba(53,208,255,0.09)}
 .ads-td-cell-editable{cursor:text;transition:background .15s,box-shadow .15s}
 .ads-td-cell-editable:hover{background:rgba(0,217,126,0.08)}
@@ -834,6 +841,19 @@ body.contract-tab .analytics-control-panel,body.contract-tab .sec-bar,body.contr
 .ads-editor-save,.ads-editor-cancel{height:28px;min-width:36px;padding:0 8px;border:1px solid var(--border);border-radius:8px;background:var(--surface2);color:var(--text);cursor:pointer;font-size:12px}
 .ads-editor-save:hover{border-color:var(--accent);color:var(--accent)}
 .ads-editor-cancel:hover{border-color:#ff7b7b;color:#ff7b7b}
+.ads-api-card{max-width:960px}
+.ads-api-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.ads-api-field{display:flex;flex-direction:column;gap:6px}
+.ads-api-field span{font-size:11px;font-weight:700;color:var(--muted);letter-spacing:.5px;text-transform:uppercase}
+.ads-api-field input{height:34px;padding:0 10px;border-radius:8px;border:1px solid var(--border);background:rgba(0,0,0,0.2);color:var(--text);outline:none;font-size:12px}
+.ads-api-field input:focus{border-color:rgba(53,208,255,0.65)}
+.ads-api-field-path{grid-column:1 / -1}
+.ads-api-actions{display:flex;gap:8px;margin-top:12px}
+.ads-api-btn{height:32px;padding:0 12px;border-radius:8px;border:1px solid rgba(0,217,126,0.55);background:rgba(0,217,126,0.18);color:var(--accent);font-size:12px;font-weight:700;cursor:pointer}
+.ads-api-btn-ghost{border-color:var(--border);background:rgba(255,255,255,0.03);color:var(--muted)}
+.ads-api-status{margin-top:12px;font-size:12px;color:#8fefff}
+.ads-api-status.is-error{color:#ff9f9f}
+.ads-api-result{margin-top:10px;padding:10px;min-height:220px;max-height:420px;overflow:auto;border-radius:10px;border:1px solid var(--border);background:rgba(0,0,0,0.22);font-size:12px;line-height:1.45;color:#d8e8ff;white-space:pre-wrap;word-break:break-word}
 body.projects-mode .gen-extra-prompt,body.projects-mode .gen-buttons-row{display:none !important}
 body.projects-mode .analytics-tumbler{display:none !important}
 body.projects-mode .analytics-control-panel{display:none !important}

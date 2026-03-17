@@ -3,3 +3,6 @@ __pycache__/
 *.pyc
 .env
 .env.local
+node_modules/
+backend/node_modules/
+backend/.env

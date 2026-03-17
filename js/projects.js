@@ -818,7 +818,7 @@ function renderProjectChildLineHtml(p, idx) {
   var focusKey = p.id + ':' + idx;
   return '<div class="proj-extra-line">' +
     '<button type="button" class="proj-extra-del" title="Удалить строку" onclick="event.stopPropagation();removeProjectChildLine(\'' + p.id + '\',' + idx + ')">×</button>' +
-    '<input type="text" class="proj-extra-input" data-child-focus="' + focusKey + '" value="' + escAttr(line || '') + '" placeholder="Доп. позиция" onclick="event.stopPropagation();" oninput="updateProjectChildLine(\'' + p.id + '\',' + idx + ',this.value)" onkeydown="handleProjectChildLineKey(event,\'' + p.id + '\',' + idx + ')">' +
+    '<input type="text" class="proj-extra-input" data-child-focus="' + focusKey + '" value="' + escAttr(line || '') + '" placeholder="Доп. позиция" onclick="event.stopPropagation();" onblur="updateProjectChildLine(\'' + p.id + '\',' + idx + ',this.value)" onkeydown="handleProjectChildLineKey(event,\'' + p.id + '\',' + idx + ')">' +
     '<button type="button" class="proj-extra-add" title="Добавить строку" onclick="event.stopPropagation();addProjectChildLine(\'' + p.id + '\',' + idx + ')">+</button>' +
     '</div>';
 }
@@ -3132,8 +3132,12 @@ function saveProjectOptional(projectId, value) {
   syncProjectToActiveSheet(projectId, 'optional_field_update');
 }
 function handleProjectChildLineKey(e, projectId, idx) {
+  if (e && typeof e.stopPropagation === 'function') e.stopPropagation();
   if (e.key === 'Enter') {
     e.preventDefault();
+    if (e && e.target && typeof e.target.value !== 'undefined') {
+      updateProjectChildLine(projectId, idx, e.target.value);
+    }
     addProjectChildLine(projectId, idx);
   }
 }
@@ -3145,7 +3149,6 @@ function updateProjectChildLine(projectId, idx, value) {
   lines[idx] = value;
   p.childLines = lines;
   saveProjectsData(data);
-  if (typeof rerenderProjectsPreserveScroll === 'function') rerenderProjectsPreserveScroll();
 }
 function addProjectChildLine(projectId, idx) {
   var data = loadProjectsData();
