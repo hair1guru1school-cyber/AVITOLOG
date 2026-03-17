@@ -179,17 +179,11 @@
     } catch (e) {}
     var headerHtml = '<div class="contract-doc-header"><img src="' + esc(headerImg) + '" alt="" onerror="if(!this.dataset.fallback){this.dataset.fallback=1;this.src=\'' + esc(headerFallbackImg) + '\';}else{this.style.display=\'none\';}" style="max-width:100%;height:auto"></div>';
     var body = headerHtml + '<div class="contract-doc-body">' + getContractMainTemplate(data) + '</div>';
-    var sigImg = 'assets/contract_sign.png';
-    try { sigImg = new URL('assets/contract_sign.png', window.location.href).href; } catch (e) {}
+    var footerImg = 'assets/contract_footer.png';
+    try { footerImg = new URL('assets/contract_footer.png', window.location.href).href; } catch (e) {}
     var footerHtml =
       '<div class="contract-doc-footer">' +
-        '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:24px;min-height:140px">' +
-          '<div style="flex:1;font-size:11pt;color:#4b4b4b;padding-top:4px">От имени Заказчика</div>' +
-          '<div style="flex:1;position:relative;min-height:140px;text-align:center">' +
-            '<div style="position:relative;z-index:2;font-size:11pt;color:#4b4b4b;padding-top:4px">От имени Исполнителя</div>' +
-            '<img src="' + esc(sigImg) + '" alt="" onerror="this.style.display=\'none\'" style="position:absolute;right:6px;top:0;width:240px;max-width:240px;height:auto;opacity:0.95;z-index:1;pointer-events:none">' +
-          '</div>' +
-        '</div>' +
+        '<img src="' + esc(footerImg) + '" alt="" onerror="this.style.display=\'none\'" style="display:block;width:100%;max-width:100%;height:auto">' +
       '</div>';
     return '<div class="contract-document">' + body + footerHtml + '</div>';
   }
