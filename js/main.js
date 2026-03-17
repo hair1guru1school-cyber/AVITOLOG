@@ -76,6 +76,186 @@ function getPos() {
   return result;
 }
 
+// ── CRM TASKS ──
+var CRM_TASKS_KEY = 'crm_tasks_v1';
+var _crmTaskFilter = 'all';
+
+function crmTaskNowIso() { return new Date().toISOString(); }
+function crmTaskEsc(s) {
+  if (!s) return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function crmTaskLoad() {
+  try {
+    var arr = JSON.parse(localStorage.getItem(CRM_TASKS_KEY) || '[]');
+    return Array.isArray(arr) ? arr : [];
+  } catch(e) { return []; }
+}
+function crmTaskSave(list) {
+  try { localStorage.setItem(CRM_TASKS_KEY, JSON.stringify(list || [])); } catch(e) {}
+}
+function crmTaskIsOverdue(t, nowTs) {
+  if (!t || t.status === 'completed' || !t.deadline) return false;
+  var ts = new Date(t.deadline).getTime();
+  return isFinite(ts) && ts < nowTs;
+}
+function crmTaskIsToday(ts) {
+  if (!ts) return false;
+  var d = new Date(ts);
+  if (!isFinite(d.getTime())) return false;
+  var n = new Date();
+  return d.getFullYear() === n.getFullYear() && d.getMonth() === n.getMonth() && d.getDate() === n.getDate();
+}
+function crmTaskMatchFilter(t, filter, nowTs) {
+  if (filter === 'today') return crmTaskIsToday(t.deadline) || (t.completedAt && crmTaskIsToday(t.completedAt));
+  if (filter === 'money') return t.type === 'money';
+  if (filter === 'overdue') return crmTaskIsOverdue(t, nowTs);
+  if (filter === 'projects') return !!String(t.project || '').trim();
+  return true;
+}
+function crmTaskRenderCard(t, kind, nowTs) {
+  var cardCls = 'crm-task-card ' + kind;
+  if (t.type === 'money') cardCls += ' money';
+  var deadlineTxt = t.deadline ? new Date(t.deadline).toLocaleString('ru') : 'без дедлайна';
+  var doneTxt = t.completedAt ? new Date(t.completedAt).toLocaleTimeString('ru', {hour:'2-digit', minute:'2-digit'}) : '';
+  var projectTxt = t.project ? crmTaskEsc(t.project) : '';
+  var prio = t.priority ? '<span class="crm-task-act crm-task-prio">🔥 priority</span>' : '';
+  var actions = '';
+  if (kind === 'active') {
+    actions =
+      '<button type="button" class="crm-task-act" onclick="crmTaskComplete(\'' + crmTaskEsc(t.id) + '\')">✔ complete</button>' +
+      '<button type="button" class="crm-task-act crm-task-prio" onclick="crmTaskTogglePriority(\'' + crmTaskEsc(t.id) + '\')">🔥 priority</button>' +
+      '<button type="button" class="crm-task-act" onclick="crmTaskSetDeadline(\'' + crmTaskEsc(t.id) + '\')">⏱ set deadline</button>';
+  } else if (kind === 'overdue') {
+    actions = '<button type="button" class="crm-task-act" onclick="crmTaskTakeInWork(\'' + crmTaskEsc(t.id) + '\')">Взять в работу</button>';
+  }
+  return '' +
+    '<div class="' + cardCls + '">' +
+      '<div class="crm-task-card-top">' +
+        '<div class="crm-task-title">' + crmTaskEsc(t.title || '') + '</div>' +
+        (prio || '') +
+      '</div>' +
+      '<div class="crm-task-meta">' +
+        (kind === 'done' ? ('выполнено: ' + crmTaskEsc(doneTxt || '—')) : ('дедлайн: ' + crmTaskEsc(deadlineTxt))) +
+        (projectTxt ? (' · ' + projectTxt) : '') +
+      '</div>' +
+      (actions ? ('<div class="crm-task-actions">' + actions + '</div>') : '') +
+    '</div>';
+}
+function crmTaskRender() {
+  var wrap = document.getElementById('crmTasksWrap');
+  if (!wrap) return;
+  var summary = document.getElementById('crmTaskSummary');
+  var doneEl = document.getElementById('crmTaskDoneList');
+  var activeEl = document.getElementById('crmTaskActiveList');
+  var overdueEl = document.getElementById('crmTaskOverdueList');
+  var moneyEl = document.getElementById('crmTaskMoneyList');
+  if (!summary || !doneEl || !activeEl || !overdueEl || !moneyEl) return;
+
+  var list = crmTaskLoad();
+  var nowTs = Date.now();
+  var completedToday = list.filter(function(t){ return t.status === 'completed' && crmTaskIsToday(t.completedAt); });
+  var active = list.filter(function(t){ return t.status !== 'completed' && !crmTaskIsOverdue(t, nowTs); });
+  var overdue = list.filter(function(t){ return crmTaskIsOverdue(t, nowTs); });
+  var money = list.filter(function(t){ return t.type === 'money'; });
+
+  summary.innerHTML =
+    '<div class="crm-task-kpi">✔ Выполнено сегодня: <b>' + completedToday.length + '</b></div>' +
+    '<div class="crm-task-kpi">⏳ В работе: <b>' + active.length + '</b></div>' +
+    '<div class="crm-task-kpi">❌ Просрочено: <b>' + overdue.length + '</b></div>' +
+    '<div class="crm-task-kpi">💰 Денежные задачи: <b>' + money.length + '</b></div>';
+
+  var filteredDone = completedToday.filter(function(t){ return crmTaskMatchFilter(t, _crmTaskFilter, nowTs); });
+  var filteredActive = active.filter(function(t){ return crmTaskMatchFilter(t, _crmTaskFilter, nowTs); });
+  var filteredOverdue = overdue.filter(function(t){ return crmTaskMatchFilter(t, _crmTaskFilter, nowTs); });
+  var filteredMoney = money.filter(function(t){ return crmTaskMatchFilter(t, _crmTaskFilter, nowTs); });
+
+  doneEl.innerHTML = filteredDone.length ? filteredDone.map(function(t){ return crmTaskRenderCard(t, 'done', nowTs); }).join('') : '<div class="crm-task-empty">Нет задач</div>';
+  activeEl.innerHTML = filteredActive.length ? filteredActive.map(function(t){ return crmTaskRenderCard(t, 'active', nowTs); }).join('') : '<div class="crm-task-empty">Нет задач</div>';
+  overdueEl.innerHTML = filteredOverdue.length ? filteredOverdue.map(function(t){ return crmTaskRenderCard(t, 'overdue', nowTs); }).join('') : '<div class="crm-task-empty">Нет задач</div>';
+  moneyEl.innerHTML = filteredMoney.length ? filteredMoney.map(function(t){ return crmTaskRenderCard(t, 'money', nowTs); }).join('') : '<div class="crm-task-empty">Нет задач</div>';
+
+  document.querySelectorAll('#crmTaskFilters .crm-task-filter-btn').forEach(function(btn){
+    btn.classList.toggle('on', btn.getAttribute('data-filter') === _crmTaskFilter);
+  });
+}
+function crmTaskSetFilter(filter) {
+  _crmTaskFilter = filter || 'all';
+  crmTaskRender();
+}
+function crmTaskToggleForm(forceOpen) {
+  var form = document.getElementById('crmTaskForm');
+  if (!form) return;
+  var open = typeof forceOpen === 'boolean' ? forceOpen : !form.classList.contains('on');
+  form.classList.toggle('on', open);
+}
+function crmTaskCreate() {
+  var titleEl = document.getElementById('crmTaskTitleInp');
+  var projectEl = document.getElementById('crmTaskProjectInp');
+  var typeEl = document.getElementById('crmTaskTypeInp');
+  var deadlineEl = document.getElementById('crmTaskDeadlineInp');
+  if (!titleEl || !typeEl) return;
+  var title = String(titleEl.value || '').trim();
+  if (!title) return;
+  var list = crmTaskLoad();
+  list.unshift({
+    id: 't_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8),
+    title: title,
+    project: projectEl ? String(projectEl.value || '').trim() : '',
+    type: typeEl ? String(typeEl.value || 'normal') : 'normal',
+    deadline: deadlineEl && deadlineEl.value ? new Date(deadlineEl.value).toISOString() : '',
+    status: 'active',
+    priority: typeEl && typeEl.value === 'urgent',
+    createdAt: crmTaskNowIso(),
+    completedAt: ''
+  });
+  crmTaskSave(list);
+  if (titleEl) titleEl.value = '';
+  if (projectEl) projectEl.value = '';
+  if (typeEl) typeEl.value = 'normal';
+  if (deadlineEl) deadlineEl.value = '';
+  crmTaskToggleForm(false);
+  crmTaskRender();
+}
+function crmTaskMutate(taskId, mutator) {
+  var list = crmTaskLoad();
+  var t = list.find(function(x){ return x.id === taskId; });
+  if (!t) return;
+  mutator(t);
+  crmTaskSave(list);
+  crmTaskRender();
+}
+function crmTaskComplete(taskId) {
+  crmTaskMutate(taskId, function(t) {
+    t.status = 'completed';
+    t.completedAt = crmTaskNowIso();
+  });
+}
+function crmTaskTogglePriority(taskId) {
+  crmTaskMutate(taskId, function(t) { t.priority = !t.priority; });
+}
+function crmTaskSetDeadline(taskId) {
+  var raw = prompt('Новый дедлайн (YYYY-MM-DD HH:MM):');
+  if (!raw) return;
+  var normalized = String(raw).trim().replace(' ', 'T');
+  var dt = new Date(normalized);
+  if (!isFinite(dt.getTime())) return;
+  crmTaskMutate(taskId, function(t) { t.deadline = dt.toISOString(); });
+}
+function crmTaskTakeInWork(taskId) {
+  crmTaskMutate(taskId, function(t) {
+    if (t.status !== 'completed') t.status = 'active';
+    if (!t.deadline) t.deadline = '';
+  });
+}
+window.crmTaskSetFilter = crmTaskSetFilter;
+window.crmTaskToggleForm = crmTaskToggleForm;
+window.crmTaskCreate = crmTaskCreate;
+window.crmTaskComplete = crmTaskComplete;
+window.crmTaskTogglePriority = crmTaskTogglePriority;
+window.crmTaskSetDeadline = crmTaskSetDeadline;
+window.crmTaskTakeInWork = crmTaskTakeInWork;
+
 // ── PROGRESS ──
 function pgStart() {
   _secs = 0;
@@ -3642,6 +3822,7 @@ document.addEventListener('DOMContentLoaded', function() {
   if (Array.isArray(customKP)) customKP.forEach(function(val) { addKPTag(val); });
   initKP();
   initAC();
+  crmTaskRender();
   initSecBar();
   var ep = document.getElementById('extraPromptInp');
   if (ep) {
