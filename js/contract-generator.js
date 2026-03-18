@@ -233,6 +233,7 @@
     });
 
     var rules = [
+      { field: 'fio', rx: /^(фио|ф\.?\s*и\.?\s*о\.?|фамилия имя отчество|заказчик)$/ },
       { field: 'fullName', rx: /(полное наименование|наименование организации|официальное наименование)/ },
       { field: 'shortName', rx: /(сокращенн(ое|ое) наименование|краткое наименование|сокр\.? наименование)/ },
       { field: 'legalAddress', rx: /(юридическ(ий|ого) адрес|адрес регистрации|юр\.? адрес)/ },
@@ -260,6 +261,10 @@
     function applyFieldValue(field, rawValue) {
       var v = String(rawValue || '').trim();
       if (!v) return;
+      if (field === 'fio') {
+        setIfEmpty('fio', v);
+        return;
+      }
       if (field === 'innKpp') {
         var innKpp = v.match(/(\d{10,12})\s*\/\s*(\d{9})/);
         if (innKpp) {
@@ -326,6 +331,12 @@
     m = t.match(/[a-z0-9._%+\-]+@[a-z0-9.\-]+\.[a-z]{2,}/ig); if (m && m.length) setIfEmpty('email', m[0]);
     m = t.match(/\+?\d[\d\s\-()]{7,}\d/g); if (m && m.length) setIfEmpty('phone', m[0].replace(/\s+/g, ' ').trim());
     m = t.match(/(?:ООО|АО|ПАО)\s*[«\"].+?[»\"]/i) || t.match(/(?:ИП)\s+[А-Яа-яЁё\s\-]+/i); if (m) setIfEmpty('shortName', m[0]);
+    m = t.match(/(?:ФИО|Ф\.?\s*И\.?\s*О\.?)\s*[:\-]?\s*([А-ЯЁ][а-яё-]{1,32}\s+[А-ЯЁ][а-яё-]{1,32}\s+[А-ЯЁ][а-яё-]{1,32})/i);
+    if (m) setIfEmpty('fio', m[1]);
+    if (!out.fio) {
+      var fioGuess = t.match(/\b([А-ЯЁ][а-яё-]{1,32}\s+[А-ЯЁ][а-яё-]{1,32}\s+[А-ЯЁ][а-яё-]{1,32})\b/);
+      if (fioGuess && !/(ООО|АО|ПАО|ИП|БАНК)/i.test(fioGuess[1])) setIfEmpty('fio', fioGuess[1]);
+    }
     if (!out.fullName) {
       m = t.match(/Общество с ограниченной ответственностью\s+[«\"].+?[»\"]/i);
       if (m) setIfEmpty('fullName', m[0]);
@@ -495,6 +506,9 @@
     }
 
     function applyParsed(parsed) {
+      var fioEl = document.getElementById('contract-fio');
+      var fioVal = parsed.fio || parsed.shortName || parsed.fullName || '';
+      if (fioEl && fioVal) fioEl.value = fioVal;
       if (parsed.inn) document.getElementById('contract-inn').value = parsed.inn;
       if (parsed.ogrn) document.getElementById('contract-ogrn').value = parsed.ogrn;
       if (parsed.account) document.getElementById('contract-account').value = parsed.account;
@@ -502,9 +516,6 @@
       if (parsed.bik) document.getElementById('contract-bik').value = parsed.bik;
       if (parsed.corrAccount) document.getElementById('contract-corrAccount').value = parsed.corrAccount;
       if (parsed.passport) document.getElementById('contract-passport').value = parsed.passport;
-      if (parsed.shortName) document.getElementById('contract-fio').value = parsed.shortName;
-      else if (parsed.fullName) document.getElementById('contract-fio').value = parsed.fullName;
-      else if (parsed.fio) document.getElementById('contract-fio').value = parsed.fio;
     }
 
     function escHtml(s) {
@@ -610,10 +621,6 @@
 
     var html = '<div class="contract-form-wrap">' +
       '<div class="contract-toolbar">' +
-      '<div class="contract-toolbar-row contract-toolbar-row-primary">' +
-      '<button type="button" class="contract-toolbar-btn contract-btn-load contract-btn-load-main" onclick="document.getElementById(\'contract-file-inp\').click()">📄 Загрузить реквизиты</button>' +
-      '<input type="file" id="contract-file-inp" accept=".txt,.docx,.pdf" style="display:none">' +
-      '</div>' +
       '<div class="contract-ai-line">' +
       '<textarea id="contract-ai-text" class="contract-ai-input" rows="2" placeholder="ИИ-строка: вставьте реквизиты текстом и нажмите Отправить (Ctrl+Enter)"></textarea>' +
       '<button type="button" class="contract-toolbar-btn contract-ai-send-btn" id="contractAiSendBtn">✦ Отправить</button>' +
@@ -634,7 +641,7 @@
       '</div>' +
       '<div class="contract-form">' +
       '<div class="contract-form-section contract-requisites-section">' +
-      '<div class="contract-mini-client-row"><label for="contract-fio">ФИО (если физлицо)</label><input type="text" id="contract-fio" placeholder="Иванов Иван Иванович"></div>' +
+      '<input type="hidden" id="contract-fio">' +
       '<input type="hidden" id="contract-inn">' +
       '<input type="hidden" id="contract-ogrn">' +
       '<input type="hidden" id="contract-account">' +
@@ -642,7 +649,6 @@
       '<input type="hidden" id="contract-bik">' +
       '<input type="hidden" id="contract-corrAccount">' +
       '<input type="hidden" id="contract-passport">' +
-      '<div class="contract-drop-zone" id="contract-drop-zone">Перетащите файл реквизитов (docx, pdf, txt) сюда</div>' +
       '<div class="contract-parsed-wrap" id="contractParsedRequisites" style="display:none"></div>' +
       '</div>' +
       '<div class="contract-extra-panel">' +
@@ -795,8 +801,6 @@
       reader.readAsDataURL(file);
     }
 
-    var fileInp = document.getElementById('contract-file-inp');
-    var dropZone = document.getElementById('contract-drop-zone');
     var aiInp = document.getElementById('contract-ai-text');
     var aiSendBtn = document.getElementById('contractAiSendBtn');
 
@@ -815,26 +819,6 @@
       if (typeof window.__showToast === 'function') window.__showToast('Реквизиты обработаны из ' + sourceLabel);
       else alert('Реквизиты извлечены и заполнены');
     }
-    function handleFile(file) {
-      if (!file) return;
-      var ext = (file.name || '').toLowerCase();
-      if (!ext.endsWith('.txt') && !ext.endsWith('.docx') && !ext.endsWith('.pdf')) {
-        alert('Поддерживаются файлы .txt, .docx, .pdf');
-        return;
-      }
-      readFileAsText(file, function(err, text) {
-        if (err) {
-          alert(err.message || 'Ошибка чтения файла');
-          return;
-        }
-        processRequisitesText(text, 'файла');
-      });
-    }
-
-    if (fileInp) fileInp.addEventListener('change', function() {
-      var f = fileInp.files && fileInp.files[0];
-      handleFile(f);
-    });
     if (aiSendBtn) aiSendBtn.addEventListener('click', function() {
       processRequisitesText(aiInp && aiInp.value, 'ИИ-строки');
     });
@@ -844,17 +828,6 @@
           e.preventDefault();
           processRequisitesText(aiInp.value, 'ИИ-строки');
         }
-      });
-    }
-
-    if (dropZone) {
-      dropZone.addEventListener('dragover', function(e) { e.preventDefault(); dropZone.classList.add('contract-drop-over'); });
-      dropZone.addEventListener('dragleave', function() { dropZone.classList.remove('contract-drop-over'); });
-      dropZone.addEventListener('drop', function(e) {
-        e.preventDefault();
-        dropZone.classList.remove('contract-drop-over');
-        var f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
-        handleFile(f);
       });
     }
 
