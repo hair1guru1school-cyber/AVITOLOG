@@ -241,13 +241,16 @@
       headerImg = new URL(gender === 'f' ? 'assets/contract_header_f.png' : 'assets/contract_header_m.png', window.location.href).href;
       headerFallbackImg = new URL('assets/contract_header.png', window.location.href).href;
     } catch (e) {}
-    var headerHtml = '<div class="contract-doc-header"><img src="' + esc(headerImg) + '" alt="" onerror="if(!this.dataset.fallback){this.dataset.fallback=1;this.src=\'' + esc(headerFallbackImg) + '\';}else{this.style.display=\'none\';}" style="max-width:100%;height:auto"></div>';
+    var headerHtml =
+      '<div class="contract-doc-header" style="text-align:center;margin:0 auto 8px">' +
+        '<img src="' + esc(headerImg) + '" width="621" alt="" onerror="if(!this.dataset.fallback){this.dataset.fallback=1;this.src=\'' + esc(headerFallbackImg) + '\';}else{this.style.display=\'none\';}" style="display:block;margin:0 auto;width:16.44cm;max-width:100%;height:auto">' +
+      '</div>';
     var body = headerHtml + '<div class="contract-doc-body">' + getContractMainTemplate(data) + '</div>';
     var footerImg = 'assets/contract_footer.png';
     try { footerImg = new URL('assets/contract_footer.png', window.location.href).href; } catch (e) {}
     var footerHtml =
-      '<div class="contract-doc-footer">' +
-        '<img src="' + esc(footerImg) + '" alt="" onerror="this.style.display=\'none\'" style="display:block;width:100%;max-width:100%;height:auto">' +
+      '<div class="contract-doc-footer" style="text-align:center;margin:10px auto 0">' +
+        '<img src="' + esc(footerImg) + '" width="621" height="285" alt="" onerror="this.style.display=\'none\'" style="display:block;margin:0 auto;width:16.44cm;height:7.54cm;max-width:100%;object-fit:contain">' +
       '</div>';
     return '<div class="contract-document">' + body + footerHtml + '</div>';
   }
