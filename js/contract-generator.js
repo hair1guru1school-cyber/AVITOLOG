@@ -162,10 +162,30 @@
       '<p style="font-size:10.5pt;line-height:1.52;margin:10px 0 8px">Стороны.</p>' +
 
       '<p style="font-size:10.5pt;line-height:1.52;margin:8px 0 6px"><strong>6. АДРЕСА И БАНКОВСКИЕ РЕКВИЗИТЫ СТОРОН</strong></p>' +
-      '<p style="font-size:9.7pt;line-height:1.42;margin:0 0 2px">Заказчик:</p>' +
-      '<p style="font-size:9.7pt;line-height:1.42;margin:0 0 10px">' + clientName + '<br>ИНН ' + (clientInn || '—') + '<br>ОГРН ' + (clientOgrn || '—') + '<br>Р/С ' + (clientAccount || '—') + '<br>Банк ' + (clientBank || '—') + '<br>БИК ' + (clientBik || '—') + '<br>К/С ' + (clientCorr || '—') + '</p>' +
-      '<p style="font-size:9.7pt;line-height:1.42;margin:0 0 2px">Исполнитель:</p>' +
-      '<p style="font-size:9.7pt;line-height:1.42;margin:0 0 14px">ИП Шинков Филипп Аркадьевич<br>ИНН ' + EXECUTOR.inn + '<br>ОГРН ' + EXECUTOR.ogrn + '<br>РС ' + EXECUTOR.account + '<br>' + EXECUTOR.bank + '</p>';
+      '<table style="width:100%;border-collapse:collapse;margin:0 0 14px;font-size:9.7pt;line-height:1.42">' +
+        '<tr>' +
+          '<td style="width:50%;vertical-align:top;padding:0 14px 0 0">' +
+            '<div style="font-weight:700;margin:0 0 4px">Заказчик:</div>' +
+            '<div>' + clientName + '</div>' +
+            '<div>ИНН ' + (clientInn || '—') + '</div>' +
+            '<div>ОГРН ' + (clientOgrn || '—') + '</div>' +
+            '<div>Р/С ' + (clientAccount || '—') + '</div>' +
+            '<div>Банк ' + (clientBank || '—') + '</div>' +
+            '<div>БИК ' + (clientBik || '—') + '</div>' +
+            '<div>К/С ' + (clientCorr || '—') + '</div>' +
+          '</td>' +
+          '<td style="width:50%;vertical-align:top;padding:0 0 0 14px">' +
+            '<div style="font-weight:700;margin:0 0 4px">Исполнитель:</div>' +
+            '<div>' + EXECUTOR.name + '</div>' +
+            '<div>ИНН ' + EXECUTOR.inn + '</div>' +
+            '<div>ОГРН ' + EXECUTOR.ogrn + '</div>' +
+            '<div>Р/С ' + EXECUTOR.account + '</div>' +
+            '<div>Банк ' + EXECUTOR.bank + '</div>' +
+            '<div>БИК —</div>' +
+            '<div>К/С —</div>' +
+          '</td>' +
+        '</tr>' +
+      '</table>';
   }
 
   function getAppendix1Template(data) {

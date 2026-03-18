@@ -20,15 +20,73 @@ app.get('/api/health', (req, res) => {
   });
 });
 
+async function getAvitoAccessToken(clientId, clientSecret) {
+  const cid = String(clientId || '').trim();
+  const csec = String(clientSecret || '').trim();
+  if (!cid || !csec) {
+    throw new Error('clientId and clientSecret are required');
+  }
+  const tokenUrl = AVITO_API_BASE + '/token';
+  const body = new URLSearchParams({
+    grant_type: 'client_credentials',
+    client_id: cid,
+    client_secret: csec
+  });
+  const tokenRes = await fetch(tokenUrl, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+      Accept: 'application/json'
+    },
+    body: body.toString()
+  });
+  const tokenText = await tokenRes.text();
+  let tokenData = {};
+  try {
+    tokenData = tokenText ? JSON.parse(tokenText) : {};
+  } catch (e) {
+    tokenData = { raw: tokenText };
+  }
+  if (!tokenRes.ok) {
+    const msg =
+      tokenData && (tokenData.error_description || tokenData.error || tokenData.message)
+        ? String(tokenData.error_description || tokenData.error || tokenData.message)
+        : 'Token request failed';
+    const err = new Error('Avito token error: ' + msg);
+    err.status = tokenRes.status;
+    err.details = tokenData;
+    throw err;
+  }
+  const accessToken = tokenData && tokenData.access_token ? String(tokenData.access_token) : '';
+  if (!accessToken) {
+    const err = new Error('Avito token response has no access_token');
+    err.status = 502;
+    err.details = tokenData;
+    throw err;
+  }
+  return accessToken;
+}
+
 app.post('/api/avito/proxy', async (req, res) => {
   try {
-    const apiKey = String(req.body && req.body.apiKey ? req.body.apiKey : '').trim();
+    const apiKeyRaw = String(req.body && req.body.apiKey ? req.body.apiKey : '').trim();
+    const clientId = String(req.body && req.body.clientId ? req.body.clientId : '').trim();
+    const clientSecret = String(req.body && req.body.clientSecret ? req.body.clientSecret : '').trim();
     const path = String(req.body && req.body.path ? req.body.path : '').trim();
     const method = String(req.body && req.body.method ? req.body.method : 'GET').trim().toUpperCase();
     const payload = req.body && req.body.body ? req.body.body : null;
     const query = req.body && req.body.query && typeof req.body.query === 'object' ? req.body.query : null;
 
-    if (!apiKey) return res.status(400).json({ ok: false, error: 'apiKey is required' });
+    let apiKey = apiKeyRaw;
+    if (!apiKey && clientId && clientSecret) {
+      apiKey = await getAvitoAccessToken(clientId, clientSecret);
+    }
+    if (!apiKey) {
+      return res.status(400).json({
+        ok: false,
+        error: 'Provide apiKey OR clientId+clientSecret'
+      });
+    }
     if (!path || path[0] !== '/') return res.status(400).json({ ok: false, error: 'path must start with /' });
 
     const qs = query ? ('?' + new URLSearchParams(query).toString()) : '';
@@ -67,9 +125,10 @@ app.post('/api/avito/proxy', async (req, res) => {
       data: data
     });
   } catch (error) {
-    res.status(500).json({
+    res.status(Number(error && error.status) || 500).json({
       ok: false,
-      error: error && error.message ? error.message : 'Unexpected backend error'
+      error: error && error.message ? error.message : 'Unexpected backend error',
+      data: error && error.details ? error.details : undefined
     });
   }
 });

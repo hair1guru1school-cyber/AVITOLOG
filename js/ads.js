@@ -7,6 +7,8 @@
   var EXPENSES_KEY = "crm_ads_expenses_v1";
   var LINKS_KEY = "crm_ads_links_v1";
   var AVITO_KEY_LS = "crm_ads_avito_api_key_v1";
+  var AVITO_CLIENT_ID_LS = "crm_ads_avito_client_id_v1";
+  var AVITO_CLIENT_SECRET_LS = "crm_ads_avito_client_secret_v1";
   var AVITO_BASE_LS = "crm_ads_avito_backend_base_v1";
   var AVITO_PATH_LS = "crm_ads_avito_path_v1";
 
@@ -288,15 +290,19 @@
   function setupAdsApiPanel(root) {
     var baseInp = root.querySelector("#adsApiBackendBase");
     var keyInp = root.querySelector("#adsApiKeyInput");
+    var clientIdInp = root.querySelector("#adsApiClientIdInput");
+    var clientSecretInp = root.querySelector("#adsApiClientSecretInput");
     var pathInp = root.querySelector("#adsApiPathInput");
     var saveBtn = root.querySelector("#adsApiSaveBtn");
     var loadBtn = root.querySelector("#adsApiLoadBtn");
     var st = root.querySelector("#adsApiStatus");
     var out = root.querySelector("#adsApiResult");
-    if (!baseInp || !keyInp || !pathInp || !saveBtn || !loadBtn || !st || !out) return;
+    if (!baseInp || !keyInp || !clientIdInp || !clientSecretInp || !pathInp || !saveBtn || !loadBtn || !st || !out) return;
 
     baseInp.value = localStorage.getItem(AVITO_BASE_LS) || "http://localhost:8787/api";
     keyInp.value = localStorage.getItem(AVITO_KEY_LS) || "";
+    clientIdInp.value = localStorage.getItem(AVITO_CLIENT_ID_LS) || "";
+    clientSecretInp.value = localStorage.getItem(AVITO_CLIENT_SECRET_LS) || "";
     pathInp.value = localStorage.getItem(AVITO_PATH_LS) || "/core/v1/accounts/self";
 
     function setStatus(text, isErr) {
@@ -306,6 +312,8 @@
     function saveSettings() {
       localStorage.setItem(AVITO_BASE_LS, String(baseInp.value || "").trim());
       localStorage.setItem(AVITO_KEY_LS, String(keyInp.value || "").trim());
+      localStorage.setItem(AVITO_CLIENT_ID_LS, String(clientIdInp.value || "").trim());
+      localStorage.setItem(AVITO_CLIENT_SECRET_LS, String(clientSecretInp.value || "").trim());
       localStorage.setItem(AVITO_PATH_LS, String(pathInp.value || "").trim());
       setStatus("Настройки сохранены локально.", false);
     }
@@ -313,9 +321,13 @@
     loadBtn.addEventListener("click", function() {
       var backendBase = String(baseInp.value || "").trim().replace(/\/+$/, "");
       var apiKey = String(keyInp.value || "").trim();
+      var clientId = String(clientIdInp.value || "").trim();
+      var clientSecret = String(clientSecretInp.value || "").trim();
       var apiPath = String(pathInp.value || "").trim();
-      if (!backendBase || !apiKey || !apiPath) {
-        setStatus("Заполните Backend URL, API ключ и API путь.", true);
+      var hasToken = !!apiKey;
+      var hasClientCreds = !!clientId && !!clientSecret;
+      if (!backendBase || !apiPath || (!hasToken && !hasClientCreds)) {
+        setStatus("Заполните Backend URL, API путь и (API ключ ИЛИ Client ID + Client Secret).", true);
         return;
       }
       saveSettings();
@@ -324,7 +336,13 @@
       fetch(backendBase + "/avito/proxy", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ apiKey: apiKey, path: apiPath, method: "GET" })
+        body: JSON.stringify({
+          apiKey: apiKey,
+          clientId: clientId,
+          clientSecret: clientSecret,
+          path: apiPath,
+          method: "GET"
+        })
       })
       .then(function(res) {
         return res.json().catch(function() { return { ok: false, error: "Invalid JSON from backend" }; })
@@ -340,7 +358,7 @@
         out.textContent = JSON.stringify(payload.data, null, 2);
       })
       .catch(function(err) {
-        setStatus("Сеть/сервер недоступен: " + (err && err.message ? err.message : "unknown error"), true);
+        setStatus("Сеть/сервер недоступен: " + (err && err.message ? err.message : "unknown error") + ". Запустите backend: cd backend && npm install && npm run dev", true);
         out.textContent = String(err && err.stack ? err.stack : err);
       });
     });
@@ -377,11 +395,13 @@
           '<div class="ads-card-title">Интеграция Avito API</div>' +
           '<div class="ads-api-grid">' +
             '<label class="ads-api-field"><span>Backend URL</span><input type="text" id="adsApiBackendBase" placeholder="http://localhost:8787/api"></label>' +
-            '<label class="ads-api-field"><span>Ключ API</span><input type="password" id="adsApiKeyInput" placeholder="Вставьте ваш Avito API key"></label>' +
+            '<label class="ads-api-field"><span>Access token (если есть)</span><input type="password" id="adsApiKeyInput" placeholder="Bearer token (опционально)"></label>' +
+            '<label class="ads-api-field"><span>Client ID</span><input type="text" id="adsApiClientIdInput" placeholder="Ваш Avito client_id"></label>' +
+            '<label class="ads-api-field"><span>Client Secret</span><input type="password" id="adsApiClientSecretInput" placeholder="Ваш Avito client_secret"></label>' +
             '<label class="ads-api-field ads-api-field-path"><span>API путь</span><input type="text" id="adsApiPathInput" placeholder="/core/v1/accounts/self"></label>' +
           "</div>" +
           '<div class="ads-api-actions"><button type="button" class="ads-api-btn" id="adsApiLoadBtn">Загрузить данные</button><button type="button" class="ads-api-btn ads-api-btn-ghost" id="adsApiSaveBtn">Сохранить настройки</button></div>' +
-          '<div class="ads-api-status" id="adsApiStatus">Готово к подключению. Введите ключ и нажмите "Загрузить данные".</div>' +
+          '<div class="ads-api-status" id="adsApiStatus">Готово к подключению. Укажите access token или client_id/client_secret и нажмите "Загрузить данные".</div>' +
           '<pre class="ads-api-result" id="adsApiResult">Ответ API появится здесь.</pre>' +
         "</div>" +
       "</div>";
