@@ -3490,31 +3490,34 @@ async function browseFolder(folderId, folderName) {
     var token = _driveToken;
     if (!token) throw new Error('Drive не подключён. Нажмите 🔑 Drive для входа.');
     var q = encodeURIComponent("'" + folderId + "' in parents and trashed=false");
-    var resp = await fetch('https://www.googleapis.com/drive/v3/files?q=' + q + '&fields=files(id,name,mimeType)&orderBy=name&pageSize=50', {
-      headers: {'Authorization': 'Bearer ' + token}
-    });
-    var data = await resp.json();
-    if (!resp.ok || data.error) {
-      var errMsg = (data.error && data.error.message) ? data.error.message : ('Ошибка ' + (resp.status || ''));
-      if (resp.status === 401) {
-        _driveToken = null;
-        clearStoredDriveAuth();
-        updateDriveUI();
-        errMsg = 'Сессия истекла. Нажмите 🔑 Drive для повторного входа.';
+    var folders = [];
+    var nextPageToken = '';
+    do {
+      var url = 'https://www.googleapis.com/drive/v3/files?q=' + q + '&fields=files(id,name,mimeType),nextPageToken&orderBy=folder,name&pageSize=1000';
+      if (nextPageToken) url += '&pageToken=' + encodeURIComponent(nextPageToken);
+      var resp = await fetch(url, {
+        headers: {'Authorization': 'Bearer ' + token}
+      });
+      var data = await resp.json();
+      if (!resp.ok || data.error) {
+        var errMsg = (data.error && data.error.message) ? data.error.message : ('Ошибка ' + (resp.status || ''));
+        if (resp.status === 401) {
+          _driveToken = null;
+          clearStoredDriveAuth();
+          updateDriveUI();
+          errMsg = 'Сессия истекла. Нажмите 🔑 Drive для повторного входа.';
+        }
+        throw new Error(errMsg);
       }
-      throw new Error(errMsg);
-    }
-    var folders = (data.files || []).filter(function(f) { return f.mimeType === 'application/vnd.google-apps.folder'; });
-    // Не показывать служебные папки OLD и Brains
-    var hideNames = ['old', 'brains', 'brain'];
-    folders = folders.filter(function(f) {
-      var n = (f.name || '').trim().toLowerCase();
-      return !hideNames.some(function(h) { return n === h; });
-    });
+      var chunk = (data.files || []).filter(function(f) { return f.mimeType === 'application/vnd.google-apps.folder'; });
+      folders = folders.concat(chunk);
+      nextPageToken = data.nextPageToken || '';
+    } while (nextPageToken);
     var listEl = menu.querySelector('.cm-list');
     if (folders.length === 0) {
       listEl.innerHTML = '<div style="padding:16px;color:var(--muted);font-size:11px;text-align:center">Пустая папка</div>';
     } else {
+      folders.sort(function(a, b) { return String(a.name || '').localeCompare(String(b.name || ''), 'ru'); });
       listEl.innerHTML = folders.map(function(f) {
         var esc = function(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); };
         var ac = { folderId: f.id, company: f.name };
