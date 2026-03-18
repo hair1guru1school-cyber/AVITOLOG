@@ -622,6 +622,8 @@
     var html = '<div class="contract-form-wrap">' +
       '<div class="contract-toolbar">' +
       '<div class="contract-ai-line">' +
+      '<button type="button" class="contract-toolbar-btn contract-ai-upload-btn" onclick="document.getElementById(\'contract-file-inp\').click()">📄 Загрузить реквизиты</button>' +
+      '<input type="file" id="contract-file-inp" accept=".txt,.docx,.pdf" style="display:none">' +
       '<textarea id="contract-ai-text" class="contract-ai-input" rows="2" placeholder="ИИ-строка: вставьте реквизиты текстом и нажмите Отправить (Ctrl+Enter)"></textarea>' +
       '<button type="button" class="contract-toolbar-btn contract-ai-send-btn" id="contractAiSendBtn">✦ Отправить</button>' +
       '</div>' +
@@ -801,6 +803,7 @@
       reader.readAsDataURL(file);
     }
 
+    var fileInp = document.getElementById('contract-file-inp');
     var aiInp = document.getElementById('contract-ai-text');
     var aiSendBtn = document.getElementById('contractAiSendBtn');
 
@@ -819,6 +822,26 @@
       if (typeof window.__showToast === 'function') window.__showToast('Реквизиты обработаны из ' + sourceLabel);
       else alert('Реквизиты извлечены и заполнены');
     }
+    function handleFile(file) {
+      if (!file) return;
+      var ext = (file.name || '').toLowerCase();
+      if (!ext.endsWith('.txt') && !ext.endsWith('.docx') && !ext.endsWith('.pdf')) {
+        alert('Поддерживаются файлы .txt, .docx, .pdf');
+        return;
+      }
+      readFileAsText(file, function(err, text) {
+        if (err) {
+          alert(err.message || 'Ошибка чтения файла');
+          return;
+        }
+        processRequisitesText(text, 'файла');
+      });
+    }
+    if (fileInp) fileInp.addEventListener('change', function() {
+      var f = fileInp.files && fileInp.files[0];
+      handleFile(f);
+      fileInp.value = '';
+    });
     if (aiSendBtn) aiSendBtn.addEventListener('click', function() {
       processRequisitesText(aiInp && aiInp.value, 'ИИ-строки');
     });
