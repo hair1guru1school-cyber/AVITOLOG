@@ -824,22 +824,31 @@ function renderProjectChildLineHtml(p, idx) {
 }
 function getProjectsStickyWidthPx(projects) {
   var longest = 'Проект';
+  var longestStatus = 'В работе';
   (projects || []).forEach(function(p) {
     var t = (p && p.title ? String(p.title) : '').trim();
     if (t.length > longest.length) longest = t;
+    var s = (p && p.status ? String(p.status) : '').trim();
+    if (s.length > longestStatus.length) longestStatus = s;
   });
   var titlePx = 0;
+  var statusPx = 0;
   try {
     var canvas = document.createElement('canvas');
     var ctx = canvas.getContext('2d');
     if (ctx) {
-      ctx.font = '600 15px "Golos Text", sans-serif';
+      // Must match project title input typography for accurate width.
+      ctx.font = '600 17px "Golos Text", sans-serif';
       titlePx = Math.ceil(ctx.measureText(longest).width);
+      ctx.font = '800 11px "Golos Text", sans-serif';
+      statusPx = Math.ceil(ctx.measureText(longestStatus).width) + 14;
     }
   } catch(e) {}
   if (!titlePx) titlePx = longest.length * 9;
-  // Base controls width: expand/type/drive + emoji + path buttons + status + paddings/gaps.
-  var fixedControlsPx = 320;
+  if (!statusPx) statusPx = Math.max(66, longestStatus.length * 7 + 14);
+  // Base controls width approximated from real CSS sizes:
+  // left cols + emoji + expand + path buttons + status + move + paddings/gaps.
+  var fixedControlsPx = 340 + statusPx;
   var w = fixedControlsPx + titlePx;
   return Math.max(360, Math.min(2200, w));
 }
