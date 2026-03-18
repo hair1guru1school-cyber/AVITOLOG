@@ -72,13 +72,22 @@
     var costNum = normalizeMoneyValue(data.cost);
     var costFmt = String(costNum || 0).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
     var costWords = numberToWordsRu(costNum);
-    var clientInn = data.inn || '—';
-    var clientOgrn = data.ogrn || '—';
-    var clientAccount = data.account || '—';
-    var clientBank = data.bank || '—';
-    var clientBik = data.bik || '—';
-    var clientCorr = data.corrAccount || '—';
-    var clientPhone = data.phone || data.contacts || '—';
+    var clientInn = data.inn || '';
+    var clientOgrn = data.ogrn || '';
+    var clientAccount = data.account || '';
+    var clientBank = data.bank || '';
+    var clientBik = data.bik || '';
+    var clientCorr = data.corrAccount || '';
+    var clientPhone = data.phone || data.contacts || '';
+    function hasClientValue(v) {
+      var s = String(v == null ? '' : v).trim();
+      if (!s) return false;
+      return s !== '—' && s !== '-';
+    }
+    function clientRow(label, value) {
+      if (!hasClientValue(value)) return '';
+      return '◆ ' + (label ? (label + ' ') : '') + value + '<br>';
+    }
     var leftBullets =
       '<div style="font-size:10.2pt;line-height:1.5">' +
       '◆ ' + EXECUTOR.name + '<br>' +
@@ -88,21 +97,24 @@
       '◆ ' + EXECUTOR.bank + '<br>' +
       '◆ Тел. ' + EXECUTOR.phone +
       '</div>';
-    var rightBullets =
-      '<div style="font-size:10.2pt;line-height:1.5">' +
+    var rightRows =
       '◆ ' + clientName + '<br>' +
-      '◆ ИНН ' + clientInn + '<br>' +
-      '◆ ОГРН ' + clientOgrn + '<br>' +
-      '◆ Р/С ' + clientAccount + '<br>' +
-      '◆ ' + clientBank + '<br>' +
-      '◆ БИК ' + clientBik + '<br>' +
-      '◆ К/С ' + clientCorr + '<br>' +
-      '◆ Тел. ' + clientPhone +
-      '</div>';
+      clientRow('ИНН', clientInn) +
+      clientRow('ОГРН', clientOgrn) +
+      clientRow('Р/С', clientAccount) +
+      clientRow('', clientBank) +
+      clientRow('БИК', clientBik) +
+      clientRow('К/С', clientCorr) +
+      clientRow('Тел.', clientPhone);
+    if (rightRows.endsWith('<br>')) rightRows = rightRows.slice(0, -4);
+    var rightBullets = '<div style="font-size:10.2pt;line-height:1.5">' + rightRows + '</div>';
 
     return '' +
       '<h2 style="text-align:center;font-size:18pt;line-height:1.22;margin:4px 0 10px;letter-spacing:.2px;font-weight:800">Договор Возмездного<br>Оказания Услуг от ' + contractDate + '</h2>' +
-      '<p style="text-align:center;font-size:11.5pt;line-height:1.45;margin:0 0 12px"><strong>' + EXECUTOR.name + '</strong> именуемый в дальнейшем "Исполнитель", с одной стороны, и<br><strong>' + clientName + '</strong> именуемый в дальнейшем "Заказчик"</p>' +
+      '<div style="text-align:center;font-size:11.5pt;line-height:1.45;margin:0 0 12px">' +
+        '<div style="white-space:nowrap"><strong>' + EXECUTOR.name + '</strong> именуемый в дальнейшем "Исполнитель", с одной стороны, и</div>' +
+        '<div style="white-space:nowrap"><strong>' + clientName + '</strong> именуемый в дальнейшем "Заказчик"</div>' +
+      '</div>' +
       '<table style="width:100%;border-collapse:collapse;margin:8px 0 14px;border:1px solid #2d2d2d">' +
         '<tr>' +
           '<td style="width:50%;vertical-align:top;padding:10px 12px;border-right:1px solid #2d2d2d">' + leftBullets + '</td>' +
@@ -110,50 +122,50 @@
         '</tr>' +
       '</table>' +
 
-      '<p style="font-size:10.5pt;line-height:1.55;margin:8px 0 6px"><strong>1. ПРЕДМЕТ ДОГОВОРА. СРОКИ ОКАЗАНИЯ УСЛУГ</strong></p>' +
-      '<p style="font-size:10.5pt;line-height:1.55;margin:0 0 6px">1.1. Исполнитель обязуется, по заданию Заказчика, оказывать услуги по созданию и ведению рекламной кампании на сайте Avito.ru (далее — «Авито»), а Заказчик обязуется оплатить эти услуги в полном объеме.</p>' +
-      '<p style="font-size:10.5pt;line-height:1.55;margin:0 0 2px">1.2. Сроки оказания услуг:</p>' +
-      '<p style="font-size:10.5pt;line-height:1.55;margin:0 0 2px">1.2.1. Начало оказания услуг: ' + startDate + '</p>' +
-      '<p style="font-size:10.5pt;line-height:1.55;margin:0 0 2px">1.2.2. Окончание оказания услуг: ' + endDate + '</p>' +
-      '<p style="font-size:10.5pt;line-height:1.55;margin:0 0 10px">1.2.3. Порядок услуг: ' + daysCreate + ' дней создание рекламы + ' + daysManage + ' дней ведения аккаунта</p>' +
+      '<p style="font-size:10.5pt;line-height:1.52;margin:8px 0 6px"><strong>1. ПРЕДМЕТ ДОГОВОРА. СРОКИ ОКАЗАНИЯ УСЛУГ</strong></p>' +
+      '<p style="font-size:9.7pt;line-height:1.42;margin:0 0 6px">1.1. Исполнитель обязуется, по заданию Заказчика, оказывать услуги по созданию и ведению рекламной кампании на сайте Avito.ru (далее — «Авито»), а Заказчик обязуется оплатить эти услуги в полном объеме.</p>' +
+      '<p style="font-size:9.7pt;line-height:1.42;margin:0 0 2px">1.2. Сроки оказания услуг:</p>' +
+      '<p style="font-size:9.7pt;line-height:1.42;margin:0 0 2px">1.2.1. Начало оказания услуг: ' + startDate + '</p>' +
+      '<p style="font-size:9.7pt;line-height:1.42;margin:0 0 2px">1.2.2. Окончание оказания услуг: ' + endDate + '</p>' +
+      '<p style="font-size:9.7pt;line-height:1.42;margin:0 0 10px">1.2.3. Порядок услуг: ' + daysCreate + ' дней создание рекламы + ' + daysManage + ' дней ведения аккаунта</p>' +
 
-      '<p style="font-size:10.5pt;line-height:1.55;margin:8px 0 6px"><strong>2. ПРАВА И ОБЯЗАННОСТИ СТОРОН</strong></p>' +
-      '<p style="font-size:10.5pt;line-height:1.55;margin:0 0 6px">2.1. Исполнитель обязуется: 2.1.1. Оказать услуги, предусмотренные п. 1.1 настоящего Договора, лично. 2.1.2. Оказать услуги в сроки, установленные п. 1.2 настоящего Договора. 2.1.3. Исполнять указания Заказчика относительно порядка оказания услуг, при условии, что они не противоречат настоящему Договору и законодательству.</p>' +
-      '<p style="font-size:10.5pt;line-height:1.55;margin:0 0 6px">2.2. Заказчик обязуется: 2.2.1. Предоставить Исполнителю необходимые материалы и документы для оказания услуг не позднее [7] календарных дней с момента заключения Договора. 2.2.2. Оплатить услуги Исполнителя в соответствии с разделом 3 настоящего Договора. 2.2.3. Оказывать содействие Исполнителю в оказании услуг по настоящему Договору.</p>' +
-      '<p style="font-size:10.5pt;line-height:1.55;margin:0 0 6px">2.3. Заказчик вправе отказаться от исполнения настоящего Договора, предупредив об этом Исполнителя в письменной форме не менее, чем за двадцать четыре часа до начала рекламной кампании, при условии оплаты Исполнителю фактически понесенных им расходов.</p>' +
-      '<p style="font-size:10.5pt;line-height:1.55;margin:0 0 10px">2.4. Исполнитель вправе отказаться от исполнения настоящего Договора, предупредив об этом Заказчика не менее чем за двадцать четыре часа до начала рекламной кампании, при условии полного возмещения Заказчику материальных затрат в размере <strong>' + costWords + ' (' + costFmt + ') рублей 00 копеек</strong>.</p>' +
+      '<p style="font-size:10.5pt;line-height:1.52;margin:8px 0 6px"><strong>2. ПРАВА И ОБЯЗАННОСТИ СТОРОН</strong></p>' +
+      '<p style="font-size:9.7pt;line-height:1.42;margin:0 0 6px">2.1. Исполнитель обязуется: 2.1.1. Оказать услуги, предусмотренные п. 1.1 настоящего Договора, лично. 2.1.2. Оказать услуги в сроки, установленные п. 1.2 настоящего Договора. 2.1.3. Исполнять указания Заказчика относительно порядка оказания услуг, при условии, что они не противоречат настоящему Договору и законодательству.</p>' +
+      '<p style="font-size:9.7pt;line-height:1.42;margin:0 0 6px">2.2. Заказчик обязуется: 2.2.1. Предоставить Исполнителю необходимые материалы и документы для оказания услуг не позднее [7] календарных дней с момента заключения Договора. 2.2.2. Оплатить услуги Исполнителя в соответствии с разделом 3 настоящего Договора. 2.2.3. Оказывать содействие Исполнителю в оказании услуг по настоящему Договору.</p>' +
+      '<p style="font-size:9.7pt;line-height:1.42;margin:0 0 6px">2.3. Заказчик вправе отказаться от исполнения настоящего Договора, предупредив об этом Исполнителя в письменной форме не менее, чем за двадцать четыре часа до начала рекламной кампании, при условии оплаты Исполнителю фактически понесенных им расходов.</p>' +
+      '<p style="font-size:9.7pt;line-height:1.42;margin:0 0 10px">2.4. Исполнитель вправе отказаться от исполнения настоящего Договора, предупредив об этом Заказчика не менее чем за двадцать четыре часа до начала рекламной кампании, при условии полного возмещения Заказчику материальных затрат в размере <strong>' + costWords + ' (' + costFmt + ') рублей 00 копеек</strong>.</p>' +
 
-      '<p style="font-size:10.5pt;line-height:1.55;margin:8px 0 6px"><strong>3. ЦЕНА ДОГОВОРА И ПОРЯДОК РАСЧЕТОВ</strong></p>' +
-      '<p style="font-size:10.5pt;line-height:1.55;margin:0 0 6px">3.1. Стоимость услуг по настоящему Договору составляет <strong>' + costWords + ' (' + costFmt + ') рублей 00 копеек</strong> и является фиксированной.<br>Указанная стоимость не включает расходы на размещение и продвижение объявлений на платформе Авито, которые при необходимости оплачиваются Заказчиком самостоятельно напрямую платформе Авито.</p>' +
-      '<p style="font-size:10.5pt;line-height:1.55;margin:0 0 2px">3.2. Оплата услуг осуществляется в следующем порядке:</p>' +
-      '<p style="font-size:10.5pt;line-height:1.55;margin:0 0 2px">3.2.1. Заказчик производит <strong>100% предоплату</strong> в размере <strong>' + costWords + ' (' + costFmt + ') рублей 00 копеек</strong> до начала оказания услуг.</p>' +
-      '<p style="font-size:10.5pt;line-height:1.55;margin:0 0 2px">3.2.2. Дополнительных платежей за услуги Исполнителя по настоящему Договору не предусмотрено.</p>' +
-      '<p style="font-size:10.5pt;line-height:1.55;margin:0 0 2px">3.3. В случае непредоставления Заказчиком необходимых материалов либо неисполнения иных обязательств, препятствующих оказанию услуг, Исполнитель вправе приостановить оказание услуг без возврата уплаченных денежных средств.</p>' +
-      '<p style="font-size:10.5pt;line-height:1.55;margin:0 0 10px">3.4. Возврат денежных средств возможен исключительно в случае существенного и документально подтверждённого невыполнения условий Договора Исполнителем.</p>' +
+      '<p style="font-size:10.5pt;line-height:1.52;margin:8px 0 6px"><strong>3. ЦЕНА ДОГОВОРА И ПОРЯДОК РАСЧЕТОВ</strong></p>' +
+      '<p style="font-size:9.7pt;line-height:1.42;margin:0 0 6px">3.1. Стоимость услуг по настоящему Договору составляет <strong>' + costWords + ' (' + costFmt + ') рублей 00 копеек</strong> и является фиксированной.<br>Указанная стоимость не включает расходы на размещение и продвижение объявлений на платформе Авито, которые при необходимости оплачиваются Заказчиком самостоятельно напрямую платформе Авито.</p>' +
+      '<p style="font-size:9.7pt;line-height:1.42;margin:0 0 2px">3.2. Оплата услуг осуществляется в следующем порядке:</p>' +
+      '<p style="font-size:9.7pt;line-height:1.42;margin:0 0 2px">3.2.1. Заказчик производит <strong>100% предоплату</strong> в размере <strong>' + costWords + ' (' + costFmt + ') рублей 00 копеек</strong> до начала оказания услуг.</p>' +
+      '<p style="font-size:9.7pt;line-height:1.42;margin:0 0 2px">3.2.2. Дополнительных платежей за услуги Исполнителя по настоящему Договору не предусмотрено.</p>' +
+      '<p style="font-size:9.7pt;line-height:1.42;margin:0 0 2px">3.3. В случае непредоставления Заказчиком необходимых материалов либо неисполнения иных обязательств, препятствующих оказанию услуг, Исполнитель вправе приостановить оказание услуг без возврата уплаченных денежных средств.</p>' +
+      '<p style="font-size:9.7pt;line-height:1.42;margin:0 0 10px">3.4. Возврат денежных средств возможен исключительно в случае существенного и документально подтверждённого невыполнения условий Договора Исполнителем.</p>' +
 
-      '<p style="font-size:10.5pt;line-height:1.55;margin:8px 0 6px"><strong>4. ОТВЕТСТВЕННОСТЬ СТОРОН И УСЛОВИЯ ИСПОЛНЕНИЯ</strong></p>' +
-      '<p style="font-size:10.5pt;line-height:1.55;margin:0 0 2px">4.1. Стороны несут ответственность за нарушение условий настоящего договора в соответствии с законодательством Российской Федерации.</p>' +
-      '<p style="font-size:10.5pt;line-height:1.55;margin:0 0 2px">4.2. Исполнитель несёт ответственность за качество оказанных услуг, при условии их полного выполнения на основании предоставленных Заказчиком данных, а также соблюдения Заказчиком всех требований, предусмотренных стратегией продвижения.</p>' +
-      '<p style="font-size:10.5pt;line-height:1.55;margin:0 0 2px">4.3. Исполнитель оказывает услуги согласно согласованному объёму работ, включая разработку объявлений, инфографики, настройку автозагрузки и иных инструментов. При условии запуска всех компонентов (отзывы, тариф, бюджет), отклик от аудитории может быть ожидаем в течение 7 (семи) рабочих дней, однако конкретные показатели (заявки, обращения и т.п.) не подлежат гарантийному обеспечению ввиду внешних факторов.</p>' +
-      '<p style="font-size:10.5pt;line-height:1.55;margin:0 0 2px">4.4. Исполнитель вправе по собственному усмотрению продлить срок ведения рекламной кампании до 30 календарных дней без дополнительной оплаты, если это необходимо для достижения наилучшего результата.</p>' +
-      '<p style="font-size:10.5pt;line-height:1.55;margin:0 0 2px">4.5. Заказчик вправе требовать уменьшения стоимости услуг только при наличии существенных недостатков в выполненной работе, подтвержденных документально.</p>' +
-      '<p style="font-size:10.5pt;line-height:1.55;margin:0 0 2px">4.6. Заказчик подтверждает, что неисполнение им части условий (в том числе неиспользование рекламного бюджета, отсутствие отзывов, неполная реализация стратегии) освобождает Исполнителя от ответственности за итоговую результативность.</p>' +
-      '<p style="font-size:10.5pt;line-height:1.55;margin:0 0 2px">4.7. Обстоятельства непреодолимой силы освобождают обе стороны от ответственности. В таком случае сроки исполнения обязательств отодвигаются на период действия соответствующих обстоятельств.</p>' +
-      '<p style="font-size:10.5pt;line-height:1.55;margin:0 0 10px">4.8. Отзывы, касающиеся оказанных услуг, могут быть оставлены не ранее чем через 30 календарных дней с начала работы по договору. В случае несоблюдения данного условия Сторона, допустившая нарушение, обязана возместить другой Стороне понесённые ею репутационные или иные убытки.</p>' +
+      '<p style="font-size:10.5pt;line-height:1.52;margin:8px 0 6px"><strong>4. ОТВЕТСТВЕННОСТЬ СТОРОН И УСЛОВИЯ ИСПОЛНЕНИЯ</strong></p>' +
+      '<p style="font-size:9.7pt;line-height:1.42;margin:0 0 2px">4.1. Стороны несут ответственность за нарушение условий настоящего договора в соответствии с законодательством Российской Федерации.</p>' +
+      '<p style="font-size:9.7pt;line-height:1.42;margin:0 0 2px">4.2. Исполнитель несёт ответственность за качество оказанных услуг, при условии их полного выполнения на основании предоставленных Заказчиком данных, а также соблюдения Заказчиком всех требований, предусмотренных стратегией продвижения.</p>' +
+      '<p style="font-size:9.7pt;line-height:1.42;margin:0 0 2px">4.3. Исполнитель оказывает услуги согласно согласованному объёму работ, включая разработку объявлений, инфографики, настройку автозагрузки и иных инструментов. При условии запуска всех компонентов (отзывы, тариф, бюджет), отклик от аудитории может быть ожидаем в течение 7 (семи) рабочих дней, однако конкретные показатели (заявки, обращения и т.п.) не подлежат гарантийному обеспечению ввиду внешних факторов.</p>' +
+      '<p style="font-size:9.7pt;line-height:1.42;margin:0 0 2px">4.4. Исполнитель вправе по собственному усмотрению продлить срок ведения рекламной кампании до 30 календарных дней без дополнительной оплаты, если это необходимо для достижения наилучшего результата.</p>' +
+      '<p style="font-size:9.7pt;line-height:1.42;margin:0 0 2px">4.5. Заказчик вправе требовать уменьшения стоимости услуг только при наличии существенных недостатков в выполненной работе, подтвержденных документально.</p>' +
+      '<p style="font-size:9.7pt;line-height:1.42;margin:0 0 2px">4.6. Заказчик подтверждает, что неисполнение им части условий (в том числе неиспользование рекламного бюджета, отсутствие отзывов, неполная реализация стратегии) освобождает Исполнителя от ответственности за итоговую результативность.</p>' +
+      '<p style="font-size:9.7pt;line-height:1.42;margin:0 0 2px">4.7. Обстоятельства непреодолимой силы освобождают обе стороны от ответственности. В таком случае сроки исполнения обязательств отодвигаются на период действия соответствующих обстоятельств.</p>' +
+      '<p style="font-size:9.7pt;line-height:1.42;margin:0 0 10px">4.8. Отзывы, касающиеся оказанных услуг, могут быть оставлены не ранее чем через 30 календарных дней с начала работы по договору. В случае несоблюдения данного условия Сторона, допустившая нарушение, обязана возместить другой Стороне понесённые ею репутационные или иные убытки.</p>' +
 
-      '<p style="font-size:10.5pt;line-height:1.55;margin:8px 0 6px"><strong>5. ПРОЧИЕ УСЛОВИЯ</strong></p>' +
-      '<p style="font-size:10.5pt;line-height:1.55;margin:0 0 2px">5.1. Настоящий Договор вступает в силу с момента его подписания и действует до полного исполнения Сторонами своих обязательств по нему.<br>Факт оплаты Заказчиком услуг, указанных в разделе 3 настоящего Договора, в том числе посредством банковского перевода или оплаты по реквизитам Исполнителя, считается полным и безусловным принятием условий настоящего Договора и имеет юридическую силу, равную подписанию документа обеими Сторонами.</p>' +
-      '<p style="font-size:10.5pt;line-height:1.55;margin:0 0 2px">5.2. Во всем, что не урегулировано настоящим Договором, подлежит применению действующее законодательство Российской Федерации.</p>' +
-      '<p style="font-size:10.5pt;line-height:1.55;margin:0 0 2px">5.3. Все изменения и дополнения к настоящему Договору должны быть составлены в письменной форме и подписаны обеими Сторонами.</p>' +
-      '<p style="font-size:10.5pt;line-height:1.55;margin:0 0 10px">5.4. Настоящий Договор составлен в двух экземплярах, имеющих равную юридическую силу, по одному экземпляру для каждой из Сторон.</p>' +
+      '<p style="font-size:10.5pt;line-height:1.52;margin:8px 0 6px"><strong>5. ПРОЧИЕ УСЛОВИЯ</strong></p>' +
+      '<p style="font-size:9.7pt;line-height:1.42;margin:0 0 2px">5.1. Настоящий Договор вступает в силу с момента его подписания и действует до полного исполнения Сторонами своих обязательств по нему.<br>Факт оплаты Заказчиком услуг, указанных в разделе 3 настоящего Договора, в том числе посредством банковского перевода или оплаты по реквизитам Исполнителя, считается полным и безусловным принятием условий настоящего Договора и имеет юридическую силу, равную подписанию документа обеими Сторонами.</p>' +
+      '<p style="font-size:9.7pt;line-height:1.42;margin:0 0 2px">5.2. Во всем, что не урегулировано настоящим Договором, подлежит применению действующее законодательство Российской Федерации.</p>' +
+      '<p style="font-size:9.7pt;line-height:1.42;margin:0 0 2px">5.3. Все изменения и дополнения к настоящему Договору должны быть составлены в письменной форме и подписаны обеими Сторонами.</p>' +
+      '<p style="font-size:9.7pt;line-height:1.42;margin:0 0 10px">5.4. Настоящий Договор составлен в двух экземплярах, имеющих равную юридическую силу, по одному экземпляру для каждой из Сторон.</p>' +
 
-      '<p style="font-size:10.5pt;line-height:1.55;margin:10px 0 8px">Стороны.</p>' +
+      '<p style="font-size:10.5pt;line-height:1.52;margin:10px 0 8px">Стороны.</p>' +
 
-      '<p style="font-size:10.5pt;line-height:1.55;margin:8px 0 6px"><strong>6. АДРЕСА И БАНКОВСКИЕ РЕКВИЗИТЫ СТОРОН</strong></p>' +
-      '<p style="font-size:10.5pt;line-height:1.55;margin:0 0 2px">Заказчик:</p>' +
-      '<p style="font-size:10.5pt;line-height:1.55;margin:0 0 10px">' + clientName + '</p>' +
-      '<p style="font-size:10.5pt;line-height:1.55;margin:0 0 2px">Исполнитель:</p>' +
-      '<p style="font-size:10.5pt;line-height:1.55;margin:0 0 14px">ИП Шинков Филипп Аркадьевич<br>ИНН ' + EXECUTOR.inn + '<br>ОГРН ' + EXECUTOR.ogrn + '<br>РС ' + EXECUTOR.account + '<br>' + EXECUTOR.bank + '</p>';
+      '<p style="font-size:10.5pt;line-height:1.52;margin:8px 0 6px"><strong>6. АДРЕСА И БАНКОВСКИЕ РЕКВИЗИТЫ СТОРОН</strong></p>' +
+      '<p style="font-size:9.7pt;line-height:1.42;margin:0 0 2px">Заказчик:</p>' +
+      '<p style="font-size:9.7pt;line-height:1.42;margin:0 0 10px">' + clientName + '<br>ИНН ' + (clientInn || '—') + '<br>ОГРН ' + (clientOgrn || '—') + '<br>Р/С ' + (clientAccount || '—') + '<br>Банк ' + (clientBank || '—') + '<br>БИК ' + (clientBik || '—') + '<br>К/С ' + (clientCorr || '—') + '</p>' +
+      '<p style="font-size:9.7pt;line-height:1.42;margin:0 0 2px">Исполнитель:</p>' +
+      '<p style="font-size:9.7pt;line-height:1.42;margin:0 0 14px">ИП Шинков Филипп Аркадьевич<br>ИНН ' + EXECUTOR.inn + '<br>ОГРН ' + EXECUTOR.ogrn + '<br>РС ' + EXECUTOR.account + '<br>' + EXECUTOR.bank + '</p>';
   }
 
   function getAppendix1Template(data) {
@@ -964,6 +976,44 @@
         String(innerHtml || '') +
         '</body></html>';
     }
+    function blobToDataUrl(blob) {
+      return new Promise(function(resolve, reject) {
+        try {
+          var r = new FileReader();
+          r.onload = function() { resolve(String(r.result || '')); };
+          r.onerror = function() { reject(new Error('Не удалось прочитать изображение')); };
+          r.readAsDataURL(blob);
+        } catch (e) {
+          reject(e);
+        }
+      });
+    }
+    async function inlineExportImages(htmlStr) {
+      var html = String(htmlStr || '');
+      var srcMap = {};
+      var jobs = [];
+      var imgRx = /(<img\b[^>]*\bsrc=["'])([^"']+)(["'][^>]*>)/gi;
+      html.replace(imgRx, function(_, _a, src) {
+        var key = String(src || '').trim();
+        if (!key || /^data:|^blob:/i.test(key) || srcMap[key]) return _;
+        jobs.push((async function() {
+          try {
+            var abs = new URL(key, window.location.href).href;
+            var resp = await fetch(abs, { cache: 'no-store' });
+            if (!resp || !resp.ok) return;
+            var blob = await resp.blob();
+            srcMap[key] = await blobToDataUrl(blob);
+          } catch (e) {}
+        })());
+        return _;
+      });
+      if (jobs.length) await Promise.all(jobs);
+      if (!Object.keys(srcMap).length) return html;
+      return html.replace(imgRx, function(full, a, src, c) {
+        var key = String(src || '').trim();
+        return srcMap[key] ? (a + srcMap[key] + c) : full;
+      });
+    }
 
     var wrap = document.createElement('div');
     wrap.className = 'contract-generator';
@@ -1022,11 +1072,12 @@
         if (btn) btn.disabled = true;
         var who = (lastGeneratedData && (lastGeneratedData.fio || lastGeneratedData.companyName)) || ctx.name || 'Клиент';
         var docName = '📜 Договор — ' + String(who);
+        var htmlForExport = await inlineExportImages(lastGeneratedHtml);
         var canDrive = !!(ctx && ctx.folderId && typeof driveCreateGoogleDoc === 'function' && typeof getDriveToken === 'function');
         if (canDrive) {
           if (st) st.textContent = 'Сохраняю в Google Docs...';
           await getDriveToken();
-          var res = await driveCreateGoogleDoc(docName, wrapContractHtml(lastGeneratedHtml), ctx.folderId);
+          var res = await driveCreateGoogleDoc(docName, wrapContractHtml(htmlForExport), ctx.folderId);
           if (st) {
             var link = res && res.webViewLink ? String(res.webViewLink) : '';
             st.innerHTML = link
@@ -1034,13 +1085,14 @@
               : '✓ Сохранено в папку';
           }
         } else {
-          downloadDocLocal(docName, lastGeneratedHtml);
+          downloadDocLocal(docName, htmlForExport);
           if (st) st.textContent = '✓ Скачан .doc файл';
         }
       } catch (e) {
         try {
           var who2 = (lastGeneratedData && (lastGeneratedData.fio || lastGeneratedData.companyName)) || 'Клиент';
-          downloadDocLocal('📜 Договор — ' + String(who2), lastGeneratedHtml);
+          var htmlForExportFallback = await inlineExportImages(lastGeneratedHtml);
+          downloadDocLocal('📜 Договор — ' + String(who2), htmlForExportFallback);
           if (st) st.textContent = 'Drive недоступен, скачан .doc файл';
         } catch (e2) {
           if (st) st.textContent = 'Ошибка сохранения: ' + String((e2 && e2.message) || e2 || e);
@@ -1060,8 +1112,9 @@
         return;
       }
       var wrapTmp = document.createElement('div');
-      wrapTmp.style.cssText = 'position:fixed;left:-99999px;top:0;width:794px;background:#fff;color:#000;padding:20px;box-sizing:border-box;';
-      wrapTmp.innerHTML = lastGeneratedHtml;
+      wrapTmp.style.cssText = 'position:fixed;left:0;top:0;width:794px;background:#fff;color:#000;padding:20px;box-sizing:border-box;opacity:0;pointer-events:none;z-index:-1;';
+      var htmlForPdf = await inlineExportImages(lastGeneratedHtml);
+      wrapTmp.innerHTML = htmlForPdf;
       document.body.appendChild(wrapTmp);
       try {
         if (st) st.textContent = 'Готовлю PDF...';
@@ -1085,7 +1138,7 @@
         try {
           var win = window.open('', '_blank');
           if (win) {
-            win.document.write('<!doctype html><html><head><meta charset="utf-8"><title>Договор</title></head><body>' + lastGeneratedHtml + '</body></html>');
+            win.document.write(wrapContractHtml(htmlForPdf));
             win.document.close();
             win.focus();
             win.print();
