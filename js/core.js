@@ -107,6 +107,7 @@ var agencyMode = false;
 var strategyMode = false;
 var assetsMode = false;
 var adsMode = false;
+var tasksMode = false;
 var _agencyTabHidden = (function(){ try{ return localStorage.getItem('av_hide_agency_tab') === '1'; } catch(e){ return false; }})();
 function setAgencyTabHidden(hidden) {
   _agencyTabHidden = !!hidden;
@@ -423,12 +424,15 @@ function openGoalsTab() {
   projectsMode = false;
   agencyMode = false;
   assetsMode = false;
+  adsMode = false;
+  tasksMode = false;
   if (typeof closeTaskPanel === 'function') closeTaskPanel();
   document.body.classList.remove('projects-mode');
   document.body.classList.remove('projects-sidebar-hidden');
   document.body.classList.remove('agency-mode');
   document.body.classList.remove('assets-mode');
   document.body.classList.remove('ads-mode');
+  document.body.classList.remove('tasks-mode');
   document.body.classList.add('goals-mode');
   hideChat();
   stopProjectsSheetPullTimer();
@@ -494,12 +498,15 @@ function openProjectsTab() {
   agencyMode = false;
   strategyMode = false;
   assetsMode = false;
+  adsMode = false;
+  tasksMode = false;
   projectsMode = true;
   document.body.classList.remove('goals-mode');
   document.body.classList.remove('agency-mode');
   document.body.classList.remove('strategy-mode');
   document.body.classList.remove('assets-mode');
   document.body.classList.remove('ads-mode');
+  document.body.classList.remove('tasks-mode');
   document.body.classList.add('projects-mode');
   if (typeof localStorage !== 'undefined' && localStorage.getItem('avitolog_projects_sidebar_hidden') === '1') document.body.classList.add('projects-sidebar-hidden');
   hideChat();
@@ -518,6 +525,7 @@ function openAnalyticsTab() {
   strategyMode = false;
   assetsMode = false;
   adsMode = false;
+  tasksMode = false;
   projectsMode = false;
   if (typeof closeTaskPanel === 'function') closeTaskPanel();
   document.body.classList.remove('projects-mode');
@@ -527,6 +535,7 @@ function openAnalyticsTab() {
   document.body.classList.remove('strategy-mode');
   document.body.classList.remove('assets-mode');
   document.body.classList.remove('ads-mode');
+  document.body.classList.remove('tasks-mode');
   updateProjectsSidebarOffset();
   stopProjectsSheetPullTimer();
   stopProjectsDayShiftTimer();
@@ -540,8 +549,9 @@ function openAssetsTab() {
   agencyMode = false;
   strategyMode = false;
   adsMode = false;
+  tasksMode = false;
   assetsMode = true;
-  document.body.classList.remove('projects-mode', 'goals-mode', 'agency-mode', 'strategy-mode', 'ads-mode');
+  document.body.classList.remove('projects-mode', 'goals-mode', 'agency-mode', 'strategy-mode', 'ads-mode', 'tasks-mode');
   document.body.classList.add('assets-mode');
   document.body.classList.remove('projects-sidebar-hidden');
   hideChat();
@@ -620,6 +630,239 @@ function renderAdsIntoMainContent(mc) {
     });
   }
 }
+function renderTasksBoardIntoMainContent(mc) {
+  if (!mc) return;
+  var esc = function(s) { return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); };
+  var projectsData = { projects: [], tasks: [] };
+  try {
+    if (typeof loadProjectsData === 'function') {
+      projectsData = loadProjectsData() || projectsData;
+    }
+  } catch (e0) {}
+  projectsData.projects = Array.isArray(projectsData.projects) ? projectsData.projects : [];
+  projectsData.tasks = Array.isArray(projectsData.tasks) ? projectsData.tasks : [];
+  var crmTasks = [];
+  try {
+    crmTasks = JSON.parse(localStorage.getItem('crm_tasks_v1') || '[]');
+    if (!Array.isArray(crmTasks)) crmTasks = [];
+  } catch (e1) { crmTasks = []; }
+
+  var query = '';
+  var status = 'open';
+  var qEl = document.getElementById('tasksBoardSearch');
+  var sEl = document.getElementById('tasksBoardStatusFilter');
+  if (qEl) query = String(qEl.value || '').trim().toLowerCase();
+  if (sEl) status = String(sEl.value || 'open');
+  var nowIso = (typeof getTodayISOmsk === 'function') ? getTodayISOmsk() : new Date().toISOString().slice(0, 10);
+
+  var byProjectId = {};
+  projectsData.projects.forEach(function(p) {
+    byProjectId[p.id] = {
+      id: p.id,
+      title: p.title || 'Без названия',
+      zone: p.zone || 'active',
+      tasks: []
+    };
+  });
+  var bucketByTitle = {};
+  projectsData.projects.forEach(function(p) {
+    var t = String(p.title || '').trim().toLowerCase();
+    if (t) bucketByTitle[t] = p.id;
+  });
+
+  projectsData.tasks.forEach(function(t) {
+    var pid = t && t.projectId ? String(t.projectId) : '';
+    if (!pid || !byProjectId[pid]) {
+      if (!byProjectId.__other) byProjectId.__other = { id: '__other', title: 'Прочее', zone: 'active', tasks: [] };
+      pid = '__other';
+    }
+    byProjectId[pid].tasks.push({
+      id: t.id || ('task_' + Math.random()),
+      title: t.title || 'Без названия',
+      dueDate: t.dueDate || '',
+      type: t.type || 'task',
+      source: 'projects',
+      status: (t.status === 'done') ? 'done' : (t.status === 'work' ? 'work' : 'new'),
+      priority: t.priority || 'normal',
+      tags: Array.isArray(t.tags) ? t.tags : []
+    });
+  });
+
+  crmTasks.forEach(function(t) {
+    var projectName = String((t && t.project) || '').trim();
+    var pid = projectName ? (bucketByTitle[projectName.toLowerCase()] || '') : '';
+    if (!pid) {
+      pid = projectName ? ('crm_' + projectName.toLowerCase().replace(/[^\wа-яё]+/gi, '_')) : 'crm_no_project';
+      if (!byProjectId[pid]) byProjectId[pid] = { id: pid, title: projectName || 'CRM без проекта', zone: 'active', tasks: [] };
+    }
+    byProjectId[pid].tasks.push({
+      id: t.id || ('crm_' + Math.random()),
+      title: t.title || 'Без названия',
+      dueDate: t.deadline ? String(t.deadline).slice(0, 10) : '',
+      type: t.type || 'task',
+      source: 'crm',
+      status: t.status === 'completed' ? 'done' : 'work',
+      priority: t.priority ? 'urgent' : ((t.type === 'urgent') ? 'urgent' : 'normal'),
+      tags: []
+    });
+  });
+
+  var columns = Object.keys(byProjectId).map(function(pid) { return byProjectId[pid]; })
+    .filter(function(col) { return col.tasks && col.tasks.length; })
+    .sort(function(a, b) {
+      var az = a.zone === 'active' ? 0 : (a.zone === 'second_chance' ? 1 : 2);
+      var bz = b.zone === 'active' ? 0 : (b.zone === 'second_chance' ? 1 : 2);
+      if (az !== bz) return az - bz;
+      return (b.tasks.length || 0) - (a.tasks.length || 0);
+    });
+  if (!columns.length) {
+    mc.innerHTML = '<div class="tasks-board-page"><div class="tasks-board-head"><div><div class="tasks-board-title">ЗАДАЧИ ПО ПРОЕКТАМ</div><div class="tasks-board-sub">Пока нет задач. Создай их в CRM или в ПРОЕКТАХ.</div></div></div><div class="tasks-board-empty">Нет данных для отображения.</div></div>';
+    return;
+  }
+
+  var visible = columns.map(function(col) {
+    var tasks = (col.tasks || []).filter(function(t) {
+      var overdue = t.status !== 'done' && !!t.dueDate && t.dueDate < nowIso;
+      if (status === 'open' && t.status === 'done') return false;
+      if (status === 'done' && t.status !== 'done') return false;
+      if (status === 'overdue' && !overdue) return false;
+      if (!query) return true;
+      var hay = (String(col.title || '') + ' ' + String(t.title || '') + ' ' + String(t.type || '')).toLowerCase();
+      return hay.indexOf(query) >= 0;
+    }).sort(function(a, b) {
+      var ad = a.dueDate || '9999-12-31';
+      var bd = b.dueDate || '9999-12-31';
+      if (ad !== bd) return ad.localeCompare(bd);
+      return (a.status === 'done') - (b.status === 'done');
+    });
+    return { id: col.id, title: col.title, zone: col.zone, tasks: tasks };
+  }).filter(function(col) { return col.tasks.length; });
+
+  var total = 0, doneCount = 0, overdueCount = 0;
+  visible.forEach(function(col) {
+    col.tasks.forEach(function(t) {
+      total++;
+      if (t.status === 'done') doneCount++;
+      if (t.status !== 'done' && t.dueDate && t.dueDate < nowIso) overdueCount++;
+    });
+  });
+
+  var colsHtml = visible.map(function(col) {
+    var done = 0, overdue = 0;
+    var taskHtml = col.tasks.map(function(t) {
+      var isDone = t.status === 'done';
+      var isOver = !isDone && t.dueDate && t.dueDate < nowIso;
+      if (isDone) done++;
+      if (isOver) overdue++;
+      var statusClass = isDone ? 'status-done' : (t.status === 'work' ? 'status-work' : 'status-new');
+      var statusLabel = isDone ? 'done' : (t.status === 'work' ? 'work' : 'new');
+      var dueTxt = t.dueDate ? (t.dueDate.slice(8, 10) + '.' + t.dueDate.slice(5, 7)) : 'без даты';
+      var sourceTxt = t.source === 'crm' ? 'CRM' : 'Projects';
+      var tagsHtml = '';
+      if (Array.isArray(t.tags) && t.tags.length) {
+        tagsHtml = '<div class="tasks-task-tags">' + t.tags.slice(0, 4).map(function(tag){
+          var e = (tag && tag.emoji) ? String(tag.emoji) : '🏷';
+          var lbl = (tag && tag.label) ? String(tag.label) : 'тег';
+          return '<span class="tasks-task-tag" title="' + esc(lbl) + '">' + esc(e) + ' ' + esc(lbl) + '</span>';
+        }).join('') + '</div>';
+      }
+      return '<div class="tasks-task' + (isDone ? ' is-done' : '') + (isOver ? ' is-overdue' : '') + '">' +
+        '<div class="tasks-task-top"><div class="tasks-task-title">' + esc(t.title) + '</div><span class="tasks-task-badge ' + statusClass + '">' + statusLabel + '</span></div>' +
+        '<div class="tasks-task-meta"><span>📅 ' + esc(dueTxt) + '</span><span>• ' + esc(sourceTxt) + '</span><span>• ' + esc(t.type || 'task') + '</span></div>' +
+        tagsHtml +
+        '<div class="tasks-task-actions">' +
+          (isDone ? '' : '<button type="button" class="tasks-task-act" onclick="tasksBoardSetDone(\'' + esc(t.id) + '\',\'' + esc(t.source) + '\')">✓ done</button>') +
+          (isDone ? '<button type="button" class="tasks-task-act" onclick="tasksBoardSetWork(\'' + esc(t.id) + '\',\'' + esc(t.source) + '\')">↺ work</button>' : '') +
+        '</div>' +
+      '</div>';
+    }).join('');
+    var openBtn = (col.id && col.id.indexOf('crm_') !== 0 && col.id !== '__other' && col.id !== 'crm_no_project')
+      ? '<button type="button" class="tasks-col-open" onclick="tasksBoardOpenProject(\'' + esc(col.id) + '\')">Открыть</button>' : '';
+    return '<div class="tasks-col">' +
+      '<div class="tasks-col-head"><div class="tasks-col-title"><span>' + esc(col.title) + '</span>' + openBtn + '</div>' +
+      '<div class="tasks-col-kpis"><span class="tasks-col-kpi">Всего: ' + col.tasks.length + '</span><span class="tasks-col-kpi">Done: ' + done + '</span><span class="tasks-col-kpi">Overdue: ' + overdue + '</span></div></div>' +
+      '<div class="tasks-col-list">' + (taskHtml || '<div class="tasks-col-empty">Нет задач</div>') + '</div>' +
+      '</div>';
+  }).join('');
+
+  mc.innerHTML = '<div class="tasks-board-page">' +
+    '<div class="tasks-board-head"><div><div class="tasks-board-title">ЗАДАЧИ ПО ПРОЕКТАМ</div><div class="tasks-board-sub">Колонками: один проект = один столбец. Быстрый обзор по всем задачам команды.</div></div>' +
+    '<div class="tasks-board-controls"><input id="tasksBoardSearch" class="tasks-board-search" placeholder="Поиск по проекту или задаче" value="' + esc(query) + '" oninput="renderTasksBoardIntoMainContent(document.getElementById(\'mainContent\'))">' +
+    '<select id="tasksBoardStatusFilter" class="tasks-board-filter" onchange="renderTasksBoardIntoMainContent(document.getElementById(\'mainContent\'))"><option value="open"' + (status === 'open' ? ' selected' : '') + '>Открытые</option><option value="all"' + (status === 'all' ? ' selected' : '') + '>Все</option><option value="overdue"' + (status === 'overdue' ? ' selected' : '') + '>Просрочка</option><option value="done"' + (status === 'done' ? ' selected' : '') + '>Выполненные</option></select></div></div>' +
+    '<div class="tasks-board-strip"><span class="tasks-board-chip">Проектов: ' + visible.length + '</span><span class="tasks-board-chip">Задач: ' + total + '</span><span class="tasks-board-chip">Done: ' + doneCount + '</span><span class="tasks-board-chip">Overdue: ' + overdueCount + '</span></div>' +
+    '<div class="tasks-board-wrap"><div class="tasks-board-columns">' + colsHtml + '</div></div>' +
+  '</div>';
+}
+function tasksBoardSetDone(taskId, source) {
+  if (!taskId) return;
+  if (source === 'crm') {
+    if (typeof crmTaskMutate === 'function') crmTaskMutate(taskId, function(t){ t.status = 'completed'; t.completedAt = crmTaskNowIso(); });
+    else {
+      var list = [];
+      try { list = JSON.parse(localStorage.getItem('crm_tasks_v1') || '[]'); } catch(e0) {}
+      if (!Array.isArray(list)) list = [];
+      list.forEach(function(t){ if (t.id === taskId) { t.status = 'completed'; t.completedAt = new Date().toISOString(); } });
+      try { localStorage.setItem('crm_tasks_v1', JSON.stringify(list)); } catch(e1) {}
+    }
+  } else if (typeof updateTask === 'function') {
+    updateTask(taskId, { status: 'done' });
+  } else if (typeof loadProjectsData === 'function' && typeof saveProjectsData === 'function') {
+    var data = loadProjectsData();
+    (data.tasks || []).forEach(function(t){ if (t.id === taskId) t.status = 'done'; });
+    saveProjectsData(data);
+  }
+  renderTasksBoardIntoMainContent(document.getElementById('mainContent'));
+}
+function tasksBoardSetWork(taskId, source) {
+  if (!taskId) return;
+  if (source === 'crm') {
+    if (typeof crmTaskMutate === 'function') crmTaskMutate(taskId, function(t){ t.status = 'active'; t.completedAt = ''; });
+    else {
+      var list = [];
+      try { list = JSON.parse(localStorage.getItem('crm_tasks_v1') || '[]'); } catch(e0) {}
+      if (!Array.isArray(list)) list = [];
+      list.forEach(function(t){ if (t.id === taskId) { t.status = 'active'; t.completedAt = ''; } });
+      try { localStorage.setItem('crm_tasks_v1', JSON.stringify(list)); } catch(e1) {}
+    }
+  } else if (typeof updateTask === 'function') {
+    updateTask(taskId, { status: 'work' });
+  } else if (typeof loadProjectsData === 'function' && typeof saveProjectsData === 'function') {
+    var data = loadProjectsData();
+    (data.tasks || []).forEach(function(t){ if (t.id === taskId) t.status = 'work'; });
+    saveProjectsData(data);
+  }
+  renderTasksBoardIntoMainContent(document.getElementById('mainContent'));
+}
+function tasksBoardOpenProject(projectId) {
+  if (!projectId) return;
+  if (typeof openProjectsTab === 'function') openProjectsTab();
+  if (typeof selectProjectRow === 'function') {
+    setTimeout(function(){ selectProjectRow(projectId); }, 40);
+  }
+}
+function openTasksTab() {
+  if (tasksMode) {
+    renderTasksBoardIntoMainContent(document.getElementById('mainContent'));
+    updateTopRowButtons();
+    return;
+  }
+  goalsMode = false;
+  projectsMode = false;
+  agencyMode = false;
+  strategyMode = false;
+  assetsMode = false;
+  adsMode = false;
+  tasksMode = true;
+  document.body.classList.remove('projects-mode', 'goals-mode', 'agency-mode', 'strategy-mode', 'assets-mode', 'ads-mode');
+  document.body.classList.add('tasks-mode');
+  document.body.classList.remove('projects-sidebar-hidden');
+  hideChat();
+  if (typeof closeTaskPanel === 'function') closeTaskPanel();
+  stopProjectsSheetPullTimer();
+  stopProjectsDayShiftTimer();
+  renderTasksBoardIntoMainContent(document.getElementById('mainContent'));
+  updateTopRowButtons();
+}
 function openAdsTab() {
   if (adsMode) {
     renderAdsIntoMainContent(document.getElementById('mainContent'));
@@ -631,8 +874,9 @@ function openAdsTab() {
   agencyMode = false;
   strategyMode = false;
   assetsMode = false;
+  tasksMode = false;
   adsMode = true;
-  document.body.classList.remove('projects-mode', 'goals-mode', 'agency-mode', 'strategy-mode', 'assets-mode');
+  document.body.classList.remove('projects-mode', 'goals-mode', 'agency-mode', 'strategy-mode', 'assets-mode', 'tasks-mode');
   document.body.classList.add('ads-mode');
   document.body.classList.remove('projects-sidebar-hidden');
   hideChat();
@@ -651,6 +895,7 @@ function openAgencyTab() {
   strategyMode = false;
   assetsMode = false;
   adsMode = false;
+  tasksMode = false;
   agencyMode = true;
   document.body.classList.remove('projects-mode');
   document.body.classList.remove('projects-sidebar-hidden');
@@ -658,6 +903,7 @@ function openAgencyTab() {
   document.body.classList.remove('strategy-mode');
   document.body.classList.remove('assets-mode');
   document.body.classList.remove('ads-mode');
+  document.body.classList.remove('tasks-mode');
   document.body.classList.add('agency-mode');
   hideChat();
   stopProjectsSheetPullTimer();
@@ -672,6 +918,7 @@ function openStrategyTab() {
   agencyMode = false;
   assetsMode = false;
   adsMode = false;
+  tasksMode = false;
   strategyMode = true;
   if (typeof closeTaskPanel === 'function') closeTaskPanel();
   document.body.classList.remove('projects-mode');
@@ -680,6 +927,7 @@ function openStrategyTab() {
   document.body.classList.remove('agency-mode');
   document.body.classList.remove('assets-mode');
   document.body.classList.remove('ads-mode');
+  document.body.classList.remove('tasks-mode');
   document.body.classList.add('strategy-mode');
   hideChat();
   stopProjectsSheetPullTimer();
@@ -698,13 +946,28 @@ function toggleProjectsScreen() {
   if (projectsMode) openAnalyticsTab();
   else openProjectsTab();
 }
-var _topTabOrder = (function(){ try{ var s=localStorage.getItem('av_top_tab_order'); return s ? JSON.parse(s) : ['goals','analytics','projects','assets','ads','strategy','agency']; }catch(e){ return ['goals','analytics','projects','assets','ads','strategy','agency']; }})();
+var _topTabOrder = (function(){
+  try {
+    var s = localStorage.getItem('av_top_tab_order');
+    var order = s ? JSON.parse(s) : ['goals','analytics','projects','assets','tasks','ads','strategy','agency'];
+    if (!Array.isArray(order)) order = ['goals','analytics','projects','assets','tasks','ads','strategy','agency'];
+    if (order.indexOf('tasks') < 0) {
+      var adsIdx = order.indexOf('ads');
+      if (adsIdx >= 0) order.splice(adsIdx, 0, 'tasks');
+      else order.push('tasks');
+      try { localStorage.setItem('av_top_tab_order', JSON.stringify(order)); } catch (e1) {}
+    }
+    return order;
+  } catch(e) {
+    return ['goals','analytics','projects','assets','tasks','ads','strategy','agency'];
+  }
+})();
 function applyTopTabOrder() {
   var row = document.getElementById('analyticsTopRow');
   if (!row) return;
   var btns = Array.from(row.querySelectorAll('.btn-projects[data-tab]'));
   var order = _topTabOrder.slice();
-  ['goals','analytics','projects','assets','ads','strategy','agency'].forEach(function(t) { if (order.indexOf(t) < 0) order.push(t); });
+  ['goals','analytics','projects','assets','tasks','ads','strategy','agency'].forEach(function(t) { if (order.indexOf(t) < 0) order.push(t); });
   var ordered = order.map(function(t){ return btns.find(function(b){ return b.getAttribute('data-tab')===t; }); }).filter(Boolean);
   ordered.forEach(function(b){ row.appendChild(b); });
 }
@@ -720,6 +983,7 @@ function updateTopRowButtons() {
   var ret = document.getElementById('btnProjectsReturn');
   var btn = document.getElementById('btnProjects');
   var btnAssets = document.getElementById('btnAssets');
+  var btnTasks = document.getElementById('btnTasks');
   var btnStrategy = document.getElementById('btnStrategy');
   var btnAgency = document.getElementById('btnAgency');
   var btnAgencyHide = document.getElementById('btnAgencyHide');
@@ -727,9 +991,10 @@ function updateTopRowButtons() {
   if (!row) return;
   row.style.display = 'flex';
   if (btnGoals) btnGoals.classList.toggle('is-on', goalsMode);
-  if (ret) ret.classList.toggle('is-on', !projectsMode && !goalsMode && !agencyMode && !strategyMode && !assetsMode && !adsMode);
+  if (ret) ret.classList.toggle('is-on', !projectsMode && !goalsMode && !agencyMode && !strategyMode && !assetsMode && !adsMode && !tasksMode);
   if (btn) btn.classList.toggle('is-on', projectsMode);
   if (btnAssets) btnAssets.classList.toggle('is-on', assetsMode);
+  if (btnTasks) btnTasks.classList.toggle('is-on', tasksMode);
   var btnAds = document.getElementById('btnAds');
   if (btnAds) btnAds.classList.toggle('is-on', adsMode);
   if (btnStrategy) btnStrategy.classList.toggle('is-on', strategyMode);

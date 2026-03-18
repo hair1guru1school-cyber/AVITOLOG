@@ -629,6 +629,7 @@ body.projects-mode .gen-extra-prompt,body.projects-mode .gen-buttons-row{display
 #btnGoals.is-on{background:linear-gradient(180deg,#132c45,#0f1e32);color:#7cf5ff}
 #btnProjectsReturn.is-on{background:linear-gradient(180deg,#0f1a2d,#101522);color:#c8d8f5}
 #btnProjects.is-on{background:linear-gradient(180deg,#0f2038,#10192b);color:#6fe6ff;box-shadow:0 0 22px rgba(53,208,255,0.44),inset 0 0 10px rgba(53,208,255,0.1)}
+#btnTasks.is-on{background:linear-gradient(180deg,#122a43,#101a2e);color:#7cf5ff;box-shadow:0 0 22px rgba(53,208,255,0.4),inset 0 0 8px rgba(53,208,255,0.14)}
 .btn-projects.is-on::after{content:none}
 .btn-projects.top-tab-dragging{opacity:0.6}
 .btn-projects.top-tab-drop-target{box-shadow:inset 0 0 0 2px rgba(53,208,255,0.6)}
@@ -745,12 +746,55 @@ body.assets-mode .depth-bar,body.assets-mode .sec-bar{display:none !important}
 body.assets-mode .analytics-control-panel{display:none !important}
 body.assets-mode .gen-extra-prompt,body.assets-mode .gen-buttons-row{display:none !important}
 body.assets-mode .content{padding:16px 20px;background:linear-gradient(180deg,rgba(15,18,28,0.98) 0%,rgba(8,12,22,0.95) 100%)}
+body.tasks-mode .right-panel-wrap{display:none !important}
+body.tasks-mode .right-tabs{display:none !important}
+body.tasks-mode .depth-bar,body.tasks-mode .sec-bar{display:none !important}
+body.tasks-mode .analytics-control-panel{display:none !important}
+body.tasks-mode .gen-extra-prompt,body.tasks-mode .gen-buttons-row{display:none !important}
+body.tasks-mode .content{padding:14px 16px;background:linear-gradient(180deg,rgba(15,18,28,0.98) 0%,rgba(8,12,22,0.95) 100%)}
 body.ads-mode .right-panel-wrap{display:none !important}
 body.ads-mode .right-tabs{display:none !important}
 body.ads-mode .depth-bar,body.ads-mode .sec-bar{display:none !important}
 body.ads-mode .analytics-control-panel{display:none !important}
 body.ads-mode .gen-extra-prompt,body.ads-mode .gen-buttons-row{display:none !important}
 body.ads-mode .content{padding:16px 20px;background:linear-gradient(180deg,rgba(15,18,28,0.98) 0%,rgba(8,12,22,0.95) 100%)}
+.tasks-board-page{display:flex;flex-direction:column;height:100%;min-height:0;gap:12px}
+.tasks-board-head{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.tasks-board-title{font-family:'Bebas Neue',sans-serif;letter-spacing:1.3px;font-size:30px;color:#7cf5ff}
+.tasks-board-sub{font-size:12px;color:#9cc0dd}
+.tasks-board-controls{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.tasks-board-search{height:34px;min-width:220px;padding:0 12px;border-radius:10px;border:1px solid rgba(124,245,255,0.25);background:rgba(6,13,24,0.75);color:var(--text);outline:none}
+.tasks-board-search:focus{border-color:rgba(124,245,255,0.6);box-shadow:0 0 0 2px rgba(53,208,255,0.14)}
+.tasks-board-filter{height:34px;padding:0 10px;border-radius:9px;border:1px solid var(--border);background:rgba(255,255,255,0.04);color:var(--text);font-size:12px}
+.tasks-board-strip{display:flex;gap:8px;flex-wrap:wrap}
+.tasks-board-chip{padding:6px 10px;border-radius:999px;border:1px solid rgba(124,245,255,0.22);background:rgba(53,208,255,0.08);color:#99dcff;font-size:11px}
+.tasks-board-wrap{flex:1;min-height:0;overflow:auto;border:1px solid rgba(124,245,255,0.18);border-radius:14px;padding:12px;background:rgba(5,11,22,0.55)}
+.tasks-board-columns{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(270px,1fr);gap:12px;min-width:max-content}
+.tasks-col{display:flex;flex-direction:column;min-height:220px;max-height:calc(100vh - 250px);background:linear-gradient(180deg,rgba(16,26,44,0.95),rgba(10,16,30,0.95));border:1px solid rgba(124,245,255,0.2);border-radius:12px;overflow:hidden}
+.tasks-col-head{padding:10px 10px 8px;border-bottom:1px solid rgba(124,245,255,0.15);display:flex;flex-direction:column;gap:6px}
+.tasks-col-title{font-weight:800;font-size:13px;color:#c8e8ff;line-height:1.2;display:flex;align-items:center;justify-content:space-between;gap:8px}
+.tasks-col-open{font-size:10px;padding:3px 7px;border-radius:999px;border:1px solid rgba(124,245,255,0.3);color:#8fdfff;background:rgba(53,208,255,0.08);cursor:pointer}
+.tasks-col-open:hover{border-color:rgba(124,245,255,0.55);background:rgba(53,208,255,0.18)}
+.tasks-col-kpis{display:flex;gap:6px;flex-wrap:wrap}
+.tasks-col-kpi{font-size:10px;padding:2px 7px;border-radius:999px;background:rgba(255,255,255,0.06);color:#b4c6da}
+.tasks-col-list{padding:8px;display:flex;flex-direction:column;gap:8px;overflow:auto}
+.tasks-task{border:1px solid rgba(255,255,255,0.08);background:rgba(255,255,255,0.03);border-radius:10px;padding:8px;display:flex;flex-direction:column;gap:6px}
+.tasks-task.is-done{opacity:.68}
+.tasks-task.is-overdue{border-color:rgba(255,92,92,0.45);box-shadow:0 0 0 1px rgba(255,92,92,0.18) inset}
+.tasks-task-top{display:flex;align-items:flex-start;justify-content:space-between;gap:8px}
+.tasks-task-title{font-size:12px;line-height:1.35;color:#e4f2ff;word-break:break-word}
+.tasks-task-meta{font-size:10px;color:#9cb2cb;display:flex;gap:6px;flex-wrap:wrap}
+.tasks-task-tags{display:flex;gap:5px;flex-wrap:wrap}
+.tasks-task-tag{font-size:10px;padding:2px 6px;border-radius:999px;border:1px solid rgba(124,245,255,0.25);background:rgba(53,208,255,0.08);color:#9fe7ff;max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tasks-task-badge{font-size:10px;padding:2px 6px;border-radius:999px;border:1px solid rgba(255,255,255,0.2);white-space:nowrap}
+.tasks-task-badge.status-new{border-color:rgba(124,245,255,0.4);color:#7cf5ff}
+.tasks-task-badge.status-work{border-color:rgba(255,200,0,0.45);color:#ffcd53}
+.tasks-task-badge.status-done{border-color:rgba(0,217,126,0.45);color:#75f0b2}
+.tasks-task-actions{display:flex;gap:6px}
+.tasks-task-act{font-size:10px;padding:3px 8px;border-radius:7px;border:1px solid rgba(255,255,255,0.15);background:rgba(255,255,255,0.05);color:#cfe5ff;cursor:pointer}
+.tasks-task-act:hover{border-color:rgba(124,245,255,0.5);color:#7cf5ff}
+.tasks-col-empty{font-size:11px;color:#88a3c2;padding:8px 2px}
+.tasks-board-empty{padding:20px;border:1px dashed rgba(124,245,255,0.25);border-radius:10px;color:#9cb4cc;font-size:12px}
 body.contract-tab .analytics-control-panel,body.contract-tab .sec-bar,body.contract-tab .gen-extra-prompt,body.contract-tab .gen-buttons-row{display:none !important}
 .contract-generator{display:flex;flex-direction:column;gap:16px;height:100%;min-height:0;padding:12px 16px 16px}
 .contract-generator-form{flex:0 0 auto}
@@ -1094,6 +1138,10 @@ body.task-panel-font-l .task-panel-content{--tf:1.15}
 .task-panel-row-main{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
 .task-panel-row .task-panel-title{font-weight:600;color:var(--text)}
 .task-panel-row .task-panel-meta{font-size:10px;color:var(--muted)}
+.task-panel-tags{display:flex;gap:4px;flex-wrap:wrap;margin-top:4px}
+.task-panel-tag{display:inline-flex;align-items:center;gap:4px;max-width:100%;padding:1px 6px;border-radius:999px;border:1px solid rgba(124,245,255,0.35);background:rgba(53,208,255,0.09);color:#95e7ff;font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.task-panel-tag-rm{width:14px;height:14px;min-width:14px;border:none;border-radius:50%;background:rgba(255,107,53,0.2);color:#ff9a76;font-size:10px;line-height:1;cursor:pointer;display:inline-flex;align-items:center;justify-content:center}
+.task-panel-tag-rm:hover{background:rgba(255,107,53,0.35);color:#ffd3c4}
 .task-panel-row .task-panel-comment{font-size:10px;color:var(--muted);margin-top:4px;padding-top:4px;border-top:1px solid rgba(255,255,255,0.05)}
 .task-panel-row-del{width:20px;height:20px;min-width:20px;border:none;border-radius:6px;background:rgba(255,107,53,0.2);color:#ff6b35;font-size:14px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all 0.15s}
 .task-panel-row-del:hover{background:rgba(255,107,53,0.4);color:#fff}
@@ -1104,6 +1152,8 @@ body.task-panel-font-l .task-panel-content{--tf:1.15}
 .task-panel-row-done-btn.glass-gone{transform:scale(0);opacity:0;pointer-events:none}
 .task-panel-row-extend-btn{width:20px;height:20px;min-width:20px;border:none;border-radius:6px;background:rgba(255,180,0,0.2);color:#ffb400;font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all 0.15s}
 .task-panel-row-extend-btn:hover{background:rgba(255,180,0,0.35);color:#ffcc00}
+.task-panel-row-tag-btn{width:20px;height:20px;min-width:20px;border:none;border-radius:6px;background:rgba(53,208,255,0.16);color:#7cf5ff;font-size:11px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all 0.15s}
+.task-panel-row-tag-btn:hover{background:rgba(53,208,255,0.28);color:#b8f3ff}
 .task-panel-row-overdue .task-panel-row-meta{color:#ff6b35}
 .task-panel-transfer-badge{font-size:9px;margin-left:4px;padding:1px 4px;border-radius:4px;background:rgba(124,106,247,0.25);color:var(--accent3)}
 .task-extend-hint{font-size:12px;color:var(--muted);margin-bottom:10px;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -2067,6 +2117,7 @@ if (!window.AVITOLOG_GOALS) {
     <button type="button" class="btn-projects" id="btnProjectsReturn" data-tab="analytics" draggable="true" onclick="openAnalyticsTab()" ondragstart="topTabDragStart(event,'analytics')" ondragover="topTabDragOver(event)" ondragleave="topTabDragLeave(event)" ondrop="topTabDrop(event,'analytics')" ondragend="topTabDragEnd(event)">👤 КЛИЕНТ</button>
     <button type="button" class="btn-projects" id="btnProjects" data-tab="projects" draggable="true" onclick="openProjectsTab()" ondragstart="topTabDragStart(event,'projects')" ondragover="topTabDragOver(event)" ondragleave="topTabDragLeave(event)" ondrop="topTabDrop(event,'projects')" ondragend="topTabDragEnd(event)">📈 ПРОЕКТЫ</button>
     <button type="button" class="btn-projects btn-assets" id="btnAssets" data-tab="assets" draggable="true" onclick="openAssetsTab()" ondragstart="topTabDragStart(event,'assets')" ondragover="topTabDragOver(event)" ondragleave="topTabDragLeave(event)" ondrop="topTabDrop(event,'assets')" ondragend="topTabDragEnd(event)">💰 КАССА</button>
+    <button type="button" class="btn-projects" id="btnTasks" data-tab="tasks" draggable="true" onclick="openTasksTab()" ondragstart="topTabDragStart(event,'tasks')" ondragover="topTabDragOver(event)" ondragleave="topTabDragLeave(event)" ondrop="topTabDrop(event,'tasks')" ondragend="topTabDragEnd(event)">🗂 ЗАДАЧИ</button>
     <button type="button" class="btn-projects" id="btnAds" data-tab="ads" draggable="true" onclick="openAdsTab()" ondragstart="topTabDragStart(event,'ads')" ondragover="topTabDragOver(event)" ondragleave="topTabDragLeave(event)" ondrop="topTabDrop(event,'ads')" ondragend="topTabDragEnd(event)">📢 ADS</button>
     <button type="button" class="btn-projects" id="btnStrategy" data-tab="strategy" draggable="true" onclick="openStrategyTab()" ondragstart="topTabDragStart(event,'strategy')" ondragover="topTabDragOver(event)" ondragleave="topTabDragLeave(event)" ondrop="topTabDrop(event,'strategy')" ondragend="topTabDragEnd(event)" style="display:none">🧠 СТРАТЕГИЯ</button>
   </div>

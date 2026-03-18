@@ -2097,6 +2097,47 @@ function logTaskEvent(projectId, taskId, taskTitle, action, extra) {
   data.taskLog.push(entry);
   saveProjectsData(data);
 }
+function syncTasksBoardIfOpen() {
+  if (typeof tasksMode === 'undefined' || !tasksMode) return;
+  if (typeof renderTasksBoardIntoMainContent !== 'function') return;
+  var mc = document.getElementById('mainContent');
+  if (!mc) return;
+  renderTasksBoardIntoMainContent(mc);
+}
+function addTaskTag(taskId) {
+  if (!taskId) return;
+  var raw = prompt('Тег задачи: эмоджи + подпись\nПример: 📞 Позвонить Саше');
+  if (raw === null) return;
+  raw = String(raw || '').trim();
+  if (!raw) return;
+  var parts = raw.split(/\s+/);
+  var emoji = parts[0] || '🏷';
+  var label = parts.slice(1).join(' ').trim();
+  if (!label) label = 'тег';
+  var data = loadProjectsData();
+  var t = (data.tasks || []).find(function(x){ return x.id === taskId; });
+  if (!t) return;
+  if (!Array.isArray(t.tags)) t.tags = [];
+  t.tags.push({ emoji: emoji, label: label, createdAt: Date.now() });
+  saveProjectsData(data);
+  if (typeof renderTaskPanel === 'function') renderTaskPanel();
+  if (typeof rerenderProjectsPreserveScroll === 'function') rerenderProjectsPreserveScroll();
+  syncTasksBoardIfOpen();
+}
+function removeTaskTag(taskId, tagIdx) {
+  if (!taskId) return;
+  var idx = parseInt(tagIdx, 10);
+  if (!isFinite(idx) || idx < 0) return;
+  var data = loadProjectsData();
+  var t = (data.tasks || []).find(function(x){ return x.id === taskId; });
+  if (!t || !Array.isArray(t.tags)) return;
+  if (idx >= t.tags.length) return;
+  t.tags.splice(idx, 1);
+  saveProjectsData(data);
+  if (typeof renderTaskPanel === 'function') renderTaskPanel();
+  if (typeof rerenderProjectsPreserveScroll === 'function') rerenderProjectsPreserveScroll();
+  syncTasksBoardIfOpen();
+}
 
 function extendTaskDeadline(taskId, newDueDate) {
   var data = loadProjectsData();
@@ -2112,6 +2153,7 @@ function extendTaskDeadline(taskId, newDueDate) {
   logTaskEvent(t.projectId, taskId, t.title, 'transferred', { from: oldDue, to: newDue });
   if (typeof renderTaskPanel === 'function') renderTaskPanel();
   if (typeof rerenderProjectsPreserveScroll === 'function') rerenderProjectsPreserveScroll();
+  syncTasksBoardIfOpen();
 }
 
 function showExtendDeadlineModal(taskId) {
@@ -2138,10 +2180,12 @@ function addTask(task) {
   if (!data.tasks) data.tasks = [];
   task.id = 't' + Date.now() + '_' + Math.random().toString(36).slice(2, 6);
   task.createdAt = Date.now();
+  if (!Array.isArray(task.tags)) task.tags = [];
   task.sortOrder = data.tasks.length;
   data.tasks.push(task);
   saveProjectsData(data);
   logTaskEvent(task.projectId, task.id, task.title, 'created');
+  syncTasksBoardIfOpen();
 }
 
 function updateTask(taskId, updates) {
@@ -2149,7 +2193,9 @@ function updateTask(taskId, updates) {
   var t = (data.tasks || []).find(function(x){ return x.id === taskId; });
   if (!t) return;
   Object.keys(updates).forEach(function(k){ t[k] = updates[k]; });
+  if (!Array.isArray(t.tags)) t.tags = [];
   saveProjectsData(data);
+  syncTasksBoardIfOpen();
 }
 
 function deleteTask(taskId) {
@@ -2157,6 +2203,7 @@ function deleteTask(taskId) {
   if (!data.tasks) return;
   data.tasks = data.tasks.filter(function(t){ return t.id !== taskId; });
   saveProjectsData(data);
+  syncTasksBoardIfOpen();
 }
 
 function markTaskDone(taskId, btnEl) {
@@ -2316,12 +2363,19 @@ function renderTaskPanel() {
     var transferHint = transferCnt ? (transferCnt + ' перенос' + (transferCnt === 1 ? '' : transferCnt < 5 ? 'а' : 'ов') + ': ' + transfers.map(function(tr){ var f = (tr.from || '—').length >= 10 ? (tr.from.slice(8,10) + '.' + tr.from.slice(5,7)) : tr.from; var to = (tr.to || '').length >= 10 ? (tr.to.slice(8,10) + '.' + tr.to.slice(5,7)) : tr.to; return f + '→' + to; }).join(', ')) : '';
     var comm = (t.comment || '').trim().slice(0, 40);
     var em = (t.emoji || TASK_TYPE_EMOJIS[t.type] || '&#128221;');
+    var tags = Array.isArray(t.tags) ? t.tags : [];
+    var tagsHtml = tags.length ? '<div class="task-panel-tags">' + tags.map(function(tag, idx){
+      var e = (tag && tag.emoji) ? String(tag.emoji) : '🏷';
+      var lbl = (tag && tag.label) ? String(tag.label) : 'тег';
+      return '<span class="task-panel-tag" title="' + escAttr(lbl) + '">' + escAttr(e) + ' ' + escAttr(lbl) + '<button type="button" class="task-panel-tag-rm" onclick="event.stopPropagation();removeTaskTag(\'' + escAttr(t.id) + '\',' + idx + ')" title="Удалить тег">×</button></span>';
+    }).join('') + '</div>' : '';
     var rowCls = 'task-panel-row' + (isDone ? ' task-panel-row-done' : '') + (isOverdue ? ' task-panel-row-overdue' : '');
     var doneBtn = isDone ? '' : '<button type="button" class="task-panel-row-done-btn" data-task-id="' + escAttr(t.id) + '" onclick="event.stopPropagation();markTaskDone(\'' + escAttr(t.id) + '\', this)" title="Выполнить">&#10003;</button>';
     var extendBtn = isOverdue ? '<button type="button" class="task-panel-row-extend-btn" onclick="event.stopPropagation();showExtendDeadlineModal(\'' + escAttr(t.id) + '\')" title="Перенести дедлайн">&#128197;</button>' : '';
-    var actionsHtml = '<div class="task-panel-row-actions">' + doneBtn + extendBtn + '<button type="button" class="task-panel-row-del" onclick="event.stopPropagation();deleteTask(\'' + escAttr(t.id) + '\');renderTaskPanel();if(typeof rerenderProjectsPreserveScroll===\'function\')rerenderProjectsPreserveScroll();" title="Удалить">×</button></div>';
+    var tagBtn = '<button type="button" class="task-panel-row-tag-btn" onclick="event.stopPropagation();addTaskTag(\'' + escAttr(t.id) + '\')" title="Добавить тег">🏷</button>';
+    var actionsHtml = '<div class="task-panel-row-actions">' + doneBtn + extendBtn + tagBtn + '<button type="button" class="task-panel-row-del" onclick="event.stopPropagation();deleteTask(\'' + escAttr(t.id) + '\');renderTaskPanel();if(typeof rerenderProjectsPreserveScroll===\'function\')rerenderProjectsPreserveScroll();" title="Удалить">×</button></div>';
     var transferBadge = transferCnt ? '<span class="task-panel-transfer-badge" title="' + escAttr(transferHint) + '">+' + transferCnt + '</span>' : '';
-    return '<div class="' + rowCls + '" data-id="' + escAttr(t.id) + '"><span class="task-panel-row-emoji">' + em + '</span><div class="task-panel-row-main"><span class="task-panel-title">' + escAttr(t.title || 'Без названия') + transferBadge + '</span><span class="task-panel-meta">' + escAttr(typeRu) + ' · ' + escAttr(statusRu) + ' · ' + escAttr(priorRu) + ' · ' + escAttr(dueStr) + '</span>' + (comm ? '<div class="task-panel-comment">' + escAttr(comm) + '</div>' : '') + '</div>' + actionsHtml + '</div>';
+    return '<div class="' + rowCls + '" data-id="' + escAttr(t.id) + '"><span class="task-panel-row-emoji">' + em + '</span><div class="task-panel-row-main"><span class="task-panel-title">' + escAttr(t.title || 'Без названия') + transferBadge + '</span><span class="task-panel-meta">' + escAttr(typeRu) + ' · ' + escAttr(statusRu) + ' · ' + escAttr(priorRu) + ' · ' + escAttr(dueStr) + '</span>' + tagsHtml + (comm ? '<div class="task-panel-comment">' + escAttr(comm) + '</div>' : '') + '</div>' + actionsHtml + '</div>';
   };
   var listHtml = '';
   groupOrder.forEach(function(gkey){
