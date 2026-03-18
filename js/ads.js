@@ -7,6 +7,9 @@
   var EXPENSES_KEY = "crm_ads_expenses_v1";
   var POSTS_PLAN_KEY = "crm_ads_posts_plan_v1";
   var LINKS_KEY = "crm_ads_links_v1";
+  var POSTS_SHEET_ID = "1q_2TJHIhFW1KjjjIjpxfGc_1zewpdPhrwXQ6awhVdwA";
+  var POSTS_SHEET_LEARN = "Обучение";
+  var POSTS_SHEET_AGENCY = "Агенство";
   var AVITO_KEY_LS = "crm_ads_avito_api_key_v1";
   var AVITO_CLIENT_ID_LS = "crm_ads_avito_client_id_v1";
   var AVITO_CLIENT_SECRET_LS = "crm_ads_avito_client_secret_v1";
@@ -20,6 +23,7 @@
     { key: "agency", label: "Агентство" }
   ];
   var _adsPostEditorCleanup = null;
+  var _postsSheetInitCache = {};
 
   var DEFAULT_LINKS = [
     { id: "channel_clients", icon: "📣", label: "Канал для клиентов", url: "", snippet: "", avatar: "" },
@@ -266,7 +270,8 @@
     var days = 30;
     var todayDay = getTodayDayForState(postsState);
     var html =
-      '<div class="ads-posts-planner-head">Календарь постов на 30 дней (каналы)</div>' +
+      '<div class="ads-posts-planner-head">Посты на 30 дней в канала</div>' +
+      '<div class="ads-posts-sync-status" id="adsPostsSyncStatus">Синк с Google Sheets: готово</div>' +
       '<div class="ads-posts-wrap"><table class="ads-posts-table"><thead><tr><th class="ads-th-label">Проект</th>';
     for (var d = 1; d <= days; d++) {
       html += '<th class="ads-th-day' + (d === todayDay ? " ads-day-today" : "") + '">' + d + "</th>";
@@ -300,6 +305,116 @@
         });
       });
     });
+  }
+
+  function setPostsSyncStatus(text, isErr) {
+    var el = document.getElementById("adsPostsSyncStatus");
+    if (!el) return;
+    el.textContent = String(text || "");
+    el.classList.toggle("is-error", !!isErr);
+  }
+
+  function quoteSheetRange(sheetName, a1Range) {
+    var n = String(sheetName || "").replace(/'/g, "''");
+    return "'" + n + "'!" + a1Range;
+  }
+
+  async function getGoogleAccessTokenForSheets() {
+    var fn = (typeof getDriveToken === "function") ? getDriveToken : (window && typeof window.getDriveToken === "function" ? window.getDriveToken : null);
+    if (!fn) throw new Error("Google Drive не подключен");
+    return await fn();
+  }
+
+  async function createSheetIfMissing(token, sheetName) {
+    var url = "https://sheets.googleapis.com/v4/spreadsheets/" + POSTS_SHEET_ID + ":batchUpdate";
+    var body = {
+      requests: [
+        {
+          addSheet: {
+            properties: { title: sheetName }
+          }
+        }
+      ]
+    };
+    var resp = await fetch(url, {
+      method: "POST",
+      headers: {
+        Authorization: "Bearer " + token,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(body)
+    });
+    if (resp.ok) return true;
+    var t = await resp.text().catch(function() { return ""; });
+    if (resp.status === 400 && /already exists/i.test(t)) return true;
+    throw new Error("Не удалось создать лист " + sheetName + ": HTTP " + resp.status);
+  }
+
+  async function putSheetValues(token, range, values) {
+    var url =
+      "https://sheets.googleapis.com/v4/spreadsheets/" +
+      POSTS_SHEET_ID +
+      "/values/" +
+      encodeURIComponent(range) +
+      "?valueInputOption=USER_ENTERED";
+    var resp = await fetch(url, {
+      method: "PUT",
+      headers: {
+        Authorization: "Bearer " + token,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        range: range,
+        majorDimension: "ROWS",
+        values: values
+      })
+    });
+    if (!resp.ok) {
+      var txt = await resp.text().catch(function() { return ""; });
+      throw new Error("Sheets update failed: HTTP " + resp.status + (txt ? (" · " + txt) : ""));
+    }
+  }
+
+  async function ensurePostsSheetPrepared(token, sheetName) {
+    if (_postsSheetInitCache[sheetName]) return;
+    try {
+      var checkRange = quoteSheetRange(sheetName, "A1:A1");
+      var checkUrl =
+        "https://sheets.googleapis.com/v4/spreadsheets/" +
+        POSTS_SHEET_ID +
+        "/values/" +
+        encodeURIComponent(checkRange);
+      var checkResp = await fetch(checkUrl, {
+        headers: { Authorization: "Bearer " + token }
+      });
+      if (!checkResp.ok) {
+        if (checkResp.status === 400 || checkResp.status === 404) {
+          await createSheetIfMissing(token, sheetName);
+        } else {
+          throw new Error("Sheets check failed: HTTP " + checkResp.status);
+        }
+      }
+      await putSheetValues(token, quoteSheetRange(sheetName, "A1:B1"), [["День", "Контент поста"]]);
+      var dayRows = [];
+      for (var d = 1; d <= 30; d++) dayRows.push([String(d)]);
+      await putSheetValues(token, quoteSheetRange(sheetName, "A2:A31"), dayRows);
+      _postsSheetInitCache[sheetName] = true;
+    } catch (e) {
+      throw e;
+    }
+  }
+
+  function getPostsSheetNameByRow(rowKey) {
+    return rowKey === "learn" ? POSTS_SHEET_LEARN : POSTS_SHEET_AGENCY;
+  }
+
+  async function syncPostToGoogleSheets(rowKey, day, value) {
+    var sheetName = getPostsSheetNameByRow(rowKey);
+    var token = await getGoogleAccessTokenForSheets();
+    await ensurePostsSheetPrepared(token, sheetName);
+    var rowNum = Number(day) + 1; // day 1 -> B2
+    var targetRange = quoteSheetRange(sheetName, "B" + rowNum + ":B" + rowNum);
+    await putSheetValues(token, targetRange, [[String(value || "")]]);
   }
 
   function openPostCellEditor(anchorEl, postsState, row, day, onSaved) {
@@ -341,6 +456,15 @@
       if (!value) delete postsState.data[key];
       else postsState.data[key] = value;
       savePostsPlan(postsState);
+      setPostsSyncStatus("Сохраняю в Google Sheets...", false);
+      syncPostToGoogleSheets(row, day, value)
+        .then(function() {
+          setPostsSyncStatus("Сохранено в Google Sheets: " + (row === "learn" ? "Обучение" : "Агенство") + ", день " + day, false);
+        })
+        .catch(function(err) {
+          var msg = err && err.message ? err.message : String(err || "unknown error");
+          setPostsSyncStatus("Ошибка синка Sheets: " + msg, true);
+        });
       closePostCellEditor();
       if (typeof onSaved === "function") onSaved();
     }
@@ -517,9 +641,6 @@
     wrap.className = "ads-page";
     wrap.innerHTML =
       '<div class="ads-header">📢 РЕКЛАМА ПРОЕКТА</div>' +
-      '<div class="ads-subtabs">' +
-        '<button type="button" class="ads-subtab-btn on" data-ads-subtab="expenses">Расходы</button>' +
-      "</div>" +
       '<div class="ads-subtab-page on" data-ads-page="expenses">' +
         '<div class="ads-top-summary" id="adsTopSummary">' +
           '<div class="ads-summary-card ads-summary-all"><span class="ads-summary-label">Всего</span><span class="ads-summary-val" data-ads-val="all">0</span></div>' +
