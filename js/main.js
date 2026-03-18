@@ -3390,6 +3390,32 @@ function closeClientMenu() {
   document.getElementById('clientMenu').classList.remove('show');
   _projectFolderBindTargetId = null;
 }
+var SIDEBAR_HIDE_KEY = 'avitolog_sidebar_hidden_v1';
+function syncSidebarToggleBtn() {
+  var btn = document.getElementById('sidebarToggleBtn');
+  if (!btn) return;
+  var hidden = document.body.classList.contains('sidebar-hidden');
+  btn.textContent = hidden ? '▶' : '◀';
+  btn.title = hidden ? 'Показать левое меню' : 'Скрыть левое меню';
+}
+function applySidebarVisibilityFromStorage() {
+  var hidden = false;
+  try { hidden = localStorage.getItem(SIDEBAR_HIDE_KEY) === '1'; } catch (e) {}
+  document.body.classList.toggle('sidebar-hidden', hidden);
+  syncSidebarToggleBtn();
+}
+function toggleSidebarVisibility(force) {
+  if (window.matchMedia && window.matchMedia('(max-width: 980px)').matches) {
+    toggleMobileSidebar();
+    return;
+  }
+  var hidden = (typeof force === 'boolean')
+    ? force
+    : !document.body.classList.contains('sidebar-hidden');
+  document.body.classList.toggle('sidebar-hidden', hidden);
+  try { localStorage.setItem(SIDEBAR_HIDE_KEY, hidden ? '1' : '0'); } catch (e) {}
+  syncSidebarToggleBtn();
+}
 function toggleMobileSidebar() {
   document.body.classList.toggle('sidebar-open-mobile');
 }
@@ -3914,7 +3940,9 @@ function switchUser(u) {
 document.addEventListener('DOMContentLoaded', function() {
   initDayMode();
   applyMobileWebviewMode();
+  applySidebarVisibilityFromStorage();
   window.addEventListener('resize', applyMobileWebviewMode);
+  window.addEventListener('resize', syncSidebarToggleBtn);
   updateDriveUI();
   var u = (window.AVITOLOG_USER || 'fil').toLowerCase();
   var filBtn = document.getElementById('userFil');
