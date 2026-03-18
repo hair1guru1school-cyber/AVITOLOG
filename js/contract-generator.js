@@ -976,6 +976,73 @@
         String(innerHtml || '') +
         '</body></html>';
     }
+    function splitBase64Lines(s, lineLen) {
+      var src = String(s || '');
+      var out = [];
+      var n = Math.max(32, lineLen || 76);
+      for (var i = 0; i < src.length; i += n) out.push(src.slice(i, i + n));
+      return out.join('\r\n');
+    }
+    function toBase64Utf8(s) {
+      try {
+        return btoa(unescape(encodeURIComponent(String(s || ''))));
+      } catch (e) {
+        return btoa(String(s || ''));
+      }
+    }
+    function buildWordMhtml(htmlStr) {
+      var boundary = '----=_NextPart_' + Date.now() + '_' + Math.floor(Math.random() * 1000000);
+      var imageParts = [];
+      var idx = 0;
+      var html = String(htmlStr || '').replace(/(<img\b[^>]*\bsrc=["'])(data:image\/[^"']+)(["'][^>]*>)/gi, function(full, a, src, c) {
+        var m = String(src || '').match(/^data:([^;]+);base64,(.+)$/i);
+        if (!m) return full;
+        var mime = String(m[1] || 'image/png').toLowerCase();
+        var ext = (mime.split('/')[1] || 'png').replace(/[^\w]/g, '') || 'png';
+        var contentLocation = 'file:///C:/contract/image_' + (++idx) + '.' + ext;
+        imageParts.push({
+          mime: mime,
+          base64: m[2],
+          location: contentLocation
+        });
+        return a + contentLocation + c;
+      });
+      var htmlDoc = wrapContractHtml(html);
+      var lines = [
+        'MIME-Version: 1.0',
+        'Content-Type: multipart/related; boundary="' + boundary + '"; type="text/html"',
+        '',
+        '--' + boundary,
+        'Content-Type: text/html; charset="utf-8"',
+        'Content-Transfer-Encoding: base64',
+        'Content-Location: file:///C:/contract/document.html',
+        '',
+        splitBase64Lines(toBase64Utf8(htmlDoc), 76),
+        ''
+      ];
+      imageParts.forEach(function(p) {
+        lines.push('--' + boundary);
+        lines.push('Content-Type: ' + p.mime);
+        lines.push('Content-Transfer-Encoding: base64');
+        lines.push('Content-Location: ' + p.location);
+        lines.push('');
+        lines.push(splitBase64Lines(p.base64, 76));
+        lines.push('');
+      });
+      lines.push('--' + boundary + '--');
+      return lines.join('\r\n');
+    }
+    function waitForImagesLoaded(rootEl) {
+      var imgs = Array.prototype.slice.call((rootEl || document).querySelectorAll('img'));
+      if (!imgs.length) return Promise.resolve();
+      return Promise.all(imgs.map(function(img) {
+        if (img.complete) return Promise.resolve();
+        return new Promise(function(resolve) {
+          img.onload = function() { resolve(); };
+          img.onerror = function() { resolve(); };
+        });
+      }));
+    }
     function blobToDataUrl(blob) {
       return new Promise(function(resolve, reject) {
         try {
@@ -1057,7 +1124,8 @@
         return;
       }
       function downloadDocLocal(name, htmlStr) {
-        var blob = new Blob([wrapContractHtml(htmlStr)], { type: 'application/msword' });
+        var mhtml = buildWordMhtml(htmlStr);
+        var blob = new Blob([mhtml], { type: 'application/msword;charset=utf-8' });
         var a = document.createElement('a');
         a.href = URL.createObjectURL(blob);
         a.download = (name || 'Договор') + '.doc';
@@ -1112,13 +1180,15 @@
         return;
       }
       var wrapTmp = document.createElement('div');
-      wrapTmp.style.cssText = 'position:fixed;left:0;top:0;width:794px;background:#fff;color:#000;padding:20px;box-sizing:border-box;opacity:0;pointer-events:none;z-index:-1;';
+      wrapTmp.style.cssText = 'position:fixed;left:0;top:0;width:794px;background:#fff;color:#000;padding:20px;box-sizing:border-box;opacity:0.01;pointer-events:none;z-index:999999;';
       var htmlForPdf = await inlineExportImages(lastGeneratedHtml);
       wrapTmp.innerHTML = htmlForPdf;
       document.body.appendChild(wrapTmp);
       try {
         if (st) st.textContent = 'Готовлю PDF...';
         var who = (lastGeneratedData && (lastGeneratedData.fio || lastGeneratedData.companyName)) || 'Клиент';
+        await waitForImagesLoaded(wrapTmp);
+        await new Promise(function(resolve) { setTimeout(resolve, 80); });
         var html2pdfFn = await new Promise(function(resolve, reject) {
           getHtml2Pdf(function(err, fn) {
             if (err || typeof fn !== 'function') reject(err || new Error('PDF модуль недоступен'));
