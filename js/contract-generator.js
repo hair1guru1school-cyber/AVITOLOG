@@ -701,6 +701,7 @@
       '<input type="hidden" id="contract-headerGender" value="m">' +
       '<button type="button" class="contract-toolbar-btn contract-btn-savew" id="contractSaveWBtn" style="display:none" onclick="window.__contractSaveW&&window.__contractSaveW()">🟦 Сохранить в W</button>' +
       '<button type="button" class="contract-toolbar-btn contract-btn-pdf" id="contractSavePdfBtn" onclick="window.__contractSavePdf&&window.__contractSavePdf()">📕 Сохранить PDF</button>' +
+      '<button type="button" class="contract-toolbar-btn contract-btn-pdf" id="contractDownloadPdfBtn" style="display:none" onclick="window.__contractDownloadPdf&&window.__contractDownloadPdf()">⬇ Скачать PDF</button>' +
       '<button type="button" class="contract-toolbar-btn contract-btn-clear" onclick="window.__contractClear&&window.__contractClear()">Очистить</button>' +
       '<span class="contract-save-status" id="contractSaveStatus"></span>' +
       '</div>' +
@@ -950,6 +951,7 @@
   function renderContractGenerator(mainContentEl) {
     var lastGeneratedHtml = '';
     var lastGeneratedData = null;
+    var lastDrivePdfDoc = null;
 
     function folderIdFromLink(link) {
       var m = String(link || '').match(/\/folders\/([a-zA-Z0-9_-]+)/);
@@ -977,8 +979,10 @@
     function updateSaveButtonState() {
       var btn = document.getElementById('contractSaveWBtn');
       var st = document.getElementById('contractSaveStatus');
+      var pdfDownloadBtn = document.getElementById('contractDownloadPdfBtn');
       if (!btn) return;
       var ctx = getTargetFolderCtx();
+      if (pdfDownloadBtn && !lastDrivePdfDoc) pdfDownloadBtn.style.display = 'none';
       if (!ctx || !ctx.folderId) {
         btn.style.display = 'inline-flex';
         btn.disabled = false;
@@ -990,6 +994,24 @@
       btn.disabled = false;
       btn.title = 'Сохранить договор в Google Docs';
       if (st && !st.textContent) st.textContent = 'Папка: ' + String(ctx.name || 'Клиент');
+    }
+    function triggerBlobDownload(blob, filename) {
+      var a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = String(filename || 'document.pdf');
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(function() {
+        try { URL.revokeObjectURL(a.href); } catch (e) {}
+        if (a.parentNode) a.parentNode.removeChild(a);
+      }, 0);
+    }
+    function setPdfDownloadReady(docMeta) {
+      lastDrivePdfDoc = docMeta || null;
+      var btn = document.getElementById('contractDownloadPdfBtn');
+      if (!btn) return;
+      btn.style.display = lastDrivePdfDoc ? 'inline-flex' : 'none';
+      btn.disabled = false;
     }
     function wrapContractHtml(innerHtml) {
       return '<!doctype html><html><head><meta charset="UTF-8"></head><body style="margin:0;padding:0;background:#fff;color:#111;font-family:Golos Text,Arial,sans-serif">' +
@@ -1119,12 +1141,14 @@
       var html = generateContract(data);
       lastGeneratedHtml = html;
       lastGeneratedData = data || null;
+      setPdfDownloadReady(null);
       if (previewArea) previewArea.style.display = '';
       renderContractPreview(previewArea, html);
       updateSaveButtonState();
     }, function() {
       lastGeneratedHtml = '';
       lastGeneratedData = null;
+      setPdfDownloadReady(null);
       if (previewArea) {
         previewArea.innerHTML = '';
         previewArea.style.display = 'none';
@@ -1192,6 +1216,8 @@
 
     window.__contractSavePdf = async function() {
       var st = document.getElementById('contractSaveStatus');
+      var btn = document.getElementById('contractSavePdfBtn');
+      setPdfDownloadReady(null);
       if (!lastGeneratedHtml) {
         if (typeof window.__contractGenerate === 'function') window.__contractGenerate();
       }
@@ -1199,46 +1225,69 @@
         if (st) st.textContent = 'Сначала сгенерируйте договор';
         return;
       }
-      var wrapTmp = document.createElement('div');
-      wrapTmp.style.cssText = 'position:fixed;left:0;top:0;width:794px;background:#fff;color:#000;padding:20px;box-sizing:border-box;opacity:0.01;pointer-events:none;z-index:999999;';
-      var htmlForPdf = await inlineExportImages(lastGeneratedHtml);
-      wrapTmp.innerHTML = htmlForPdf;
-      document.body.appendChild(wrapTmp);
+      var ctx = getTargetFolderCtx();
+      var canDrive = !!(ctx && ctx.folderId && typeof driveCreateGoogleDoc === 'function' && typeof getDriveToken === 'function');
+      if (!canDrive) {
+        if (st) st.textContent = 'Для PDF выберите проект с папкой Google Drive и подключите Drive.';
+        return;
+      }
       try {
-        if (st) st.textContent = 'Готовлю PDF...';
-        var who = (lastGeneratedData && (lastGeneratedData.fio || lastGeneratedData.companyName)) || 'Клиент';
-        await waitForImagesLoaded(wrapTmp);
-        await new Promise(function(resolve) { setTimeout(resolve, 80); });
-        var html2pdfFn = await new Promise(function(resolve, reject) {
-          getHtml2Pdf(function(err, fn) {
-            if (err || typeof fn !== 'function') reject(err || new Error('PDF модуль недоступен'));
-            else resolve(fn);
-          });
-        });
-        await html2pdfFn().set({
-          margin: [8, 8, 8, 8],
-          filename: 'Договор — ' + String(who) + '.pdf',
-          image: { type: 'jpeg', quality: 0.95 },
-          html2canvas: { scale: 1.8, useCORS: true, allowTaint: true },
-          jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
-          pagebreak: { mode: ['css', 'legacy'] }
-        }).from(wrapTmp).save();
-        if (st) st.textContent = '✓ PDF сохранен';
-      } catch (e) {
-        try {
-          var win = window.open('', '_blank');
-          if (win) {
-            win.document.write(wrapContractHtml(htmlForPdf));
-            win.document.close();
-            win.focus();
-            win.print();
-            if (st) st.textContent = 'Открыт режим печати (Сохранить как PDF)';
-          } else if (st) st.textContent = 'Ошибка PDF: ' + String((e && e.message) || e);
-        } catch (e2) {
-          if (st) st.textContent = 'Ошибка PDF: ' + String((e2 && e2.message) || e2 || e);
+        if (btn) btn.disabled = true;
+        if (st) st.textContent = 'Сохраняю в Google Drive...';
+        var who = (lastGeneratedData && (lastGeneratedData.fio || lastGeneratedData.companyName)) || ctx.name || 'Клиент';
+        var htmlForPdf = await inlineExportImages(lastGeneratedHtml);
+        await getDriveToken();
+        var docName = '📕 PDF — Договор — ' + String(who);
+        var res = await driveCreateGoogleDoc(docName, wrapContractHtml(htmlForPdf), ctx.folderId);
+        var docId = res && res.id ? String(res.id) : '';
+        setPdfDownloadReady(docId ? {
+          id: docId,
+          name: docName,
+          webViewLink: res && res.webViewLink ? String(res.webViewLink) : ''
+        } : null);
+        if (st) {
+          var openLink = res && res.webViewLink ? String(res.webViewLink) : '';
+          st.innerHTML = openLink
+            ? '✓ Сохранено в Drive · <a href="' + openLink + '" target="_blank" rel="noopener" style="color:#7cf5ff;text-decoration:underline">Открыть</a> · нажмите «Скачать PDF»'
+            : '✓ Сохранено в Drive · нажмите «Скачать PDF»';
         }
+      } catch (e) {
+        setPdfDownloadReady(null);
+        if (st) st.textContent = 'Ошибка сохранения в Drive: ' + String((e && e.message) || e);
       } finally {
-        document.body.removeChild(wrapTmp);
+        if (btn) btn.disabled = false;
+      }
+    };
+    window.__contractDownloadPdf = async function() {
+      var st = document.getElementById('contractSaveStatus');
+      var btn = document.getElementById('contractDownloadPdfBtn');
+      if (!lastDrivePdfDoc || !lastDrivePdfDoc.id) {
+        if (st) st.textContent = 'Сначала сохраните PDF в Drive.';
+        return;
+      }
+      try {
+        if (btn) btn.disabled = true;
+        if (st) st.textContent = 'Скачиваю PDF из Google Drive...';
+        var token = await getDriveToken();
+        var exportUrl =
+          'https://www.googleapis.com/drive/v3/files/' +
+          encodeURIComponent(lastDrivePdfDoc.id) +
+          '/export?mimeType=application/pdf';
+        var resp = await fetch(exportUrl, {
+          headers: { Authorization: 'Bearer ' + token }
+        });
+        if (!resp.ok) {
+          var errText = await resp.text().catch(function() { return ''; });
+          throw new Error('Drive export HTTP ' + resp.status + (errText ? (': ' + errText) : ''));
+        }
+        var blob = await resp.blob();
+        var name = (lastDrivePdfDoc.name || 'Договор').replace(/[\\/:*?"<>|]+/g, '_') + '.pdf';
+        triggerBlobDownload(blob, name);
+        if (st) st.textContent = '✓ PDF скачан';
+      } catch (e) {
+        if (st) st.textContent = 'Ошибка скачивания PDF: ' + String((e && e.message) || e);
+      } finally {
+        if (btn) btn.disabled = false;
       }
     };
 
