@@ -72,11 +72,43 @@
     var costNum = normalizeMoneyValue(data.cost);
     var costFmt = String(costNum || 0).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
     var costWords = numberToWordsRu(costNum);
+    var clientInn = data.inn || '—';
+    var clientOgrn = data.ogrn || '—';
+    var clientAccount = data.account || '—';
+    var clientBank = data.bank || '—';
+    var clientBik = data.bik || '—';
+    var clientCorr = data.corrAccount || '—';
+    var clientPhone = data.phone || data.contacts || '—';
+    var leftBullets =
+      '<div style="font-size:10.2pt;line-height:1.5">' +
+      '◆ ' + EXECUTOR.name + '<br>' +
+      '◆ ИНН ' + EXECUTOR.inn + '<br>' +
+      '◆ ОГРН ' + EXECUTOR.ogrn + '<br>' +
+      '◆ Р/С ' + EXECUTOR.account + '<br>' +
+      '◆ ' + EXECUTOR.bank + '<br>' +
+      '◆ Тел. ' + EXECUTOR.phone +
+      '</div>';
+    var rightBullets =
+      '<div style="font-size:10.2pt;line-height:1.5">' +
+      '◆ ' + clientName + '<br>' +
+      '◆ ИНН ' + clientInn + '<br>' +
+      '◆ ОГРН ' + clientOgrn + '<br>' +
+      '◆ Р/С ' + clientAccount + '<br>' +
+      '◆ ' + clientBank + '<br>' +
+      '◆ БИК ' + clientBik + '<br>' +
+      '◆ К/С ' + clientCorr + '<br>' +
+      '◆ Тел. ' + clientPhone +
+      '</div>';
 
     return '' +
-      '<h2 style="text-align:center;font-size:15pt;margin:8px 0 10px;letter-spacing:.2px">ДОГОВОР ВОЗМЕЗДНОГО ОКАЗАНИЯ УСЛУГ</h2>' +
-      '<p style="text-align:center;font-size:10.5pt;margin:0 0 14px">от ' + contractDate + '</p>' +
-      '<p style="font-size:10.5pt;line-height:1.55;margin:0 0 10px">Я, ' + EXECUTOR.name + ' именуемый в дальнейшем "Исполнитель", с одной стороны, и ' + clientName + '</p>' +
+      '<h2 style="text-align:center;font-size:18pt;line-height:1.22;margin:4px 0 10px;letter-spacing:.2px;font-weight:800">Договор Возмездного<br>Оказания Услуг от ' + contractDate + '</h2>' +
+      '<p style="text-align:center;font-size:11.5pt;line-height:1.45;margin:0 0 12px"><strong>' + EXECUTOR.name + '</strong> именуемый в дальнейшем "Исполнитель", с одной стороны, и<br><strong>' + clientName + '</strong> именуемый в дальнейшем "Заказчик"</p>' +
+      '<table style="width:100%;border-collapse:collapse;margin:8px 0 14px;border:1px solid #2d2d2d">' +
+        '<tr>' +
+          '<td style="width:50%;vertical-align:top;padding:10px 12px;border-right:1px solid #2d2d2d">' + leftBullets + '</td>' +
+          '<td style="width:50%;vertical-align:top;padding:10px 12px">' + rightBullets + '</td>' +
+        '</tr>' +
+      '</table>' +
 
       '<p style="font-size:10.5pt;line-height:1.55;margin:8px 0 6px"><strong>1. ПРЕДМЕТ ДОГОВОРА. СРОКИ ОКАЗАНИЯ УСЛУГ</strong></p>' +
       '<p style="font-size:10.5pt;line-height:1.55;margin:0 0 6px">1.1. Исполнитель обязуется, по заданию Заказчика, оказывать услуги по созданию и ведению рекламной кампании на сайте Avito.ru (далее — «Авито»), а Заказчик обязуется оплатить эти услуги в полном объеме.</p>' +
