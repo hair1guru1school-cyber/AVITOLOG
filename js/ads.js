@@ -19,6 +19,7 @@
     { key: "learn", label: "Обучение" },
     { key: "agency", label: "Агентство" }
   ];
+  var _adsPostEditorCleanup = null;
 
   var DEFAULT_LINKS = [
     { id: "channel_clients", icon: "📣", label: "Канал для клиентов", url: "", snippet: "", avatar: "" },
@@ -276,27 +277,98 @@
       for (var day = 1; day <= days; day++) {
         var key = getPostCellKey(row.key, day);
         var val = String(postsState.data[key] || "");
+        var shortText = val.length > 10 ? (val.slice(0, 10) + "…") : val;
+        var hasVal = !!val.trim();
         html +=
           '<td class="ads-post-td' + (day === todayDay ? " ads-day-today" : "") + '">' +
-            '<input type="text" class="ads-post-input" data-row="' + row.key + '" data-day="' + day + '" value="' + escapeHtml(val) + '" placeholder="Пост">' +
+            '<button type="button" class="ads-post-cell' + (hasVal ? " is-filled" : "") + '" data-row="' + row.key + '" data-day="' + day + '" title="' + escapeHtml(val || "Нажмите, чтобы добавить пост") + '">' +
+              escapeHtml(hasVal ? shortText : "Пост") +
+            "</button>" +
           "</td>";
       }
       html += "</tr>";
     });
     html += "</tbody></table></div>";
     container.innerHTML = html;
-    container.querySelectorAll(".ads-post-input").forEach(function(inp) {
-      inp.addEventListener("change", function() {
-        var row = inp.getAttribute("data-row");
-        var day = parseInt(inp.getAttribute("data-day"), 10);
+    container.querySelectorAll(".ads-post-cell").forEach(function(btn) {
+      btn.addEventListener("click", function() {
+        var row = btn.getAttribute("data-row");
+        var day = parseInt(btn.getAttribute("data-day"), 10);
         if (!row || !day) return;
-        var key = getPostCellKey(row, day);
-        var value = String(inp.value || "").trim();
-        if (!value) delete postsState.data[key];
-        else postsState.data[key] = value;
-        savePostsPlan(postsState);
+        openPostCellEditor(btn, postsState, row, day, function() {
+          renderPostsPlanTable(container, postsState);
+        });
       });
     });
+  }
+
+  function openPostCellEditor(anchorEl, postsState, row, day, onSaved) {
+    closePostCellEditor();
+    var key = getPostCellKey(row, day);
+    var currentVal = String(postsState.data[key] || "");
+    var panel = document.createElement("div");
+    panel.className = "ads-post-editor-pop";
+    panel.innerHTML =
+      '<div class="ads-post-editor-title">День ' + day + " · " + (row === "learn" ? "Обучение" : "Агентство") + "</div>" +
+      '<textarea class="ads-post-editor-text" placeholder="Впишите текст поста..."></textarea>' +
+      '<div class="ads-post-editor-actions">' +
+        '<button type="button" class="ads-post-editor-btn save">Сохранить</button>' +
+        '<button type="button" class="ads-post-editor-btn clear">Очистить</button>' +
+        '<button type="button" class="ads-post-editor-btn">Отмена</button>' +
+      "</div>";
+    document.body.appendChild(panel);
+    var textarea = panel.querySelector(".ads-post-editor-text");
+    var btnSave = panel.querySelector(".ads-post-editor-btn.save");
+    var btnClear = panel.querySelector(".ads-post-editor-btn.clear");
+    var btnCancel = panel.querySelectorAll(".ads-post-editor-btn")[2];
+    if (textarea) {
+      textarea.value = currentVal;
+      textarea.focus();
+      textarea.selectionStart = textarea.value.length;
+      textarea.selectionEnd = textarea.value.length;
+    }
+    var rect = anchorEl.getBoundingClientRect();
+    var top = rect.bottom + 8;
+    var left = rect.left;
+    var maxLeft = Math.max(8, window.innerWidth - 360 - 8);
+    if (left > maxLeft) left = maxLeft;
+    if (top + 190 > window.innerHeight) top = Math.max(8, rect.top - 190 - 8);
+    panel.style.top = Math.round(top) + "px";
+    panel.style.left = Math.round(left) + "px";
+
+    function doSave(nextValue) {
+      var value = String(nextValue == null ? (textarea ? textarea.value : "") : nextValue).trim();
+      if (!value) delete postsState.data[key];
+      else postsState.data[key] = value;
+      savePostsPlan(postsState);
+      closePostCellEditor();
+      if (typeof onSaved === "function") onSaved();
+    }
+
+    function onDocMouseDown(evt) {
+      if (!panel.contains(evt.target) && evt.target !== anchorEl) closePostCellEditor();
+    }
+    function onEsc(evt) {
+      if (evt.key === "Escape") closePostCellEditor();
+      if ((evt.ctrlKey || evt.metaKey) && evt.key === "Enter") doSave();
+    }
+    setTimeout(function() { document.addEventListener("mousedown", onDocMouseDown, true); }, 0);
+    document.addEventListener("keydown", onEsc, true);
+
+    btnSave.addEventListener("click", function() { doSave(); });
+    btnClear.addEventListener("click", function() { doSave(""); });
+    btnCancel.addEventListener("click", closePostCellEditor);
+
+    _adsPostEditorCleanup = function() {
+      document.removeEventListener("mousedown", onDocMouseDown, true);
+      document.removeEventListener("keydown", onEsc, true);
+      if (panel.parentNode) panel.parentNode.removeChild(panel);
+      _adsPostEditorCleanup = null;
+    };
+  }
+
+  function closePostCellEditor() {
+    if (typeof _adsPostEditorCleanup === "function") _adsPostEditorCleanup();
   }
 
   function getLinksCategory(item) {
