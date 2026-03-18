@@ -630,6 +630,30 @@ function renderAdsIntoMainContent(mc) {
     });
   }
 }
+var TASKS_BOARD_COLS_KEY = 'tasks_board_cols_on_page_v1';
+var TASKS_BOARD_SCALE_KEY = 'tasks_board_col_scale_v1';
+function getTasksBoardColsOnPage() {
+  try {
+    var n = parseInt(localStorage.getItem(TASKS_BOARD_COLS_KEY) || '6', 10);
+    if (!isFinite(n)) return 6;
+    return Math.max(3, Math.min(8, n));
+  } catch (e) { return 6; }
+}
+function setTasksBoardColsOnPage(n) {
+  var v = Math.max(3, Math.min(8, parseInt(n, 10) || 6));
+  try { localStorage.setItem(TASKS_BOARD_COLS_KEY, String(v)); } catch (e) {}
+}
+function getTasksBoardColScale() {
+  try {
+    var n = parseInt(localStorage.getItem(TASKS_BOARD_SCALE_KEY) || '100', 10);
+    if (!isFinite(n)) return 100;
+    return Math.max(75, Math.min(130, n));
+  } catch (e) { return 100; }
+}
+function setTasksBoardColScale(n) {
+  var v = Math.max(75, Math.min(130, parseInt(n, 10) || 100));
+  try { localStorage.setItem(TASKS_BOARD_SCALE_KEY, String(v)); } catch (e) {}
+}
 function renderTasksBoardIntoMainContent(mc) {
   if (!mc) return;
   var esc = function(s) { return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); };
@@ -660,6 +684,8 @@ function renderTasksBoardIntoMainContent(mc) {
     byProjectId[p.id] = {
       id: p.id,
       title: p.title || 'Без названия',
+      emoji: p.emoji || '📁',
+      customIcon: p.customIcon || '',
       zone: p.zone || 'active',
       tasks: []
     };
@@ -673,7 +699,7 @@ function renderTasksBoardIntoMainContent(mc) {
   projectsData.tasks.forEach(function(t) {
     var pid = t && t.projectId ? String(t.projectId) : '';
     if (!pid || !byProjectId[pid]) {
-      if (!byProjectId.__other) byProjectId.__other = { id: '__other', title: 'Прочее', zone: 'active', tasks: [] };
+      if (!byProjectId.__other) byProjectId.__other = { id: '__other', title: 'Прочее', emoji: '📁', customIcon: '', zone: 'active', tasks: [] };
       pid = '__other';
     }
     byProjectId[pid].tasks.push({
@@ -693,7 +719,7 @@ function renderTasksBoardIntoMainContent(mc) {
     var pid = projectName ? (bucketByTitle[projectName.toLowerCase()] || '') : '';
     if (!pid) {
       pid = projectName ? ('crm_' + projectName.toLowerCase().replace(/[^\wа-яё]+/gi, '_')) : 'crm_no_project';
-      if (!byProjectId[pid]) byProjectId[pid] = { id: pid, title: projectName || 'CRM без проекта', zone: 'active', tasks: [] };
+      if (!byProjectId[pid]) byProjectId[pid] = { id: pid, title: projectName || 'CRM без проекта', emoji: '📋', customIcon: '', zone: 'active', tasks: [] };
     }
     byProjectId[pid].tasks.push({
       id: t.id || ('crm_' + Math.random()),
@@ -735,7 +761,7 @@ function renderTasksBoardIntoMainContent(mc) {
       if (ad !== bd) return ad.localeCompare(bd);
       return (a.status === 'done') - (b.status === 'done');
     });
-    return { id: col.id, title: col.title, zone: col.zone, tasks: tasks };
+    return { id: col.id, title: col.title, emoji: col.emoji || '📁', customIcon: col.customIcon || '', zone: col.zone, tasks: tasks };
   }).filter(function(col) { return col.tasks.length; });
 
   var total = 0, doneCount = 0, overdueCount = 0;
@@ -778,19 +804,33 @@ function renderTasksBoardIntoMainContent(mc) {
     }).join('');
     var openBtn = (col.id && col.id.indexOf('crm_') !== 0 && col.id !== '__other' && col.id !== 'crm_no_project')
       ? '<button type="button" class="tasks-col-open" onclick="tasksBoardOpenProject(\'' + esc(col.id) + '\')">Открыть</button>' : '';
+    var iconHtml = col.customIcon
+      ? '<img src="' + esc(col.customIcon) + '" alt="" class="tasks-col-title-icon-img">'
+      : '<span class="tasks-col-title-emoji">' + esc(col.emoji || '📁') + '</span>';
     return '<div class="tasks-col">' +
-      '<div class="tasks-col-head"><div class="tasks-col-title"><span>' + esc(col.title) + '</span>' + openBtn + '</div>' +
+      '<div class="tasks-col-head"><div class="tasks-col-title"><span class="tasks-col-title-name">' + iconHtml + '<b>' + esc(col.title) + '</b></span>' + openBtn + '</div>' +
       '<div class="tasks-col-kpis"><span class="tasks-col-kpi">Всего: ' + col.tasks.length + '</span><span class="tasks-col-kpi">Done: ' + done + '</span><span class="tasks-col-kpi">Overdue: ' + overdue + '</span></div></div>' +
       '<div class="tasks-col-list">' + (taskHtml || '<div class="tasks-col-empty">Нет задач</div>') + '</div>' +
       '</div>';
   }).join('');
 
+  var colsOnPage = getTasksBoardColsOnPage();
+  var colScale = getTasksBoardColScale();
+  var usableWidth = Math.max(900, (mc && mc.clientWidth ? mc.clientWidth : window.innerWidth || 1400) - 34);
+  var gapPx = 12;
+  var baseColW = Math.floor((usableWidth - gapPx * (colsOnPage - 1)) / colsOnPage);
+  baseColW = Math.max(210, Math.min(360, baseColW));
+  var colWidth = Math.round(baseColW * (colScale / 100));
+
   mc.innerHTML = '<div class="tasks-board-page">' +
     '<div class="tasks-board-head"><div><div class="tasks-board-title">ЗАДАЧИ ПО ПРОЕКТАМ</div><div class="tasks-board-sub">Колонками: один проект = один столбец. Быстрый обзор по всем задачам команды.</div></div>' +
     '<div class="tasks-board-controls"><input id="tasksBoardSearch" class="tasks-board-search" placeholder="Поиск по проекту или задаче" value="' + esc(query) + '" oninput="renderTasksBoardIntoMainContent(document.getElementById(\'mainContent\'))">' +
-    '<select id="tasksBoardStatusFilter" class="tasks-board-filter" onchange="renderTasksBoardIntoMainContent(document.getElementById(\'mainContent\'))"><option value="open"' + (status === 'open' ? ' selected' : '') + '>Открытые</option><option value="all"' + (status === 'all' ? ' selected' : '') + '>Все</option><option value="overdue"' + (status === 'overdue' ? ' selected' : '') + '>Просрочка</option><option value="done"' + (status === 'done' ? ' selected' : '') + '>Выполненные</option></select></div></div>' +
+    '<select id="tasksBoardStatusFilter" class="tasks-board-filter" onchange="renderTasksBoardIntoMainContent(document.getElementById(\'mainContent\'))"><option value="open"' + (status === 'open' ? ' selected' : '') + '>Открытые</option><option value="all"' + (status === 'all' ? ' selected' : '') + '>Все</option><option value="overdue"' + (status === 'overdue' ? ' selected' : '') + '>Просрочка</option><option value="done"' + (status === 'done' ? ' selected' : '') + '>Выполненные</option></select>' +
+    '<select id="tasksBoardColsOnPage" class="tasks-board-filter" onchange="setTasksBoardColsOnPage(this.value);renderTasksBoardIntoMainContent(document.getElementById(\'mainContent\'))"><option value="3"' + (colsOnPage === 3 ? ' selected' : '') + '>3 кол.</option><option value="4"' + (colsOnPage === 4 ? ' selected' : '') + '>4 кол.</option><option value="5"' + (colsOnPage === 5 ? ' selected' : '') + '>5 кол.</option><option value="6"' + (colsOnPage === 6 ? ' selected' : '') + '>6 кол.</option><option value="7"' + (colsOnPage === 7 ? ' selected' : '') + '>7 кол.</option><option value="8"' + (colsOnPage === 8 ? ' selected' : '') + '>8 кол.</option></select>' +
+    '<label class="tasks-board-size">Размер <input id="tasksBoardColScale" type="range" min="75" max="130" step="5" value="' + colScale + '" oninput="setTasksBoardColScale(this.value);renderTasksBoardIntoMainContent(document.getElementById(\'mainContent\'))"></label>' +
+    '</div></div>' +
     '<div class="tasks-board-strip"><span class="tasks-board-chip">Проектов: ' + visible.length + '</span><span class="tasks-board-chip">Задач: ' + total + '</span><span class="tasks-board-chip">Done: ' + doneCount + '</span><span class="tasks-board-chip">Overdue: ' + overdueCount + '</span></div>' +
-    '<div class="tasks-board-wrap"><div class="tasks-board-columns">' + colsHtml + '</div></div>' +
+    '<div class="tasks-board-wrap"><div class="tasks-board-columns" style="--tasks-col-width:' + colWidth + 'px">' + colsHtml + '</div></div>' +
   '</div>';
 }
 function tasksBoardSetDone(taskId, source) {
