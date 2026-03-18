@@ -5,6 +5,7 @@
   "use strict";
 
   var EXPENSES_KEY = "crm_ads_expenses_v1";
+  var POSTS_PLAN_KEY = "crm_ads_posts_plan_v1";
   var LINKS_KEY = "crm_ads_links_v1";
   var AVITO_KEY_LS = "crm_ads_avito_api_key_v1";
   var AVITO_CLIENT_ID_LS = "crm_ads_avito_client_id_v1";
@@ -14,6 +15,10 @@
 
   var ROW_KEYS = ["main", "new", "both"];
   var ROW_LABELS = { main: "Основной", new: "Новый", both: "Оба" };
+  var POST_ROWS = [
+    { key: "learn", label: "Обучение" },
+    { key: "agency", label: "Агентство" }
+  ];
 
   var DEFAULT_LINKS = [
     { id: "channel_clients", icon: "📣", label: "Канал для клиентов", url: "", snippet: "", avatar: "" },
@@ -64,6 +69,36 @@
   function saveExpenses(state) {
     try {
       localStorage.setItem(EXPENSES_KEY, JSON.stringify({
+        y: state.year,
+        m: state.month,
+        cells: state.data
+      }));
+    } catch (e) {}
+  }
+
+  function getPostCellKey(projectKey, day) {
+    return projectKey + "_" + day;
+  }
+
+  function loadPostsPlan() {
+    try {
+      var raw = localStorage.getItem(POSTS_PLAN_KEY);
+      if (raw) {
+        var data = JSON.parse(raw);
+        return {
+          data: data.cells || {},
+          year: String(data.y || new Date().getFullYear()),
+          month: String(data.m || (new Date().getMonth() + 1))
+        };
+      }
+    } catch (e) {}
+    var now = new Date();
+    return { data: {}, year: String(now.getFullYear()), month: String(now.getMonth() + 1) };
+  }
+
+  function savePostsPlan(state) {
+    try {
+      localStorage.setItem(POSTS_PLAN_KEY, JSON.stringify({
         y: state.year,
         m: state.month,
         cells: state.data
@@ -226,6 +261,44 @@
     });
   }
 
+  function renderPostsPlanTable(container, postsState) {
+    var days = 30;
+    var todayDay = getTodayDayForState(postsState);
+    var html =
+      '<div class="ads-posts-planner-head">Календарь постов на 30 дней (каналы)</div>' +
+      '<div class="ads-posts-wrap"><table class="ads-posts-table"><thead><tr><th class="ads-th-label">Проект</th>';
+    for (var d = 1; d <= days; d++) {
+      html += '<th class="ads-th-day' + (d === todayDay ? " ads-day-today" : "") + '">' + d + "</th>";
+    }
+    html += "</tr></thead><tbody>";
+    POST_ROWS.forEach(function(row) {
+      html += '<tr><td class="ads-td-label">' + row.label + "</td>";
+      for (var day = 1; day <= days; day++) {
+        var key = getPostCellKey(row.key, day);
+        var val = String(postsState.data[key] || "");
+        html +=
+          '<td class="ads-post-td' + (day === todayDay ? " ads-day-today" : "") + '">' +
+            '<input type="text" class="ads-post-input" data-row="' + row.key + '" data-day="' + day + '" value="' + escapeHtml(val) + '" placeholder="Пост">' +
+          "</td>";
+      }
+      html += "</tr>";
+    });
+    html += "</tbody></table></div>";
+    container.innerHTML = html;
+    container.querySelectorAll(".ads-post-input").forEach(function(inp) {
+      inp.addEventListener("change", function() {
+        var row = inp.getAttribute("data-row");
+        var day = parseInt(inp.getAttribute("data-day"), 10);
+        if (!row || !day) return;
+        var key = getPostCellKey(row, day);
+        var value = String(inp.value || "").trim();
+        if (!value) delete postsState.data[key];
+        else postsState.data[key] = value;
+        savePostsPlan(postsState);
+      });
+    });
+  }
+
   function getLinksCategory(item) {
     var id = String(item.id || "").toLowerCase();
     var label = String(item.label || "").toLowerCase();
@@ -366,14 +439,14 @@
 
   function renderAdsPage(mainContentEl) {
     var state = loadExpenses();
+    var postsState = loadPostsPlan();
     var links = loadLinks();
     var wrap = document.createElement("div");
     wrap.className = "ads-page";
     wrap.innerHTML =
-      '<div class="ads-header">📢 Рекламные расходы</div>' +
+      '<div class="ads-header">📢 РЕКЛАМА ПРОЕКТА</div>' +
       '<div class="ads-subtabs">' +
         '<button type="button" class="ads-subtab-btn on" data-ads-subtab="expenses">Расходы</button>' +
-        '<button type="button" class="ads-subtab-btn" data-ads-subtab="api">Avito API</button>' +
       "</div>" +
       '<div class="ads-subtab-page on" data-ads-page="expenses">' +
         '<div class="ads-top-summary" id="adsTopSummary">' +
@@ -385,24 +458,10 @@
         '<div class="ads-body">' +
           '<div class="ads-main">' +
             '<div class="ads-card ads-expenses-card"><div class="ads-card-title">Расходы по дням</div><div id="adsExpensesContainer"></div></div>' +
+            '<div class="ads-card ads-posts-card"><div id="adsPostsPlanContainer"></div></div>' +
             '<div class="ads-card ads-links-card"><div id="adsLinksContainer"></div></div>' +
           "</div>" +
           '<div class="ads-sidebar"><div class="ads-card ads-totals-card"><div id="adsTotalsContainer"></div></div></div>' +
-        "</div>" +
-      "</div>" +
-      '<div class="ads-subtab-page" data-ads-page="api">' +
-        '<div class="ads-card ads-api-card">' +
-          '<div class="ads-card-title">Интеграция Avito API</div>' +
-          '<div class="ads-api-grid">' +
-            '<label class="ads-api-field"><span>Backend URL</span><input type="text" id="adsApiBackendBase" placeholder="http://localhost:8787/api"></label>' +
-            '<label class="ads-api-field"><span>Access token (если есть)</span><input type="password" id="adsApiKeyInput" placeholder="Bearer token (опционально)"></label>' +
-            '<label class="ads-api-field"><span>Client ID</span><input type="text" id="adsApiClientIdInput" placeholder="Ваш Avito client_id"></label>' +
-            '<label class="ads-api-field"><span>Client Secret</span><input type="password" id="adsApiClientSecretInput" placeholder="Ваш Avito client_secret"></label>' +
-            '<label class="ads-api-field ads-api-field-path"><span>API путь</span><input type="text" id="adsApiPathInput" placeholder="/core/v1/accounts/self"></label>' +
-          "</div>" +
-          '<div class="ads-api-actions"><button type="button" class="ads-api-btn" id="adsApiLoadBtn">Загрузить данные</button><button type="button" class="ads-api-btn ads-api-btn-ghost" id="adsApiSaveBtn">Сохранить настройки</button></div>' +
-          '<div class="ads-api-status" id="adsApiStatus">Готово к подключению. Укажите access token или client_id/client_secret и нажмите "Загрузить данные".</div>' +
-          '<pre class="ads-api-result" id="adsApiResult">Ответ API появится здесь.</pre>' +
         "</div>" +
       "</div>";
 
@@ -410,6 +469,7 @@
     mainContentEl.appendChild(wrap);
 
     var expensesContainer = wrap.querySelector("#adsExpensesContainer");
+    var postsPlanContainer = wrap.querySelector("#adsPostsPlanContainer");
     var totalsContainer = wrap.querySelector("#adsTotalsContainer");
     var linksContainer = wrap.querySelector("#adsLinksContainer");
     function refreshTotals() {
@@ -417,11 +477,11 @@
       updateTopSummary(wrap.querySelector("#adsTopSummary"), state);
     }
     renderExpensesTable(expensesContainer, state, refreshTotals);
+    renderPostsPlanTable(postsPlanContainer, postsState);
     updateTotalsPanel(totalsContainer, state);
     updateTopSummary(wrap.querySelector("#adsTopSummary"), state);
     renderLinksPanel(linksContainer, links);
     setupAdsSubtabs(wrap);
-    setupAdsApiPanel(wrap);
   }
 
   window.__showAdsPage = renderAdsPage;
