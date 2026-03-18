@@ -1902,6 +1902,81 @@ function applyTaskTemplate(projectId, templateKey) {
   }
   applyTaskTemplateInner(projectId, templateKey, tpl.tasks || [], tpl.emoji || '&#128221;');
 }
+function closeTaskTemplateMiniMenu() {
+  var m = document.getElementById('taskTemplateMiniMenu');
+  if (m) m.remove();
+  if (window._taskTemplateMiniMenuOutsideHandler) {
+    document.removeEventListener('pointerdown', window._taskTemplateMiniMenuOutsideHandler, true);
+    window._taskTemplateMiniMenuOutsideHandler = null;
+  }
+}
+function openTaskTemplateMiniMenu(projectId, templateKey, anchorEl) {
+  var tpl = TASK_TEMPLATES[templateKey];
+  if (!tpl || !projectId || !anchorEl) return;
+  closeTaskTemplateMiniMenu();
+  var tasks = [];
+  if (Array.isArray(tpl.tasks) && tpl.tasks.length) {
+    tasks = tpl.tasks.map(function(t, i) {
+      return typeof t === 'string' ? t : (t.title || t.name || ('Задача ' + (i + 1)));
+    });
+  } else if (tpl.pickCount && tpl.pickCount.length) {
+    var maxCnt = Math.max.apply(null, tpl.pickCount);
+    for (var i = 1; i <= maxCnt; i++) tasks.push('Текст ' + i);
+  }
+  if (!tasks.length) {
+    applyTaskTemplate(projectId, templateKey);
+    return;
+  }
+  var defaultChecked = (tpl.pickCount && tpl.pickCount.length) ? Math.min.apply(null, tpl.pickCount) : tasks.length;
+  var menu = document.createElement('div');
+  menu.id = 'taskTemplateMiniMenu';
+  menu.className = 'task-template-mini-menu';
+  var esc = function(s){ return escAttr(String(s || '')); };
+  var rows = tasks.map(function(title, idx) {
+    var checked = idx < defaultChecked ? ' checked' : '';
+    return '<label class="task-template-mini-row"><input type="checkbox" class="task-template-mini-cb" data-index="' + idx + '"' + checked + '> <span>' + esc(title) + '</span></label>';
+  }).join('');
+  menu.innerHTML =
+    '<div class="task-template-mini-head">' + esc((tpl.emoji ? (tpl.emoji + ' ') : '') + (tpl.name || templateKey)) + '</div>' +
+    '<div class="task-template-mini-list">' + rows + '</div>' +
+    '<div class="task-template-mini-actions">' +
+      '<button type="button" class="task-template-mini-btn" data-act="cancel">Отмена</button>' +
+      '<button type="button" class="task-template-mini-btn ok" data-act="add">Добавить</button>' +
+    '</div>';
+  document.body.appendChild(menu);
+  var ar = anchorEl.getBoundingClientRect();
+  var mr = menu.getBoundingClientRect();
+  var left = Math.max(8, Math.min(ar.left, window.innerWidth - mr.width - 8));
+  var top = ar.bottom + 6;
+  if (top + mr.height > window.innerHeight - 8) top = Math.max(8, ar.top - mr.height - 6);
+  menu.style.left = Math.round(left) + 'px';
+  menu.style.top = Math.round(top) + 'px';
+  menu.querySelectorAll('.task-template-mini-btn').forEach(function(btn) {
+    btn.onclick = function(e) {
+      e.preventDefault();
+      e.stopPropagation();
+      var act = btn.getAttribute('data-act');
+      if (act === 'cancel') {
+        closeTaskTemplateMiniMenu();
+        return;
+      }
+      var chosen = [];
+      menu.querySelectorAll('.task-template-mini-cb:checked').forEach(function(cb) {
+        var idx = parseInt(cb.getAttribute('data-index') || '-1', 10);
+        if (isFinite(idx) && idx >= 0 && idx < tasks.length) chosen.push(tasks[idx]);
+      });
+      if (chosen.length) applyTaskTemplateInner(projectId, templateKey, chosen, tpl.emoji || '&#128221;');
+      closeTaskTemplateMiniMenu();
+    };
+  });
+  window._taskTemplateMiniMenuOutsideHandler = function(ev) {
+    var mm = document.getElementById('taskTemplateMiniMenu');
+    if (!mm) return;
+    if (mm.contains(ev.target) || anchorEl.contains(ev.target)) return;
+    closeTaskTemplateMiniMenu();
+  };
+  document.addEventListener('pointerdown', window._taskTemplateMiniMenuOutsideHandler, true);
+}
 function showTextsCountPicker(projectId, templateKey) {
   var existing = document.getElementById('taskTextsPickerModal');
   if (existing) existing.remove();
@@ -2342,7 +2417,7 @@ function renderTaskPanel() {
     Object.keys(TASK_TEMPLATES).forEach(function(k){
       var t = TASK_TEMPLATES[k];
       var lbl = (t.emoji ? (t.emoji + ' ') : '') + escAttr(t.name);
-      tplBtns.push('<button type="button" class="task-template-btn" onclick="applyTaskTemplate(\'' + escAttr(pid) + '\',\'' + escAttr(k) + '\')" title="' + escAttr(t.name) + '">' + lbl + '</button>');
+      tplBtns.push('<button type="button" class="task-template-btn" onclick="event.stopPropagation();openTaskTemplateMiniMenu(\'' + escAttr(pid) + '\',\'' + escAttr(k) + '\',this)" title="' + escAttr(t.name) + '">' + lbl + '</button>');
     });
     templatesHtml = '<div class="task-panel-templates"><div class="task-panel-section-title">ШАБЛОНЫ ЗАДАЧ</div><div class="task-template-btns">' + tplBtns.join('') + '</div></div>';
   }
