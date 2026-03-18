@@ -2107,6 +2107,9 @@ function logTaskEvent(projectId, taskId, taskTitle, action, extra) {
   saveProjectsData(data);
 }
 function syncTasksBoardIfOpen() {
+  if (typeof crmTaskRender === 'function') {
+    try { crmTaskRender(); } catch (e0) {}
+  }
   if (typeof tasksMode === 'undefined' || !tasksMode) return;
   if (typeof renderTasksBoardIntoMainContent !== 'function') return;
   var mc = document.getElementById('mainContent');

@@ -130,6 +130,50 @@ function crmTaskLoad() {
     return Array.isArray(arr) ? arr : [];
   } catch(e) { return []; }
 }
+function crmTaskLoadUnified() {
+  var out = [];
+  var crm = crmTaskLoad();
+  crm.forEach(function(t) {
+    out.push({
+      id: t.id,
+      title: t.title || '',
+      project: t.project || '',
+      projectId: '',
+      source: 'crm',
+      type: t.type || 'normal',
+      deadline: t.deadline || '',
+      status: t.status === 'completed' ? 'completed' : 'active',
+      priority: !!t.priority,
+      completedAt: t.completedAt || ''
+    });
+  });
+  try {
+    if (typeof loadProjectsData === 'function') {
+      var data = loadProjectsData() || {};
+      var projects = Array.isArray(data.projects) ? data.projects : [];
+      var tasks = Array.isArray(data.tasks) ? data.tasks : [];
+      var byId = {};
+      projects.forEach(function(p) { byId[p.id] = p; });
+      tasks.forEach(function(t) {
+        var p = byId[t.projectId] || null;
+        var due = String(t.dueDate || '').trim();
+        out.push({
+          id: t.id,
+          title: t.title || '',
+          project: p ? (p.title || '') : '',
+          projectId: t.projectId || '',
+          source: 'projects',
+          type: t.type || 'normal',
+          deadline: due ? (due.length === 10 ? (due + 'T12:00:00') : due) : '',
+          status: (t.status === 'done') ? 'completed' : 'active',
+          priority: (t.priority === 'urgent'),
+          completedAt: ''
+        });
+      });
+    }
+  } catch (e) {}
+  return out;
+}
 function crmTaskSave(list) {
   try { localStorage.setItem(CRM_TASKS_KEY, JSON.stringify(list || [])); } catch(e) {}
 }
@@ -159,20 +203,21 @@ function crmTaskRenderCard(t, kind, nowTs) {
   var doneTxt = t.completedAt ? new Date(t.completedAt).toLocaleTimeString('ru', {hour:'2-digit', minute:'2-digit'}) : '';
   var projectTxt = t.project ? crmTaskEsc(t.project) : '';
   var prio = t.priority ? '<span class="crm-task-act crm-task-prio">🔥 priority</span>' : '';
+  var sourceBadge = t.source === 'projects' ? '<span class="crm-task-act">PROJ</span>' : '<span class="crm-task-act">CRM</span>';
   var actions = '';
-  if (kind === 'active') {
+  if (kind === 'active' && t.source === 'crm') {
     actions =
       '<button type="button" class="crm-task-act" onclick="crmTaskComplete(\'' + crmTaskEsc(t.id) + '\')">✔ complete</button>' +
       '<button type="button" class="crm-task-act crm-task-prio" onclick="crmTaskTogglePriority(\'' + crmTaskEsc(t.id) + '\')">🔥 priority</button>' +
       '<button type="button" class="crm-task-act" onclick="crmTaskSetDeadline(\'' + crmTaskEsc(t.id) + '\')">⏱ set deadline</button>';
-  } else if (kind === 'overdue') {
+  } else if (kind === 'overdue' && t.source === 'crm') {
     actions = '<button type="button" class="crm-task-act" onclick="crmTaskTakeInWork(\'' + crmTaskEsc(t.id) + '\')">Взять в работу</button>';
   }
   return '' +
     '<div class="' + cardCls + '">' +
       '<div class="crm-task-card-top">' +
         '<div class="crm-task-title">' + crmTaskEsc(t.title || '') + '</div>' +
-        (prio || '') +
+        '<div style="display:flex;gap:4px;align-items:center">' + sourceBadge + (prio || '') + '</div>' +
       '</div>' +
       '<div class="crm-task-meta">' +
         (kind === 'done' ? ('выполнено: ' + crmTaskEsc(doneTxt || '—')) : ('дедлайн: ' + crmTaskEsc(deadlineTxt))) +
@@ -180,6 +225,41 @@ function crmTaskRenderCard(t, kind, nowTs) {
       '</div>' +
       (actions ? ('<div class="crm-task-actions">' + actions + '</div>') : '') +
     '</div>';
+}
+function crmTaskRenderMiniBoard(list, nowTs) {
+  var mini = document.getElementById('crmTaskMiniBoard');
+  var summary = document.getElementById('crmTaskSummary');
+  if (!summary) return;
+  if (!mini) {
+    mini = document.createElement('div');
+    mini.id = 'crmTaskMiniBoard';
+    mini.className = 'crm-task-mini-board';
+    summary.parentNode.insertBefore(mini, summary.nextSibling);
+  }
+  var grouped = {};
+  list.forEach(function(t) {
+    var key = String(t.project || 'Без проекта').trim() || 'Без проекта';
+    if (!grouped[key]) grouped[key] = { title: key, items: [] };
+    grouped[key].items.push(t);
+  });
+  var cols = Object.keys(grouped).map(function(k) {
+    var items = grouped[k].items;
+    var overdue = items.filter(function(t){ return crmTaskIsOverdue(t, nowTs); }).length;
+    var done = items.filter(function(t){ return t.status === 'completed'; }).length;
+    var active = items.length - done;
+    return { title: k, items: items, overdue: overdue, done: done, active: active };
+  }).sort(function(a, b){ return b.items.length - a.items.length; }).slice(0, 8);
+  if (!cols.length) {
+    mini.innerHTML = '<div class="crm-task-mini-empty">Нет задач для миниатюры</div>';
+    return;
+  }
+  mini.innerHTML = '<div class="crm-task-mini-title">Миниатюра панели ЗАДАЧ</div><div class="crm-task-mini-cols">' + cols.map(function(c) {
+    var preview = c.items.slice(0, 3).map(function(t){
+      var isOver = crmTaskIsOverdue(t, nowTs);
+      return '<div class="crm-task-mini-item' + (isOver ? ' overdue' : '') + '" title="' + crmTaskEsc(t.title || '') + '">' + crmTaskEsc(t.title || '') + '</div>';
+    }).join('');
+    return '<div class="crm-task-mini-col"><div class="crm-task-mini-col-head"><span>' + crmTaskEsc(c.title) + '</span><b>' + c.items.length + '</b></div><div class="crm-task-mini-kpis"><span>⏳ ' + c.active + '</span><span>✔ ' + c.done + '</span><span>❌ ' + c.overdue + '</span></div><div class="crm-task-mini-list">' + preview + '</div></div>';
+  }).join('') + '</div>';
 }
 function crmTaskRender() {
   var wrap = document.getElementById('crmTasksWrap');
@@ -191,9 +271,9 @@ function crmTaskRender() {
   var moneyEl = document.getElementById('crmTaskMoneyList');
   if (!summary || !doneEl || !activeEl || !overdueEl || !moneyEl) return;
 
-  var list = crmTaskLoad();
+  var list = crmTaskLoadUnified();
   var nowTs = Date.now();
-  var completedToday = list.filter(function(t){ return t.status === 'completed' && crmTaskIsToday(t.completedAt); });
+  var completedToday = list.filter(function(t){ return t.status === 'completed' && (!t.completedAt || crmTaskIsToday(t.completedAt)); });
   var active = list.filter(function(t){ return t.status !== 'completed' && !crmTaskIsOverdue(t, nowTs); });
   var overdue = list.filter(function(t){ return crmTaskIsOverdue(t, nowTs); });
   var money = list.filter(function(t){ return t.type === 'money'; });
@@ -213,6 +293,7 @@ function crmTaskRender() {
   activeEl.innerHTML = filteredActive.length ? filteredActive.map(function(t){ return crmTaskRenderCard(t, 'active', nowTs); }).join('') : '<div class="crm-task-empty">Нет задач</div>';
   overdueEl.innerHTML = filteredOverdue.length ? filteredOverdue.map(function(t){ return crmTaskRenderCard(t, 'overdue', nowTs); }).join('') : '<div class="crm-task-empty">Нет задач</div>';
   moneyEl.innerHTML = filteredMoney.length ? filteredMoney.map(function(t){ return crmTaskRenderCard(t, 'money', nowTs); }).join('') : '<div class="crm-task-empty">Нет задач</div>';
+  crmTaskRenderMiniBoard(list, nowTs);
 
   document.querySelectorAll('#crmTaskFilters .crm-task-filter-btn').forEach(function(btn){
     btn.classList.toggle('on', btn.getAttribute('data-filter') === _crmTaskFilter);
@@ -294,6 +375,7 @@ window.crmTaskComplete = crmTaskComplete;
 window.crmTaskTogglePriority = crmTaskTogglePriority;
 window.crmTaskSetDeadline = crmTaskSetDeadline;
 window.crmTaskTakeInWork = crmTaskTakeInWork;
+window.crmTaskRender = crmTaskRender;
 
 // ── PROGRESS ──
 function pgStart() {
