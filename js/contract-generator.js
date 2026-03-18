@@ -1012,6 +1012,11 @@
       if (!btn) return;
       btn.style.display = lastDrivePdfDoc ? 'inline-flex' : 'none';
       btn.disabled = false;
+      if (lastDrivePdfDoc && lastDrivePdfDoc.downloadUrl) {
+        btn.title = 'Скачать PDF из Google Docs';
+      } else {
+        btn.title = '';
+      }
     }
     function wrapContractHtml(innerHtml) {
       return '<!doctype html><html><head><meta charset="UTF-8"></head><body style="margin:0;padding:0;background:#fff;color:#111;font-family:Golos Text,Arial,sans-serif">' +
@@ -1226,7 +1231,11 @@
         return;
       }
       var ctx = getTargetFolderCtx();
-      var canDrive = !!(ctx && ctx.folderId && typeof driveCreateGoogleDoc === 'function' && typeof getDriveToken === 'function');
+      var createDocFn =
+        (typeof driveCreateGoogleDoc === 'function' && driveCreateGoogleDoc) ||
+        (typeof window !== 'undefined' && typeof window.driveCreateGoogleDoc === 'function' && window.driveCreateGoogleDoc) ||
+        null;
+      var canDrive = !!(ctx && ctx.folderId && createDocFn && typeof getDriveToken === 'function');
       if (!canDrive) {
         if (st) st.textContent = 'Для PDF выберите проект с папкой Google Drive и подключите Drive.';
         return;
@@ -1237,19 +1246,24 @@
         var who = (lastGeneratedData && (lastGeneratedData.fio || lastGeneratedData.companyName)) || ctx.name || 'Клиент';
         var htmlForPdf = await inlineExportImages(lastGeneratedHtml);
         await getDriveToken();
-        var docName = '📕 PDF — Договор — ' + String(who);
-        var res = await driveCreateGoogleDoc(docName, wrapContractHtml(htmlForPdf), ctx.folderId);
+        var docName = 'PDF - Договор - ' + String(who);
+        var res = await createDocFn(docName, wrapContractHtml(htmlForPdf), ctx.folderId);
         var docId = res && res.id ? String(res.id) : '';
+        var directPdfUrl = docId ? ('https://docs.google.com/document/d/' + docId + '/export?format=pdf') : '';
         setPdfDownloadReady(docId ? {
           id: docId,
           name: docName,
-          webViewLink: res && res.webViewLink ? String(res.webViewLink) : ''
+          webViewLink: res && res.webViewLink ? String(res.webViewLink) : '',
+          downloadUrl: directPdfUrl
         } : null);
         if (st) {
           var openLink = res && res.webViewLink ? String(res.webViewLink) : '';
+          var dlLink = directPdfUrl
+            ? ' · <a href="' + directPdfUrl + '" target="_blank" rel="noopener" style="color:#7cf5ff;text-decoration:underline">Скачать</a>'
+            : '';
           st.innerHTML = openLink
-            ? '✓ Сохранено в Drive · <a href="' + openLink + '" target="_blank" rel="noopener" style="color:#7cf5ff;text-decoration:underline">Открыть</a> · нажмите «Скачать PDF»'
-            : '✓ Сохранено в Drive · нажмите «Скачать PDF»';
+            ? '✓ Сохранено в Drive · <a href="' + openLink + '" target="_blank" rel="noopener" style="color:#7cf5ff;text-decoration:underline">Открыть</a>' + dlLink + ' · кнопка «Скачать PDF» активна'
+            : '✓ Сохранено в Drive' + dlLink + ' · кнопка «Скачать PDF» активна';
         }
       } catch (e) {
         setPdfDownloadReady(null);
@@ -1267,22 +1281,18 @@
       }
       try {
         if (btn) btn.disabled = true;
-        if (st) st.textContent = 'Скачиваю PDF из Google Drive...';
-        var token = await getDriveToken();
-        var exportUrl =
-          'https://www.googleapis.com/drive/v3/files/' +
-          encodeURIComponent(lastDrivePdfDoc.id) +
-          '/export?mimeType=application/pdf';
-        var resp = await fetch(exportUrl, {
-          headers: { Authorization: 'Bearer ' + token }
-        });
-        if (!resp.ok) {
-          var errText = await resp.text().catch(function() { return ''; });
-          throw new Error('Drive export HTTP ' + resp.status + (errText ? (': ' + errText) : ''));
+        if (st) st.textContent = 'Открываю скачивание PDF...';
+        var directUrl = String(lastDrivePdfDoc.downloadUrl || '');
+        if (directUrl) {
+          window.open(directUrl, '_blank', 'noopener');
+          if (st) st.textContent = '✓ Скачивание PDF запущено';
+          return;
         }
-        var blob = await resp.blob();
-        var name = (lastDrivePdfDoc.name || 'Договор').replace(/[\\/:*?"<>|]+/g, '_') + '.pdf';
-        triggerBlobDownload(blob, name);
+        var token = await getDriveToken();
+        var exportUrl = 'https://www.googleapis.com/drive/v3/files/' + encodeURIComponent(lastDrivePdfDoc.id) + '/export?mimeType=application/pdf';
+        var resp = await fetch(exportUrl, { headers: { Authorization: 'Bearer ' + token } });
+        if (!resp.ok) throw new Error('Drive export HTTP ' + resp.status);
+        triggerBlobDownload(await resp.blob(), (lastDrivePdfDoc.name || 'Договор') + '.pdf');
         if (st) st.textContent = '✓ PDF скачан';
       } catch (e) {
         if (st) st.textContent = 'Ошибка скачивания PDF: ' + String((e && e.message) || e);
