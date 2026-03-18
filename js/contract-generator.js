@@ -349,6 +349,11 @@
     'https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js',
     'https://cdn.jsdelivr.net/npm/mammoth@1.6.0/mammoth.min.js'
   ];
+  var HTML2PDF_CDNS = [
+    'https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js',
+    'https://cdn.jsdelivr.net/npm/html2pdf.js@0.10.1/dist/html2pdf.bundle.min.js',
+    'https://unpkg.com/html2pdf.js@0.10.1/dist/html2pdf.bundle.min.js'
+  ];
 
   function getMammoth(cb) {
     var m = (typeof window !== 'undefined' && window.mammoth) || (typeof mammoth !== 'undefined' ? mammoth : null);
@@ -407,6 +412,38 @@
     } else {
       reader.readAsText(file, 'UTF-8');
     }
+  }
+  function getHtml2Pdf(cb) {
+    var h = (typeof window !== 'undefined' && window.html2pdf) || (typeof html2pdf !== 'undefined' ? html2pdf : null);
+    if (typeof h === 'function') {
+      cb(null, h);
+      return;
+    }
+    var idx = 0;
+    var done = false;
+    function finish(err, fn) {
+      if (done) return;
+      done = true;
+      cb(err, fn || null);
+    }
+    function tryNext() {
+      if (idx >= HTML2PDF_CDNS.length) {
+        finish(new Error('Не удалось загрузить модуль PDF. Проверьте интернет.'), null);
+        return;
+      }
+      var src = HTML2PDF_CDNS[idx++];
+      var s = document.createElement('script');
+      s.src = src;
+      s.async = true;
+      s.onload = function() {
+        var fn = window.html2pdf;
+        if (typeof fn === 'function') finish(null, fn);
+        else tryNext();
+      };
+      s.onerror = function() { tryNext(); };
+      document.head.appendChild(s);
+    }
+    tryNext();
   }
 
   function renderContractForm(container, onGenerate, onClear) {
@@ -576,6 +613,10 @@
       '<div class="contract-toolbar-row contract-toolbar-row-primary">' +
       '<button type="button" class="contract-toolbar-btn contract-btn-load contract-btn-load-main" onclick="document.getElementById(\'contract-file-inp\').click()">📄 Загрузить реквизиты</button>' +
       '<input type="file" id="contract-file-inp" accept=".txt,.docx,.pdf" style="display:none">' +
+      '</div>' +
+      '<div class="contract-ai-line">' +
+      '<textarea id="contract-ai-text" class="contract-ai-input" rows="2" placeholder="ИИ-строка: вставьте реквизиты текстом и нажмите Отправить (Ctrl+Enter)"></textarea>' +
+      '<button type="button" class="contract-toolbar-btn contract-ai-send-btn" id="contractAiSendBtn">✦ Отправить</button>' +
       '</div>' +
       '<div class="contract-client-caption" id="contractClientCaption">ФИО: —</div>' +
       '<div class="contract-toolbar-row contract-toolbar-row-secondary" id="contractToolbarSecondary" style="display:none">' +
@@ -756,7 +797,24 @@
 
     var fileInp = document.getElementById('contract-file-inp');
     var dropZone = document.getElementById('contract-drop-zone');
+    var aiInp = document.getElementById('contract-ai-text');
+    var aiSendBtn = document.getElementById('contractAiSendBtn');
 
+    function processRequisitesText(text, sourceLabel) {
+      var raw = String(text || '').trim();
+      if (!raw) {
+        if (typeof window.__showToast === 'function') window.__showToast('Пустой текст в ' + sourceLabel);
+        else alert('Пустой текст в ' + sourceLabel);
+        return;
+      }
+      var parsed = parseRequisitesFromText(raw);
+      applyParsed(parsed);
+      renderParsedRequisites(parsed);
+      refreshClientCaption();
+      setSecondaryVisible(true);
+      if (typeof window.__showToast === 'function') window.__showToast('Реквизиты обработаны из ' + sourceLabel);
+      else alert('Реквизиты извлечены и заполнены');
+    }
     function handleFile(file) {
       if (!file) return;
       var ext = (file.name || '').toLowerCase();
@@ -769,13 +827,7 @@
           alert(err.message || 'Ошибка чтения файла');
           return;
         }
-        var parsed = parseRequisitesFromText(text);
-        applyParsed(parsed);
-        renderParsedRequisites(parsed);
-        refreshClientCaption();
-        setSecondaryVisible(true);
-        if (typeof window.__showToast === 'function') window.__showToast('Реквизиты загружены');
-        else alert('Реквизиты извлечены и заполнены');
+        processRequisitesText(text, 'файла');
       });
     }
 
@@ -783,6 +835,17 @@
       var f = fileInp.files && fileInp.files[0];
       handleFile(f);
     });
+    if (aiSendBtn) aiSendBtn.addEventListener('click', function() {
+      processRequisitesText(aiInp && aiInp.value, 'ИИ-строки');
+    });
+    if (aiInp) {
+      aiInp.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+          e.preventDefault();
+          processRequisitesText(aiInp.value, 'ИИ-строки');
+        }
+      });
+    }
 
     if (dropZone) {
       dropZone.addEventListener('dragover', function(e) { e.preventDefault(); dropZone.classList.add('contract-drop-over'); });
@@ -857,9 +920,9 @@
       if (!btn) return;
       var ctx = getTargetFolderCtx();
       if (!ctx || !ctx.folderId) {
-        btn.style.display = 'none';
-        btn.disabled = true;
-        btn.title = 'Выберите проект/папку слева';
+        btn.style.display = 'inline-flex';
+        btn.disabled = false;
+        btn.title = 'Скачать .doc (локально)';
         if (st) st.textContent = '';
         return;
       }
@@ -908,14 +971,6 @@
       var st = document.getElementById('contractSaveStatus');
       var btn = document.getElementById('contractSaveWBtn');
       var ctx = getTargetFolderCtx();
-      if (!ctx || !ctx.folderId) {
-        if (st) st.textContent = 'Сначала выберите проект/папку слева';
-        return;
-      }
-      if (typeof driveCreateGoogleDoc !== 'function' || typeof getDriveToken !== 'function') {
-        if (st) st.textContent = 'Сохранение недоступно (Drive API не загружен)';
-        return;
-      }
       if (!lastGeneratedHtml) {
         if (typeof window.__contractGenerate === 'function') window.__contractGenerate();
       }
@@ -923,21 +978,45 @@
         if (st) st.textContent = 'Сначала сгенерируйте договор';
         return;
       }
+      function downloadDocLocal(name, htmlStr) {
+        var blob = new Blob([wrapContractHtml(htmlStr)], { type: 'application/msword' });
+        var a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = (name || 'Договор') + '.doc';
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(function() {
+          URL.revokeObjectURL(a.href);
+          if (a.parentNode) a.parentNode.removeChild(a);
+        }, 0);
+      }
       try {
         if (btn) btn.disabled = true;
-        if (st) st.textContent = 'Сохраняю в Google Docs...';
-        await getDriveToken();
         var who = (lastGeneratedData && (lastGeneratedData.fio || lastGeneratedData.companyName)) || ctx.name || 'Клиент';
         var docName = '📜 Договор — ' + String(who);
-        var res = await driveCreateGoogleDoc(docName, wrapContractHtml(lastGeneratedHtml), ctx.folderId);
-        if (st) {
-          var link = res && res.webViewLink ? String(res.webViewLink) : '';
-          st.innerHTML = link
-            ? '✓ Сохранено · <a href="' + link + '" target="_blank" rel="noopener" style="color:#7cf5ff;text-decoration:underline">Открыть</a>'
-            : '✓ Сохранено в папку';
+        var canDrive = !!(ctx && ctx.folderId && typeof driveCreateGoogleDoc === 'function' && typeof getDriveToken === 'function');
+        if (canDrive) {
+          if (st) st.textContent = 'Сохраняю в Google Docs...';
+          await getDriveToken();
+          var res = await driveCreateGoogleDoc(docName, wrapContractHtml(lastGeneratedHtml), ctx.folderId);
+          if (st) {
+            var link = res && res.webViewLink ? String(res.webViewLink) : '';
+            st.innerHTML = link
+              ? '✓ Сохранено в Drive · <a href="' + link + '" target="_blank" rel="noopener" style="color:#7cf5ff;text-decoration:underline">Открыть</a>'
+              : '✓ Сохранено в папку';
+          }
+        } else {
+          downloadDocLocal(docName, lastGeneratedHtml);
+          if (st) st.textContent = '✓ Скачан .doc файл';
         }
       } catch (e) {
-        if (st) st.textContent = 'Ошибка сохранения: ' + String((e && e.message) || e);
+        try {
+          var who2 = (lastGeneratedData && (lastGeneratedData.fio || lastGeneratedData.companyName)) || 'Клиент';
+          downloadDocLocal('📜 Договор — ' + String(who2), lastGeneratedHtml);
+          if (st) st.textContent = 'Drive недоступен, скачан .doc файл';
+        } catch (e2) {
+          if (st) st.textContent = 'Ошибка сохранения: ' + String((e2 && e2.message) || e2 || e);
+        }
       } finally {
         if (btn) btn.disabled = false;
       }
@@ -952,10 +1031,6 @@
         if (st) st.textContent = 'Сначала сгенерируйте договор';
         return;
       }
-      if (typeof html2pdf !== 'function') {
-        if (st) st.textContent = 'PDF модуль недоступен';
-        return;
-      }
       var wrapTmp = document.createElement('div');
       wrapTmp.style.cssText = 'position:fixed;left:-99999px;top:0;width:794px;background:#fff;color:#000;padding:20px;box-sizing:border-box;';
       wrapTmp.innerHTML = lastGeneratedHtml;
@@ -963,7 +1038,13 @@
       try {
         if (st) st.textContent = 'Готовлю PDF...';
         var who = (lastGeneratedData && (lastGeneratedData.fio || lastGeneratedData.companyName)) || 'Клиент';
-        await html2pdf().set({
+        var html2pdfFn = await new Promise(function(resolve, reject) {
+          getHtml2Pdf(function(err, fn) {
+            if (err || typeof fn !== 'function') reject(err || new Error('PDF модуль недоступен'));
+            else resolve(fn);
+          });
+        });
+        await html2pdfFn().set({
           margin: [8, 8, 8, 8],
           filename: 'Договор — ' + String(who) + '.pdf',
           image: { type: 'jpeg', quality: 0.95 },
@@ -973,7 +1054,18 @@
         }).from(wrapTmp).save();
         if (st) st.textContent = '✓ PDF сохранен';
       } catch (e) {
-        if (st) st.textContent = 'Ошибка PDF: ' + String((e && e.message) || e);
+        try {
+          var win = window.open('', '_blank');
+          if (win) {
+            win.document.write('<!doctype html><html><head><meta charset="utf-8"><title>Договор</title></head><body>' + lastGeneratedHtml + '</body></html>');
+            win.document.close();
+            win.focus();
+            win.print();
+            if (st) st.textContent = 'Открыт режим печати (Сохранить как PDF)';
+          } else if (st) st.textContent = 'Ошибка PDF: ' + String((e && e.message) || e);
+        } catch (e2) {
+          if (st) st.textContent = 'Ошибка PDF: ' + String((e2 && e2.message) || e2 || e);
+        }
       } finally {
         document.body.removeChild(wrapTmp);
       }
