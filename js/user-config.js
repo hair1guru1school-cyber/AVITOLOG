@@ -15,12 +15,12 @@
     return String(v || '').toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '').slice(0, 72);
   }
   var suffix = '';
-  if (legacyUser === 'sasha') {
+  if (email) {
+    suffix = '__acc_' + sanitizeEmailForKey(email);
+  } else if (legacyUser === 'sasha') {
     suffix = '_sasha';
   } else if (legacyUser === 'fil') {
     suffix = '';
-  } else if (email) {
-    suffix = '__acc_' + sanitizeEmailForKey(email);
   }
   window.AVITOLOG_USER = email || legacyUser || 'default';
   window.AVITOLOG_IS_SASHA = (legacyUser === 'sasha');

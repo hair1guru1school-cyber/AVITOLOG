@@ -2004,8 +2004,12 @@ function applyOAuthHash(hash) {
   var expiresIn = ex ? parseInt(ex[1], 10) : 3600;
   fetchDriveUserEmail(token).then(function(email) {
     var normalizedEmail = String(email || '').toLowerCase();
-    try { localStorage.setItem('avitolog_drive_email', normalizedEmail); } catch(e) {}
-    var authKey = buildDriveAuthStorageKeyByEmail(normalizedEmail);
+    if (normalizedEmail) {
+      try { localStorage.setItem('avitolog_drive_email', normalizedEmail); } catch(e) {}
+    } else {
+      try { localStorage.removeItem('avitolog_drive_email'); } catch(e2) {}
+    }
+    var authKey = normalizedEmail ? buildDriveAuthStorageKeyByEmail(normalizedEmail) : 'avitolog_drive_auth_v1';
     persistDriveToken(token, expiresIn, authKey);
     history.replaceState(null, '', location.pathname);
     location.reload();
@@ -2111,8 +2115,12 @@ function startAuthGIS() {
                 var expiresIn = r.expires_in ? parseInt(r.expires_in, 10) : 3600;
                 fetchDriveUserEmail(token).then(function(email) {
                   var normalizedEmail = String(email || '').toLowerCase();
-                  try { localStorage.setItem('avitolog_drive_email', normalizedEmail); } catch(e) {}
-                  var authKey = buildDriveAuthStorageKeyByEmail(normalizedEmail);
+                  if (normalizedEmail) {
+                    try { localStorage.setItem('avitolog_drive_email', normalizedEmail); } catch(e) {}
+                  } else {
+                    try { localStorage.removeItem('avitolog_drive_email'); } catch(e2) {}
+                  }
+                  var authKey = normalizedEmail ? buildDriveAuthStorageKeyByEmail(normalizedEmail) : 'avitolog_drive_auth_v1';
                   persistDriveToken(token, expiresIn, authKey);
                   history.replaceState(null, '', location.pathname);
                   location.reload();
