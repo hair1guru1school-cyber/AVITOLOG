@@ -76,6 +76,42 @@ function getPos() {
   return result;
 }
 
+function crmTaskNormalizeTags(raw) {
+  var arr = Array.isArray(raw) ? raw : [];
+  return arr.map(function(tag) {
+    if (!tag) return null;
+    if (typeof tag === 'string') {
+      var txt = String(tag || '').trim();
+      if (!txt) return null;
+      return { emoji: '🏷️', label: txt };
+    }
+    var emoji = String(tag.emoji || '🏷️').trim() || '🏷️';
+    var label = String(tag.label || '').trim();
+    if (!label) return null;
+    return { emoji: emoji, label: label };
+  }).filter(Boolean);
+}
+function crmTaskParseTagsInput(raw) {
+  return String(raw || '')
+    .split(/[\n,;]+/)
+    .map(function(x) { return String(x || '').trim(); })
+    .filter(Boolean)
+    .slice(0, 8)
+    .map(function(chunk) {
+      var parts = chunk.split(/\s+/);
+      var emoji = parts[0] || '🏷️';
+      var label = parts.slice(1).join(' ').trim();
+      if (!label) {
+        label = emoji;
+        emoji = '🏷️';
+      }
+      return { emoji: emoji, label: label };
+    });
+}
+function crmTaskTagsToInput(tags) {
+  return crmTaskNormalizeTags(tags).map(function(t) { return (t.emoji || '🏷️') + ' ' + t.label; }).join(', ');
+}
+
 // ── CRM TASKS ──
 var CRM_TASKS_KEY = 'crm_tasks_v1';
 var _crmTaskFilter = 'all';
@@ -91,7 +127,7 @@ function crmTaskEnsureBlock() {
   wrap.id = 'crmTasksWrap';
   wrap.innerHTML =
     '<div class="crm-tasks-head">' +
-      '<div class="crm-tasks-title">📋 ЗАДАЧИ</div>' +
+      '<div class="crm-tasks-title">📋 ВАЖНЫЕ ЗАДАЧИ</div>' +
       '<button type="button" class="crm-task-new-btn" onclick="crmTaskToggleForm()">+ Новая задача</button>' +
     '</div>' +
     '<div class="crm-task-form" id="crmTaskForm">' +
@@ -100,6 +136,8 @@ function crmTaskEnsureBlock() {
         '<div class="fg"><label>Клиент / проект</label><input type="text" id="crmTaskProjectInp" placeholder="Проект или клиент"></div>' +
         '<div class="fg"><label>Тип</label><select id="crmTaskTypeInp"><option value="normal">normal</option><option value="money">money</option><option value="urgent">urgent</option></select></div>' +
         '<div class="fg"><label>Дедлайн</label><input type="datetime-local" id="crmTaskDeadlineInp"></div>' +
+        '<div class="fg"><label>Эмодзи</label><input type="text" id="crmTaskEmojiInp" placeholder="🔥"></div>' +
+        '<div class="fg"><label>Теги</label><input type="text" id="crmTaskTagsInp" placeholder="📞 звонок, 💰 счёт"></div>' +
       '</div>' +
       '<div class="crm-task-form-actions">' +
         '<button type="button" class="crm-task-act" onclick="crmTaskCreate()">Создать</button>' +
@@ -144,7 +182,9 @@ function crmTaskLoadUnified() {
       deadline: t.deadline || '',
       status: t.status === 'completed' ? 'completed' : 'active',
       priority: !!t.priority,
-      completedAt: t.completedAt || ''
+      completedAt: t.completedAt || '',
+      emoji: String(t.emoji || '').trim(),
+      tags: crmTaskNormalizeTags(t.tags)
     });
   });
   try {
@@ -167,7 +207,9 @@ function crmTaskLoadUnified() {
           deadline: due ? (due.length === 10 ? (due + 'T12:00:00') : due) : '',
           status: (t.status === 'done') ? 'completed' : 'active',
           priority: (t.priority === 'urgent'),
-          completedAt: ''
+          completedAt: '',
+          emoji: String(t.emoji || '').trim(),
+          tags: crmTaskNormalizeTags(t.tags)
         });
       });
     }
@@ -203,26 +245,32 @@ function crmTaskRenderCard(t, kind, nowTs) {
   var doneTxt = t.completedAt ? new Date(t.completedAt).toLocaleTimeString('ru', {hour:'2-digit', minute:'2-digit'}) : '';
   var projectTxt = t.project ? crmTaskEsc(t.project) : '';
   var prio = t.priority ? '<span class="crm-task-act crm-task-prio">🔥 priority</span>' : '';
+  var emoji = String(t.emoji || '').trim();
+  var title = (emoji ? (crmTaskEsc(emoji) + ' ') : '') + crmTaskEsc(t.title || '');
+  var tags = crmTaskNormalizeTags(t.tags);
+  var tagsHtml = tags.length ? ('<div class="crm-task-tags">' + tags.map(function(tag) { return '<span class="crm-task-tag">' + crmTaskEsc(tag.emoji || '🏷️') + ' ' + crmTaskEsc(tag.label || '') + '</span>'; }).join('') + '</div>') : '';
   var sourceBadge = t.source === 'projects' ? '<span class="crm-task-act">PROJ</span>' : '<span class="crm-task-act">CRM</span>';
   var actions = '';
   if (kind === 'active' && t.source === 'crm') {
     actions =
       '<button type="button" class="crm-task-act" onclick="crmTaskComplete(\'' + crmTaskEsc(t.id) + '\')">✔ complete</button>' +
       '<button type="button" class="crm-task-act crm-task-prio" onclick="crmTaskTogglePriority(\'' + crmTaskEsc(t.id) + '\')">🔥 priority</button>' +
-      '<button type="button" class="crm-task-act" onclick="crmTaskSetDeadline(\'' + crmTaskEsc(t.id) + '\')">⏱ set deadline</button>';
+      '<button type="button" class="crm-task-act" onclick="crmTaskSetDeadline(\'' + crmTaskEsc(t.id) + '\')">⏱ set deadline</button>' +
+      '<button type="button" class="crm-task-act" onclick="crmTaskEditTags(\'' + crmTaskEsc(t.id) + '\')">🏷 теги</button>';
   } else if (kind === 'overdue' && t.source === 'crm') {
-    actions = '<button type="button" class="crm-task-act" onclick="crmTaskTakeInWork(\'' + crmTaskEsc(t.id) + '\')">Взять в работу</button>';
+    actions = '<button type="button" class="crm-task-act" onclick="crmTaskTakeInWork(\'' + crmTaskEsc(t.id) + '\')">Взять в работу</button><button type="button" class="crm-task-act" onclick="crmTaskEditTags(\'' + crmTaskEsc(t.id) + '\')">🏷 теги</button>';
   }
   return '' +
     '<div class="' + cardCls + '">' +
       '<div class="crm-task-card-top">' +
-        '<div class="crm-task-title">' + crmTaskEsc(t.title || '') + '</div>' +
+        '<div class="crm-task-title">' + title + '</div>' +
         '<div style="display:flex;gap:4px;align-items:center">' + sourceBadge + (prio || '') + '</div>' +
       '</div>' +
       '<div class="crm-task-meta">' +
         (kind === 'done' ? ('выполнено: ' + crmTaskEsc(doneTxt || '—')) : ('дедлайн: ' + crmTaskEsc(deadlineTxt))) +
         (projectTxt ? (' · ' + projectTxt) : '') +
       '</div>' +
+      tagsHtml +
       (actions ? ('<div class="crm-task-actions">' + actions + '</div>') : '') +
     '</div>';
 }
@@ -240,7 +288,7 @@ function crmTaskRender() {
   var moneyEl = document.getElementById('crmTaskMoneyList');
   if (!summary || !doneEl || !activeEl || !overdueEl || !moneyEl) return;
 
-  var list = crmTaskLoadUnified();
+  var list = crmTaskLoadUnified().filter(function(t) { return !!t.priority; });
   var nowTs = Date.now();
   var completedToday = list.filter(function(t){ return t.status === 'completed' && (!t.completedAt || crmTaskIsToday(t.completedAt)); });
   var active = list.filter(function(t){ return t.status !== 'completed' && !crmTaskIsOverdue(t, nowTs); });
@@ -283,9 +331,14 @@ function crmTaskCreate() {
   var projectEl = document.getElementById('crmTaskProjectInp');
   var typeEl = document.getElementById('crmTaskTypeInp');
   var deadlineEl = document.getElementById('crmTaskDeadlineInp');
+  var emojiEl = document.getElementById('crmTaskEmojiInp');
+  var tagsEl = document.getElementById('crmTaskTagsInp');
   if (!titleEl || !typeEl) return;
   var title = String(titleEl.value || '').trim();
   if (!title) return;
+  var emoji = emojiEl ? String(emojiEl.value || '').trim() : '';
+  if (emoji && emoji.length > 4) emoji = emoji.slice(0, 4);
+  var tags = crmTaskParseTagsInput(tagsEl ? tagsEl.value : '');
   var list = crmTaskLoad();
   list.unshift({
     id: 't_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8),
@@ -295,6 +348,8 @@ function crmTaskCreate() {
     deadline: deadlineEl && deadlineEl.value ? new Date(deadlineEl.value).toISOString() : '',
     status: 'active',
     priority: typeEl && typeEl.value === 'urgent',
+    emoji: emoji,
+    tags: tags,
     createdAt: crmTaskNowIso(),
     completedAt: ''
   });
@@ -303,6 +358,8 @@ function crmTaskCreate() {
   if (projectEl) projectEl.value = '';
   if (typeEl) typeEl.value = 'normal';
   if (deadlineEl) deadlineEl.value = '';
+  if (emojiEl) emojiEl.value = '';
+  if (tagsEl) tagsEl.value = '';
   crmTaskToggleForm(false);
   crmTaskRender();
 }
@@ -323,6 +380,17 @@ function crmTaskComplete(taskId) {
 function crmTaskTogglePriority(taskId) {
   crmTaskMutate(taskId, function(t) { t.priority = !t.priority; });
 }
+function crmTaskEditTags(taskId) {
+  var list = crmTaskLoad();
+  var t = list.find(function(x) { return x.id === taskId; });
+  if (!t) return;
+  var current = crmTaskTagsToInput(t.tags);
+  var raw = prompt('Теги задачи (эмодзи + текст, через запятую)\nПример: 📞 звонок, 💰 счёт', current);
+  if (raw === null) return;
+  t.tags = crmTaskParseTagsInput(raw);
+  crmTaskSave(list);
+  crmTaskRender();
+}
 function crmTaskSetDeadline(taskId) {
   var raw = prompt('Новый дедлайн (YYYY-MM-DD HH:MM):');
   if (!raw) return;
@@ -342,6 +410,7 @@ window.crmTaskToggleForm = crmTaskToggleForm;
 window.crmTaskCreate = crmTaskCreate;
 window.crmTaskComplete = crmTaskComplete;
 window.crmTaskTogglePriority = crmTaskTogglePriority;
+window.crmTaskEditTags = crmTaskEditTags;
 window.crmTaskSetDeadline = crmTaskSetDeadline;
 window.crmTaskTakeInWork = crmTaskTakeInWork;
 window.crmTaskRender = crmTaskRender;
