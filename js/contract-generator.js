@@ -224,6 +224,8 @@
       '</ol>';
   }
   function getServiceAppendixTemplate(data) {
+    var appendixEnabled = String(data.appendixEnabled || '').toLowerCase() === '1';
+    if (!appendixEnabled) return '';
     var selected = [];
     var infographicEnabled = String(data.infographicEnabled || '').toLowerCase() === '1';
     var botEnabled = String(data.botEnabled || '').toLowerCase() === '1';
@@ -588,7 +590,7 @@
 
     function getFormData() {
       var d = {};
-      ['fio', 'inn', 'ogrn', 'account', 'bank', 'bik', 'corrAccount', 'passport', 'startDate', 'endDate', 'daysCreate', 'daysManage', 'cost', 'soldCount', 'extraServices', 'headerGender', 'packagingEnabled', 'infographicEnabled', 'infographicPower', 'botEnabled', 'extraManageEnabled', 'extraManageDays', 'scriptsEnabled'].forEach(function(k) {
+      ['fio', 'inn', 'ogrn', 'account', 'bank', 'bik', 'corrAccount', 'passport', 'startDate', 'endDate', 'daysCreate', 'daysManage', 'cost', 'soldCount', 'extraServices', 'headerGender', 'appendixEnabled', 'packagingEnabled', 'infographicEnabled', 'infographicPower', 'botEnabled', 'extraManageEnabled', 'extraManageDays', 'scriptsEnabled'].forEach(function(k) {
         var el = document.getElementById('contract-' + k);
         if (!el) { d[k] = ''; return; }
         if (el.type === 'checkbox') d[k] = el.checked ? '1' : '0';
@@ -611,7 +613,9 @@
           return;
         }
         var el = document.getElementById('contract-' + k);
-        if (el && d[k] !== undefined) el.value = d[k];
+        if (!el || d[k] === undefined) return;
+        if (el.type === 'checkbox') el.checked = String(d[k]) === '1' || d[k] === true;
+        else el.value = d[k];
       });
     }
 
@@ -775,12 +779,13 @@
       '<div class="fg"><label>Стоимость договора, руб.</label><input type="number" id="contract-cost" placeholder="50000" min="0"></div>' +
       '<div class="fg"><label>Кол-во проданных объявлений</label><input type="number" id="contract-soldCount" placeholder="5" min="0"></div>' +
       '</div>' +
+      '<div class="fg" style="margin:10px 0 6px"><label style="display:flex;align-items:center;gap:8px"><input type="checkbox" id="contract-appendixEnabled" checked> Добавить приложение к договору</label></div>' +
       '<div class="contract-form-grid" style="margin-top:8px">' +
-      '<div class="fg"><label><input type="checkbox" id="contract-packagingEnabled" checked> Приложение: Упаковка</label></div>' +
-      '<div class="fg"><label><input type="checkbox" id="contract-infographicEnabled" checked> Приложение: Инфографика</label><select id="contract-infographicPower"><option value="1/10">1/10</option><option value="3/10" selected>3/10</option><option value="5/10">5/10</option><option value="10/10">10/10</option></select></div>' +
-      '<div class="fg"><label><input type="checkbox" id="contract-botEnabled" checked> Приложение: Бот</label></div>' +
-      '<div class="fg"><label><input type="checkbox" id="contract-extraManageEnabled" checked> Доп. время ведения</label><input type="number" id="contract-extraManageDays" placeholder="дней" min="0" value="0"></div>' +
-      '<div class="fg"><label><input type="checkbox" id="contract-scriptsEnabled" checked> Скрипты продаж + анализ ЦА + ресерч PDF</label></div>' +
+      '<div class="fg"><label><input type="checkbox" id="contract-packagingEnabled" checked> Упаковка</label></div>' +
+      '<div class="fg"><label><input type="checkbox" id="contract-infographicEnabled" checked> Инфографика</label><select id="contract-infographicPower"><option value="1-я картинка">1-я картинка</option><option value="3/10" selected>3/10</option><option value="5/10">5/10</option><option value="10/10">10/10</option></select></div>' +
+      '<div class="fg"><label><input type="checkbox" id="contract-botEnabled" checked> Бот</label></div>' +
+      '<div class="fg"><label><input type="checkbox" id="contract-extraManageEnabled" checked> + Доп.время ведения аккаунта</label><input type="number" id="contract-extraManageDays" placeholder="дней" min="0" value="0"></div>' +
+      '<div class="fg"><label><input type="checkbox" id="contract-scriptsEnabled" checked> Скрипты продаж + анализ ЦА + ресерч в PDF</label></div>' +
       '</div>' +
       '<div class="fg contract-extra-services-wrap"><label>Доп. услуги для приложения</label><textarea id="contract-extraServices" placeholder="Фотосъёмка, инфографика, доп. продвижение..." rows="2"></textarea></div>' +
       '<div class="contract-screenshots-zone">' +
@@ -823,6 +828,36 @@
     if (daysCreateEl) daysCreateEl.addEventListener('input', recalcEndDate);
     if (daysManageEl) daysManageEl.addEventListener('input', recalcEndDate);
     recalcEndDate();
+    var appendixEnabledEl = document.getElementById('contract-appendixEnabled');
+    var packagingEnabledEl = document.getElementById('contract-packagingEnabled');
+    var infographicEnabledEl = document.getElementById('contract-infographicEnabled');
+    var infographicPowerEl = document.getElementById('contract-infographicPower');
+    var botEnabledEl = document.getElementById('contract-botEnabled');
+    var extraManageEnabledEl = document.getElementById('contract-extraManageEnabled');
+    var extraManageDaysEl = document.getElementById('contract-extraManageDays');
+    var scriptsEnabledEl = document.getElementById('contract-scriptsEnabled');
+    function setDisabled(el, disabled) {
+      if (!el) return;
+      el.disabled = !!disabled;
+      el.style.opacity = disabled ? '0.55' : '';
+      el.style.pointerEvents = disabled ? 'none' : '';
+    }
+    function syncAppendixOptionsState() {
+      var on = appendixEnabledEl ? appendixEnabledEl.checked : true;
+      setDisabled(packagingEnabledEl, !on);
+      setDisabled(infographicEnabledEl, !on);
+      setDisabled(botEnabledEl, !on);
+      setDisabled(extraManageEnabledEl, !on);
+      setDisabled(scriptsEnabledEl, !on);
+      var infoOn = on && infographicEnabledEl && infographicEnabledEl.checked;
+      setDisabled(infographicPowerEl, !infoOn);
+      var extraOn = on && extraManageEnabledEl && extraManageEnabledEl.checked;
+      setDisabled(extraManageDaysEl, !extraOn);
+    }
+    [appendixEnabledEl, infographicEnabledEl, extraManageEnabledEl].forEach(function(el) {
+      if (el) el.addEventListener('change', syncAppendixOptionsState);
+    });
+    syncAppendixOptionsState();
     var secondaryToolbar = document.getElementById('contractToolbarSecondary');
     var fioEl = document.getElementById('contract-fio');
     var captionEl = document.getElementById('contractClientCaption');

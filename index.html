@@ -606,6 +606,29 @@ body.projects-mode .gen-extra-prompt,body.projects-mode .gen-buttons-row{display
   .content-wrap{grid-area:main;min-width:0;padding-bottom:70px}
   .right-tabs{position:fixed;bottom:0;left:0;right:0;height:auto;flex-direction:row;justify-content:space-around;padding:8px;border-top:1px solid var(--border);z-index:350;border-left:none}
   .content{padding:12px 10px}
+  .analytics-top-row{
+    width:100%;
+    padding:8px 8px 4px;
+    gap:6px;
+    display:grid;
+    grid-template-columns:repeat(3,minmax(0,1fr));
+    align-items:stretch;
+  }
+  .analytics-top-row .btn-projects{
+    width:100%;
+    min-width:0 !important;
+    height:38px;
+    margin:0;
+    padding:0 6px;
+    border-radius:10px;
+    font-size:12px;
+    gap:4px;
+    justify-content:center;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+  }
+  .analytics-top-row .btn-projects.is-on{transform:none}
   .empty-st{justify-content:flex-start;padding-top:8px}
   .doc-wrap{max-width:none;width:100%;margin:0;padding:0 4px}
   .doc-block{padding:20px 14px;font-size:13px}
