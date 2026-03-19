@@ -223,6 +223,46 @@
       '<li><strong>Оговорки</strong> — исполнитель не гарантирует конкретные показатели отклика, результат зависит от рынка, цен, сезона, бюджета и рейтинга аккаунта.</li>' +
       '</ol>';
   }
+  function getServiceAppendixTemplate(data) {
+    var selected = [];
+    var infographicEnabled = String(data.infographicEnabled || '').toLowerCase() === '1';
+    var botEnabled = String(data.botEnabled || '').toLowerCase() === '1';
+    var scriptsEnabled = String(data.scriptsEnabled || '').toLowerCase() === '1';
+    var includePackaging = String(data.packagingEnabled || '').toLowerCase() === '1';
+    var includeExtraManage = String(data.extraManageEnabled || '').toLowerCase() === '1';
+    var infographicPower = String(data.infographicPower || '').trim();
+    var extraManageDays = parseInt(String(data.extraManageDays || '').trim(), 10);
+    if (!isFinite(extraManageDays) || extraManageDays < 0) extraManageDays = 0;
+
+    if (includePackaging) {
+      selected.push(
+        '<li><strong>Упаковка</strong><ul>' +
+          '<li>Дизайн магазина для MAX. бизнес тарифа: 3 баннера ПК и 3 баннера моб. версии.</li>' +
+          '<li>Дизайн магазина для Расширенного бизнес тарифа: 1 баннер ПК и 1 баннер моб. версии.</li>' +
+        '</ul></li>'
+      );
+    }
+    if (infographicEnabled) {
+      selected.push('<li><strong>Инфографика</strong>' + (infographicPower ? ' — выбранный уровень: <strong>' + esc(infographicPower) + '</strong>.' : '.') + '</li>');
+    }
+    if (botEnabled) {
+      selected.push('<li><strong>Бот</strong> — подключение автоответа с воронкой в ваш Telegram-бот/канал + бонус: закреп в Telegram.</li>');
+    }
+    if (includeExtraManage) {
+      selected.push('<li><strong>Дополнительное время ведения аккаунта</strong>' + (extraManageDays > 0 ? ' — +' + extraManageDays + ' дн.' : '.') + '</li>');
+    }
+    if (scriptsEnabled) {
+      selected.push('<li><strong>Скрипты продаж</strong> для вашей ниши + анализ аватаров ЦА и ресерч в PDF.</li>');
+    }
+    if (!selected.length) return '';
+
+    return '' +
+      '<div style="page-break-before:always"></div>' +
+      '<h3 style="font-size:12pt;line-height:1.25;margin:10px 0 8px;text-align:center">Приложение к договору</h3>' +
+      '<p style="font-size:9pt;line-height:1.25;margin:0 0 8px;text-align:center">Перечень дополнительных работ и материалов</p>' +
+      '<ol style="font-size:9pt;line-height:1.35;margin:0 0 10px 18px;padding:0">' + selected.join('') + '</ol>' +
+      '<p style="font-size:8.4pt;line-height:1.25;margin:8px 0 0">Приложение является неотъемлемой частью договора и действует в рамках согласованных условий.</p>';
+  }
 
   function esc(s) {
     return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -245,7 +285,8 @@
       '<div class="contract-doc-header" style="text-align:center;margin:0 auto 4px">' +
         '<img src="' + esc(headerImg) + '" width="621" alt="" onerror="if(!this.dataset.fallback){this.dataset.fallback=1;this.src=\'' + esc(headerFallbackImg) + '\';}else{this.style.display=\'none\';}" style="display:block;margin:0 auto;width:16.44cm;max-width:100%;height:auto">' +
       '</div>';
-    var body = headerHtml + '<div class="contract-doc-body">' + getContractMainTemplate(data) + '</div>';
+    var appendixHtml = getServiceAppendixTemplate(data);
+    var body = headerHtml + '<div class="contract-doc-body">' + getContractMainTemplate(data) + (appendixHtml || '') + '</div>';
     var footerImg = 'assets/contract_footer.png';
     try { footerImg = new URL('assets/contract_footer.png', window.location.href).href; } catch (e) {}
     var footerHtml =
@@ -547,9 +588,11 @@
 
     function getFormData() {
       var d = {};
-      ['fio', 'inn', 'ogrn', 'account', 'bank', 'bik', 'corrAccount', 'passport', 'startDate', 'endDate', 'daysCreate', 'daysManage', 'cost', 'soldCount', 'extraServices', 'headerGender'].forEach(function(k) {
+      ['fio', 'inn', 'ogrn', 'account', 'bank', 'bik', 'corrAccount', 'passport', 'startDate', 'endDate', 'daysCreate', 'daysManage', 'cost', 'soldCount', 'extraServices', 'headerGender', 'packagingEnabled', 'infographicEnabled', 'infographicPower', 'botEnabled', 'extraManageEnabled', 'extraManageDays', 'scriptsEnabled'].forEach(function(k) {
         var el = document.getElementById('contract-' + k);
-        d[k] = el ? el.value.trim() : '';
+        if (!el) { d[k] = ''; return; }
+        if (el.type === 'checkbox') d[k] = el.checked ? '1' : '0';
+        else d[k] = (el.value || '').trim();
       });
       if (!d.headerGender) d.headerGender = 'm';
       d.cost = String(normalizeMoneyValue(d.cost || '50000') || 0);
@@ -731,6 +774,13 @@
       '<div class="fg"><label>Дней ведения рекламы</label><input type="number" id="contract-daysManage" placeholder="30" min="1"></div>' +
       '<div class="fg"><label>Стоимость договора, руб.</label><input type="number" id="contract-cost" placeholder="50000" min="0"></div>' +
       '<div class="fg"><label>Кол-во проданных объявлений</label><input type="number" id="contract-soldCount" placeholder="5" min="0"></div>' +
+      '</div>' +
+      '<div class="contract-form-grid" style="margin-top:8px">' +
+      '<div class="fg"><label><input type="checkbox" id="contract-packagingEnabled" checked> Приложение: Упаковка</label></div>' +
+      '<div class="fg"><label><input type="checkbox" id="contract-infographicEnabled" checked> Приложение: Инфографика</label><select id="contract-infographicPower"><option value="1/10">1/10</option><option value="3/10" selected>3/10</option><option value="5/10">5/10</option><option value="10/10">10/10</option></select></div>' +
+      '<div class="fg"><label><input type="checkbox" id="contract-botEnabled" checked> Приложение: Бот</label></div>' +
+      '<div class="fg"><label><input type="checkbox" id="contract-extraManageEnabled" checked> Доп. время ведения</label><input type="number" id="contract-extraManageDays" placeholder="дней" min="0" value="0"></div>' +
+      '<div class="fg"><label><input type="checkbox" id="contract-scriptsEnabled" checked> Скрипты продаж + анализ ЦА + ресерч PDF</label></div>' +
       '</div>' +
       '<div class="fg contract-extra-services-wrap"><label>Доп. услуги для приложения</label><textarea id="contract-extraServices" placeholder="Фотосъёмка, инфографика, доп. продвижение..." rows="2"></textarea></div>' +
       '<div class="contract-screenshots-zone">' +

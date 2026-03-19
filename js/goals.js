@@ -983,8 +983,10 @@
       var has = (p.touchMarkers || []).indexOf(t.id) >= 0;
       return has ? '' : '<button type="button" class="goal-picker-opt" data-type="touch" data-id="' + esc(t.id) + '">' + esc(t.label) + '</button>';
     }).filter(Boolean).join('');
-    var body = (statusHtml ? '<div class="goal-picker-group"><div class="goal-picker-label">Статусы</div>' + statusHtml + '</div>' : '') +
-      (touchHtml ? '<div class="goal-picker-group"><div class="goal-picker-label">Касания</div>' + touchHtml + '</div>' : '');
+    var body = '<div class="goal-picker-cols">' +
+      (statusHtml ? '<div class="goal-picker-group"><div class="goal-picker-label">Статусы</div>' + statusHtml + '</div>' : '') +
+      (touchHtml ? '<div class="goal-picker-group"><div class="goal-picker-label">Касания</div>' + touchHtml + '</div>' : '') +
+      '</div>';
     if (!body) body = '';
     body += '<div class="goal-picker-group"><div class="goal-picker-label">Свой тег</div><div class="goal-picker-tag-row"><input type="text" class="goal-picker-tag-inp" placeholder="Название тега" maxlength="24"><button type="button" class="goal-picker-tag-add">+</button></div></div>';
     var popup = document.createElement('div');
@@ -1023,8 +1025,15 @@
     var anchor = anchorEl || document.querySelector('.goal-add-status-btn');
     if (anchor) {
       var r = anchor.getBoundingClientRect();
-      popup.style.left = Math.max(8, Math.min(r.left, window.innerWidth - 220)) + 'px';
-      popup.style.top = (r.bottom + 4) + 'px';
+      var w = popup.offsetWidth || 360;
+      var h = popup.offsetHeight || 260;
+      var left = r.right + 8;
+      if (left + w > window.innerWidth - 8) left = r.left - w - 8;
+      left = Math.max(8, Math.min(left, window.innerWidth - w - 8));
+      var top = r.top;
+      if (top + h > window.innerHeight - 8) top = Math.max(8, window.innerHeight - h - 8);
+      popup.style.left = Math.round(left) + 'px';
+      popup.style.top = Math.round(top) + 'px';
     }
     setTimeout(function() {
       document.addEventListener('click', function close(e) {
