@@ -1952,28 +1952,61 @@ function buildDriveAuthStorageKeyByEmail(email) {
   var clean = String(email || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '').slice(0, 72);
   return clean ? ('avitolog_drive_auth_v1__acc_' + clean) : 'avitolog_drive_auth_v1';
 }
+function getAllDriveAuthKeys() {
+  var keys = {};
+  keys['avitolog_drive_auth_v1'] = true;
+  keys[DRIVE_AUTH_KEY] = true;
+  try {
+    for (var i = 0; i < localStorage.length; i++) {
+      var k = localStorage.key(i);
+      if (!k) continue;
+      if (k === 'avitolog_drive_auth_v1' || k.indexOf('avitolog_drive_auth_v1_') === 0 || k.indexOf('avitolog_drive_auth_v1__') === 0) {
+        keys[k] = true;
+      }
+    }
+  } catch (e) {}
+  return Object.keys(keys);
+}
 
 function getStoredDriveAuth() {
-  try { return JSON.parse(localStorage.getItem(DRIVE_AUTH_KEY) || 'null'); } catch(e) { return null; }
+  var best = null;
+  getAllDriveAuthKeys().forEach(function(key) {
+    try {
+      var s = JSON.parse(localStorage.getItem(key) || 'null');
+      if (!s || !s.token) return;
+      var exp = Number(s.exp) || 0;
+      if (!best || exp > (Number(best.exp) || 0)) {
+        best = { token: s.token, exp: exp, key: key };
+      }
+    } catch (e) {}
+  });
+  return best;
 }
 function clearStoredDriveAuth() {
-  try { localStorage.removeItem(DRIVE_AUTH_KEY); } catch(e) {}
+  try { getAllDriveAuthKeys().forEach(function(k){ localStorage.removeItem(k); }); } catch(e) {}
 }
 function restoreDriveTokenFromStorage() {
   var s = getStoredDriveAuth();
   if (!s || !s.token) return false;
   if (s.exp && Date.now() >= Number(s.exp)) {
-    clearStoredDriveAuth();
+    try { localStorage.removeItem(s.key || DRIVE_AUTH_KEY); } catch(e0) {}
     return false;
   }
   _driveToken = s.token;
+  // Держим текущий ключ в синхроне, чтобы приложение стабильно заходило
+  if (s.key && s.key !== DRIVE_AUTH_KEY) {
+    try { localStorage.setItem(DRIVE_AUTH_KEY, JSON.stringify({ token: s.token, exp: s.exp })); } catch(e1) {}
+  }
   return true;
 }
 function persistDriveToken(token, expiresInSec, storageKey) {
   if (!token) return;
   var key = storageKey || DRIVE_AUTH_KEY;
   var exp = Date.now() + (Math.max(60, Number(expiresInSec) || 3600) - 60) * 1000;
-  try { localStorage.setItem(key, JSON.stringify({token: token, exp: exp})); } catch(e) {}
+  var payload = JSON.stringify({token: token, exp: exp});
+  try { localStorage.setItem(key, payload); } catch(e) {}
+  try { localStorage.setItem(DRIVE_AUTH_KEY, payload); } catch(e2) {}
+  try { localStorage.setItem('avitolog_drive_auth_v1', payload); } catch(e3) {}
 }
 function fetchDriveUserEmail(token) {
   return fetch('https://www.googleapis.com/oauth2/v2/userinfo', { headers: { Authorization: 'Bearer ' + token } })
@@ -2067,26 +2100,42 @@ function updateDriveUI() {
   }
   var splash = document.getElementById('driveSplash');
   var mainApp = document.getElementById('mainApp');
+  var bypass = false;
+  try { bypass = localStorage.getItem('avitolog_drive_bypass') === '1'; } catch(e0) {}
   if (_driveToken) {
     if (splash) splash.style.display = 'none';
     if (mainApp) mainApp.style.display = 'block';
   } else {
-    if (splash) splash.style.display = 'flex';
-    if (mainApp) mainApp.style.display = 'none';
+    if (bypass) {
+      if (splash) splash.style.display = 'none';
+      if (mainApp) mainApp.style.display = 'block';
+    } else {
+      if (splash) splash.style.display = 'flex';
+      if (mainApp) mainApp.style.display = 'none';
+    }
   }
+}
+function continueWithoutDrive() {
+  try { localStorage.setItem('avitolog_drive_bypass', '1'); } catch(e) {}
+  var splash = document.getElementById('driveSplash');
+  var mainApp = document.getElementById('mainApp');
+  if (splash) splash.style.display = 'none';
+  if (mainApp) mainApp.style.display = 'block';
 }
 
 function startAuth() {
+  try { localStorage.removeItem('avitolog_drive_bypass'); } catch(e0) {}
   if (!_driveToken) restoreDriveTokenFromStorage();
   if (_driveToken) { setDriveConnectedUiState(); return; }
-  var onGitHub = window.location.origin === 'https://hair1guru1school-cyber.github.io';
-  if (onGitHub && typeof google !== 'undefined' && google.accounts && google.accounts.oauth2) {
+  // GIS работает и локально, и на GitHub; это стабильнее, чем редирект между origin
+  if (typeof google !== 'undefined' && google.accounts && google.accounts.oauth2) {
     startAuthGIS();
   } else {
     startAuthRedirect();
   }
 }
 function startAuthRedirect() {
+  try { localStorage.removeItem('avitolog_drive_bypass'); } catch(e1) {}
   var u = buildAuthUrl();
   if (window.location.origin !== 'https://hair1guru1school-cyber.github.io') {
     if (!confirm('Для входа приложение откроется на GitHub. После входа вы останетесь там.\n\nПродолжить?')) return;
@@ -2096,6 +2145,7 @@ function startAuthRedirect() {
 var _tokenClient = null;
 var _authPromptForce = false;
 function startAuthGIS() {
+  try { localStorage.removeItem('avitolog_drive_bypass'); } catch(e1) {}
   if (!_driveToken) restoreDriveTokenFromStorage();
   if (_driveToken) { setDriveConnectedUiState(); return; }
   var cid = OAUTH_CLIENT_ID;
@@ -2154,6 +2204,7 @@ function startAuthGIS() {
   if (typeof google !== 'undefined') run(); else setTimeout(run, 1200);
 }
 function testAuthUrl() { window.open(buildAuthUrl(), '_blank', 'noopener'); }
+window.continueWithoutDrive = continueWithoutDrive;
 function copyAuthUrl() {
   var url = buildAuthUrl();
   if (navigator.clipboard && navigator.clipboard.writeText) {
