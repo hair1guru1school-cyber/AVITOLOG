@@ -228,38 +228,7 @@ function crmTaskRenderCard(t, kind, nowTs) {
 }
 function crmTaskRenderMiniBoard(list, nowTs) {
   var mini = document.getElementById('crmTaskMiniBoard');
-  var summary = document.getElementById('crmTaskSummary');
-  if (!summary) return;
-  if (!mini) {
-    mini = document.createElement('div');
-    mini.id = 'crmTaskMiniBoard';
-    mini.className = 'crm-task-mini-board';
-    summary.parentNode.insertBefore(mini, summary.nextSibling);
-  }
-  var grouped = {};
-  list.forEach(function(t) {
-    var key = String(t.project || 'Без проекта').trim() || 'Без проекта';
-    if (!grouped[key]) grouped[key] = { title: key, items: [] };
-    grouped[key].items.push(t);
-  });
-  var cols = Object.keys(grouped).map(function(k) {
-    var items = grouped[k].items;
-    var overdue = items.filter(function(t){ return crmTaskIsOverdue(t, nowTs); }).length;
-    var done = items.filter(function(t){ return t.status === 'completed'; }).length;
-    var active = items.length - done;
-    return { title: k, items: items, overdue: overdue, done: done, active: active };
-  }).sort(function(a, b){ return b.items.length - a.items.length; }).slice(0, 8);
-  if (!cols.length) {
-    mini.innerHTML = '<div class="crm-task-mini-empty">Нет задач для миниатюры</div>';
-    return;
-  }
-  mini.innerHTML = '<div class="crm-task-mini-title">Миниатюра панели ЗАДАЧ</div><div class="crm-task-mini-cols">' + cols.map(function(c) {
-    var preview = c.items.slice(0, 3).map(function(t){
-      var isOver = crmTaskIsOverdue(t, nowTs);
-      return '<div class="crm-task-mini-item' + (isOver ? ' overdue' : '') + '" title="' + crmTaskEsc(t.title || '') + '">' + crmTaskEsc(t.title || '') + '</div>';
-    }).join('');
-    return '<div class="crm-task-mini-col"><div class="crm-task-mini-col-head"><span>' + crmTaskEsc(c.title) + '</span><b>' + c.items.length + '</b></div><div class="crm-task-mini-kpis"><span>⏳ ' + c.active + '</span><span>✔ ' + c.done + '</span><span>❌ ' + c.overdue + '</span></div><div class="crm-task-mini-list">' + preview + '</div></div>';
-  }).join('') + '</div>';
+  if (mini && mini.parentNode) mini.parentNode.removeChild(mini);
 }
 function crmTaskRender() {
   var wrap = document.getElementById('crmTasksWrap');
@@ -1909,8 +1878,11 @@ var OAUTH_REDIRECT_URI = window.AVITOLOG_GOOGLE_REDIRECT || 'https://hair1guru1s
 var OAUTH_SCOPE = window.AVITOLOG_GOOGLE_SCOPE || 'https://www.googleapis.com/auth/drive https://www.googleapis.com/auth/spreadsheets';
 var _driveToken = null;
 var _driveUserEmail = null;
-var SASHA_EMAIL = 'cyplakovaleksandr153@gmail.com';
 var DRIVE_AUTH_KEY = (typeof window.AVITOLOG_KEY === 'function') ? window.AVITOLOG_KEY('avitolog_drive_auth_v1') : 'avitolog_drive_auth_v1';
+function buildDriveAuthStorageKeyByEmail(email) {
+  var clean = String(email || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '').slice(0, 72);
+  return clean ? ('avitolog_drive_auth_v1__acc_' + clean) : 'avitolog_drive_auth_v1';
+}
 
 function getStoredDriveAuth() {
   try { return JSON.parse(localStorage.getItem(DRIVE_AUTH_KEY) || 'null'); } catch(e) { return null; }
@@ -1962,15 +1934,14 @@ function applyOAuthHash(hash) {
   var ex = hash.match(/expires_in=([^&]+)/);
   var expiresIn = ex ? parseInt(ex[1], 10) : 3600;
   fetchDriveUserEmail(token).then(function(email) {
-    var m2 = (location.search || '').match(/[?&]user=(sasha|fil)/i);
-    var user = (m2 ? m2[1].toLowerCase() : null) || ((email && email === SASHA_EMAIL) ? 'sasha' : 'fil');
-    try { localStorage.setItem('avitolog_current_user', user); } catch(e) {}
-    var authKey = 'avitolog_drive_auth_v1' + (user === 'sasha' ? '_sasha' : '');
+    var normalizedEmail = String(email || '').toLowerCase();
+    try { localStorage.setItem('avitolog_drive_email', normalizedEmail); } catch(e) {}
+    var authKey = buildDriveAuthStorageKeyByEmail(normalizedEmail);
     persistDriveToken(token, expiresIn, authKey);
-    history.replaceState(null, '', location.pathname + '?user=' + user);
+    history.replaceState(null, '', location.pathname);
     location.reload();
   }).catch(function() {
-    try { localStorage.setItem('avitolog_current_user', 'fil'); } catch(e) {}
+    try { localStorage.removeItem('avitolog_drive_email'); } catch(e) {}
     persistDriveToken(token, expiresIn, 'avitolog_drive_auth_v1');
     history.replaceState(null, '', location.pathname);
     location.reload();
@@ -2070,20 +2041,15 @@ function startAuthGIS() {
                 var token = r.access_token;
                 var expiresIn = r.expires_in ? parseInt(r.expires_in, 10) : 3600;
                 fetchDriveUserEmail(token).then(function(email) {
-                  var m = (location.search || '').match(/[?&]user=(sasha|fil)/i);
-                  var user = (m ? m[1].toLowerCase() : null) || ((email && email === SASHA_EMAIL) ? 'sasha' : 'fil');
-                  try { localStorage.setItem('avitolog_current_user', user); } catch(e) {}
-                  var authKey = 'avitolog_drive_auth_v1' + (user === 'sasha' ? '_sasha' : '');
+                  var normalizedEmail = String(email || '').toLowerCase();
+                  try { localStorage.setItem('avitolog_drive_email', normalizedEmail); } catch(e) {}
+                  var authKey = buildDriveAuthStorageKeyByEmail(normalizedEmail);
                   persistDriveToken(token, expiresIn, authKey);
-                  if (!m) {
-                    history.replaceState(null, '', location.pathname + '?user=' + user);
-                    location.reload();
-                    return;
-                  }
-                  _driveToken = token;
-                  setDriveConnectedUiState();
+                  history.replaceState(null, '', location.pathname);
+                  location.reload();
+                  return;
                 }).catch(function() {
-                  try { localStorage.setItem('avitolog_current_user', 'fil'); } catch(e) {}
+                  try { localStorage.removeItem('avitolog_drive_email'); } catch(e) {}
                   persistDriveToken(token, expiresIn, 'avitolog_drive_auth_v1');
                   _driveToken = token;
                   setDriveConnectedUiState();
@@ -3973,9 +3939,7 @@ function initDayMode() {
   } catch(e) {}
 }
 function switchUser(u) {
-  if (!u || (window.AVITOLOG_USER || '').toLowerCase() === String(u).toLowerCase()) return;
-  try { localStorage.setItem('avitolog_current_user', String(u).toLowerCase()); } catch(e) {}
-  window.location.href = 'index.html?user=' + String(u).toLowerCase();
+  return;
 }
 document.addEventListener('DOMContentLoaded', function() {
   initDayMode();
@@ -3984,11 +3948,6 @@ document.addEventListener('DOMContentLoaded', function() {
   window.addEventListener('resize', applyMobileWebviewMode);
   window.addEventListener('resize', syncSidebarToggleBtn);
   updateDriveUI();
-  var u = (window.AVITOLOG_USER || 'fil').toLowerCase();
-  var filBtn = document.getElementById('userFil');
-  var sashaBtn = document.getElementById('userSasha');
-  if (filBtn) filBtn.classList.toggle('active', u === 'fil');
-  if (sashaBtn) sashaBtn.classList.toggle('active', u === 'sasha');
   var banner = document.getElementById('githubPagesBanner');
   if (banner && /github\.io$/i.test(window.location.hostname) && !localStorage.getItem('avito_hide_gh_banner')) {
     banner.style.display = 'flex';

@@ -535,13 +535,7 @@ textarea{resize:vertical;min-height:50px;line-height:1.5}
 .analytics-tumbler button:not(:first-child){border-left:none}
 .analytics-tumbler button.on{border-color:var(--accent);background:rgba(0,217,126,0.15);color:var(--accent)}
 .analytics-tumbler button:hover:not(.on){border-color:var(--accent);color:var(--accent)}
-/* ——— Переключатель пользователя (Фил / Саша) ——— */
-.user-switcher{display:flex;align-items:center;gap:0;background:var(--surface2);border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-left:12px}
-.user-switcher button{border:none;background:transparent;color:var(--muted);padding:6px 12px;font-size:12px;font-weight:600;font-family:'Golos Text',sans-serif;cursor:pointer;transition:all 0.2s}
-.user-switcher button:hover{color:var(--accent)}
-.user-switcher button.active{background:rgba(0,217,126,0.15);color:var(--accent)}
-body.day-mode .user-switcher{background:var(--surface2);border-color:var(--border)}
-body.day-mode .user-switcher button.active{background:rgba(0,136,92,0.15);color:var(--accent)}
+/* Переключатель пользователя отключен: разделение идет по Google-аккаунту */
 .analytics-top-row{display:flex;justify-content:center;padding:8px 0 4px;flex-shrink:0;border-bottom:1px solid var(--border);margin-bottom:4px}
 .analytics-top-row:empty{display:none}
 .btn-projects{border:1px solid var(--border);background:var(--surface2);color:var(--muted);padding:8px 20px;font-size:13px;font-weight:700;font-family:'Golos Text',sans-serif;cursor:pointer;border-radius:10px;transition:all 0.2s}
@@ -2046,10 +2040,6 @@ if (!window.AVITOLOG_GOALS) {
 <header>
   <button type="button" class="header-menu-btn" id="headerMenuBtn" onclick="toggleMobileSidebar()" title="Меню" aria-label="Меню">☰</button>
   <div class="logo">🃏AVITOBO$$</div>
-  <div class="user-switcher" id="userSwitcher">
-    <button type="button" id="userFil" onclick="switchUser('fil')">Фил</button>
-    <button type="button" id="userSasha" onclick="switchUser('sasha')">Саша</button>
-  </div>
   <div style="flex:1"></div>
   <button type="button" id="sidebarToggleBtn" class="header-sidebar-toggle" onclick="toggleSidebarVisibility()" title="Скрыть левое меню">◀</button>
   <button type="button" id="dayModeToggle" class="header-day-toggle" onclick="toggleDayMode()" title="Дневной режим — светлый интерфейс">☀️</button>
@@ -2181,6 +2171,7 @@ if (!window.AVITOLOG_GOALS) {
     </div>
   </div>
   <button type="button" class="btn-add" onclick="addPos()">+ Добавить позицию</button>
+  <button type="button" class="btn-save" id="saveClientBtn" onclick="saveClient()">💾 Сохранить</button>
   <div class="crm-tasks-wrap" id="crmTasksWrap">
     <div class="crm-tasks-head">
       <div class="crm-tasks-title">📋 ЗАДАЧИ</div>
@@ -2215,7 +2206,6 @@ if (!window.AVITOLOG_GOALS) {
     <div class="crm-task-list-title">💰 ЗАДАЧИ С ДЕНЬГАМИ</div>
     <div class="crm-task-list" id="crmTaskMoneyList"></div>
   </div>
-  <button type="button" class="btn-save" id="saveClientBtn" onclick="saveClient()">💾 Сохранить</button>
 </div>
 
 <div class="content-wrap">
@@ -2229,11 +2219,7 @@ if (!window.AVITOLOG_GOALS) {
     <button type="button" class="btn-projects" id="btnStrategy" data-tab="strategy" draggable="true" onclick="openStrategyTab()" ondragstart="topTabDragStart(event,'strategy')" ondragover="topTabDragOver(event)" ondragleave="topTabDragLeave(event)" ondrop="topTabDrop(event,'strategy')" ondragend="topTabDragEnd(event)" style="display:none">🧠 СТРАТЕГИЯ</button>
   </div>
   <div class="analytics-control-panel" id="analyticsControlPanel">
-    <div class="analytics-tumbler" id="analyticsTumbler">
-      <button type="button" id="tumblerFil" onclick="setAnalyticsMode('fil')">🅰️ Фил</button>
-      <button type="button" id="tumblerSasha" onclick="setAnalyticsMode('sasha')">Саша</button>
-      <button type="button" id="tumblerRegina" onclick="setAnalyticsMode('regina')">Регина</button>
-    </div>
+    <div class="analytics-tumbler hide" id="analyticsTumbler"></div>
     <div class="depth-bar" id="depthBar">
       <button type="button" class="depth-btn" data-depth="light" onclick="setDepth('light')">🪶</button>
       <button type="button" class="depth-btn on" data-depth="mid" onclick="setDepth('mid')">⚖️</button>

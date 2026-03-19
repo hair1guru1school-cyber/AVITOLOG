@@ -1,19 +1,31 @@
 /**
- * Конфиг пользователей. Определяет, чьи данные загружать.
- * ?user=sasha в URL, avitolog_current_user в localStorage, или авто по почте Google при входе.
- * Для Саши: свои projects, CRM, goals, kassa; база общая; tumbler по умолчанию Саша.
+ * Конфиг профиля данных. Разделение данных идет по Google email.
+ * Для совместимости: если email еще неизвестен, используем старый флаг user.
  */
 (function() {
-  var m = (typeof location !== 'undefined' && location.search || '').match(/[?&]user=(sasha|fil)/i);
-  var urlUser = m ? m[1].toLowerCase() : null;
-  var stored = typeof localStorage !== 'undefined' ? localStorage.getItem('avitolog_current_user') : null;
-  var user = urlUser || stored || 'fil';
-  if (typeof localStorage !== 'undefined' && user && user !== stored) {
-    try { localStorage.setItem('avitolog_current_user', user); } catch(e) {}
+  var email = '';
+  try {
+    email = String(localStorage.getItem('avitolog_drive_email') || '').trim().toLowerCase();
+  } catch(e) {}
+  var legacyUser = '';
+  try {
+    legacyUser = String(localStorage.getItem('avitolog_current_user') || '').trim().toLowerCase();
+  } catch(e2) {}
+  function sanitizeEmailForKey(v) {
+    return String(v || '').toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '').slice(0, 72);
   }
-  window.AVITOLOG_USER = user;
-  window.AVITOLOG_IS_SASHA = (user === 'sasha');
-  window.AVITOLOG_KEY_SUFFIX = (user === 'sasha') ? '_sasha' : '';
+  var suffix = '';
+  if (legacyUser === 'sasha') {
+    suffix = '_sasha';
+  } else if (legacyUser === 'fil') {
+    suffix = '';
+  } else if (email) {
+    suffix = '__acc_' + sanitizeEmailForKey(email);
+  }
+  window.AVITOLOG_USER = email || legacyUser || 'default';
+  window.AVITOLOG_IS_SASHA = (legacyUser === 'sasha');
+  window.AVITOLOG_KEY_EMAIL = email || '';
+  window.AVITOLOG_KEY_SUFFIX = suffix;
   window.AVITOLOG_KEY = function(baseKey, shared) {
     if (shared) return baseKey;
     return baseKey + (window.AVITOLOG_KEY_SUFFIX || '');

@@ -38,7 +38,7 @@ const CRM_ROOT = '1d8oElVgTO2vzbs0HjOYPnReVmGUPltIk';
 
 var currentTab = 'analysis';
 var currentDepth = 'mid';
-var analyticsMode = null; // null = не выбран, 'sasha' | 'fil'
+var analyticsMode = 'fil'; // единый режим; данные разделяются по Google-аккаунту
 var projectsMode = false;
 var analysisSections = {demand:true, audience:true, pains:true, behavior:true, keywords:true, geo:true, summary:true};
 // Восстанавливаем из localStorage (только если saved — валидный объект)
@@ -85,14 +85,7 @@ function initSecBar() {
 }
 
 function setAnalyticsMode(mode) {
-  analyticsMode = mode;
-  try { localStorage.setItem((typeof window.AVITOLOG_KEY === 'function' ? window.AVITOLOG_KEY('avitolog_analytics_mode') : 'avitolog_analytics_mode'), mode); } catch(e) {}
-  var sashaBtn = document.getElementById('tumblerSasha');
-  var filBtn = document.getElementById('tumblerFil');
-  var reginaBtn = document.getElementById('tumblerRegina');
-  if (sashaBtn) sashaBtn.classList.toggle('on', mode === 'sasha');
-  if (filBtn) filBtn.classList.toggle('on', mode === 'fil');
-  if (reginaBtn) reginaBtn.classList.toggle('on', mode === 'regina');
+  analyticsMode = 'fil';
   document.getElementById('depthBar').classList.remove('muted');
   document.getElementById('secBar').classList.remove('muted');
   updateProjectsButtonVisibility();
@@ -1934,21 +1927,9 @@ async function loadAgencyAvitoKpis(token, accountJson) {
 }
 
 function applyAnalyticsModeDefault() {
-  var amKey = (typeof window.AVITOLOG_KEY === 'function') ? window.AVITOLOG_KEY('avitolog_analytics_mode') : 'avitolog_analytics_mode';
-  var override = localStorage.getItem(amKey);
-  if (override === 'sasha' || override === 'fil' || override === 'regina') {
-    analyticsMode = override;
-  } else if (window.AVITOLOG_IS_SASHA || (typeof _driveUserEmail !== 'undefined' && _driveUserEmail === (typeof SASHA_EMAIL !== 'undefined' ? SASHA_EMAIL : ''))) {
-    analyticsMode = 'sasha';
-  } else {
-    analyticsMode = 'fil';
-  }
-  var sashaBtn = document.getElementById('tumblerSasha');
-  var filBtn = document.getElementById('tumblerFil');
-  var reginaBtn = document.getElementById('tumblerRegina');
-  if (sashaBtn) sashaBtn.classList.toggle('on', analyticsMode === 'sasha');
-  if (filBtn) filBtn.classList.toggle('on', analyticsMode === 'fil');
-  if (reginaBtn) reginaBtn.classList.toggle('on', analyticsMode === 'regina');
+  analyticsMode = 'fil';
+  var tumbler = document.getElementById('analyticsTumbler');
+  if (tumbler) tumbler.classList.add('hide');
   var depthBar = document.getElementById('depthBar');
   var secBar = document.getElementById('secBar');
   if (depthBar) depthBar.classList.remove('muted');
