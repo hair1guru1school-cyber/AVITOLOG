@@ -381,6 +381,30 @@
   var ASSETS_EMOJIS = ['📦','🪨','🏠','🏗️','🧱','🛋️','🚚','📊','💰','🚀','👷','🛠️','🚜','📚','👩🏻‍🏫','💻','📱','⚡️','🛌','🪟','🎄','🪵','🏎','🪨','🛌','🏠','🚜','👩🏻‍🏫','⚡️','🧱','🪑','🛏️','🏢','🏭','🔧','📐','⭐️','🔥','💎','🎯','✅','📋','📝','🖊️','📷','📡','🔌'];
   var ASSETS_LEGACY_KEY = 'avitolog_assets_projects_v1';
   var ASSETS_USD_RATE = 95;
+  function readAssetsArrayByKey(key) {
+    try {
+      var raw = localStorage.getItem(key);
+      if (raw === null || raw === undefined) return null;
+      var arr = JSON.parse(raw);
+      return Array.isArray(arr) ? arr : null;
+    } catch (e) { return null; }
+  }
+  function bootstrapAssetsArray(targetKey, fallbackKeys) {
+    var own = readAssetsArrayByKey(targetKey);
+    if (own !== null) return own;
+    var picked = null;
+    (fallbackKeys || []).some(function(k) {
+      if (!k || k === targetKey) return false;
+      var arr = readAssetsArrayByKey(k);
+      if (arr !== null) { picked = arr; return true; }
+      return false;
+    });
+    if (picked !== null) {
+      try { localStorage.setItem(targetKey, JSON.stringify(picked)); } catch (e2) {}
+      return picked;
+    }
+    return null;
+  }
 
   var DEFAULT_MY = [
     { emoji: '🪨', name: 'Камни и Пеллеты', paid: '30000', expected: '', paymentDate: '', startDate: '', clientType: 'new' },
@@ -516,9 +540,11 @@
   function getAssetsMy() {
     try {
       var isSasha = !!(typeof window !== 'undefined' && window.AVITOLOG_IS_SASHA);
-      var s = localStorage.getItem(ASSETS_MY_KEY);
-      if (s) {
-        var arr = JSON.parse(s);
+      var fallbackMyKeys = isSasha
+        ? ['avitolog_assets_my_v2_sasha', 'avitolog_assets_my_v2']
+        : ['avitolog_assets_my_v2', 'avitolog_assets_my_v2_sasha'];
+      var arr = bootstrapAssetsArray(ASSETS_MY_KEY, fallbackMyKeys);
+      if (arr !== null) {
         if (arr.length === 0) {
           if (isSasha) { return []; }
           saveAssetsMy(DEFAULT_MY.slice());
@@ -554,8 +580,8 @@
   function getAssetsSasha() {
     if (typeof window !== 'undefined' && window.AVITOLOG_IS_SASHA) return [];
     try {
-      var s = localStorage.getItem(ASSETS_SASHA_KEY);
-      if (s) return JSON.parse(s);
+      var arrExisting = bootstrapAssetsArray(ASSETS_SASHA_KEY, ['avitolog_assets_sasha_v2', 'avitolog_assets_sasha_v2_sasha']);
+      if (arrExisting !== null) return arrExisting;
       var legacy = JSON.parse(localStorage.getItem(ASSETS_LEGACY_KEY) || '{}');
       var arr = [];
       Object.keys(legacy).forEach(function(k) {
