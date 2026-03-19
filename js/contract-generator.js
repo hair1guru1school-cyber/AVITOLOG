@@ -779,13 +779,15 @@
       '<div class="fg"><label>Стоимость договора, руб.</label><input type="number" id="contract-cost" placeholder="50000" min="0"></div>' +
       '<div class="fg"><label>Кол-во проданных объявлений</label><input type="number" id="contract-soldCount" placeholder="5" min="0"></div>' +
       '</div>' +
-      '<div class="fg" style="margin:10px 0 6px"><label style="display:flex;align-items:center;gap:8px"><input type="checkbox" id="contract-appendixEnabled" checked> Добавить приложение к договору</label></div>' +
-      '<div class="contract-form-grid" style="margin-top:8px">' +
-      '<div class="fg"><label><input type="checkbox" id="contract-packagingEnabled" checked> Упаковка</label></div>' +
-      '<div class="fg"><label><input type="checkbox" id="contract-infographicEnabled" checked> Инфографика</label><select id="contract-infographicPower"><option value="1-я картинка">1-я картинка</option><option value="3/10" selected>3/10</option><option value="5/10">5/10</option><option value="10/10">10/10</option></select></div>' +
-      '<div class="fg"><label><input type="checkbox" id="contract-botEnabled" checked> Бот</label></div>' +
-      '<div class="fg"><label><input type="checkbox" id="contract-extraManageEnabled" checked> + Доп.время ведения аккаунта</label><input type="number" id="contract-extraManageDays" placeholder="дней" min="0" value="0"></div>' +
-      '<div class="fg"><label><input type="checkbox" id="contract-scriptsEnabled" checked> Скрипты продаж + анализ ЦА + ресерч в PDF</label></div>' +
+      '<div class="contract-appendix-toggle">' +
+      '<label class="contract-appendix-main-label"><input type="checkbox" id="contract-appendixEnabled" checked> 📎 Добавить Приложение к договору</label>' +
+      '</div>' +
+      '<div class="contract-form-grid contract-appendix-grid" style="margin-top:8px">' +
+      '<div class="fg contract-appendix-item"><label class="contract-appendix-item-label"><input type="checkbox" id="contract-packagingEnabled" checked> 🎁 Упаковка</label><div class="contract-appendix-sub">MAX + Расширенный тарифы</div></div>' +
+      '<div class="fg contract-appendix-item"><label class="contract-appendix-item-label"><input type="checkbox" id="contract-infographicEnabled" checked> 🖼️ Инфографика</label><div class="contract-appendix-row"><span class="contract-appendix-sub">Сила:</span><select id="contract-infographicPower"><option value="1-я картинка">1-я картинка</option><option value="3/10" selected>3/10</option><option value="5/10">5/10</option><option value="10/10">10/10</option></select></div></div>' +
+      '<div class="fg contract-appendix-item"><label class="contract-appendix-item-label"><input type="checkbox" id="contract-botEnabled" checked> 🤖 Бот</label><div class="contract-appendix-sub">Воронка + бонус закреп</div></div>' +
+      '<div class="fg contract-appendix-item"><label class="contract-appendix-item-label"><input type="checkbox" id="contract-extraManageEnabled" checked> ⏱️ Доп. время ведения</label><div class="contract-appendix-row"><span class="contract-appendix-sub">Дней:</span><input type="number" id="contract-extraManageDays" placeholder="0" min="0" value="0"></div></div>' +
+      '<div class="fg contract-appendix-item"><label class="contract-appendix-item-label"><input type="checkbox" id="contract-scriptsEnabled" checked> 📘 Скрипты + анализ ЦА + ресерч</label><div class="contract-appendix-sub">Готовый PDF-блок</div></div>' +
       '</div>' +
       '<div class="fg contract-extra-services-wrap"><label>Доп. услуги для приложения</label><textarea id="contract-extraServices" placeholder="Фотосъёмка, инфографика, доп. продвижение..." rows="2"></textarea></div>' +
       '<div class="contract-screenshots-zone">' +
