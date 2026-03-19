@@ -2130,6 +2130,11 @@ function startAuth() {
   // GIS работает и локально, и на GitHub; это стабильнее, чем редирект между origin
   if (typeof google !== 'undefined' && google.accounts && google.accounts.oauth2) {
     startAuthGIS();
+    setTimeout(function() {
+      if (_driveToken) return;
+      continueWithoutDrive();
+      try { alert('Google вход не завершился. Открыл приложение без Drive.'); } catch(e1) {}
+    }, 7000);
   } else {
     startAuthRedirect();
   }
@@ -2138,9 +2143,13 @@ function startAuthRedirect() {
   try { localStorage.removeItem('avitolog_drive_bypass'); } catch(e1) {}
   var u = buildAuthUrl();
   if (window.location.origin !== 'https://hair1guru1school-cyber.github.io') {
-    if (!confirm('Для входа приложение откроется на GitHub. После входа вы останетесь там.\n\nПродолжить?')) return;
+    if (!confirm('Для входа приложение откроется на GitHub. После входа вы останетесь там.\n\nПродолжить?')) {
+      continueWithoutDrive();
+      return;
+    }
   }
-  window.location.href = u;
+  try { window.open(u, '_blank', 'noopener'); } catch(e2) {}
+  continueWithoutDrive();
 }
 var _tokenClient = null;
 var _authPromptForce = false;
@@ -2186,6 +2195,7 @@ function startAuthGIS() {
             error_callback: function(e) {
               if (e && e.type === 'popup_closed') return;
               _authPromptForce = true;
+              continueWithoutDrive();
               if (promptMode === 'none') {
                 var btn = document.querySelector('#driveSplash .splash-btn');
                 if (btn) { btn.textContent = '🔑 Нажми для входа'; btn.onclick = function(){ _authPromptForce = true; startAuth(); }; }
