@@ -632,6 +632,8 @@ function renderAdsIntoMainContent(mc) {
 }
 var TASKS_BOARD_COLS_KEY = 'tasks_board_cols_on_page_v1';
 var TASKS_BOARD_SCALE_KEY = 'tasks_board_col_scale_v1';
+var TASKS_BOARD_ORDER_KEY = 'tasks_board_project_order_v1';
+var _tasksBoardDragColId = '';
 function getTasksBoardColsOnPage() {
   try {
     var n = parseInt(localStorage.getItem(TASKS_BOARD_COLS_KEY) || '6', 10);
@@ -653,6 +655,106 @@ function getTasksBoardColScale() {
 function setTasksBoardColScale(n) {
   var v = Math.max(75, Math.min(130, parseInt(n, 10) || 100));
   try { localStorage.setItem(TASKS_BOARD_SCALE_KEY, String(v)); } catch (e) {}
+}
+function getTasksBoardProjectOrder() {
+  try {
+    var arr = JSON.parse(localStorage.getItem(TASKS_BOARD_ORDER_KEY) || '[]');
+    if (!Array.isArray(arr)) return [];
+    return arr.map(function(x){ return String(x || ''); }).filter(Boolean);
+  } catch (e) { return []; }
+}
+function setTasksBoardProjectOrder(arr) {
+  try { localStorage.setItem(TASKS_BOARD_ORDER_KEY, JSON.stringify(Array.isArray(arr) ? arr : [])); } catch (e) {}
+}
+function tasksBoardMoveProjectColumn(fromId, toId) {
+  var from = String(fromId || '').trim();
+  var to = String(toId || '').trim();
+  if (!from || !to || from === to) return;
+  var order = getTasksBoardProjectOrder();
+  if (order.indexOf(from) < 0) order.push(from);
+  if (order.indexOf(to) < 0) order.push(to);
+  var next = order.filter(function(id){ return id !== from; });
+  var idx = next.indexOf(to);
+  if (idx < 0) next.push(from);
+  else next.splice(idx, 0, from);
+  setTasksBoardProjectOrder(next);
+}
+function tasksBoardDragStart(ev, colId) {
+  _tasksBoardDragColId = String(colId || '');
+  try { if (ev && ev.dataTransfer) ev.dataTransfer.setData('text/plain', _tasksBoardDragColId); } catch(e) {}
+}
+function tasksBoardDragOver(ev) {
+  if (ev && ev.preventDefault) ev.preventDefault();
+}
+function tasksBoardDragEnter(ev) {
+  var el = ev && ev.currentTarget;
+  if (el && el.classList) el.classList.add('tasks-col-drop-target');
+}
+function tasksBoardDragLeave(ev) {
+  var el = ev && ev.currentTarget;
+  if (el && el.classList) el.classList.remove('tasks-col-drop-target');
+}
+function tasksBoardDrop(ev, toColId) {
+  if (ev && ev.preventDefault) ev.preventDefault();
+  var toId = String(toColId || '');
+  var fromId = _tasksBoardDragColId;
+  try {
+    if (ev && ev.dataTransfer) {
+      var dt = String(ev.dataTransfer.getData('text/plain') || '').trim();
+      if (dt) fromId = dt;
+    }
+  } catch(e) {}
+  tasksBoardMoveProjectColumn(fromId, toId);
+  _tasksBoardDragColId = '';
+  renderTasksBoardIntoMainContent(document.getElementById('mainContent'));
+}
+function tasksBoardDragEnd(ev) {
+  _tasksBoardDragColId = '';
+  var el = ev && ev.currentTarget;
+  if (el && el.classList) el.classList.remove('tasks-col-drop-target');
+}
+function tasksBoardSetProjectColor(projectId, color) {
+  var pid = String(projectId || '').trim();
+  if (!pid || typeof loadProjectsData !== 'function' || typeof saveProjectsData !== 'function') return;
+  var c = String(color || '').trim();
+  if (!/^#[0-9a-f]{6}$/i.test(c)) return;
+  var data = loadProjectsData() || {};
+  var list = Array.isArray(data.projects) ? data.projects : [];
+  var p = list.find(function(x){ return x && x.id === pid; });
+  if (!p) return;
+  p.tasksBoardColor = c;
+  saveProjectsData(data);
+  renderTasksBoardIntoMainContent(document.getElementById('mainContent'));
+}
+function tasksBoardAddProjectTag(projectId) {
+  var pid = String(projectId || '').trim();
+  if (!pid || typeof loadProjectsData !== 'function' || typeof saveProjectsData !== 'function') return;
+  var raw = prompt('Тег проекта (например: 🔥 Горячий)');
+  if (raw == null) return;
+  var tag = String(raw || '').trim();
+  if (!tag) return;
+  if (tag.length > 28) tag = tag.slice(0, 28);
+  var data = loadProjectsData() || {};
+  var list = Array.isArray(data.projects) ? data.projects : [];
+  var p = list.find(function(x){ return x && x.id === pid; });
+  if (!p) return;
+  if (!Array.isArray(p.tasksBoardTags)) p.tasksBoardTags = [];
+  if (p.tasksBoardTags.indexOf(tag) < 0) p.tasksBoardTags.push(tag);
+  if (p.tasksBoardTags.length > 8) p.tasksBoardTags = p.tasksBoardTags.slice(0, 8);
+  saveProjectsData(data);
+  renderTasksBoardIntoMainContent(document.getElementById('mainContent'));
+}
+function tasksBoardRemoveProjectTag(projectId, tagIdx) {
+  var pid = String(projectId || '').trim();
+  var idx = parseInt(tagIdx, 10);
+  if (!pid || !isFinite(idx) || idx < 0 || typeof loadProjectsData !== 'function' || typeof saveProjectsData !== 'function') return;
+  var data = loadProjectsData() || {};
+  var list = Array.isArray(data.projects) ? data.projects : [];
+  var p = list.find(function(x){ return x && x.id === pid; });
+  if (!p || !Array.isArray(p.tasksBoardTags) || idx >= p.tasksBoardTags.length) return;
+  p.tasksBoardTags.splice(idx, 1);
+  saveProjectsData(data);
+  renderTasksBoardIntoMainContent(document.getElementById('mainContent'));
 }
 function renderTasksBoardIntoMainContent(mc) {
   if (!mc) return;
@@ -686,6 +788,8 @@ function renderTasksBoardIntoMainContent(mc) {
       title: p.title || 'Без названия',
       emoji: p.emoji || '📁',
       customIcon: p.customIcon || '',
+      projectColor: p.tasksBoardColor || '',
+      projectTags: Array.isArray(p.tasksBoardTags) ? p.tasksBoardTags : [],
       zone: p.zone || 'active',
       tasks: []
     };
@@ -736,6 +840,12 @@ function renderTasksBoardIntoMainContent(mc) {
   var columns = Object.keys(byProjectId).map(function(pid) { return byProjectId[pid]; })
     .filter(function(col) { return col.tasks && col.tasks.length; })
     .sort(function(a, b) {
+      var order = getTasksBoardProjectOrder();
+      var ai = order.indexOf(String(a.id || ''));
+      var bi = order.indexOf(String(b.id || ''));
+      if (ai >= 0 && bi >= 0 && ai !== bi) return ai - bi;
+      if (ai >= 0 && bi < 0) return -1;
+      if (bi >= 0 && ai < 0) return 1;
       var az = a.zone === 'active' ? 0 : (a.zone === 'second_chance' ? 1 : 2);
       var bz = b.zone === 'active' ? 0 : (b.zone === 'second_chance' ? 1 : 2);
       if (az !== bz) return az - bz;
@@ -761,7 +871,7 @@ function renderTasksBoardIntoMainContent(mc) {
       if (ad !== bd) return ad.localeCompare(bd);
       return (a.status === 'done') - (b.status === 'done');
     });
-    return { id: col.id, title: col.title, emoji: col.emoji || '📁', customIcon: col.customIcon || '', zone: col.zone, tasks: tasks };
+    return { id: col.id, title: col.title, emoji: col.emoji || '📁', customIcon: col.customIcon || '', projectColor: col.projectColor || '', projectTags: Array.isArray(col.projectTags) ? col.projectTags : [], zone: col.zone, tasks: tasks };
   }).filter(function(col) { return col.tasks.length; });
 
   var total = 0, doneCount = 0, overdueCount = 0;
@@ -804,11 +914,27 @@ function renderTasksBoardIntoMainContent(mc) {
     }).join('');
     var openBtn = (col.id && col.id.indexOf('crm_') !== 0 && col.id !== '__other' && col.id !== 'crm_no_project')
       ? '<button type="button" class="tasks-col-open" onclick="tasksBoardOpenProject(\'' + esc(col.id) + '\')">Открыть</button>' : '';
+    var canEditProject = !!(col.id && col.id.indexOf('crm_') !== 0 && col.id !== '__other' && col.id !== 'crm_no_project');
+    var tagsHeadHtml = (canEditProject && Array.isArray(col.projectTags) && col.projectTags.length)
+      ? '<div class="tasks-col-project-tags">' + col.projectTags.map(function(tag, idx){
+          var t = String(tag || '').trim();
+          return '<span class="tasks-col-project-tag" title="' + esc(t) + '">' + esc(t) +
+            '<button type="button" class="tasks-col-project-tag-rm" onclick="tasksBoardRemoveProjectTag(\'' + esc(col.id) + '\',' + idx + ')" title="Удалить тег">×</button></span>';
+        }).join('') + '</div>'
+      : '';
+    var colorBtn = canEditProject
+      ? '<label class="tasks-col-color-wrap" title="Цвет проекта"><input type="color" class="tasks-col-color" value="' + esc(col.projectColor || '#35d0ff') + '" onchange="tasksBoardSetProjectColor(\'' + esc(col.id) + '\', this.value)"></label>'
+      : '';
+    var addTagBtn = canEditProject
+      ? '<button type="button" class="tasks-col-tag-btn" onclick="tasksBoardAddProjectTag(\'' + esc(col.id) + '\')" title="Добавить тег проекта">🏷</button>'
+      : '';
     var iconHtml = col.customIcon
       ? '<img src="' + esc(col.customIcon) + '" alt="" class="tasks-col-title-icon-img">'
       : '<span class="tasks-col-title-emoji">' + esc(col.emoji || '📁') + '</span>';
-    return '<div class="tasks-col">' +
-      '<div class="tasks-col-head"><div class="tasks-col-title"><span class="tasks-col-title-name">' + iconHtml + '<b>' + esc(col.title) + '</b></span>' + openBtn + '</div>' +
+    var styleAttr = col.projectColor ? (' style="--tasks-col-accent:' + esc(col.projectColor) + '"') : '';
+    return '<div class="tasks-col" draggable="true" ondragstart="tasksBoardDragStart(event,\'' + esc(col.id) + '\')" ondragover="tasksBoardDragOver(event)" ondragenter="tasksBoardDragEnter(event)" ondragleave="tasksBoardDragLeave(event)" ondrop="tasksBoardDrop(event,\'' + esc(col.id) + '\')" ondragend="tasksBoardDragEnd(event)"' + styleAttr + '>' +
+      '<div class="tasks-col-head"><div class="tasks-col-title"><span class="tasks-col-title-name"><span class="tasks-col-drag" title="Перетащить проект">⋮⋮</span>' + iconHtml + '<b>' + esc(col.title) + '</b></span><span class="tasks-col-tools">' + addTagBtn + colorBtn + openBtn + '</span></div>' +
+      tagsHeadHtml +
       '<div class="tasks-col-kpis"><span class="tasks-col-kpi">Всего: ' + col.tasks.length + '</span><span class="tasks-col-kpi">Done: ' + done + '</span><span class="tasks-col-kpi">Overdue: ' + overdue + '</span></div></div>' +
       '<div class="tasks-col-list">' + (taskHtml || '<div class="tasks-col-empty">Нет задач</div>') + '</div>' +
       '</div>';

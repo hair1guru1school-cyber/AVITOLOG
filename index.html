@@ -790,15 +790,26 @@ body.ads-mode .content{padding:16px 20px;background:linear-gradient(180deg,rgba(
 .tasks-board-chip{padding:6px 10px;border-radius:999px;border:1px solid rgba(124,245,255,0.22);background:rgba(53,208,255,0.08);color:#99dcff;font-size:11px}
 .tasks-board-wrap{flex:1;min-height:0;overflow:auto;border:1px solid rgba(124,245,255,0.18);border-radius:14px;padding:12px;background:rgba(5,11,22,0.55)}
 .tasks-board-columns{display:grid;grid-auto-flow:column;grid-auto-columns:var(--tasks-col-width,260px);gap:12px;min-width:max-content}
-.tasks-col{display:flex;flex-direction:column;min-height:220px;max-height:calc(100vh - 250px);background:linear-gradient(180deg,rgba(16,26,44,0.95),rgba(10,16,30,0.95));border:1px solid rgba(124,245,255,0.2);border-radius:12px;overflow:hidden}
+.tasks-col{display:flex;flex-direction:column;min-height:220px;max-height:calc(100vh - 250px);background:linear-gradient(180deg,rgba(16,26,44,0.95),rgba(10,16,30,0.95));border:1px solid var(--tasks-col-accent, rgba(124,245,255,0.2));border-radius:12px;overflow:hidden}
+.tasks-col.tasks-col-drop-target{box-shadow:inset 0 0 0 2px var(--tasks-col-accent, rgba(124,245,255,0.55))}
 .tasks-col-head{padding:10px 10px 8px;border-bottom:1px solid rgba(124,245,255,0.15);display:flex;flex-direction:column;gap:6px}
 .tasks-col-title{font-weight:800;font-size:15px;color:#d7eeff;line-height:1.2;display:flex;align-items:center;justify-content:space-between;gap:8px}
 .tasks-col-title-name{display:inline-flex;align-items:center;gap:6px;min-width:0}
 .tasks-col-title-name b{display:block;font-size:15px;font-weight:900;color:#d7eeff;line-height:1.15;white-space:normal;overflow:visible}
+.tasks-col-drag{font-size:12px;opacity:.65;cursor:grab;user-select:none}
 .tasks-col-title-emoji{font-size:18px;line-height:1;flex-shrink:0}
 .tasks-col-title-icon-img{width:18px;height:18px;object-fit:cover;border-radius:4px;flex-shrink:0}
+.tasks-col-tools{display:inline-flex;align-items:center;gap:6px;flex-shrink:0}
 .tasks-col-open{font-size:10px;padding:3px 7px;border-radius:999px;border:1px solid rgba(124,245,255,0.3);color:#8fdfff;background:rgba(53,208,255,0.08);cursor:pointer}
 .tasks-col-open:hover{border-color:rgba(124,245,255,0.55);background:rgba(53,208,255,0.18)}
+.tasks-col-color-wrap{display:inline-flex;align-items:center}
+.tasks-col-color{width:20px;height:20px;padding:0;border:none;background:none;cursor:pointer}
+.tasks-col-tag-btn{font-size:10px;padding:2px 6px;border-radius:999px;border:1px solid rgba(124,245,255,0.3);color:#9fe7ff;background:rgba(53,208,255,0.08);cursor:pointer}
+.tasks-col-tag-btn:hover{border-color:rgba(124,245,255,0.55);background:rgba(53,208,255,0.18)}
+.tasks-col-project-tags{display:flex;gap:5px;flex-wrap:wrap}
+.tasks-col-project-tag{display:inline-flex;align-items:center;gap:4px;font-size:10px;padding:2px 6px;border-radius:999px;border:1px solid rgba(124,245,255,0.25);background:rgba(53,208,255,0.08);color:#9fe7ff}
+.tasks-col-project-tag-rm{width:14px;height:14px;border:none;border-radius:50%;background:rgba(255,255,255,0.14);color:#d4ecff;cursor:pointer;line-height:1;padding:0}
+.tasks-col-project-tag-rm:hover{background:rgba(255,92,92,0.4);color:#fff}
 .tasks-col-kpis{display:flex;gap:6px;flex-wrap:wrap}
 .tasks-col-kpi{font-size:10px;padding:2px 7px;border-radius:999px;background:rgba(255,255,255,0.06);color:#b4c6da}
 .tasks-col-list{padding:7px;display:flex;flex-direction:column;gap:7px;overflow:auto}

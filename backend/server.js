@@ -7,6 +7,7 @@ const app = express();
 const PORT = Number(process.env.PORT || 8787);
 const AVITO_API_BASE = String(process.env.AVITO_API_BASE || 'https://api.avito.ru').replace(/\/+$/, '');
 const PERPLEXITY_API_BASE = String(process.env.PERPLEXITY_API_BASE || 'https://api.perplexity.ai').replace(/\/+$/, '');
+const ANTHROPIC_API_BASE = String(process.env.ANTHROPIC_API_BASE || 'https://api.anthropic.com').replace(/\/+$/, '');
 
 app.use(cors());
 app.use(express.json({ limit: '1mb' }));
@@ -16,7 +17,8 @@ app.get('/api/health', (req, res) => {
     ok: true,
     service: 'avitolog-backend',
     avitoBase: AVITO_API_BASE,
-    perplexityBase: PERPLEXITY_API_BASE
+    perplexityBase: PERPLEXITY_API_BASE,
+    anthropicBase: ANTHROPIC_API_BASE
   });
 });
 
@@ -202,6 +204,57 @@ app.post('/api/perplexity/chat', async (req, res) => {
     res.status(500).json({
       ok: false,
       error: error && error.message ? error.message : 'Unexpected backend error'
+    });
+  }
+});
+
+app.post('/api/llm/anthropic', async (req, res) => {
+  try {
+    const apiKey = String(req.body && req.body.apiKey ? req.body.apiKey : '').trim();
+    const prompt = String(req.body && req.body.prompt ? req.body.prompt : '').trim();
+    const maxTokens = Math.max(256, Math.min(12000, Number(req.body && req.body.maxTokens) || 4000));
+    const model = String(req.body && req.body.model ? req.body.model : 'claude-sonnet-4-20250514').trim();
+    if (!apiKey) return res.status(400).json({ ok: false, error: 'apiKey is required' });
+    if (!prompt) return res.status(400).json({ ok: false, error: 'prompt is required' });
+
+    const payload = {
+      model: model,
+      max_tokens: maxTokens,
+      messages: [{ role: 'user', content: prompt }]
+    };
+    const llmResp = await fetch(ANTHROPIC_API_BASE + '/v1/messages', {
+      method: 'POST',
+      headers: {
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(payload)
+    });
+    const text = await llmResp.text();
+    let data = {};
+    try { data = text ? JSON.parse(text) : {}; } catch (e) { data = { raw: text }; }
+
+    if (!llmResp.ok) {
+      return res.status(llmResp.status).json({
+        ok: false,
+        error: (data && data.error && data.error.message) ? data.error.message : 'Anthropic API error',
+        status: llmResp.status,
+        data: data
+      });
+    }
+    const outText = Array.isArray(data && data.content)
+      ? data.content.map(x => (x && typeof x.text === 'string') ? x.text : '').join('')
+      : '';
+    return res.json({
+      ok: true,
+      text: outText,
+      data: data
+    });
+  } catch (error) {
+    res.status(500).json({
+      ok: false,
+      error: error && error.message ? error.message : 'Unexpected anthropic backend error'
     });
   }
 });

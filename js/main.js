@@ -2750,6 +2750,13 @@ function callAPI(prompt, maxTokens) {
     throw new Error('Введи API ключ Anthropic в поле в шапке. Получить: console.anthropic.com');
   }
   var endpoint = getApiEndpoint();
+  var backendBase = (function() {
+    try {
+      return String(localStorage.getItem('crm_ads_avito_backend_base_v1') || 'http://localhost:8787/api').trim().replace(/\/+$/, '');
+    } catch (e) {
+      return 'http://localhost:8787/api';
+    }
+  })();
   var headers = {
     'Content-Type': 'application/json',
     'x-api-key': userKey,
@@ -2785,6 +2792,27 @@ function callAPI(prompt, maxTokens) {
       return content.map(function(i) { return (i && i.text) ? String(i.text) : ''; }).join('');
     });
   }
+  function doBackendRequest(model) {
+    var payload = JSON.stringify({
+      apiKey: userKey,
+      prompt: prompt,
+      maxTokens: maxTokens,
+      model: model || API_MODELS[0]
+    });
+    return fetch(backendBase + '/llm/anthropic', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: payload
+    }).then(function(r) {
+      return r.json().catch(function() { return { ok: false, error: 'Invalid backend JSON' }; })
+        .then(function(data) {
+          if (!r.ok || !data || data.ok === false) {
+            throw new Error((data && data.error) ? String(data.error) : ('Backend HTTP ' + r.status));
+          }
+          return String((data && data.text) || '');
+        });
+    });
+  }
   function tryModels(url, idx) {
     idx = idx || 0;
     return doRequest(url, API_MODELS[idx]).catch(function(e) {
@@ -2802,6 +2830,16 @@ function callAPI(prompt, maxTokens) {
       throw e;
     });
   }
+  function tryBackendModels(idx) {
+    idx = idx || 0;
+    return doBackendRequest(API_MODELS[idx]).catch(function(e) {
+      var m = String(e.message || e);
+      if ((m.indexOf('model') >= 0 || m.indexOf('404') >= 0) && idx < API_MODELS.length - 1) {
+        return tryBackendModels(idx + 1);
+      }
+      throw e;
+    });
+  }
   return doWithRetry(endpoint).catch(function(e) {
     var m = String(e && e.message ? e.message : e);
     var isCors = m.indexOf('Failed to fetch') >= 0 || m.indexOf('CORS') >= 0 || m.indexOf('NetworkError') >= 0 || m.indexOf('Load failed') >= 0 || m.indexOf('ERR_FAILED') >= 0 || m.indexOf('blocked') >= 0 || m.indexOf('net::') >= 0 || m.indexOf('Network request failed') >= 0;
@@ -2809,9 +2847,10 @@ function callAPI(prompt, maxTokens) {
     var directAnthropic = endpoint.indexOf('api.anthropic.com') >= 0;
     var useFallbacks = (isCors && directAnthropic) || isProxyError;
     if (useFallbacks) {
+      return tryBackendModels(0).catch(function() {
       function tryFallbacks(idx) {
         if (idx >= API_CORS_FALLBACKS.length) {
-          throw new Error('Сеть/CORS: не удаётся связаться с API.\n\n• GitHub Pages блокирует CORS — запусти локально: открой index.html через Live Server (VS Code) или python -m http.server\n• Нажми «Повторить» 2–3 раза — бесплатный прокси может просыпаться до 30 сек\n• «Настроить прокси» → разверни свой на Render: github.com/melihbirim/corsproxy');
+          throw new Error('Сеть/CORS: не удаётся связаться с API.\n\n• Подними backend и проверь: ' + backendBase + '/health\n• GitHub Pages блокирует CORS — запусти локально: Live Server или python -m http.server\n• Нажми «Повторить» 2–3 раза — бесплатный прокси может просыпаться до 30 сек\n• «Настроить прокси» → разверни свой на Render: github.com/melihbirim/corsproxy');
         }
         var fallback = API_CORS_FALLBACKS[idx];
         var url = typeof fallback === 'object' ? fallback.url : (fallback.indexOf('?url=') >= 0 || fallback.indexOf('api.anthropic.com') >= 0 || fallback.indexOf('%2F%2F') >= 0 ? fallback : fallback + API);
@@ -2828,6 +2867,7 @@ function callAPI(prompt, maxTokens) {
         return doTry();
       }
       return tryFallbacks(0);
+      });
     }
     throw e;
   });
