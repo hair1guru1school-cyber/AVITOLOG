@@ -998,9 +998,15 @@ body.contract-tab .analytics-control-panel,body.contract-tab .sec-bar,body.contr
 .ads-total-val{font-weight:700;color:var(--text)}
 .ads-total-all{color:var(--accent);font-size:15px}
 .ads-links-title{font-size:11px;font-weight:800;letter-spacing:1px;color:var(--accent);margin-bottom:10px;text-transform:uppercase}
+.ads-snippet-columns{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
 .ads-snippet-group{margin-bottom:12px}
-.ads-snippet-group-title{font-size:11px;font-weight:800;letter-spacing:1px;color:#7cf5ff;margin:0 0 8px;text-transform:uppercase}
-.ads-snippet-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:8px}
+.ads-snippet-col{margin-bottom:0;padding:8px;border:1px solid rgba(124,245,255,0.16);border-radius:10px;background:rgba(6,12,24,0.5)}
+.ads-snippet-group-head{display:flex;align-items:center;justify-content:space-between;gap:6px;margin:0 0 8px}
+.ads-snippet-group-title{font-size:11px;font-weight:800;letter-spacing:1px;color:#7cf5ff;margin:0;text-transform:uppercase}
+.ads-snippet-add-btn{height:24px;padding:0 8px;border-radius:7px;border:1px solid rgba(124,245,255,0.36);background:rgba(53,208,255,0.12);color:#9fe7ff;font-size:10px;font-weight:700;cursor:pointer;white-space:nowrap}
+.ads-snippet-add-btn:hover{background:rgba(53,208,255,0.22);border-color:rgba(124,245,255,0.6)}
+.ads-snippet-grid{display:flex;flex-direction:column;gap:8px}
+.ads-snippet-empty{font-size:11px;color:var(--muted);padding:8px 4px}
 .ads-snippet-card{display:flex;align-items:center;gap:8px;min-width:0;background:rgba(53,208,255,0.05);border:1px solid rgba(53,208,255,0.22);border-radius:10px;padding:6px 6px 6px 8px;transition:all .2s}
 .ads-snippet-card:hover{background:rgba(53,208,255,0.1);border-color:rgba(53,208,255,0.45);box-shadow:0 0 12px rgba(53,208,255,0.18)}
 .ads-snippet-main{flex:1;display:flex;align-items:center;gap:10px;min-width:0;background:none;border:none;padding:0;color:var(--text);text-align:left;cursor:pointer}
@@ -1023,6 +1029,8 @@ body.contract-tab .analytics-control-panel,body.contract-tab .sec-bar,body.contr
 .ads-editor-save,.ads-editor-cancel{height:28px;min-width:36px;padding:0 8px;border:1px solid var(--border);border-radius:8px;background:var(--surface2);color:var(--text);cursor:pointer;font-size:12px}
 .ads-editor-save:hover{border-color:var(--accent);color:var(--accent)}
 .ads-editor-cancel:hover{border-color:#ff7b7b;color:#ff7b7b}
+@media(max-width:1300px){.ads-snippet-columns{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:760px){.ads-snippet-columns{grid-template-columns:1fr}}
 .ads-api-card{max-width:960px}
 .ads-api-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .ads-api-field{display:flex;flex-direction:column;gap:6px}

@@ -27,14 +27,20 @@
   var _postsSheetInitCache = {};
 
   var DEFAULT_LINKS = [
-    { id: "channel_clients", icon: "📣", label: "Канал для клиентов", url: "", snippet: "", avatar: "" },
-    { id: "bot_clients", icon: "🤖", label: "Бот для клиентов", url: "", snippet: "", avatar: "" },
-    { id: "channel_learn", icon: "🎓", label: "Канал обучения", url: "", snippet: "", avatar: "" },
-    { id: "channel_vk_blog", icon: "🟦", label: "Личный блог ВК", url: "https://vk.com/fil_the_bizz", snippet: "VK блог", avatar: "" },
-    { id: "bot_learn", icon: "🤖", label: "Бот обучения", url: "", snippet: "", avatar: "" },
-    { id: "site", icon: "🌐", label: "Сайт агентства", url: "", snippet: "", avatar: "" },
-    { id: "avito1", icon: "🛒", label: "Авито аккаунт 1", url: "", snippet: "", avatar: "" },
-    { id: "avito2", icon: "🛒", label: "Авито аккаунт 2", url: "", snippet: "", avatar: "" }
+    { id: "channel_clients", category: "telegram", icon: "📣", label: "Канал для клиентов", url: "", snippet: "", avatar: "" },
+    { id: "bot_clients", category: "telegram", icon: "🤖", label: "Бот для клиентов", url: "", snippet: "", avatar: "" },
+    { id: "channel_learn", category: "telegram", icon: "🎓", label: "Канал обучения", url: "", snippet: "", avatar: "" },
+    { id: "channel_vk_blog", category: "vk", icon: "🟦", label: "Личный блог ВК", url: "https://vk.com/fil_the_bizz", snippet: "VK блог", avatar: "" },
+    { id: "bot_learn", category: "telegram", icon: "🤖", label: "Бот обучения", url: "", snippet: "", avatar: "" },
+    { id: "site", category: "sites", icon: "🌐", label: "Сайт агентства", url: "", snippet: "", avatar: "" },
+    { id: "avito1", category: "avito", icon: "🛒", label: "Авито аккаунт 1", url: "", snippet: "", avatar: "" },
+    { id: "avito2", category: "avito", icon: "🛒", label: "Авито аккаунт 2", url: "", snippet: "", avatar: "" }
+  ];
+  var LINKS_GROUPS = [
+    { id: "telegram", title: "✈ Телеграмм", icon: "✈" },
+    { id: "vk", title: "🟦 Вконтакте", icon: "🟦" },
+    { id: "avito", title: "🛒 Авито", icon: "🛒" },
+    { id: "sites", title: "🌐 Сайты", icon: "🌐" }
   ];
 
   function getCellKey(row, day) { return row + "_" + day; }
@@ -160,15 +166,33 @@
             if (!item || !item.id) return;
             if (!merged.some(function(m) { return m.id === item.id; })) merged.push(item);
           });
-          return merged;
+          return merged.map(function(item) {
+            var cp = Object.assign({}, item);
+            cp.category = getLinksCategory(cp);
+            return cp;
+          });
         }
       }
     } catch (e) {}
-    return DEFAULT_LINKS.map(function(x) { return Object.assign({}, x); });
+    return DEFAULT_LINKS.map(function(x) {
+      var cp = Object.assign({}, x);
+      cp.category = getLinksCategory(cp);
+      return cp;
+    });
   }
 
   function saveLinks(links) {
     try { localStorage.setItem(LINKS_KEY, JSON.stringify(links)); } catch (e) {}
+  }
+
+  function isVkLinkText(txt) {
+    var s = String(txt || "").toLowerCase();
+    return s.indexOf("vk.com") >= 0 || s.indexOf("vkontakte") >= 0 || s.indexOf("вк") >= 0 || s.indexOf("вконт") >= 0 || s.indexOf("vk_") >= 0;
+  }
+
+  function isTelegramLinkText(txt) {
+    var s = String(txt || "").toLowerCase();
+    return s.indexOf("t.me") >= 0 || s.indexOf("telegram.me") >= 0 || s.indexOf("telegram") >= 0 || s.indexOf("телеграм") >= 0 || s.indexOf("канал") >= 0 || s.indexOf("бот") >= 0;
   }
 
   function getTodayDayForState(state) {
@@ -541,30 +565,66 @@
   }
 
   function getLinksCategory(item) {
+    var explicit = String(item && item.category || "").toLowerCase().trim();
+    if (explicit === "telegram" || explicit === "vk" || explicit === "avito" || explicit === "sites") return explicit;
     var id = String(item.id || "").toLowerCase();
     var label = String(item.label || "").toLowerCase();
-    if (id.indexOf("channel") >= 0 || label.indexOf("канал") >= 0) return "channels";
-    if (id.indexOf("bot") >= 0 || label.indexOf("бот") >= 0) return "bots";
-    if (id.indexOf("site") >= 0 || label.indexOf("сайт") >= 0) return "sites";
+    var url = String(item.url || "").toLowerCase();
+    if (isVkLinkText(id) || isVkLinkText(label) || isVkLinkText(url)) return "vk";
     if (id.indexOf("avito") >= 0 || label.indexOf("авито") >= 0) return "avito";
-    return "other";
+    if (id.indexOf("site") >= 0 || label.indexOf("сайт") >= 0 || (url && !isTelegramLinkText(url) && !isVkLinkText(url))) return "sites";
+    if (id.indexOf("channel") >= 0 || id.indexOf("bot") >= 0 || isTelegramLinkText(label) || isTelegramLinkText(url)) return "telegram";
+    return "sites";
+  }
+
+  function getDefaultLinkIcon(categoryId) {
+    if (categoryId === "telegram") return "✈";
+    if (categoryId === "vk") return "🟦";
+    if (categoryId === "avito") return "🛒";
+    return "🌐";
+  }
+
+  function addLinkToCategory(categoryId, links, container) {
+    var grp = LINKS_GROUPS.find(function(g) { return g.id === categoryId; });
+    var human = grp ? grp.title.replace(/^[^\s]+\s+/, "") : "категория";
+    var label = prompt("Название для " + human + ":", "");
+    if (label === null) return;
+    label = String(label || "").trim();
+    if (!label) return;
+    var url = prompt("Ссылка (можно оставить пусто):", "https://");
+    if (url === null) return;
+    var snippet = prompt("Подпись/сниппет (необязательно):", "");
+    if (snippet === null) snippet = "";
+    var icon = prompt("Иконка (эмоджи):", getDefaultLinkIcon(categoryId));
+    if (icon === null) icon = getDefaultLinkIcon(categoryId);
+    links.push({
+      id: "custom_" + Date.now() + "_" + Math.random().toString(36).slice(2, 6),
+      category: categoryId,
+      icon: String(icon || getDefaultLinkIcon(categoryId)).trim() || getDefaultLinkIcon(categoryId),
+      label: label,
+      url: String(url || "").trim(),
+      snippet: String(snippet || "").trim(),
+      avatar: ""
+    });
+    saveLinks(links);
+    renderLinksPanel(container, links);
   }
 
   function renderLinksPanel(container, links) {
-    var groups = [
-      { id: "channels", title: "📚 Каналы" },
-      { id: "bots", title: "🤖 Боты" },
-      { id: "sites", title: "🌐 Сайты" },
-      { id: "avito", title: "🛒 Avito аккаунты" },
-      { id: "other", title: "🔗 Прочее" }
-    ];
-    var grouped = { channels: [], bots: [], sites: [], avito: [], other: [] };
-    links.forEach(function(item, idx) { grouped[getLinksCategory(item)].push({ item: item, idx: idx }); });
+    var groups = LINKS_GROUPS.slice();
+    var grouped = { telegram: [], vk: [], avito: [], sites: [] };
+    links.forEach(function(item, idx) {
+      var cat = getLinksCategory(item);
+      if (!grouped[cat]) cat = "sites";
+      grouped[cat].push({ item: item, idx: idx });
+      if (links[idx]) links[idx].category = cat;
+    });
 
     var html = '<div class="ads-links-title">🔗 Быстрые ссылки</div>';
+    html += '<div class="ads-snippet-columns">';
     groups.forEach(function(g) {
-      if (!grouped[g.id].length) return;
-      html += '<div class="ads-snippet-group"><div class="ads-snippet-group-title">' + g.title + '</div><div class="ads-snippet-grid">';
+      html += '<div class="ads-snippet-group ads-snippet-col"><div class="ads-snippet-group-head"><div class="ads-snippet-group-title">' + g.title + '</div><button type="button" class="ads-snippet-add-btn" data-add-cat="' + g.id + '">+ Добавить</button></div><div class="ads-snippet-grid">';
+      if (!grouped[g.id].length) html += '<div class="ads-snippet-empty">Пока пусто</div>';
       grouped[g.id].forEach(function(w) {
         var item = w.item;
         var idx = w.idx;
@@ -578,7 +638,15 @@
       });
       html += "</div></div>";
     });
+    html += "</div>";
     container.innerHTML = html;
+    container.querySelectorAll("[data-add-cat]").forEach(function(btn) {
+      btn.addEventListener("click", function() {
+        var cat = String(btn.getAttribute("data-add-cat") || "");
+        if (!cat) return;
+        addLinkToCategory(cat, links, container);
+      });
+    });
     container.querySelectorAll("[data-open]").forEach(function(btn) {
       btn.addEventListener("click", function() {
         var idx = parseInt(btn.getAttribute("data-open"), 10);
