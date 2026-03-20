@@ -7,6 +7,7 @@
   var EXPENSES_KEY = "crm_ads_expenses_v1";
   var POSTS_PLAN_KEY = "crm_ads_posts_plan_v1";
   var LINKS_KEY = "crm_ads_links_v1";
+  var POSTS_SYNC_QUEUE_KEY = "crm_ads_posts_sync_queue_v1";
   var POSTS_SHEET_ID = "1q_2TJHIhFW1KjjjIjpxfGc_1zewpdPhrwXQ6awhVdwA";
   var POSTS_SHEET_LEARN = "Обучение";
   var POSTS_SHEET_AGENCY = "Агенство";
@@ -109,6 +110,39 @@
         cells: state.data
       }));
     } catch (e) {}
+  }
+  function loadPostsSyncQueue() {
+    try {
+      var raw = localStorage.getItem(POSTS_SYNC_QUEUE_KEY);
+      var arr = raw ? JSON.parse(raw) : [];
+      return Array.isArray(arr) ? arr : [];
+    } catch (e) { return []; }
+  }
+  function savePostsSyncQueue(arr) {
+    try { localStorage.setItem(POSTS_SYNC_QUEUE_KEY, JSON.stringify(Array.isArray(arr) ? arr : [])); } catch (e) {}
+  }
+  function enqueuePostSync(rowKey, day, value) {
+    var key = String(rowKey) + "_" + String(day);
+    var q = loadPostsSyncQueue().filter(function(x) { return String(x && x.key) !== key; });
+    q.push({ key: key, rowKey: rowKey, day: Number(day), value: String(value || ""), at: Date.now() });
+    savePostsSyncQueue(q);
+    return q.length;
+  }
+  async function flushPendingPostsSyncQueue() {
+    var q = loadPostsSyncQueue();
+    if (!q.length) return 0;
+    var token = await getGoogleAccessTokenForSheets();
+    var remain = [];
+    for (var i = 0; i < q.length; i++) {
+      var item = q[i];
+      try {
+        await syncPostToGoogleSheets(item.rowKey, item.day, item.value, token);
+      } catch (e) {
+        remain.push(item);
+      }
+    }
+    savePostsSyncQueue(remain);
+    return q.length - remain.length;
   }
 
   function loadLinks() {
@@ -408,9 +442,9 @@
     return rowKey === "learn" ? POSTS_SHEET_LEARN : POSTS_SHEET_AGENCY;
   }
 
-  async function syncPostToGoogleSheets(rowKey, day, value) {
+  async function syncPostToGoogleSheets(rowKey, day, value, tokenOverride) {
     var sheetName = getPostsSheetNameByRow(rowKey);
-    var token = await getGoogleAccessTokenForSheets();
+    var token = tokenOverride || await getGoogleAccessTokenForSheets();
     await ensurePostsSheetPrepared(token, sheetName);
     var rowNum = Number(day) + 1; // day 1 -> B2
     var targetRange = quoteSheetRange(sheetName, "B" + rowNum + ":B" + rowNum);
@@ -459,11 +493,22 @@
       setPostsSyncStatus("Сохраняю в Google Sheets...", false);
       syncPostToGoogleSheets(row, day, value)
         .then(function() {
-          setPostsSyncStatus("Сохранено в Google Sheets: " + (row === "learn" ? "Обучение" : "Агенство") + ", день " + day, false);
+          flushPendingPostsSyncQueue()
+            .then(function(flushedCount) {
+              if (flushedCount > 0) {
+                setPostsSyncStatus("Сохранено + досинхронизировано: " + flushedCount, false);
+              } else {
+                setPostsSyncStatus("Сохранено в Google Sheets: " + (row === "learn" ? "Обучение" : "Агенство") + ", день " + day, false);
+              }
+            })
+            .catch(function() {
+              setPostsSyncStatus("Сохранено в Google Sheets: " + (row === "learn" ? "Обучение" : "Агенство") + ", день " + day, false);
+            });
         })
         .catch(function(err) {
           var msg = err && err.message ? err.message : String(err || "unknown error");
-          setPostsSyncStatus("Ошибка синка Sheets: " + msg, true);
+          var queued = enqueuePostSync(row, day, value);
+          setPostsSyncStatus("Drive оффлайн, сохранено локально. В очереди: " + queued + " (" + msg + ")", true);
         });
       closePostCellEditor();
       if (typeof onSaved === "function") onSaved();
@@ -671,6 +716,22 @@
     }
     renderExpensesTable(expensesContainer, state, refreshTotals);
     renderPostsPlanTable(postsPlanContainer, postsState);
+    setTimeout(function() {
+      var queued = loadPostsSyncQueue().length;
+      if (queued > 0) {
+        setPostsSyncStatus("Найдена очередь синка: " + queued + ". Пробую отправить...", false);
+      }
+      flushPendingPostsSyncQueue()
+        .then(function(sent) {
+          var left = loadPostsSyncQueue().length;
+          if (sent > 0 && left === 0) setPostsSyncStatus("Очередь синка отправлена полностью (" + sent + ")", false);
+          else if (left > 0) setPostsSyncStatus("Часть очереди еще не отправлена: " + left, true);
+        })
+        .catch(function() {
+          var left = loadPostsSyncQueue().length;
+          if (left > 0) setPostsSyncStatus("Drive недоступен. В очереди: " + left, true);
+        });
+    }, 250);
     updateTotalsPanel(totalsContainer, state);
     updateTopSummary(wrap.querySelector("#adsTopSummary"), state);
     renderLinksPanel(linksContainer, links);

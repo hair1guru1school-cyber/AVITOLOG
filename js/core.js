@@ -939,7 +939,7 @@ function renderTasksBoardIntoMainContent(mc) {
   var gapPx = 12;
   var baseColW = Math.floor((usableWidth - gapPx * (colsOnPage - 1)) / colsOnPage);
   baseColW = Math.max(210, Math.min(360, baseColW));
-  var colWidth = Math.round(baseColW * (colScale / 100));
+  var colWidth = Math.max(190, Math.round(baseColW * (colScale / 100)));
 
   mc.innerHTML = '<div class="tasks-board-page">' +
     '<div class="tasks-board-head"><div><div class="tasks-board-title">ЗАДАЧИ ПО ПРОЕКТАМ</div><div class="tasks-board-sub">Колонками: один проект = один столбец. Быстрый обзор по всем задачам команды.</div></div>' +
