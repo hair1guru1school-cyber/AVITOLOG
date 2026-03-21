@@ -2153,7 +2153,7 @@ if (!window.AVITOLOG_GOALS) {
     </div>
   </div>
 
-  <div class="fg"><label>&#127919; Ниша</label><input type="text" id="category" placeholder="Пиломатериалы, сэндвич-панели..."></div>
+  <div class="fg"><label>&#127919; Ниша</label><input type="text" id="category" placeholder="Пиломатериалы, сэндвич-панели..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"></div>
   <div class="fg">
     <label>&#128205; ГЕО</label>
     <div id="geoWrap" class="geo-wrap">
@@ -2186,7 +2186,7 @@ if (!window.AVITOLOG_GOALS) {
       <button type="button" class="kp-tag" data-kp="500" onclick="toggleKP(this)">500</button>
       <button type="button" class="kp-tag" data-kp="1000" onclick="toggleKP(this)">1000</button>
       <button type="button" class="kp-tag" data-kp="1500" onclick="toggleKP(this)">1500</button>
-      <button type="button" class="kp-tag" data-kp="∞">&#8734; <sup style="font-size:9px;opacity:.7">alfa</sup></button>
+      <button type="button" class="kp-tag" data-kp="∞" onclick="toggleKP(this)">&#8734; <sup style="font-size:9px;opacity:.7">alfa</sup></button>
     </div>
     <input type="hidden" id="kp_count" value="">
   </div>

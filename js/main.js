@@ -3141,6 +3141,7 @@ function setupAC(el, fn) {
 
 function initAC() {
   ACF.forEach(function(f) {
+    if (f === 'category') return; // disable niche suggestions dropdown
     var e = document.getElementById(f);
     if (e) setupAC(e, f);
   });
