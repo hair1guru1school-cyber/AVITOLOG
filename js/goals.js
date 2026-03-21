@@ -510,7 +510,7 @@
       var delBtn = (blockType === 'sold' || blockType === 'work') ? '<button type="button" class="goal-del-btn" onclick="event.stopPropagation();window.__goalsDeletePermanent&&window.__goalsDeletePermanent(\'' + esc(p.id) + '\')" title="Удалить">×</button>' : '';
       var dispName = String(p.name || '').replace(/\s+/g, ' ').trim();
       var actionsHtml = (archBtn || '') + (toActiveBtn || '') + (workEditBtn || '') + (workToSoldBtn || '') + (workToArchiveBtn || '') + (delBtn || '');
-      var actionsInName = (blockType === 'sold') ? actionsHtml : '';
+      var actionsInName = (blockType === 'sold' || blockType === 'work') ? actionsHtml : '';
       var nameCell = '<span class="goal-name-cell" onclick="event.stopPropagation();window.__goalsEditNameCell&&window.__goalsEditNameCell(this)">' +
         '<button type="button" class="goal-emoji-btn" onclick="event.stopPropagation();window.__goalsShowEmojiPicker&&window.__goalsShowEmojiPicker(this,\'' + esc(p.id) + '\')" title="Изменить иконку">' + emoji + '</button>' +
         (folderIcon ? folderIcon + ' ' : '') +
@@ -525,12 +525,13 @@
           designations +
           '</div>';
       }
+      var sideActions = (blockType === 'work') ? '' : ('<span class="goal-row-actions">' + actionsHtml + '</span>');
       return '<div class="' + rowClass + '" data-id="' + esc(p.id) + '">' +
         '<span class="goal-date">' + esc(formatDateShort(p.date)) + '</span>' +
         '<span class="goal-name">' + nameCell + '</span>' +
         '<span class="goal-price-wrap">' + (sumCell || '') + '</span>' +
         designations +
-        '<span class="goal-row-actions">' + actionsHtml + '</span>' +
+        sideActions +
         '</div>';
     });
     var dropAttrs = (blockType === 'sold')
