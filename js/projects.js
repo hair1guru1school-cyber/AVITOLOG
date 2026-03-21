@@ -1876,15 +1876,28 @@ var TASK_PRIORITIES = { normal:'Обычная', important:'Важная', urgen
 
 var TASK_TYPE_EMOJIS = { text:'&#128221;', image:'&#128444;', send:'&#128230;', approval:'&#9989;', analytics:'&#128202;', other:'&#128204;' };
 var TASK_TEMPLATES = {
+  mini_prep: { name:'Мини задачи', emoji:'⚡', tasks:['Сохранить медиа клиента','Войти в аккаунт / Удалить связку'] },
   brief: { name:'Бриф', emoji:'&#128203;', tasks:['Получить бриф от клиента','Проверить заполнение брифа','Зафиксировать данные проекта','Подготовить ОС по брифу'] },
   os_brief: { name:'ОС по брифу', emoji:'&#128196;', tasks:['Анализ ответов клиента','Подготовить рекомендации','Подготовить стратегию запуска','Отправить ОС клиенту'] },
-  texts: { name:'Тексты', emoji:'&#128221;', pickCount:[3,4,5] },
+  texts: { name:'Тексты', emoji:'📝', tasks:['Создать макет(ы) текста','Создать сообщение для клиента','Утвердить тексты'] },
   infographic: { name:'Инфографика', emoji:'&#128202;', tasks:['Подготовить ТЗ инфографики','Создать инфографику','Проверить визуал','Согласовать инфографику'] },
   autoload: { name:'Автозагрузка', emoji:'&#128230;', tasks:['Подготовить Excel автозагрузки','Проверить структуру объявлений','Загрузить объявления','Проверить публикацию'] },
   design_ext: { name:'Дизайн аккаунта · Расширенный', emoji:'&#128396;', tasks:['Подготовить дизайн аккаунта','Добавить информацию в аккаунт','Добавить логотип аккаунта','Проверить оформление'] },
   design_max: { name:'Дизайн аккаунта · Максимальный', emoji:'&#128396;', tasks:['Подготовить дизайн аккаунта','Добавить информацию в аккаунт','Добавить логотип аккаунта','Проверить оформление'] },
   portfolio: { name:'Портфолио', emoji:'&#11088;', tasks:['Подготовить кейс','Подготовить скриншоты','Оформить портфолио','Добавить портфолио в аккаунт'] }
 };
+var TASK_TEMPLATE_ORDER = ['mini_prep','brief','os_brief','texts','infographic','autoload','design_ext','design_max','portfolio'];
+function getOrderedTaskTemplateKeys() {
+  var keys = Object.keys(TASK_TEMPLATES || {});
+  var out = [];
+  TASK_TEMPLATE_ORDER.forEach(function(k){
+    if (keys.indexOf(k) >= 0) out.push(k);
+  });
+  keys.forEach(function(k){
+    if (out.indexOf(k) < 0) out.push(k);
+  });
+  return out;
+}
 
 function addDaysToIso(isoStr, days) {
   if (!isoStr || isoStr.length < 10) return isoStr;
@@ -2008,7 +2021,7 @@ function showTaskTemplateContextMenu(e, projectId) {
   menu.id = 'taskContextMenu';
   menu.className = 'task-ctx-menu';
   var parts = [];
-  var keys = Object.keys(TASK_TEMPLATES || {});
+  var keys = getOrderedTaskTemplateKeys();
   keys.forEach(function(k){
     var t = TASK_TEMPLATES[k];
     if (!t) return;
@@ -2039,7 +2052,7 @@ function showTaskTemplateContextMenu(e, projectId) {
 function showTaskTemplatePartialModal(projectId) {
   var existing = document.getElementById('taskPartialModal');
   if (existing) existing.remove();
-  var keys = Object.keys(TASK_TEMPLATES || {}).filter(function(k){
+  var keys = getOrderedTaskTemplateKeys().filter(function(k){
     var t = TASK_TEMPLATES[k];
     if (!t || !t.tasks) return false;
     return k !== 'texts' || !t.pickCount;
@@ -2414,7 +2427,7 @@ function renderTaskPanel() {
   var templatesHtml = '';
   if (pid) {
     var tplBtns = [];
-    Object.keys(TASK_TEMPLATES).forEach(function(k){
+    getOrderedTaskTemplateKeys().forEach(function(k){
       var t = TASK_TEMPLATES[k];
       var lbl = (t.emoji ? (t.emoji + ' ') : '') + escAttr(t.name);
       tplBtns.push('<button type="button" class="task-template-btn" onclick="event.stopPropagation();openTaskTemplateMiniMenu(\'' + escAttr(pid) + '\',\'' + escAttr(k) + '\',this)" title="' + escAttr(t.name) + '">' + lbl + '</button>');
