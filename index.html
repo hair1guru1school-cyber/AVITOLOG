@@ -2053,6 +2053,15 @@ min-width:720px
 .assets-base-row .ab-add-btn:hover{background:rgba(0,217,126,0.3)}
 .assets-base-row .ab-del-btn{width:24px;height:24px;border-radius:6px;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;font-size:12px;flex-shrink:0;margin-left:4px}
 .assets-base-row .ab-del-btn:hover{background:rgba(255,68,68,0.15);border-color:#ff4444;color:#ff4444}
+.assets-base-picker.wide-grid .assets-base-header{display:none}
+.assets-base-picker.wide-grid .assets-base-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:10px;align-content:start;padding:10px;overflow:auto}
+.assets-base-picker.wide-grid .assets-base-row{display:grid;grid-template-columns:1fr auto auto;grid-template-areas:"name name name" "date paid paid" "add add del";gap:8px;padding:10px;border:1px solid rgba(255,255,255,0.08);border-radius:10px;background:rgba(255,255,255,0.02);min-width:0}
+.assets-base-picker.wide-grid .assets-base-row:hover{background:rgba(0,217,126,0.08);border-color:rgba(0,217,126,0.28)}
+.assets-base-picker.wide-grid .assets-base-row .ab-col-name{grid-area:name;font-size:13px;font-weight:700;white-space:normal;line-height:1.2}
+.assets-base-picker.wide-grid .assets-base-row .ab-col-date{grid-area:date;min-width:0;font-size:11px}
+.assets-base-picker.wide-grid .assets-base-row .ab-col-paid{grid-area:paid;min-width:0;text-align:right}
+.assets-base-picker.wide-grid .assets-base-row .ab-add-btn{grid-area:add;width:100%;height:30px}
+.assets-base-picker.wide-grid .assets-base-row .ab-del-btn{grid-area:del;width:30px;height:30px;margin-left:0}
 .assets-base-empty{padding:20px;text-align:center;color:var(--muted);font-size:12px}
 .assets-base-picker-ai{flex-shrink:0}
 .assets-base-picker-ai textarea.assets-base-ai-inp{width:100%;padding:8px 10px;font-size:12px;border-radius:8px;border:1px solid var(--border);background:rgba(0,0,0,0.2);color:var(--text);resize:vertical;min-height:52px;max-height:100px;font-family:inherit;box-sizing:border-box}

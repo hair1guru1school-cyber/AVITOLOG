@@ -943,6 +943,11 @@
     wrap.style.cssText = 'right:' + rightPos + 'px;top:' + topPos + 'px;width:' + w + 'px;height:' + h + 'px;left:auto';
     var searchVal = '';
     var _basePickerAiRows = [];
+    function updateBasePickerLayoutMode() {
+      if (!wrap) return;
+      var wNow = wrap.offsetWidth || parseInt(wrap.style.width || '0', 10) || 0;
+      wrap.classList.toggle('wide-grid', wNow >= 860);
+    }
 
     function renderList() {
       var base = getAssetsBase();
@@ -957,6 +962,7 @@
       }).join('');
       var listEl = wrap.querySelector('.assets-base-list');
       if (listEl) listEl.innerHTML = rows || '<div class="assets-base-empty">База пуста. Вставь данные в ИИ-импорт или «+ в базу»</div>';
+      updateBasePickerLayoutMode();
     }
 
     function renderBasePickerAiPreview(rows) {
@@ -998,6 +1004,7 @@
       '</div>' +
       '<div class="assets-base-picker-resize" title="Потяни — изменить размер"></div>';
     document.body.appendChild(wrap);
+    updateBasePickerLayoutMode();
 
     window.__renderAssetsBasePicker = renderList;
     window.__basePickerParse = function() {
@@ -1073,6 +1080,7 @@
         var h = Math.max(300, startH + ev.clientY - startY);
         wrap.style.width = w + 'px';
         wrap.style.height = h + 'px';
+        updateBasePickerLayoutMode();
       }
       function up() { document.removeEventListener('mousemove', move); document.removeEventListener('mouseup', up); }
       document.addEventListener('mousemove', move);
