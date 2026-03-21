@@ -89,6 +89,64 @@
     }
     return dateStr;
   }
+  function getTodayISO() {
+    var d = new Date();
+    return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate());
+  }
+  function formatBadgeDateShort(dateStr) {
+    if (!dateStr) return '';
+    var s = String(dateStr).trim();
+    var m = s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (m) return m[3] + '.' + m[2];
+    var dt = new Date(s);
+    if (!isFinite(dt.getTime())) return '';
+    return pad2(dt.getDate()) + '.' + pad2(dt.getMonth() + 1);
+  }
+  function normalizeStatusId(id) {
+    var sid = String(id || '').trim();
+    return STATUS_LEGACY[sid] || sid;
+  }
+  function getStatusDateMap(project) {
+    if (!project.statusDates || typeof project.statusDates !== 'object') project.statusDates = {};
+    return project.statusDates;
+  }
+  function getTouchDateMap(project) {
+    if (!project.touchDates || typeof project.touchDates !== 'object') project.touchDates = {};
+    return project.touchDates;
+  }
+  function getStatusSetDate(project, statusId) {
+    var map = getStatusDateMap(project);
+    return map[statusId] || '';
+  }
+  function getTouchSetDate(project, touchId) {
+    var map = getTouchDateMap(project);
+    return map[touchId] || '';
+  }
+  function ensureStatusDates(project, ids) {
+    var list = Array.isArray(ids) ? ids : [];
+    var map = getStatusDateMap(project);
+    var today = getTodayISO();
+    list.forEach(function(id) {
+      var sid = normalizeStatusId(id);
+      if (!map[sid]) map[sid] = today;
+    });
+    Object.keys(map).forEach(function(k) {
+      if (list.indexOf(k) < 0) delete map[k];
+    });
+  }
+  function ensureTouchDates(project, ids) {
+    var list = Array.isArray(ids) ? ids : [];
+    var map = getTouchDateMap(project);
+    var today = getTodayISO();
+    list.forEach(function(id) {
+      var tid = String(id || '').trim();
+      if (!tid) return;
+      if (!map[tid]) map[tid] = today;
+    });
+    Object.keys(map).forEach(function(k) {
+      if (list.indexOf(k) < 0) delete map[k];
+    });
+  }
 
   function formatSumForDisplay(val) {
     var s = String(val || '').replace(/\s/g, '').replace(/[^\d.]/g, '');
@@ -365,13 +423,17 @@
       var rawMain = getMinPrice(p);
       var mainPrice = rawMain ? formatSumForDisplay(rawMain) : '—';
       var statusBadges = (p.status || []).map(function(sId) {
-        var id = STATUS_LEGACY[sId] || sId;
+        var id = normalizeStatusId(sId);
         var s = STATUS_OPTIONS.find(function(o) { return o.id === id; });
-        return s ? '<span class="goal-status-badge goal-status-toggle" style="background:' + s.color + '22;border-color:' + s.color + ';color:' + s.color + '">' + esc(s.label) + ' <span class="goal-badge-rm" onclick="event.stopPropagation();window.__goalsRemoveStatus&&window.__goalsRemoveStatus(\'' + esc(p.id) + '\',\'' + esc(s.id) + '\')" title="Удалить">×</span></span>' : '';
+        var dt = formatBadgeDateShort(getStatusSetDate(p, id));
+        var dtHtml = dt ? '<span class="goal-badge-date">' + esc(dt) + '</span>' : '';
+        return s ? '<span class="goal-status-badge goal-status-toggle" style="background:' + s.color + '22;border-color:' + s.color + ';color:' + s.color + '">' + esc(s.label) + dtHtml + ' <span class="goal-badge-rm" onclick="event.stopPropagation();window.__goalsRemoveStatus&&window.__goalsRemoveStatus(\'' + esc(p.id) + '\',\'' + esc(s.id) + '\')" title="Удалить">×</span></span>' : '';
       }).filter(Boolean).join('');
       var touchBadges = (p.touchMarkers || []).map(function(tId) {
         var t = TOUCH_OPTIONS.find(function(o) { return o.id === tId; });
-        return t ? '<span class="goal-touch-badge goal-status-toggle">' + esc(t.label) + ' <span class="goal-badge-rm" onclick="event.stopPropagation();window.__goalsRemoveTouch&&window.__goalsRemoveTouch(\'' + esc(p.id) + '\',\'' + esc(t.id) + '\')" title="Удалить">×</span></span>' : '';
+        var dt = formatBadgeDateShort(getTouchSetDate(p, tId));
+        var dtHtml = dt ? '<span class="goal-badge-date">' + esc(dt) + '</span>' : '';
+        return t ? '<span class="goal-touch-badge goal-status-toggle">' + esc(t.label) + dtHtml + ' <span class="goal-badge-rm" onclick="event.stopPropagation();window.__goalsRemoveTouch&&window.__goalsRemoveTouch(\'' + esc(p.id) + '\',\'' + esc(t.id) + '\')" title="Удалить">×</span></span>' : '';
       }).filter(Boolean).join('');
       var customTags = (p.tags || []).map(function(t, i) {
         return '<span class="goal-custom-tag">' + esc(t) + ' <span class="goal-custom-tag-rm" onclick="event.stopPropagation();window.__goalsRemoveTag&&window.__goalsRemoveTag(\'' + esc(p.id) + '\',' + i + ')" title="Удалить">×</span></span>';
@@ -475,13 +537,15 @@
       var rawSum = (blockType === 'sold' && salePrice) ? salePrice : kpPrice;
       var sum = rawSum ? formatSumForDisplay(rawSum) : rawSum;
       var badges = (showBadges && (p.status || []).length) ? (p.status || []).map(function(sId) {
-        var id = STATUS_LEGACY[sId] || sId;
+        var id = normalizeStatusId(sId);
         var s = STATUS_OPTIONS.find(function(o) { return o.id === id; });
-        return s ? '<button type="button" class="goal-status-badge goal-status-toggle" style="background:' + s.color + '22;border-color:' + s.color + ';color:' + s.color + '" title="Убрать: ' + esc(s.label) + '" onclick="event.stopPropagation();window.__goalsRemoveStatus&&window.__goalsRemoveStatus(\'' + esc(p.id) + '\',\'' + esc(s.id) + '\')">' + esc(s.label) + '</button>' : '';
+        var dt = formatBadgeDateShort(getStatusSetDate(p, id));
+        return s ? '<button type="button" class="goal-status-badge goal-status-toggle" style="background:' + s.color + '22;border-color:' + s.color + ';color:' + s.color + '" title="Убрать: ' + esc(s.label) + '" onclick="event.stopPropagation();window.__goalsRemoveStatus&&window.__goalsRemoveStatus(\'' + esc(p.id) + '\',\'' + esc(s.id) + '\')">' + esc(s.label) + (dt ? '<span class="goal-badge-date">' + esc(dt) + '</span>' : '') + '</button>' : '';
       }).filter(Boolean).join('') : '';
       var touchBadges = (showBadges && (p.touchMarkers || []).length) ? (p.touchMarkers || []).map(function(tId) {
         var t = TOUCH_OPTIONS.find(function(o) { return o.id === tId; });
-        return t ? '<button type="button" class="goal-touch-badge goal-status-toggle" title="Убрать: ' + esc(t.label) + '" onclick="event.stopPropagation();window.__goalsRemoveTouch&&window.__goalsRemoveTouch(\'' + esc(p.id) + '\',\'' + esc(t.id) + '\')">' + esc(t.label) + '</button>' : '';
+        var dt = formatBadgeDateShort(getTouchSetDate(p, tId));
+        return t ? '<button type="button" class="goal-touch-badge goal-status-toggle" title="Убрать: ' + esc(t.label) + '" onclick="event.stopPropagation();window.__goalsRemoveTouch&&window.__goalsRemoveTouch(\'' + esc(p.id) + '\',\'' + esc(t.id) + '\')">' + esc(t.label) + (dt ? '<span class="goal-badge-date">' + esc(dt) + '</span>' : '') + '</button>' : '';
       }).filter(Boolean).join('') : '';
       var customTags = (p.tags || []).map(function(t, i) {
         return '<span class="goal-custom-tag">' + esc(t) + ' <span class="goal-custom-tag-rm" onclick="event.stopPropagation();window.__goalsRemoveTag&&window.__goalsRemoveTag(\'' + esc(p.id) + '\',' + i + ')" title="Удалить">×</span></span>';
@@ -1012,7 +1076,10 @@
     var p = (data.projects || []).find(function(x) { return x.id === projectId; });
     if (!p) return;
     if (!p.status) p.status = [];
-    p.status = p.status.filter(function(id) { return id !== statusId; });
+    var sid = normalizeStatusId(statusId);
+    p.status = p.status.filter(function(id) { return normalizeStatusId(id) !== sid; });
+    var statusDates = getStatusDateMap(p);
+    delete statusDates[sid];
     saveData(data);
     render();
   }
@@ -1023,6 +1090,8 @@
     if (!p) return;
     if (!p.touchMarkers) p.touchMarkers = [];
     p.touchMarkers = p.touchMarkers.filter(function(id) { return id !== touchId; });
+    var touchDates = getTouchDateMap(p);
+    delete touchDates[touchId];
     saveData(data);
     render();
   }
@@ -1032,7 +1101,11 @@
     var p = (data.projects || []).find(function(x) { return x.id === projectId; });
     if (!p) return;
     if (!p.status) p.status = [];
-    if (p.status.indexOf(statusId) < 0) p.status.push(statusId);
+    var sid = normalizeStatusId(statusId);
+    var has = (p.status || []).some(function(id) { return normalizeStatusId(id) === sid; });
+    if (!has) p.status.push(sid);
+    var statusDates = getStatusDateMap(p);
+    statusDates[sid] = getTodayISO();
     saveData(data);
     render();
   }
@@ -1043,6 +1116,8 @@
     if (!p) return;
     if (!p.touchMarkers) p.touchMarkers = [];
     if (p.touchMarkers.indexOf(touchId) < 0) p.touchMarkers.push(touchId);
+    var touchDates = getTouchDateMap(p);
+    touchDates[touchId] = getTodayISO();
     saveData(data);
     render();
   }
@@ -1054,7 +1129,7 @@
     var existing = document.getElementById('goalStatusPicker');
     if (existing) existing.remove();
     var statusHtml = STATUS_OPTIONS.map(function(s) {
-      var has = (p.status || []).indexOf(s.id) >= 0;
+      var has = (p.status || []).some(function(id) { return normalizeStatusId(id) === s.id; });
       return has ? '' : '<button type="button" class="goal-picker-opt" data-type="status" data-id="' + esc(s.id) + '" style="background:' + s.color + '22;border-color:' + s.color + ';color:' + s.color + '">' + esc(s.label) + '</button>';
     }).filter(Boolean).join('');
     var touchHtml = TOUCH_OPTIONS.map(function(t) {
@@ -1276,7 +1351,7 @@
     modal.id = 'goalEditModal';
     modal.className = 'goal-modal-overlay';
     var statusChecks = STATUS_OPTIONS.map(function(s) {
-      var checked = (p.status || []).indexOf(s.id) >= 0 ? ' checked' : '';
+      var checked = (p.status || []).some(function(id) { return normalizeStatusId(id) === s.id; }) ? ' checked' : '';
       return '<label class="goal-check"><input type="checkbox" data-status="' + s.id + '"' + checked + '><span>' + esc(s.label) + '</span></label>';
     }).join('');
     var touchChecks = TOUCH_OPTIONS.map(function(t) {
@@ -1354,6 +1429,8 @@
       var touchMarkers = [];
       modal.querySelectorAll('input[data-touch]:checked').forEach(function(cb) { touchMarkers.push(cb.getAttribute('data-touch')); });
       p.touchMarkers = touchMarkers;
+      ensureStatusDates(p, p.status);
+      ensureTouchDates(p, p.touchMarkers);
       p.tags = editTags;
       var data = loadData();
       saveData(data);
@@ -1387,6 +1464,9 @@
     copy.soldFromId = undefined;
     copy.status = copy.status ? copy.status.slice() : [];
     if (copy.status.indexOf('kp') < 0) copy.status.unshift('kp');
+    copy.statusDates = Object.assign({}, copy.statusDates || {});
+    if (!copy.statusDates.kp) copy.statusDates.kp = getTodayISO();
+    copy.touchDates = Object.assign({}, copy.touchDates || {});
     copy.tags = (copy.tags || []).slice();
     if (copy.tags.indexOf('new') < 0) copy.tags.unshift('new');
     data.projects = data.projects.filter(function(x) { return x.id !== projectId; });
@@ -1546,6 +1626,11 @@
       modal.querySelectorAll('input[data-status]:checked').forEach(function(cb) { status.push(cb.getAttribute('data-status')); });
       var touchMarkers = [];
       modal.querySelectorAll('input[data-touch]:checked').forEach(function(cb) { touchMarkers.push(cb.getAttribute('data-touch')); });
+      var statusDates = {};
+      var touchDates = {};
+      var todayTagDate = getTodayISO();
+      status.forEach(function(id) { statusDates[normalizeStatusId(id)] = todayTagDate; });
+      touchMarkers.forEach(function(id) { touchDates[id] = todayTagDate; });
       var project = {
         id: generateId(),
         name: name,
@@ -1556,7 +1641,9 @@
         mainPrice: mainPrice,
         priceOptions: prices.slice(0, 4),
         status: status,
+        statusDates: statusDates,
         touchMarkers: touchMarkers,
+        touchDates: touchDates,
         tags: newTags.slice(),
         note: (document.getElementById('goalInpNote') || {}).value || '',
         stage: 'weekly'
@@ -1653,6 +1740,7 @@
     if (targetStage === 'sold') {
       project.saleAmount = detectedPrice || '';
       project.status = ['paid'];
+      project.statusDates = { paid: getTodayISO() };
     }
     if (client.folderId) project.crmClientId = client.folderId;
     return project;
@@ -1680,6 +1768,8 @@
       if (targetStage === 'sold') {
         existing.saleAmount = existing.saleAmount || existing.mainPrice || '';
         existing.status = ['paid'];
+        existing.statusDates = Object.assign({}, existing.statusDates || {});
+        existing.statusDates.paid = getTodayISO();
       }
       saveData(data);
       render();
