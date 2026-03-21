@@ -18,7 +18,43 @@
     { id: 'not_reading', label: 'Не читает', color: '#ff6b35' },
     { id: 'drain', label: 'Слив', color: '#ff4444' }
   ];
-  const PROJECT_EMOJIS = ['📦', '🏠', '🚗', '👔', '🛒', '🏢', '📱', '💼', '⭐', '🔥', '💰', '📋'];
+  const PROJECT_EMOJIS = [
+    '📦','🏠','🏢','🏗️','🧱','🪵','🪟','🚗','🛻','🏍️','🚕','🔧','⚡','🛠️','🧰','🔩',
+    '🛋️','🛏️','🚪','🪑','🧴','💄','💇','💅','🏋️','⚽','🎓','📚','👨‍🏫','💻','🖥️','📱',
+    '📸','🎥','🎨','🖌️','🧾','💰','💼','🏦','🛒','🍔','☕','🧁','🛍️','👕','👟','💎',
+    '🐶','🐱','🌿','🌸','🌳','🏥','🦷','💊','🚚','📦','🧳','⭐','🔥','📋','📈','🎯'
+  ];
+  const PROJECT_EMOJI_RULES = [
+    { emoji: '🏠', re: /(недвиж|риелт|квартир|ипотек|новострой|дом|коттедж|жк|аренд)/i },
+    { emoji: '🏗️', re: /(строй|ремонт|отделк|монтаж|фасад|проектир|дизайн интерьер)/i },
+    { emoji: '🧱', re: /(кирпич|блок|газоблок|пеноблок|цемент|бетон|стяжк)/i },
+    { emoji: '🪵', re: /(пиломат|доска|брус|бревно|фанер|osb|мдф)/i },
+    { emoji: '🪟', re: /(окн|остеклен|пвх|балкон|двер)/i },
+    { emoji: '⚡', re: /(электрик|электромонтаж|электро)/i },
+    { emoji: '🚗', re: /(авто|машин|сто|шиномонтаж|детейлинг|запчаст)/i },
+    { emoji: '🛻', re: /(грузоперевоз|доставк|логист|курьер)/i },
+    { emoji: '🛋️', re: /(мебел|диван|кроват|шкаф|кухн|прихож|матрас)/i },
+    { emoji: '💇', re: /(парикмах|барбер|салон красот|стрижк)/i },
+    { emoji: '💄', re: /(космет|бров|ресниц|визаж|макияж)/i },
+    { emoji: '🏋️', re: /(фитнес|тренер|зал|йога|пилатес)/i },
+    { emoji: '🎓', re: /(репетитор|обучен|курс|школ|универс|подготовк|егэ|огэ)/i },
+    { emoji: '💻', re: /(сайт|лендинг|разработк|програм|it|seo|таргет|маркетинг|дизайн)/i },
+    { emoji: '📱', re: /(смм|instagram|телеграм|vk|вконтакте|контент|мессенджер)/i },
+    { emoji: '📸', re: /(фото|фотограф|съемк|видеограф|видео|рилс)/i },
+    { emoji: '🧾', re: /(бухгалтер|налог|отчет|документ|юрист|договор)/i },
+    { emoji: '💰', re: /(финанс|кредит|инвест|займ|страхов)/i },
+    { emoji: '🏦', re: /(банк|ип|ооо|бизнес|франшиз)/i },
+    { emoji: '🛒', re: /(магазин|товар|маркетплейс|wildberries|ozon|продаж)/i },
+    { emoji: '🍔', re: /(еда|доставк еды|ресторан|кафе|пицц|суши|бургер)/i },
+    { emoji: '☕', re: /(кофе|кофейн|чай|кондитер|пекарн)/i },
+    { emoji: '👕', re: /(одежд|обув|бренд|fashion|шоурум)/i },
+    { emoji: '💎', re: /(ювелир|украшен|золот|серебр|бриллиант)/i },
+    { emoji: '🐶', re: /(зоомаг|ветеринар|груминг|животн|собак|кошк)/i },
+    { emoji: '🌿', re: /(сад|ландшафт|растен|цвет|теплиц|газон)/i },
+    { emoji: '🏥', re: /(медицин|клиник|врач|массаж|стомат|психолог)/i },
+    { emoji: '🦷', re: /(стомат|брекет|имплант|зуб)/i },
+    { emoji: '💊', re: /(аптек|лекарств|бады)/i }
+  ];
   const TOUCH_OPTIONS = [
     { id: 'sms_sent', label: 'SMS отправлено' },
     { id: 'sms_no_reply', label: 'SMS без ответа' },
@@ -196,6 +232,29 @@
     s = s.replace(/^\s*(архив|archive)\s*[:\-–—]?\s*/i, '');
     return s.trim();
   }
+  function pickProjectEmojiByMeaning(name, category, company, note) {
+    var src = [name, category, company, note].map(function(x) { return String(x || '').toLowerCase().replace(/ё/g, 'е'); }).join(' ');
+    src = src.replace(/\s+/g, ' ').trim();
+    if (!src) return '📦';
+    for (var i = 0; i < PROJECT_EMOJI_RULES.length; i++) {
+      if (PROJECT_EMOJI_RULES[i].re.test(src)) return PROJECT_EMOJI_RULES[i].emoji;
+    }
+    return '📦';
+  }
+  function autoTuneProjectEmojis(projects) {
+    var changed = false;
+    (projects || []).forEach(function(p) {
+      if (!p || typeof p !== 'object') return;
+      var current = String(p.emoji || '').trim();
+      if (current && current !== '📦') return;
+      var guessed = pickProjectEmojiByMeaning(p.name || '', p.category || '', p.company || '', p.note || '');
+      if (guessed && guessed !== current) {
+        p.emoji = guessed;
+        changed = true;
+      }
+    });
+    return changed;
+  }
   function parseSmartInput(inputEl) {
     if (!inputEl) return;
     var raw = (inputEl.value || '').trim();
@@ -232,7 +291,7 @@
       var project = {
         id: generateId(),
         name: name,
-        emoji: '📦',
+        emoji: pickProjectEmojiByMeaning(name, '', '', ''),
         folderLink: '',
         date: todayStr,
         weekIndex: weekIndex,
@@ -346,7 +405,7 @@
             var pr = {
               id: generateId(),
               name: String(it.name || '').trim() || 'Проект',
-              emoji: '📦',
+              emoji: pickProjectEmojiByMeaning(it.name || '', '', '', ''),
               folderLink: '',
               date: todayStr,
               weekIndex: it.weekIndex || weekIndex,
@@ -627,6 +686,7 @@
   function render() {
     var data = loadData();
     var projects = (data.projects || []).filter(function(p){ return p && typeof p === 'object'; });
+    if (autoTuneProjectEmojis(projects)) saveData(data);
     var now = new Date();
     var y = now.getFullYear(), m = now.getMonth();
     var week1 = [], week2 = [], week3 = [], week4 = [];
@@ -1586,12 +1646,26 @@
       modal.classList.add('goal-overlay-transparent');
     }
     modal.onclick = function(e) { if (e.target === modal) modal.remove(); };
+    var nameInput = document.getElementById('goalInpName');
+    var emojiManualPick = false;
+    function syncAutoEmojiFromName() {
+      if (emojiManualPick) return;
+      var nm = (nameInput && nameInput.value ? nameInput.value : '').trim();
+      var autoEmoji = pickProjectEmojiByMeaning(nm, '', '', '');
+      var hit = modal.querySelector('.goal-emoji-btn[data-emoji="' + autoEmoji.replace(/"/g, '&quot;') + '"]');
+      if (!hit) return;
+      modal.querySelectorAll('.goal-emoji-btn').forEach(function(b) { b.classList.remove('goal-emoji-sel'); });
+      hit.classList.add('goal-emoji-sel');
+    }
     modal.querySelectorAll('.goal-emoji-btn').forEach(function(btn) {
       btn.onclick = function() {
+        emojiManualPick = true;
         modal.querySelectorAll('.goal-emoji-btn').forEach(function(b) { b.classList.remove('goal-emoji-sel'); });
         btn.classList.add('goal-emoji-sel');
       };
     });
+    if (nameInput) nameInput.addEventListener('input', syncAutoEmojiFromName);
+    syncAutoEmojiFromName();
     var newTags = [];
     function refreshNewTagsList() {
       var list = document.getElementById('goalNewTagsList');
@@ -1613,7 +1687,7 @@
       var name = ((document.getElementById('goalInpName') || {}).value || '').trim();
       if (!name) { alert('Введите название'); return; }
       var selEmoji = modal.querySelector('.goal-emoji-btn.goal-emoji-sel');
-      var emoji = selEmoji ? selEmoji.getAttribute('data-emoji') : '📦';
+      var emoji = selEmoji ? selEmoji.getAttribute('data-emoji') : pickProjectEmojiByMeaning(name, '', '', '');
       var folderLink = ((document.getElementById('goalInpFolder') || {}).value || '').trim();
       var dateVal = ((document.getElementById('goalInpDate') || {}).value || '').trim() || todayStr;
       var prices = [1,2,3,4].map(function(i) { return ((document.getElementById('goalInpPrice' + i) || {}).value || '').trim(); }).filter(Boolean);
@@ -1720,7 +1794,7 @@
     var project = {
       id: generateId(),
       name: name,
-      emoji: '📦',
+      emoji: pickProjectEmojiByMeaning(name, client.category || '', client.company || '', ''),
       folderLink: folderLink,
       date: dateStr,
       weekIndex: weekNum,
