@@ -1002,6 +1002,8 @@ function tasksBoardOpenProject(projectId) {
 function openTasksTab() {
   if (tasksMode) {
     renderTasksBoardIntoMainContent(document.getElementById('mainContent'));
+    if (typeof crmTaskEnsureBlock === 'function') crmTaskEnsureBlock();
+    if (typeof crmTaskRender === 'function') crmTaskRender();
     updateTopRowButtons();
     return;
   }
@@ -1015,11 +1017,14 @@ function openTasksTab() {
   document.body.classList.remove('projects-mode', 'goals-mode', 'agency-mode', 'strategy-mode', 'assets-mode', 'ads-mode');
   document.body.classList.add('tasks-mode');
   document.body.classList.remove('projects-sidebar-hidden');
+  document.body.classList.remove('sidebar-hidden');
   hideChat();
   if (typeof closeTaskPanel === 'function') closeTaskPanel();
   stopProjectsSheetPullTimer();
   stopProjectsDayShiftTimer();
   renderTasksBoardIntoMainContent(document.getElementById('mainContent'));
+  if (typeof crmTaskEnsureBlock === 'function') crmTaskEnsureBlock();
+  if (typeof crmTaskRender === 'function') crmTaskRender();
   updateTopRowButtons();
 }
 function openAdsTab() {
