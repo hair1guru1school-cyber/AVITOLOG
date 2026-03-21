@@ -2945,7 +2945,29 @@ function callAPI(prompt, maxTokens) {
       throw e;
     });
   }
-  return doWithRetry(endpoint).catch(function(e) {
+  function withGlobalTimeout(promise, ms, message) {
+    var timeout = Math.max(15000, Number(ms) || 90000);
+    return new Promise(function(resolve, reject) {
+      var done = false;
+      var t = setTimeout(function() {
+        if (done) return;
+        done = true;
+        reject(new Error(message || ('Таймаут генерации (' + Math.round(timeout / 1000) + ' сек). Попробуй ещё раз.')));
+      }, timeout);
+      Promise.resolve(promise).then(function(v) {
+        if (done) return;
+        done = true;
+        clearTimeout(t);
+        resolve(v);
+      }).catch(function(err) {
+        if (done) return;
+        done = true;
+        clearTimeout(t);
+        reject(err);
+      });
+    });
+  }
+  var corePromise = doWithRetry(endpoint).catch(function(e) {
     var m = String(e && e.message ? e.message : e);
     var isCors = m.indexOf('Failed to fetch') >= 0 || m.indexOf('CORS') >= 0 || m.indexOf('NetworkError') >= 0 || m.indexOf('Load failed') >= 0 || m.indexOf('ERR_FAILED') >= 0 || m.indexOf('blocked') >= 0 || m.indexOf('net::') >= 0 || m.indexOf('Network request failed') >= 0;
     var isProxyError = m.indexOf('HTTP 405') >= 0 || m.indexOf('HTTP 403') >= 0 || m.indexOf('HTTP 502') >= 0 || m.indexOf('HTTP 503') >= 0 || m.indexOf('abor') >= 0;
@@ -2976,6 +2998,7 @@ function callAPI(prompt, maxTokens) {
     }
     throw e;
   });
+  return withGlobalTimeout(corePromise, 95000, 'Генерация зависла по таймауту (95 сек). Проверь сеть/прокси и нажми «Повторить».');
 }
 
 // ── FIX JSON ──
