@@ -1,0 +1,16 @@
+---
+description: Run update script only on explicit request
+alwaysApply: true
+---
+
+# Deploy On Explicit Request
+
+- If the user explicitly asks to update/deploy/publish the site, run:
+  - `C:\Users\shink\Desktop\AVITOLOG-CLAUDE\update_site.bat`
+- Do **not** run deploy automatically after every code change.
+- Treat phrases like `обнови сайт`, `запусти update_site.bat`, `задеплой` as explicit deploy requests.
+- After running, report key results briefly:
+  - pull status
+  - commit hash/message (if created)
+  - push status
+- If the script waits for keypress (`Press any key to close...`), terminate that waiting process safely.

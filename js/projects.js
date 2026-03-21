@@ -2708,6 +2708,14 @@ function renderProjectsScreen(opts) {
     var rest = visibleProjects.filter(function(p){ return !matchFilter(p); });
     visibleProjects = first.concat(rest);
   }
+  // Keep the right task drawer visible in Projects mode:
+  // if nothing selected (or selected project disappeared from current zone), pin first visible project.
+  if (visibleProjects.length) {
+    var stillVisible = _taskPanelProjectId && visibleProjects.some(function(p){ return p.id === _taskPanelProjectId; });
+    if (!stillVisible) _taskPanelProjectId = visibleProjects[0].id;
+  } else {
+    _taskPanelProjectId = null;
+  }
   allProjects = visibleProjects.slice();
   var activeProjects = (data.projects || []).filter(function(p){ return (p.zone || 'active') === 'active'; });
   var activeCount = activeProjects.length;
@@ -2919,7 +2927,7 @@ function renderProjectsScreen(opts) {
   }
   bindProjectsCalendarInteractions();
   bindProjectsClickSparks();
-  if (_taskPanelProjectId && typeof renderTaskPanel === 'function') renderTaskPanel();
+  if (typeof renderTaskPanel === 'function') renderTaskPanel();
   } finally {
     _renderProjectsInProgress = false;
   }

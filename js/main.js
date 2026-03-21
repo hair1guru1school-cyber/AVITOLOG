@@ -288,7 +288,8 @@ function crmTaskRender() {
   var moneyEl = document.getElementById('crmTaskMoneyList');
   if (!summary || !doneEl || !activeEl || !overdueEl || !moneyEl) return;
 
-  var list = crmTaskLoadUnified().filter(function(t) { return !!t.priority; });
+  // Show real counters from the full unified task stream (CRM + Projects tab).
+  var list = crmTaskLoadUnified();
   var nowTs = Date.now();
   var completedToday = list.filter(function(t){ return t.status === 'completed' && (!t.completedAt || crmTaskIsToday(t.completedAt)); });
   var active = list.filter(function(t){ return t.status !== 'completed' && !crmTaskIsOverdue(t, nowTs); });
