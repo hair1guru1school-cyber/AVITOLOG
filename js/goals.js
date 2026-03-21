@@ -723,8 +723,8 @@
       '</div>' +
       '<div class="goals-header">' +
         '<span class="goals-header-path">' +
+          '<button type="button" class="goal-work-eq-btn" onclick="window.__goalsScrollToWork && window.__goalsScrollToWork()" title="Перейти к блоку В РАБОТЕ">🎯 В РАБОТЕ</button>' +
           '<button type="button" class="goal-add-btn" onclick="window.__goalsOpenModalForBtn && window.__goalsOpenModalForBtn(event)">+ ПРОЕКТ</button>' +
-          '<button type="button" class="goal-work-eq-btn" onclick="window.__goalsScrollToWork && window.__goalsScrollToWork()" title="Перейти к блоку В РАБОТЕ">= 🔥</button>' +
           '<span class="goals-path-sep">/</span>' +
           '<span class="goal-counter goal-counter-total" title="Всего проектов">ВСЕГО ПРОЕКТОВ <b>' + totalCount + '</b></span>' +
           '<span class="goals-path-sep">/</span>' +
