@@ -503,11 +503,14 @@
       var emoji = p.emoji || '📦';
       var folderIcon = (p.folderLink) ? '<a href="' + esc(p.folderLink) + '" target="_blank" rel="noopener" class="goal-folder-link" title="Открыть папку" onclick="event.stopPropagation()">💿</a>' : '';
       var archBtn = (blockType === 'archive') ? '<button type="button" class="goal-restore-btn" onclick="event.stopPropagation();window.__goalsSetStage&&window.__goalsSetStage(\'' + esc(p.id) + '\',\'weekly\')" title="Вернуть в неделю">&#8634;</button>' : '';
-      var toWorkBtn = (blockType === 'sold') ? '<button type="button" class="goal-to-work-btn goal-to-active-btn" onclick="event.stopPropagation();window.__goalsCreateActiveFromSold&&window.__goalsCreateActiveFromSold(\'' + esc(p.id) + '\')" title="Создать активный проект в ПРОЕКТАХ">🅰️</button>' : '';
+      var toActiveBtn = (blockType === 'sold') ? '<button type="button" class="goal-to-work-btn goal-to-active-btn" onclick="event.stopPropagation();window.__goalsCreateActiveFromSold&&window.__goalsCreateActiveFromSold(\'' + esc(p.id) + '\')" title="Создать активный проект в ПРОЕКТАХ">🅰️</button>' : '';
+      var workEditBtn = (blockType === 'work') ? '<button type="button" class="goal-more-btn" onclick="event.stopPropagation();window.__goalsSelectRow&&window.__goalsSelectRow(\'' + esc(p.id) + '\')" title="Редактировать">⋯</button>' : '';
+      var workToSoldBtn = (blockType === 'work') ? '<button type="button" class="goal-move-btn" onclick="event.stopPropagation();window.__goalsSetStage&&window.__goalsSetStage(\'' + esc(p.id) + '\',\'sold\')" title="В продано">✓</button>' : '';
+      var workToArchiveBtn = (blockType === 'work') ? '<button type="button" class="goal-move-btn" onclick="event.stopPropagation();window.__goalsSetStage&&window.__goalsSetStage(\'' + esc(p.id) + '\',\'archive\')" title="В архив">🗂</button>' : '';
       var delBtn = (blockType === 'sold' || blockType === 'work') ? '<button type="button" class="goal-del-btn" onclick="event.stopPropagation();window.__goalsDeletePermanent&&window.__goalsDeletePermanent(\'' + esc(p.id) + '\')" title="Удалить">×</button>' : '';
       var dispName = String(p.name || '').replace(/\s+/g, ' ').trim();
-      var actionsHtml = (archBtn || '') + (toWorkBtn || '') + (delBtn || '');
-      var actionsInName = actionsHtml;
+      var actionsHtml = (archBtn || '') + (toActiveBtn || '') + (workEditBtn || '') + (workToSoldBtn || '') + (workToArchiveBtn || '') + (delBtn || '');
+      var actionsInName = (blockType === 'sold') ? actionsHtml : '';
       var nameCell = '<span class="goal-name-cell" onclick="event.stopPropagation();window.__goalsEditNameCell&&window.__goalsEditNameCell(this)">' +
         '<button type="button" class="goal-emoji-btn" onclick="event.stopPropagation();window.__goalsShowEmojiPicker&&window.__goalsShowEmojiPicker(this,\'' + esc(p.id) + '\')" title="Изменить иконку">' + emoji + '</button>' +
         (folderIcon ? folderIcon + ' ' : '') +
@@ -556,35 +559,6 @@
     }
     return 0;
   }
-  function renderWorkingTagsTable(projects) {
-    var rows = (projects || []).map(function(p) {
-      var statusBadges = (p.status || []).map(function(sId) {
-        var id = STATUS_LEGACY[sId] || sId;
-        var s = STATUS_OPTIONS.find(function(o) { return o.id === id; });
-        return s ? '<span class="goal-status-badge goal-status-toggle" style="background:' + s.color + '22;border-color:' + s.color + ';color:' + s.color + '">' + esc(s.label) + ' <span class="goal-badge-rm" onclick="event.stopPropagation();window.__goalsRemoveStatus&&window.__goalsRemoveStatus(\'' + esc(p.id) + '\',\'' + esc(s.id) + '\')" title="Удалить">×</span></span>' : '';
-      }).filter(Boolean).join('');
-      var touchBadges = (p.touchMarkers || []).map(function(tId) {
-        var t = TOUCH_OPTIONS.find(function(o) { return o.id === tId; });
-        return t ? '<span class="goal-touch-badge goal-status-toggle">' + esc(t.label) + ' <span class="goal-badge-rm" onclick="event.stopPropagation();window.__goalsRemoveTouch&&window.__goalsRemoveTouch(\'' + esc(p.id) + '\',\'' + esc(t.id) + '\')" title="Удалить">×</span></span>' : '';
-      }).filter(Boolean).join('');
-      var customTags = (p.tags || []).map(function(t, i) {
-        return '<span class="goal-custom-tag">' + esc(t) + ' <span class="goal-custom-tag-rm" onclick="event.stopPropagation();window.__goalsRemoveTag&&window.__goalsRemoveTag(\'' + esc(p.id) + '\',' + i + ')" title="Удалить">×</span></span>';
-      }).join('');
-      var addBtn = '<button type="button" class="goal-add-status-btn" onclick="event.stopPropagation();window.__goalsShowStatusPicker&&window.__goalsShowStatusPicker(\'' + esc(p.id) + '\',this)" title="Добавить тег">+</button>';
-      var tagsCell = (statusBadges ? '<span class="goal-badges">' + statusBadges + '</span>' : '') +
-        (touchBadges ? '<span class="goal-touches">' + touchBadges + '</span>' : '') +
-        customTags + addBtn;
-      return '<div class="goal-work-tags-row">' +
-        '<div class="goal-work-tags-name">' + esc(String(p.emoji || '📦')) + ' ' + esc(String(p.name || 'Проект')) + '</div>' +
-        '<div class="goal-work-tags-tags">' + (tagsCell || '<span class="goal-work-tags-empty">—</span>') + '</div>' +
-      '</div>';
-    }).join('');
-    return '<div class="goal-work-tags-table">' +
-      '<div class="goal-work-tags-title">Теги клиентов в блоке В РАБОТЕ</div>' +
-      (rows || '<div class="goal-empty">Нет строк</div>') +
-    '</div>';
-  }
-
   function render() {
     var data = loadData();
     var projects = (data.projects || []).filter(function(p){ return p && typeof p === 'object'; });
@@ -757,8 +731,7 @@
             '🔥',
             workingVisible,
             '<div class="goal-total">ОБЩИЙ ПОТЕНЦИАЛ: ' + esc(String(fmtNum(totalPotential))) + ' ₽</div>' +
-            (hasMoreWorking ? '<button type="button" class="goal-work-more-btn" onclick="window.__goalsToggleWorkRows&&window.__goalsToggleWorkRows()">' + (workExpanded ? 'Свернуть до 20' : ('Показать еще (' + (working.length - WORK_LIMIT) + ')')) + '</button>' : '') +
-            renderWorkingTagsTable(working),
+            (hasMoreWorking ? '<button type="button" class="goal-work-more-btn" onclick="window.__goalsToggleWorkRows&&window.__goalsToggleWorkRows()">' + (workExpanded ? 'Свернуть до 20' : ('Показать еще (' + (working.length - WORK_LIMIT) + ')')) + '</button>' : ''),
             true,
             true,
             'work'

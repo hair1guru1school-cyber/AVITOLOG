@@ -1801,8 +1801,27 @@ body.goals-client-dragging .goal-block-sold{transition:all .18s ease}
 .goal-block-sold .goal-row-sold:nth-child(even){background:transparent}
 .goal-block-sold .goal-row-alt:hover,
 .goal-block-sold .goal-row-sold:hover{background:rgba(0,217,126,0.04)!important}
-.goal-block-work .goal-row-alt:nth-child(odd){background:rgba(255,255,255,0.02)}
-.goal-block-work .goal-row-alt:nth-child(even){background:rgba(255,255,255,0.01)}
+.goal-block-work .goal-row-alt{
+display:grid;
+grid-template-columns:32px minmax(180px,1fr) minmax(90px,100px) minmax(280px,1.5fr);
+gap:4px 6px;
+align-items:center;
+padding:3px 8px;
+min-height:28px;
+border-radius:0;
+border:none;
+border-bottom:1px solid rgba(255,255,255,0.05);
+font-size:13px;
+line-height:1.15;
+min-width:720px
+}
+.goal-block-work .goal-row-alt .goal-name{font-size:inherit;font-weight:700;line-height:1.35}
+.goal-block-work .goal-row-alt .goal-name-inline{font-size:16px!important;font-weight:800}
+.goal-block-work .goal-row-alt .goal-name-cell{gap:4px}
+.goal-block-work .goal-row-alt .goal-price-wrap{justify-content:flex-start}
+.goal-block-work .goal-row-alt .goal-row-actions{justify-content:flex-end;gap:4px}
+.goal-block-work .goal-row-alt:nth-child(odd){background:transparent}
+.goal-block-work .goal-row-alt:nth-child(even){background:transparent}
 .goal-row-alt.goal-row-alt-no-sum{grid-template-columns:32px 1fr 44px}
 .goal-row-actions{display:flex;align-items:center;justify-content:flex-end;gap:4px;flex-wrap:nowrap;white-space:nowrap}
 .goal-restore-btn{width:22px;height:22px;border:1px solid rgba(53,208,255,0.15);background:transparent;color:#7cf5ff;border-radius:50%;cursor:pointer;font-size:11px;display:flex;align-items:center;justify-content:center;padding:0;transition:all .1s}
