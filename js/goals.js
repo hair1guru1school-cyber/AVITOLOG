@@ -111,6 +111,33 @@
   }
 
   function pad2(n) { var s = String(n); return s.length >= 2 ? s : '0' + s; }
+  function normalizeStage(stage) {
+    var s = String(stage || '').trim().toLowerCase();
+    if (s === 'work') s = 'working';
+    if (s === 'inwork') s = 'working';
+    if (s === 'in_work') s = 'working';
+    if (s === 'in-progress') s = 'working';
+    if (s === 'in_progress') s = 'working';
+    if (s === 'week') s = 'weekly';
+    if (s === 'weeks') s = 'weekly';
+    if (s === 'sale') s = 'sold';
+    return (s === 'weekly' || s === 'working' || s === 'sold' || s === 'archive') ? s : 'weekly';
+  }
+  function detectStageHint(text) {
+    var s = String(text || '').toLowerCase();
+    if (!s) return '';
+    if (/(в\s*работе|в\s*работу|in\s*work|in\s*progress)/i.test(s)) return 'working';
+    if (/(продан|продано|в\s*продано|sold)/i.test(s)) return 'sold';
+    if (/(архив|archive)/i.test(s)) return 'archive';
+    return '';
+  }
+  function stripStageHint(text) {
+    var s = String(text || '').trim();
+    s = s.replace(/^\s*(в\s*работе|в\s*работу|in\s*work|in\s*progress)\s*[:\-–—]?\s*/i, '');
+    s = s.replace(/^\s*(продан[оы]?|sold)\s*[:\-–—]?\s*/i, '');
+    s = s.replace(/^\s*(архив|archive)\s*[:\-–—]?\s*/i, '');
+    return s.trim();
+  }
   function parseSmartInput(inputEl) {
     if (!inputEl) return;
     var raw = (inputEl.value || '').trim();
@@ -124,17 +151,19 @@
     var data = loadData();
     data.projects = data.projects || [];
     var added = 0;
+    var forcedStage = normalizeStage(detectStageHint(raw) || 'weekly');
     lines.forEach(function(line) {
-      var name = line;
+      var lineStage = normalizeStage(detectStageHint(line) || forcedStage || 'weekly');
+      var name = stripStageHint(line);
       var priceStr = '';
-      var m = line.match(/(.+?)\s*[-–—:,]\s*(\d[\d\s]*)$/);
+      var m = name.match(/(.+?)\s*[-–—:,]\s*(\d[\d\s]*)$/);
       if (m) {
         name = m[1].trim();
         priceStr = String(m[2]).replace(/\s/g, '');
       } else {
-        var tail = line.match(/\s+(\d[\d\s]*)$/);
+        var tail = name.match(/\s+(\d[\d\s]*)$/);
         if (tail) {
-          name = line.slice(0, line.length - tail[0].length).trim();
+          name = name.slice(0, name.length - tail[0].length).trim();
           priceStr = String(tail[1]).replace(/\s/g, '');
         }
       }
@@ -155,7 +184,7 @@
         touchMarkers: [],
         tags: [],
         note: '',
-        stage: 'weekly'
+        stage: lineStage
       };
       data.projects.unshift(project);
       added++;
@@ -251,8 +280,11 @@
         var fix = typeof window.fixJSON === 'function' ? window.fixJSON : function(x) { return x; };
         var j = JSON.parse(fix(cleaned));
         var changed = false;
+        var forcedStage = normalizeStage(detectStageHint(raw) || '');
         if (Array.isArray(j.projectsToAdd) && j.projectsToAdd.length) {
           j.projectsToAdd.forEach(function(it) {
+            var itemStage = normalizeStage(it.stage || '');
+            var finalStage = forcedStage || itemStage || 'weekly';
             var pr = {
               id: generateId(),
               name: String(it.name || '').trim() || 'Проект',
@@ -266,7 +298,7 @@
               touchMarkers: [],
               tags: [],
               note: '',
-              stage: it.stage || 'weekly'
+              stage: finalStage
             };
             data.projects.unshift(pr);
             changed = true;
@@ -508,6 +540,50 @@
       '<button type="button" class="goal-block-add" onclick="window.__goalsOpenModalForBtn && window.__goalsOpenModalForBtn(event)">+ Добавить проект</button>' +
       '</div>';
   }
+  function getGoalRecencyTs(p) {
+    if (!p) return 0;
+    if (p.id) {
+      var m = String(p.id).match(/(\d{10,})/);
+      if (m && m[1]) {
+        var n = parseInt(m[1], 10);
+        if (isFinite(n) && n > 0) return n;
+      }
+    }
+    var ds = String(p.date || '').trim();
+    if (ds) {
+      var t = new Date(ds).getTime();
+      if (isFinite(t) && t > 0) return t;
+    }
+    return 0;
+  }
+  function renderWorkingTagsTable(projects) {
+    var rows = (projects || []).map(function(p) {
+      var statusBadges = (p.status || []).map(function(sId) {
+        var id = STATUS_LEGACY[sId] || sId;
+        var s = STATUS_OPTIONS.find(function(o) { return o.id === id; });
+        return s ? '<span class="goal-status-badge goal-status-toggle" style="background:' + s.color + '22;border-color:' + s.color + ';color:' + s.color + '">' + esc(s.label) + ' <span class="goal-badge-rm" onclick="event.stopPropagation();window.__goalsRemoveStatus&&window.__goalsRemoveStatus(\'' + esc(p.id) + '\',\'' + esc(s.id) + '\')" title="Удалить">×</span></span>' : '';
+      }).filter(Boolean).join('');
+      var touchBadges = (p.touchMarkers || []).map(function(tId) {
+        var t = TOUCH_OPTIONS.find(function(o) { return o.id === tId; });
+        return t ? '<span class="goal-touch-badge goal-status-toggle">' + esc(t.label) + ' <span class="goal-badge-rm" onclick="event.stopPropagation();window.__goalsRemoveTouch&&window.__goalsRemoveTouch(\'' + esc(p.id) + '\',\'' + esc(t.id) + '\')" title="Удалить">×</span></span>' : '';
+      }).filter(Boolean).join('');
+      var customTags = (p.tags || []).map(function(t, i) {
+        return '<span class="goal-custom-tag">' + esc(t) + ' <span class="goal-custom-tag-rm" onclick="event.stopPropagation();window.__goalsRemoveTag&&window.__goalsRemoveTag(\'' + esc(p.id) + '\',' + i + ')" title="Удалить">×</span></span>';
+      }).join('');
+      var addBtn = '<button type="button" class="goal-add-status-btn" onclick="event.stopPropagation();window.__goalsShowStatusPicker&&window.__goalsShowStatusPicker(\'' + esc(p.id) + '\',this)" title="Добавить тег">+</button>';
+      var tagsCell = (statusBadges ? '<span class="goal-badges">' + statusBadges + '</span>' : '') +
+        (touchBadges ? '<span class="goal-touches">' + touchBadges + '</span>' : '') +
+        customTags + addBtn;
+      return '<div class="goal-work-tags-row">' +
+        '<div class="goal-work-tags-name">' + esc(String(p.emoji || '📦')) + ' ' + esc(String(p.name || 'Проект')) + '</div>' +
+        '<div class="goal-work-tags-tags">' + (tagsCell || '<span class="goal-work-tags-empty">—</span>') + '</div>' +
+      '</div>';
+    }).join('');
+    return '<div class="goal-work-tags-table">' +
+      '<div class="goal-work-tags-title">Теги клиентов в блоке В РАБОТЕ</div>' +
+      (rows || '<div class="goal-empty">Нет строк</div>') +
+    '</div>';
+  }
 
   function render() {
     var data = loadData();
@@ -541,6 +617,12 @@
       else if (wi === 3) week3.push(p);
       else week4.push(p);
     });
+
+    working.sort(function(a, b) { return getGoalRecencyTs(b) - getGoalRecencyTs(a); });
+    var workExpanded = !!data.workExpanded;
+    var WORK_LIMIT = 20;
+    var workingVisible = workExpanded ? working.slice() : working.slice(0, WORK_LIMIT);
+    var hasMoreWorking = working.length > WORK_LIMIT;
 
     var totalRevenue = sold.reduce(function(sum, p) {
       var val = p.saleAmount || p.mainPrice || (p.priceOptions && p.priceOptions[0]);
@@ -642,6 +724,7 @@
       '<div class="goals-header">' +
         '<span class="goals-header-path">' +
           '<button type="button" class="goal-add-btn" onclick="window.__goalsOpenModalForBtn && window.__goalsOpenModalForBtn(event)">+ ПРОЕКТ</button>' +
+          '<button type="button" class="goal-work-eq-btn" onclick="window.__goalsScrollToWork && window.__goalsScrollToWork()" title="Перейти к блоку В РАБОТЕ">= 🔥</button>' +
           '<span class="goals-path-sep">/</span>' +
           '<span class="goal-counter goal-counter-total" title="Всего проектов">ВСЕГО ПРОЕКТОВ <b>' + totalCount + '</b></span>' +
           '<span class="goals-path-sep">/</span>' +
@@ -668,7 +751,18 @@
         '</div>' +
       '</div>' +
       '<div class="goals-work-wrap">' +
-          renderSection('В РАБОТЕ', '🔥', working, '<div class="goal-total">ОБЩИЙ ПОТЕНЦИАЛ: ' + esc(String(fmtNum(totalPotential))) + ' ₽</div>', true, true, 'work') +
+          '<div id="goalsWorkBlockAnchor"></div>' +
+          renderSection(
+            'В РАБОТЕ',
+            '🔥',
+            workingVisible,
+            '<div class="goal-total">ОБЩИЙ ПОТЕНЦИАЛ: ' + esc(String(fmtNum(totalPotential))) + ' ₽</div>' +
+            (hasMoreWorking ? '<button type="button" class="goal-work-more-btn" onclick="window.__goalsToggleWorkRows&&window.__goalsToggleWorkRows()">' + (workExpanded ? 'Свернуть до 20' : ('Показать еще (' + (working.length - WORK_LIMIT) + ')')) + '</button>' : '') +
+            renderWorkingTagsTable(working),
+            true,
+            true,
+            'work'
+          ) +
       '</div>' +
       '<div class="goals-archive-wrap">' +
         renderSection('АРХИВ', '📁', archive, '', true, false, 'archive') +
@@ -798,6 +892,16 @@
     window.__goalsParseSmartInput = parseSmartInput;
     window.__goalsProcessSmartInputWithAI = processSmartInputWithAI;
     window.__goalsProcessMiniPrompt = processMiniPrompt;
+    window.__goalsToggleWorkRows = function() {
+      var d = loadData();
+      d.workExpanded = !d.workExpanded;
+      saveData(d);
+      render();
+    };
+    window.__goalsScrollToWork = function() {
+      var el = document.getElementById('goalsWorkBlockAnchor');
+      if (el && el.scrollIntoView) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    };
     window.__goalsRemoveMetric = function(metricId) {
       var d = loadData();
       d.customMetrics = (d.customMetrics || []).filter(function(m) { return m.id !== metricId; });

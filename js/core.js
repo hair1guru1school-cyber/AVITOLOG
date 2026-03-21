@@ -928,7 +928,7 @@ function renderTasksBoardIntoMainContent(mc) {
     var titleClickOpen = canEditProject
       ? (' onclick="event.stopPropagation();tasksBoardOpenTaskPanel(\'' + esc(col.id) + '\')" title="Открыть панель задач проекта"')
       : '';
-    return '<div class="tasks-col" draggable="true" ondragstart="tasksBoardDragStart(event,\'' + esc(col.id) + '\')" ondragover="tasksBoardDragOver(event)" ondragenter="tasksBoardDragEnter(event)" ondragleave="tasksBoardDragLeave(event)" ondrop="tasksBoardDrop(event,\'' + esc(col.id) + '\')" ondragend="tasksBoardDragEnd(event)"' + styleAttr + '>' +
+    return '<div class="tasks-col" data-project-id="' + esc(col.id) + '" draggable="true" ondragstart="tasksBoardDragStart(event,\'' + esc(col.id) + '\')" ondragover="tasksBoardDragOver(event)" ondragenter="tasksBoardDragEnter(event)" ondragleave="tasksBoardDragLeave(event)" ondrop="tasksBoardDrop(event,\'' + esc(col.id) + '\')" ondragend="tasksBoardDragEnd(event)"' + styleAttr + '>' +
       '<div class="tasks-col-head"><div class="tasks-col-title"><button type="button" class="tasks-col-title-hit"' + titleClickOpen + '><span class="tasks-col-title-name"><span class="tasks-col-drag" title="Перетащить проект">⋮⋮</span>' + iconHtml + '<b>' + esc(col.title) + '</b></span></button><span class="tasks-col-tools">' + addTagBtn + colorBtn + openBtn + '</span></div>' +
       tagsHeadHtml +
       '<div class="tasks-col-kpis"><span class="tasks-col-kpi">Всего: ' + col.tasks.length + '</span><span class="tasks-col-kpi">Done: ' + done + '</span><span class="tasks-col-kpi">Overdue: ' + overdue + '</span></div></div>' +
@@ -954,6 +954,26 @@ function renderTasksBoardIntoMainContent(mc) {
     '<div class="tasks-board-strip"><span class="tasks-board-chip">Проектов: ' + visible.length + '</span><span class="tasks-board-chip">Задач: ' + total + '</span><span class="tasks-board-chip">Done: ' + doneCount + '</span><span class="tasks-board-chip">Overdue: ' + overdueCount + '</span></div>' +
     '<div class="tasks-board-wrap"><div class="tasks-board-columns" style="--tasks-col-width:' + colWidth + 'px">' + colsHtml + '</div></div>' +
   '</div>';
+  if (typeof tasksBoardEnsureTaskPanelActive === 'function') tasksBoardEnsureTaskPanelActive();
+}
+function tasksBoardEnsureTaskPanelActive() {
+  if (typeof tasksMode !== 'undefined' && !tasksMode) return;
+  if (typeof openTaskPanel !== 'function') return;
+  var mc = document.getElementById('mainContent');
+  if (!mc) return;
+  var cols = Array.prototype.slice.call(mc.querySelectorAll('.tasks-col[data-project-id]'));
+  var projectCols = cols.filter(function(col) {
+    var id = String(col.getAttribute('data-project-id') || '');
+    return id && id.indexOf('crm_') !== 0 && id !== '__other' && id !== 'crm_no_project';
+  });
+  if (!projectCols.length) {
+    if (typeof closeTaskPanel === 'function') closeTaskPanel();
+    return;
+  }
+  var currentId = (typeof window._taskPanelProjectId !== 'undefined' && window._taskPanelProjectId) ? String(window._taskPanelProjectId) : '';
+  var currentVisible = currentId && projectCols.some(function(col) { return String(col.getAttribute('data-project-id') || '') === currentId; });
+  var targetId = currentVisible ? currentId : String(projectCols[0].getAttribute('data-project-id') || '');
+  if (targetId) openTaskPanel(targetId);
 }
 function tasksBoardSetDone(taskId, source) {
   if (!taskId) return;
