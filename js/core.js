@@ -925,8 +925,11 @@ function renderTasksBoardIntoMainContent(mc) {
       ? '<img src="' + esc(col.customIcon) + '" alt="" class="tasks-col-title-icon-img">'
       : '<span class="tasks-col-title-emoji">' + esc(col.emoji || '📁') + '</span>';
     var styleAttr = col.projectColor ? (' style="--tasks-col-accent:' + esc(col.projectColor) + '"') : '';
+    var titleClickOpen = canEditProject
+      ? (' onclick="event.stopPropagation();tasksBoardOpenTaskPanel(\'' + esc(col.id) + '\')" title="Открыть панель задач проекта"')
+      : '';
     return '<div class="tasks-col" draggable="true" ondragstart="tasksBoardDragStart(event,\'' + esc(col.id) + '\')" ondragover="tasksBoardDragOver(event)" ondragenter="tasksBoardDragEnter(event)" ondragleave="tasksBoardDragLeave(event)" ondrop="tasksBoardDrop(event,\'' + esc(col.id) + '\')" ondragend="tasksBoardDragEnd(event)"' + styleAttr + '>' +
-      '<div class="tasks-col-head"><div class="tasks-col-title"><span class="tasks-col-title-name"><span class="tasks-col-drag" title="Перетащить проект">⋮⋮</span>' + iconHtml + '<b>' + esc(col.title) + '</b></span><span class="tasks-col-tools">' + addTagBtn + colorBtn + openBtn + '</span></div>' +
+      '<div class="tasks-col-head"><div class="tasks-col-title"><button type="button" class="tasks-col-title-hit"' + titleClickOpen + '><span class="tasks-col-title-name"><span class="tasks-col-drag" title="Перетащить проект">⋮⋮</span>' + iconHtml + '<b>' + esc(col.title) + '</b></span></button><span class="tasks-col-tools">' + addTagBtn + colorBtn + openBtn + '</span></div>' +
       tagsHeadHtml +
       '<div class="tasks-col-kpis"><span class="tasks-col-kpi">Всего: ' + col.tasks.length + '</span><span class="tasks-col-kpi">Done: ' + done + '</span><span class="tasks-col-kpi">Overdue: ' + overdue + '</span></div></div>' +
       '<div class="tasks-col-list">' + (taskHtml || '<div class="tasks-col-empty">Нет задач</div>') + '</div>' +
@@ -998,6 +1001,11 @@ function tasksBoardOpenProject(projectId) {
   if (typeof selectProjectRow === 'function') {
     setTimeout(function(){ selectProjectRow(projectId); }, 40);
   }
+}
+function tasksBoardOpenTaskPanel(projectId) {
+  if (!projectId) return;
+  if (String(projectId).indexOf('crm_') === 0 || projectId === '__other' || projectId === 'crm_no_project') return;
+  if (typeof openTaskPanel === 'function') openTaskPanel(projectId);
 }
 function openTasksTab() {
   if (tasksMode) {

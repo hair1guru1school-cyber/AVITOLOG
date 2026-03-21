@@ -814,6 +814,8 @@ body.ads-mode .content{padding:16px 20px;background:linear-gradient(180deg,rgba(
 .tasks-col-head{padding:10px 10px 8px;border-bottom:1px solid rgba(124,245,255,0.15);display:flex;flex-direction:column;gap:6px}
 .tasks-col-title{font-weight:800;font-size:15px;color:#d7eeff;line-height:1.2;display:flex;align-items:flex-start;justify-content:space-between;gap:8px;flex-wrap:wrap}
 .tasks-col-title-name{display:inline-flex;align-items:center;gap:6px;min-width:0;flex:1 1 130px}
+.tasks-col-title-hit{display:inline-flex;align-items:center;gap:6px;min-width:0;flex:1 1 130px;padding:0;border:none;background:transparent;color:inherit;font:inherit;text-align:left;cursor:pointer}
+.tasks-col-title-hit:hover b{color:#7cf5ff}
 .tasks-col-title-name b{display:block;font-size:15px;font-weight:900;color:#d7eeff;line-height:1.15;white-space:normal;overflow:visible}
 .tasks-col-drag{font-size:12px;opacity:.65;cursor:grab;user-select:none}
 .tasks-col-title-emoji{font-size:18px;line-height:1;flex-shrink:0}
@@ -1191,7 +1193,7 @@ body.projects-mode.projects-sidebar-hidden .sidebar{min-width:0;width:0;padding:
 .task-ind-type,.task-ind-date{opacity:0.85}
 .task-ind-empty{opacity:0.4}
 .task-panel-wrap{display:none;position:fixed;top:0;right:0;bottom:0;z-index:900;pointer-events:none}
-body.projects-mode .task-panel-wrap{display:block;pointer-events:auto}
+body.projects-mode .task-panel-wrap,body.tasks-mode .task-panel-wrap{display:block;pointer-events:auto}
 .task-panel-drawer{width:280px;min-width:220px;max-width:480px;height:100%;background:linear-gradient(180deg,#0f1419 0%,#0a0d12 100%);border-left:1px solid var(--border);box-shadow:-8px 0 24px rgba(0,0,0,0.5),0 0 20px rgba(0,217,126,0.08);display:flex;flex-direction:column;transform:translateX(100%);transition:transform 0.25s ease;pointer-events:auto}
 .task-panel-drawer.open{transform:translateX(0)}
 .task-panel-drawer.resize-mode{transition:none}
