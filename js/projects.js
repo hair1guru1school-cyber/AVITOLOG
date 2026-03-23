@@ -1880,13 +1880,14 @@ var TASK_TEMPLATES = {
   brief: { name:'Бриф', emoji:'&#128203;', tasks:['Получить бриф от клиента','Проверить заполнение брифа','Зафиксировать данные проекта','Подготовить ОС по брифу'] },
   os_brief: { name:'ОС по брифу', emoji:'&#128196;', tasks:['Анализ ответов клиента','Подготовить рекомендации','Подготовить стратегию запуска','Отправить ОС клиенту'] },
   texts: { name:'Тексты', emoji:'📝', tasks:['Создать макет(ы) текста','Создать сообщение для клиента','Утвердить тексты'] },
+  ad_post: { name:'Объявление', emoji:'📜', tasks:['Выложить объявление (1)'] },
   infographic: { name:'Инфографика', emoji:'&#128202;', tasks:['Подготовить ТЗ инфографики','Создать инфографику','Проверить визуал','Согласовать инфографику'] },
   autoload: { name:'Автозагрузка', emoji:'&#128230;', tasks:['Подготовить Excel автозагрузки','Проверить структуру объявлений','Загрузить объявления','Проверить публикацию'] },
   design_ext: { name:'Дизайн аккаунта · Расширенный', emoji:'&#128396;', tasks:['Подготовить дизайн аккаунта','Добавить информацию в аккаунт','Добавить логотип аккаунта','Проверить оформление'] },
   design_max: { name:'Дизайн аккаунта · Максимальный', emoji:'&#128396;', tasks:['Подготовить дизайн аккаунта','Добавить информацию в аккаунт','Добавить логотип аккаунта','Проверить оформление'] },
   portfolio: { name:'Портфолио', emoji:'&#11088;', tasks:['Подготовить кейс','Подготовить скриншоты','Оформить портфолио','Добавить портфолио в аккаунт'] }
 };
-var TASK_TEMPLATE_ORDER = ['mini_prep','brief','os_brief','texts','infographic','autoload','design_ext','design_max','portfolio'];
+var TASK_TEMPLATE_ORDER = ['mini_prep','brief','os_brief','texts','ad_post','infographic','autoload','design_ext','design_max','portfolio'];
 function getOrderedTaskTemplateKeys() {
   var keys = Object.keys(TASK_TEMPLATES || {});
   var out = [];
@@ -1909,11 +1910,24 @@ function addDaysToIso(isoStr, days) {
 function applyTaskTemplate(projectId, templateKey) {
   var tpl = TASK_TEMPLATES[templateKey];
   if (!tpl || !projectId) return;
+  if (templateKey === 'ad_post') {
+    showAdPostCountPicker(projectId, templateKey);
+    return;
+  }
   if (tpl.pickCount) {
     showTextsCountPicker(projectId, templateKey);
     return;
   }
   applyTaskTemplateInner(projectId, templateKey, tpl.tasks || [], tpl.emoji || '&#128221;');
+}
+function showAdPostCountPicker(projectId, templateKey) {
+  var cur = prompt('Сколько объявлений выложить? (число)', '1');
+  if (cur === null) return;
+  var n = parseInt(String(cur || '').replace(/[^\d]/g, ''), 10);
+  if (!isFinite(n) || n <= 0) n = 1;
+  if (n > 999) n = 999;
+  var title = 'Выложить объявление (' + n + ')';
+  applyTaskTemplateInner(projectId, templateKey, [title], '📜');
 }
 function closeTaskTemplateMiniMenu() {
   var m = document.getElementById('taskTemplateMiniMenu');
@@ -2126,6 +2140,71 @@ function applyTaskTemplateInner(projectId, templateKey, taskTitles, emoji) {
     addTask(task);
   });
   if (typeof renderTaskPanel === 'function') renderTaskPanel();
+  if (typeof rerenderProjectsPreserveScroll === 'function') rerenderProjectsPreserveScroll();
+}
+function pickTaskEmojiByTitle(title) {
+  var s = String(title || '').toLowerCase();
+  if (/(объяв|авито|выклад|публикац)/i.test(s)) return '📜';
+  if (/(текст|сообщени|копирайт)/i.test(s)) return '📝';
+  if (/(инфограф|дизайн|баннер|креатив|визуал)/i.test(s)) return '🎨';
+  if (/(бриф|ос по брифу|ос\b|рекомендац|стратег)/i.test(s)) return '📋';
+  if (/(автозагруз|excel|таблиц)/i.test(s)) return '📤';
+  if (/(портфоли|кейс)/i.test(s)) return '⭐';
+  if (/(звон|созвон|касани|sms|смс)/i.test(s)) return '📞';
+  if (/(договор|счет|оплат|кп)/i.test(s)) return '💼';
+  if (/(провер|контрол|соглас)/i.test(s)) return '✅';
+  return '📌';
+}
+function handleTaskPanelAI(projectId) {
+  if (!projectId) return;
+  var raw = prompt(
+    'ИИ-команда для задач\n\nПримеры:\n- Создать задачу Проверить оффер\n- Создать задачу 📞 Позвонить клиенту\n- Добавь объявление 5',
+    ''
+  );
+  if (raw === null) return;
+  var cmd = String(raw || '').trim();
+  if (!cmd) return;
+
+  var mCreate = cmd.match(/^\s*(создать|добавить)\s+задач[ауи]?\s*[:\-]?\s*(.+)$/i);
+  if (mCreate && mCreate[2]) {
+    var title = String(mCreate[2]).trim();
+    var emMatch = title.match(/^\s*([^\w\s]+)/);
+    var em = emMatch ? emMatch[1] : pickTaskEmojiByTitle(title);
+    addTask({
+      projectId: projectId,
+      title: title,
+      type: 'other',
+      status: 'new',
+      priority: 'normal',
+      dueDate: getTodayISOmsk(),
+      comment: '',
+      emoji: em
+    });
+    renderTaskPanel();
+    if (typeof rerenderProjectsPreserveScroll === 'function') rerenderProjectsPreserveScroll();
+    return;
+  }
+
+  if (/объяв/i.test(cmd)) {
+    var mNum = cmd.match(/(\d{1,3})/);
+    var n = mNum ? parseInt(mNum[1], 10) : 1;
+    if (!isFinite(n) || n <= 0) n = 1;
+    applyTaskTemplateInner(projectId, 'ad_post', ['Выложить объявление (' + n + ')'], '📜');
+    return;
+  }
+
+  var fallbackTitle = cmd.replace(/^\s*(создать|добавить)\s*/i, '').trim() || cmd;
+  addTask({
+    projectId: projectId,
+    title: fallbackTitle,
+    type: 'other',
+    status: 'new',
+    priority: 'normal',
+    dueDate: getTodayISOmsk(),
+    comment: '',
+    emoji: pickTaskEmojiByTitle(fallbackTitle)
+  });
+  renderTaskPanel();
   if (typeof rerenderProjectsPreserveScroll === 'function') rerenderProjectsPreserveScroll();
 }
 
@@ -2432,7 +2511,7 @@ function renderTaskPanel() {
       var lbl = (t.emoji ? (t.emoji + ' ') : '') + escAttr(t.name);
       tplBtns.push('<button type="button" class="task-template-btn" onclick="event.stopPropagation();openTaskTemplateMiniMenu(\'' + escAttr(pid) + '\',\'' + escAttr(k) + '\',this)" title="' + escAttr(t.name) + '">' + lbl + '</button>');
     });
-    templatesHtml = '<div class="task-panel-templates"><div class="task-panel-section-title">ШАБЛОНЫ ЗАДАЧ</div><div class="task-template-btns">' + tplBtns.join('') + '</div></div>';
+    templatesHtml = '<div class="task-panel-templates"><div class="task-panel-section-title">ЗАДАЧИ</div><div class="task-template-btns">' + tplBtns.join('') + '</div></div>';
   }
 
   var activeTasks = tasks.filter(function(t){ return (t.status || 'new') !== 'done'; });
@@ -2524,7 +2603,7 @@ function renderTaskPanel() {
   var fontSize = getTaskPanelFontSize();
   var fontBtns = '<span class="task-panel-font-btns"><button type="button" class="task-panel-font-btn' + (fontSize==='s'?' active':'') + '" onclick="setTaskPanelFontSize(\'s\')" title="Мелкий шрифт">A−</button><button type="button" class="task-panel-font-btn' + (fontSize==='m'?' active':'') + '" onclick="setTaskPanelFontSize(\'m\')" title="Обычный">A</button><button type="button" class="task-panel-font-btn' + (fontSize==='l'?' active':'') + '" onclick="setTaskPanelFontSize(\'l\')" title="Крупный">A+</button></span>';
 
-  var aiRowHtml = pid ? '<div class="task-panel-ai-row" title="ИИ записывает задачи, дедлайны и фиксирует историю в проекте">&#129302; ИИ — задачи, дедлайны, история</div>' : '';
+  var aiRowHtml = pid ? '<button type="button" class="task-panel-ai-row" onclick="handleTaskPanelAI(\'' + escAttr(pid) + '\')" title="Быстрый ИИ-ввод задач: Создать задачу ...">&#129302; ИИ — задачи, дедлайны, история</button>' : '';
 wrap.innerHTML = '<div id="taskPanelDrawer" class="task-panel-drawer' + (pid ? ' open' : '') + '" style="width:' + getTaskPanelWidth() + 'px"><div class="task-panel-resizer" onmousedown="startTaskPanelResize(event)" title="Тяните — ширину и шрифт"></div><div class="task-panel-header"><span class="task-panel-title">' + (project ? escAttr(String(project.emoji || '') + ' ' + (project.title || 'Без названия')) : 'Задачи') + '</span><div style="display:flex;align-items:center;gap:8px">' + fontBtns + '<button type="button" class="task-panel-close" onclick="closeTaskPanel()" title="Закрыть">×</button></div></div>' + aiRowHtml + '<div class="task-panel-content">' + (cellSectionHtml || '') + (linkDayHtml || '') + templatesHtml + listSectionHtml + '<button type="button" class="task-panel-add-btn" onclick="showAddTaskForm(\'' + (pid || '') + '\')">+ ЗАДАЧА</button></div></div>';
 
   setTaskPanelFontSize(fontSize);
