@@ -91,6 +91,47 @@
   function getPostCellKey(projectKey, day) {
     return projectKey + "_" + day;
   }
+  function normalizePostCellStatus(status) {
+    return String(status || "").trim() === "published" ? "published" : "";
+  }
+  function normalizePostCellData(raw) {
+    if (raw && typeof raw === "object" && !Array.isArray(raw)) {
+      return {
+        text: String(raw.text || ""),
+        status: normalizePostCellStatus(raw.status)
+      };
+    }
+    return {
+      text: String(raw || ""),
+      status: ""
+    };
+  }
+  function stringifyPostCellForSheet(cellData) {
+    var text = String((cellData && cellData.text) || "").trim();
+    if (text) return text;
+    return (cellData && cellData.status) === "published" ? "Опубликовано" : "";
+  }
+  function hasPostCellContent(cellData) {
+    var text = String((cellData && cellData.text) || "").trim();
+    return !!text || (cellData && cellData.status === "published");
+  }
+  function savePostCellData(postsState, key, cellData) {
+    var text = String((cellData && cellData.text) || "").trim();
+    var status = normalizePostCellStatus(cellData && cellData.status);
+    if (!text && !status) {
+      delete postsState.data[key];
+      return;
+    }
+    if (status && text) {
+      postsState.data[key] = { text: text, status: status };
+      return;
+    }
+    if (status) {
+      postsState.data[key] = { text: "", status: status };
+      return;
+    }
+    postsState.data[key] = text;
+  }
 
   function loadPostsPlan() {
     try {
@@ -339,13 +380,18 @@
       html += '<tr><td class="ads-td-label">' + row.label + "</td>";
       for (var day = 1; day <= days; day++) {
         var key = getPostCellKey(row.key, day);
-        var val = String(postsState.data[key] || "");
+        var cellData = normalizePostCellData(postsState.data[key]);
+        var val = cellData.text;
         var shortText = val.length > 10 ? (val.slice(0, 10) + "…") : val;
         var hasVal = !!val.trim();
+        var isPublished = cellData.status === "published";
+        var cellTitle = val || (isPublished ? "Опубликовано" : "Нажмите, чтобы добавить пост");
+        var cellLabel = hasVal ? shortText : (isPublished ? "💡" : "Пост");
+        var className = "ads-post-cell" + (hasVal ? " is-filled" : "") + (isPublished ? " is-published" : "");
         html +=
           '<td class="ads-post-td' + (day === todayDay ? " ads-day-today" : "") + '">' +
-            '<button type="button" class="ads-post-cell' + (hasVal ? " is-filled" : "") + '" data-row="' + row.key + '" data-day="' + day + '" title="' + escapeHtml(val || "Нажмите, чтобы добавить пост") + '">' +
-              escapeHtml(hasVal ? shortText : "Пост") +
+            '<button type="button" class="' + className + '" data-row="' + row.key + '" data-day="' + day + '" title="' + escapeHtml(cellTitle) + '">' +
+              escapeHtml(cellLabel) +
             "</button>" +
           "</td>";
       }
@@ -478,11 +524,20 @@
   function openPostCellEditor(anchorEl, postsState, row, day, onSaved) {
     closePostCellEditor();
     var key = getPostCellKey(row, day);
-    var currentVal = String(postsState.data[key] || "");
+    var currentCell = normalizePostCellData(postsState.data[key]);
+    var currentVal = currentCell.text;
+    var currentStatus = currentCell.status;
     var panel = document.createElement("div");
     panel.className = "ads-post-editor-pop";
     panel.innerHTML =
       '<div class="ads-post-editor-title">День ' + day + " · " + (row === "learn" ? "Обучение" : "Агентство") + "</div>" +
+      '<div class="ads-post-editor-status-row">' +
+        '<label class="ads-post-editor-status-label" for="adsPostStatusSelect">Статус</label>' +
+        '<select class="ads-post-editor-status" id="adsPostStatusSelect">' +
+          '<option value="">Черновик</option>' +
+          '<option value="published">Опубликовано</option>' +
+        "</select>" +
+      "</div>" +
       '<textarea class="ads-post-editor-text" placeholder="Впишите текст поста..."></textarea>' +
       '<div class="ads-post-editor-actions">' +
         '<button type="button" class="ads-post-editor-btn save">Сохранить</button>' +
@@ -491,6 +546,7 @@
       "</div>";
     document.body.appendChild(panel);
     var textarea = panel.querySelector(".ads-post-editor-text");
+    var statusSelect = panel.querySelector("#adsPostStatusSelect");
     var btnSave = panel.querySelector(".ads-post-editor-btn.save");
     var btnClear = panel.querySelector(".ads-post-editor-btn.clear");
     var btnCancel = panel.querySelectorAll(".ads-post-editor-btn")[2];
@@ -500,6 +556,7 @@
       textarea.selectionStart = textarea.value.length;
       textarea.selectionEnd = textarea.value.length;
     }
+    if (statusSelect) statusSelect.value = currentStatus;
     var rect = anchorEl.getBoundingClientRect();
     var top = rect.bottom + 8;
     var left = rect.left;
@@ -509,13 +566,15 @@
     panel.style.top = Math.round(top) + "px";
     panel.style.left = Math.round(left) + "px";
 
-    function doSave(nextValue) {
+    function doSave(nextValue, nextStatus) {
       var value = String(nextValue == null ? (textarea ? textarea.value : "") : nextValue).trim();
-      if (!value) delete postsState.data[key];
-      else postsState.data[key] = value;
+      var status = normalizePostCellStatus(nextStatus == null ? (statusSelect ? statusSelect.value : "") : nextStatus);
+      var nextCell = { text: value, status: status };
+      savePostCellData(postsState, key, nextCell);
       savePostsPlan(postsState);
+      var valueForSheet = stringifyPostCellForSheet(nextCell);
       setPostsSyncStatus("Сохраняю в Google Sheets...", false);
-      syncPostToGoogleSheets(row, day, value)
+      syncPostToGoogleSheets(row, day, valueForSheet)
         .then(function() {
           flushPendingPostsSyncQueue()
             .then(function(flushedCount) {
@@ -531,7 +590,7 @@
         })
         .catch(function(err) {
           var msg = err && err.message ? err.message : String(err || "unknown error");
-          var queued = enqueuePostSync(row, day, value);
+          var queued = enqueuePostSync(row, day, valueForSheet);
           setPostsSyncStatus("Drive оффлайн, сохранено локально. В очереди: " + queued + " (" + msg + ")", true);
         });
       closePostCellEditor();
@@ -549,7 +608,7 @@
     document.addEventListener("keydown", onEsc, true);
 
     btnSave.addEventListener("click", function() { doSave(); });
-    btnClear.addEventListener("click", function() { doSave(""); });
+    btnClear.addEventListener("click", function() { doSave("", ""); });
     btnCancel.addEventListener("click", closePostCellEditor);
 
     _adsPostEditorCleanup = function() {
