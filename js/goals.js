@@ -974,11 +974,18 @@
     window.__goalsOpenModal = openModal;
     window.__goalsOpenModalForWeek = function(ev, wn) {
       var btn = ev && (ev.currentTarget || ev.target);
-      openModal(btn, wn);
+      openModal(btn, wn, 'weekly');
     };
     window.__goalsOpenModalForBtn = function(ev) {
       var btn = ev && (ev.currentTarget || ev.target);
-      openModal(btn);
+      var stage = 'working';
+      var block = btn && btn.closest ? btn.closest('.goal-block') : null;
+      if (block) {
+        if (block.classList.contains('goal-block-sold')) stage = 'sold';
+        else if (block.classList.contains('goal-block-archive')) stage = 'archive';
+        else if (block.classList.contains('goal-block-work')) stage = 'working';
+      }
+      openModal(btn, null, stage);
     };
     window.__goalsSetStage = setStage;
     window.__goalsRemoveTag = removeTag;
@@ -1591,7 +1598,7 @@
     }, 10);
   }
 
-  function openModal(anchorEl, weekNum) {
+  function openModal(anchorEl, weekNum, forcedStage) {
     var existing = document.getElementById('goalModal');
     if (existing) existing.remove();
     var isPopover = !!(anchorEl && anchorEl.getBoundingClientRect);
@@ -1600,6 +1607,7 @@
     modal.className = 'goal-modal-overlay' + (isPopover ? ' goal-modal-popover' : '');
     var today = new Date();
     var todayStr = today.getFullYear() + '-' + pad2(today.getMonth() + 1) + '-' + pad2(today.getDate());
+    var modalStage = normalizeStage(forcedStage || 'weekly');
     var statusChecks = STATUS_OPTIONS.map(function(s) {
       return '<label class="goal-check"><input type="checkbox" data-status="' + s.id + '"><span>' + esc(s.label) + '</span></label>';
     }).join('');
@@ -1720,7 +1728,7 @@
         touchDates: touchDates,
         tags: newTags.slice(),
         note: (document.getElementById('goalInpNote') || {}).value || '',
-        stage: 'weekly'
+        stage: modalStage
       };
       var data = loadData();
       data.projects = data.projects || [];

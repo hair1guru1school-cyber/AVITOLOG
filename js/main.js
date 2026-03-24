@@ -112,8 +112,86 @@ function crmTaskTagsToInput(tags) {
   return crmTaskNormalizeTags(tags).map(function(t) { return (t.emoji || '🏷️') + ' ' + t.label; }).join(', ');
 }
 
+var EMPLOYEE_MODE_KEY = 'avitolog_employee_mode_v1';
+var EMPLOYEE_EMAIL_OVERRIDE_KEY = 'avitolog_employee_email_override';
+var KNOWN_EMPLOYEE_EMAILS_KEY = 'avitolog_known_employee_emails_v1';
+
+function employeeModeIsEnabled() {
+  try { return localStorage.getItem(EMPLOYEE_MODE_KEY) === '1'; } catch(e) { return false; }
+}
+function getCurrentDriveEmail() {
+  try { return String(localStorage.getItem('avitolog_drive_email') || '').trim().toLowerCase(); } catch(e) { return ''; }
+}
+function loadKnownEmployeeEmails() {
+  try {
+    var arr = JSON.parse(localStorage.getItem(KNOWN_EMPLOYEE_EMAILS_KEY) || '[]');
+    return Array.isArray(arr) ? arr.map(function(x) { return String(x || '').trim().toLowerCase(); }).filter(Boolean) : [];
+  } catch(e) { return []; }
+}
+function saveKnownEmployeeEmails(list) {
+  var normalized = (Array.isArray(list) ? list : [])
+    .map(function(x) { return String(x || '').trim().toLowerCase(); })
+    .filter(function(x, i, arr) { return x && arr.indexOf(x) === i; })
+    .slice(0, 20);
+  try { localStorage.setItem(KNOWN_EMPLOYEE_EMAILS_KEY, JSON.stringify(normalized)); } catch(e) {}
+}
+function addKnownEmployeeEmail(email) {
+  var em = String(email || '').trim().toLowerCase();
+  if (!em || em.indexOf('@') < 1) return;
+  var list = loadKnownEmployeeEmails();
+  if (list.indexOf(em) < 0) list.unshift(em);
+  saveKnownEmployeeEmails(list);
+}
+function getEmployeeOverrideEmail() {
+  try { return String(localStorage.getItem(EMPLOYEE_EMAIL_OVERRIDE_KEY) || '').trim().toLowerCase(); } catch(e) { return ''; }
+}
+function updateEmployeeModeButtonUi() {
+  var btn = document.getElementById('employeeModeBtn');
+  if (!btn) return;
+  var on = employeeModeIsEnabled();
+  var email = getEmployeeOverrideEmail() || getCurrentDriveEmail();
+  btn.classList.toggle('on', !!on);
+  if (on) {
+    var caption = email ? email.split('@')[0] : 'без email';
+    btn.textContent = '👤 Сотр: ' + caption;
+    btn.title = email
+      ? ('Режим сотрудника включен: ' + email + '. Нажмите, чтобы выйти.')
+      : 'Режим сотрудника включен. Нажмите, чтобы выйти.';
+  } else {
+    btn.textContent = '👤 Сотрудник';
+    btn.title = 'Режим сотрудника: смотреть и править систему как сотрудник (не Саша)';
+  }
+}
+function toggleEmployeeMode() {
+  var isOn = employeeModeIsEnabled();
+  if (isOn) {
+    if (!confirm('Выключить режим сотрудника и вернуться к обычному режиму?')) return;
+    try { localStorage.removeItem(EMPLOYEE_MODE_KEY); } catch(e1) {}
+    try { localStorage.removeItem(EMPLOYEE_EMAIL_OVERRIDE_KEY); } catch(e2) {}
+    location.reload();
+    return;
+  }
+  var known = loadKnownEmployeeEmails();
+  var currentEmail = getCurrentDriveEmail();
+  var defaultEmail = currentEmail || (known[0] || '');
+  var helper = known.length ? ('\n\nСохраненные сотрудники:\n' + known.join('\n')) : '';
+  var raw = prompt('Email сотрудника (Google):' + helper, defaultEmail);
+  if (raw === null) return;
+  var email = String(raw || '').trim().toLowerCase();
+  if (!email || email.indexOf('@') < 1) {
+    alert('Укажите корректный email сотрудника.');
+    return;
+  }
+  addKnownEmployeeEmail(email);
+  try { localStorage.setItem(EMPLOYEE_MODE_KEY, '1'); } catch(e3) {}
+  try { localStorage.setItem(EMPLOYEE_EMAIL_OVERRIDE_KEY, email); } catch(e4) {}
+  location.reload();
+}
+window.toggleEmployeeMode = toggleEmployeeMode;
+
 // ── CRM TASKS ──
-var CRM_TASKS_KEY = 'crm_tasks_v1';
+var CRM_TASKS_SHARED_KEY = 'crm_tasks_v1';
+var CRM_TASKS_KEY = (typeof window.AVITOLOG_KEY === 'function') ? window.AVITOLOG_KEY('crm_tasks_v1') : CRM_TASKS_SHARED_KEY;
 var _crmTaskFilter = 'all';
 
 function crmTaskNowIso() { return new Date().toISOString(); }
@@ -165,6 +243,11 @@ function crmTaskEsc(s) {
 function crmTaskLoad() {
   try {
     var arr = JSON.parse(localStorage.getItem(CRM_TASKS_KEY) || '[]');
+    if (Array.isArray(arr) && arr.length) return arr;
+    if (!employeeModeIsEnabled() && CRM_TASKS_KEY !== CRM_TASKS_SHARED_KEY) {
+      var legacyArr = JSON.parse(localStorage.getItem(CRM_TASKS_SHARED_KEY) || '[]');
+      if (Array.isArray(legacyArr)) return legacyArr;
+    }
     return Array.isArray(arr) ? arr : [];
   } catch(e) { return []; }
 }
@@ -1854,7 +1937,19 @@ function withImgUrl(html) {
 
 // ── CHAT ──
 function showChat() { document.getElementById('chatFloat').style.display = 'block'; }
-function hideChat() { document.getElementById('chatFloat').style.display = 'none'; document.getElementById('refreshBtn').style.display = 'none'; var bb=document.getElementById('backBtn'); if(bb)bb.style.display='none'; docReady = false; }
+function setDriveDocActionButtons(hasDoc, showRefreshBtn) {
+  var rb = document.getElementById('refreshBtn');
+  var pb = document.getElementById('downloadPdfBtn');
+  if (rb) rb.style.display = (hasDoc && showRefreshBtn !== false) ? 'inline-flex' : 'none';
+  if (pb) pb.style.display = hasDoc ? 'inline-flex' : 'none';
+}
+function hideChat() {
+  document.getElementById('chatFloat').style.display = 'none';
+  setDriveDocActionButtons(false, false);
+  var bb = document.getElementById('backBtn');
+  if (bb) bb.style.display = 'none';
+  docReady = false;
+}
 
 function sendChat() {
   var inp = document.getElementById('chatInp');
@@ -1873,7 +1968,7 @@ function sendChat() {
       renderDoc(json.html);
       // Показываем кнопку обновления если есть Doc в Drive
       if (lastDocId && _driveToken) {
-        document.getElementById('refreshBtn').style.display = 'inline-flex';
+        setDriveDocActionButtons(true, true);
         var bb = document.getElementById('backBtn'); if (bb) bb.style.display = 'inline-flex';
       }
     }
@@ -1936,6 +2031,69 @@ function dlDoc() {
   a.href = URL.createObjectURL(new Blob([buildWordHtml(docBody)], {type:'application/msword'}));
   a.download = name + '_analysis.doc';
   a.click();
+}
+
+async function downloadDrivePdf() {
+  if (!lastDocId || !_driveToken) {
+    alert('Сначала сгенерируй и сохрани документ в Drive.');
+    return;
+  }
+  var btn = document.getElementById('downloadPdfBtn');
+  var st = document.getElementById('crmSt');
+  var oldText = btn ? btn.textContent : '';
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = '📄 Скачиваю...';
+  }
+  if (st) {
+    st.className = 'crm-st';
+    st.textContent = 'Готовлю PDF из файла Google Drive...';
+  }
+  try {
+    var token = await getDriveToken();
+    var metaResp = await fetch('https://www.googleapis.com/drive/v3/files/' + encodeURIComponent(lastDocId) + '?fields=name', {
+      headers: {'Authorization': 'Bearer ' + token}
+    });
+    var meta = metaResp.ok ? await metaResp.json() : {};
+    var exportResp = await fetch('https://www.googleapis.com/drive/v3/files/' + encodeURIComponent(lastDocId) + '/export?mimeType=application/pdf', {
+      headers: {'Authorization': 'Bearer ' + token}
+    });
+    if (!exportResp.ok) {
+      if (exportResp.status === 401) {
+        _driveToken = null;
+        clearStoredDriveAuth();
+        updateDriveUI();
+      }
+      var errTxt = await exportResp.text().catch(function() { return ''; });
+      throw new Error('Экспорт PDF не удался: HTTP ' + exportResp.status + (errTxt ? (' · ' + errTxt.slice(0, 120)) : ''));
+    }
+    var blob = await exportResp.blob();
+    var baseName = String((meta && meta.name) || (currentData && currentData.company) || 'Документ').trim() || 'Документ';
+    var safeName = baseName.replace(/[\\/:*?"<>|]/g, '_').replace(/\s+/g, ' ').trim();
+    var fileName = (safeName || 'Документ') + '.pdf';
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = fileName;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(function() { URL.revokeObjectURL(url); }, 1500);
+    if (st) {
+      st.className = 'crm-st ok';
+      st.textContent = '✓ PDF скачан: ' + fileName;
+    }
+  } catch (e) {
+    if (st) {
+      st.className = 'crm-st err';
+      st.textContent = '✗ ' + (e && e.message ? e.message : String(e));
+    }
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = oldText || '📄 Скачать PDF';
+    }
+  }
 }
 
 // ── CRM ──
@@ -2040,6 +2198,7 @@ function applyOAuthHash(hash) {
     var normalizedEmail = String(email || '').toLowerCase();
     if (normalizedEmail) {
       try { localStorage.setItem('avitolog_drive_email', normalizedEmail); } catch(e) {}
+      addKnownEmployeeEmail(normalizedEmail);
     } else {
       try { localStorage.removeItem('avitolog_drive_email'); } catch(e2) {}
     }
@@ -2177,6 +2336,7 @@ function startAuthGIS() {
                   var normalizedEmail = String(email || '').toLowerCase();
                   if (normalizedEmail) {
                     try { localStorage.setItem('avitolog_drive_email', normalizedEmail); } catch(e) {}
+                    addKnownEmployeeEmail(normalizedEmail);
                   } else {
                     try { localStorage.removeItem('avitolog_drive_email'); } catch(e2) {}
                   }
@@ -2434,6 +2594,7 @@ async function openClientDocInWindow(docId, docKey, driveLink, mimeType) {
     if (docKey) { currentTab = docKey; ['analysis','presale','avito1'].forEach(function(t){ var e=document.getElementById('tab-'+t); if(e)e.classList.toggle('active',t===docKey); }); }
     var bb = document.getElementById('backBtn');
     if (bb) bb.style.display = 'inline-flex';
+    setDriveDocActionButtons(true, true);
     return;
   }
   if (docKey) {
@@ -2454,8 +2615,7 @@ async function openClientDocInWindow(docId, docKey, driveLink, mimeType) {
   currentHtml = html;
   docReady = true;
   renderDoc(html);
-  var rb = document.getElementById('refreshBtn');
-  if (rb) rb.style.display = 'inline-flex';
+  setDriveDocActionButtons(true, true);
   var bb = document.getElementById('backBtn');
   if (bb) bb.style.display = 'inline-flex';
 }
@@ -2728,8 +2888,7 @@ async function saveToDrive(html, contactsTxt, docHtml) {
       st.className = 'crm-st ok';
       st.innerHTML = '✓ ' + cat.name + ' · <a href="' + folderUrl + '" target="_blank" style="color:#4fc;text-decoration:underline">Папка →</a>' + docLink;
       refreshClientContents();
-      var rb = document.getElementById('refreshBtn');
-      if (rb) rb.style.display = 'inline-flex';
+      setDriveDocActionButtons(true, true);
       var bb = document.getElementById('backBtn'); if (bb) bb.style.display = 'inline-flex';
     } catch(docErr) {
       console.error('Google Doc fallback → HTML:', docErr);
@@ -2738,11 +2897,13 @@ async function saveToDrive(html, contactsTxt, docHtml) {
       st.className = 'crm-st ok';
       st.innerHTML = '✓ ' + cat.name + ' · <a href="' + folderUrl + '" target="_blank" style="color:#4fc;text-decoration:underline">Папка →</a>';
       refreshClientContents();
+      setDriveDocActionButtons(false, false);
     }
   } catch(e) {
     st.className = 'crm-st err';
     st.textContent = '✗ ' + (e.message || String(e));
     console.error('Drive error:', e);
+    setDriveDocActionButtons(false, false);
   }
 }
 
@@ -2819,13 +2980,14 @@ async function refreshDriveDoc() {
       ? ' · <a href="' + docResult.webViewLink + '" target="_blank" style="color:#7c6af7;text-decoration:underline">Док →</a>'
       : '';
     st.innerHTML = '✓ Документ обновлён' + docLink;
-    btn.style.display = 'none';
+    setDriveDocActionButtons(true, false);
   } catch(e) {
     console.error('Refresh error:', e);
     st.className = 'crm-st err';
     st.textContent = '✗ ' + (e.message || String(e));
     btn.disabled = false;
     btn.textContent = '🔄 Обновить в Drive';
+    setDriveDocActionButtons(true, true);
   }
 }
 
@@ -4106,6 +4268,7 @@ function switchUser(u) {
 }
 document.addEventListener('DOMContentLoaded', function() {
   initDayMode();
+  updateEmployeeModeButtonUi();
   applyMobileWebviewMode();
   applySidebarVisibilityFromStorage();
   window.addEventListener('resize', applyMobileWebviewMode);
