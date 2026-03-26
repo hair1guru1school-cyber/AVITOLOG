@@ -1606,7 +1606,7 @@ function bindProjectsCalendarInteractions() {
     var cell = getCalendarCellFromEventTarget(e.target);
     if (!cell) return;
     var pid = cell.getAttribute('data-project-id');
-    if (!e.target.closest('.cal-cards-del') && !e.target.closest('.cal-deadline-del') && !e.target.closest('.cal-task-item') && pid && typeof openTaskPanel === 'function' && typeof selectProjectRow === 'function') {
+    if (!e.target.closest('.cal-cards-del') && !e.target.closest('.cal-cards-num') && !e.target.closest('.cal-deadline-del') && !e.target.closest('.cal-task-item') && pid && typeof openTaskPanel === 'function' && typeof selectProjectRow === 'function') {
       var dt = cell.getAttribute('data-date');
       var clAttr = cell.getAttribute('data-child-line-index');
       var childLineIdx = (clAttr != null && clAttr !== '') ? parseInt(clAttr, 10) : null;
@@ -1629,7 +1629,7 @@ function bindProjectsCalendarInteractions() {
       var numSpan = e.target.closest('.cal-cards-num');
       var cpid = cell && cell.getAttribute('data-project-id');
       var cdt = cell && cell.getAttribute('data-date');
-      if (cpid && cdt && numSpan) startCardsNumInlineEdit(cpid, cdt, numSpan);
+      if (cpid && cdt && numSpan) startCardsNumPromptEdit(cpid, cdt, numSpan);
       return;
     }
     if (e.target && e.target.closest && e.target.closest('.cal-cards')) {
@@ -1768,11 +1768,12 @@ function clearProjectDropMarks() {
 }
 function createProjectRowDragGhost(row) {
   if (!row) return null;
-  var ghost = row.cloneNode(true);
-  ghost.classList.remove('selected', 'dragging', 'drop-before', 'drop-after');
-  ghost.classList.add('projects-drag-ghost');
-  ghost.style.width = row.offsetWidth + 'px';
-  ghost.style.height = row.offsetHeight + 'px';
+  var titleEl = row.querySelector('.proj-cell-editable input');
+  var title = titleEl ? String(titleEl.value || '').trim() : '';
+  if (!title) title = 'Проект';
+  var ghost = document.createElement('div');
+  ghost.className = 'projects-drag-ghost projects-drag-ghost-lite';
+  ghost.textContent = title.length > 36 ? (title.slice(0, 36) + '…') : title;
   document.body.appendChild(ghost);
   return ghost;
 }
@@ -1787,10 +1788,7 @@ function startProjectRowDrag(e, projectId) {
     try { e.dataTransfer.setData('text/plain', projectId); } catch(err) {}
     var ghost = createProjectRowDragGhost(row);
     if (ghost && typeof e.dataTransfer.setDragImage === 'function') {
-      var sticky = row ? row.querySelector('.projects-sticky') : null;
-      var offsetX = sticky ? Math.min(20, Math.max(8, Math.floor(sticky.getBoundingClientRect().width * 0.08))) : 12;
-      var offsetY = Math.max(8, Math.floor((row ? row.offsetHeight : 28) * 0.5));
-      e.dataTransfer.setDragImage(ghost, offsetX, offsetY);
+      e.dataTransfer.setDragImage(ghost, 12, 12);
       setTimeout(function(){ try { ghost.remove(); } catch(_e) {} }, 0);
     }
   }
@@ -2893,11 +2891,15 @@ function renderProjectsScreen(opts) {
         var isTodayCell = (dStr === todayStr);
         var cardsActiveDate = (p.cardsActiveDate || '') && String(p.cardsActive || '').trim();
         var cardsActiveShown = (childLineIdx < 0) && cardsActiveDate && (dStr === p.cardsActiveDate);
+        var cardsVal = String(p.cardsActive || '').trim();
+        var digitsCount = (cardsVal.match(/\d/g) || []).length;
+        if (!digitsCount) digitsCount = cardsVal.length;
+        var cardsToneClass = digitsCount <= 1 ? ' cal-cards-tone-1' : (digitsCount === 2 ? ' cal-cards-tone-2' : ' cal-cards-tone-3');
         var mustLaunchShown = (childLineIdx < 0) && !!p.mustLaunchRequired && (dStr === (p.mustLaunchDate || todayStr));
         var dayTasks = typeof getTasksForProjectAndDate === 'function' ? getTasksForProjectAndDate(p.id, dStr) : [];
         var isCalSelected = _selectedCalCell && _selectedCalCell.projectId === p.id && _selectedCalCell.dateStr === dStr && ((childLineIdx < 0 && (_selectedCalCell.childLineIdx == null || _selectedCalCell.childLineIdx < 0)) || (childLineIdx >= 0 && _selectedCalCell.childLineIdx === childLineIdx));
         var dayCls = 'projects-cal-day' + (isTodayCell ? ' today' : '') + (isCalSelected ? ' cal-day-selected' : '');
-        if (cardsActiveShown) cellHtml = '<div class="cal-cards"><span class="cal-cards-del">×</span><span class="cal-cards-num">' + escAttr(p.cardsActive || '') + '</span></div>';
+        if (cardsActiveShown) cellHtml = '<div class="cal-cards' + cardsToneClass + '"><span class="cal-cards-del">×</span><span class="cal-cards-num">' + escAttr(p.cardsActive || '') + '</span></div>';
         else if (mustLaunchShown) cellHtml = '<div class="cal-deadline"><span class="cal-deadline-del">×</span><span class="cal-deadline-icon">!!</span></div>';
         else if (rocket) { cellHtml = '<div class="cal-launch-tip cal-launch-rocket">🚀</div>'; dayCls += ' day-launch-end'; }
         else if (launchEvt) {
@@ -3186,6 +3188,26 @@ function startCardsNumInlineEdit(projectId, dateStr, numSpan) {
   numSpan.parentNode.replaceChild(inp, numSpan);
   inp.focus();
   inp.select();
+}
+function startCardsNumPromptEdit(projectId, dateStr, numSpan) {
+  if (!projectId || !dateStr || !numSpan) return;
+  var curVal = String((numSpan.textContent || '').trim() || '');
+  var r = numSpan.getBoundingClientRect();
+  showProjectsMiniPrompt({
+    title: 'Актив карточек (число)',
+    value: curVal || '1',
+    x: r.left,
+    y: r.bottom + 6,
+    onSubmit: function(val, promptEl) {
+      var v = String(val || '').trim();
+      if (!v) {
+        alert('Введите число.');
+        return;
+      }
+      setProjectCardsActiveWithDate(projectId, v, dateStr);
+      if (promptEl) promptEl.remove();
+    }
+  });
 }
 function removeProjectCardsActive(projectId) {
   var data = loadProjectsData();
