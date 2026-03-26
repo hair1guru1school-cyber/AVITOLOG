@@ -6,6 +6,7 @@
 
   var EXPENSES_KEY = "crm_ads_expenses_v1";
   var POSTS_PLAN_KEY = "crm_ads_posts_plan_v1";
+  var POSTS_PLAN_MONTH_OFFSET_KEY = "crm_ads_posts_plan_month_offset_v1";
   var POSTS_SOURCE_KEY = "crm_ads_posts_source_v1";
   var LINKS_KEY = "crm_ads_links_v1";
   var POSTS_SYNC_QUEUE_KEY = "crm_ads_posts_sync_queue_v1";
@@ -94,6 +95,22 @@
   function getPostCellKey(projectKey, day) {
     return projectKey + "_" + day;
   }
+  function getPostsMonthMeta(offset) {
+    var now = new Date();
+    var y = now.getFullYear();
+    var m = now.getMonth() + 1 + (Number(offset) || 0);
+    while (m > 12) { m -= 12; y += 1; }
+    while (m < 1) { m += 12; y -= 1; }
+    var id = String(y) + "-" + (m < 10 ? ("0" + m) : String(m));
+    return { year: String(y), month: String(m), monthId: id, offset: Number(offset) || 0 };
+  }
+  function getPostsMonthTitle(meta) {
+    var map = ["январь","февраль","март","апрель","май","июнь","июль","август","сентябрь","октябрь","ноябрь","декабрь"];
+    var mm = parseInt(String(meta && meta.month || "1"), 10);
+    var idx = isNaN(mm) ? 0 : Math.max(1, Math.min(12, mm)) - 1;
+    var title = map[idx] || "месяц";
+    return title + " " + String((meta && meta.year) || "");
+  }
   function normalizePostCellStatus(status) {
     return String(status || "").trim() === "published" ? "published" : "";
   }
@@ -136,28 +153,57 @@
     postsState.data[key] = text;
   }
 
-  function loadPostsPlan() {
+  function loadPostsPlan(offset) {
+    var meta = getPostsMonthMeta(offset);
     try {
       var raw = localStorage.getItem(POSTS_PLAN_KEY);
       if (raw) {
         var data = JSON.parse(raw);
+        var months = data && data.months && typeof data.months === "object" ? data.months : null;
+        if (months) {
+          return {
+            data: months[meta.monthId] || {},
+            year: meta.year,
+            month: meta.month,
+            monthId: meta.monthId,
+            offset: meta.offset
+          };
+        }
+        // Legacy format migration fallback.
+        var legacyYear = String(data.y || new Date().getFullYear());
+        var legacyMonth = String(data.m || (new Date().getMonth() + 1));
+        var legacyId = legacyYear + "-" + (Number(legacyMonth) < 10 ? ("0" + Number(legacyMonth)) : String(Number(legacyMonth)));
+        var legacyCells = data.cells || {};
         return {
-          data: data.cells || {},
-          year: String(data.y || new Date().getFullYear()),
-          month: String(data.m || (new Date().getMonth() + 1))
+          data: (legacyId === meta.monthId) ? legacyCells : {},
+          year: meta.year,
+          month: meta.month,
+          monthId: meta.monthId,
+          offset: meta.offset
         };
       }
     } catch (e) {}
-    var now = new Date();
-    return { data: {}, year: String(now.getFullYear()), month: String(now.getMonth() + 1) };
+    return { data: {}, year: meta.year, month: meta.month, monthId: meta.monthId, offset: meta.offset };
   }
 
   function savePostsPlan(state) {
     try {
+      var parsed = {};
+      try { parsed = JSON.parse(localStorage.getItem(POSTS_PLAN_KEY) || "{}") || {}; } catch (e0) { parsed = {}; }
+      var months = parsed.months && typeof parsed.months === "object" ? parsed.months : {};
+      // Legacy one-time migration if old payload exists.
+      if ((!parsed.months || typeof parsed.months !== "object") && parsed.cells && typeof parsed.cells === "object") {
+        var ly = String(parsed.y || new Date().getFullYear());
+        var lmNum = Number(parsed.m || (new Date().getMonth() + 1));
+        var lm = lmNum < 10 ? ("0" + lmNum) : String(lmNum);
+        months[ly + "-" + lm] = parsed.cells;
+      }
+      months[String(state.monthId || getPostsMonthMeta(0).monthId)] = state.data || {};
       localStorage.setItem(POSTS_PLAN_KEY, JSON.stringify({
         y: state.year,
         m: state.month,
-        cells: state.data
+        cells: state.data || {},
+        months: months
       }));
     } catch (e) {}
   }
@@ -195,10 +241,17 @@
   function savePostsSyncQueue(arr) {
     try { localStorage.setItem(POSTS_SYNC_QUEUE_KEY, JSON.stringify(Array.isArray(arr) ? arr : [])); } catch (e) {}
   }
-  function enqueuePostSync(rowKey, day, value) {
+  function enqueuePostSync(rowKey, day, value, status) {
     var key = String(rowKey) + "_" + String(day);
     var q = loadPostsSyncQueue().filter(function(x) { return String(x && x.key) !== key; });
-    q.push({ key: key, rowKey: rowKey, day: Number(day), value: String(value || ""), at: Date.now() });
+    q.push({
+      key: key,
+      rowKey: rowKey,
+      day: Number(day),
+      value: String(value || ""),
+      status: normalizePostCellStatus(status),
+      at: Date.now()
+    });
     savePostsSyncQueue(q);
     return q.length;
   }
@@ -210,7 +263,7 @@
     for (var i = 0; i < q.length; i++) {
       var item = q[i];
       try {
-        await syncPostToGoogleSheets(item.rowKey, item.day, item.value, token);
+        await syncPostToGoogleSheets(item.rowKey, item.day, item.value, item.status, token);
       } catch (e) {
         remain.push(item);
       }
@@ -392,13 +445,21 @@
     });
   }
 
-  function renderPostsPlanTable(container, postsState, sourcesState) {
+  function renderPostsPlanTable(container, postsState, sourcesState, viewOpts) {
+    viewOpts = viewOpts || {};
     var days = 30;
     var todayDay = getTodayDayForState(postsState);
+    var monthTitle = getPostsMonthTitle(postsState);
+    var isNextMonth = Number(postsState.offset || 0) > 0;
+    var monthBtnText = isNextMonth ? "← Текущий" : "+1 месяц";
     var html =
       '<div class="ads-posts-head-row">' +
         '<div class="ads-posts-planner-head">Посты на 30 дней в канала</div>' +
-        '<button type="button" class="ads-posts-source-btn" id="adsPostSourceBtn">Источник</button>' +
+        '<div class="ads-posts-head-actions">' +
+          '<span class="ads-posts-month-chip">' + escapeHtml(monthTitle) + "</span>" +
+          '<button type="button" class="ads-posts-source-btn" id="adsPostMonthBtn">' + monthBtnText + "</button>" +
+          '<button type="button" class="ads-posts-source-btn" id="adsPostSourceBtn">Источник</button>' +
+        "</div>" +
       "</div>" +
       '<div class="ads-posts-sync-status" id="adsPostsSyncStatus">Синк с Google Sheets: готово</div>' +
       '<div class="ads-posts-wrap"><table class="ads-posts-table"><thead><tr><th class="ads-th-label">Проект</th>';
@@ -416,7 +477,7 @@
         var hasVal = !!val.trim();
         var isPublished = cellData.status === "published";
         var cellTitle = val || (isPublished ? "Опубликовано" : "Нажмите, чтобы добавить пост");
-        var cellLabel = hasVal ? shortText : (isPublished ? "💡" : "Пост");
+        var cellLabel = hasVal ? shortText : (isPublished ? "✅" : "Пост");
         var className = "ads-post-cell" + (hasVal ? " is-filled" : "") + (isPublished ? " is-published" : "");
         html +=
           '<td class="ads-post-td' + (day === todayDay ? " ads-day-today" : "") + '">' +
@@ -435,10 +496,17 @@
         var day = parseInt(btn.getAttribute("data-day"), 10);
         if (!row || !day) return;
         openPostCellEditor(btn, postsState, row, day, function() {
-          renderPostsPlanTable(container, postsState, sourcesState);
+          if (typeof viewOpts.onRefresh === "function") viewOpts.onRefresh();
+          else renderPostsPlanTable(container, postsState, sourcesState, viewOpts);
         });
       });
     });
+    var monthBtn = container.querySelector("#adsPostMonthBtn");
+    if (monthBtn) {
+      monthBtn.addEventListener("click", function() {
+        if (typeof viewOpts.onToggleMonth === "function") viewOpts.onToggleMonth();
+      });
+    }
     var sourceBtn = container.querySelector("#adsPostSourceBtn");
     if (sourceBtn) {
       sourceBtn.addEventListener("click", function() {
@@ -523,6 +591,20 @@
       throw new Error("Sheets update failed: HTTP " + resp.status + (txt ? (" · " + txt) : ""));
     }
   }
+  async function getSheetValues(token, range) {
+    var url =
+      "https://sheets.googleapis.com/v4/spreadsheets/" +
+      POSTS_SHEET_ID +
+      "/values/" +
+      encodeURIComponent(range);
+    var resp = await fetch(url, {
+      headers: { Authorization: "Bearer " + token }
+    });
+    if (!resp.ok) {
+      throw new Error("Sheets read failed: HTTP " + resp.status);
+    }
+    return await resp.json();
+  }
 
   async function ensurePostsSheetPrepared(token, sheetName) {
     if (_postsSheetInitCache[sheetName]) return;
@@ -543,7 +625,7 @@
           throw new Error("Sheets check failed: HTTP " + checkResp.status);
         }
       }
-      await putSheetValues(token, quoteSheetRange(sheetName, "A1:B1"), [["День", "Контент поста"]]);
+      await putSheetValues(token, quoteSheetRange(sheetName, "A1:C1"), [["День", "Контент поста", "Опубликовано"]]);
       var dayRows = [];
       for (var d = 1; d <= 30; d++) dayRows.push([String(d)]);
       await putSheetValues(token, quoteSheetRange(sheetName, "A2:A31"), dayRows);
@@ -557,13 +639,54 @@
     return rowKey === "learn" ? POSTS_SHEET_LEARN : POSTS_SHEET_AGENCY;
   }
 
-  async function syncPostToGoogleSheets(rowKey, day, value, tokenOverride) {
+  async function syncPostToGoogleSheets(rowKey, day, value, status, tokenOverride) {
     var sheetName = getPostsSheetNameByRow(rowKey);
     var token = tokenOverride || await getGoogleAccessTokenForSheets();
     await ensurePostsSheetPrepared(token, sheetName);
     var rowNum = Number(day) + 1; // day 1 -> B2
-    var targetRange = quoteSheetRange(sheetName, "B" + rowNum + ":B" + rowNum);
-    await putSheetValues(token, targetRange, [[String(value || "")]]);
+    var targetRange = quoteSheetRange(sheetName, "B" + rowNum + ":C" + rowNum);
+    var publishedFlag = normalizePostCellStatus(status) === "published" ? "1" : "";
+    await putSheetValues(token, targetRange, [[String(value || ""), publishedFlag]]);
+  }
+  async function pullPostsPlanFromGoogleSheets(postsState, tokenOverride) {
+    var token = tokenOverride || await getGoogleAccessTokenForSheets();
+    var changed = false;
+    for (var i = 0; i < POST_ROWS.length; i++) {
+      var rowKey = POST_ROWS[i].key;
+      var sheetName = getPostsSheetNameByRow(rowKey);
+      await ensurePostsSheetPrepared(token, sheetName);
+      var range = quoteSheetRange(sheetName, "B2:C31");
+      var payload = await getSheetValues(token, range);
+      var rows = Array.isArray(payload.values) ? payload.values : [];
+      for (var day = 1; day <= 30; day++) {
+        var r = rows[day - 1] || [];
+        var text = String(r[0] || "").trim();
+        var flagRaw = String(r[1] || "").trim().toLowerCase();
+        var isPublished = !!flagRaw && flagRaw !== "0" && flagRaw !== "false" && flagRaw !== "нет";
+        var key = getPostCellKey(rowKey, day);
+        var prev = normalizePostCellData(postsState.data[key]);
+        if (!isPublished && !text) {
+          if (prev.text || prev.status) {
+            delete postsState.data[key];
+            changed = true;
+          }
+          continue;
+        }
+        var nextText = text;
+        var nextStatus = isPublished ? "published" : "";
+        // legacy fallback: if old table stored "Опубликовано" in text only.
+        if (!nextStatus && /^опубликовано$/i.test(text)) {
+          nextText = "";
+          nextStatus = "published";
+        }
+        if (prev.text !== nextText || prev.status !== nextStatus) {
+          savePostCellData(postsState, key, { text: nextText, status: nextStatus });
+          changed = true;
+        }
+      }
+    }
+    if (changed) savePostsPlan(postsState);
+    return changed;
   }
 
   function openPostCellEditor(anchorEl, postsState, row, day, onSaved) {
@@ -578,10 +701,7 @@
       '<div class="ads-post-editor-title">День ' + day + " · " + (row === "learn" ? "Обучение" : "Агентство") + "</div>" +
       '<div class="ads-post-editor-status-row">' +
         '<label class="ads-post-editor-status-label" for="adsPostStatusSelect">Статус</label>' +
-        '<select class="ads-post-editor-status" id="adsPostStatusSelect">' +
-          '<option value="">Черновик</option>' +
-          '<option value="published">Опубликовано</option>' +
-        "</select>" +
+        '<label class="ads-post-editor-published"><input type="checkbox" id="adsPostPublishedChk"> Опубликовано</label>' +
       "</div>" +
       '<textarea class="ads-post-editor-text" placeholder="Впишите текст поста..."></textarea>' +
       '<div class="ads-post-editor-actions">' +
@@ -591,7 +711,7 @@
       "</div>";
     document.body.appendChild(panel);
     var textarea = panel.querySelector(".ads-post-editor-text");
-    var statusSelect = panel.querySelector("#adsPostStatusSelect");
+    var publishedChk = panel.querySelector("#adsPostPublishedChk");
     var btnSave = panel.querySelector(".ads-post-editor-btn.save");
     var btnClear = panel.querySelector(".ads-post-editor-btn.clear");
     var btnCancel = panel.querySelectorAll(".ads-post-editor-btn")[2];
@@ -601,7 +721,7 @@
       textarea.selectionStart = textarea.value.length;
       textarea.selectionEnd = textarea.value.length;
     }
-    if (statusSelect) statusSelect.value = currentStatus;
+    if (publishedChk) publishedChk.checked = currentStatus === "published";
     var rect = anchorEl.getBoundingClientRect();
     var top = rect.bottom + 8;
     var left = rect.left;
@@ -613,13 +733,13 @@
 
     function doSave(nextValue, nextStatus) {
       var value = String(nextValue == null ? (textarea ? textarea.value : "") : nextValue).trim();
-      var status = normalizePostCellStatus(nextStatus == null ? (statusSelect ? statusSelect.value : "") : nextStatus);
+      var status = normalizePostCellStatus(nextStatus == null ? ((publishedChk && publishedChk.checked) ? "published" : "") : nextStatus);
       var nextCell = { text: value, status: status };
       savePostCellData(postsState, key, nextCell);
       savePostsPlan(postsState);
       var valueForSheet = stringifyPostCellForSheet(nextCell);
       setPostsSyncStatus("Сохраняю в Google Sheets...", false);
-      syncPostToGoogleSheets(row, day, valueForSheet)
+      syncPostToGoogleSheets(row, day, valueForSheet, status)
         .then(function() {
           flushPendingPostsSyncQueue()
             .then(function(flushedCount) {
@@ -635,7 +755,7 @@
         })
         .catch(function(err) {
           var msg = err && err.message ? err.message : String(err || "unknown error");
-          var queued = enqueuePostSync(row, day, valueForSheet);
+          var queued = enqueuePostSync(row, day, valueForSheet, status);
           setPostsSyncStatus("Drive оффлайн, сохранено локально. В очереди: " + queued + " (" + msg + ")", true);
         });
       closePostCellEditor();
@@ -990,7 +1110,12 @@
 
   function renderAdsPage(mainContentEl) {
     var state = loadExpenses();
-    var postsState = loadPostsPlan();
+    var postsMonthOffset = 0;
+    try {
+      postsMonthOffset = parseInt(localStorage.getItem(POSTS_PLAN_MONTH_OFFSET_KEY) || "0", 10) || 0;
+    } catch (eOff) { postsMonthOffset = 0; }
+    postsMonthOffset = postsMonthOffset > 0 ? 1 : 0;
+    var postsState = loadPostsPlan(postsMonthOffset);
     var sourcesState = loadPostsSources();
     var links = loadLinks();
     var wrap = document.createElement("div");
@@ -1025,8 +1150,39 @@
       updateTotalsPanel(totalsContainer, state);
       updateTopSummary(wrap.querySelector("#adsTopSummary"), state);
     }
+    var postsSheetPulledByMonth = {};
+    var postsSheetPullInFlight = false;
+    function syncPostsFromSheetsIfNeeded() {
+      var monthId = String(postsState.monthId || "default");
+      if (postsSheetPulledByMonth[monthId] || postsSheetPullInFlight) return;
+      postsSheetPullInFlight = true;
+      setPostsSyncStatus("Синхронизирую из Google Sheets...", false);
+      pullPostsPlanFromGoogleSheets(postsState)
+        .then(function(changed) {
+          postsSheetPulledByMonth[monthId] = true;
+          if (changed) rerenderPostsPlan();
+          else setPostsSyncStatus("Синк с Google Sheets: готово", false);
+        })
+        .catch(function(err) {
+          var msg = err && err.message ? err.message : "не удалось получить данные";
+          setPostsSyncStatus("Синк из Sheets не выполнен: " + msg, true);
+        })
+        .finally(function() { postsSheetPullInFlight = false; });
+    }
+    function rerenderPostsPlan() {
+      postsState = loadPostsPlan(postsMonthOffset);
+      renderPostsPlanTable(postsPlanContainer, postsState, sourcesState, {
+        onRefresh: rerenderPostsPlan,
+        onToggleMonth: function() {
+          postsMonthOffset = postsMonthOffset ? 0 : 1;
+          try { localStorage.setItem(POSTS_PLAN_MONTH_OFFSET_KEY, String(postsMonthOffset)); } catch (eSet) {}
+          rerenderPostsPlan();
+        }
+      });
+      syncPostsFromSheetsIfNeeded();
+    }
     renderExpensesTable(expensesContainer, state, refreshTotals);
-    renderPostsPlanTable(postsPlanContainer, postsState, sourcesState);
+    rerenderPostsPlan();
     setTimeout(function() {
       var queued = loadPostsSyncQueue().length;
       if (queued > 0) {
