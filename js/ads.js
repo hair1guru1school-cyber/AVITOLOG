@@ -339,17 +339,6 @@
     var mm = m < 10 ? ("0" + m) : String(m);
     return dd + "." + mm;
   }
-  function getPostsVisibleDaysCount() {
-    var scale = 1;
-    try {
-      if (window && window.visualViewport && Number(window.visualViewport.scale) > 0) {
-        scale = Number(window.visualViewport.scale);
-      }
-    } catch (e) {}
-    if (scale <= 0.8) return 90;
-    if (scale <= 0.95) return 60;
-    return 30;
-  }
   function autoScrollPostsTableToToday(container) {
     if (!container) return;
     var wrap = container.querySelector(".ads-posts-wrap");
@@ -485,6 +474,7 @@
     viewOpts = viewOpts || {};
     var days = Math.max(30, Math.min(90, Number(viewOpts.days) || 30));
     var todayDay = getTodayDayForState(postsState);
+    var anchorDay = todayDay > 0 ? todayDay : 1;
     var monthTitle = getPostsMonthTitle(postsState) + " · " + days + " дней";
     var baseOffset = Math.max(0, Number(postsState.offset) || 0);
     var monthStateCache = {};
@@ -494,7 +484,7 @@
       return monthStateCache[key];
     }
     function getColumnMeta(col) {
-      var z = Math.max(0, Number(col) - 1);
+      var z = Math.max(0, (anchorDay - 1) + (Number(col) - 1));
       var monthShift = Math.floor(z / 30);
       var day = (z % 30) + 1;
       var monthOffset = baseOffset + monthShift;
@@ -514,8 +504,8 @@
       var meta = getColumnMeta(d);
       var metaMonth = getPostsMonthMeta(meta.monthOffset);
       var headCls = "ads-th-day";
-      if (meta.monthOffset === baseOffset && meta.day === todayDay) headCls += " ads-day-today";
-      else if (meta.monthOffset === baseOffset && todayDay && meta.day < todayDay) headCls += " ads-day-past";
+      if (meta.monthOffset === baseOffset && meta.day === anchorDay) headCls += " ads-day-today";
+      else if (meta.monthOffset === baseOffset && todayDay && meta.day < anchorDay) headCls += " ads-day-past";
       else headCls += " ads-day-future";
       var dayLabel = getPostDayMonthLabel(metaMonth, meta.day);
       html += '<th class="' + headCls + '" title="' + dayLabel + '">' + dayLabel + "</th>";
@@ -536,8 +526,8 @@
         var cellLabel = hasVal ? shortText : (isPublished ? "✅" : "Пост");
         var className = "ads-post-cell" + (hasVal ? " is-filled" : "") + (isPublished ? " is-published" : "");
         var tdDayCls = "ads-post-td";
-        if (cMeta.monthOffset === baseOffset && cMeta.day === todayDay) tdDayCls += " ads-day-today";
-        else if (cMeta.monthOffset === baseOffset && todayDay && cMeta.day < todayDay) tdDayCls += " ads-day-past";
+        if (cMeta.monthOffset === baseOffset && cMeta.day === anchorDay) tdDayCls += " ads-day-today";
+        else if (cMeta.monthOffset === baseOffset && todayDay && cMeta.day < anchorDay) tdDayCls += " ads-day-past";
         else tdDayCls += " ads-day-future";
         var dataDayTitle = getPostDayMonthLabel(getPostsMonthMeta(cMeta.monthOffset), cMeta.day);
         html +=
@@ -1230,7 +1220,7 @@
     var state = loadExpenses();
     var postsMonthOffset = 0;
     var postsState = loadPostsPlan(postsMonthOffset);
-    var postsVisibleDays = getPostsVisibleDaysCount();
+    var postsVisibleDays = 60;
     var sourcesState = loadPostsSources();
     var links = loadLinks();
     var wrap = document.createElement("div");
@@ -1268,7 +1258,9 @@
     var postsSheetPulledByMonth = {};
     var postsSheetPullInFlight = false;
     function getVisibleMonthOffsets() {
-      var blocks = Math.ceil(Math.max(30, postsVisibleDays) / 30);
+      var today = getTodayDayForState(loadPostsPlan(postsMonthOffset));
+      var anchor = today > 0 ? today : 1;
+      var blocks = Math.ceil((Math.max(30, postsVisibleDays) + anchor - 1) / 30);
       var arr = [];
       for (var i = 0; i < blocks; i++) arr.push(postsMonthOffset + i);
       return arr;
@@ -1320,21 +1312,6 @@
     }
     renderExpensesTable(expensesContainer, state, refreshTotals);
     rerenderPostsPlan();
-    var postsViewportResizeRaf = 0;
-    function onPostsViewportResize() {
-      if (postsViewportResizeRaf) cancelAnimationFrame(postsViewportResizeRaf);
-      postsViewportResizeRaf = requestAnimationFrame(function() {
-        postsViewportResizeRaf = 0;
-        var nextDays = getPostsVisibleDaysCount();
-        if (nextDays === postsVisibleDays) return;
-        postsVisibleDays = nextDays;
-        rerenderPostsPlan();
-      });
-    }
-    window.addEventListener("resize", onPostsViewportResize);
-    if (window.visualViewport && window.visualViewport.addEventListener) {
-      window.visualViewport.addEventListener("resize", onPostsViewportResize);
-    }
     setTimeout(function() {
       var queued = loadPostsSyncQueue().length;
       if (queued > 0) {
