@@ -241,8 +241,9 @@
   function savePostsSyncQueue(arr) {
     try { localStorage.setItem(POSTS_SYNC_QUEUE_KEY, JSON.stringify(Array.isArray(arr) ? arr : [])); } catch (e) {}
   }
-  function enqueuePostSync(rowKey, day, value, status) {
-    var key = String(rowKey) + "_" + String(day);
+  function enqueuePostSync(rowKey, day, value, status, monthOffset) {
+    var mo = Number(monthOffset) || 0;
+    var key = String(rowKey) + "_" + String(day) + "_" + String(mo);
     var q = loadPostsSyncQueue().filter(function(x) { return String(x && x.key) !== key; });
     q.push({
       key: key,
@@ -250,6 +251,7 @@
       day: Number(day),
       value: String(value || ""),
       status: normalizePostCellStatus(status),
+      monthOffset: mo,
       at: Date.now()
     });
     savePostsSyncQueue(q);
@@ -263,7 +265,7 @@
     for (var i = 0; i < q.length; i++) {
       var item = q[i];
       try {
-        await syncPostToGoogleSheets(item.rowKey, item.day, item.value, item.status, token);
+        await syncPostToGoogleSheets(item.rowKey, item.day, item.value, item.status, item.monthOffset, token);
       } catch (e) {
         remain.push(item);
       }
@@ -634,16 +636,54 @@
       throw e;
     }
   }
+  function getDayRowsTemplate() {
+    var dayRows = [];
+    for (var d = 1; d <= 30; d++) dayRows.push([String(d)]);
+    return dayRows;
+  }
+  function detectPostsMonthBlockStarts(colAValues) {
+    var starts = [];
+    var vals = Array.isArray(colAValues) ? colAValues : [];
+    for (var i = 0; i < vals.length; i++) {
+      var cell = String(((vals[i] || [])[0] || "")).trim();
+      if (cell !== "1") continue;
+      var ok = true;
+      for (var day = 1; day <= 30; day++) {
+        var row = vals[i + (day - 1)] || [];
+        var v = String((row[0] || "")).trim();
+        if (v !== String(day)) { ok = false; break; }
+      }
+      if (ok) starts.push(i + 1); // 1-based row
+    }
+    return starts;
+  }
+  async function getPostsSheetMonthBlockStartRow(token, sheetName, monthOffset, createIfMissing) {
+    var offset = Math.max(0, Number(monthOffset) || 0);
+    await ensurePostsSheetPrepared(token, sheetName);
+    var readRange = quoteSheetRange(sheetName, "A1:A600");
+    var payload = await getSheetValues(token, readRange).catch(function() { return { values: [] }; });
+    var starts = detectPostsMonthBlockStarts(payload && payload.values);
+    if (starts.length > offset) return starts[offset];
+    if (!createIfMissing) return null;
+    var dayRows = getDayRowsTemplate();
+    while (starts.length <= offset) {
+      var startRow = starts.length ? (starts[starts.length - 1] + 31) : 2; // +30 rows + 1 gap
+      await putSheetValues(token, quoteSheetRange(sheetName, "A" + startRow + ":A" + (startRow + 29)), dayRows);
+      starts.push(startRow);
+    }
+    return starts[offset] || null;
+  }
 
   function getPostsSheetNameByRow(rowKey) {
     return rowKey === "learn" ? POSTS_SHEET_LEARN : POSTS_SHEET_AGENCY;
   }
 
-  async function syncPostToGoogleSheets(rowKey, day, value, status, tokenOverride) {
+  async function syncPostToGoogleSheets(rowKey, day, value, status, monthOffset, tokenOverride) {
     var sheetName = getPostsSheetNameByRow(rowKey);
     var token = tokenOverride || await getGoogleAccessTokenForSheets();
-    await ensurePostsSheetPrepared(token, sheetName);
-    var rowNum = Number(day) + 1; // day 1 -> B2
+    var startRow = await getPostsSheetMonthBlockStartRow(token, sheetName, monthOffset, true);
+    if (!startRow) throw new Error("Не найден блок месяца в таблице");
+    var rowNum = Number(startRow) + Number(day) - 1; // day 1 -> startRow
     var targetRange = quoteSheetRange(sheetName, "B" + rowNum + ":C" + rowNum);
     var publishedFlag = normalizePostCellStatus(status) === "published" ? "1" : "";
     await putSheetValues(token, targetRange, [[String(value || ""), publishedFlag]]);
@@ -651,11 +691,13 @@
   async function pullPostsPlanFromGoogleSheets(postsState, tokenOverride) {
     var token = tokenOverride || await getGoogleAccessTokenForSheets();
     var changed = false;
+    var monthOffset = Math.max(0, Number(postsState && postsState.offset) || 0);
     for (var i = 0; i < POST_ROWS.length; i++) {
       var rowKey = POST_ROWS[i].key;
       var sheetName = getPostsSheetNameByRow(rowKey);
-      await ensurePostsSheetPrepared(token, sheetName);
-      var range = quoteSheetRange(sheetName, "B2:C31");
+      var startRow = await getPostsSheetMonthBlockStartRow(token, sheetName, monthOffset, false);
+      if (!startRow) continue;
+      var range = quoteSheetRange(sheetName, "B" + startRow + ":C" + (startRow + 29));
       var payload = await getSheetValues(token, range);
       var rows = Array.isArray(payload.values) ? payload.values : [];
       for (var day = 1; day <= 30; day++) {
@@ -739,7 +781,7 @@
       savePostsPlan(postsState);
       var valueForSheet = stringifyPostCellForSheet(nextCell);
       setPostsSyncStatus("Сохраняю в Google Sheets...", false);
-      syncPostToGoogleSheets(row, day, valueForSheet, status)
+      syncPostToGoogleSheets(row, day, valueForSheet, status, postsState.offset)
         .then(function() {
           flushPendingPostsSyncQueue()
             .then(function(flushedCount) {
@@ -755,7 +797,7 @@
         })
         .catch(function(err) {
           var msg = err && err.message ? err.message : String(err || "unknown error");
-          var queued = enqueuePostSync(row, day, valueForSheet, status);
+          var queued = enqueuePostSync(row, day, valueForSheet, status, postsState.offset);
           setPostsSyncStatus("Drive оффлайн, сохранено локально. В очереди: " + queued + " (" + msg + ")", true);
         });
       closePostCellEditor();
