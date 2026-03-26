@@ -6,6 +6,7 @@
 
   var EXPENSES_KEY = "crm_ads_expenses_v1";
   var POSTS_PLAN_KEY = "crm_ads_posts_plan_v1";
+  var POSTS_SOURCE_KEY = "crm_ads_posts_source_v1";
   var LINKS_KEY = "crm_ads_links_v1";
   var POSTS_SYNC_QUEUE_KEY = "crm_ads_posts_sync_queue_v1";
   var POSTS_SHEET_ID = "1q_2TJHIhFW1KjjjIjpxfGc_1zewpdPhrwXQ6awhVdwA";
@@ -24,6 +25,8 @@
     { key: "agency", label: "Агентство" }
   ];
   var _adsPostEditorCleanup = null;
+  var _adsPostSourceEditorCleanup = null;
+  var _adsPostSourceModalCleanup = null;
   var _postsSheetInitCache = {};
 
   var DEFAULT_LINKS = [
@@ -152,6 +155,30 @@
   function savePostsPlan(state) {
     try {
       localStorage.setItem(POSTS_PLAN_KEY, JSON.stringify({
+        y: state.year,
+        m: state.month,
+        cells: state.data
+      }));
+    } catch (e) {}
+  }
+  function loadPostsSources() {
+    try {
+      var raw = localStorage.getItem(POSTS_SOURCE_KEY);
+      if (raw) {
+        var data = JSON.parse(raw);
+        return {
+          data: data.cells || {},
+          year: String(data.y || new Date().getFullYear()),
+          month: String(data.m || (new Date().getMonth() + 1))
+        };
+      }
+    } catch (e) {}
+    var now = new Date();
+    return { data: {}, year: String(now.getFullYear()), month: String(now.getMonth() + 1) };
+  }
+  function savePostsSources(state) {
+    try {
+      localStorage.setItem(POSTS_SOURCE_KEY, JSON.stringify({
         y: state.year,
         m: state.month,
         cells: state.data
@@ -365,11 +392,14 @@
     });
   }
 
-  function renderPostsPlanTable(container, postsState) {
+  function renderPostsPlanTable(container, postsState, sourcesState) {
     var days = 30;
     var todayDay = getTodayDayForState(postsState);
     var html =
-      '<div class="ads-posts-planner-head">Посты на 30 дней в канала</div>' +
+      '<div class="ads-posts-head-row">' +
+        '<div class="ads-posts-planner-head">Посты на 30 дней в канала</div>' +
+        '<button type="button" class="ads-posts-source-btn" id="adsPostSourceBtn">Источник</button>' +
+      "</div>" +
       '<div class="ads-posts-sync-status" id="adsPostsSyncStatus">Синк с Google Sheets: готово</div>' +
       '<div class="ads-posts-wrap"><table class="ads-posts-table"><thead><tr><th class="ads-th-label">Проект</th>';
     for (var d = 1; d <= days; d++) {
@@ -405,10 +435,18 @@
         var day = parseInt(btn.getAttribute("data-day"), 10);
         if (!row || !day) return;
         openPostCellEditor(btn, postsState, row, day, function() {
-          renderPostsPlanTable(container, postsState);
+          renderPostsPlanTable(container, postsState, sourcesState);
         });
       });
     });
+    var sourceBtn = container.querySelector("#adsPostSourceBtn");
+    if (sourceBtn) {
+      sourceBtn.addEventListener("click", function() {
+        openPostsSourceModal(postsState, sourcesState, function() {
+          renderPostsPlanTable(container, postsState, sourcesState);
+        });
+      });
+    }
   }
 
   function setPostsSyncStatus(text, isErr) {
@@ -623,6 +661,144 @@
     if (typeof _adsPostEditorCleanup === "function") _adsPostEditorCleanup();
   }
 
+  function getPostSourceCellKey(projectKey, day) {
+    return "src_" + getPostCellKey(projectKey, day);
+  }
+  function closePostSourceCellEditor() {
+    if (typeof _adsPostSourceEditorCleanup === "function") _adsPostSourceEditorCleanup();
+  }
+  function closePostsSourceModal() {
+    closePostSourceCellEditor();
+    if (typeof _adsPostSourceModalCleanup === "function") _adsPostSourceModalCleanup();
+  }
+  function openPostSourceCellEditor(anchorEl, sourcesState, row, day, onSaved) {
+    closePostSourceCellEditor();
+    var key = getPostSourceCellKey(row, day);
+    var currentVal = String(sourcesState.data[key] || "");
+    var panel = document.createElement("div");
+    panel.className = "ads-post-editor-pop ads-source-editor-pop";
+    panel.innerHTML =
+      '<div class="ads-post-editor-title">Источник · День ' + day + " · " + (row === "learn" ? "Обучение" : "Агентство") + "</div>" +
+      '<textarea class="ads-post-editor-text" placeholder="Укажи источник поста (канал, ссылка, идея...)"></textarea>' +
+      '<div class="ads-post-editor-actions">' +
+        '<button type="button" class="ads-post-editor-btn save">Сохранить</button>' +
+        '<button type="button" class="ads-post-editor-btn clear">Очистить</button>' +
+        '<button type="button" class="ads-post-editor-btn">Отмена</button>' +
+      "</div>";
+    document.body.appendChild(panel);
+    var textarea = panel.querySelector(".ads-post-editor-text");
+    var btnSave = panel.querySelector(".ads-post-editor-btn.save");
+    var btnClear = panel.querySelector(".ads-post-editor-btn.clear");
+    var btnCancel = panel.querySelectorAll(".ads-post-editor-btn")[2];
+    if (textarea) {
+      textarea.value = currentVal;
+      textarea.focus();
+      textarea.selectionStart = textarea.value.length;
+      textarea.selectionEnd = textarea.value.length;
+    }
+    var rect = anchorEl.getBoundingClientRect();
+    var top = rect.bottom + 8;
+    var left = rect.left;
+    var maxLeft = Math.max(8, window.innerWidth - 360 - 8);
+    if (left > maxLeft) left = maxLeft;
+    if (top + 190 > window.innerHeight) top = Math.max(8, rect.top - 190 - 8);
+    panel.style.top = Math.round(top) + "px";
+    panel.style.left = Math.round(left) + "px";
+
+    function doSave(nextValue) {
+      var value = String(nextValue == null ? (textarea ? textarea.value : "") : nextValue).trim();
+      if (!value) delete sourcesState.data[key];
+      else sourcesState.data[key] = value;
+      savePostsSources(sourcesState);
+      closePostSourceCellEditor();
+      if (typeof onSaved === "function") onSaved();
+    }
+    function onDocMouseDown(evt) {
+      if (!panel.contains(evt.target) && evt.target !== anchorEl) closePostSourceCellEditor();
+    }
+    function onEsc(evt) {
+      if (evt.key === "Escape") closePostSourceCellEditor();
+      if ((evt.ctrlKey || evt.metaKey) && evt.key === "Enter") doSave();
+    }
+    setTimeout(function() { document.addEventListener("mousedown", onDocMouseDown, true); }, 0);
+    document.addEventListener("keydown", onEsc, true);
+    btnSave.addEventListener("click", function() { doSave(); });
+    btnClear.addEventListener("click", function() { doSave(""); });
+    btnCancel.addEventListener("click", closePostSourceCellEditor);
+    _adsPostSourceEditorCleanup = function() {
+      document.removeEventListener("mousedown", onDocMouseDown, true);
+      document.removeEventListener("keydown", onEsc, true);
+      if (panel.parentNode) panel.parentNode.removeChild(panel);
+      _adsPostSourceEditorCleanup = null;
+    };
+  }
+  function renderPostsSourceTable(container, postsState, sourcesState, onSaved) {
+    var days = 30;
+    var html = '<div class="ads-source-table-wrap"><table class="ads-posts-table"><thead><tr><th class="ads-th-label">Проект</th>';
+    for (var d = 1; d <= days; d++) html += '<th class="ads-th-day">' + d + "</th>";
+    html += "</tr></thead><tbody>";
+    POST_ROWS.forEach(function(row) {
+      html += '<tr><td class="ads-td-label">' + row.label + "</td>";
+      for (var day = 1; day <= days; day++) {
+        var pKey = getPostCellKey(row.key, day);
+        var sKey = getPostSourceCellKey(row.key, day);
+        var postCell = normalizePostCellData(postsState.data[pKey]);
+        var sourceVal = String(sourcesState.data[sKey] || "");
+        var shortText = sourceVal ? (sourceVal.length > 10 ? sourceVal.slice(0, 10) + "…" : sourceVal) : "—";
+        var cls = "ads-post-cell" + (sourceVal ? " is-filled" : "");
+        var title = sourceVal || "Нажмите, чтобы добавить источник";
+        var postHint = String(postCell.text || "").trim();
+        html +=
+          '<td class="ads-post-td">' +
+            '<button type="button" class="' + cls + '" data-row="' + row.key + '" data-day="' + day + '" title="' + escapeHtml(title + (postHint ? (" | Пост: " + postHint) : "")) + '">' + escapeHtml(shortText) + "</button>" +
+          "</td>";
+      }
+      html += "</tr>";
+    });
+    html += "</tbody></table></div>";
+    container.innerHTML = html;
+    container.querySelectorAll(".ads-post-cell").forEach(function(btn) {
+      btn.addEventListener("click", function() {
+        var row = btn.getAttribute("data-row");
+        var day = parseInt(btn.getAttribute("data-day"), 10);
+        if (!row || !day) return;
+        openPostSourceCellEditor(btn, sourcesState, row, day, function() {
+          renderPostsSourceTable(container, postsState, sourcesState, onSaved);
+          if (typeof onSaved === "function") onSaved();
+        });
+      });
+    });
+  }
+  function openPostsSourceModal(postsState, sourcesState, onSaved) {
+    closePostsSourceModal();
+    var modal = document.createElement("div");
+    modal.className = "ads-source-modal-overlay";
+    modal.innerHTML =
+      '<div class="ads-source-modal">' +
+        '<div class="ads-source-modal-head">' +
+          '<div class="ads-source-modal-title">Источник постов</div>' +
+          '<button type="button" class="ads-source-modal-close" aria-label="Закрыть">×</button>' +
+        "</div>" +
+        '<div class="ads-source-modal-body" id="adsSourceModalBody"></div>' +
+      "</div>";
+    document.body.appendChild(modal);
+    var body = modal.querySelector("#adsSourceModalBody");
+    renderPostsSourceTable(body, postsState, sourcesState, onSaved);
+    function closeModal() { closePostsSourceModal(); }
+    var closeBtn = modal.querySelector(".ads-source-modal-close");
+    if (closeBtn) closeBtn.addEventListener("click", closeModal);
+    modal.addEventListener("mousedown", function(evt) {
+      if (evt.target === modal) closeModal();
+    });
+    document.addEventListener("keydown", onEsc, true);
+    function onEsc(evt) { if (evt.key === "Escape") closeModal(); }
+    _adsPostSourceModalCleanup = function() {
+      document.removeEventListener("keydown", onEsc, true);
+      if (modal.parentNode) modal.parentNode.removeChild(modal);
+      _adsPostSourceModalCleanup = null;
+    };
+  }
+
   function getLinksCategory(item) {
     var explicit = String(item && item.category || "").toLowerCase().trim();
     if (explicit === "telegram" || explicit === "vk" || explicit === "avito" || explicit === "sites") return explicit;
@@ -808,6 +984,7 @@
   function renderAdsPage(mainContentEl) {
     var state = loadExpenses();
     var postsState = loadPostsPlan();
+    var sourcesState = loadPostsSources();
     var links = loadLinks();
     var wrap = document.createElement("div");
     wrap.className = "ads-page";
@@ -842,7 +1019,7 @@
       updateTopSummary(wrap.querySelector("#adsTopSummary"), state);
     }
     renderExpensesTable(expensesContainer, state, refreshTotals);
-    renderPostsPlanTable(postsPlanContainer, postsState);
+    renderPostsPlanTable(postsPlanContainer, postsState, sourcesState);
     setTimeout(function() {
       var queued = loadPostsSyncQueue().length;
       if (queued > 0) {
