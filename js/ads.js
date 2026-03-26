@@ -339,6 +339,17 @@
     var mm = m < 10 ? ("0" + m) : String(m);
     return dd + "." + mm;
   }
+  function getPostsVisibleDaysCount() {
+    var scale = 1;
+    try {
+      if (window && window.visualViewport && Number(window.visualViewport.scale) > 0) {
+        scale = Number(window.visualViewport.scale);
+      }
+    } catch (e) {}
+    if (scale <= 0.8) return 90;
+    if (scale <= 0.95) return 60;
+    return 30;
+  }
   function autoScrollPostsTableToToday(container) {
     if (!container) return;
     var wrap = container.querySelector(".ads-posts-wrap");
@@ -472,36 +483,51 @@
 
   function renderPostsPlanTable(container, postsState, sourcesState, viewOpts) {
     viewOpts = viewOpts || {};
-    var days = 30;
+    var days = Math.max(30, Math.min(90, Number(viewOpts.days) || 30));
     var todayDay = getTodayDayForState(postsState);
-    var monthTitle = getPostsMonthTitle(postsState);
-    var isNextMonth = Number(postsState.offset || 0) > 0;
-    var monthBtnText = isNextMonth ? "← Текущий" : "+1 месяц";
+    var monthTitle = getPostsMonthTitle(postsState) + " · " + days + " дней";
+    var baseOffset = Math.max(0, Number(postsState.offset) || 0);
+    var monthStateCache = {};
+    function getMonthState(offset) {
+      var key = String(offset);
+      if (!monthStateCache[key]) monthStateCache[key] = loadPostsPlan(offset);
+      return monthStateCache[key];
+    }
+    function getColumnMeta(col) {
+      var z = Math.max(0, Number(col) - 1);
+      var monthShift = Math.floor(z / 30);
+      var day = (z % 30) + 1;
+      var monthOffset = baseOffset + monthShift;
+      return { monthOffset: monthOffset, day: day };
+    }
     var html =
       '<div class="ads-posts-head-row">' +
         '<div class="ads-posts-planner-head">Посты на 30 дней в канала</div>' +
         '<div class="ads-posts-head-actions">' +
           '<span class="ads-posts-month-chip">' + escapeHtml(monthTitle) + "</span>" +
-          '<button type="button" class="ads-posts-source-btn" id="adsPostMonthBtn">' + monthBtnText + "</button>" +
           '<button type="button" class="ads-posts-source-btn" id="adsPostSourceBtn">Источник</button>' +
         "</div>" +
       "</div>" +
       '<div class="ads-posts-sync-status" id="adsPostsSyncStatus">Синк с Google Sheets: готово</div>' +
       '<div class="ads-posts-wrap"><table class="ads-posts-table"><thead><tr><th class="ads-th-label">Проект</th>';
     for (var d = 1; d <= days; d++) {
+      var meta = getColumnMeta(d);
+      var metaMonth = getPostsMonthMeta(meta.monthOffset);
       var headCls = "ads-th-day";
-      if (d === todayDay) headCls += " ads-day-today";
-      else if (todayDay && d < todayDay) headCls += " ads-day-past";
-      else if (todayDay && d > todayDay) headCls += " ads-day-future";
-      var dayLabel = getPostDayMonthLabel(postsState, d);
+      if (meta.monthOffset === baseOffset && meta.day === todayDay) headCls += " ads-day-today";
+      else if (meta.monthOffset === baseOffset && todayDay && meta.day < todayDay) headCls += " ads-day-past";
+      else headCls += " ads-day-future";
+      var dayLabel = getPostDayMonthLabel(metaMonth, meta.day);
       html += '<th class="' + headCls + '" title="' + dayLabel + '">' + dayLabel + "</th>";
     }
     html += "</tr></thead><tbody>";
     POST_ROWS.forEach(function(row) {
       html += '<tr><td class="ads-td-label">' + row.label + "</td>";
-      for (var day = 1; day <= days; day++) {
-        var key = getPostCellKey(row.key, day);
-        var cellData = normalizePostCellData(postsState.data[key]);
+      for (var col = 1; col <= days; col++) {
+        var cMeta = getColumnMeta(col);
+        var monthState = getMonthState(cMeta.monthOffset);
+        var key = getPostCellKey(row.key, cMeta.day);
+        var cellData = normalizePostCellData(monthState.data[key]);
         var val = cellData.text;
         var shortText = val.length > 10 ? (val.slice(0, 10) + "…") : val;
         var hasVal = !!val.trim();
@@ -510,12 +536,13 @@
         var cellLabel = hasVal ? shortText : (isPublished ? "✅" : "Пост");
         var className = "ads-post-cell" + (hasVal ? " is-filled" : "") + (isPublished ? " is-published" : "");
         var tdDayCls = "ads-post-td";
-        if (day === todayDay) tdDayCls += " ads-day-today";
-        else if (todayDay && day < todayDay) tdDayCls += " ads-day-past";
-        else if (todayDay && day > todayDay) tdDayCls += " ads-day-future";
+        if (cMeta.monthOffset === baseOffset && cMeta.day === todayDay) tdDayCls += " ads-day-today";
+        else if (cMeta.monthOffset === baseOffset && todayDay && cMeta.day < todayDay) tdDayCls += " ads-day-past";
+        else tdDayCls += " ads-day-future";
+        var dataDayTitle = getPostDayMonthLabel(getPostsMonthMeta(cMeta.monthOffset), cMeta.day);
         html +=
           '<td class="' + tdDayCls + '">' +
-            '<button type="button" class="' + className + '" data-row="' + row.key + '" data-day="' + day + '" title="' + escapeHtml(cellTitle) + '">' +
+            '<button type="button" class="' + className + '" data-row="' + row.key + '" data-day="' + cMeta.day + '" data-month-offset="' + cMeta.monthOffset + '" title="' + escapeHtml(dataDayTitle + " · " + cellTitle) + '">' +
               escapeHtml(cellLabel) +
             "</button>" +
           "</td>";
@@ -528,19 +555,15 @@
       btn.addEventListener("click", function() {
         var row = btn.getAttribute("data-row");
         var day = parseInt(btn.getAttribute("data-day"), 10);
-        if (!row || !day) return;
-        openPostCellEditor(btn, postsState, row, day, function() {
+        var mo = parseInt(btn.getAttribute("data-month-offset"), 10);
+        if (!row || !day || isNaN(mo)) return;
+        var targetState = loadPostsPlan(mo);
+        openPostCellEditor(btn, targetState, row, day, function() {
           if (typeof viewOpts.onRefresh === "function") viewOpts.onRefresh();
           else renderPostsPlanTable(container, postsState, sourcesState, viewOpts);
         });
       });
     });
-    var monthBtn = container.querySelector("#adsPostMonthBtn");
-    if (monthBtn) {
-      monthBtn.addEventListener("click", function() {
-        if (typeof viewOpts.onToggleMonth === "function") viewOpts.onToggleMonth();
-      });
-    }
     var sourceBtn = container.querySelector("#adsPostSourceBtn");
     if (sourceBtn) {
       sourceBtn.addEventListener("click", function() {
@@ -1207,6 +1230,7 @@
     var state = loadExpenses();
     var postsMonthOffset = 0;
     var postsState = loadPostsPlan(postsMonthOffset);
+    var postsVisibleDays = getPostsVisibleDaysCount();
     var sourcesState = loadPostsSources();
     var links = loadLinks();
     var wrap = document.createElement("div");
@@ -1243,26 +1267,42 @@
     }
     var postsSheetPulledByMonth = {};
     var postsSheetPullInFlight = false;
+    function getVisibleMonthOffsets() {
+      var blocks = Math.ceil(Math.max(30, postsVisibleDays) / 30);
+      var arr = [];
+      for (var i = 0; i < blocks; i++) arr.push(postsMonthOffset + i);
+      return arr;
+    }
     function syncPostsFromSheetsIfNeeded() {
-      var monthId = String(postsState.monthId || "default");
-      if (postsSheetPulledByMonth[monthId] || postsSheetPullInFlight) return;
+      var offsets = getVisibleMonthOffsets();
+      var hasWork = false;
+      for (var i = 0; i < offsets.length; i++) {
+        var id = getPostsMonthMeta(offsets[i]).monthId;
+        if (!postsSheetPulledByMonth[id]) { hasWork = true; break; }
+      }
+      if (!hasWork || postsSheetPullInFlight) return;
       postsSheetPullInFlight = true;
       setPostsSyncStatus("Синхронизирую из Google Sheets...", false);
-      pullPostsPlanFromGoogleSheets(postsState)
-        .then(function(changed) {
-          postsSheetPulledByMonth[monthId] = true;
-          if (changed) {
+      var chain = Promise.resolve();
+      var changedAny = false;
+      offsets.forEach(function(off) {
+        chain = chain.then(function() {
+          var st = loadPostsPlan(off);
+          var id = String(st.monthId || getPostsMonthMeta(off).monthId);
+          if (postsSheetPulledByMonth[id]) return;
+          return pullPostsPlanFromGoogleSheets(st).then(function(changed) {
+            postsSheetPulledByMonth[id] = true;
+            if (changed) changedAny = true;
+          });
+        });
+      });
+      chain
+        .then(function() {
+          if (changedAny) {
             rerenderPostsPlan();
-            return;
+          } else {
+            setPostsSyncStatus("Синк с Google Sheets: готово", false);
           }
-          // If next month has no rows/content, return user to current month automatically.
-          if (postsMonthOffset > 0 && !hasAnyPostsInState(postsState)) {
-            postsMonthOffset = 0;
-            rerenderPostsPlan();
-            setPostsSyncStatus("Данных на следующий месяц пока нет — показан текущий.", false);
-            return;
-          }
-          setPostsSyncStatus("Синк с Google Sheets: готово", false);
         })
         .catch(function(err) {
           var msg = err && err.message ? err.message : "не удалось получить данные";
@@ -1274,15 +1314,27 @@
       postsState = loadPostsPlan(postsMonthOffset);
       renderPostsPlanTable(postsPlanContainer, postsState, sourcesState, {
         onRefresh: rerenderPostsPlan,
-        onToggleMonth: function() {
-          postsMonthOffset = postsMonthOffset ? 0 : 1;
-          rerenderPostsPlan();
-        }
+        days: postsVisibleDays
       });
       syncPostsFromSheetsIfNeeded();
     }
     renderExpensesTable(expensesContainer, state, refreshTotals);
     rerenderPostsPlan();
+    var postsViewportResizeRaf = 0;
+    function onPostsViewportResize() {
+      if (postsViewportResizeRaf) cancelAnimationFrame(postsViewportResizeRaf);
+      postsViewportResizeRaf = requestAnimationFrame(function() {
+        postsViewportResizeRaf = 0;
+        var nextDays = getPostsVisibleDaysCount();
+        if (nextDays === postsVisibleDays) return;
+        postsVisibleDays = nextDays;
+        rerenderPostsPlan();
+      });
+    }
+    window.addEventListener("resize", onPostsViewportResize);
+    if (window.visualViewport && window.visualViewport.addEventListener) {
+      window.visualViewport.addEventListener("resize", onPostsViewportResize);
+    }
     setTimeout(function() {
       var queued = loadPostsSyncQueue().length;
       if (queued > 0) {
