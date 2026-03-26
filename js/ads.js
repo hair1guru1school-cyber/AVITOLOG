@@ -332,6 +332,22 @@
     if (String(state.month) !== String(now.getMonth() + 1)) return 0;
     return now.getDate();
   }
+  function getPostDayMonthLabel(state, day) {
+    var d = Math.max(1, Number(day) || 1);
+    var m = Math.max(1, Math.min(12, Number(state && state.month) || 1));
+    var dd = d < 10 ? ("0" + d) : String(d);
+    var mm = m < 10 ? ("0" + m) : String(m);
+    return dd + "." + mm;
+  }
+  function autoScrollPostsTableToToday(container) {
+    if (!container) return;
+    var wrap = container.querySelector(".ads-posts-wrap");
+    if (!wrap) return;
+    var todayTh = wrap.querySelector("th.ads-th-day.ads-day-today");
+    if (!todayTh) return;
+    var desired = Math.max(0, todayTh.offsetLeft - 72);
+    wrap.scrollLeft = desired;
+  }
 
   function recomputeBothRow(state) {
     for (var d = 1; d <= 31; d++) {
@@ -473,7 +489,12 @@
       '<div class="ads-posts-sync-status" id="adsPostsSyncStatus">Синк с Google Sheets: готово</div>' +
       '<div class="ads-posts-wrap"><table class="ads-posts-table"><thead><tr><th class="ads-th-label">Проект</th>';
     for (var d = 1; d <= days; d++) {
-      html += '<th class="ads-th-day' + (d === todayDay ? " ads-day-today" : "") + '">' + d + "</th>";
+      var headCls = "ads-th-day";
+      if (d === todayDay) headCls += " ads-day-today";
+      else if (todayDay && d < todayDay) headCls += " ads-day-past";
+      else if (todayDay && d > todayDay) headCls += " ads-day-future";
+      var dayLabel = getPostDayMonthLabel(postsState, d);
+      html += '<th class="' + headCls + '" title="' + dayLabel + '">' + dayLabel + "</th>";
     }
     html += "</tr></thead><tbody>";
     POST_ROWS.forEach(function(row) {
@@ -488,8 +509,12 @@
         var cellTitle = val || (isPublished ? "Опубликовано" : "Нажмите, чтобы добавить пост");
         var cellLabel = hasVal ? shortText : (isPublished ? "✅" : "Пост");
         var className = "ads-post-cell" + (hasVal ? " is-filled" : "") + (isPublished ? " is-published" : "");
+        var tdDayCls = "ads-post-td";
+        if (day === todayDay) tdDayCls += " ads-day-today";
+        else if (todayDay && day < todayDay) tdDayCls += " ads-day-past";
+        else if (todayDay && day > todayDay) tdDayCls += " ads-day-future";
         html +=
-          '<td class="ads-post-td' + (day === todayDay ? " ads-day-today" : "") + '">' +
+          '<td class="' + tdDayCls + '">' +
             '<button type="button" class="' + className + '" data-row="' + row.key + '" data-day="' + day + '" title="' + escapeHtml(cellTitle) + '">' +
               escapeHtml(cellLabel) +
             "</button>" +
@@ -522,6 +547,7 @@
         openPostsSourceSheet();
       });
     }
+    autoScrollPostsTableToToday(container);
   }
   function openPostsSourceSheet() {
     var url = "https://docs.google.com/spreadsheets/d/" + POSTS_SHEET_ID + "/edit";
@@ -543,6 +569,25 @@
   function quoteSheetRange(sheetName, a1Range) {
     var n = String(sheetName || "").replace(/'/g, "''");
     return "'" + n + "'!" + a1Range;
+  }
+  function resetDriveAuthOnUnauthorized() {
+    try {
+      if (typeof window !== "undefined") {
+        window._driveToken = null;
+      }
+      if (typeof clearStoredDriveAuth === "function") clearStoredDriveAuth();
+      if (typeof updateDriveUI === "function") updateDriveUI();
+    } catch (e) {}
+  }
+  function throwFriendlySheetsError(prefix, resp, rawText) {
+    var status = Number(resp && resp.status) || 0;
+    if (status === 401 || status === 403) {
+      resetDriveAuthOnUnauthorized();
+      throw new Error("Сессия Google истекла. Нажмите 🔑 Drive и повторите.");
+    }
+    var txt = String(rawText || "").trim();
+    var shortTxt = txt.length > 220 ? (txt.slice(0, 220) + "...") : txt;
+    throw new Error(prefix + ": HTTP " + status + (shortTxt ? (" · " + shortTxt) : ""));
   }
 
   async function getGoogleAccessTokenForSheets() {
@@ -573,7 +618,7 @@
     if (resp.ok) return true;
     var t = await resp.text().catch(function() { return ""; });
     if (resp.status === 400 && /already exists/i.test(t)) return true;
-    throw new Error("Не удалось создать лист " + sheetName + ": HTTP " + resp.status);
+    throwFriendlySheetsError("Не удалось создать лист " + sheetName, resp, t);
   }
 
   async function putSheetValues(token, range, values) {
@@ -597,7 +642,7 @@
     });
     if (!resp.ok) {
       var txt = await resp.text().catch(function() { return ""; });
-      throw new Error("Sheets update failed: HTTP " + resp.status + (txt ? (" · " + txt) : ""));
+      throwFriendlySheetsError("Sheets update failed", resp, txt);
     }
   }
   async function getSheetValues(token, range) {
@@ -610,7 +655,8 @@
       headers: { Authorization: "Bearer " + token }
     });
     if (!resp.ok) {
-      throw new Error("Sheets read failed: HTTP " + resp.status);
+      var txt = await resp.text().catch(function() { return ""; });
+      throwFriendlySheetsError("Sheets read failed", resp, txt);
     }
     return await resp.json();
   }
@@ -631,7 +677,8 @@
         if (checkResp.status === 400 || checkResp.status === 404) {
           await createSheetIfMissing(token, sheetName);
         } else {
-          throw new Error("Sheets check failed: HTTP " + checkResp.status);
+          var checkTxt = await checkResp.text().catch(function() { return ""; });
+          throwFriendlySheetsError("Sheets check failed", checkResp, checkTxt);
         }
       }
       await putSheetValues(token, quoteSheetRange(sheetName, "A1:C1"), [["День", "Контент поста", "Опубликовано"]]);

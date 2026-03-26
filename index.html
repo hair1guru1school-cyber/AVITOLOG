@@ -992,7 +992,11 @@ body.contract-tab .analytics-control-panel,body.contract-tab .sec-bar,body.contr
 .ads-posts-wrap{overflow-x:auto;overflow-y:auto;max-height:280px}
 .ads-posts-table{border-collapse:separate;border-spacing:2px;font-size:11px;min-width:max-content}
 .ads-posts-table th,.ads-posts-table td{border:none;padding:0;text-align:center;height:38px;vertical-align:middle}
-.ads-post-td{min-width:36px;max-width:42px;background:rgba(255,255,255,0.03);border-radius:7px;padding:0 2px}
+.ads-post-td{min-width:44px;max-width:54px;background:rgba(255,255,255,0.03);border-radius:7px;padding:0 2px;transition:background .16s,box-shadow .16s}
+.ads-th-day{font-size:10px;white-space:nowrap;padding:0 3px}
+.ads-th-day.ads-day-past,.ads-post-td.ads-day-past{background:rgba(255,255,255,0.018)}
+.ads-th-day.ads-day-future,.ads-post-td.ads-day-future{background:rgba(53,208,255,0.06)}
+.ads-post-td.ads-day-today{background:rgba(53,208,255,0.12);box-shadow:inset 0 0 0 1px rgba(53,208,255,0.38)}
 .ads-post-cell{width:100%;height:32px;border:1px solid rgba(255,255,255,0.08);border-radius:6px;background:rgba(255,255,255,0.03);color:#8da3bf;font-size:10px;line-height:1;padding:0 2px;text-align:center;outline:none;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .ads-post-cell:hover{border-color:rgba(0,217,126,0.45);color:var(--text)}
 .ads-post-cell.is-filled{border-color:rgba(53,208,255,0.45);color:#c8f5ff;background:rgba(53,208,255,0.11)}
