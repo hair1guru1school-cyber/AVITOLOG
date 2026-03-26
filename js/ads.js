@@ -127,8 +127,7 @@
   }
   function stringifyPostCellForSheet(cellData) {
     var text = String((cellData && cellData.text) || "").trim();
-    if (text) return text;
-    return (cellData && cellData.status) === "published" ? "Опубликовано" : "";
+    return text;
   }
   function hasPostCellContent(cellData) {
     var text = String((cellData && cellData.text) || "").trim();
@@ -693,7 +692,7 @@
     if (!startRow) throw new Error("Не найден блок месяца в таблице");
     var rowNum = Number(startRow) + Number(day) - 1; // day 1 -> startRow
     var targetRange = quoteSheetRange(sheetName, "B" + rowNum + ":C" + rowNum);
-    var publishedFlag = normalizePostCellStatus(status) === "published" ? "1" : "";
+    var publishedFlag = normalizePostCellStatus(status) === "published" ? "✅" : "";
     await putSheetValues(token, targetRange, [[String(value || ""), publishedFlag]]);
   }
   async function pullPostsPlanFromGoogleSheets(postsState, tokenOverride) {
@@ -750,7 +749,6 @@
     panel.innerHTML =
       '<div class="ads-post-editor-title">День ' + day + " · " + (row === "learn" ? "Обучение" : "Агентство") + "</div>" +
       '<div class="ads-post-editor-status-row">' +
-        '<label class="ads-post-editor-status-label" for="adsPostStatusSelect">Статус</label>' +
         '<label class="ads-post-editor-published"><input type="checkbox" id="adsPostPublishedChk"> Опубликовано</label>' +
       "</div>" +
       '<textarea class="ads-post-editor-text" placeholder="Впишите текст поста..."></textarea>' +
