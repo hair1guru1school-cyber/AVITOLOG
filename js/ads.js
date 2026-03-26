@@ -6,7 +6,6 @@
 
   var EXPENSES_KEY = "crm_ads_expenses_v1";
   var POSTS_PLAN_KEY = "crm_ads_posts_plan_v1";
-  var POSTS_PLAN_MONTH_OFFSET_KEY = "crm_ads_posts_plan_month_offset_v1";
   var POSTS_SOURCE_KEY = "crm_ads_posts_source_v1";
   var LINKS_KEY = "crm_ads_links_v1";
   var POSTS_SYNC_QUEUE_KEY = "crm_ads_posts_sync_queue_v1";
@@ -134,6 +133,15 @@
   function hasPostCellContent(cellData) {
     var text = String((cellData && cellData.text) || "").trim();
     return !!text || (cellData && cellData.status === "published");
+  }
+  function hasAnyPostsInState(postsState) {
+    var data = postsState && postsState.data ? postsState.data : {};
+    var keys = Object.keys(data || {});
+    for (var i = 0; i < keys.length; i++) {
+      var cell = normalizePostCellData(data[keys[i]]);
+      if (hasPostCellContent(cell)) return true;
+    }
+    return false;
   }
   function savePostCellData(postsState, key, cellData) {
     var text = String((cellData && cellData.text) || "").trim();
@@ -1153,10 +1161,6 @@
   function renderAdsPage(mainContentEl) {
     var state = loadExpenses();
     var postsMonthOffset = 0;
-    try {
-      postsMonthOffset = parseInt(localStorage.getItem(POSTS_PLAN_MONTH_OFFSET_KEY) || "0", 10) || 0;
-    } catch (eOff) { postsMonthOffset = 0; }
-    postsMonthOffset = postsMonthOffset > 0 ? 1 : 0;
     var postsState = loadPostsPlan(postsMonthOffset);
     var sourcesState = loadPostsSources();
     var links = loadLinks();
@@ -1202,8 +1206,18 @@
       pullPostsPlanFromGoogleSheets(postsState)
         .then(function(changed) {
           postsSheetPulledByMonth[monthId] = true;
-          if (changed) rerenderPostsPlan();
-          else setPostsSyncStatus("Синк с Google Sheets: готово", false);
+          if (changed) {
+            rerenderPostsPlan();
+            return;
+          }
+          // If next month has no rows/content, return user to current month automatically.
+          if (postsMonthOffset > 0 && !hasAnyPostsInState(postsState)) {
+            postsMonthOffset = 0;
+            rerenderPostsPlan();
+            setPostsSyncStatus("Данных на следующий месяц пока нет — показан текущий.", false);
+            return;
+          }
+          setPostsSyncStatus("Синк с Google Sheets: готово", false);
         })
         .catch(function(err) {
           var msg = err && err.message ? err.message : "не удалось получить данные";
@@ -1217,7 +1231,6 @@
         onRefresh: rerenderPostsPlan,
         onToggleMonth: function() {
           postsMonthOffset = postsMonthOffset ? 0 : 1;
-          try { localStorage.setItem(POSTS_PLAN_MONTH_OFFSET_KEY, String(postsMonthOffset)); } catch (eSet) {}
           rerenderPostsPlan();
         }
       });
