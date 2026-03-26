@@ -442,10 +442,17 @@
     var sourceBtn = container.querySelector("#adsPostSourceBtn");
     if (sourceBtn) {
       sourceBtn.addEventListener("click", function() {
-        openPostsSourceModal(postsState, sourcesState, function() {
-          renderPostsPlanTable(container, postsState, sourcesState);
-        });
+        openPostsSourceSheet();
       });
+    }
+  }
+  function openPostsSourceSheet() {
+    var url = "https://docs.google.com/spreadsheets/d/" + POSTS_SHEET_ID + "/edit";
+    try {
+      var w = window.open(url, "_blank", "noopener");
+      if (!w) throw new Error("popup-blocked");
+    } catch (e) {
+      alert("Не удалось открыть вкладку автоматически.\nОткрой вручную:\n" + url);
     }
   }
 
