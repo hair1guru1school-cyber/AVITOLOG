@@ -3056,13 +3056,35 @@ function callAPI(prompt, maxTokens) {
     'anthropic-version': '2023-06-01',
     'anthropic-dangerous-direct-browser-access': 'true'
   };
+  function buildEndpointCandidates() {
+    var out = [];
+    var seen = {};
+    function add(url) {
+      var u = String(url || '').trim();
+      if (!u || !/^https?:\/\//i.test(u) || seen[u]) return;
+      // Known problematic public proxy in this environment (preflight blocked).
+      if (u.toLowerCase().indexOf('proxy.corsfix.com') >= 0) return;
+      seen[u] = true;
+      out.push(u);
+    }
+    var custom = '';
+    try { custom = String(localStorage.getItem('avito_api_endpoint') || '').trim(); } catch(e) {}
+    if (custom && custom !== API) add(custom);
+    add(API);
+    (API_CORS_FALLBACKS || []).forEach(function(item) {
+      var u = (item && typeof item === 'object') ? item.url : String(item || '');
+      if (u.indexOf('?url=') < 0 && u.indexOf('api.anthropic.com') < 0 && u.indexOf('%2F%2F') < 0) u += API;
+      add(u);
+    });
+    return out;
+  }
   function doRequest(url, model) {
     var payload = JSON.stringify({ model: model || API_MODELS[0], max_tokens: maxTokens, messages: [{role:'user', content: prompt}] });
     var opts = { method: 'POST', headers: headers, body: payload };
     if (typeof AbortController !== 'undefined') {
       var ctl = new AbortController();
       opts.signal = ctl.signal;
-      setTimeout(function(){ ctl.abort(); }, 15000);
+      setTimeout(function(){ ctl.abort(); }, 9000);
     }
     return fetch(url, opts).then(function(r) {
       if (!r.ok) {
@@ -3173,38 +3195,20 @@ function callAPI(prompt, maxTokens) {
       });
     });
   }
-  var corePromise = doWithRetry(endpoint).catch(function(e) {
-    var m = String(e && e.message ? e.message : e);
-    var isCors = m.indexOf('Failed to fetch') >= 0 || m.indexOf('CORS') >= 0 || m.indexOf('NetworkError') >= 0 || m.indexOf('Load failed') >= 0 || m.indexOf('ERR_FAILED') >= 0 || m.indexOf('blocked') >= 0 || m.indexOf('net::') >= 0 || m.indexOf('Network request failed') >= 0;
-    var isProxyError = m.indexOf('HTTP 405') >= 0 || m.indexOf('HTTP 403') >= 0 || m.indexOf('HTTP 502') >= 0 || m.indexOf('HTTP 503') >= 0 || m.indexOf('abor') >= 0;
-    var directAnthropic = endpoint.indexOf('api.anthropic.com') >= 0;
-    var useFallbacks = (isCors && directAnthropic) || isProxyError;
-    if (useFallbacks) {
-      var backendPromise = tryBackendFirst ? tryBackendModels(0) : Promise.reject(new Error('skip-local-backend'));
-      return backendPromise.catch(function() {
-      function tryFallbacks(idx) {
-        if (idx >= API_CORS_FALLBACKS.length) {
-          throw new Error('Сеть/CORS: не удаётся связаться с API.\n\n• Подними backend и проверь: ' + backendBase + '/health\n• GitHub Pages блокирует CORS — запусти локально: Live Server или python -m http.server\n• Нажми «Повторить» 2–3 раза — бесплатный прокси может просыпаться до 30 сек\n• «Настроить прокси» → разверни свой на Render: github.com/melihbirim/corsproxy');
-        }
-        var fallback = API_CORS_FALLBACKS[idx];
-        var url = typeof fallback === 'object' ? fallback.url : (fallback.indexOf('?url=') >= 0 || fallback.indexOf('api.anthropic.com') >= 0 || fallback.indexOf('%2F%2F') >= 0 ? fallback : fallback + API);
-        var warmup = typeof fallback === 'object' ? fallback.warmup : null;
-        var warmupDelay = (typeof fallback === 'object' && fallback.warmupDelay) ? fallback.warmupDelay : 800;
-        function doTry() {
-          return tryModels(url).catch(function() { return tryFallbacks(idx + 1); });
-        }
-        if (warmup) {
-          return fetch(warmup, { method: 'GET' }).catch(function(){}).then(function() {
-            return new Promise(function(res) { setTimeout(function() { res(doTry()); }, warmupDelay); });
-          });
-        }
-        return doTry();
-      }
-      return tryFallbacks(0);
-      });
-    }
-    throw e;
-  });
+  function tryEndpointChain(urls, idx, lastErr) {
+    if (!urls || idx >= urls.length) throw (lastErr || new Error('Нет доступных endpoint для генерации'));
+    var url = urls[idx];
+    return doWithRetry(url).catch(function(err) {
+      return tryEndpointChain(urls, idx + 1, err);
+    });
+  }
+  var candidates = buildEndpointCandidates();
+  var corePromise = (tryBackendFirst ? tryBackendModels(0).catch(function() { return tryEndpointChain(candidates, 0); }) : tryEndpointChain(candidates, 0))
+    .catch(function(err) {
+      var extra = '';
+      if (candidates && candidates.length) extra = '\n\nПроверенные endpoint:\n• ' + candidates.join('\n• ');
+      throw new Error('Сеть/CORS: не удалось выполнить генерацию через доступные маршруты.' + extra + '\n\nНажми «Настроить прокси» и вставь свой URL прокси (Render/Cloudflare Worker).');
+    });
   return withGlobalTimeout(corePromise, 45000, 'Генерация зависла по таймауту (45 сек). Проверь сеть/прокси и нажми «Повторить».');
 }
 
