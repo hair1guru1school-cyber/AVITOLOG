@@ -1516,6 +1516,16 @@ function showAnalyticsReadyToast(text) {
 // ── GENERATE ──
 function generate() {
   try {
+  var runId = ++_generateRunSeq;
+  var watchdogTimer = null;
+  function unlockGenerateUi() {
+    var btns = document.querySelectorAll('.btn-gen');
+    (btns ? [].slice.call(btns) : []).forEach(function(b) {
+      b.innerHTML = '<span>⚡</span><span>СГЕНЕРИРОВАТЬ</span>';
+    });
+    updateGenButtonState();
+    pgStop();
+  }
   var ac = _activeClient || getActiveClient();
   if (!ac || !ac.folderId) {
     var st = document.getElementById('crmSt');
@@ -1529,6 +1539,15 @@ function generate() {
     b.innerHTML = '<span>⚡</span><span>Генерирую...</span>';
   });
   pgStart();
+  watchdogTimer = setTimeout(function() {
+    if (runId !== _generateRunSeq) return;
+    unlockGenerateUi();
+    if (!projectsMode) {
+      setContent('<div class="error-box">Генерация заняла слишком много времени. Проверь сеть/прокси и нажми «Повторить».</div>');
+    } else {
+      showAnalyticsReadyToast('Генерация зависла по времени. Повтори запуск.');
+    }
+  }, 105000);
   if (!projectsMode) {
     setContent('<div class="loading"><div class="spinner"></div><p>AI анализирует нишу...</p></div>');
     hideChat();
@@ -1613,12 +1632,8 @@ function generate() {
       showAnalyticsReadyToast('Ошибка анализа: ' + e.message);
     }
   }).finally(function() {
-    var btns = document.querySelectorAll('.btn-gen');
-    (btns ? [].slice.call(btns) : []).forEach(function(b) {
-      b.innerHTML = '<span>⚡</span><span>СГЕНЕРИРОВАТЬ</span>';
-    });
-    updateGenButtonState();
-    pgStop();
+    if (watchdogTimer) clearTimeout(watchdogTimer);
+    if (runId === _generateRunSeq) unlockGenerateUi();
   });
   } catch (err) {
     var msg = (err && err.message) ? err.message : String(err);
@@ -3008,6 +3023,7 @@ function saveNorm(n) {
 
 // ── API ──
 var API_MODELS = ['claude-sonnet-4-20250514', 'claude-sonnet-4-6', 'claude-3-5-sonnet-20241022'];
+var _generateRunSeq = 0;
 function callAPI(prompt, maxTokens) {
   var inp = document.getElementById('apiKeyInput');
   var userKey = (inp && inp.value ? inp.value : localStorage.getItem('avito_api_key') || '').trim();
@@ -3066,11 +3082,20 @@ function callAPI(prompt, maxTokens) {
       maxTokens: maxTokens,
       model: model || API_MODELS[0]
     });
-    return fetch(backendBase + '/llm/anthropic', {
+    var opts = {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: payload
-    }).then(function(r) {
+    };
+    var backendCtl = (typeof AbortController !== 'undefined') ? new AbortController() : null;
+    var backendAbortTimer = null;
+    if (backendCtl) {
+      opts.signal = backendCtl.signal;
+      backendAbortTimer = setTimeout(function() {
+        try { backendCtl.abort(); } catch (e) {}
+      }, 45000);
+    }
+    return fetch(backendBase + '/llm/anthropic', opts).then(function(r) {
       return r.json().catch(function() { return { ok: false, error: 'Invalid backend JSON' }; })
         .then(function(data) {
           if (!r.ok || !data || data.ok === false) {
@@ -3078,6 +3103,13 @@ function callAPI(prompt, maxTokens) {
           }
           return String((data && data.text) || '');
         });
+    }).catch(function(err) {
+      if (err && err.name === 'AbortError') {
+        throw new Error('Backend не ответил вовремя (45 сек). Проверь сервер/сеть и нажми «Повторить».');
+      }
+      throw err;
+    }).finally(function() {
+      if (backendAbortTimer) clearTimeout(backendAbortTimer);
     });
   }
   function tryModels(url, idx) {
