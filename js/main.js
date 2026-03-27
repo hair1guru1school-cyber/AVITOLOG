@@ -3040,6 +3040,16 @@ function callAPI(prompt, maxTokens) {
       return 'http://localhost:8787/api';
     }
   })();
+  var tryBackendFirst = (function() {
+    var bb = String(backendBase || '').toLowerCase();
+    var isLocalBackend = bb.indexOf('localhost') >= 0 || bb.indexOf('127.0.0.1') >= 0;
+    var host = '';
+    try { host = String(window.location.hostname || '').toLowerCase(); } catch(e) {}
+    var isLocalPage = !host || host === 'localhost' || host === '127.0.0.1';
+    // If page is hosted (e.g. github.io), localhost backend is unreachable -> skip it.
+    if (isLocalBackend && !isLocalPage) return false;
+    return true;
+  })();
   var headers = {
     'Content-Type': 'application/json',
     'x-api-key': userKey,
@@ -3052,7 +3062,7 @@ function callAPI(prompt, maxTokens) {
     if (typeof AbortController !== 'undefined') {
       var ctl = new AbortController();
       opts.signal = ctl.signal;
-      setTimeout(function(){ ctl.abort(); }, 60000);
+      setTimeout(function(){ ctl.abort(); }, 30000);
     }
     return fetch(url, opts).then(function(r) {
       if (!r.ok) {
@@ -3168,7 +3178,8 @@ function callAPI(prompt, maxTokens) {
     var directAnthropic = endpoint.indexOf('api.anthropic.com') >= 0;
     var useFallbacks = (isCors && directAnthropic) || isProxyError;
     if (useFallbacks) {
-      return tryBackendModels(0).catch(function() {
+      var backendPromise = tryBackendFirst ? tryBackendModels(0) : Promise.reject(new Error('skip-local-backend'));
+      return backendPromise.catch(function() {
       function tryFallbacks(idx) {
         if (idx >= API_CORS_FALLBACKS.length) {
           throw new Error('Сеть/CORS: не удаётся связаться с API.\n\n• Подними backend и проверь: ' + backendBase + '/health\n• GitHub Pages блокирует CORS — запусти локально: Live Server или python -m http.server\n• Нажми «Повторить» 2–3 раза — бесплатный прокси может просыпаться до 30 сек\n• «Настроить прокси» → разверни свой на Render: github.com/melihbirim/corsproxy');
@@ -3176,7 +3187,7 @@ function callAPI(prompt, maxTokens) {
         var fallback = API_CORS_FALLBACKS[idx];
         var url = typeof fallback === 'object' ? fallback.url : (fallback.indexOf('?url=') >= 0 || fallback.indexOf('api.anthropic.com') >= 0 || fallback.indexOf('%2F%2F') >= 0 ? fallback : fallback + API);
         var warmup = typeof fallback === 'object' ? fallback.warmup : null;
-        var warmupDelay = (typeof fallback === 'object' && fallback.warmupDelay) ? fallback.warmupDelay : 5000;
+        var warmupDelay = (typeof fallback === 'object' && fallback.warmupDelay) ? fallback.warmupDelay : 800;
         function doTry() {
           return tryModels(url).catch(function() { return tryFallbacks(idx + 1); });
         }
@@ -3192,7 +3203,7 @@ function callAPI(prompt, maxTokens) {
     }
     throw e;
   });
-  return withGlobalTimeout(corePromise, 95000, 'Генерация зависла по таймауту (95 сек). Проверь сеть/прокси и нажми «Повторить».');
+  return withGlobalTimeout(corePromise, 65000, 'Генерация зависла по таймауту (65 сек). Проверь сеть/прокси и нажми «Повторить».');
 }
 
 // ── FIX JSON ──
