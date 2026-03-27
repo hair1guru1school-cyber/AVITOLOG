@@ -1547,7 +1547,7 @@ function generate() {
     } else {
       showAnalyticsReadyToast('Генерация зависла по времени. Повтори запуск.');
     }
-  }, 105000);
+  }, 150000);
   if (!projectsMode) {
     setContent('<div class="loading"><div class="spinner"></div><p>AI анализирует нишу...</p></div>');
     hideChat();
@@ -3164,7 +3164,7 @@ function callAPI(prompt, maxTokens) {
       opts.signal = backendCtl.signal;
       backendAbortTimer = setTimeout(function() {
         try { backendCtl.abort(); } catch (e) {}
-      }, 12000);
+      }, 70000);
     }
     return fetch(backendBase + '/llm/anthropic', opts).then(function(r) {
       return r.json().catch(function() { return { ok: false, error: 'Invalid backend JSON' }; })
@@ -3187,7 +3187,7 @@ function callAPI(prompt, maxTokens) {
         throw new Error('Локальный backend не запущен (или Node.js/npm не установлены).\nЗапусти в папке backend:\ncd backend\nnpm install\nnpm run dev');
       }
       if (err && err.name === 'AbortError') {
-        throw new Error('Backend не ответил вовремя (12 сек). Проверь сервер/сеть и нажми «Повторить».');
+        throw new Error('Backend не ответил вовремя (70 сек). Проверь сервер/сеть и нажми «Повторить».');
       }
       throw err;
     }).finally(function() {
@@ -3272,7 +3272,7 @@ function callAPI(prompt, maxTokens) {
       if (candidates && candidates.length) extra = '\n\nПроверенные endpoint:\n• ' + candidates.join('\n• ');
       throw new Error('Сеть/CORS: не удалось выполнить генерацию через доступные маршруты.' + extra + '\n\nЕсли прокси не работают, запусти локальный backend:\ncd backend\nnpm install\nnpm run dev');
     });
-  return withGlobalTimeout(corePromise, 45000, 'Генерация зависла по таймауту (45 сек). Проверь сеть/прокси и нажми «Повторить».');
+  return withGlobalTimeout(corePromise, 120000, 'Генерация зависла по таймауту (120 сек). Проверь сеть/прокси и нажми «Повторить».');
 }
 
 // ── FIX JSON ──
