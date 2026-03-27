@@ -3068,16 +3068,7 @@ function callAPI(prompt, maxTokens) {
       return 'http://localhost:8787/api';
     }
   })();
-  var tryBackendFirst = (function() {
-    var bb = String(backendBase || '').toLowerCase();
-    var isLocalBackend = bb.indexOf('localhost') >= 0 || bb.indexOf('127.0.0.1') >= 0;
-    var host = '';
-    try { host = String(window.location.hostname || '').toLowerCase(); } catch(e) {}
-    var isLocalPage = !host || host === 'localhost' || host === '127.0.0.1';
-    // If page is hosted (e.g. github.io), localhost backend is unreachable -> skip it.
-    if (isLocalBackend && !isLocalPage) return false;
-    return true;
-  })();
+  var tryBackendFirst = true;
   var headers = {
     'Content-Type': 'application/json',
     'x-api-key': userKey,
@@ -3169,7 +3160,7 @@ function callAPI(prompt, maxTokens) {
       opts.signal = backendCtl.signal;
       backendAbortTimer = setTimeout(function() {
         try { backendCtl.abort(); } catch (e) {}
-      }, 45000);
+      }, 12000);
     }
     return fetch(backendBase + '/llm/anthropic', opts).then(function(r) {
       return r.json().catch(function() { return { ok: false, error: 'Invalid backend JSON' }; })
@@ -3180,8 +3171,14 @@ function callAPI(prompt, maxTokens) {
           return String((data && data.text) || '');
         });
     }).catch(function(err) {
+      var msg = String((err && err.message) || err || '');
+      var bb = String(backendBase || '').toLowerCase();
+      var localBackend = bb.indexOf('localhost') >= 0 || bb.indexOf('127.0.0.1') >= 0;
+      if (localBackend && (msg.indexOf('Failed to fetch') >= 0 || msg.indexOf('NetworkError') >= 0 || msg.indexOf('Load failed') >= 0)) {
+        throw new Error('Локальный backend не запущен. Запусти в папке backend: npm install && npm run dev');
+      }
       if (err && err.name === 'AbortError') {
-        throw new Error('Backend не ответил вовремя (45 сек). Проверь сервер/сеть и нажми «Повторить».');
+        throw new Error('Backend не ответил вовремя (12 сек). Проверь сервер/сеть и нажми «Повторить».');
       }
       throw err;
     }).finally(function() {
@@ -3251,7 +3248,7 @@ function callAPI(prompt, maxTokens) {
     .catch(function(err) {
       var extra = '';
       if (candidates && candidates.length) extra = '\n\nПроверенные endpoint:\n• ' + candidates.join('\n• ');
-      throw new Error('Сеть/CORS: не удалось выполнить генерацию через доступные маршруты.' + extra + '\n\nНажми «Настроить прокси» и вставь свой URL прокси (Render/Cloudflare Worker).');
+      throw new Error('Сеть/CORS: не удалось выполнить генерацию через доступные маршруты.' + extra + '\n\nЕсли прокси не работают, запусти локальный backend:\ncd backend\nnpm install\nnpm run dev');
     });
   return withGlobalTimeout(corePromise, 45000, 'Генерация зависла по таймауту (45 сек). Проверь сеть/прокси и нажми «Повторить».');
 }
