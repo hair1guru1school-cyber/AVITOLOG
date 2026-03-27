@@ -3184,7 +3184,7 @@ function callAPI(prompt, maxTokens) {
         low.indexOf('err_connection_refused') >= 0 ||
         (err && err.name === 'TypeError')
       )) {
-        throw new Error('Локальный backend не запущен. Запусти в папке backend:\ncd backend\nnpm install\nnpm run dev');
+        throw new Error('Локальный backend не запущен (или Node.js/npm не установлены).\nЗапусти в папке backend:\ncd backend\nnpm install\nnpm run dev');
       }
       if (err && err.name === 'AbortError') {
         throw new Error('Backend не ответил вовремя (12 сек). Проверь сервер/сеть и нажми «Повторить».');
