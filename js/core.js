@@ -7,13 +7,23 @@
 const API = 'https://api.anthropic.com/v1/messages';
 const API_CORS_FALLBACKS = [
   { url: 'https://corsproxy-8uo5.onrender.com/?url=' + encodeURIComponent('https://api.anthropic.com/v1/messages') },
-  { url: 'https://corsproxy.io/?' + encodeURIComponent('https://api.anthropic.com/v1/messages') },
-  { url: 'https://proxy.corsfix.com/?' + encodeURIComponent('https://api.anthropic.com/v1/messages') }
+  { url: 'https://corsproxy.io/?url=' + encodeURIComponent('https://api.anthropic.com/v1/messages') }
 ];
 function getApiEndpoint() {
   var custom = '';
   try {
     custom = String(localStorage.getItem('avito_api_endpoint') || '').trim();
+    var low = custom.toLowerCase();
+    if (low.indexOf('proxy.corsfix.com') >= 0) {
+      localStorage.removeItem('avito_api_endpoint');
+      custom = '';
+    } else if (low.indexOf('corsproxy.io/?https%3a%2f%2f') >= 0) {
+      // Migrate old malformed corsproxy.io format to ?url=...
+      var enc = custom.split('?')[1] || '';
+      var migrated = 'https://corsproxy.io/?url=' + enc;
+      localStorage.setItem('avito_api_endpoint', migrated);
+      custom = migrated;
+    }
   } catch(e) {}
   if (custom && /^https?:\/\//i.test(custom)) return custom;
   return API;
