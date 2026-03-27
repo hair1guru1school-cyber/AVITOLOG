@@ -111,7 +111,10 @@
     return title + " " + String((meta && meta.year) || "");
   }
   function normalizePostCellStatus(status) {
-    return String(status || "").trim() === "published" ? "published" : "";
+    var s = String(status || "").trim().toLowerCase();
+    if (s === "published") return "published";
+    if (s === "queued") return "queued";
+    return "";
   }
   function normalizePostCellData(raw) {
     if (raw && typeof raw === "object" && !Array.isArray(raw)) {
@@ -131,7 +134,7 @@
   }
   function hasPostCellContent(cellData) {
     var text = String((cellData && cellData.text) || "").trim();
-    return !!text || (cellData && cellData.status === "published");
+    return !!text || !!(cellData && cellData.status);
   }
   function hasAnyPostsInState(postsState) {
     var data = postsState && postsState.data ? postsState.data : {};
@@ -522,9 +525,10 @@
         var shortText = val.length > 10 ? (val.slice(0, 10) + "…") : val;
         var hasVal = !!val.trim();
         var isPublished = cellData.status === "published";
-        var cellTitle = val || (isPublished ? "Опубликовано" : "Нажмите, чтобы добавить пост");
-        var cellLabel = hasVal ? shortText : (isPublished ? "✅" : "Пост");
-        var className = "ads-post-cell" + (hasVal ? " is-filled" : "") + (isPublished ? " is-published" : "");
+        var isQueued = cellData.status === "queued";
+        var cellTitle = val || (isPublished ? "Опубликовано" : (isQueued ? "В отложенных" : "Нажмите, чтобы добавить пост"));
+        var cellLabel = hasVal ? shortText : (isPublished ? "✅" : (isQueued ? "⏳" : "Пост"));
+        var className = "ads-post-cell" + (hasVal ? " is-filled" : "") + (isPublished ? " is-published" : "") + (isQueued ? " is-queued" : "");
         var tdDayCls = "ads-post-td";
         if (cMeta.monthOffset === baseOffset && cMeta.day === anchorDay) tdDayCls += " ads-day-today";
         else if (cMeta.monthOffset === baseOffset && todayDay && cMeta.day < anchorDay) tdDayCls += " ads-day-past";
@@ -752,8 +756,9 @@
     if (!startRow) throw new Error("Не найден блок месяца в таблице");
     var rowNum = Number(startRow) + Number(day) - 1; // day 1 -> startRow
     var targetRange = quoteSheetRange(sheetName, "B" + rowNum + ":C" + rowNum);
-    var publishedFlag = normalizePostCellStatus(status) === "published" ? "✅" : "";
-    await putSheetValues(token, targetRange, [[String(value || ""), publishedFlag]]);
+    var normalizedStatus = normalizePostCellStatus(status);
+    var statusFlag = normalizedStatus === "published" ? "✅" : (normalizedStatus === "queued" ? "⏳" : "");
+    await putSheetValues(token, targetRange, [[String(value || ""), statusFlag]]);
   }
   async function pullPostsPlanFromGoogleSheets(postsState, tokenOverride) {
     var token = tokenOverride || await getGoogleAccessTokenForSheets();
@@ -770,11 +775,13 @@
       for (var day = 1; day <= 30; day++) {
         var r = rows[day - 1] || [];
         var text = String(r[0] || "").trim();
-        var flagRaw = String(r[1] || "").trim().toLowerCase();
-        var isPublished = !!flagRaw && flagRaw !== "0" && flagRaw !== "false" && flagRaw !== "нет";
+        var flagCell = String(r[1] || "").trim();
+        var flagRaw = flagCell.toLowerCase();
+        var isPublished = flagCell === "✅" || /^(1|true|yes|да)$/i.test(flagRaw) || /опублик|published|done/.test(flagRaw);
+        var isQueued = flagCell === "⏳" || /отлож|queued|pending|schedule/.test(flagRaw);
         var key = getPostCellKey(rowKey, day);
         var prev = normalizePostCellData(postsState.data[key]);
-        if (!isPublished && !text) {
+        if (!isPublished && !isQueued && !text) {
           if (prev.text || prev.status) {
             delete postsState.data[key];
             changed = true;
@@ -782,11 +789,15 @@
           continue;
         }
         var nextText = text;
-        var nextStatus = isPublished ? "published" : "";
+        var nextStatus = isPublished ? "published" : (isQueued ? "queued" : "");
         // legacy fallback: if old table stored "Опубликовано" in text only.
         if (!nextStatus && /^опубликовано$/i.test(text)) {
           nextText = "";
           nextStatus = "published";
+        }
+        if (!nextStatus && /^в\s*отложенн/i.test(text)) {
+          nextText = "";
+          nextStatus = "queued";
         }
         if (prev.text !== nextText || prev.status !== nextStatus) {
           savePostCellData(postsState, key, { text: nextText, status: nextStatus });
@@ -810,6 +821,7 @@
       '<div class="ads-post-editor-title">День ' + day + " · " + (row === "learn" ? "Обучение" : "Агентство") + "</div>" +
       '<div class="ads-post-editor-status-row">' +
         '<label class="ads-post-editor-published"><input type="checkbox" id="adsPostPublishedChk"> Опубликовано</label>' +
+        '<label class="ads-post-editor-published is-queued"><input type="checkbox" id="adsPostQueuedChk"> В отложенных</label>' +
       "</div>" +
       '<textarea class="ads-post-editor-text" placeholder="Впишите текст поста..."></textarea>' +
       '<div class="ads-post-editor-actions">' +
@@ -820,6 +832,7 @@
     document.body.appendChild(panel);
     var textarea = panel.querySelector(".ads-post-editor-text");
     var publishedChk = panel.querySelector("#adsPostPublishedChk");
+    var queuedChk = panel.querySelector("#adsPostQueuedChk");
     var btnSave = panel.querySelector(".ads-post-editor-btn.save");
     var btnClear = panel.querySelector(".ads-post-editor-btn.clear");
     var btnCancel = panel.querySelectorAll(".ads-post-editor-btn")[2];
@@ -830,6 +843,15 @@
       textarea.selectionEnd = textarea.value.length;
     }
     if (publishedChk) publishedChk.checked = currentStatus === "published";
+    if (queuedChk) queuedChk.checked = currentStatus === "queued";
+    if (publishedChk && queuedChk) {
+      publishedChk.addEventListener("change", function() {
+        if (publishedChk.checked) queuedChk.checked = false;
+      });
+      queuedChk.addEventListener("change", function() {
+        if (queuedChk.checked) publishedChk.checked = false;
+      });
+    }
     var rect = anchorEl.getBoundingClientRect();
     var top = rect.bottom + 8;
     var left = rect.left;
@@ -841,7 +863,10 @@
 
     function doSave(nextValue, nextStatus) {
       var value = String(nextValue == null ? (textarea ? textarea.value : "") : nextValue).trim();
-      var status = normalizePostCellStatus(nextStatus == null ? ((publishedChk && publishedChk.checked) ? "published" : "") : nextStatus);
+      var autoStatus = "";
+      if (publishedChk && publishedChk.checked) autoStatus = "published";
+      else if (queuedChk && queuedChk.checked) autoStatus = "queued";
+      var status = normalizePostCellStatus(nextStatus == null ? autoStatus : nextStatus);
       var nextCell = { text: value, status: status };
       savePostCellData(postsState, key, nextCell);
       savePostsPlan(postsState);
