@@ -3062,7 +3062,7 @@ function callAPI(prompt, maxTokens) {
     if (typeof AbortController !== 'undefined') {
       var ctl = new AbortController();
       opts.signal = ctl.signal;
-      setTimeout(function(){ ctl.abort(); }, 30000);
+      setTimeout(function(){ ctl.abort(); }, 15000);
     }
     return fetch(url, opts).then(function(r) {
       if (!r.ok) {
@@ -3135,7 +3135,9 @@ function callAPI(prompt, maxTokens) {
   function doWithRetry(url, retries) {
     retries = retries || 0;
     return tryModels(url).catch(function(e) {
-      if (retries < 1) return doWithRetry(url, retries + 1);
+      var m = String(e && e.message ? e.message : e).toLowerCase();
+      var transient = (m.indexOf('429') >= 0 || m.indexOf('rate limit') >= 0 || m.indexOf('temporar') >= 0);
+      if (transient && retries < 1) return doWithRetry(url, retries + 1);
       throw e;
     });
   }
@@ -3203,7 +3205,7 @@ function callAPI(prompt, maxTokens) {
     }
     throw e;
   });
-  return withGlobalTimeout(corePromise, 65000, 'Генерация зависла по таймауту (65 сек). Проверь сеть/прокси и нажми «Повторить».');
+  return withGlobalTimeout(corePromise, 45000, 'Генерация зависла по таймауту (45 сек). Проверь сеть/прокси и нажми «Повторить».');
 }
 
 // ── FIX JSON ──

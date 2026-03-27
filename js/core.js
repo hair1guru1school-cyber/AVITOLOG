@@ -7,6 +7,7 @@
 const API = 'https://api.anthropic.com/v1/messages';
 const API_CORS_FALLBACKS = [
   { url: 'https://corsproxy-8uo5.onrender.com/?url=' + encodeURIComponent('https://api.anthropic.com/v1/messages') },
+  { url: 'https://corsproxy.io/?' + encodeURIComponent('https://api.anthropic.com/v1/messages') },
   { url: 'https://proxy.corsfix.com/?' + encodeURIComponent('https://api.anthropic.com/v1/messages') }
 ];
 function getApiEndpoint() {
