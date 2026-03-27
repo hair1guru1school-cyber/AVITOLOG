@@ -3069,6 +3069,10 @@ function callAPI(prompt, maxTokens) {
     }
   })();
   var tryBackendFirst = true;
+  var backendIsLocal = (function() {
+    var bb = String(backendBase || '').toLowerCase();
+    return bb.indexOf('localhost') >= 0 || bb.indexOf('127.0.0.1') >= 0;
+  })();
   var headers = {
     'Content-Type': 'application/json',
     'x-api-key': userKey,
@@ -3172,10 +3176,15 @@ function callAPI(prompt, maxTokens) {
         });
     }).catch(function(err) {
       var msg = String((err && err.message) || err || '');
-      var bb = String(backendBase || '').toLowerCase();
-      var localBackend = bb.indexOf('localhost') >= 0 || bb.indexOf('127.0.0.1') >= 0;
-      if (localBackend && (msg.indexOf('Failed to fetch') >= 0 || msg.indexOf('NetworkError') >= 0 || msg.indexOf('Load failed') >= 0)) {
-        throw new Error('Локальный backend не запущен. Запусти в папке backend: npm install && npm run dev');
+      var low = msg.toLowerCase();
+      if (backendIsLocal && (
+        low.indexOf('failed to fetch') >= 0 ||
+        low.indexOf('networkerror') >= 0 ||
+        low.indexOf('load failed') >= 0 ||
+        low.indexOf('err_connection_refused') >= 0 ||
+        (err && err.name === 'TypeError')
+      )) {
+        throw new Error('Локальный backend не запущен. Запусти в папке backend:\ncd backend\nnpm install\nnpm run dev');
       }
       if (err && err.name === 'AbortError') {
         throw new Error('Backend не ответил вовремя (12 сек). Проверь сервер/сеть и нажми «Повторить».');
@@ -3244,8 +3253,21 @@ function callAPI(prompt, maxTokens) {
     });
   }
   var candidates = buildEndpointCandidates();
-  var corePromise = (tryBackendFirst ? tryBackendModels(0).catch(function() { return tryEndpointChain(candidates, 0); }) : tryEndpointChain(candidates, 0))
+  var corePromise = (tryBackendFirst ? tryBackendModels(0).catch(function(err) {
+      var msg = String((err && err.message) || err || '');
+      // If local backend is selected, never fallback to public proxies.
+      if (backendIsLocal) throw err;
+      // If backend is missing/unreachable, do not spam proxy attempts.
+      if (msg.indexOf('Локальный backend не запущен') >= 0 || msg.indexOf('Backend не ответил вовремя') >= 0) {
+        throw err;
+      }
+      return tryEndpointChain(candidates, 0);
+    }) : tryEndpointChain(candidates, 0))
     .catch(function(err) {
+      var known = String((err && err.message) || err || '');
+      if (known.indexOf('Локальный backend не запущен') >= 0 || known.indexOf('Backend не ответил вовремя') >= 0) {
+        throw err;
+      }
       var extra = '';
       if (candidates && candidates.length) extra = '\n\nПроверенные endpoint:\n• ' + candidates.join('\n• ');
       throw new Error('Сеть/CORS: не удалось выполнить генерацию через доступные маршруты.' + extra + '\n\nЕсли прокси не работают, запусти локальный backend:\ncd backend\nnpm install\nnpm run dev');
