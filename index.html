@@ -2121,7 +2121,7 @@ if (!window.AVITOLOG_GOALS) {
   <!-- Сплеш: assets/splash.png или assets/splash.png.png -->
   <img class="splash-bg" src="assets/splash.png.png" alt="" onerror="this.style.display='none'">
   <div style="display:flex;flex-direction:column;align-items:center;gap:12px;position:relative;z-index:2">
-    <button type="button" class="splash-btn" onclick="startAuth()">🔑 Войти в Google Drive</button>
+    <button type="button" class="splash-btn" onclick="startAuth(event)">🔑 Войти в Google Drive</button>
     <button type="button" class="splash-btn" onclick="continueWithoutDrive()" style="padding:12px 24px;font-size:14px;letter-spacing:1px;border-color:rgba(124,245,255,0.7);color:#9feeff;background:rgba(53,208,255,0.12)">➡ Продолжить без Drive</button>
     <a href="#" onclick="startAuthRedirect();return false" style="font-size:11px;color:var(--muted);text-decoration:none">Не работает? Войти через страницу</a>
   </div>
@@ -2134,7 +2134,7 @@ if (!window.AVITOLOG_GOALS) {
   <div style="flex:1"></div>
   <button type="button" id="sidebarToggleBtn" class="header-sidebar-toggle" onclick="toggleSidebarVisibility()" title="Скрыть левое меню">◀</button>
   <button type="button" id="dayModeToggle" class="header-day-toggle" onclick="toggleDayMode()" title="Дневной режим — светлый интерфейс">☀️</button>
-  <button type="button" id="authBtn" class="header-drive-btn" onclick="startAuth()" title="Войти в Google Drive">🔑 Drive</button>
+  <button type="button" id="authBtn" class="header-drive-btn" onclick="startAuth(event)" title="Войти в Google Drive">🔑 Drive</button>
   <button type="button" id="employeeModeBtn" class="header-employee-btn" title="Режим сотрудника: смотреть и править данные как сотрудник" onclick="toggleEmployeeMode()">👤 Сотрудник</button>
   <form onsubmit="return false" style="display:flex;align-items:center;gap:8px">
     <input type="password" id="apiKeyInput" placeholder="sk-ant-... (API ключ с console.anthropic.com)"
@@ -2406,13 +2406,13 @@ if (!window.AVITOLOG_GOALS) {
 
 </div><!-- /mainApp -->
 <script src="https://unpkg.com/mammoth@1.6.0/mammoth.min.js"></script>
-<script src="js/user-config.js?v=20260324-3"></script>
-<script src="js/hero-asset.js?v=20260324-3"></script>
-<script src="js/core.js?v=20260324-3"></script>
-<script src="js/projects.js?v=20260324-3"></script>
-<script src="js/ai-import.js?v=20260324-3"></script>
-<script src="js/contract-generator.js?v=20260324-3"></script>
-<script src="js/ads.js?v=20260324-3"></script>
-<script src="js/main.js?v=20260324-3"></script>
+<script src="js/user-config.js?v=20260324-6"></script>
+<script src="js/hero-asset.js?v=20260324-6"></script>
+<script src="js/core.js?v=20260324-6"></script>
+<script src="js/projects.js?v=20260324-6"></script>
+<script src="js/ai-import.js?v=20260324-6"></script>
+<script src="js/contract-generator.js?v=20260324-6"></script>
+<script src="js/ads.js?v=20260324-6"></script>
+<script src="js/main.js?v=20260324-6"></script>
 </body>
 </html>

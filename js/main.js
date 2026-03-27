@@ -2190,17 +2190,10 @@ function fetchDriveUserEmail(token) {
 }
 function setDriveConnectedUiState() {
   updateDriveUI();
-  var btn = document.getElementById('authBtn');
-  if (btn) { btn.textContent = '✓ Drive'; btn.style.borderColor = '#00d97e'; btn.style.color = '#00d97e'; }
+  refreshDriveAuthButton();
   if (typeof restoreApiKey === 'function') restoreApiKey();
   var st = document.getElementById('crmSt');
   if (st) { st.className = 'crm-st'; st.textContent = ''; }
-  // При появлении приложения — открыть ПРОЕКТЫ, если это стартовая вкладка
-  if (projectsMode && typeof renderProjectsScreen === 'function') {
-    renderProjectsScreen();
-  } else if (!goalsMode && !agencyMode && !tasksMode && typeof openProjectsTab === 'function') {
-    openProjectsTab();
-  }
 }
 function applyOAuthHash(hash) {
   if (!hash || hash.indexOf('access_token=') < 0) return false;
@@ -2289,6 +2282,31 @@ function updateDriveUI() {
       if (mainApp) mainApp.style.display = 'none';
     }
   }
+  refreshDriveAuthButton();
+}
+function refreshDriveAuthButton() {
+  var btn = document.getElementById('authBtn');
+  if (!btn) return;
+  if (_driveToken) {
+    btn.textContent = '✓ Drive';
+    btn.style.borderColor = '#00d97e';
+    btn.style.color = '#00d97e';
+    btn.title = 'Drive подключен. Нажмите, чтобы выйти и войти снова';
+  } else {
+    btn.textContent = '🔑 Drive';
+    btn.style.borderColor = '';
+    btn.style.color = '';
+    btn.title = 'Войти в Google Drive';
+  }
+}
+function disconnectDriveAuth(keepBypass) {
+  _driveToken = null;
+  clearStoredDriveAuth();
+  try { localStorage.removeItem('avitolog_drive_email'); } catch (e0) {}
+  if (!keepBypass) {
+    try { localStorage.removeItem('avitolog_drive_bypass'); } catch (e1) {}
+  }
+  updateDriveUI();
 }
 function continueWithoutDrive() {
   try { localStorage.setItem('avitolog_drive_bypass', '1'); } catch(e) {}
@@ -2298,10 +2316,20 @@ function continueWithoutDrive() {
   if (mainApp) mainApp.style.display = 'block';
 }
 
-function startAuth() {
+function startAuth(evt) {
+  if (evt && typeof evt.preventDefault === 'function') evt.preventDefault();
+  if (evt && typeof evt.stopPropagation === 'function') evt.stopPropagation();
   try { localStorage.removeItem('avitolog_drive_bypass'); } catch(e0) {}
   if (!_driveToken) restoreDriveTokenFromStorage();
-  if (_driveToken) { setDriveConnectedUiState(); return; }
+  if (_driveToken) {
+    var relogin = confirm('Drive уже подключен.\n\nOK — выйти и войти снова.\nОтмена — оставить текущее подключение.');
+    if (!relogin) { setDriveConnectedUiState(); return; }
+    disconnectDriveAuth(true);
+    _authPromptForce = true;
+    if (typeof google !== 'undefined' && google.accounts && google.accounts.oauth2) startAuthGIS();
+    else startAuthRedirect();
+    return;
+  }
   // GIS работает и локально, и на GitHub; это стабильнее, чем редирект между origin
   if (typeof google !== 'undefined' && google.accounts && google.accounts.oauth2) {
     startAuthGIS();
@@ -3059,8 +3087,18 @@ function callAPI(prompt, maxTokens) {
   function buildEndpointCandidates() {
     var out = [];
     var seen = {};
-    function add(url) {
+    function normalizeProxyUrl(url) {
       var u = String(url || '').trim();
+      var low = u.toLowerCase();
+      // Legacy malformed format: https://corsproxy.io/?https%3A%2F%2F...
+      if (low.indexOf('https://corsproxy.io/?https%3a') === 0 || low.indexOf('https://corsproxy.io/?http%3a') === 0) {
+        var enc = u.split('?')[1] || '';
+        return 'https://corsproxy.io/?url=' + enc;
+      }
+      return u;
+    }
+    function add(url) {
+      var u = normalizeProxyUrl(url);
       if (!u || !/^https?:\/\//i.test(u) || seen[u]) return;
       // Known problematic public proxy in this environment (preflight blocked).
       if (u.toLowerCase().indexOf('proxy.corsfix.com') >= 0) return;
@@ -3069,6 +3107,12 @@ function callAPI(prompt, maxTokens) {
     }
     var custom = '';
     try { custom = String(localStorage.getItem('avito_api_endpoint') || '').trim(); } catch(e) {}
+    custom = normalizeProxyUrl(custom);
+    try {
+      if (custom && custom !== String(localStorage.getItem('avito_api_endpoint') || '').trim()) {
+        localStorage.setItem('avito_api_endpoint', custom);
+      }
+    } catch (eSet) {}
     if (custom && custom !== API) add(custom);
     add(API);
     (API_CORS_FALLBACKS || []).forEach(function(item) {
