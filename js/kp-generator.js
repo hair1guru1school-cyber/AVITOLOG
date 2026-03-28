@@ -84,6 +84,77 @@
     '🌲','🪵','🧱','🏘️','🏚️','🏡','🌇','🚧','🦺','👷','🤝','✨','💼','📈','🎁','🧾','💰','🏦','🐕','🌿','☀️','❄️','🌧️'
   ];
 
+  var KP_BLOCK2_NICHES = [
+    { id: 'mebel_kitchen', kind: 'goods', label: 'Мебель кухни' },
+    { id: 'services_generic', kind: 'services', label: 'Услуги (шаблон)' }
+  ];
+
+  var KP_MEEBEL_PRESET = [
+    {
+      key: 'start',
+      emoji: '🎯',
+      name: 'СТАРТ',
+      headerLine: '🎯 До 500 объявлений "СТАРТ"',
+      priceLine: '🔹 35 000 ₽ = работа Авитолога (оплачивается сразу)',
+      bullets:
+        '- Создание файла автозагрузки / ручной постинг на 250 карточек на 30 дней\n' +
+        '- Создание  ТОP текстов: заголовков, оферов, призывов, SEO, до 7000 символов (max)\n' +
+        '- Создание  дизайна: упаковки аккаунты, логотипа, инфографики в карточках\n' +
+        '- Запуск рекламы, модерирование в теч 1 месяца, общение с тех поддержкой\n' +
+        '- Анализ данных и оптимизация  дальнейшего продвижения',
+      bonuses: '🎁 Дизайн магазина для РАСШИР бизнес тарифа Авито : 1 ПК и 1 Моб баннеры'
+    },
+    {
+      key: 'launch',
+      emoji: '🚀',
+      name: 'ЗАПУСК',
+      headerLine: '🚀 До 1500 объявлений "ЗАПУСК"',
+      priceLine: '🔹 42 000 ₽ = работа Авитолога (оплачивается сразу)',
+      bullets: '',
+      bonuses:
+        '🎁 Дизайн магазина для MAX. бизнес тарифа Авито : 6 баннеров ПК+Моб версии\n' +
+        '🎁 Полная инфографика на все карточки до 5 картинки в карточке\n' +
+        '🎁 Подключение автоответа с воронкой в Ваш ТГ - БОТ / Канал\n' +
+        '🎁 3 отзыва с продающими текстами'
+    },
+    {
+      key: 'mid',
+      emoji: 'Ⓜ️',
+      name: 'МИДЛ',
+      headerLine: 'Ⓜ️ До 3000 объявлений "МИДЛ"',
+      priceLine: '🔹 59 000 ₽ = работа Авитолога (оплачивается сразу)',
+      bullets: '',
+      bonuses:
+        '🎁 Дизайн магазина для MAX. бизнес тарифа Авито : 6 баннеров ПК+Моб версии\n' +
+        '🎁 Полная инфографика на все карточки до 8 картинки в карточке\n' +
+        '🎁 Подключение автоответа с воронкой в Ваш ТГ - БОТ / Канал\n' +
+        '🎁 5 отзывов с продающими текстами\n' +
+        '🎁 + 16 дней ведения рекламы и актива в аккаунте'
+    },
+    {
+      key: 'alpha',
+      emoji: '🅰️',
+      name: 'АЛЬФА',
+      headerLine: '🅰️ Без ограничений кол-во объявлений = "АЛЬФА"',
+      priceLine: '🔹 84 000 ₽ = работа Авитолога',
+      bullets: '',
+      bonuses:
+        '🎁 Дизайн магазина для MAX. бизнес тарифа: 3 баннера  ПК и 3 баннера Моб версии\n' +
+        '🎁 Полная инфографика на все карточки с глубокой проработкой до 10 / 15\n' +
+        '🎁 Скрипты продаж для вашей ниши + анализ аватаров ЦА и ресерч в PDF\n' +
+        '🎁 Подключение автоответа с воронкой в Ваш ✈️ТГ - БОТ / Канал + 🧲 Бонус Закреп в ТГ\n' +
+        '🎁 10 отзывов с продающими текстами\n' +
+        '🎁 + 30 дней ведения рекламы и актива в аккаунте'
+    }
+  ];
+
+  var KP_SERVICES_EMPTY_PRESET = [
+    { key: 'start', emoji: '🎯', name: 'СТАРТ', headerLine: '', priceLine: '', bullets: '', bonuses: '' },
+    { key: 'launch', emoji: '🚀', name: 'ЗАПУСК', headerLine: '', priceLine: '', bullets: '', bonuses: '' },
+    { key: 'mid', emoji: 'Ⓜ️', name: 'МИДЛ', headerLine: '', priceLine: '', bullets: '', bonuses: '' },
+    { key: 'alpha', emoji: '🅰️', name: 'АЛЬФА', headerLine: '', priceLine: '', bullets: '', bonuses: '' }
+  ];
+
   function esc(s) {
     return String(s || '')
       .replace(/&/g, '&amp;')
@@ -191,6 +262,103 @@
     }
   }
 
+  function ensureBlock2(d) {
+    if (!d.block2 || typeof d.block2 !== 'object') d.block2 = {};
+    if (!d.block2.kind) d.block2.kind = 'goods';
+    if (d.block2.nicheId === undefined) d.block2.nicheId = '';
+    if (!Array.isArray(d.block2.packages)) d.block2.packages = [];
+    return d;
+  }
+
+  function getPackagesForNiche(kind, nicheId) {
+    if (nicheId === 'mebel_kitchen' && kind === 'goods') return deepClone(KP_MEEBEL_PRESET);
+    if (nicheId === 'services_generic' && kind === 'services') return deepClone(KP_SERVICES_EMPTY_PRESET);
+    return [];
+  }
+
+  function escHtmlNl(s) {
+    return esc(String(s || '')).replace(/\n/g, '<br>');
+  }
+
+  function buildBlock2PackagesPreviewHtml(packages) {
+    if (!packages || !packages.length) {
+      return '<div class="kp-b2-empty">Выберите нишу — появятся 4 пакета (СТАРТ · ЗАПУСК · МИДЛ · АЛЬФА)</div>';
+    }
+    return (
+      '<div class="kp-b2-grid">' +
+      packages
+        .map(function (p, idx) {
+          return (
+            '<div class="kp-pkg-card">' +
+            '<div class="kp-pkg-card-head">' +
+            '<span class="kp-pkg-card-emoji">' +
+            esc(p.emoji || '📦') +
+            '</span>' +
+            '<span class="kp-pkg-card-name">' +
+            esc(p.name || '') +
+            '</span>' +
+            '<button type="button" class="kp-pkg-edit-btn" data-kp-pkg-idx="' +
+            idx +
+            '" title="Настроить пакет">✎</button>' +
+            '</div>' +
+            (p.headerLine
+              ? '<div class="kp-pkg-line kp-pkg-header-txt">' + escHtmlNl(p.headerLine) + '</div>'
+              : '') +
+            (p.priceLine ? '<div class="kp-pkg-line kp-pkg-price-txt">' + escHtmlNl(p.priceLine) + '</div>' : '') +
+            (p.bullets
+              ? '<div class="kp-pkg-line kp-pkg-bullets-txt">' + escHtmlNl(p.bullets) + '</div>'
+              : '') +
+            (p.bonuses
+              ? '<div class="kp-pkg-line kp-pkg-bonus-txt">' + escHtmlNl(p.bonuses) + '</div>'
+              : '') +
+            '</div>'
+          );
+        })
+        .join('') +
+      '</div>'
+    );
+  }
+
+  function buildBlock2SectionHtml(d) {
+    ensureBlock2(d);
+    var kind = d.block2.kind === 'services' ? 'services' : 'goods';
+    var nicheId = d.block2.nicheId || '';
+    var kindGoodsCls = kind === 'goods' ? ' on' : '';
+    var kindServCls = kind === 'services' ? ' on' : '';
+    var nicheOpts = KP_BLOCK2_NICHES.filter(function (n) {
+      return n.kind === kind;
+    })
+      .map(function (n) {
+        var sel = nicheId === n.id ? ' selected' : '';
+        return '<option value="' + esc(n.id) + '"' + sel + '>' + esc(n.label) + '</option>';
+      })
+      .join('');
+    var pkgs = d.block2.packages && d.block2.packages.length ? d.block2.packages : [];
+    return (
+      '<div class="kp-gen-section kp-b2-section">' +
+      '<div class="kp-gen-label">Пакеты в КП</div>' +
+      '<div class="kp-b2-kind-row">' +
+      '<span class="kp-b2-kind-label">Тип:</span>' +
+      '<div class="kp-b2-seg">' +
+      '<button type="button" class="kp-b2-seg-btn' +
+      kindGoodsCls +
+      '" id="kpB2KindGoods" data-b2-kind="goods">Товар</button>' +
+      '<button type="button" class="kp-b2-seg-btn' +
+      kindServCls +
+      '" id="kpB2KindServices" data-b2-kind="services">Услуга</button>' +
+      '</div></div>' +
+      '<div class="kp-b2-niche-row">' +
+      '<label class="kp-b2-niche-lbl" for="kpB2Niche">Ниша</label>' +
+      '<select id="kpB2Niche" class="kp-inp kp-b2-select">' +
+      '<option value="">— выберите —</option>' +
+      nicheOpts +
+      '</select></div>' +
+      '<div class="kp-b2-preview-wrap">' +
+      buildBlock2PackagesPreviewHtml(pkgs) +
+      '</div></div>'
+    );
+  }
+
   function templateForDraft(id) {
     var f = findTemplateById(id);
     if (f && f.item) return f.item;
@@ -210,6 +378,19 @@
       '',
       'Шаблон Canva (редактор): ' + (t.editUrl || '')
     ];
+    ensureBlock2(d);
+    if (d.block2.nicheId && d.block2.packages && d.block2.packages.length) {
+      lines.push('');
+      lines.push('—— Пакеты ——');
+      d.block2.packages.forEach(function (p, i) {
+        lines.push('');
+        lines.push('[' + (p.name || 'Пакет ' + (i + 1)) + ']');
+        if (p.headerLine) lines.push(p.headerLine);
+        if (p.priceLine) lines.push(p.priceLine);
+        if (p.bullets) lines.push(p.bullets);
+        if (p.bonuses) lines.push(p.bonuses);
+      });
+    }
     return lines.join('\n');
   }
 
@@ -344,6 +525,106 @@
         saveTemplatesState(T);
       }
       closeKpTplModal();
+      if (typeof window.__showKpGenerator === 'function' && mc) window.__showKpGenerator(mc);
+    };
+  }
+
+  function closeKpPkgModal() {
+    var m = document.getElementById('kpPkgEditModal');
+    if (m && m._kpPkgEsc) {
+      document.removeEventListener('keydown', m._kpPkgEsc);
+      m._kpPkgEsc = null;
+    }
+    if (m && m.parentNode) m.parentNode.removeChild(m);
+  }
+
+  function openKpPackageEditor(idx, mc) {
+    closeKpPkgModal();
+    var d = loadDraft();
+    ensureBlock2(d);
+    var pkgs = d.block2.packages || [];
+    var p = pkgs[idx];
+    if (!p) return;
+    var wrap = document.createElement('div');
+    wrap.id = 'kpPkgEditModal';
+    wrap.className = 'kp-tpl-modal';
+    var emojiGrid = KP_EMOJI_PICK.map(function (em) {
+      return (
+        '<button type="button" class="kp-emoji-cell" data-emoji="' +
+        esc(em) +
+        '">' +
+        esc(em) +
+        '</button>'
+      );
+    }).join('');
+    wrap.innerHTML =
+      '<div class="kp-tpl-modal-backdrop"></div>' +
+      '<div class="kp-tpl-modal-panel kp-pkg-edit-panel">' +
+      '<div class="kp-tpl-modal-title">Пакет: ' +
+      esc(p.name || '') +
+      '</div>' +
+      '<label class="kp-tpl-modal-lbl">Эмодзи пакета</label>' +
+      '<div class="kp-emoji-grid">' +
+      emojiGrid +
+      '</div>' +
+      '<label class="kp-tpl-modal-lbl">Название (СТАРТ / ЗАПУСК …)</label>' +
+      '<input type="text" class="kp-inp" id="kpPkgEditName" value="' +
+      esc(p.name || '') +
+      '">' +
+      '<label class="kp-tpl-modal-lbl">Заголовок (объём, кавычки)</label>' +
+      '<textarea class="kp-ta" id="kpPkgEditHeader" rows="2">' +
+      esc(p.headerLine || '') +
+      '</textarea>' +
+      '<label class="kp-tpl-modal-lbl">Цена / строка с 🔹</label>' +
+      '<textarea class="kp-ta" id="kpPkgEditPrice" rows="2">' +
+      esc(p.priceLine || '') +
+      '</textarea>' +
+      '<label class="kp-tpl-modal-lbl">Основной список (строки с -)</label>' +
+      '<textarea class="kp-ta" id="kpPkgEditBullets" rows="6" placeholder="Каждая строка с дефисом"></textarea>' +
+      '<label class="kp-tpl-modal-lbl">Бонусы (строки с 🎁)</label>' +
+      '<textarea class="kp-ta" id="kpPkgEditBonuses" rows="8" placeholder="Каждая строка с 🎁"></textarea>' +
+      '<div class="kp-tpl-modal-actions">' +
+      '<button type="button" class="kp-btn kp-btn-secondary" id="kpPkgEditCancel">Отмена</button>' +
+      '<button type="button" class="kp-btn kp-btn-primary" id="kpPkgEditSave">Сохранить</button>' +
+      '</div></div>';
+    document.body.appendChild(wrap);
+    wrap.querySelector('#kpPkgEditBullets').value = p.bullets || '';
+    wrap.querySelector('#kpPkgEditBonuses').value = p.bonuses || '';
+    var selEmoji = p.emoji || '📦';
+    function markSel() {
+      wrap.querySelectorAll('.kp-emoji-cell').forEach(function (b) {
+        b.classList.toggle('on', b.getAttribute('data-emoji') === selEmoji);
+      });
+    }
+    markSel();
+    wrap.querySelectorAll('.kp-emoji-cell').forEach(function (b) {
+      b.onclick = function () {
+        selEmoji = b.getAttribute('data-emoji') || '📦';
+        markSel();
+      };
+    });
+    wrap.querySelector('.kp-tpl-modal-backdrop').onclick = closeKpPkgModal;
+    wrap.querySelector('#kpPkgEditCancel').onclick = closeKpPkgModal;
+    function onEscPkg(ev) {
+      if (ev.key === 'Escape') closeKpPkgModal();
+    }
+    wrap._kpPkgEsc = onEscPkg;
+    document.addEventListener('keydown', onEscPkg);
+    wrap.querySelector('#kpPkgEditSave').onclick = function () {
+      var d2 = loadDraft();
+      ensureBlock2(d2);
+      var arr = d2.block2.packages || [];
+      var it = arr[idx];
+      if (it) {
+        it.name = String(wrap.querySelector('#kpPkgEditName').value || '').trim() || it.name;
+        it.emoji = selEmoji;
+        it.headerLine = String(wrap.querySelector('#kpPkgEditHeader').value || '').trim();
+        it.priceLine = String(wrap.querySelector('#kpPkgEditPrice').value || '').trim();
+        it.bullets = String(wrap.querySelector('#kpPkgEditBullets').value || '').trim();
+        it.bonuses = String(wrap.querySelector('#kpPkgEditBonuses').value || '').trim();
+        saveDraft(d2);
+      }
+      closeKpPkgModal();
       if (typeof window.__showKpGenerator === 'function' && mc) window.__showKpGenerator(mc);
     };
   }
@@ -557,11 +838,69 @@
     }
 
     syncOpenButton(mc, d.templateId || getFirstTemplateId());
+    wireBlock2(mc);
+  }
+
+  function wireBlock2(mc) {
+    var goodsBtn = mc.querySelector('#kpB2KindGoods');
+    var servBtn = mc.querySelector('#kpB2KindServices');
+    var nicheSel = mc.querySelector('#kpB2Niche');
+    function rerender() {
+      if (typeof window.__showKpGenerator === 'function') window.__showKpGenerator(mc);
+    }
+    if (goodsBtn) {
+      goodsBtn.onclick = function () {
+        var dd = loadDraft();
+        ensureBlock2(dd);
+        if (dd.block2.kind === 'goods') return;
+        dd.block2.kind = 'goods';
+        dd.block2.nicheId = '';
+        dd.block2.packages = [];
+        saveDraft(dd);
+        rerender();
+      };
+    }
+    if (servBtn) {
+      servBtn.onclick = function () {
+        var dd = loadDraft();
+        ensureBlock2(dd);
+        if (dd.block2.kind === 'services') return;
+        dd.block2.kind = 'services';
+        dd.block2.nicheId = '';
+        dd.block2.packages = [];
+        saveDraft(dd);
+        rerender();
+      };
+    }
+    if (nicheSel) {
+      nicheSel.onchange = function () {
+        var dd = loadDraft();
+        ensureBlock2(dd);
+        var nid = String(nicheSel.value || '').trim();
+        dd.block2.nicheId = nid;
+        dd.block2.packages = nid ? getPackagesForNiche(dd.block2.kind, nid) : [];
+        saveDraft(dd);
+        rerender();
+      };
+    }
+    mc.querySelectorAll('.kp-pkg-edit-btn').forEach(function (btn) {
+      btn.onclick = function (e) {
+        e.stopPropagation();
+        var i = parseInt(btn.getAttribute('data-kp-pkg-idx'), 10);
+        if (!isFinite(i)) return;
+        openKpPackageEditor(i, mc);
+      };
+    });
   }
 
   window.__showKpGenerator = function (mc) {
     if (!mc) return;
     var d = loadDraft();
+    ensureBlock2(d);
+    if (d.block2.nicheId && (!d.block2.packages || !d.block2.packages.length)) {
+      d.block2.packages = getPackagesForNiche(d.block2.kind, d.block2.nicheId);
+      saveDraft(d);
+    }
     var firstId = getFirstTemplateId();
     if (!d.templateId || !findTemplateById(d.templateId)) d.templateId = firstId;
     if (!d.niche) {
@@ -597,6 +936,7 @@
       '<div class="kp-gen-label">Шаблон</div>' +
       buildTemplateZonesHtml(d) +
       '</div>' +
+      buildBlock2SectionHtml(d) +
       '<div class="kp-gen-section">' +
       '<div class="kp-gen-label">Картинка вверху</div>' +
       '<div class="kp-hero-row">' +
