@@ -923,14 +923,26 @@ body.kp-tab .analytics-control-panel,body.kp-tab .sec-bar,body.kp-tab .gen-extra
 .kp-b2-preview-wrap{display:block}
 .kp-b2-empty{font-size:12px;color:var(--muted);padding:14px;border:1px dashed rgba(124,245,255,0.2);border-radius:10px;text-align:center;line-height:1.45}
 .kp-b2-stack{display:flex;flex-direction:column;width:100%;border-radius:10px;overflow:hidden;border:1px solid rgba(124,245,255,0.16);background:rgba(0,0,0,0.2)}
+.kp-b2-stack--compact{max-width:min(100%,480px)}
 .kp-pkg-strip{width:100%;box-sizing:border-box;padding:10px 14px 14px;border-bottom:1px solid rgba(124,245,255,0.1);color:#e8f4ff;font-size:13px;line-height:1.45}
 .kp-pkg-strip:last-child{border-bottom:none}
-.kp-pkg-emoji-row{display:flex;justify-content:center;align-items:center;min-height:36px;padding:2px 8px 8px;margin:0 0 2px;border-bottom:1px solid rgba(124,245,255,0.08)}
-.kp-pkg-emoji-row .kp-pkg-inline-emoji{width:auto;min-width:48px;max-width:100%;text-align:center;font-size:22px;line-height:1;padding:8px 14px;border-radius:8px;border:1px solid transparent;background:rgba(0,0,0,0.12);color:inherit;font-family:inherit}
-.kp-pkg-name-row{padding:4px 0 10px;margin-bottom:4px;border-bottom:1px solid rgba(124,245,255,0.06)}
-.kp-pkg-name-row .kp-pkg-inline-name{display:block;width:100%;box-sizing:border-box;font-weight:900;font-size:15px;letter-spacing:.4px;color:#fff;text-transform:uppercase;padding:8px 10px;border-radius:8px;border:1px solid transparent;background:rgba(0,0,0,0.1);font-family:inherit}
+.kp-pkg-head-row{display:flex;flex-direction:row;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px;width:100%;box-sizing:border-box}
+.kp-pkg-head-row .kp-pkg-inline-emoji{width:40px;min-width:36px;flex-shrink:0;text-align:center;font-size:20px;line-height:1.1;padding:4px 4px;border-radius:8px;border:1px solid transparent;background:rgba(0,0,0,0.12);color:inherit;font-family:inherit}
+.kp-pkg-head-row .kp-pkg-inline-name{flex:1;min-width:0;max-width:58%;text-align:right;font-weight:900;font-size:14px;letter-spacing:.3px;color:#fff;text-transform:uppercase;padding:5px 8px;border-radius:8px;border:1px solid transparent;background:rgba(0,0,0,0.08);font-family:inherit}
+.kp-pkg-strip--compact{padding:8px 10px 10px;font-size:12px}
+.kp-pkg-nums-row{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;margin-bottom:6px;padding:4px 0 6px;border-bottom:1px solid rgba(124,245,255,0.06)}
+.kp-pkg-num-lbl{font-size:10px;font-weight:800;letter-spacing:.5px;color:rgba(124,245,255,0.5);text-transform:uppercase}
+.kp-pkg-num-hint{font-size:11px;color:var(--muted);margin-right:4px}
+.kp-pkg-nums-sep{flex:1;min-width:4px;max-width:80px}
+.kp-pkg-num-inp{width:64px;max-width:88px;padding:4px 6px;border-radius:7px;border:1px solid rgba(124,245,255,0.2);background:rgba(0,0,0,0.22);color:#fff;font-size:13px;font-family:inherit;text-align:center;box-sizing:border-box}
+.kp-pkg-num-inp.kp-pkg-num-price{width:80px;max-width:100px}
+.kp-pkg-preview-line{font-size:12px;line-height:1.35;padding:5px 8px;border-radius:6px;border:1px solid rgba(124,245,255,0.1);background:rgba(0,0,0,0.14);margin-top:5px;word-break:break-word}
+.kp-pkg-preview-head{font-weight:700;color:#fff}
+.kp-pkg-preview-price{font-weight:700;color:#eaf6ff}
 .kp-pkg-inline-emoji:focus,.kp-pkg-inline-name:focus{outline:none;border-color:rgba(124,245,255,0.35);background:rgba(0,0,0,0.28);box-shadow:0 0 0 1px rgba(124,245,255,0.08)}
+.kp-pkg-num-inp:focus{outline:none;border-color:rgba(124,245,255,0.45)}
 .kp-pkg-edit-ta{display:block;width:100%;box-sizing:border-box;margin-top:8px;min-height:2.5em;resize:vertical;border-radius:8px;border:1px solid rgba(124,245,255,0.12);background:rgba(0,0,0,0.18);padding:8px 10px;font-size:13px;line-height:1.45}
+.kp-pkg-strip--compact .kp-pkg-edit-ta{margin-top:6px;padding:6px 8px;font-size:12px;line-height:1.4}
 .kp-pkg-edit-ta:first-of-type{margin-top:0}
 .kp-pkg-strip .kp-pkg-edit-header{font-weight:700;color:#fff;border-color:rgba(124,245,255,0.14)}
 .kp-pkg-strip .kp-pkg-edit-price{font-weight:700;color:#eaf6ff;border-color:rgba(124,245,255,0.14)}
@@ -2267,6 +2279,7 @@ if (!window.AVITOLOG_GOALS) {
   <div class="logo">🃏AVITOBO$$</div>
   <div style="flex:1"></div>
   <button type="button" id="sidebarToggleBtn" class="header-sidebar-toggle" onclick="toggleSidebarVisibility()" title="Скрыть левое меню">◀</button>
+  <button type="button" id="openSecondTabBtn" class="header-day-toggle" onclick="__avitologOpenNewTab && __avitologOpenNewTab()" title="Открыть копию в новой вкладке — данные синхронизируются между вкладками">📑</button>
   <button type="button" id="dayModeToggle" class="header-day-toggle" onclick="toggleDayMode()" title="Дневной режим — светлый интерфейс">☀️</button>
   <button type="button" id="authBtn" class="header-drive-btn" onclick="startAuth(event)" title="Войти в Google Drive">🔑 Drive</button>
   <button type="button" id="employeeModeBtn" class="header-employee-btn" title="Режим сотрудника: смотреть и править данные как сотрудник" onclick="toggleEmployeeMode()">👤 Сотрудник</button>
@@ -2552,7 +2565,7 @@ if (!window.AVITOLOG_GOALS) {
 <script src="js/ai-import.js?v=20260324-13"></script>
 <script src="js/contract-generator.js?v=20260324-13"></script>
 <script src="js/ads.js?v=20260324-13"></script>
-<script src="js/kp-generator.js?v=20260328-6"></script>
-<script src="js/main.js?v=20260328-1"></script>
+<script src="js/kp-generator.js?v=20260328-7"></script>
+<script src="js/main.js?v=20260328-2"></script>
 </body>
 </html>

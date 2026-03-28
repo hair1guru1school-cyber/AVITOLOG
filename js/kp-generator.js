@@ -89,25 +89,32 @@
     { id: 'services_generic', kind: 'services', label: 'Услуги (шаблон)' }
   ];
 
+  var KP_START_BULLETS_TAIL =
+    '- Создание  ТОP текстов: заголовков, оферов, призывов, SEO, до 7000 символов (max)\n' +
+    '- Создание  дизайна: упаковки аккаунты, логотипа, инфографики в карточках\n' +
+    '- Запуск рекламы, модерирование в теч 1 месяца, общение с тех поддержкой\n' +
+    '- Анализ данных и оптимизация  дальнейшего продвижения';
+
   var KP_MEEBEL_PRESET = [
     {
       key: 'start',
       emoji: '🎯',
       name: 'СТАРТ',
+      adsCount: '500',
+      priceRub: '35000',
       headerLine: '🎯 До 500 объявлений "СТАРТ"',
       priceLine: '🔹 35 000 ₽ = работа Авитолога (оплачивается сразу)',
       bullets:
-        '- Создание файла автозагрузки / ручной постинг на 250 карточек на 30 дней\n' +
-        '- Создание  ТОP текстов: заголовков, оферов, призывов, SEO, до 7000 символов (max)\n' +
-        '- Создание  дизайна: упаковки аккаунты, логотипа, инфографики в карточках\n' +
-        '- Запуск рекламы, модерирование в теч 1 месяца, общение с тех поддержкой\n' +
-        '- Анализ данных и оптимизация  дальнейшего продвижения',
+        '- Создание файла автозагрузки / ручной постинг на 500 карточек на 30 дней\n' +
+        KP_START_BULLETS_TAIL,
       bonuses: '🎁 Дизайн магазина для РАСШИР бизнес тарифа Авито : 1 ПК и 1 Моб баннеры'
     },
     {
       key: 'launch',
       emoji: '🚀',
       name: 'ЗАПУСК',
+      adsCount: '1500',
+      priceRub: '42000',
       headerLine: '🚀 До 1500 объявлений "ЗАПУСК"',
       priceLine: '🔹 42 000 ₽ = работа Авитолога (оплачивается сразу)',
       bullets: '',
@@ -121,6 +128,8 @@
       key: 'mid',
       emoji: 'Ⓜ️',
       name: 'МИДЛ',
+      adsCount: '3000',
+      priceRub: '59000',
       headerLine: 'Ⓜ️ До 3000 объявлений "МИДЛ"',
       priceLine: '🔹 59 000 ₽ = работа Авитолога (оплачивается сразу)',
       bullets: '',
@@ -135,6 +144,7 @@
       key: 'alpha',
       emoji: '🅰️',
       name: 'АЛЬФА',
+      priceRub: '84000',
       headerLine: '🅰️ Без ограничений кол-во объявлений = "АЛЬФА"',
       priceLine: '🔹 84 000 ₽ = работа Авитолога',
       bullets: '',
@@ -270,6 +280,82 @@
     return d;
   }
 
+  function fmtKpRub(n) {
+    var x = Math.round(Number(n));
+    if (!isFinite(x) || x < 0) return '0';
+    return String(x).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+  }
+
+  function ensurePackageKey(p, idx) {
+    if (p && p.key) return;
+    var keys = ['start', 'launch', 'mid', 'alpha'];
+    if (p) p.key = keys[idx] || 'start';
+  }
+
+  function normalizePkgNumbersFromLegacy(p) {
+    if (!p || !p.key) return;
+    if (p.key === 'alpha') {
+      if (p.priceRub === undefined || p.priceRub === '') {
+        var pm = String(p.priceLine || '').match(/🔹\s*([\d\s]+)/);
+        if (pm) p.priceRub = String(pm[1]).replace(/\s/g, '');
+      }
+      return;
+    }
+    if (p.adsCount === undefined || p.adsCount === '') {
+      var hm = String(p.headerLine || '').match(/До\s+(\d+)/i);
+      if (hm) p.adsCount = hm[1];
+    }
+    if (p.priceRub === undefined || p.priceRub === '') {
+      var xm = String(p.priceLine || '').match(/🔹\s*([\d\s]+)/);
+      if (xm) p.priceRub = String(xm[1]).replace(/\s/g, '');
+    }
+  }
+
+  function syncMeebelPackage(p) {
+    if (!p || !p.key) return;
+    var name = String(p.name || '').trim();
+    var em = p.emoji || '📦';
+    var ads = parseInt(String(p.adsCount || '').replace(/\s/g, ''), 10);
+    var price = parseInt(String(p.priceRub || '').replace(/\s/g, ''), 10);
+    var fmt = fmtKpRub;
+
+    if (p.key === 'start') {
+      if (!isFinite(ads) || ads <= 0) ads = 500;
+      if (!isFinite(price) || price <= 0) price = 35000;
+      p.adsCount = String(ads);
+      p.priceRub = String(price);
+      p.headerLine = em + ' До ' + ads + ' объявлений "' + name + '"';
+      p.priceLine = '🔹 ' + fmt(price) + ' ₽ = работа Авитолога (оплачивается сразу)';
+      var line1 = '- Создание файла автозагрузки / ручной постинг на ' + ads + ' карточек на 30 дней';
+      var lines = String(p.bullets || '').split(/\r?\n/);
+      if (lines.length && String(lines[0] || '').trim()) {
+        lines[0] = line1;
+        p.bullets = lines.join('\n');
+      } else {
+        p.bullets = line1 + '\n' + KP_START_BULLETS_TAIL;
+      }
+    } else if (p.key === 'launch') {
+      if (!isFinite(ads) || ads <= 0) ads = 1500;
+      if (!isFinite(price) || price <= 0) price = 42000;
+      p.adsCount = String(ads);
+      p.priceRub = String(price);
+      p.headerLine = em + ' До ' + ads + ' объявлений "' + name + '"';
+      p.priceLine = '🔹 ' + fmt(price) + ' ₽ = работа Авитолога (оплачивается сразу)';
+    } else if (p.key === 'mid') {
+      if (!isFinite(ads) || ads <= 0) ads = 3000;
+      if (!isFinite(price) || price <= 0) price = 59000;
+      p.adsCount = String(ads);
+      p.priceRub = String(price);
+      p.headerLine = em + ' До ' + ads + ' объявлений "' + name + '"';
+      p.priceLine = '🔹 ' + fmt(price) + ' ₽ = работа Авитолога (оплачивается сразу)';
+    } else if (p.key === 'alpha') {
+      if (!isFinite(price) || price <= 0) price = 84000;
+      p.priceRub = String(price);
+      p.headerLine = em + ' Без ограничений кол-во объявлений = "' + name + '"';
+      p.priceLine = '🔹 ' + fmt(price) + ' ₽ = работа Авитолога';
+    }
+  }
+
   function getPackagesForNiche(kind, nicheId) {
     if (nicheId === 'mebel_kitchen' && kind === 'goods') return deepClone(KP_MEEBEL_PRESET);
     if (nicheId === 'services_generic' && kind === 'services') return deepClone(KP_SERVICES_EMPTY_PRESET);
@@ -282,28 +368,78 @@
     ta.style.height = Math.max(40, ta.scrollHeight) + 'px';
   }
 
-  function buildBlock2PackagesPreviewHtml(packages) {
+  function buildBlock2PackagesPreviewHtml(packages, nicheId, kind) {
     if (!packages || !packages.length) {
       return '<div class="kp-b2-empty">Выберите нишу — появятся 4 пакета (СТАРТ · ЗАПУСК · МИДЛ · АЛЬФА)</div>';
     }
+    var compact = nicheId === 'mebel_kitchen' && kind === 'goods';
     return (
-      '<div class="kp-b2-stack">' +
+      '<div class="kp-b2-stack' + (compact ? ' kp-b2-stack--compact' : '') + '">' +
       packages
         .map(function (p, idx) {
+          ensurePackageKey(p, idx);
+          var headRow =
+            '<div class="kp-pkg-head-row">' +
+            '<input type="text" class="kp-pkg-inline-emoji" data-kp-field="emoji" value="' +
+            esc(p.emoji || '📦') +
+            '" maxlength="16" title="Эмодзи" aria-label="Эмодзи">' +
+            '<input type="text" class="kp-pkg-inline-name" data-kp-field="name" value="' +
+            esc(p.name || '') +
+            '" placeholder="СТАРТ · ЗАПУСК …" aria-label="Название пакета">' +
+            '</div>';
+          if (compact) {
+            var numsAlpha =
+              p.key === 'alpha'
+                ? '<div class="kp-pkg-nums-row">' +
+                  '<label class="kp-pkg-num-lbl">Цена ₽</label>' +
+                  '<input type="text" class="kp-pkg-num-inp" inputmode="numeric" data-kp-field="priceRub" value="' +
+                  esc(p.priceRub || '') +
+                  '" autocomplete="off">' +
+                  '</div>'
+                : '<div class="kp-pkg-nums-row">' +
+                  '<label class="kp-pkg-num-lbl">До</label>' +
+                  '<input type="text" class="kp-pkg-num-inp" inputmode="numeric" data-kp-field="adsCount" value="' +
+                  esc(p.adsCount || '') +
+                  '" autocomplete="off" title="Число объявлений">' +
+                  '<span class="kp-pkg-num-hint">объявл.</span>' +
+                  '<span class="kp-pkg-nums-sep" aria-hidden="true"></span>' +
+                  '<label class="kp-pkg-num-lbl">₽</label>' +
+                  '<input type="text" class="kp-pkg-num-inp kp-pkg-num-price" inputmode="numeric" data-kp-field="priceRub" value="' +
+                  esc(p.priceRub || '') +
+                  '" autocomplete="off" title="Цена">' +
+                  '</div>';
+            return (
+              '<div class="kp-pkg-strip kp-pkg-strip--compact" data-kp-pkg-idx="' +
+              idx +
+              '" data-kp-key="' +
+              esc(p.key || '') +
+              '">' +
+              headRow +
+              numsAlpha +
+              '<div class="kp-pkg-preview-line kp-pkg-preview-head">' +
+              esc(p.headerLine || '') +
+              '</div>' +
+              '<div class="kp-pkg-preview-line kp-pkg-preview-price">' +
+              esc(p.priceLine || '') +
+              '</div>' +
+              (p.key === 'start'
+                ? '<textarea class="kp-ta kp-pkg-edit-ta kp-pkg-edit-bullets" data-kp-field="bullets" rows="5" placeholder="Список (1-я строка обновляется от числа объявлений)">' +
+                  esc(p.bullets || '') +
+                  '</textarea>'
+                : '<textarea class="kp-ta kp-pkg-edit-ta kp-pkg-edit-bullets" data-kp-field="bullets" rows="3" placeholder="Основной список">' +
+                  esc(p.bullets || '') +
+                  '</textarea>') +
+              '<textarea class="kp-ta kp-pkg-edit-ta kp-pkg-edit-bonuses" data-kp-field="bonuses" rows="4" placeholder="Бонусы (🎁)">' +
+              esc(p.bonuses || '') +
+              '</textarea>' +
+              '</div>'
+            );
+          }
           return (
             '<div class="kp-pkg-strip" data-kp-pkg-idx="' +
             idx +
             '">' +
-            '<div class="kp-pkg-emoji-row">' +
-            '<input type="text" class="kp-pkg-inline-emoji" data-kp-field="emoji" value="' +
-            esc(p.emoji || '📦') +
-            '" maxlength="16" title="Эмодзи пакета" aria-label="Эмодзи пакета">' +
-            '</div>' +
-            '<div class="kp-pkg-name-row">' +
-            '<input type="text" class="kp-pkg-inline-name" data-kp-field="name" value="' +
-            esc(p.name || '') +
-            '" placeholder="СТАРТ · ЗАПУСК …" aria-label="Название пакета">' +
-            '</div>' +
+            headRow +
             '<textarea class="kp-ta kp-pkg-edit-ta kp-pkg-edit-header" data-kp-field="header" rows="2" placeholder="Заголовок (объём, кавычки)">' +
             esc(p.headerLine || '') +
             '</textarea>' +
@@ -359,7 +495,7 @@
       nicheOpts +
       '</select></div>' +
       '<div class="kp-b2-preview-wrap">' +
-      buildBlock2PackagesPreviewHtml(pkgs) +
+      buildBlock2PackagesPreviewHtml(pkgs, nicheId, kind) +
       '</div></div>'
     );
   }
@@ -800,18 +936,49 @@
       else if (fieldKey === 'price') p.priceLine = v.trim();
       else if (fieldKey === 'bullets') p.bullets = v.trim();
       else if (fieldKey === 'bonuses') p.bonuses = v.trim();
+      else if (fieldKey === 'adsCount') p.adsCount = v.trim();
+      else if (fieldKey === 'priceRub') p.priceRub = v.trim();
       saveDraft(d);
+    }
+    function updateCompactStripPreview(idx) {
+      var d = loadDraft();
+      ensureBlock2(d);
+      var p = d.block2.packages[idx];
+      if (!p || !p.key) return;
+      normalizePkgNumbersFromLegacy(p);
+      syncMeebelPackage(p);
+      saveDraft(d);
+      var strip = mc.querySelector('.kp-pkg-strip[data-kp-pkg-idx="' + idx + '"]');
+      if (!strip) return;
+      var ph = strip.querySelector('.kp-pkg-preview-head');
+      var pp = strip.querySelector('.kp-pkg-preview-price');
+      var tb = strip.querySelector('[data-kp-field="bullets"]');
+      if (ph) ph.textContent = p.headerLine || '';
+      if (pp) pp.textContent = p.priceLine || '';
+      if (tb && p.key === 'start') {
+        tb.value = p.bullets || '';
+        kpResizePkgTextarea(tb);
+      }
     }
     mc.querySelectorAll('.kp-pkg-strip').forEach(function (strip) {
       var idx = parseInt(strip.getAttribute('data-kp-pkg-idx'), 10);
       if (!isFinite(idx)) return;
+      var compact = strip.classList.contains('kp-pkg-strip--compact');
       strip.querySelectorAll('[data-kp-field]').forEach(function (inp) {
         var key = inp.getAttribute('data-kp-field');
         if (!key) return;
-        function save() {
+        inp.addEventListener('blur', function () {
           persistBlock2PkgField(idx, key, inp.value);
+          if (compact && (key === 'name' || key === 'emoji' || key === 'adsCount' || key === 'priceRub')) {
+            updateCompactStripPreview(idx);
+          }
+        });
+        if (compact && (key === 'adsCount' || key === 'priceRub')) {
+          inp.addEventListener('input', function () {
+            persistBlock2PkgField(idx, key, inp.value);
+            updateCompactStripPreview(idx);
+          });
         }
-        inp.addEventListener('blur', save);
         if (inp.tagName === 'TEXTAREA') {
           inp.addEventListener('input', function () {
             kpResizePkgTextarea(inp);
@@ -830,6 +997,14 @@
     ensureBlock2(d);
     if (d.block2.nicheId && (!d.block2.packages || !d.block2.packages.length)) {
       d.block2.packages = getPackagesForNiche(d.block2.kind, d.block2.nicheId);
+      saveDraft(d);
+    }
+    if (d.block2.nicheId === 'mebel_kitchen' && d.block2.kind === 'goods' && d.block2.packages && d.block2.packages.length) {
+      d.block2.packages.forEach(function (p, i) {
+        ensurePackageKey(p, i);
+        normalizePkgNumbersFromLegacy(p);
+        syncMeebelPackage(p);
+      });
       saveDraft(d);
     }
     var firstId = getFirstTemplateId();

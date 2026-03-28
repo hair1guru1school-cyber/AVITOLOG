@@ -4519,3 +4519,103 @@ document.addEventListener('DOMContentLoaded', function() {
     if (e.key === 'Enter') { e.preventDefault(); sendChat(); }
   });
 });
+
+// ── Cross-tab sync (localStorage): other tabs get "storage"; this tab does not — optional BroadcastChannel below
+function avitologIsSyncStorageKey(key) {
+  if (!key) return false;
+  if (key === 'avito_api_key' || key === 'avito_api_endpoint') return false;
+  if (key.indexOf('avitolog') >= 0) return true;
+  if (key.indexOf('crm_') === 0) return true;
+  if (key === 'av_top_tab_order') return true;
+  if (key.indexOf('avito_') === 0) return true;
+  return false;
+}
+var _avitologCrossTabTimer = null;
+function __avitologRefreshFromOtherTab() {
+  try {
+    if (typeof getActiveClient === 'function') _activeClient = getActiveClient();
+    if (typeof updateClientBadge === 'function') updateClientBadge();
+  } catch (e1) {}
+  try {
+    if (typeof agencyMode !== 'undefined' && agencyMode && typeof renderAgencyPage === 'function') {
+      renderAgencyPage();
+      return;
+    }
+    if (typeof strategyMode !== 'undefined' && strategyMode && typeof renderStrategyPage === 'function') {
+      renderStrategyPage();
+      return;
+    }
+    if (typeof assetsMode !== 'undefined' && assetsMode && typeof window.__renderAssetsPage === 'function') {
+      window.__renderAssetsPage();
+      return;
+    }
+    if (typeof adsMode !== 'undefined' && adsMode && typeof renderAdsIntoMainContent === 'function') {
+      renderAdsIntoMainContent(document.getElementById('mainContent'));
+      return;
+    }
+    if (typeof tasksMode !== 'undefined' && tasksMode && typeof renderTasksBoardIntoMainContent === 'function') {
+      renderTasksBoardIntoMainContent(document.getElementById('mainContent'));
+      return;
+    }
+    if (typeof projectsMode !== 'undefined' && projectsMode && typeof rerenderProjectsPreserveScroll === 'function') {
+      rerenderProjectsPreserveScroll();
+      return;
+    }
+    if (typeof goalsMode !== 'undefined' && goalsMode && window.AVITOLOG_GOALS && typeof window.AVITOLOG_GOALS.render === 'function') {
+      window.AVITOLOG_GOALS.render();
+      if (typeof patchGoalsRenderWithFunnelSync === 'function') patchGoalsRenderWithFunnelSync();
+      try { if (typeof syncGoalsFunnelFromRows === 'function') syncGoalsFunnelFromRows(); } catch (e2) {}
+      return;
+    }
+    if (typeof currentTab !== 'undefined' && currentTab === 'kp' && typeof window.__showKpGenerator === 'function') {
+      var mck = document.getElementById('mainContent');
+      if (mck) window.__showKpGenerator(mck);
+      return;
+    }
+    if (typeof currentTab !== 'undefined' && currentTab === 'contract' && typeof window.__showContractGenerator === 'function') {
+      var mcc = document.getElementById('mainContent');
+      if (mcc) window.__showContractGenerator(mcc);
+      return;
+    }
+    if (typeof refreshClientContents === 'function') refreshClientContents(true);
+  } catch (e3) {}
+  try {
+    if (typeof crmTaskRender === 'function' && document.getElementById('crmTasksWrap')) crmTaskRender();
+  } catch (e4) {}
+}
+function _scheduleAvitologCrossTabRefresh() {
+  if (_avitologCrossTabTimer) clearTimeout(_avitologCrossTabTimer);
+  _avitologCrossTabTimer = setTimeout(function() {
+    _avitologCrossTabTimer = null;
+    __avitologRefreshFromOtherTab();
+  }, 150);
+}
+window.addEventListener('storage', function(e) {
+  if (!avitologIsSyncStorageKey(e.key)) return;
+  _scheduleAvitologCrossTabRefresh();
+});
+(function avitologBroadcastChannelSync() {
+  if (typeof BroadcastChannel === 'undefined') return;
+  var ch = new BroadcastChannel('avitolog-sync');
+  ch.onmessage = function(ev) {
+    if (!ev || !ev.data || ev.data.type !== 'ls' || !avitologIsSyncStorageKey(ev.data.key)) return;
+    _scheduleAvitologCrossTabRefresh();
+  };
+  var origSet = localStorage.setItem.bind(localStorage);
+  var origRemove = localStorage.removeItem.bind(localStorage);
+  localStorage.setItem = function(k, v) {
+    origSet(k, v);
+    if (avitologIsSyncStorageKey(k)) {
+      try { ch.postMessage({ type: 'ls', key: k }); } catch (e0) {}
+    }
+  };
+  localStorage.removeItem = function(k) {
+    origRemove(k);
+    if (avitologIsSyncStorageKey(k)) {
+      try { ch.postMessage({ type: 'ls', key: k }); } catch (e1) {}
+    }
+  };
+})();
+window.__avitologOpenNewTab = function() {
+  try { window.open(window.location.href, '_blank', 'noopener'); } catch (e) {}
+};
