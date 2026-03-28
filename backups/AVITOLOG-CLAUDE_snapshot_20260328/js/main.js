@@ -6,12 +6,11 @@ function switchTab(tab) {
     openAnalyticsTab();
   }
   currentTab = tab;
-  ['kp','analysis','presale','avito1','contract'].forEach(function(t) {
+  ['analysis','presale','avito1','contract'].forEach(function(t) {
     var el = document.getElementById('tab-'+t);
     if (el) el.classList.toggle('active', t===tab);
   });
   document.body.classList.toggle('contract-tab', tab === 'contract');
-  document.body.classList.toggle('kp-tab', tab === 'kp');
   if (tab === 'contract') {
     var bar = document.getElementById('depthBar');
     var secBar = document.getElementById('secBar');
@@ -21,23 +20,6 @@ function switchTab(tab) {
     if (mc && typeof window.__showContractGenerator === 'function') {
       window.__showContractGenerator(mc);
     }
-    if (typeof updateGenButtonState === 'function') updateGenButtonState();
-    return;
-  }
-  if (tab === 'kp') {
-    var barKp = document.getElementById('depthBar');
-    var secBarKp = document.getElementById('secBar');
-    if (barKp) barKp.style.display = 'none';
-    if (secBarKp) secBarKp.style.display = 'none';
-    var tumblerKp = document.getElementById('analyticsTumbler');
-    if (tumblerKp) tumblerKp.classList.add('hide');
-    var mcKp = document.getElementById('mainContent');
-    if (mcKp && typeof window.__showKpGenerator === 'function') {
-      window.__showKpGenerator(mcKp);
-    } else if (mcKp) {
-      mcKp.innerHTML = '<div class="empty-st"><p style="font-size:14px">КП: не загрузился kp-generator.js</p></div>';
-    }
-    if (typeof updateGenButtonState === 'function') updateGenButtonState();
     return;
   }
   if (tab === 'goals') {
@@ -48,7 +30,6 @@ function switchTab(tab) {
     if (window.AVITOLOG_GOALS && typeof window.AVITOLOG_GOALS.render === 'function') {
       window.AVITOLOG_GOALS.render();
     }
-    if (typeof updateGenButtonState === 'function') updateGenButtonState();
     return;
   }
   var bar = document.getElementById('depthBar');
@@ -73,7 +54,6 @@ function switchTab(tab) {
   if (!docReady && !projectsMode && !goalsMode && !agencyMode && !assetsMode && !adsMode && !tasksMode) {
     refreshClientContents();
   }
-  if (typeof updateGenButtonState === 'function') updateGenButtonState();
 }
 
 // ── POSITIONS ──
@@ -1550,14 +1530,6 @@ function generate() {
   if (!ac || !ac.folderId) {
     var st = document.getElementById('crmSt');
     if (st) { st.className = 'crm-st err'; st.textContent = 'Выберите папку клиента в левом меню'; }
-    return;
-  }
-  if (currentTab === 'kp') {
-    var stKp = document.getElementById('crmSt');
-    if (stKp) {
-      stKp.className = 'crm-st err';
-      stKp.textContent = 'Генерация аналитики — на вкладках 📊 / ⏰ / 🏆. Вкладка «КП» для шаблонов Canva.';
-    }
     return;
   }
   acSaveAll();
@@ -3722,13 +3694,7 @@ function setActiveClient(client) {
   _activeClient = client;
   localStorage.setItem(_ck('avitolog_active_client'), JSON.stringify(client));
   updateClientBadge();
-  if (!projectsMode && !goalsMode && !agencyMode && !assetsMode && !adsMode && !tasksMode) {
-    if (currentTab === 'kp' && typeof window.__showKpGenerator === 'function') {
-      window.__showKpGenerator(document.getElementById('mainContent'));
-    } else if (['analysis','presale','avito1'].indexOf(currentTab) >= 0 && !docReady) {
-      refreshClientContents();
-    }
-  }
+  if (!projectsMode && !goalsMode && !agencyMode && !assetsMode && !adsMode && !tasksMode && ['analysis','presale','avito1'].indexOf(currentTab) >= 0 && !docReady) refreshClientContents();
   if (goalsMode && window.AVITOLOG_GOALS && typeof window.AVITOLOG_GOALS.render === 'function') window.AVITOLOG_GOALS.render();
 }
 
@@ -3738,9 +3704,8 @@ function updateGenButtonState() {
   var btns = document.querySelectorAll('#genBtn');
   (btns || []).forEach(function(b) {
     if (!b) return;
-    var offKp = typeof currentTab !== 'undefined' && currentTab === 'kp';
-    b.disabled = !hasFolder || offKp;
-    b.title = offKp ? 'Переключись на Аналитику / Нужно сейчас / Avito №1' : (hasFolder ? '' : 'Выберите папку клиента в левом меню');
+    b.disabled = !hasFolder;
+    b.title = hasFolder ? '' : 'Выберите папку клиента в левом меню';
   });
 }
 
@@ -3838,13 +3803,7 @@ function clearActiveClient() {
   localStorage.removeItem(_ck('avitolog_active_client'));
   updateClientBadge();
   if (goalsMode && window.AVITOLOG_GOALS && typeof window.AVITOLOG_GOALS.render === 'function') window.AVITOLOG_GOALS.render();
-  if (!projectsMode && !goalsMode && !agencyMode && !assetsMode && !adsMode && !tasksMode) {
-    if (currentTab === 'kp' && typeof window.__showKpGenerator === 'function') {
-      window.__showKpGenerator(document.getElementById('mainContent'));
-    } else if (['analysis','presale','avito1'].indexOf(currentTab) >= 0 && !docReady) {
-      refreshClientContents();
-    }
-  }
+  if (!projectsMode && !goalsMode && !agencyMode && !assetsMode && !adsMode && !tasksMode && ['analysis','presale','avito1'].indexOf(currentTab) >= 0 && !docReady) refreshClientContents();
   // Очищаем форму
   ['company','contact_name','phone','tg','avito_account','category','city','notes','kp_count'].forEach(function(id) {
     var el = document.getElementById(id);

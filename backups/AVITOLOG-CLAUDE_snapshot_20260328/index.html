@@ -860,41 +860,6 @@ body.ads-mode .content{padding:16px 20px;background:linear-gradient(180deg,rgba(
 .tasks-col-empty{font-size:11px;color:#88a3c2;padding:8px 2px}
 .tasks-board-empty{padding:20px;border:1px dashed rgba(124,245,255,0.25);border-radius:10px;color:#9cb4cc;font-size:12px}
 body.contract-tab .analytics-control-panel,body.contract-tab .sec-bar,body.contract-tab .gen-extra-prompt,body.contract-tab .gen-buttons-row{display:none !important}
-body.kp-tab .analytics-control-panel,body.kp-tab .sec-bar,body.kp-tab .gen-extra-prompt,body.kp-tab .gen-buttons-row{display:none !important}
-.kp-generator{max-width:920px;margin:0 auto;padding:16px 14px 28px;font-family:inherit}
-.kp-gen-head{margin-bottom:16px}
-.kp-gen-title{font-size:20px;font-weight:900;letter-spacing:.5px;color:#fff;margin-bottom:8px}
-.kp-gen-lead{font-size:13px;line-height:1.45;color:var(--muted);max-width:52rem}
-.kp-gen-section{margin-bottom:18px}
-.kp-gen-label{font-size:11px;font-weight:800;letter-spacing:1px;color:rgba(124,245,255,0.75);text-transform:uppercase;margin-bottom:8px}
-.kp-tpl-grid{display:flex;flex-wrap:wrap;gap:10px}
-.kp-tpl-card{display:flex;flex-direction:column;align-items:flex-start;gap:4px;padding:12px 14px;border-radius:12px;border:1px solid rgba(124,245,255,0.28);background:rgba(53,208,255,0.06);color:#cfe9ff;cursor:pointer;font-family:inherit;text-align:left;transition:all .15s;min-width:140px}
-.kp-tpl-card:hover{border-color:rgba(0,217,126,0.45);background:rgba(0,217,126,0.1)}
-.kp-tpl-card.kp-tpl-on{border-color:rgba(255,200,0,0.55);background:linear-gradient(135deg,rgba(255,200,0,0.14),rgba(53,208,255,0.08));box-shadow:0 0 18px rgba(255,200,0,0.12)}
-.kp-tpl-name{font-size:14px;font-weight:800}
-.kp-tpl-hint{font-size:10px;font-weight:700;opacity:.65;text-transform:uppercase;letter-spacing:.5px}
-.kp-hero-row{display:flex;flex-wrap:wrap;gap:14px;align-items:flex-start}
-.kp-hero-preview{width:min(100%,220px);aspect-ratio:3/4;border-radius:12px;overflow:hidden;border:1px solid rgba(255,255,255,0.1);background:rgba(0,0,0,0.25);display:flex;align-items:center;justify-content:center}
-.kp-hero-preview-img{width:100%;height:100%;object-fit:cover;display:block}
-.kp-hero-placeholder{font-size:12px;color:var(--muted);padding:20px;text-align:center}
-.kp-hero-actions{flex:1;min-width:200px;display:flex;flex-direction:column;gap:8px}
-.kp-inp,.kp-ta{width:100%;padding:9px 11px;border-radius:9px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-family:inherit;font-size:13px}
-.kp-ta{resize:vertical;min-height:72px;line-height:1.4}
-.kp-gen-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-.kp-gen-grid .kp-span2{grid-column:1/-1}
-@media(max-width:720px){.kp-gen-grid{grid-template-columns:1fr}}
-.kp-gen-actions{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-top:6px}
-.kp-btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:10px 16px;border-radius:10px;font-size:13px;font-weight:700;font-family:inherit;cursor:pointer;border:1px solid transparent;text-decoration:none;transition:all .15s}
-.kp-btn-primary{background:linear-gradient(180deg,rgba(255,200,0,0.35),rgba(255,160,40,0.15));border-color:rgba(255,200,0,0.45);color:#ffe8b8}
-.kp-btn-primary:hover{border-color:rgba(255,220,100,0.75);box-shadow:0 0 16px rgba(255,200,0,0.2)}
-.kp-btn-secondary{background:rgba(53,208,255,0.12);border-color:rgba(124,245,255,0.35);color:#9fe7ff}
-.kp-btn-secondary:hover{background:rgba(53,208,255,0.22)}
-.kp-btn-ghost{background:transparent;border-color:rgba(255,255,255,0.15);color:var(--muted)}
-.kp-btn-ghost:hover{color:var(--text);border-color:rgba(255,255,255,0.28)}
-.kp-gen-note{font-size:11px;line-height:1.45;color:var(--muted);margin-top:14px;max-width:48rem}
-.kp-gen-note a{color:#7cf5ff}
-body.day-mode .kp-tpl-card{background:rgba(0,136,92,0.06);border-color:rgba(0,136,92,0.22);color:var(--text)}
-body.day-mode .kp-tpl-card.kp-tpl-on{border-color:rgba(200,140,0,0.45);background:rgba(255,200,0,0.12)}
 .contract-generator{display:flex;flex-direction:column;gap:20px;height:100%;min-height:0;padding:18px 16px 20px;max-width:920px;margin:0 auto}
 .contract-generator-form{flex:0 0 auto}
 .contract-generator-preview{flex:1;min-height:72vh;overflow-y:auto}
@@ -2388,11 +2353,6 @@ if (!window.AVITOLOG_GOALS) {
 <div class="right-panel-wrap" id="rightPanelWrap">
   <div class="right-resize-grip" id="rightResizeGrip" title="Потяни — изменить ширину"></div>
   <div class="right-tabs">
-  <button type="button" class="rtab" id="tab-kp" onclick="switchTab('kp')">
-    <span class="rtab-ico">📋</span>
-    <span class="rtab-txt" id="txt-kp">КП</span>
-    <div class="rtab-bar" id="bar-kp"></div>
-  </button>
   <div id="assetsDetailPanel" class="assets-detail-panel">
     <div class="assets-detail-header" style="display:flex;align-items:center;justify-content:space-between;gap:6px;margin-bottom:6px">
       <span class="assets-detail-title">История оплат</span>
@@ -2450,12 +2410,11 @@ if (!window.AVITOLOG_GOALS) {
 <script src="https://unpkg.com/mammoth@1.6.0/mammoth.min.js"></script>
 <script src="js/user-config.js?v=20260324-13"></script>
 <script src="js/hero-asset.js?v=20260324-13"></script>
-<script src="js/core.js?v=20260328-1"></script>
+<script src="js/core.js?v=20260324-13"></script>
 <script src="js/projects.js?v=20260324-13"></script>
 <script src="js/ai-import.js?v=20260324-13"></script>
 <script src="js/contract-generator.js?v=20260324-13"></script>
 <script src="js/ads.js?v=20260324-13"></script>
-<script src="js/kp-generator.js?v=20260328-1"></script>
-<script src="js/main.js?v=20260328-1"></script>
+<script src="js/main.js?v=20260324-13"></script>
 </body>
 </html>

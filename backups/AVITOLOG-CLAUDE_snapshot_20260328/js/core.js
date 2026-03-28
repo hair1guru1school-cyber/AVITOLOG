@@ -546,14 +546,7 @@ function openAnalyticsTab() {
   updateProjectsSidebarOffset();
   stopProjectsSheetPullTimer();
   stopProjectsDayShiftTimer();
-  if (currentTab === 'analysis' && docReady && currentHtml) {
-    renderDoc(currentHtml);
-  } else if (currentTab === 'kp' && typeof window.__showKpGenerator === 'function') {
-    var mcK = document.getElementById('mainContent');
-    if (mcK) window.__showKpGenerator(mcK);
-  } else {
-    refreshClientContents();
-  }
+  if (currentTab === 'analysis' && docReady && currentHtml) { renderDoc(currentHtml); } else { refreshClientContents(); }
   updateTopRowButtons();
 }
 function openAssetsTab() {
