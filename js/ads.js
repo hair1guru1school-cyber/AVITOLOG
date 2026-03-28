@@ -514,8 +514,14 @@
       html += '<th class="' + headCls + '" title="' + dayLabel + '">' + dayLabel + "</th>";
     }
     html += "</tr></thead><tbody>";
-    POST_ROWS.forEach(function(row) {
-      html += '<tr><td class="ads-td-label">' + row.label + "</td>";
+    function postPlanRowHtml(row, ghostLabel) {
+      var r = "";
+      r += '<tr class="ads-posts-data-row" data-post-row="' + row.key + '">';
+      if (ghostLabel) {
+        r += '<td class="ads-td-label ads-td-label-ghost" aria-hidden="true"></td>';
+      } else {
+        r += '<td class="ads-td-label">' + row.label + "</td>";
+      }
       for (var col = 1; col <= days; col++) {
         var cMeta = getColumnMeta(col);
         var monthState = getMonthState(cMeta.monthOffset);
@@ -534,15 +540,26 @@
         else if (cMeta.monthOffset === baseOffset && todayDay && cMeta.day < anchorDay) tdDayCls += " ads-day-past";
         else tdDayCls += " ads-day-future";
         var dataDayTitle = getPostDayMonthLabel(getPostsMonthMeta(cMeta.monthOffset), cMeta.day);
-        html +=
+        r +=
           '<td class="' + tdDayCls + '">' +
             '<button type="button" class="' + className + '" data-row="' + row.key + '" data-day="' + cMeta.day + '" data-month-offset="' + cMeta.monthOffset + '" title="' + escapeHtml(dataDayTitle + " · " + cellTitle) + '">' +
               escapeHtml(cellLabel) +
             "</button>" +
           "</td>";
       }
-      html += "</tr>";
-    });
+      r += "</tr>";
+      return r;
+    }
+    html += postPlanRowHtml(POST_ROWS[0], false);
+    if (POST_ROWS[1]) {
+      html +=
+        '<tr class="ads-posts-strip-row">' +
+          '<td class="ads-posts-strip-cell" colspan="' + (1 + days) + '">' +
+            '<div class="ads-posts-agency-strip">' + escapeHtml(POST_ROWS[1].label) + "</div>" +
+          "</td>" +
+        "</tr>";
+      html += postPlanRowHtml(POST_ROWS[1], true);
+    }
     html += "</tbody></table></div>";
     container.innerHTML = html;
     container.querySelectorAll(".ads-post-cell").forEach(function(btn) {
@@ -997,8 +1014,14 @@
     var html = '<div class="ads-source-table-wrap"><table class="ads-posts-table"><thead><tr><th class="ads-th-label">Проект</th>';
     for (var d = 1; d <= days; d++) html += '<th class="ads-th-day">' + d + "</th>";
     html += "</tr></thead><tbody>";
-    POST_ROWS.forEach(function(row) {
-      html += '<tr><td class="ads-td-label">' + row.label + "</td>";
+    function sourceRowHtml(row, ghostLabel) {
+      var r = "";
+      r += '<tr class="ads-posts-data-row" data-post-row="' + row.key + '">';
+      if (ghostLabel) {
+        r += '<td class="ads-td-label ads-td-label-ghost" aria-hidden="true"></td>';
+      } else {
+        r += '<td class="ads-td-label">' + row.label + "</td>";
+      }
       for (var day = 1; day <= days; day++) {
         var pKey = getPostCellKey(row.key, day);
         var sKey = getPostSourceCellKey(row.key, day);
@@ -1008,13 +1031,24 @@
         var cls = "ads-post-cell" + (sourceVal ? " is-filled" : "");
         var title = sourceVal || "Нажмите, чтобы добавить источник";
         var postHint = String(postCell.text || "").trim();
-        html +=
+        r +=
           '<td class="ads-post-td">' +
             '<button type="button" class="' + cls + '" data-row="' + row.key + '" data-day="' + day + '" title="' + escapeHtml(title + (postHint ? (" | Пост: " + postHint) : "")) + '">' + escapeHtml(shortText) + "</button>" +
           "</td>";
       }
-      html += "</tr>";
-    });
+      r += "</tr>";
+      return r;
+    }
+    html += sourceRowHtml(POST_ROWS[0], false);
+    if (POST_ROWS[1]) {
+      html +=
+        '<tr class="ads-posts-strip-row">' +
+          '<td class="ads-posts-strip-cell" colspan="' + (1 + days) + '">' +
+            '<div class="ads-posts-agency-strip">' + escapeHtml(POST_ROWS[1].label) + "</div>" +
+          "</td>" +
+        "</tr>";
+      html += sourceRowHtml(POST_ROWS[1], true);
+    }
     html += "</tbody></table></div>";
     container.innerHTML = html;
     container.querySelectorAll(".ads-post-cell").forEach(function(btn) {
