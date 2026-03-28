@@ -110,10 +110,10 @@ footer a{color:var(--cyan);text-decoration:none}
   <div class="portfolio-hero-bg" aria-hidden="true"></div>
   <div class="portfolio-hero-inner">
     <header class="portfolio-hero">
-      <div class="hero-lbl">Не скриншоты магазинов — инфографика объявлений</div>
+      <div class="hero-lbl">Продающая инфографика объявлений</div>
       <h1 class="portfolio-h1"><span class="accent">ПОРТФОЛИО</span> ДИЗАЙНОВ</h1>
-      <p class="portfolio-sub">ДИЗАЙНОМ + ИНФОГРАФИКА УВЕЛИЧИВАЮТ КОНВЕРСИЮ ДО 60%</p>
-      <p class="portfolio-sub portfolio-sub-sm">+ АКТИВНЕЕ ФОРМИРУЕТСЯ ВАША БАЗА В ♥️ «ИЗБРАННОЕ»</p>
+      <p class="portfolio-sub">ИНФОГРАФИКА ОБЪЯВЛЕНИЙ УВЕЛИЧИВАЮТ КОНВЕРСИЮ ДО 58%</p>
+      <p class="portfolio-sub portfolio-sub-sm">ТАКЖЕ АКТИВНО ФОРМИРУЕТСЯ ВАША БАЗА ДОБАВЛЕНИЯ В ♥️ «ИЗБРАННОЕ»</p>
     </header>
   </div>
 </section>
