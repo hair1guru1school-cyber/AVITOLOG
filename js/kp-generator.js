@@ -4,6 +4,8 @@
 (function () {
   var KP_TEMPLATES_STORE = 'avitolog_kp_templates_v1';
   var MAX_B64 = 420000;
+  /** Превью для ниши «Мебель кухни» (как в оригинальном КП) */
+  var KP_MEBEL_KITCHEN_HERO = 'assets/kp-mebel-kitchen-hero.png';
 
   var KP_DEFAULTS = {
     goods: [
@@ -109,7 +111,7 @@
   ];
 
   var KP_BLOCK2_NICHES = [
-    { id: 'mebel_kitchen', kind: 'goods', label: 'Мебель кухни' },
+    { id: 'mebel_kitchen', kind: 'goods', label: '🍳 Мебель кухни' },
     { id: 'services_generic', kind: 'services', label: 'Услуги (шаблон)' }
   ];
 
@@ -331,6 +333,17 @@
     return d;
   }
 
+  function ensureMeebelKitchenHero(d) {
+    if (!d || !d.block2) return;
+    if (d.block2.kind !== 'goods' || d.block2.nicheId !== 'mebel_kitchen') return;
+    if (d.heroDataUrl) return;
+    if (d.kpMeebelHeroDismissed) return;
+    if (!String(d.heroUrl || '').trim()) {
+      d.heroUrl = KP_MEBEL_KITCHEN_HERO;
+      saveDraft(d);
+    }
+  }
+
   function fmtKpRub(n) {
     var x = Math.round(Number(n));
     if (!isFinite(x) || x < 0) return '0';
@@ -545,9 +558,14 @@
       })
       .join('');
     var pkgs = d.block2.packages && d.block2.packages.length ? d.block2.packages : [];
+    var b2Hint =
+      nicheId === 'mebel_kitchen' && kind === 'goods'
+        ? '<p class="kp-b2-intro">Набор полей для сборки КП. Номер сета и исходники — в Google-папке клиента. Можно дублировать сет и переименовать.</p>'
+        : '';
     return (
       '<div class="kp-gen-section kp-b2-section">' +
-      '<div class="kp-gen-label">Пакеты в КП</div>' +
+      '<div class="kp-gen-label">ШАБЛОН КП</div>' +
+      b2Hint +
       '<div class="kp-b2-kind-row">' +
       '<span class="kp-b2-kind-label">Тип:</span>' +
       '<div class="kp-b2-seg">' +
@@ -871,9 +889,9 @@
     });
 
     function persistFields() {
-      d.headline = headlineInp ? headlineInp.value.trim() : '';
-      d.subline = subInp ? subInp.value.trim() : '';
-      d.niche = nicheTa ? nicheTa.value.trim() : '';
+      if (headlineInp) d.headline = headlineInp.value.trim();
+      if (subInp) d.subline = subInp.value.trim();
+      if (nicheTa) d.niche = nicheTa.value.trim();
       d.heroUrl = urlInp ? urlInp.value.trim() : '';
       saveDraft(d);
     }
@@ -893,7 +911,10 @@
     if (urlInp) {
       urlInp.onchange = function () {
         d.heroUrl = urlInp.value.trim();
-        if (d.heroUrl) d.heroDataUrl = '';
+        if (d.heroUrl) {
+          d.heroDataUrl = '';
+          d.kpMeebelHeroDismissed = false;
+        }
         saveDraft(d);
         window.__showKpGenerator(mc);
       };
@@ -930,6 +951,7 @@
       clearBtn.onclick = function () {
         d.heroDataUrl = '';
         d.heroUrl = '';
+        d.kpMeebelHeroDismissed = true;
         if (urlInp) urlInp.value = '';
         if (fileInp) fileInp.value = '';
         saveDraft(d);
@@ -962,7 +984,11 @@
     if (aiBtn) {
       aiBtn.onclick = function () {
         var ac = getAc();
-        var niche = (nicheTa && nicheTa.value.trim()) || (ac && ac.category) || '';
+        var niche =
+          (nicheTa && nicheTa.value.trim()) ||
+          (d && String(d.niche || '').trim()) ||
+          (ac && ac.category) ||
+          '';
         var company = (ac && (ac.company || ac.contact_name)) || '';
         if (typeof callAPI !== 'function') {
           if (typeof alert === 'function') alert('AI недоступен: загрузите страницу полностью.');
@@ -983,7 +1009,8 @@
               .trim()
               .split('\n')[0]
               .slice(0, 120);
-            if (headlineInp && line) headlineInp.value = line;
+            if (headlineInp) headlineInp.value = line;
+            else if (line) d.headline = line;
             persistFields();
           })
           .catch(function (e) {
@@ -1037,7 +1064,11 @@
         var nid = String(nicheSel.value || '').trim();
         dd.block2.nicheId = nid;
         dd.block2.packages = nid ? getPackagesForNiche(dd.block2.kind, nid) : [];
+        if (nid === 'mebel_kitchen' && dd.block2.kind === 'goods') {
+          dd.kpMeebelHeroDismissed = false;
+        }
         saveDraft(dd);
+        ensureMeebelKitchenHero(dd);
         rerender();
       };
     }
@@ -1157,6 +1188,7 @@
       });
       saveDraft(d);
     }
+    ensureMeebelKitchenHero(d);
     var firstId = getFirstTemplateId();
     if (!d.templateId || !findTemplateById(d.templateId)) d.templateId = firstId;
     if (!d.niche) {
@@ -1189,12 +1221,11 @@
       '<div class="kp-gen-title">Коммерческое предложение</div>' +
       '</div>' +
       '<div class="kp-gen-section">' +
-      '<div class="kp-gen-label">Шаблон</div>' +
+      '<div class="kp-gen-label">ШАБЛОН CANVA</div>' +
       buildTemplateZonesHtml(d) +
       '</div>' +
-      buildBlock2SectionHtml(d) +
-      '<div class="kp-gen-section">' +
-      '<div class="kp-gen-label">Картинка вверху</div>' +
+      '<div class="kp-gen-section kp-hero-section">' +
+      '<div class="kp-gen-label kp-gen-label--sub">Превью обложки</div>' +
       '<div class="kp-hero-row">' +
       '<div class="kp-hero-preview" id="kpHeroPreview">' +
       heroInner +
@@ -1206,17 +1237,7 @@
       '">' +
       '<button type="button" class="kp-btn kp-btn-ghost" id="kpHeroClear">Сбросить</button>' +
       '</div></div></div>' +
-      '<div class="kp-gen-section kp-gen-grid">' +
-      '<div class="fg"><label>Заголовок</label><input type="text" id="kpHeadline" class="kp-inp" value="' +
-      esc(d.headline || '') +
-      '" placeholder="Например: СТРАТЕГИИ ПРОДВИЖЕНИЯ"></div>' +
-      '<div class="fg"><label>Подзаголовок / слоган</label><input type="text" id="kpSubline" class="kp-inp" value="' +
-      esc(d.subline || '') +
-      '" placeholder="ВЫГОДНО / БЫСТРО / НАДЕЖНО"></div>' +
-      '<div class="fg kp-span2"><label>Ниша / заметки для вставки</label><textarea id="kpNiche" class="kp-ta" rows="3" placeholder="Кратко: что важно отразить в КП">' +
-      esc(d.niche || '') +
-      '</textarea></div>' +
-      '</div>' +
+      buildBlock2SectionHtml(d) +
       '<div class="kp-gen-actions">' +
       '<a class="kp-btn kp-btn-primary" id="kpOpenCanva" target="_blank" rel="noopener" href="' +
       esc(tSel.editUrl || '#') +
