@@ -26,7 +26,7 @@ nav::after{content:'';position:absolute;bottom:0;left:0;right:0;height:1px;backg
 .nav-logo{font-family:'Oswald',sans-serif;font-size:22px;font-weight:700;color:var(--text);text-decoration:none;letter-spacing:3px;display:flex;align-items:center;gap:10px}
 .logo-badge{background:var(--red);color:#fff;font-size:8px;font-weight:700;letter-spacing:2px;padding:3px 8px;text-transform:uppercase}
 .nav-links{display:flex;gap:4px;list-style:none}
-.nav-links a{color:var(--muted);text-decoration:none;font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;padding:7px 14px;border:1px solid transparent;transition:all .2s}
+.nav-links a{color:var(--muted);text-decoration:none;font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;padding:7px 14px;border:1px solid transparent;transition:all .2s;font-family:'Exo 2',ui-emoji,'Segoe UI Emoji','Apple Color Emoji','Noto Color Emoji',sans-serif}
 .nav-links a:hover{color:var(--text);border-color:var(--border-r);background:var(--red-dim)}
 .nav-cta{background:var(--red)!important;color:#fff!important;border-color:var(--red)!important;padding:9px 20px!important;font-weight:800!important}
 .nav-cta:hover{background:var(--red2)!important;box-shadow:0 0 24px var(--red-glow)!important}
@@ -145,7 +145,7 @@ nav::after{content:'';position:absolute;bottom:0;left:0;right:0;height:1px;backg
 .cases-cols-wrap::-webkit-scrollbar-thumb{background:var(--red-dim);border-radius:4px}
 .cat-group{flex:0 0 clamp(230px,28vw,300px);min-width:220px;max-width:320px;margin-bottom:0;display:flex;flex-direction:column;min-height:0;scroll-snap-align:start;background:rgba(0,0,0,.12);border-radius:12px;border:1px solid var(--border);padding:0;overflow:hidden}
 .cat-hd{display:grid;grid-template-columns:52px 1fr;column-gap:12px;row-gap:6px;padding:12px 14px;background:linear-gradient(180deg,rgba(232,0,29,.1),transparent 52%),var(--surface);border:none;border-bottom:1px solid var(--border);margin-bottom:0;flex-shrink:0;border-radius:12px 12px 0 0;align-items:center}
-.cat-ico{grid-column:1;grid-row:1/span 2;align-self:center;justify-self:center;display:flex;align-items:center;justify-content:center;width:48px;height:48px;font-size:26px;line-height:1;border-radius:14px;background:radial-gradient(ellipse 80% 80% at 30% 20%,rgba(255,255,255,.12),rgba(232,0,29,.22) 45%,rgba(8,11,18,.92) 100%);border:1px solid var(--border-r);box-shadow:0 6px 22px rgba(232,0,29,.28),inset 0 1px 0 rgba(255,255,255,.12),inset 0 -1px 0 rgba(0,0,0,.35);filter:none}
+.cat-ico{grid-column:1;grid-row:1/span 2;align-self:center;justify-self:center;display:flex;align-items:center;justify-content:center;width:48px;height:48px;font-size:26px;line-height:1;font-family:ui-emoji,"Segoe UI Emoji","Apple Color Emoji","Noto Color Emoji",sans-serif;border-radius:14px;background:radial-gradient(ellipse 80% 80% at 30% 20%,rgba(255,255,255,.12),rgba(232,0,29,.22) 45%,rgba(8,11,18,.92) 100%);border:1px solid var(--border-r);box-shadow:0 6px 22px rgba(232,0,29,.28),inset 0 1px 0 rgba(255,255,255,.12),inset 0 -1px 0 rgba(0,0,0,.35);filter:none}
 .cat-nm{grid-column:2;grid-row:1;font-family:'Oswald',sans-serif;font-size:15px;font-weight:700;color:var(--text);letter-spacing:.4px;line-height:1.25;max-width:100%;text-shadow:0 0 24px rgba(255,255,255,.07),0 2px 8px rgba(0,0,0,.45)}
 .cat-cnt{grid-column:2;grid-row:2;margin-left:0;font-size:9px;color:var(--red);background:var(--red-dim);border:1px solid var(--border-r);padding:3px 8px;font-weight:700;border-radius:6px;justify-self:start}
 .cards-grid{display:flex;flex-direction:column;gap:9px;background:transparent;border:none;flex:1;min-height:0;overflow-y:auto;overflow-x:visible;padding:10px 10px 10px 12px;scrollbar-width:thin;scrollbar-color:rgba(232,0,29,.35) transparent}
@@ -156,7 +156,7 @@ nav::after{content:'';position:absolute;bottom:0;left:0;right:0;height:1px;backg
 .ccard:hover{background:var(--s2);border-color:var(--border-r);box-shadow:0 4px 14px rgba(0,0,0,.35)}
 .ccard:hover::before{height:100%}
 .cc-main{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px}
-.cc-emoji-fb{font-size:21px;line-height:1;opacity:.95}
+.cc-emoji-fb{font-size:21px;line-height:1;opacity:.95;font-family:ui-emoji,"Segoe UI Emoji","Apple Color Emoji","Noto Color Emoji",sans-serif;}
 .cc-thumb-wrap{width:44px;height:44px;border-radius:10px;overflow:visible;flex-shrink:0;background:var(--surface);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;position:relative;box-shadow:inset 0 1px 4px rgba(0,0,0,.35)}
 .cc-thumb{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;opacity:0;transition:opacity .2s}
 .cc-thumb-wrap.has-img .cc-thumb{opacity:1}
@@ -182,8 +182,8 @@ nav::after{content:'';position:absolute;bottom:0;left:0;right:0;height:1px;backg
 .toolbar{margin-bottom:16px}
 .cat-group{margin-bottom:0}
 .cat-hd{padding:12px 14px;margin-bottom:0}
-.cards-grid{grid-template-columns:repeat(auto-fill,minmax(196px,1fr));gap:1px}
-.ccard{flex-direction:row;align-items:flex-start;gap:10px;padding:10px 12px;min-height:0}
+.cards-grid{display:flex;flex-direction:column;gap:9px}
+.ccard{flex-direction:row;align-items:center;gap:10px;padding:10px 12px;min-height:0}
 .cc-main{flex:1;min-width:0;display:flex;flex-direction:column;gap:4px}
 .cc-title{font-size:12px;line-height:1.42;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;word-break:break-word;overflow-wrap:anywhere;padding:1px 0;min-height:2.85em}
 .cc-foot{margin-top:4px}
@@ -191,7 +191,7 @@ nav::after{content:'';position:absolute;bottom:0;left:0;right:0;height:1px;backg
 .cc-thumb{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;opacity:0;transition:opacity .25s}
 .cc-thumb-wrap.has-img .cc-thumb{opacity:1}
 .cc-thumb-wrap.has-img .cc-emoji-fb{display:none}
-.cc-emoji-fb{font-size:20px;line-height:1;opacity:.85}
+.cc-emoji-fb{font-size:20px;line-height:1;opacity:.95;font-family:ui-emoji,"Segoe UI Emoji","Apple Color Emoji","Noto Color Emoji",sans-serif;}
 
 /* VK block */
 .vk-promo{background:linear-gradient(180deg,rgba(0,119,255,.07) 0%,var(--bg) 45%);border-top:1px solid var(--border);border-bottom:1px solid var(--border)}
@@ -376,12 +376,12 @@ footer{background:var(--bg);border-top:1px solid var(--border);padding:40px 80px
 <nav>
   <a href="#" class="nav-logo">ACES <span class="logo-badge">OF ADS</span></a>
   <ul class="nav-links">
-    <li><a href="#services">Услуги</a></li>
-    <li><a href="#niches">Ниши</a></li>
-    <li><a href="#cases">Кейсы</a></li>
-    <li><a href="#avito">Авито №1</a></li>
-    <li><a href="#vk">ВКонтакте</a></li>
-    <li><a href="portfolio.html">Дизайн</a></li>
+    <li><a href="#services">🛠️ Услуги</a></li>
+    <li><a href="#niches">🎯 Ниши</a></li>
+    <li><a href="#cases">📊 Кейсы</a></li>
+    <li><a href="#avito">🏆 Авито №1</a></li>
+    <li><a href="#vk">💙 ВКонтакте</a></li>
+    <li><a href="portfolio.html">🎨 Дизайн</a></li>
     <li><a href="https://www.avito.ru/brands/ai_avitolog_fil_ai/all/otzyvy?sellerId=8027d3f86387132e7d279156557bc0ab" target="_blank" rel="noopener">Отзывы</a></li>
     <li><a href="https://t.me/Aces_Of_Ads_bot" target="_blank" class="nav-cta">🤖 Написать</a></li>
   </ul>
@@ -725,34 +725,10 @@ function sortCasesColumns(){
   if(noRes)container.appendChild(noRes);
 }
 function applyCaseEmojis(){
-  function inferEmoji(title){
-    var t=(title||'').toLowerCase();
-    var rules=[
-      [/строит|фундамент|кровл|монолит|газоблок|стяжк|коттедж|каркас|коробк|фундамент/, '\U0001f3d7'],
-      [/пиломат|доск|брус|лес|пилорам|бревн/, '\U0001fab5'],
-      [/авто|машин|шин|двигател|тормоз|авто/, '\U0001f697'],
-      [/вентиляц|овик|климат|кондицион|вентиля/, '\U0001f4a8'],
-      [/электрик|электромонтаж|кабел|электро/, '\u26a1'],
-      [/сантехн|водопров|отоплен|канализац/, '\U0001f527'],
-      [/мебель|диван|кухн|орландо|мебел/, '\U0001fa91'],
-      [/китай|поставк|представител|китайск/, '\U0001f1e8\U0001f1f3'],
-      [/авито|реклам|маркетинг|лид|заявк|рекорд|контакт|лиды/, '\U0001f4c8'],
-      [/жатк|сельхоз|поле|урожай|комбайн/, '\U0001f33e'],
-      [/диск|бдм|сельхозтех|трактор/, '\u2699\ufe0f'],
-      [/дизайн|баннер|макет|оформлен/, '\U0001f3a8'],
-      [/юрид|документ|счет|договор/, '\U0001f4cb'],
-      [/сварк|металл|труб|профил/, '\U0001f6e0'],
-      [/вентиляц|увлажн/, '\U0001f4a7'],
-      [/пластик|окон|стеклопакет/, '\U0001fa9f'],
-      [/доск|опт|москва/, '\U0001fab5'],
-    ];
-    for(var i=0;i<rules.length;i++) if(rules[i][0].test(t)) return rules[i][1];
-    return '\U0001f4cc';
-  }
-  document.querySelectorAll('a.ccard').forEach(function(a){
-    var t=a.querySelector('.cc-title'); var em=a.querySelector('.cc-emoji-fb');
-    if(!t||!em)return;
-    em.textContent=inferEmoji(t.textContent);
+  document.querySelectorAll('a.ccard .cc-thumb-wrap').forEach(function(w){
+    var em=w.querySelector('.cc-emoji-fb');
+    var de=w.getAttribute('data-emoji');
+    if(em&&de) em.textContent=de;
   });
 }
 

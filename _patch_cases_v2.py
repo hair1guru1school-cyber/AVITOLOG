@@ -51,6 +51,7 @@ new_m = ".cases-cols-wrap{height:min(78vh,880px);min-height:360px;gap:12px}\n.ca
 if old_m in s:
     s = s.replace(old_m, new_m, 1)
 
+# applyCaseEmojis: sync from data-emoji on .cc-thumb-wrap (Python \\U escapes are NOT valid in JS — do not use inferEmoji).
 JS_BLOCK = r"""
 function sortCasesColumns(){
   var container=document.getElementById('casesContainer');
@@ -64,34 +65,10 @@ function sortCasesColumns(){
   if(noRes)container.appendChild(noRes);
 }
 function applyCaseEmojis(){
-  function inferEmoji(title){
-    var t=(title||'').toLowerCase();
-    var rules=[
-      [/строит|фундамент|кровл|монолит|газоблок|стяжк|коттедж|каркас|коробк|фундамент/, '\U0001f3d7'],
-      [/пиломат|доск|брус|лес|пилорам|бревн/, '\U0001fab5'],
-      [/авто|машин|шин|двигател|тормоз|авто/, '\U0001f697'],
-      [/вентиляц|овик|климат|кондицион|вентиля/, '\U0001f4a8'],
-      [/электрик|электромонтаж|кабел|электро/, '\u26a1'],
-      [/сантехн|водопров|отоплен|канализац/, '\U0001f527'],
-      [/мебель|диван|кухн|орландо|мебел/, '\U0001fa91'],
-      [/китай|поставк|представител|китайск/, '\U0001f1e8\U0001f1f3'],
-      [/авито|реклам|маркетинг|лид|заявк|рекорд|контакт|лиды/, '\U0001f4c8'],
-      [/жатк|сельхоз|поле|урожай|комбайн/, '\U0001f33e'],
-      [/диск|бдм|сельхозтех|трактор/, '\u2699\ufe0f'],
-      [/дизайн|баннер|макет|оформлен/, '\U0001f3a8'],
-      [/юрид|документ|счет|договор/, '\U0001f4cb'],
-      [/сварк|металл|труб|профил/, '\U0001f6e0'],
-      [/вентиляц|увлажн/, '\U0001f4a7'],
-      [/пластик|окон|стеклопакет/, '\U0001fa9f'],
-      [/доск|опт|москва/, '\U0001fab5'],
-    ];
-    for(var i=0;i<rules.length;i++) if(rules[i][0].test(t)) return rules[i][1];
-    return '\U0001f4cc';
-  }
-  document.querySelectorAll('a.ccard').forEach(function(a){
-    var t=a.querySelector('.cc-title'); var em=a.querySelector('.cc-emoji-fb');
-    if(!t||!em)return;
-    em.textContent=inferEmoji(t.textContent);
+  document.querySelectorAll('a.ccard .cc-thumb-wrap').forEach(function(w){
+    var em=w.querySelector('.cc-emoji-fb');
+    var de=w.getAttribute('data-emoji');
+    if(em&&de) em.textContent=de;
   });
 }
 
