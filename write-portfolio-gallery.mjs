@@ -102,8 +102,8 @@ footer a{color:var(--cyan);text-decoration:none}
     <header class="portfolio-hero">
       <div class="hero-lbl">Не скриншоты магазинов — инфографика объявлений</div>
       <h1 class="portfolio-h1"><span class="accent">ПОРТФОЛИО</span> ДИЗАЙНОВ</h1>
-      <p class="portfolio-sub">УПАКОВКА ОБЪЯВЛЕНИЙ ДИЗАЙНОМ + ИНФОГРАФИКОЙ УВЕЛИЧИВАЕТ КОНВЕРСИЮ В ЗАЯВКУ НА 30%–60%</p>
-      <p class="portfolio-sub portfolio-sub-sm">+ АКТИВНЕЕ ФОРМИРУЕТСЯ БАЗА В «ИЗБРАННОЕ»</p>
+      <p class="portfolio-sub">ДИЗАЙНОМ + ИНФОГРАФИКА УВЕЛИЧИВАЮТ КОНВЕРСИЮ ДО 60%</p>
+      <p class="portfolio-sub portfolio-sub-sm">+ АКТИВНЕЕ ФОРМИРУЕТСЯ ВАША БАЗА В ♥️ «ИЗБРАННОЕ»</p>
     </header>
   </div>
 </section>
