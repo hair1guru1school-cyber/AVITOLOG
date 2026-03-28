@@ -1,0 +1,3 @@
+После добавления или переименования фото в portfolio-images/ пересоберите manifest:
+
+  node build-portfolio-manifest.js
