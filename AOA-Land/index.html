@@ -122,17 +122,18 @@ nav::after{content:'';position:absolute;bottom:0;left:0;right:0;height:1px;backg
 .nc-stat-lbl{font-size:10px;color:var(--muted)}
 
 /* PROCESS */
-.sec.process-section{padding-top:clamp(16px,2.5vw,32px);padding-bottom:clamp(8px,1.2vw,16px)}
+.sec.process-section{margin-top:-1px;padding-top:calc(clamp(16px,2.5vw,32px) + 1px);padding-bottom:clamp(8px,1.2vw,16px);padding-left:0;padding-right:0}
 .process-section{background:var(--bg2);overflow-x:hidden}
-.process-visual-wrap{position:relative;display:block;margin:0 auto;width:100%;max-width:min(1920px,100%);min-width:0;box-sizing:border-box;border-radius:clamp(10px,1.2vw,16px);overflow:hidden;border:1px solid rgba(255,255,255,.1);box-shadow:0 16px 48px rgba(0,0,0,.45);background:#05080f;line-height:0;width:100%;aspect-ratio:21/9;max-height:min(32vw,420px)}
-.process-visual-img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center center;display:block}
-.process-visual-overlay{position:absolute;inset:0;z-index:1;pointer-events:none;background:linear-gradient(to bottom,rgba(0,0,0,0) 0%,rgba(0,0,0,.12) 45%,rgba(0,0,0,.75) 78%,rgba(0,0,0,.94) 100%)}
-.process-visual-caption{position:absolute;left:0;right:0;top:0;z-index:3;padding:clamp(12px,2.5vw,28px) clamp(12px,2.5vw,24px) 6px;text-align:left;box-sizing:border-box;pointer-events:none;line-height:normal}
+.process-visual-wrap{position:relative;display:block;margin:0;width:100%;max-width:none;min-width:0;box-sizing:border-box;border-radius:0;overflow:hidden;border:none;box-shadow:none;background:#05080f;line-height:0;width:100%;aspect-ratio:21/9;max-height:min(48vw,620px);min-height:min(280px,56vw)}
+.process-visual-img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center top;display:block}
+.process-visual-overlay{position:absolute;inset:0;z-index:1;pointer-events:none;background:linear-gradient(180deg,rgba(0,0,0,.5) 0%,rgba(0,0,0,.42) 28%,rgba(0,0,0,.62) 55%,rgba(0,0,0,.88) 82%,rgba(0,0,0,.94) 100%)}
+.process-visual-caption{position:absolute;left:0;right:0;top:0;z-index:3;padding:clamp(16px,3vw,36px) clamp(20px,4vw,80px) 8px;text-align:left;box-sizing:border-box;pointer-events:none;line-height:normal}
 .process-caption-lbl{color:var(--cyan);text-shadow:0 2px 12px rgba(0,0,0,.95)}
 .process-title-on-img{color:#f0f4ff;text-shadow:0 2px 16px rgba(0,0,0,.9);margin-bottom:0;font-size:clamp(22px,3.6vw,44px)}
 .process-title-on-img span{color:var(--red)}
 .process-visual-wrap .pstep{opacity:1!important;transform:none!important}
-.process-visual-wrap .p-steps{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:clamp(5px,1vw,10px);position:absolute;left:0;right:0;bottom:0;z-index:4;margin:0;padding:0 clamp(6px,1.4vw,18px) clamp(10px,1.8vw,20px);align-items:stretch;box-sizing:border-box;pointer-events:none;line-height:normal}
+.process-visual-wrap .p-steps{display:none}
+.process-visual-wrap .p-steps{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:clamp(5px,1vw,10px);position:absolute;left:0;right:0;bottom:0;z-index:4;margin:0;padding:0 clamp(12px,4vw,64px) clamp(12px,2vw,24px);align-items:stretch;box-sizing:border-box;pointer-events:none;line-height:normal}
 .process-visual-wrap .p-steps::before{display:none}
 .process-visual-wrap .p-step-card{pointer-events:auto;height:100%;display:flex;flex-direction:column;align-items:stretch;gap:6px;padding:clamp(8px,1.2vw,12px) clamp(6px,1vw,10px) clamp(8px,1.2vw,12px);border-radius:10px;border:1px solid rgba(232,0,29,.45);background:rgba(4,6,10,.88);box-shadow:0 4px 20px rgba(0,0,0,.5);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
 .process-visual-wrap .p-num{align-self:flex-start;display:flex;align-items:center;justify-content:center;font-family:'Oswald',sans-serif;font-weight:700;width:clamp(32px,5vw,56px);height:clamp(32px,5vw,56px);font-size:clamp(14px,2.2vw,22px);margin:0 0 2px 0;background:rgba(10,12,18,.95);border:2px solid var(--red);clip-path:polygon(8px 0,100% 0,100% calc(100% - 8px),calc(100% - 8px) 100%,0 100%,0 8px);flex-shrink:0}
@@ -140,9 +141,9 @@ nav::after{content:'';position:absolute;bottom:0;left:0;right:0;height:1px;backg
 .process-visual-wrap .p-title{font-size:clamp(8px,0.95vw,12px);font-weight:600;color:#fff;line-height:1.2;margin:0}
 .process-visual-wrap .p-desc{font-size:clamp(7px,0.82vw,10px);color:rgba(230,236,248,.95);line-height:1.35;margin:0}
 @media(max-width:900px){
-.process-visual-wrap{aspect-ratio:4/3;max-height:none;max-width:100%}
-.process-visual-img{object-position:center 25%}
-.process-visual-wrap .p-steps{grid-template-columns:1fr 1fr;row-gap:8px;padding:8px 8px 12px;column-gap:6px}
+.process-visual-wrap{aspect-ratio:4/3;max-height:none;min-height:0;max-width:100%}
+.process-visual-img{object-position:center 22%}
+.process-visual-wrap .p-steps{grid-template-columns:1fr 1fr;row-gap:8px;padding:8px clamp(16px,4vw,40px) 14px;column-gap:6px}
 .process-title-on-img{font-size:clamp(18px,5vw,28px)}
 }
 @media(max-width:520px){
@@ -223,10 +224,10 @@ nav::after{content:'';position:absolute;bottom:0;left:0;right:0;height:1px;backg
 .cc-emoji-fb{font-size:20px;line-height:1;opacity:.95;font-family:ui-emoji,"Segoe UI Emoji","Apple Color Emoji","Noto Color Emoji",sans-serif;}
 
 
-.vk-promo + .sec{padding-top:clamp(56px,7vw,96px)}
+.vk-promo + .sec{margin-top:-1px;padding-top:calc(clamp(56px,7vw,96px) + 1px)}
 /* VK block */
-.vk-promo{position:relative;overflow:hidden;border-top:none;border-bottom:1px solid rgba(255,255,255,.06);background-color:#060a12;background-image:linear-gradient(180deg,rgba(2,4,10,.58) 0%,rgba(4,8,18,.82) 45%,rgba(5,8,16,.94) 100%),url('vk-promo-art.png?v=20260328-vk9');background-position:center center;background-size:cover;background-repeat:no-repeat;scroll-margin-top:72px}
-.vk-promo::before{content:'';position:absolute;left:0;right:0;top:0;height:clamp(64px,12vw,180px);z-index:1;pointer-events:none;background:linear-gradient(180deg,var(--bg) 0%,rgba(8,11,18,.55) 22%,rgba(6,10,18,.12) 58%,transparent 100%)}
+.vk-promo{position:relative;overflow:hidden;border-top:none;border-bottom:none;padding-top:clamp(12px,2vw,28px);box-sizing:border-box;background-color:#060a12;background-image:linear-gradient(180deg,rgba(2,4,10,.45) 0%,rgba(4,8,18,.72) 44%,rgba(5,8,16,.9) 100%),url('vk-promo-art.png?v=20260328-vk10');background-position:center top;background-size:cover;background-repeat:no-repeat;background-origin:border-box;background-clip:border-box;scroll-margin-top:72px}
+.vk-promo::before{content:'';position:absolute;left:0;right:0;top:0;height:clamp(32px,6vw,100px);z-index:1;pointer-events:none;background:linear-gradient(180deg,rgba(5,7,13,.42) 0%,rgba(5,7,13,.12) 45%,transparent 100%)}
 .vk-inner{position:relative;z-index:2;max-width:min(1280px,96vw);margin:0 auto;text-align:center;padding:clamp(40px,6vw,84px) clamp(20px,4vw,48px) clamp(96px,12vw,140px)}
 .vk-inner .sec-lbl{color:rgba(0,207,255,.95);text-shadow:0 2px 16px rgba(0,0,0,.85)}
 .vk-inner .sec-title,.vk-inner .sec-title span{color:#f2f6ff;text-shadow:0 2px 24px rgba(0,0,0,.9),0 1px 3px rgba(0,0,0,.8)}
@@ -536,8 +537,8 @@ footer{background:var(--bg);border-top:1px solid var(--border);padding:40px 80px
 
 <!-- PROCESS -->
 <section class="sec process-section" id="process">
-  <figure class="process-visual-wrap">
-    <img class="process-visual-img" src="process-steps-panorama.png?v=20260328-ps5" alt="Пять этапов работы: консультация и аудит, стратегия и договор, упаковка магазина, запуск и масштаб, рост и отчётность" width="1920" height="640" loading="lazy" decoding="async" sizes="(max-width:900px) 100vw, min(1200px, 100vw)" />
+  <figure class="process-visual-wrap" aria-label="5 шагов: 1. Консультация и аудит. 2. Стратегия и договор. 3. Упаковка магазина. 4. Запуск и масштаб. 5. Рост и отчётность.">
+    <img class="process-visual-img" src="process-steps-panorama.png?v=20260328-ps6" alt="Пять этапов работы: консультация и аудит, стратегия и договор, упаковка магазина, запуск и масштаб, рост и отчётность" width="1920" height="640" loading="lazy" decoding="async" sizes="(max-width:900px) 100vw, min(1200px, 100vw)" />
     <div class="process-visual-overlay" aria-hidden="true"></div>
     <figcaption class="process-visual-caption">
       <div class="sec-lbl process-caption-lbl">Как работаем</div>
