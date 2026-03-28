@@ -69,6 +69,8 @@ nav::after{content:'';position:absolute;bottom:0;left:0;right:0;height:1px;backg
 .sec-title{font-family:'Oswald',sans-serif;font-size:clamp(28px,4.5vw,58px);font-weight:700;letter-spacing:-.5px;line-height:1.12;margin-bottom:14px;margin-top:4px}
 .sec-title span{color:var(--red)}
 .sec-desc{font-size:16px;color:var(--muted);max-width:560px;line-height:1.8;margin-bottom:50px}
+.sec{position:relative;padding:clamp(48px,5.5vw,88px) clamp(20px,4vw,80px)}
+.sec .sec-lbl{margin-top:2px}
 
 /* С НАМИ РАСТУТ - Carousel */
 .grow-carousel{position:relative;background:var(--bg2);padding:56px 24px 72px;overflow:hidden}
@@ -200,9 +202,11 @@ nav::after{content:'';position:absolute;bottom:0;left:0;right:0;height:1px;backg
 .cc-thumb-wrap.has-img .cc-emoji-fb{display:none}
 .cc-emoji-fb{font-size:20px;line-height:1;opacity:.95;font-family:ui-emoji,"Segoe UI Emoji","Apple Color Emoji","Noto Color Emoji",sans-serif;}
 
+
+.vk-promo + .sec{padding-top:clamp(56px,7vw,96px)}
 /* VK block */
-.vk-promo{position:relative;overflow:hidden;border-top:1px solid var(--border);border-bottom:1px solid var(--border);background-color:#060a12;background-image:linear-gradient(180deg,rgba(3,6,14,.48) 0%,rgba(5,10,20,.74) 48%,rgba(6,10,18,.9) 100%),url('vk-promo-art.png');background-position:center 22%;background-size:cover;background-repeat:no-repeat}
-.vk-inner{position:relative;z-index:1;max-width:min(1280px,96vw);margin:0 auto;text-align:center;padding:clamp(40px,6vw,68px) clamp(20px,4vw,48px) clamp(88px,11vw,132px)}
+.vk-promo{position:relative;overflow:hidden;border-top:1px solid rgba(255,255,255,.06);border-bottom:1px solid rgba(255,255,255,.06);background-color:#060a12;background-image:linear-gradient(180deg,rgba(3,6,14,.48) 0%,rgba(5,10,20,.74) 48%,rgba(6,10,18,.9) 100%),url('vk-promo-art.png');background-position:center 22%;background-size:cover;background-repeat:no-repeat}
+.vk-inner{position:relative;z-index:1;max-width:min(1280px,96vw);margin:0 auto;text-align:center;padding:clamp(52px,7vw,92px) clamp(20px,4vw,48px) clamp(96px,12vw,140px)}
 .vk-inner .sec-lbl{color:rgba(0,207,255,.95);text-shadow:0 2px 16px rgba(0,0,0,.85)}
 .vk-inner .sec-title,.vk-inner .sec-title span{color:#f2f6ff;text-shadow:0 2px 24px rgba(0,0,0,.9),0 1px 3px rgba(0,0,0,.8)}
 .vk-inner .sec-desc{color:rgba(235,242,255,.92);max-width:min(52em,100%);margin-left:auto;margin-right:auto;text-shadow:0 2px 14px rgba(0,0,0,.75)}
@@ -212,11 +216,11 @@ nav::after{content:'';position:absolute;bottom:0;left:0;right:0;height:1px;backg
 @media(max-width:640px){.vk-promo{background-position:center top;min-height:min(56vh,480px)}.vk-inner{padding-left:16px;padding-right:16px;padding-bottom:96px}}
 
 /* AVITO WHY */
-.avwhy{position:relative;overflow:hidden;background:var(--bg)}
+.avwhy{position:relative;overflow:hidden;background:var(--bg);padding-bottom:clamp(40px,6vw,72px)}
 .avwhy::before{content:'';position:absolute;top:0;right:0;width:50%;height:100%;background:url('trophy.png') center/cover no-repeat;opacity:.32}
 .avwhy::after{content:'';position:absolute;top:0;right:0;width:55%;height:100%;background:linear-gradient(90deg,var(--bg) 20%,transparent 100%)}
 .why-c{position:relative;z-index:10;max-width:58%}
-.why-list{display:flex;flex-direction:column;gap:14px;margin-top:32px}
+.why-list{display:flex;flex-direction:column;gap:14px;margin-top:32px;margin-bottom:clamp(8px,2vw,20px)}
 .why-item{display:flex;gap:16px;align-items:flex-start;padding:16px 20px;background:rgba(8,11,18,.7);border:1px solid var(--border);border-left:3px solid var(--red);backdrop-filter:blur(8px);transition:all .2s}
 .why-item:hover{background:rgba(232,0,29,.05);transform:translateX(4px)}
 .why-num{font-family:'Oswald',sans-serif;font-size:30px;font-weight:700;color:var(--red);opacity:.8;width:42px;flex-shrink:0;line-height:1}
@@ -242,8 +246,8 @@ nav::after{content:'';position:absolute;bottom:0;left:0;right:0;height:1px;backg
 .split-txt::before{content:'';position:absolute;top:0;bottom:0;left:0;width:2px;background:linear-gradient(180deg,transparent,var(--red),transparent)}
 
 /* CTA */
-.cta-big{position:relative;padding:76px;text-align:center;overflow:hidden;background:var(--surface);border-top:1px solid var(--border-r);border-bottom:1px solid var(--border-r)}
-.cta-big::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--red),var(--gold),transparent)}
+.cta-big{position:relative;padding:clamp(64px,8vw,96px) clamp(24px,5vw,80px);text-align:center;overflow:hidden;background:var(--surface);border-top:1px solid rgba(255,255,255,.06);border-bottom:1px solid rgba(255,255,255,.06)}
+.cta-big::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(232,0,29,.35),rgba(255,201,60,.2),transparent);opacity:.85}
 .cta-big::after{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at 50% 0%,rgba(232,0,29,.06) 0%,transparent 60%);pointer-events:none}
 .cta-eye{font-size:10px;font-weight:700;letter-spacing:5px;color:var(--red);text-transform:uppercase;margin-bottom:14px}
 .cta-title{font-family:'Oswald',sans-serif;font-size:clamp(26px,4vw,54px);font-weight:700;color:#fff;margin-bottom:12px;position:relative;z-index:1}

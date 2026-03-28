@@ -1,11 +1,12 @@
 /**
- * Сканирует portfolio-images/ и генерирует portfolio-manifest.js + .json
- * Запуск: node build-portfolio-manifest.js
+ * Сканирует AOA-Land/portfolio-images/ и пишет portfolio-manifest.js + .json в AOA-Land.
+ * Запуск из корня: node scripts/build-portfolio-manifest.cjs
  */
 const fs = require("fs");
 const path = require("path");
 
-const base = path.join(__dirname, "portfolio-images");
+const root = path.join(__dirname, "..", "AOA-Land");
+const base = path.join(root, "portfolio-images");
 const map = {
   "disk-bdm": "ДИСК АЛЛМАЗ",
   "zhatka-zhvr": "ЖАТКА",
@@ -38,6 +39,6 @@ for (const id of Object.keys(map)) {
 }
 
 const json = JSON.stringify(out);
-fs.writeFileSync(path.join(__dirname, "portfolio-manifest.json"), JSON.stringify(out, null, 2), "utf8");
-fs.writeFileSync(path.join(__dirname, "portfolio-manifest.js"), "window.PORTFOLIO_IMAGES = " + json + ";\n", "utf8");
+fs.writeFileSync(path.join(root, "portfolio-manifest.json"), JSON.stringify(out, null, 2), "utf8");
+fs.writeFileSync(path.join(root, "portfolio-manifest.js"), "window.PORTFOLIO_IMAGES = " + json + ";\n", "utf8");
 console.log("OK:", Object.keys(out).length, "проектов");
