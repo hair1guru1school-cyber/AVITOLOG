@@ -155,6 +155,32 @@ nav::after{content:'';position:absolute;bottom:0;left:0;right:0;height:1px;backg
 .ccard:hover .carrow{color:var(--red);transform:translateX(5px)}
 .no-res{display:none;grid-column:1/-1;padding:60px;text-align:center;color:var(--muted);font-family:'Oswald',sans-serif;font-size:12px;letter-spacing:3px;border:1px dashed var(--border)}
 
+
+/* CASES compact + link preview thumbs */
+.cases-section{padding-top:48px;padding-bottom:48px}
+.cases-section .sec-head-tight{margin-bottom:12px}
+.cases-section .sec-desc{margin-bottom:14px;font-size:13px}
+.toolbar{margin-bottom:16px}
+.cat-group{margin-bottom:22px}
+.cat-hd{padding:8px 12px;margin-bottom:8px}
+.cards-grid{grid-template-columns:repeat(auto-fill,minmax(196px,1fr));gap:1px}
+.ccard{flex-direction:row;align-items:flex-start;gap:10px;padding:10px 12px;min-height:0}
+.cc-main{flex:1;min-width:0;display:flex;flex-direction:column;gap:4px}
+.cc-title{font-size:12px;line-height:1.35}
+.cc-foot{margin-top:4px}
+.cc-thumb-wrap{width:44px;height:44px;border-radius:8px;overflow:hidden;flex-shrink:0;background:var(--surface);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;position:relative}
+.cc-thumb{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;opacity:0;transition:opacity .25s}
+.cc-thumb-wrap.has-img .cc-thumb{opacity:1}
+.cc-thumb-wrap.has-img .cc-emoji-fb{display:none}
+.cc-emoji-fb{font-size:20px;line-height:1;opacity:.85}
+
+/* VK block */
+.vk-promo{background:linear-gradient(180deg,rgba(0,119,255,.07) 0%,var(--bg) 45%);border-top:1px solid var(--border);border-bottom:1px solid var(--border)}
+.vk-inner{max-width:720px;margin:0 auto;text-align:center;padding:0 8px}
+.vk-actions{display:flex;justify-content:center;flex-wrap:wrap;gap:12px;margin-top:20px}
+.vk-btn{background:linear-gradient(180deg,#2787f5,#0077ff)!important;border-color:rgba(0,119,255,.5)!important;box-shadow:0 4px 24px rgba(0,119,255,.25)}
+.vk-btn:hover{filter:brightness(1.08);box-shadow:0 6px 28px rgba(0,119,255,.35)}
+
 /* AVITO WHY */
 .avwhy{position:relative;overflow:hidden;background:var(--bg)}
 .avwhy::before{content:'';position:absolute;top:0;right:0;width:50%;height:100%;background:url('trophy.png') center/cover no-repeat;opacity:.32}
@@ -330,6 +356,7 @@ footer{background:var(--bg);border-top:1px solid var(--border);padding:40px 80px
     <li><a href="#niches">Ниши</a></li>
     <li><a href="#cases">Кейсы</a></li>
     <li><a href="#avito">Авито №1</a></li>
+    <li><a href="#vk">ВКонтакте</a></li>
     <li><a href="portfolio.html">Дизайн</a></li>
     <li><a href="https://www.avito.ru/brands/ai_avitolog_fil_ai/all/predlozheniya_uslug?sellerId=241c5696fd902c120ad3a93df31bc039" target="_blank" rel="noopener">Отзывы</a></li>
     <li><a href="https://t.me/Aces_Of_Ads_bot" target="_blank" class="nav-cta">🤖 Написать</a></li>
@@ -471,80 +498,80 @@ footer{background:var(--bg);border-top:1px solid var(--border);padding:40px 80px
   <div id="casesContainer">
 
     <div class="cat-group" data-cats="tovary dom"><div class="cat-hd"><span class="cat-ico">🏠</span><span class="cat-nm">Дома и модульные конструкции</span><span class="cat-cnt">4 кейса</span></div><div class="cards-grid">
-      <a class="ccard" href="https://teletype.in/@avitolog_fil/dsvzrMj8W9M" target="_blank" data-cats="tovary dom"><div class="cc-emoji">🏠</div><div class="cc-title">Каркасные дома — Домкомплекты</div><div class="cc-foot"><span class="ctag">Товары</span><span class="carrow">→</span></div></a>
-      <a class="ccard" href="https://teletype.in/@avitolog_fil/nD2C4-ZSvDS" target="_blank" data-cats="tovary dom"><div class="cc-emoji">🏠</div><div class="cc-title">Каркасные дома / Модульные</div><div class="cc-foot"><span class="ctag">Товары</span><span class="carrow">→</span></div></a>
-      <a class="ccard" href="https://teletype.in/@avitolog_fil/hy8EF31IdRX" target="_blank" data-cats="tovary dom"><div class="cc-emoji">🏠</div><div class="cc-title">Каркасные / Брус Дома РФ</div><div class="cc-foot"><span class="ctag">Товары</span><span class="carrow">→</span></div></a>
-      <a class="ccard" href="https://teletype.in/@avitolog_fil/CblpFccmNBs" target="_blank" data-cats="tovary dom"><div class="cc-emoji">🏠</div><div class="cc-title">Бытовки / Модульные дома</div><div class="cc-foot"><span class="ctag">Товары</span><span class="carrow">→</span></div></a>
+      <a class="ccard" href="https://teletype.in/@avitolog_fil/dsvzrMj8W9M" target="_blank" data-cats="tovary dom"><div class="cc-thumb-wrap" data-emoji="🏠"><img class="cc-thumb" alt="" loading="lazy" decoding="async" width="48" height="48" /><span class="cc-emoji-fb" aria-hidden="true">🏠</span></div><div class="cc-main"><div class="cc-title">Каркасные дома — Домкомплекты</div><div class="cc-foot"><span class="ctag">Товары</span><span class="carrow">→</span></div></div></a>
+      <a class="ccard" href="https://teletype.in/@avitolog_fil/nD2C4-ZSvDS" target="_blank" data-cats="tovary dom"><div class="cc-thumb-wrap" data-emoji="🏠"><img class="cc-thumb" alt="" loading="lazy" decoding="async" width="48" height="48" /><span class="cc-emoji-fb" aria-hidden="true">🏠</span></div><div class="cc-main"><div class="cc-title">Каркасные дома / Модульные</div><div class="cc-foot"><span class="ctag">Товары</span><span class="carrow">→</span></div></div></a>
+      <a class="ccard" href="https://teletype.in/@avitolog_fil/hy8EF31IdRX" target="_blank" data-cats="tovary dom"><div class="cc-thumb-wrap" data-emoji="🏠"><img class="cc-thumb" alt="" loading="lazy" decoding="async" width="48" height="48" /><span class="cc-emoji-fb" aria-hidden="true">🏠</span></div><div class="cc-main"><div class="cc-title">Каркасные / Брус Дома РФ</div><div class="cc-foot"><span class="ctag">Товары</span><span class="carrow">→</span></div></div></a>
+      <a class="ccard" href="https://teletype.in/@avitolog_fil/CblpFccmNBs" target="_blank" data-cats="tovary dom"><div class="cc-thumb-wrap" data-emoji="🏠"><img class="cc-thumb" alt="" loading="lazy" decoding="async" width="48" height="48" /><span class="cc-emoji-fb" aria-hidden="true">🏠</span></div><div class="cc-main"><div class="cc-title">Бытовки / Модульные дома</div><div class="cc-foot"><span class="ctag">Товары</span><span class="carrow">→</span></div></div></a>
     </div></div>
 
     <div class="cat-group" data-cats="tovary dom"><div class="cat-hd"><span class="cat-ico">🚪</span><span class="cat-nm">Ворота, металл и стройматериалы</span><span class="cat-cnt">5 кейсов</span></div><div class="cards-grid">
-      <a class="ccard" href="https://teletype.in/@avitolog_fil/sBgpPUnnMtT" target="_blank" data-cats="tovary dom"><div class="cc-emoji">🏠</div><div class="cc-title">Ворота автоматические — Уфа</div><div class="cc-foot"><span class="ctag">Товары</span><span class="carrow">→</span></div></a>
-      <a class="ccard" href="https://teletype.in/@avitolog_fil/_4IUA7ctozJ" target="_blank" data-cats="tovary dom"><div class="cc-emoji">🏪</div><div class="cc-title">Каркасные ворота под ключ</div><div class="cc-foot"><span class="ctag">Товары</span><span class="carrow">→</span></div></a>
-      <a class="ccard" href="https://teletype.in/@avitolog_fil/3CummhwxrjE" target="_blank" data-cats="tovary dom"><div class="cc-emoji">🧱</div><div class="cc-title">Стройматериалы — Москва и МО</div><div class="cc-foot"><span class="ctag">Товары</span><span class="carrow">→</span></div></a>
-      <a class="ccard" href="https://teletype.in/@avitolog_fil/RsxU4MevJ4E" target="_blank" data-cats="tovary dom"><div class="cc-emoji">🔩</div><div class="cc-title">Металлопрокат — Москва и МО</div><div class="cc-foot"><span class="ctag">Товары</span><span class="carrow">→</span></div></a>
-      <a class="ccard" href="https://telegra.ph/Kak-prevratit-14k-reklamnogo-byudzheta-v-400k-prodazh-10-13" target="_blank" data-cats="tovary dom"><div class="cc-emoji">💦</div><div class="cc-title">Полимерные бассейны — 400 000₽ продаж</div><div class="cc-foot"><span class="ctag">Товары</span><span class="carrow">→</span></div></a>
+      <a class="ccard" href="https://teletype.in/@avitolog_fil/sBgpPUnnMtT" target="_blank" data-cats="tovary dom"><div class="cc-thumb-wrap" data-emoji="🏠"><img class="cc-thumb" alt="" loading="lazy" decoding="async" width="48" height="48" /><span class="cc-emoji-fb" aria-hidden="true">🏠</span></div><div class="cc-main"><div class="cc-title">Ворота автоматические — Уфа</div><div class="cc-foot"><span class="ctag">Товары</span><span class="carrow">→</span></div></div></a>
+      <a class="ccard" href="https://teletype.in/@avitolog_fil/_4IUA7ctozJ" target="_blank" data-cats="tovary dom"><div class="cc-thumb-wrap" data-emoji="🏪"><img class="cc-thumb" alt="" loading="lazy" decoding="async" width="48" height="48" /><span class="cc-emoji-fb" aria-hidden="true">🏪</span></div><div class="cc-main"><div class="cc-title">Каркасные ворота под ключ</div><div class="cc-foot"><span class="ctag">Товары</span><span class="carrow">→</span></div></div></a>
+      <a class="ccard" href="https://teletype.in/@avitolog_fil/3CummhwxrjE" target="_blank" data-cats="tovary dom"><div class="cc-thumb-wrap" data-emoji="🧱"><img class="cc-thumb" alt="" loading="lazy" decoding="async" width="48" height="48" /><span class="cc-emoji-fb" aria-hidden="true">🧱</span></div><div class="cc-main"><div class="cc-title">Стройматериалы — Москва и МО</div><div class="cc-foot"><span class="ctag">Товары</span><span class="carrow">→</span></div></div></a>
+      <a class="ccard" href="https://teletype.in/@avitolog_fil/RsxU4MevJ4E" target="_blank" data-cats="tovary dom"><div class="cc-thumb-wrap" data-emoji="🔩"><img class="cc-thumb" alt="" loading="lazy" decoding="async" width="48" height="48" /><span class="cc-emoji-fb" aria-hidden="true">🔩</span></div><div class="cc-main"><div class="cc-title">Металлопрокат — Москва и МО</div><div class="cc-foot"><span class="ctag">Товары</span><span class="carrow">→</span></div></div></a>
+      <a class="ccard" href="https://telegra.ph/Kak-prevratit-14k-reklamnogo-byudzheta-v-400k-prodazh-10-13" target="_blank" data-cats="tovary dom"><div class="cc-thumb-wrap" data-emoji="💦"><img class="cc-thumb" alt="" loading="lazy" decoding="async" width="48" height="48" /><span class="cc-emoji-fb" aria-hidden="true">💦</span></div><div class="cc-main"><div class="cc-title">Полимерные бассейны — 400 000₽ продаж</div><div class="cc-foot"><span class="ctag">Товары</span><span class="carrow">→</span></div></div></a>
     </div></div>
 
     <div class="cat-group" data-cats="tovary avto"><div class="cat-hd"><span class="cat-ico">🚗</span><span class="cat-nm">Авто и аксессуары</span><span class="cat-cnt">3 кейса</span></div><div class="cards-grid">
-      <a class="ccard" href="https://teletype.in/@avitolog_fil/kns82LsHwD3" target="_blank" data-cats="tovary avto"><div class="cc-emoji">🏍</div><div class="cc-title">Мотоциклы и квадроциклы</div><div class="cc-foot"><span class="ctag">Товары</span><span class="carrow">→</span></div></a>
-      <a class="ccard" href="https://teletype.in/@avitolog_fil/FgwoERr00Z3" target="_blank" data-cats="tovary avto"><div class="cc-emoji">💺</div><div class="cc-title">4+ года — 2 магазина по авточехлам</div><div class="cc-foot"><span class="ctag">Товары</span><span class="carrow">→</span></div></a>
-      <a class="ccard" href="https://teletype.in/@avitolog_fil/hCvjhelmkGN" target="_blank" data-cats="tovary avto"><div class="cc-emoji">💺</div><div class="cc-title">Авточехлы и 3D коврики</div><div class="cc-foot"><span class="ctag">Товары</span><span class="carrow">→</span></div></a>
+      <a class="ccard" href="https://teletype.in/@avitolog_fil/kns82LsHwD3" target="_blank" data-cats="tovary avto"><div class="cc-thumb-wrap" data-emoji="🏍"><img class="cc-thumb" alt="" loading="lazy" decoding="async" width="48" height="48" /><span class="cc-emoji-fb" aria-hidden="true">🏍</span></div><div class="cc-main"><div class="cc-title">Мотоциклы и квадроциклы</div><div class="cc-foot"><span class="ctag">Товары</span><span class="carrow">→</span></div></div></a>
+      <a class="ccard" href="https://teletype.in/@avitolog_fil/FgwoERr00Z3" target="_blank" data-cats="tovary avto"><div class="cc-thumb-wrap" data-emoji="💺"><img class="cc-thumb" alt="" loading="lazy" decoding="async" width="48" height="48" /><span class="cc-emoji-fb" aria-hidden="true">💺</span></div><div class="cc-main"><div class="cc-title">4+ года — 2 магазина по авточехлам</div><div class="cc-foot"><span class="ctag">Товары</span><span class="carrow">→</span></div></div></a>
+      <a class="ccard" href="https://teletype.in/@avitolog_fil/hCvjhelmkGN" target="_blank" data-cats="tovary avto"><div class="cc-thumb-wrap" data-emoji="💺"><img class="cc-thumb" alt="" loading="lazy" decoding="async" width="48" height="48" /><span class="cc-emoji-fb" aria-hidden="true">💺</span></div><div class="cc-main"><div class="cc-title">Авточехлы и 3D коврики</div><div class="cc-foot"><span class="ctag">Товары</span><span class="carrow">→</span></div></div></a>
     </div></div>
 
     <div class="cat-group" data-cats="tovary mebel"><div class="cat-hd"><span class="cat-ico">🛋</span><span class="cat-nm">Мебель и интерьер</span><span class="cat-cnt">3 кейса</span></div><div class="cards-grid">
-      <a class="ccard" href="https://teletype.in/@avitolog_fil/RT5TMJbKk4e" target="_blank" data-cats="tovary mebel"><div class="cc-emoji">🗄</div><div class="cc-title">Корпусная мебель — 3 года</div><div class="cc-foot"><span class="ctag">Товары</span><span class="carrow">→</span></div></a>
-      <a class="ccard" href="https://teletype.in/@avitolog_fil/hLv4fOMTM0V" target="_blank" data-cats="tovary mebel"><div class="cc-emoji">🛏</div><div class="cc-title">Кровати — Москва</div><div class="cc-foot"><span class="ctag">Товары</span><span class="carrow">→</span></div></a>
-      <a class="ccard" href="https://teletype.in/@avitolog_fil/8oQB7GPpv_x" target="_blank" data-cats="tovary mebel"><div class="cc-emoji">🛋</div><div class="cc-title">Реклайнеры в салон</div><div class="cc-foot"><span class="ctag">Товары</span><span class="carrow">→</span></div></a>
+      <a class="ccard" href="https://teletype.in/@avitolog_fil/RT5TMJbKk4e" target="_blank" data-cats="tovary mebel"><div class="cc-thumb-wrap" data-emoji="🗄"><img class="cc-thumb" alt="" loading="lazy" decoding="async" width="48" height="48" /><span class="cc-emoji-fb" aria-hidden="true">🗄</span></div><div class="cc-main"><div class="cc-title">Корпусная мебель — 3 года</div><div class="cc-foot"><span class="ctag">Товары</span><span class="carrow">→</span></div></div></a>
+      <a class="ccard" href="https://teletype.in/@avitolog_fil/hLv4fOMTM0V" target="_blank" data-cats="tovary mebel"><div class="cc-thumb-wrap" data-emoji="🛏"><img class="cc-thumb" alt="" loading="lazy" decoding="async" width="48" height="48" /><span class="cc-emoji-fb" aria-hidden="true">🛏</span></div><div class="cc-main"><div class="cc-title">Кровати — Москва</div><div class="cc-foot"><span class="ctag">Товары</span><span class="carrow">→</span></div></div></a>
+      <a class="ccard" href="https://teletype.in/@avitolog_fil/8oQB7GPpv_x" target="_blank" data-cats="tovary mebel"><div class="cc-thumb-wrap" data-emoji="🛋"><img class="cc-thumb" alt="" loading="lazy" decoding="async" width="48" height="48" /><span class="cc-emoji-fb" aria-hidden="true">🛋</span></div><div class="cc-main"><div class="cc-title">Реклайнеры в салон</div><div class="cc-foot"><span class="ctag">Товары</span><span class="carrow">→</span></div></div></a>
     </div></div>
 
     <div class="cat-group" data-cats="tovary les"><div class="cat-hd"><span class="cat-ico">🪵</span><span class="cat-nm">Пиломатериалы и древесина</span><span class="cat-cnt">8 кейсов</span></div><div class="cards-grid">
-      <a class="ccard" href="https://teletype.in/@avitolog_fil/iusxDl7CxSj" target="_blank" data-cats="tovary les"><div class="cc-emoji">🪵</div><div class="cc-title">ОПТ — Пиломатериалы</div><div class="cc-foot"><span class="ctag">Товары</span><span class="carrow">→</span></div></a>
-      <a class="ccard" href="https://telegra.ph/Doska-i-Brus-po-Moskve-i-Oblasti-01-21" target="_blank" data-cats="tovary les"><div class="cc-emoji">🪵</div><div class="cc-title">Доска и Брус — Москва и МО</div><div class="cc-foot"><span class="ctag">Товары</span><span class="carrow">→</span></div></a>
-      <a class="ccard" href="https://teletype.in/@avitolog_fil/z0Tnl4tFb75" target="_blank" data-cats="tovary les"><div class="cc-emoji">🪵</div><div class="cc-title">Пиломатериалы — Байкал</div><div class="cc-foot"><span class="ctag">Товары</span><span class="carrow">→</span></div></a>
-      <a class="ccard" href="https://telegra.ph/Doska-i-Brus-v-MSK-i-MO-01-21" target="_blank" data-cats="tovary les"><div class="cc-emoji">🪵</div><div class="cc-title">Доска — Москва и МО</div><div class="cc-foot"><span class="ctag">Товары</span><span class="carrow">→</span></div></a>
-      <a class="ccard" href="https://telegra.ph/Doska-i-Brus-v-Novosibirske-01-21" target="_blank" data-cats="tovary les"><div class="cc-emoji">🪵</div><div class="cc-title">Доска и Брус — Новосибирск</div><div class="cc-foot"><span class="ctag">Товары</span><span class="carrow">→</span></div></a>
-      <a class="ccard" href="https://telegra.ph/10-pozicij-pilomaterialov-v-Nizhnem-Novgorode-01-21" target="_blank" data-cats="tovary les"><div class="cc-emoji">🪵</div><div class="cc-title">Пиломатериалы — Нижний, 5 лет</div><div class="cc-foot"><span class="ctag">Товары</span><span class="carrow">→</span></div></a>
-      <a class="ccard" href="https://telegra.ph/Zayavki-po-17-rublej-na-Dosku-i-Brus-01-19" target="_blank" data-cats="tovary les"><div class="cc-emoji">🪵</div><div class="cc-title">Брус и Доска — Крым (17₽/заявка)</div><div class="cc-foot"><span class="ctag">Товары</span><span class="carrow">→</span></div></a>
-      <a class="ccard" href="https://telegra.ph/Pellety-po-RF-01-19" target="_blank" data-cats="tovary les"><div class="cc-emoji">🔥</div><div class="cc-title">Биотопливо — Пеллеты по РФ</div><div class="cc-foot"><span class="ctag">Товары</span><span class="carrow">→</span></div></a>
+      <a class="ccard" href="https://teletype.in/@avitolog_fil/iusxDl7CxSj" target="_blank" data-cats="tovary les"><div class="cc-thumb-wrap" data-emoji="🪵"><img class="cc-thumb" alt="" loading="lazy" decoding="async" width="48" height="48" /><span class="cc-emoji-fb" aria-hidden="true">🪵</span></div><div class="cc-main"><div class="cc-title">ОПТ — Пиломатериалы</div><div class="cc-foot"><span class="ctag">Товары</span><span class="carrow">→</span></div></div></a>
+      <a class="ccard" href="https://telegra.ph/Doska-i-Brus-po-Moskve-i-Oblasti-01-21" target="_blank" data-cats="tovary les"><div class="cc-thumb-wrap" data-emoji="🪵"><img class="cc-thumb" alt="" loading="lazy" decoding="async" width="48" height="48" /><span class="cc-emoji-fb" aria-hidden="true">🪵</span></div><div class="cc-main"><div class="cc-title">Доска и Брус — Москва и МО</div><div class="cc-foot"><span class="ctag">Товары</span><span class="carrow">→</span></div></div></a>
+      <a class="ccard" href="https://teletype.in/@avitolog_fil/z0Tnl4tFb75" target="_blank" data-cats="tovary les"><div class="cc-thumb-wrap" data-emoji="🪵"><img class="cc-thumb" alt="" loading="lazy" decoding="async" width="48" height="48" /><span class="cc-emoji-fb" aria-hidden="true">🪵</span></div><div class="cc-main"><div class="cc-title">Пиломатериалы — Байкал</div><div class="cc-foot"><span class="ctag">Товары</span><span class="carrow">→</span></div></div></a>
+      <a class="ccard" href="https://telegra.ph/Doska-i-Brus-v-MSK-i-MO-01-21" target="_blank" data-cats="tovary les"><div class="cc-thumb-wrap" data-emoji="🪵"><img class="cc-thumb" alt="" loading="lazy" decoding="async" width="48" height="48" /><span class="cc-emoji-fb" aria-hidden="true">🪵</span></div><div class="cc-main"><div class="cc-title">Доска — Москва и МО</div><div class="cc-foot"><span class="ctag">Товары</span><span class="carrow">→</span></div></div></a>
+      <a class="ccard" href="https://telegra.ph/Doska-i-Brus-v-Novosibirske-01-21" target="_blank" data-cats="tovary les"><div class="cc-thumb-wrap" data-emoji="🪵"><img class="cc-thumb" alt="" loading="lazy" decoding="async" width="48" height="48" /><span class="cc-emoji-fb" aria-hidden="true">🪵</span></div><div class="cc-main"><div class="cc-title">Доска и Брус — Новосибирск</div><div class="cc-foot"><span class="ctag">Товары</span><span class="carrow">→</span></div></div></a>
+      <a class="ccard" href="https://telegra.ph/10-pozicij-pilomaterialov-v-Nizhnem-Novgorode-01-21" target="_blank" data-cats="tovary les"><div class="cc-thumb-wrap" data-emoji="🪵"><img class="cc-thumb" alt="" loading="lazy" decoding="async" width="48" height="48" /><span class="cc-emoji-fb" aria-hidden="true">🪵</span></div><div class="cc-main"><div class="cc-title">Пиломатериалы — Нижний, 5 лет</div><div class="cc-foot"><span class="ctag">Товары</span><span class="carrow">→</span></div></div></a>
+      <a class="ccard" href="https://telegra.ph/Zayavki-po-17-rublej-na-Dosku-i-Brus-01-19" target="_blank" data-cats="tovary les"><div class="cc-thumb-wrap" data-emoji="🪵"><img class="cc-thumb" alt="" loading="lazy" decoding="async" width="48" height="48" /><span class="cc-emoji-fb" aria-hidden="true">🪵</span></div><div class="cc-main"><div class="cc-title">Брус и Доска — Крым (17₽/заявка)</div><div class="cc-foot"><span class="ctag">Товары</span><span class="carrow">→</span></div></div></a>
+      <a class="ccard" href="https://telegra.ph/Pellety-po-RF-01-19" target="_blank" data-cats="tovary les"><div class="cc-thumb-wrap" data-emoji="🔥"><img class="cc-thumb" alt="" loading="lazy" decoding="async" width="48" height="48" /><span class="cc-emoji-fb" aria-hidden="true">🔥</span></div><div class="cc-main"><div class="cc-title">Биотопливо — Пеллеты по РФ</div><div class="cc-foot"><span class="ctag">Товары</span><span class="carrow">→</span></div></div></a>
     </div></div>
 
     <div class="cat-group" data-cats="tovary dom"><div class="cat-hd"><span class="cat-ico">🧱</span><span class="cat-nm">Плитка, ЖБИ и термопанели</span><span class="cat-cnt">5 кейсов</span></div><div class="cards-grid">
-      <a class="ccard" href="https://teletype.in/@avitolog_fil/CTI_Fx3eKDI" target="_blank" data-cats="tovary dom"><div class="cc-emoji">🧱</div><div class="cc-title">Плитка тротуарная</div><div class="cc-foot"><span class="ctag">Товары</span><span class="carrow">→</span></div></a>
-      <a class="ccard" href="https://teletype.in/@avitolog_fil/hv_R6i-0Yz2" target="_blank" data-cats="tovary dom"><div class="cc-emoji">🪨</div><div class="cc-title">ЖБИ завод — Уфа</div><div class="cc-foot"><span class="ctag">Товары</span><span class="carrow">→</span></div></a>
-      <a class="ccard" href="https://telegra.ph/Termopaneli-po-vsej-Rossii-10-16" target="_blank" data-cats="tovary dom"><div class="cc-emoji">🧱</div><div class="cc-title">Термопанели по всей России — 5 лет</div><div class="cc-foot"><span class="ctag">Товары</span><span class="carrow">→</span></div></a>
-      <a class="ccard" href="https://teletype.in/@avitolog_fil/LKRdhxger8N" target="_blank" data-cats="tovary dom"><div class="cc-emoji">🧱</div><div class="cc-title">Термопанели — Казань</div><div class="cc-foot"><span class="ctag">Товары</span><span class="carrow">→</span></div></a>
-      <a class="ccard" href="https://telegra.ph/Stroitelnyj-bok-3v1-10-16" target="_blank" data-cats="tovary dom"><div class="cc-emoji">🧱</div><div class="cc-title">Газосиликатный блок 3в1</div><div class="cc-foot"><span class="ctag">Товары</span><span class="carrow">→</span></div></a>
+      <a class="ccard" href="https://teletype.in/@avitolog_fil/CTI_Fx3eKDI" target="_blank" data-cats="tovary dom"><div class="cc-thumb-wrap" data-emoji="🧱"><img class="cc-thumb" alt="" loading="lazy" decoding="async" width="48" height="48" /><span class="cc-emoji-fb" aria-hidden="true">🧱</span></div><div class="cc-main"><div class="cc-title">Плитка тротуарная</div><div class="cc-foot"><span class="ctag">Товары</span><span class="carrow">→</span></div></div></a>
+      <a class="ccard" href="https://teletype.in/@avitolog_fil/hv_R6i-0Yz2" target="_blank" data-cats="tovary dom"><div class="cc-thumb-wrap" data-emoji="🪨"><img class="cc-thumb" alt="" loading="lazy" decoding="async" width="48" height="48" /><span class="cc-emoji-fb" aria-hidden="true">🪨</span></div><div class="cc-main"><div class="cc-title">ЖБИ завод — Уфа</div><div class="cc-foot"><span class="ctag">Товары</span><span class="carrow">→</span></div></div></a>
+      <a class="ccard" href="https://telegra.ph/Termopaneli-po-vsej-Rossii-10-16" target="_blank" data-cats="tovary dom"><div class="cc-thumb-wrap" data-emoji="🧱"><img class="cc-thumb" alt="" loading="lazy" decoding="async" width="48" height="48" /><span class="cc-emoji-fb" aria-hidden="true">🧱</span></div><div class="cc-main"><div class="cc-title">Термопанели по всей России — 5 лет</div><div class="cc-foot"><span class="ctag">Товары</span><span class="carrow">→</span></div></div></a>
+      <a class="ccard" href="https://teletype.in/@avitolog_fil/LKRdhxger8N" target="_blank" data-cats="tovary dom"><div class="cc-thumb-wrap" data-emoji="🧱"><img class="cc-thumb" alt="" loading="lazy" decoding="async" width="48" height="48" /><span class="cc-emoji-fb" aria-hidden="true">🧱</span></div><div class="cc-main"><div class="cc-title">Термопанели — Казань</div><div class="cc-foot"><span class="ctag">Товары</span><span class="carrow">→</span></div></div></a>
+      <a class="ccard" href="https://telegra.ph/Stroitelnyj-bok-3v1-10-16" target="_blank" data-cats="tovary dom"><div class="cc-thumb-wrap" data-emoji="🧱"><img class="cc-thumb" alt="" loading="lazy" decoding="async" width="48" height="48" /><span class="cc-emoji-fb" aria-hidden="true">🧱</span></div><div class="cc-main"><div class="cc-title">Газосиликатный блок 3в1</div><div class="cc-foot"><span class="ctag">Товары</span><span class="carrow">→</span></div></div></a>
     </div></div>
 
     <div class="cat-group" data-cats="tovary"><div class="cat-hd"><span class="cat-ico">🔌</span><span class="cat-nm">Оборудование и электроника</span><span class="cat-cnt">3 кейса</span></div><div class="cards-grid">
-      <a class="ccard" href="https://teletype.in/@avitolog_fil/GS5zWsrEObE" target="_blank" data-cats="tovary"><div class="cc-emoji">🔌</div><div class="cc-title">Оборудование — 25 000₽ бюджет</div><div class="cc-foot"><span class="ctag">Товары</span><span class="carrow">→</span></div></a>
-      <a class="ccard" href="https://teletype.in/@avitolog_fil/0OvbUL3HdCd" target="_blank" data-cats="tovary"><div class="cc-emoji">🔌</div><div class="cc-title">Майнеры — 32 заявки / сутки</div><div class="cc-foot"><span class="ctag">Товары</span><span class="carrow">→</span></div></a>
-      <a class="ccard" href="https://teletype.in/@avitolog_fil/B2pLxA_2n5M" target="_blank" data-cats="tovary"><div class="cc-emoji">🔌</div><div class="cc-title">Интернет и сигнализации</div><div class="cc-foot"><span class="ctag">Товары</span><span class="carrow">→</span></div></a>
+      <a class="ccard" href="https://teletype.in/@avitolog_fil/GS5zWsrEObE" target="_blank" data-cats="tovary"><div class="cc-thumb-wrap" data-emoji="🔌"><img class="cc-thumb" alt="" loading="lazy" decoding="async" width="48" height="48" /><span class="cc-emoji-fb" aria-hidden="true">🔌</span></div><div class="cc-main"><div class="cc-title">Оборудование — 25 000₽ бюджет</div><div class="cc-foot"><span class="ctag">Товары</span><span class="carrow">→</span></div></div></a>
+      <a class="ccard" href="https://teletype.in/@avitolog_fil/0OvbUL3HdCd" target="_blank" data-cats="tovary"><div class="cc-thumb-wrap" data-emoji="🔌"><img class="cc-thumb" alt="" loading="lazy" decoding="async" width="48" height="48" /><span class="cc-emoji-fb" aria-hidden="true">🔌</span></div><div class="cc-main"><div class="cc-title">Майнеры — 32 заявки / сутки</div><div class="cc-foot"><span class="ctag">Товары</span><span class="carrow">→</span></div></div></a>
+      <a class="ccard" href="https://teletype.in/@avitolog_fil/B2pLxA_2n5M" target="_blank" data-cats="tovary"><div class="cc-thumb-wrap" data-emoji="🔌"><img class="cc-thumb" alt="" loading="lazy" decoding="async" width="48" height="48" /><span class="cc-emoji-fb" aria-hidden="true">🔌</span></div><div class="cc-main"><div class="cc-title">Интернет и сигнализации</div><div class="cc-foot"><span class="ctag">Товары</span><span class="carrow">→</span></div></div></a>
     </div></div>
 
     <div class="cat-group" data-cats="uslugi dom"><div class="cat-hd"><span class="cat-ico">👷</span><span class="cat-nm">Строительство — услуги</span><span class="cat-cnt">12 кейсов</span></div><div class="cards-grid">
-      <a class="ccard" href="https://teletype.in/@avitolog_fil/R8ZKTfIO492" target="_blank" data-cats="uslugi dom"><div class="cc-emoji">👷‍♂️</div><div class="cc-title">1092 заявки — рекорд строительства</div><div class="cc-foot"><span class="ctag bl">Услуги</span><span class="carrow">→</span></div></a>
-      <a class="ccard" href="https://teletype.in/@avitolog_fil/A32mMNTuRf1" target="_blank" data-cats="uslugi dom"><div class="cc-emoji">👷‍♂️</div><div class="cc-title">820 заявок — Строительство</div><div class="cc-foot"><span class="ctag bl">Услуги</span><span class="carrow">→</span></div></a>
-      <a class="ccard" href="https://teletype.in/@avitolog_fil/yIuvRaI1zKk" target="_blank" data-cats="uslugi dom"><div class="cc-emoji">👷‍♂️</div><div class="cc-title">500 заявок — Строительство Москва</div><div class="cc-foot"><span class="ctag bl">Услуги</span><span class="carrow">→</span></div></a>
-      <a class="ccard" href="https://teletype.in/@avitolog_fil/n4qttDn1P6F" target="_blank" data-cats="uslugi dom"><div class="cc-emoji">👷‍♂️</div><div class="cc-title">100 контактов за 5 дней</div><div class="cc-foot"><span class="ctag bl">Услуги</span><span class="carrow">→</span></div></a>
-      <a class="ccard" href="https://teletype.in/@avitolog_fil/uvDeH4-YB8f" target="_blank" data-cats="uslugi dom"><div class="cc-emoji">👷‍♂️</div><div class="cc-title">Строительство — Крым</div><div class="cc-foot"><span class="ctag bl">Услуги</span><span class="carrow">→</span></div></a>
-      <a class="ccard" href="https://teletype.in/@avitolog_fil/WmQ63UF-onL" target="_blank" data-cats="uslugi dom"><div class="cc-emoji">👷‍♂️</div><div class="cc-title">Строительство — Воронеж и МО</div><div class="cc-foot"><span class="ctag bl">Услуги</span><span class="carrow">→</span></div></a>
-      <a class="ccard" href="https://teletype.in/@avitolog_fil/CdaBG6BATWO" target="_blank" data-cats="uslugi dom"><div class="cc-emoji">🏗</div><div class="cc-title">Строительство — Пермь</div><div class="cc-foot"><span class="ctag bl">Услуги</span><span class="carrow">→</span></div></a>
-      <a class="ccard" href="https://teletype.in/@avitolog_fil/GNa77T9LNxL" target="_blank" data-cats="uslugi dom"><div class="cc-emoji">💨</div><div class="cc-title">Вентиляция ОВиК — Уфа</div><div class="cc-foot"><span class="ctag bl">Услуги</span><span class="carrow">→</span></div></a>
-      <a class="ccard" href="https://teletype.in/@avitolog_fil/1mBu3owbTvI" target="_blank" data-cats="uslugi dom"><div class="cc-emoji">🏘</div><div class="cc-title">Мягкая кровля под ключ</div><div class="cc-foot"><span class="ctag bl">Услуги</span><span class="carrow">→</span></div></a>
-      <a class="ccard" href="https://teletype.in/@avitolog_fil/editor/zg2bqecstY5" target="_blank" data-cats="uslugi dom"><div class="cc-emoji">🏠</div><div class="cc-title">Строительство — Москва</div><div class="cc-foot"><span class="ctag bl">Услуги</span><span class="carrow">→</span></div></a>
-      <a class="ccard" href="https://teletype.in/@avitolog_fil/SlF_MRrznbf" target="_blank" data-cats="uslugi dom"><div class="cc-emoji">🏠</div><div class="cc-title">Фундамент под ключ</div><div class="cc-foot"><span class="ctag bl">Услуги</span><span class="carrow">→</span></div></a>
-      <a class="ccard" href="https://teletype.in/@avitolog_fil/YwRsnGHpxV1" target="_blank" data-cats="uslugi dom"><div class="cc-emoji">🏠</div><div class="cc-title">Кровля промышленных объектов</div><div class="cc-foot"><span class="ctag bl">Услуги</span><span class="carrow">→</span></div></a>
+      <a class="ccard" href="https://teletype.in/@avitolog_fil/R8ZKTfIO492" target="_blank" data-cats="uslugi dom"><div class="cc-thumb-wrap" data-emoji="👷‍♂️"><img class="cc-thumb" alt="" loading="lazy" decoding="async" width="48" height="48" /><span class="cc-emoji-fb" aria-hidden="true">👷‍♂️</span></div><div class="cc-main"><div class="cc-title">1092 заявки — рекорд строительства</div><div class="cc-foot"><span class="ctag bl">Услуги</span><span class="carrow">→</span></div></div></a>
+      <a class="ccard" href="https://teletype.in/@avitolog_fil/A32mMNTuRf1" target="_blank" data-cats="uslugi dom"><div class="cc-thumb-wrap" data-emoji="👷‍♂️"><img class="cc-thumb" alt="" loading="lazy" decoding="async" width="48" height="48" /><span class="cc-emoji-fb" aria-hidden="true">👷‍♂️</span></div><div class="cc-main"><div class="cc-title">820 заявок — Строительство</div><div class="cc-foot"><span class="ctag bl">Услуги</span><span class="carrow">→</span></div></div></a>
+      <a class="ccard" href="https://teletype.in/@avitolog_fil/yIuvRaI1zKk" target="_blank" data-cats="uslugi dom"><div class="cc-thumb-wrap" data-emoji="👷‍♂️"><img class="cc-thumb" alt="" loading="lazy" decoding="async" width="48" height="48" /><span class="cc-emoji-fb" aria-hidden="true">👷‍♂️</span></div><div class="cc-main"><div class="cc-title">500 заявок — Строительство Москва</div><div class="cc-foot"><span class="ctag bl">Услуги</span><span class="carrow">→</span></div></div></a>
+      <a class="ccard" href="https://teletype.in/@avitolog_fil/n4qttDn1P6F" target="_blank" data-cats="uslugi dom"><div class="cc-thumb-wrap" data-emoji="👷‍♂️"><img class="cc-thumb" alt="" loading="lazy" decoding="async" width="48" height="48" /><span class="cc-emoji-fb" aria-hidden="true">👷‍♂️</span></div><div class="cc-main"><div class="cc-title">100 контактов за 5 дней</div><div class="cc-foot"><span class="ctag bl">Услуги</span><span class="carrow">→</span></div></div></a>
+      <a class="ccard" href="https://teletype.in/@avitolog_fil/uvDeH4-YB8f" target="_blank" data-cats="uslugi dom"><div class="cc-thumb-wrap" data-emoji="👷‍♂️"><img class="cc-thumb" alt="" loading="lazy" decoding="async" width="48" height="48" /><span class="cc-emoji-fb" aria-hidden="true">👷‍♂️</span></div><div class="cc-main"><div class="cc-title">Строительство — Крым</div><div class="cc-foot"><span class="ctag bl">Услуги</span><span class="carrow">→</span></div></div></a>
+      <a class="ccard" href="https://teletype.in/@avitolog_fil/WmQ63UF-onL" target="_blank" data-cats="uslugi dom"><div class="cc-thumb-wrap" data-emoji="👷‍♂️"><img class="cc-thumb" alt="" loading="lazy" decoding="async" width="48" height="48" /><span class="cc-emoji-fb" aria-hidden="true">👷‍♂️</span></div><div class="cc-main"><div class="cc-title">Строительство — Воронеж и МО</div><div class="cc-foot"><span class="ctag bl">Услуги</span><span class="carrow">→</span></div></div></a>
+      <a class="ccard" href="https://teletype.in/@avitolog_fil/CdaBG6BATWO" target="_blank" data-cats="uslugi dom"><div class="cc-thumb-wrap" data-emoji="🏗"><img class="cc-thumb" alt="" loading="lazy" decoding="async" width="48" height="48" /><span class="cc-emoji-fb" aria-hidden="true">🏗</span></div><div class="cc-main"><div class="cc-title">Строительство — Пермь</div><div class="cc-foot"><span class="ctag bl">Услуги</span><span class="carrow">→</span></div></div></a>
+      <a class="ccard" href="https://teletype.in/@avitolog_fil/GNa77T9LNxL" target="_blank" data-cats="uslugi dom"><div class="cc-thumb-wrap" data-emoji="💨"><img class="cc-thumb" alt="" loading="lazy" decoding="async" width="48" height="48" /><span class="cc-emoji-fb" aria-hidden="true">💨</span></div><div class="cc-main"><div class="cc-title">Вентиляция ОВиК — Уфа</div><div class="cc-foot"><span class="ctag bl">Услуги</span><span class="carrow">→</span></div></div></a>
+      <a class="ccard" href="https://teletype.in/@avitolog_fil/1mBu3owbTvI" target="_blank" data-cats="uslugi dom"><div class="cc-thumb-wrap" data-emoji="🏘"><img class="cc-thumb" alt="" loading="lazy" decoding="async" width="48" height="48" /><span class="cc-emoji-fb" aria-hidden="true">🏘</span></div><div class="cc-main"><div class="cc-title">Мягкая кровля под ключ</div><div class="cc-foot"><span class="ctag bl">Услуги</span><span class="carrow">→</span></div></div></a>
+      <a class="ccard" href="https://teletype.in/@avitolog_fil/editor/zg2bqecstY5" target="_blank" data-cats="uslugi dom"><div class="cc-thumb-wrap" data-emoji="🏠"><img class="cc-thumb" alt="" loading="lazy" decoding="async" width="48" height="48" /><span class="cc-emoji-fb" aria-hidden="true">🏠</span></div><div class="cc-main"><div class="cc-title">Строительство — Москва</div><div class="cc-foot"><span class="ctag bl">Услуги</span><span class="carrow">→</span></div></div></a>
+      <a class="ccard" href="https://teletype.in/@avitolog_fil/SlF_MRrznbf" target="_blank" data-cats="uslugi dom"><div class="cc-thumb-wrap" data-emoji="🏠"><img class="cc-thumb" alt="" loading="lazy" decoding="async" width="48" height="48" /><span class="cc-emoji-fb" aria-hidden="true">🏠</span></div><div class="cc-main"><div class="cc-title">Фундамент под ключ</div><div class="cc-foot"><span class="ctag bl">Услуги</span><span class="carrow">→</span></div></div></a>
+      <a class="ccard" href="https://teletype.in/@avitolog_fil/YwRsnGHpxV1" target="_blank" data-cats="uslugi dom"><div class="cc-thumb-wrap" data-emoji="🏠"><img class="cc-thumb" alt="" loading="lazy" decoding="async" width="48" height="48" /><span class="cc-emoji-fb" aria-hidden="true">🏠</span></div><div class="cc-main"><div class="cc-title">Кровля промышленных объектов</div><div class="cc-foot"><span class="ctag bl">Услуги</span><span class="carrow">→</span></div></div></a>
     </div></div>
 
     <div class="cat-group" data-cats="uslugi avto"><div class="cat-hd"><span class="cat-ico">🏎</span><span class="cat-nm">Авто — услуги</span><span class="cat-cnt">2 кейса</span></div><div class="cards-grid">
-      <a class="ccard" href="https://teletype.in/@avitolog_fil/4b0i0cvGpMO" target="_blank" data-cats="uslugi avto"><div class="cc-emoji">🏎</div><div class="cc-title">Выкуп авто</div><div class="cc-foot"><span class="ctag bl">Услуги</span><span class="carrow">→</span></div></a>
-      <a class="ccard" href="https://teletype.in/@avitolog_fil/xiwHG0Jie9f" target="_blank" data-cats="uslugi avto"><div class="cc-emoji">🚗</div><div class="cc-title">Авто под заказ</div><div class="cc-foot"><span class="ctag bl">Услуги</span><span class="carrow">→</span></div></a>
+      <a class="ccard" href="https://teletype.in/@avitolog_fil/4b0i0cvGpMO" target="_blank" data-cats="uslugi avto"><div class="cc-thumb-wrap" data-emoji="🏎"><img class="cc-thumb" alt="" loading="lazy" decoding="async" width="48" height="48" /><span class="cc-emoji-fb" aria-hidden="true">🏎</span></div><div class="cc-main"><div class="cc-title">Выкуп авто</div><div class="cc-foot"><span class="ctag bl">Услуги</span><span class="carrow">→</span></div></div></a>
+      <a class="ccard" href="https://teletype.in/@avitolog_fil/xiwHG0Jie9f" target="_blank" data-cats="uslugi avto"><div class="cc-thumb-wrap" data-emoji="🚗"><img class="cc-thumb" alt="" loading="lazy" decoding="async" width="48" height="48" /><span class="cc-emoji-fb" aria-hidden="true">🚗</span></div><div class="cc-main"><div class="cc-title">Авто под заказ</div><div class="cc-foot"><span class="ctag bl">Услуги</span><span class="carrow">→</span></div></div></a>
     </div></div>
 
     <div class="cat-group" data-cats="uslugi"><div class="cat-hd"><span class="cat-ico">👤</span><span class="cat-nm">Вакансии и аутсорсинг</span><span class="cat-cnt">2 кейса</span></div><div class="cards-grid">
-      <a class="ccard" href="https://teletype.in/@avitolog_fil/AJnxQ2SzkNR" target="_blank" data-cats="uslugi"><div class="cc-emoji">👤</div><div class="cc-title">Вакансии — аутсорсинг</div><div class="cc-foot"><span class="ctag bl">Услуги</span><span class="carrow">→</span></div></a>
-      <a class="ccard" href="https://teletype.in/@avitolog_fil/ARXJcAPSSo3" target="_blank" data-cats="uslugi"><div class="cc-emoji">👤</div><div class="cc-title">Вакансии — разнорабочие</div><div class="cc-foot"><span class="ctag bl">Услуги</span><span class="carrow">→</span></div></a>
+      <a class="ccard" href="https://teletype.in/@avitolog_fil/AJnxQ2SzkNR" target="_blank" data-cats="uslugi"><div class="cc-thumb-wrap" data-emoji="👤"><img class="cc-thumb" alt="" loading="lazy" decoding="async" width="48" height="48" /><span class="cc-emoji-fb" aria-hidden="true">👤</span></div><div class="cc-main"><div class="cc-title">Вакансии — аутсорсинг</div><div class="cc-foot"><span class="ctag bl">Услуги</span><span class="carrow">→</span></div></div></a>
+      <a class="ccard" href="https://teletype.in/@avitolog_fil/ARXJcAPSSo3" target="_blank" data-cats="uslugi"><div class="cc-thumb-wrap" data-emoji="👤"><img class="cc-thumb" alt="" loading="lazy" decoding="async" width="48" height="48" /><span class="cc-emoji-fb" aria-hidden="true">👤</span></div><div class="cc-main"><div class="cc-title">Вакансии — разнорабочие</div><div class="cc-foot"><span class="ctag bl">Услуги</span><span class="carrow">→</span></div></div></a>
     </div></div>
 
     <div class="no-res" id="noResults">// НИЧЕГО НЕ НАЙДЕНО — ИЗМЕНИТЕ ЗАПРОС</div>
@@ -563,6 +590,19 @@ footer{background:var(--bg);border-top:1px solid var(--border);padding:40px 80px
       <div class="why-item rev"><div class="why-num">03</div><div class="why-txt"><h4>Лид в 3–10 раз дешевле конкурентов</h4><p>Реальный рекорд — 17₽ за заявку. В Яндексе в тех же нишах — сотни и тысячи.</p></div></div>
       <div class="why-item rev"><div class="why-num">04</div><div class="why-txt"><h4>Работает там, где другие сдались</h4><p>Стройка, пиломатериалы, авто, мебель — Авито собирает покупателей именно здесь.</p></div></div>
       <div class="why-item rev"><div class="why-num">05</div><div class="why-txt"><h4>Магазин растёт годами без спада</h4><p>Отзывы, подписчики, позиции накапливаются. Наш самый долгий клиент — 5+ лет.</p></div></div>
+    </div>
+  </div>
+</section>
+
+
+<!-- VK COMMUNITY -->
+<section class="sec vk-promo" id="vk">
+  <div class="vk-inner">
+    <div class="sec-lbl">Сообщество ВКонтакте</div>
+    <h2 class="sec-title">ПОЛУЧИ В ВК<br><span>ПЛАН ПРОДВИЖЕНИЯ БИЗНЕСА НА АВИТО</span></h2>
+    <p class="sec-desc">Чек-листы, разборы ниш и пошаговые материалы — подпишись и забирай план развития магазина на Авито.</p>
+    <div class="vk-actions">
+      <a href="https://vk.com/ai_avitolog" target="_blank" rel="noopener" class="btn btn-red vk-btn">ВКонтакте — ai_avitolog</a>
     </div>
   </div>
 </section>
@@ -639,10 +679,11 @@ footer{background:var(--bg);border-top:1px solid var(--border);padding:40px 80px
   <div class="f-logo">ACES <span>OF ADS</span></div>
   <div class="f-links">
     <a href="#services">Услуги</a><a href="#niches">Ниши</a><a href="#cases">Кейсы</a>
-    <a href="#avito">Авито №1</a><a href="portfolio.html">Дизайн</a>
+    <a href="#avito">Авито №1</a><a href="#vk">ВК</a><a href="portfolio.html">Дизайн</a>
     <a href="https://www.avito.ru/brands/ai_avitolog_fil_ai/all/predlozheniya_uslug?sellerId=241c5696fd902c120ad3a93df31bc039" target="_blank" rel="noopener">Отзывы на Авито</a>
     <a href="https://t.me/Aces_Of_Ads_bot" target="_blank">Бот</a>
     <a href="https://t.me/+LhZY2M4Gc7JmOTYy" target="_blank">Канал</a>
+    <a href="https://vk.com/ai_avitolog" target="_blank" rel="noopener">ВКонтакте</a>
   </div>
 </footer>
 
@@ -665,6 +706,38 @@ function filterCases(){
   });
   document.getElementById('noResults').style.display=tot===0?'block':'none';
 }
+
+
+/* Link preview thumbnails for case cards (Microlink) */
+(function(){
+  function loadThumb(wrap, url){
+    if(!wrap||!url)return;
+    fetch('https://api.microlink.io/?url='+encodeURIComponent(url))
+      .then(function(r){return r.json()})
+      .then(function(j){
+        var u=j&&j.data&&j.data.image&&j.data.image.url;
+        if(u){
+          var img=wrap.querySelector('.cc-thumb');
+          if(!img)return;
+          img.onload=function(){wrap.classList.add('has-img')};
+          img.onerror=function(){wrap.classList.remove('has-img')};
+          img.src=u;
+        }
+      })
+      .catch(function(){});
+  }
+  var io=new IntersectionObserver(function(entries){
+    entries.forEach(function(en){
+      if(!en.isIntersecting)return;
+      var a=en.target;
+      io.unobserve(a);
+      var w=a.querySelector('.cc-thumb-wrap');
+      if(w)loadThumb(w,a.href);
+    });
+  },{rootMargin:'120px',threshold:0.02});
+  document.querySelectorAll('a.ccard[href]').forEach(function(a){io.observe(a)});
+})();
+
 const ro=new IntersectionObserver(es=>{es.forEach((e,i)=>{if(e.isIntersecting){setTimeout(()=>e.target.classList.add('on'),i*50);ro.unobserve(e.target)}})},{threshold:.07});
 document.querySelectorAll('.rev').forEach(el=>ro.observe(el));
 </script>
