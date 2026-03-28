@@ -1,25 +1,88 @@
 /**
- * Вкладка «КП»: шаблоны Canva + черновик текста и превью картинки (localStorage на папку клиента).
+ * Вкладка «КП»: шаблоны Canva (товары / услуги), черновик, превью картинки.
  */
 (function () {
-  var KP_CANVA_TEMPLATES = [
-    {
-      id: 'metal',
-      label: 'Металлоконструкции',
-      editUrl: 'https://www.canva.com/design/DAHE0zwvYQ8/HGRsoHJvJkeWz9JTTfiqbA/edit'
-    },
-    {
-      id: 'houses',
-      label: 'Готовые дома',
-      editUrl: 'https://www.canva.com/design/DAHEanek-dk/PvjGaJqz7RiRztCRlaBp9A/edit'
-    },
-    {
-      id: 'loft',
-      label: 'Лофт мебель',
-      editUrl: 'https://www.canva.com/design/DAHEGrzdfk8/BZN5ypGcEw9Nf5IUGtnAGw/edit'
-    }
-  ];
+  var KP_TEMPLATES_STORE = 'avitolog_kp_templates_v1';
   var MAX_B64 = 420000;
+
+  var KP_DEFAULTS = {
+    goods: [
+      {
+        id: 'metal',
+        label: 'Металлоконструкции',
+        emoji: '🏗️',
+        editUrl: 'https://www.canva.com/design/DAHE0zwvYQ8/HGRsoHJvJkeWz9JTTfiqbA/edit'
+      },
+      {
+        id: 'houses',
+        label: 'Готовые дома',
+        emoji: '🏠',
+        editUrl: 'https://www.canva.com/design/DAHEanek-dk/PvjGaJqz7RiRztCRlaBp9A/edit'
+      },
+      {
+        id: 'loft',
+        label: 'Лофт мебель',
+        emoji: '🛋️',
+        editUrl: 'https://www.canva.com/design/DAHEGrzdfk8/BZN5ypGcEw9Nf5IUGtnAGw/edit'
+      },
+      {
+        id: 'eva',
+        label: 'EVA коврики',
+        emoji: '🚗',
+        editUrl: 'https://www.canva.com/design/DAHDqEjitiw/xKZVCkBBSlsMy9aQ0OSO_w/edit'
+      },
+      {
+        id: 'stroymat',
+        label: 'Стройматериалы',
+        emoji: '🧱',
+        editUrl: 'https://www.canva.com/design/DAHC5vnvfls/cVLZMm8L_Z89cEzzXWRJ1g/edit'
+      },
+      {
+        id: 'okna',
+        label: 'Окна',
+        emoji: '🪟',
+        editUrl: 'https://www.canva.com/design/DAHEXqdVnGY/b7Hza1YdE2gXqz0h__iWww/edit'
+      },
+      {
+        id: 'beds',
+        label: 'Детские кровати',
+        emoji: '🛏️',
+        editUrl: 'https://www.canva.com/design/DAHCTgOb_Q0/WI45xuieHuDPUi5JLOSrOQ/edit'
+      },
+      {
+        id: 'bytovki',
+        label: 'Бытовки',
+        emoji: '🏢',
+        editUrl: 'https://www.canva.com/design/DAHDnRFv_yY/9XFZv4Q3AkjDodwc_YgVbw/edit'
+      }
+    ],
+    services: [
+      {
+        id: 'video',
+        label: 'Видеонаблюдение',
+        emoji: '📹',
+        editUrl: 'https://www.canva.com/design/DAHD2aZP0Xk/DjVxgM1ZIN4aNdSt98rX0g/edit'
+      },
+      {
+        id: 'elektrik',
+        label: 'Электрик',
+        emoji: '⚡',
+        editUrl: 'https://www.canva.com/design/DAHAQAZLh8w/EWld6t9aXYmfXVRZ-a3LzQ/edit'
+      },
+      {
+        id: 'zabory',
+        label: 'Заборы под ключ',
+        emoji: '🛡️',
+        editUrl: 'https://www.canva.com/design/DAHCaTkRTDQ/_uNSttEZVvtno6FeqBPHVA/edit'
+      }
+    ]
+  };
+
+  var KP_EMOJI_PICK = [
+    '📦','🏠','🏢','🏗️','🧱','🪵','🪟','🚗','🛻','🏍️','🔧','⚡','🛠️','🛋️','🛏️','🪑','💻','📱','📹','📸','🎯','🔥','⭐','💎','🛡️',
+    '🧱','🪜','🔩','⚙️','🧰','🚪','🪟','🧴','💡','🔌','📋','📊','🏭','🏬','🛒','🧸','🎨','🖼️','🚿','🛁','🪚','🔨','⛓️','🔗',
+    '🌲','🪵','🧱','🏘️','🏚️','🏡','🌇','🚧','🦺','👷','🤝','✨','💼','📈','🎁','🧾','💰','🏦','🐕','🌿','☀️','❄️','🌧️'
+  ];
 
   function esc(s) {
     return String(s || '')
@@ -27,6 +90,74 @@
       .replace(/</g, '&lt;')
       .replace(/>/g, '&gt;')
       .replace(/"/g, '&quot;');
+  }
+
+  function deepClone(o) {
+    try {
+      return JSON.parse(JSON.stringify(o));
+    } catch (e) {
+      return o;
+    }
+  }
+
+  function getMergedTemplates() {
+    try {
+      var s = localStorage.getItem(KP_TEMPLATES_STORE);
+      if (s) {
+        var d = JSON.parse(s);
+        if (d && Array.isArray(d.goods) && Array.isArray(d.services) && d.goods.length + d.services.length > 0) {
+          return d;
+        }
+      }
+    } catch (e1) {}
+    return deepClone(KP_DEFAULTS);
+  }
+
+  function saveTemplatesState(T) {
+    try {
+      localStorage.setItem(KP_TEMPLATES_STORE, JSON.stringify(T));
+    } catch (e) {
+      if (typeof alert === 'function') alert('Не удалось сохранить шаблоны.');
+    }
+  }
+
+  function findTemplateById(id) {
+    var T = getMergedTemplates();
+    var i;
+    for (i = 0; i < T.goods.length; i++) {
+      if (T.goods[i].id === id) return { item: T.goods[i], cat: 'goods', T: T };
+    }
+    for (i = 0; i < T.services.length; i++) {
+      if (T.services[i].id === id) return { item: T.services[i], cat: 'services', T: T };
+    }
+    return null;
+  }
+
+  function getFirstTemplateId() {
+    var T = getMergedTemplates();
+    if (T.goods && T.goods[0]) return T.goods[0].id;
+    if (T.services && T.services[0]) return T.services[0].id;
+    return 'metal';
+  }
+
+  function moveTemplateBetweenCategories(id, fromCat, toCat) {
+    if (fromCat === toCat) return;
+    var T = deepClone(getMergedTemplates());
+    var from = T[fromCat];
+    var to = T[toCat];
+    if (!from || !to) return;
+    var idx = -1;
+    var k;
+    for (k = 0; k < from.length; k++) {
+      if (from[k].id === id) {
+        idx = k;
+        break;
+      }
+    }
+    if (idx < 0) return;
+    var item = from.splice(idx, 1)[0];
+    to.push(item);
+    saveTemplatesState(T);
   }
 
   function getAc() {
@@ -60,24 +191,24 @@
     }
   }
 
-  function templateById(id) {
-    var tid = id || 'metal';
-    for (var i = 0; i < KP_CANVA_TEMPLATES.length; i++) {
-      if (KP_CANVA_TEMPLATES[i].id === tid) return KP_CANVA_TEMPLATES[i];
-    }
-    return KP_CANVA_TEMPLATES[0];
+  function templateForDraft(id) {
+    var f = findTemplateById(id);
+    if (f && f.item) return f.item;
+    var f2 = findTemplateById(getFirstTemplateId());
+    if (f2 && f2.item) return f2.item;
+    return { label: 'Шаблон', editUrl: '#', emoji: '📋' };
   }
 
   function buildClipboardText(d) {
-    var t = templateById(d.templateId);
+    var t = templateForDraft(d.templateId || getFirstTemplateId());
     var lines = [
-      'КП — ' + t.label,
+      'КП — ' + (t.label || ''),
       'Заголовок: ' + (d.headline || ''),
       'Подзаголовок / слоган: ' + (d.subline || ''),
       'Ниша / примечание: ' + (d.niche || ''),
       'Картинка вверху: ' + (d.heroDataUrl ? '[файл сохранён в Avitolog]' : d.heroUrl ? d.heroUrl : '(не задана)'),
       '',
-      'Шаблон Canva (редактор): ' + t.editUrl
+      'Шаблон Canva (редактор): ' + (t.editUrl || '')
     ];
     return lines.join('\n');
   }
@@ -85,16 +216,191 @@
   function syncOpenButton(mc, templateId) {
     var a = mc.querySelector('#kpOpenCanva');
     if (!a) return;
-    var t = templateById(templateId);
-    a.href = t.editUrl;
+    var t = templateForDraft(templateId);
+    a.href = t.editUrl || '#';
   }
+
+  function buildTemplateZonesHtml(d) {
+    var T = getMergedTemplates();
+    function cardsHtml(list, cat) {
+      return (list || [])
+        .map(function (t) {
+          var on = d.templateId === t.id ? ' kp-tpl-on' : '';
+          return (
+            '<button type="button" class="kp-tpl-card' +
+            on +
+            '" data-id="' +
+            esc(t.id) +
+            '" data-cat="' +
+            cat +
+            '" draggable="true" title="ЛКМ — выбрать · ПКМ — изменить · перетащить в другую колонку">' +
+            '<span class="kp-tpl-emoji">' +
+            esc(t.emoji || '📋') +
+            '</span>' +
+            '<span class="kp-tpl-name">' +
+            esc(t.label || '') +
+            '</span></button>'
+          );
+        })
+        .join('');
+    }
+    return (
+      '<div class="kp-tpl-zones">' +
+      '<div class="kp-tpl-zone kp-tpl-zone-goods" data-kp-cat="goods" ondragover="window.__kpTplZoneDragOver&&window.__kpTplZoneDragOver(event)" ondragleave="window.__kpTplZoneDragLeave&&window.__kpTplZoneDragLeave(event)" ondrop="window.__kpTplZoneDrop&&window.__kpTplZoneDrop(event)">' +
+      '<div class="kp-tpl-zone-label">Товары</div>' +
+      '<div class="kp-tpl-grid">' +
+      cardsHtml(T.goods, 'goods') +
+      '</div></div>' +
+      '<div class="kp-tpl-zone kp-tpl-zone-services" data-kp-cat="services" ondragover="window.__kpTplZoneDragOver&&window.__kpTplZoneDragOver(event)" ondragleave="window.__kpTplZoneDragLeave&&window.__kpTplZoneDragLeave(event)" ondrop="window.__kpTplZoneDrop&&window.__kpTplZoneDrop(event)">' +
+      '<div class="kp-tpl-zone-label">Услуги</div>' +
+      '<div class="kp-tpl-grid">' +
+      cardsHtml(T.services, 'services') +
+      '</div></div></div>'
+    );
+  }
+
+  function closeKpTplModal() {
+    var m = document.getElementById('kpTplEditModal');
+    if (m && m._kpEsc) {
+      document.removeEventListener('keydown', m._kpEsc);
+      m._kpEsc = null;
+    }
+    if (m && m.parentNode) m.parentNode.removeChild(m);
+  }
+
+  function openKpTemplateEditor(id, cat, mc) {
+    closeKpTplModal();
+    var found = findTemplateById(id);
+    if (!found) return;
+    var item = found.item;
+    var wrap = document.createElement('div');
+    wrap.id = 'kpTplEditModal';
+    wrap.className = 'kp-tpl-modal';
+    var emojiGrid = KP_EMOJI_PICK.map(function (em) {
+      return (
+        '<button type="button" class="kp-emoji-cell" data-emoji="' +
+        esc(em) +
+        '" title="' +
+        esc(em) +
+        '">' +
+        esc(em) +
+        '</button>'
+      );
+    }).join('');
+    wrap.innerHTML =
+      '<div class="kp-tpl-modal-backdrop"></div>' +
+      '<div class="kp-tpl-modal-panel">' +
+      '<div class="kp-tpl-modal-title">Шаблон: правка</div>' +
+      '<p class="kp-tpl-modal-hint">Эмодзи, название и ссылка на редактирование в Canva</p>' +
+      '<label class="kp-tpl-modal-lbl">Эмодзи</label>' +
+      '<div class="kp-emoji-grid" id="kpEmojiGrid">' +
+      emojiGrid +
+      '</div>' +
+      '<label class="kp-tpl-modal-lbl">Название</label>' +
+      '<input type="text" class="kp-inp" id="kpTplEditLabel" value="' +
+      esc(item.label || '') +
+      '">' +
+      '<label class="kp-tpl-modal-lbl">Ссылка Canva (edit)</label>' +
+      '<input type="url" class="kp-inp" id="kpTplEditUrl" value="' +
+      esc(item.editUrl || '') +
+      '">' +
+      '<div class="kp-tpl-modal-actions">' +
+      '<button type="button" class="kp-btn kp-btn-secondary" id="kpTplEditCancel">Отмена</button>' +
+      '<button type="button" class="kp-btn kp-btn-primary" id="kpTplEditSave">Сохранить</button>' +
+      '</div></div>';
+    document.body.appendChild(wrap);
+    var selEmoji = item.emoji || '📋';
+    function markSel() {
+      wrap.querySelectorAll('.kp-emoji-cell').forEach(function (b) {
+        b.classList.toggle('on', b.getAttribute('data-emoji') === selEmoji);
+      });
+    }
+    markSel();
+    wrap.querySelectorAll('.kp-emoji-cell').forEach(function (b) {
+      b.onclick = function () {
+        selEmoji = b.getAttribute('data-emoji') || '📋';
+        markSel();
+      };
+    });
+    wrap.querySelector('.kp-tpl-modal-backdrop').onclick = closeKpTplModal;
+    wrap.querySelector('#kpTplEditCancel').onclick = closeKpTplModal;
+    function onEsc(ev) {
+      if (ev.key === 'Escape') closeKpTplModal();
+    }
+    wrap._kpEsc = onEsc;
+    document.addEventListener('keydown', onEsc);
+    wrap.querySelector('#kpTplEditSave').onclick = function () {
+      var lbl = wrap.querySelector('#kpTplEditLabel');
+      var url = wrap.querySelector('#kpTplEditUrl');
+      var T = deepClone(getMergedTemplates());
+      var arr = T[cat];
+      var it = arr.find(function (x) {
+        return x.id === id;
+      });
+      if (it) {
+        it.label = lbl && lbl.value ? String(lbl.value).trim() : it.label;
+        it.editUrl = url && url.value ? String(url.value).trim() : it.editUrl;
+        it.emoji = selEmoji;
+        saveTemplatesState(T);
+      }
+      closeKpTplModal();
+      if (typeof window.__showKpGenerator === 'function' && mc) window.__showKpGenerator(mc);
+    };
+  }
+
+  window.__kpTplDragStart = function (e) {
+    var c = e.target.closest('.kp-tpl-card');
+    if (!c) return;
+    e.dataTransfer.setData(
+      'application/json',
+      JSON.stringify({ id: c.getAttribute('data-id'), cat: c.getAttribute('data-cat') })
+    );
+    e.dataTransfer.effectAllowed = 'move';
+    c.classList.add('kp-tpl-dragging');
+  };
+
+  window.__kpTplDragEnd = function (e) {
+    var c = e.target.closest('.kp-tpl-card');
+    if (c) c.classList.remove('kp-tpl-dragging');
+    document.querySelectorAll('.kp-tpl-zone-dragover').forEach(function (z) {
+      z.classList.remove('kp-tpl-zone-dragover');
+    });
+  };
+
+  window.__kpTplZoneDragOver = function (e) {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    var z = e.currentTarget;
+    if (z && z.classList) z.classList.add('kp-tpl-zone-dragover');
+  };
+
+  window.__kpTplZoneDragLeave = function (e) {
+    var z = e.currentTarget;
+    if (z && (!e.relatedTarget || !z.contains(e.relatedTarget))) z.classList.remove('kp-tpl-zone-dragover');
+  };
+
+  window.__kpTplZoneDrop = function (e) {
+    e.preventDefault();
+    var zone = e.currentTarget;
+    if (zone) zone.classList.remove('kp-tpl-zone-dragover');
+    var dropCat = zone.getAttribute('data-kp-cat');
+    var json = e.dataTransfer.getData('application/json');
+    if (!json || !dropCat) return;
+    try {
+      var payload = JSON.parse(json);
+      if (!payload || !payload.id || !payload.cat) return;
+      if (payload.cat === dropCat) return;
+      moveTemplateBetweenCategories(payload.id, payload.cat, dropCat);
+      var mc = document.getElementById('mainContent');
+      if (mc && typeof window.__showKpGenerator === 'function') window.__showKpGenerator(mc);
+    } catch (err) {}
+  };
 
   function wire(mc) {
     var d = loadDraft();
     var cards = mc.querySelectorAll('.kp-tpl-card');
     var fileInp = mc.querySelector('#kpHeroFile');
     var urlInp = mc.querySelector('#kpHeroUrl');
-    var prev = mc.querySelector('#kpHeroPreview');
     var headlineInp = mc.querySelector('#kpHeadline');
     var subInp = mc.querySelector('#kpSubline');
     var nicheTa = mc.querySelector('#kpNiche');
@@ -109,8 +415,19 @@
     }
 
     cards.forEach(function (c) {
-      c.onclick = function () {
+      c.onclick = function (ev) {
+        if (ev.button !== 0) return;
         setTemplate(c.getAttribute('data-id'));
+      };
+      c.oncontextmenu = function (ev) {
+        ev.preventDefault();
+        openKpTemplateEditor(c.getAttribute('data-id'), c.getAttribute('data-cat'), mc);
+      };
+      c.ondragstart = function (e) {
+        window.__kpTplDragStart(e);
+      };
+      c.ondragend = function (e) {
+        window.__kpTplDragEnd(e);
       };
     });
 
@@ -239,13 +556,14 @@
       };
     }
 
-    syncOpenButton(mc, d.templateId || 'metal');
+    syncOpenButton(mc, d.templateId || getFirstTemplateId());
   }
 
   window.__showKpGenerator = function (mc) {
     if (!mc) return;
     var d = loadDraft();
-    if (!d.templateId) d.templateId = 'metal';
+    var firstId = getFirstTemplateId();
+    if (!d.templateId || !findTemplateById(d.templateId)) d.templateId = firstId;
     if (!d.niche) {
       try {
         var catEl = document.getElementById('category');
@@ -257,41 +575,28 @@
       } catch (e1) {}
     }
 
-    var tplHtml = KP_CANVA_TEMPLATES.map(function (t) {
-      var on = d.templateId === t.id ? ' kp-tpl-on' : '';
-      return (
-        '<button type="button" class="kp-tpl-card' +
-        on +
-        '" data-id="' +
-        esc(t.id) +
-        '">' +
-        '<span class="kp-tpl-name">' +
-        esc(t.label) +
-        '</span>' +
-        '<span class="kp-tpl-hint">Canva</span></button>'
-      );
-    }).join('');
-
     var heroInner;
     if (d.heroDataUrl) {
       heroInner = '<img src="' + esc(d.heroDataUrl) + '" alt="" class="kp-hero-preview-img">';
     } else if (d.heroUrl) {
-      heroInner = '<img src="' + esc(d.heroUrl) + '" alt="" class="kp-hero-preview-img" onerror="this.parentNode.innerHTML=\'&lt;div class=\\\'kp-hero-placeholder\\\'&gt;Не удалось загрузить&lt;/div&gt;\'">';
+      heroInner =
+        '<img src="' +
+        esc(d.heroUrl) +
+        '" alt="" class="kp-hero-preview-img" onerror="this.parentNode.innerHTML=\'&lt;div class=\\\'kp-hero-placeholder\\\'&gt;Не удалось загрузить&lt;/div&gt;\'">';
     } else {
       heroInner = '<div class="kp-hero-placeholder">Превью</div>';
     }
 
+    var tSel = templateForDraft(d.templateId);
     mc.innerHTML =
       '<div class="kp-generator">' +
       '<div class="kp-gen-head">' +
       '<div class="kp-gen-title">Коммерческое предложение</div>' +
-      '<p class="kp-gen-lead">Готовые шаблоны Canva по нише — откройте дизайн, замените верхнее фото и текст. Черновик полей сохраняется для выбранного клиента в этом браузере.</p>' +
       '</div>' +
       '<div class="kp-gen-section">' +
       '<div class="kp-gen-label">Шаблон</div>' +
-      '<div class="kp-tpl-grid">' +
-      tplHtml +
-      '</div></div>' +
+      buildTemplateZonesHtml(d) +
+      '</div>' +
       '<div class="kp-gen-section">' +
       '<div class="kp-gen-label">Картинка вверху</div>' +
       '<div class="kp-hero-row">' +
@@ -318,7 +623,7 @@
       '</div>' +
       '<div class="kp-gen-actions">' +
       '<a class="kp-btn kp-btn-primary" id="kpOpenCanva" target="_blank" rel="noopener" href="' +
-      esc(templateById(d.templateId).editUrl) +
+      esc(tSel.editUrl || '#') +
       '">Открыть шаблон в Canva</a>' +
       '<button type="button" class="kp-btn kp-btn-secondary" id="kpCopyBrief">Скопировать текст для вставки</button>' +
       '<button type="button" class="kp-btn kp-btn-ghost" id="kpAiSuggest">Подсказать заголовок (AI)</button>' +
