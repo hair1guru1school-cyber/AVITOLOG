@@ -133,11 +133,103 @@
 Числа: paid и expected — суммы в рублях из текста. Эмодзи — первый подходящий (🏠🪨📦⚡🚚💰 и т.д.). client = основное название. \
 Ответь ТОЛЬКО валидным JSON массивом. Пример: [{"client":"Дмитрий Бани","emoji":"🏠","paid":34000,"currency":"₽"}]';
 
+  /** Сумма в конце строки: «Название 28 000» / «🏠 Клиент 1 500 000» — без backend и без API */
+  function parseTrailingRubles(line) {
+    var s = String(line || '')
+      .replace(/\s*(₽|руб\.?|RUB)\s*$/i, '')
+      .trim();
+    var m = s.match(/^(.+)[\s\u00A0]+(\d[\d\s\u00A0]*)\s*$/);
+    if (!m) return null;
+    var paid = parseInt(String(m[2]).replace(/\s/g, '').replace(/\u00A0/g, ''), 10);
+    if (!isFinite(paid) || paid < 1) return null;
+    return { name: m[1].trim(), paid: paid };
+  }
+
+  function splitLeadingEmoji(name) {
+    if (!name) return { emoji: '📦', rest: '' };
+    var s = name.trim();
+    if (!s) return { emoji: '📦', rest: '' };
+    try {
+      var um = s.match(/^(\p{Extended_Pictographic})\s*/u);
+      if (um) return { emoji: um[1], rest: s.slice(um[0].length).trim() };
+    } catch (e1) {}
+    var cp = s.codePointAt(0);
+    if (cp >= 0x1f300 && cp <= 0x1f9ff) {
+      var ch = String.fromCodePoint(cp);
+      return { emoji: ch, rest: s.slice(ch.length).trim() };
+    }
+    if (cp >= 0x2600 && cp <= 0x27bf) {
+      return { emoji: s[0], rest: s.slice(1).trim() };
+    }
+    if (s.length >= 2 && s.charCodeAt(0) >= 0xd800 && s.charCodeAt(0) <= 0xdbff) {
+      var pair = s.slice(0, 2);
+      return { emoji: pair, rest: s.slice(2).trim() };
+    }
+    return { emoji: '📦', rest: s };
+  }
+
+  function parsePaymentLinesHeuristic(rawText) {
+    var lines = String(rawText || '')
+      .split(/\r?\n/)
+      .map(function (l) {
+        return l.trim();
+      })
+      .filter(Boolean);
+    if (!lines.length) return [];
+    var out = [];
+    for (var li = 0; li < lines.length; li++) {
+      var tail = parseTrailingRubles(lines[li]);
+      if (!tail) return [];
+      var sp = splitLeadingEmoji(tail.name);
+      var client = sp.rest;
+      if (!String(client || '').trim()) return [];
+      out.push({
+        client: String(client).trim(),
+        project: '',
+        emoji: sp.emoji || '📦',
+        paid: tail.paid,
+        expected: '',
+        currency: '₽',
+        date: getTodayStr(),
+        isSasha: false,
+        isNew: false,
+        comments: ''
+      });
+    }
+    return out;
+  }
+
   function parseWithAI(rawText) {
+    window.__aiImportHeuristicHint = '';
+    var text = String(rawText || '').trim();
+    if (!text) {
+      return Promise.reject(new Error('Пустой текст.'));
+    }
+    var heur = parsePaymentLinesHeuristic(text);
+    if (heur.length > 0) {
+      window.__aiImportHeuristicHint =
+        '✓ Разбор без сервера и без ИИ: каждая строка — «название … сумма» (например 28 000 в конце). Сложный текст — только с API-ключом в шапке.';
+      return Promise.resolve(
+        heur.map(function (o) {
+          return {
+            client: o.client || '',
+            project: o.project || '',
+            emoji: o.emoji || '📦',
+            paid: o.paid != null ? String(o.paid) : '',
+            expected: o.expected != null ? String(o.expected) : '',
+            currency: o.currency || '₽',
+            date: o.date || getTodayStr(),
+            isSasha: !!o.isSasha,
+            isNew: !!o.isNew,
+            comments: o.comments || ''
+          };
+        })
+      );
+    }
     if (typeof callAPI !== 'function') {
       return Promise.reject(new Error('callAPI не найден. Убедитесь, что core.js и main.js загружены.'));
     }
-    var prompt = AI_IMPORT_PROMPT + '\n\n--- ТЕКСТ ПОЛЬЗОВАТЕЛЯ ---\n' + String(rawText || '').trim();
+    var prompt = AI_IMPORT_PROMPT + '\n\n--- ТЕКСТ ПОЛЬЗОВАТЕЛЯ ---\n' + text;
     return callAPI(prompt, 2000).then(function(raw) {
       var s = (raw || '').replace(/```json|```/g, '').trim();
       var start = s.indexOf('[');
@@ -977,7 +1069,9 @@
         return;
       }
       pre.style.display = '';
-      pre.innerHTML = '<div style="font-size:11px;color:var(--accent);margin-bottom:4px">Найдено ' + toAdd.length + ' записей. Папки Drive подставляются по названию.</div>' +
+      var hint = window.__aiImportHeuristicHint ? '<div style="font-size:10px;color:var(--accent);margin-bottom:6px;line-height:1.35">' + esc(window.__aiImportHeuristicHint) + '</div>' : '';
+      pre.innerHTML = hint +
+        '<div style="font-size:11px;color:var(--accent);margin-bottom:4px">Найдено ' + toAdd.length + ' записей. Папки Drive подставляются по названию.</div>' +
         toAdd.slice(0, 5).map(function(r) {
           var n = r.client || r.project || '—';
           var f = r.folderLink || r.matchedFolder ? '✓ папка' : '';

@@ -50,6 +50,12 @@
         editUrl: 'https://www.canva.com/design/DAHCTgOb_Q0/WI45xuieHuDPUi5JLOSrOQ/edit'
       },
       {
+        id: 'mebel_krovati',
+        label: 'Мебель — Кровати',
+        emoji: '🛋️',
+        editUrl: 'https://www.canva.com/design/DAG_6XnMUIo/lSFOhOeCN-2ApBxgBOCiqw/edit'
+      },
+      {
         id: 'bytovki',
         label: 'Бытовки',
         emoji: '🏢',
@@ -74,6 +80,24 @@
         label: 'Заборы под ключ',
         emoji: '🛡️',
         editUrl: 'https://www.canva.com/design/DAHCaTkRTDQ/_uNSttEZVvtno6FeqBPHVA/edit'
+      },
+      {
+        id: 'gruzoperevozki',
+        label: 'Грузоперевозки',
+        emoji: '🚚',
+        editUrl: 'https://www.canva.com/design/DAHFHnGbvq0/Rw2adI-I6A8xS74vhKkasg/edit'
+      },
+      {
+        id: 'dorozhnye',
+        label: 'Дорожные работы',
+        emoji: '🛣️',
+        editUrl: 'https://www.canva.com/design/DAHDpWoN04w/N_bLLLPn7QRQ-N1O4t6jlQ/edit'
+      },
+      {
+        id: 'stroyka_krym',
+        label: 'Стройка Крым',
+        emoji: '🏗️',
+        editUrl: 'https://www.canva.com/design/DAHAMA1yjhk/LUP0lWwOzmHW3uqDbUMItg/edit'
       }
     ]
   };
@@ -181,13 +205,40 @@
     }
   }
 
+  function mergeMissingFromDefaults(stored, defaults) {
+    var defs = defaults || KP_DEFAULTS;
+    var goods = Array.isArray(stored.goods) ? stored.goods.slice() : [];
+    var seenG = {};
+    goods.forEach(function (x) {
+      if (x && x.id) seenG[x.id] = 1;
+    });
+    (defs.goods || []).forEach(function (d) {
+      if (d && d.id && !seenG[d.id]) {
+        goods.push(deepClone(d));
+        seenG[d.id] = 1;
+      }
+    });
+    var services = Array.isArray(stored.services) ? stored.services.slice() : [];
+    var seenS = {};
+    services.forEach(function (x) {
+      if (x && x.id) seenS[x.id] = 1;
+    });
+    (defs.services || []).forEach(function (d) {
+      if (d && d.id && !seenS[d.id]) {
+        services.push(deepClone(d));
+        seenS[d.id] = 1;
+      }
+    });
+    return { goods: goods, services: services };
+  }
+
   function getMergedTemplates() {
     try {
       var s = localStorage.getItem(KP_TEMPLATES_STORE);
       if (s) {
         var d = JSON.parse(s);
         if (d && Array.isArray(d.goods) && Array.isArray(d.services) && d.goods.length + d.services.length > 0) {
-          return d;
+          return mergeMissingFromDefaults(d, KP_DEFAULTS);
         }
       }
     } catch (e1) {}
