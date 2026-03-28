@@ -368,6 +368,26 @@
     ta.style.height = Math.max(40, ta.scrollHeight) + 'px';
   }
 
+  /** Один input на строку; последняя пустая — для добавления новой строки */
+  function buildCompactLineInputsHtml(text, placeholder) {
+    var lines = String(text || '').split(/\r?\n/);
+    if (!lines.length) lines = [''];
+    lines.push('');
+    return lines
+      .map(function (line, i) {
+        return (
+          '<input type="text" class="kp-pkg-line-inp" data-kp-line="' +
+          i +
+          '" value="' +
+          esc(line) +
+          '" placeholder="' +
+          esc(placeholder || '') +
+          '">'
+        );
+      })
+      .join('');
+  }
+
   function buildBlock2PackagesPreviewHtml(packages, nicheId, kind) {
     if (!packages || !packages.length) {
       return '<div class="kp-b2-empty">Выберите нишу — появятся 4 пакета (СТАРТ · ЗАПУСК · МИДЛ · АЛЬФА)</div>';
@@ -416,22 +436,21 @@
               '">' +
               headRow +
               numsAlpha +
-              '<div class="kp-pkg-preview-line kp-pkg-preview-head">' +
+              '<input type="text" class="kp-pkg-line-inp kp-pkg-line-inp--header" data-kp-field="header" value="' +
               esc(p.headerLine || '') +
-              '</div>' +
-              '<div class="kp-pkg-preview-line kp-pkg-preview-price">' +
+              '" placeholder="Строка заголовка (объём, кавычки)">' +
+              '<input type="text" class="kp-pkg-line-inp kp-pkg-line-inp--price" data-kp-field="price" value="' +
               esc(p.priceLine || '') +
+              '" placeholder="Строка с ценой (🔹)">' +
+              '<div class="kp-pkg-lines-wrap" data-kp-lines="bullets">' +
+              buildCompactLineInputsHtml(
+                p.bullets || '',
+                p.key === 'start' ? 'Выгода (1-я строка — от числа объявлений)' : 'Выгода по строке'
+              ) +
               '</div>' +
-              (p.key === 'start'
-                ? '<textarea class="kp-ta kp-pkg-edit-ta kp-pkg-edit-bullets" data-kp-field="bullets" rows="5" placeholder="Список (1-я строка обновляется от числа объявлений)">' +
-                  esc(p.bullets || '') +
-                  '</textarea>'
-                : '<textarea class="kp-ta kp-pkg-edit-ta kp-pkg-edit-bullets" data-kp-field="bullets" rows="3" placeholder="Основной список">' +
-                  esc(p.bullets || '') +
-                  '</textarea>') +
-              '<textarea class="kp-ta kp-pkg-edit-ta kp-pkg-edit-bonuses" data-kp-field="bonuses" rows="4" placeholder="Бонусы (🎁)">' +
-              esc(p.bonuses || '') +
-              '</textarea>' +
+              '<div class="kp-pkg-lines-wrap kp-pkg-lines-wrap--bonuses" data-kp-lines="bonuses">' +
+              buildCompactLineInputsHtml(p.bonuses || '', 'Бонус (🎁), по одной строке') +
+              '</div>' +
               '</div>'
             );
           }
@@ -950,14 +969,25 @@
       saveDraft(d);
       var strip = mc.querySelector('.kp-pkg-strip[data-kp-pkg-idx="' + idx + '"]');
       if (!strip) return;
-      var ph = strip.querySelector('.kp-pkg-preview-head');
-      var pp = strip.querySelector('.kp-pkg-preview-price');
-      var tb = strip.querySelector('[data-kp-field="bullets"]');
-      if (ph) ph.textContent = p.headerLine || '';
-      if (pp) pp.textContent = p.priceLine || '';
-      if (tb && p.key === 'start') {
-        tb.value = p.bullets || '';
-        kpResizePkgTextarea(tb);
+      var hi = strip.querySelector('[data-kp-field="header"]');
+      var pi = strip.querySelector('[data-kp-field="price"]');
+      if (hi) hi.value = p.headerLine || '';
+      if (pi) pi.value = p.priceLine || '';
+      var wrap = strip.querySelector('.kp-pkg-lines-wrap[data-kp-lines="bullets"]');
+      if (wrap) {
+        var lines = String(p.bullets || '').split(/\r?\n/);
+        if (!lines.length) lines = [''];
+        var inputs = wrap.querySelectorAll('input');
+        var needed = lines.length + 1;
+        var phB =
+          p.key === 'start' ? 'Выгода (1-я строка — от числа объявлений)' : 'Выгода по строке';
+        if (inputs.length !== needed) {
+          wrap.innerHTML = buildCompactLineInputsHtml(p.bullets || '', phB);
+        } else {
+          for (var i = 0; i < lines.length; i++) {
+            if (inputs[i]) inputs[i].value = lines[i];
+          }
+        }
       }
     }
     mc.querySelectorAll('.kp-pkg-strip').forEach(function (strip) {
@@ -986,6 +1016,28 @@
         }
       });
     });
+    mc.addEventListener(
+      'focusout',
+      function (e) {
+        var t = e.target;
+        if (!t.matches || !t.matches('.kp-pkg-lines-wrap input')) return;
+        var wrap = t.closest('.kp-pkg-lines-wrap');
+        if (!wrap) return;
+        var fieldName = wrap.getAttribute('data-kp-lines');
+        if (fieldName !== 'bullets' && fieldName !== 'bonuses') return;
+        var strip = t.closest('.kp-pkg-strip');
+        if (!strip || !strip.classList.contains('kp-pkg-strip--compact')) return;
+        var idx = parseInt(strip.getAttribute('data-kp-pkg-idx'), 10);
+        if (!isFinite(idx)) return;
+        var lines = [];
+        wrap.querySelectorAll('input').forEach(function (inp) {
+          lines.push(inp.value);
+        });
+        while (lines.length > 1 && !String(lines[lines.length - 1] || '').trim()) lines.pop();
+        persistBlock2PkgField(idx, fieldName, lines.join('\n'));
+      },
+      true
+    );
     mc.querySelectorAll('.kp-pkg-edit-ta').forEach(function (ta) {
       kpResizePkgTextarea(ta);
     });
