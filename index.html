@@ -923,11 +923,12 @@ body.kp-tab .analytics-control-panel,body.kp-tab .sec-bar,body.kp-tab .gen-extra
 .kp-b2-preview-wrap{display:block}
 .kp-b2-empty{font-size:12px;color:var(--muted);padding:14px;border:1px dashed rgba(124,245,255,0.2);border-radius:10px;text-align:center;line-height:1.45}
 .kp-b2-stack{display:flex;flex-direction:column;width:100%;border-radius:10px;overflow:hidden;border:1px solid rgba(124,245,255,0.16);background:rgba(0,0,0,0.2)}
-.kp-pkg-strip{width:100%;box-sizing:border-box;padding:12px 14px 14px;border-bottom:1px solid rgba(124,245,255,0.1);color:#e8f4ff;font-size:13px;line-height:1.45}
+.kp-pkg-strip{width:100%;box-sizing:border-box;padding:10px 14px 14px;border-bottom:1px solid rgba(124,245,255,0.1);color:#e8f4ff;font-size:13px;line-height:1.45}
 .kp-pkg-strip:last-child{border-bottom:none}
-.kp-pkg-strip-head{display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap}
-.kp-pkg-inline-emoji{width:40px;min-width:36px;text-align:center;font-size:20px;line-height:1.2;padding:6px 4px;border-radius:8px;border:1px solid transparent;background:rgba(0,0,0,0.15);color:inherit;font-family:inherit}
-.kp-pkg-inline-name{flex:1;min-width:120px;font-weight:900;font-size:14px;letter-spacing:.35px;color:#fff;text-transform:uppercase;padding:6px 8px;border-radius:8px;border:1px solid transparent;background:rgba(0,0,0,0.12);font-family:inherit}
+.kp-pkg-emoji-row{display:flex;justify-content:center;align-items:center;min-height:36px;padding:2px 8px 8px;margin:0 0 2px;border-bottom:1px solid rgba(124,245,255,0.08)}
+.kp-pkg-emoji-row .kp-pkg-inline-emoji{width:auto;min-width:48px;max-width:100%;text-align:center;font-size:22px;line-height:1;padding:8px 14px;border-radius:8px;border:1px solid transparent;background:rgba(0,0,0,0.12);color:inherit;font-family:inherit}
+.kp-pkg-name-row{padding:4px 0 10px;margin-bottom:4px;border-bottom:1px solid rgba(124,245,255,0.06)}
+.kp-pkg-name-row .kp-pkg-inline-name{display:block;width:100%;box-sizing:border-box;font-weight:900;font-size:15px;letter-spacing:.4px;color:#fff;text-transform:uppercase;padding:8px 10px;border-radius:8px;border:1px solid transparent;background:rgba(0,0,0,0.1);font-family:inherit}
 .kp-pkg-inline-emoji:focus,.kp-pkg-inline-name:focus{outline:none;border-color:rgba(124,245,255,0.35);background:rgba(0,0,0,0.28);box-shadow:0 0 0 1px rgba(124,245,255,0.08)}
 .kp-pkg-edit-ta{display:block;width:100%;box-sizing:border-box;margin-top:8px;min-height:2.5em;resize:vertical;border-radius:8px;border:1px solid rgba(124,245,255,0.12);background:rgba(0,0,0,0.18);padding:8px 10px;font-size:13px;line-height:1.45}
 .kp-pkg-edit-ta:first-of-type{margin-top:0}
@@ -2005,11 +2006,39 @@ min-width:720px
 .goal-work-tags-empty{color:var(--muted);font-size:11px}
 .goal-block-archive{margin:0;padding:14px 18px;background:rgba(255,255,255,0.015);border-radius:10px;border:1px solid rgba(255,255,255,0.03);box-shadow:none;width:100%;max-width:100%;box-sizing:border-box}
 .goal-block-archive .goal-block-title{color:rgba(124,245,255,0.9);margin-bottom:8px;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.03);background:transparent;font-size:16px;font-weight:800}
-.goal-block-archive .goal-block-rows{display:flex;flex-direction:column;gap:4px;padding:0}
-.goal-block-archive .goal-row-alt{border-radius:5px;margin-bottom:2px;border:none;background:rgba(255,255,255,0.02)}
+.goal-block-archive .goal-block-rows{display:flex;flex-direction:column;gap:1px;padding:0;overflow-x:auto}
+.goal-block-archive .goal-row-alt,
+.goal-block-archive .goal-row-alt.goal-row-alt-no-sum{
+display:grid;
+grid-template-columns:32px minmax(160px,1fr) minmax(72px,88px) minmax(200px,1.2fr) 44px;
+gap:4px 6px;
+align-items:center;
+padding:3px 8px;
+min-height:28px;
+border-radius:0;
+border:none;
+border-bottom:1px solid rgba(255,255,255,0.05);
+font-size:13px;
+line-height:1.15;
+min-width:min(720px,100%);
+max-width:100%;
+box-sizing:border-box
+}
+.goal-block-archive .goal-row-alt{border-radius:5px;margin-bottom:0;background:rgba(255,255,255,0.02)}
 .goal-block-archive .goal-row-alt:nth-child(odd){background:rgba(255,255,255,0.025)}
 .goal-block-archive .goal-row-alt:nth-child(even){background:rgba(255,255,255,0.015)}
+.goal-block-archive .goal-row-alt:hover{background:rgba(0,217,126,0.04)!important}
+.goal-block-archive .goal-row-alt .goal-name{font-size:inherit;font-weight:700;line-height:1.35;min-width:0}
+.goal-block-archive .goal-row-alt .goal-name-inline{font-size:16px!important;font-weight:800;white-space:nowrap!important;overflow:hidden;text-overflow:ellipsis}
+.goal-block-archive .goal-row-alt .goal-name-cell{gap:4px;min-width:0}
+.goal-block-archive .goal-row-alt .goal-date{font-size:11px;color:var(--muted)}
+.goal-block-archive .goal-row-alt .goal-emoji-btn{width:28px;height:28px;min-width:28px;font-size:18px}
+.goal-block-archive .goal-row-alt .goal-price-wrap{justify-content:flex-start;min-width:0}
+.goal-block-archive .goal-row-alt .goal-designations{min-width:0;overflow:hidden;display:flex;flex-wrap:nowrap;align-items:center;gap:4px;justify-content:flex-start}
+.goal-block-archive .goal-row-alt .goal-status-badge,.goal-block-archive .goal-row-alt .goal-touch-badge{font-size:11px;padding:2px 6px}
+.goal-block-archive .goal-row-alt .goal-row-actions{justify-content:flex-end;flex-shrink:0}
 .goal-block-archive .goal-block-add{border:1px dashed rgba(53,208,255,0.12);color:#7cf5ff;background:transparent;margin-top:10px}
+body.day-mode.goals-mode .goal-block-archive .goal-row-alt{border-bottom-color:rgba(0,0,0,0.06)}
 .goal-price-popup{position:fixed;z-index:200;background:linear-gradient(180deg,#1a1d26 0%,#14161c 100%);border:1px solid rgba(0,217,126,0.25);border-radius:10px;padding:10px 14px;box-shadow:0 12px 32px rgba(0,0,0,0.5);min-width:110px}
 .goal-price-popup-title{font-size:9px;color:var(--muted);margin-bottom:4px}
 .goal-price-popup-list div{padding:3px 0;font-size:11px;color:var(--text)}
@@ -2523,7 +2552,7 @@ if (!window.AVITOLOG_GOALS) {
 <script src="js/ai-import.js?v=20260324-13"></script>
 <script src="js/contract-generator.js?v=20260324-13"></script>
 <script src="js/ads.js?v=20260324-13"></script>
-<script src="js/kp-generator.js?v=20260328-5"></script>
+<script src="js/kp-generator.js?v=20260328-6"></script>
 <script src="js/main.js?v=20260328-1"></script>
 </body>
 </html>

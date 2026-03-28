@@ -294,10 +294,12 @@
             '<div class="kp-pkg-strip" data-kp-pkg-idx="' +
             idx +
             '">' +
-            '<div class="kp-pkg-strip-head">' +
+            '<div class="kp-pkg-emoji-row">' +
             '<input type="text" class="kp-pkg-inline-emoji" data-kp-field="emoji" value="' +
             esc(p.emoji || '📦') +
-            '" maxlength="16" title="Эмодзи" aria-label="Эмодзи пакета">' +
+            '" maxlength="16" title="Эмодзи пакета" aria-label="Эмодзи пакета">' +
+            '</div>' +
+            '<div class="kp-pkg-name-row">' +
             '<input type="text" class="kp-pkg-inline-name" data-kp-field="name" value="' +
             esc(p.name || '') +
             '" placeholder="СТАРТ · ЗАПУСК …" aria-label="Название пакета">' +
