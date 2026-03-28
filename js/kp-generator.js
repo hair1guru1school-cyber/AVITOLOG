@@ -1023,6 +1023,15 @@
     }
 
     syncOpenButton(mc, d.templateId || getFirstTemplateId());
+    var createKpBtn = mc.querySelector('#kpCreateKpBtn');
+    if (createKpBtn) {
+      createKpBtn.onclick = function () {
+        var dd = loadDraft();
+        dd.kpComposerOpen = true;
+        saveDraft(dd);
+        window.__showKpGenerator(mc);
+      };
+    }
     wireBlock2(mc);
   }
 
@@ -1188,7 +1197,9 @@
       });
       saveDraft(d);
     }
-    ensureMeebelKitchenHero(d);
+    if (d.kpComposerOpen) {
+      ensureMeebelKitchenHero(d);
+    }
     var firstId = getFirstTemplateId();
     if (!d.templateId || !findTemplateById(d.templateId)) d.templateId = firstId;
     if (!d.niche) {
@@ -1202,19 +1213,60 @@
       } catch (e1) {}
     }
 
-    var heroInner;
-    if (d.heroDataUrl) {
-      heroInner = '<img src="' + esc(d.heroDataUrl) + '" alt="" class="kp-hero-preview-img">';
-    } else if (d.heroUrl) {
-      heroInner =
-        '<img src="' +
-        esc(d.heroUrl) +
-        '" alt="" class="kp-hero-preview-img" onerror="this.parentNode.innerHTML=\'&lt;div class=\\\'kp-hero-placeholder\\\'&gt;Не удалось загрузить&lt;/div&gt;\'">';
-    } else {
-      heroInner = '<div class="kp-hero-placeholder">Превью</div>';
+    var composerOpen = !!d.kpComposerOpen;
+    var nicheSelected = String(d.block2.nicheId || '').trim();
+    var showHero = composerOpen && nicheSelected;
+
+    var heroSectionHtml = '';
+    if (showHero) {
+      var heroInner;
+      if (d.heroDataUrl) {
+        heroInner = '<img src="' + esc(d.heroDataUrl) + '" alt="" class="kp-hero-preview-img">';
+      } else if (d.heroUrl) {
+        heroInner =
+          '<img src="' +
+          esc(d.heroUrl) +
+          '" alt="" class="kp-hero-preview-img" onerror="this.parentNode.innerHTML=\'&lt;div class=\\\'kp-hero-placeholder\\\'&gt;Не удалось загрузить&lt;/div&gt;\'">';
+      } else {
+        heroInner = '<div class="kp-hero-placeholder">Превью</div>';
+      }
+      heroSectionHtml =
+        '<div class="kp-gen-section kp-hero-section">' +
+        '<div class="kp-gen-label kp-gen-label--sub">Превью обложки</div>' +
+        '<div class="kp-hero-row">' +
+        '<div class="kp-hero-preview" id="kpHeroPreview">' +
+        heroInner +
+        '</div>' +
+        '<div class="kp-hero-actions">' +
+        '<label class="kp-btn kp-btn-secondary">Загрузить файл<input type="file" id="kpHeroFile" accept="image/*" style="display:none"></label>' +
+        '<input type="url" id="kpHeroUrl" class="kp-inp" placeholder="Или URL картинки (https://…)" value="' +
+        esc(d.heroUrl || '') +
+        '">' +
+        '<button type="button" class="kp-btn kp-btn-ghost" id="kpHeroClear">Сбросить</button>' +
+        '</div></div></div>';
     }
 
+    var createKpBlock =
+      !composerOpen
+        ? '<div class="kp-gen-section kp-create-kp-wrap">' +
+          '<button type="button" class="kp-btn kp-btn-primary kp-create-kp-btn" id="kpCreateKpBtn">Создать КП</button>' +
+          '<p class="kp-create-kp-hint">Сначала выбери шаблон Canva выше, затем нажми — откроется шаблон КП и пакеты. Фото появится после выбора ниши.</p>' +
+          '</div>'
+        : '';
+
+    var block2Html = composerOpen ? buildBlock2SectionHtml(d) : '';
     var tSel = templateForDraft(d.templateId);
+    var actionsHtml = composerOpen
+      ? '<div class="kp-gen-actions">' +
+        '<a class="kp-btn kp-btn-primary" id="kpOpenCanva" target="_blank" rel="noopener" href="' +
+        esc(tSel.editUrl || '#') +
+        '">Открыть шаблон в Canva</a>' +
+        '<button type="button" class="kp-btn kp-btn-secondary" id="kpCopyBrief">Скопировать текст для вставки</button>' +
+        '<button type="button" class="kp-btn kp-btn-ghost" id="kpAiSuggest">Подсказать заголовок (AI)</button>' +
+        '</div>' +
+        '<p class="kp-gen-note">Автозапись макета в Canva без <a href="https://www.canva.com/developers/" target="_blank" rel="noopener">Canva Connect API</a> недоступна: дублируйте шаблон в Canva и подставьте поля вручную или через копирование текста выше.</p>'
+      : '';
+
     mc.innerHTML =
       '<div class="kp-generator">' +
       '<div class="kp-gen-head">' +
@@ -1224,28 +1276,10 @@
       '<div class="kp-gen-label">ШАБЛОН CANVA</div>' +
       buildTemplateZonesHtml(d) +
       '</div>' +
-      '<div class="kp-gen-section kp-hero-section">' +
-      '<div class="kp-gen-label kp-gen-label--sub">Превью обложки</div>' +
-      '<div class="kp-hero-row">' +
-      '<div class="kp-hero-preview" id="kpHeroPreview">' +
-      heroInner +
-      '</div>' +
-      '<div class="kp-hero-actions">' +
-      '<label class="kp-btn kp-btn-secondary">Загрузить файл<input type="file" id="kpHeroFile" accept="image/*" style="display:none"></label>' +
-      '<input type="url" id="kpHeroUrl" class="kp-inp" placeholder="Или URL картинки (https://…)" value="' +
-      esc(d.heroUrl || '') +
-      '">' +
-      '<button type="button" class="kp-btn kp-btn-ghost" id="kpHeroClear">Сбросить</button>' +
-      '</div></div></div>' +
-      buildBlock2SectionHtml(d) +
-      '<div class="kp-gen-actions">' +
-      '<a class="kp-btn kp-btn-primary" id="kpOpenCanva" target="_blank" rel="noopener" href="' +
-      esc(tSel.editUrl || '#') +
-      '">Открыть шаблон в Canva</a>' +
-      '<button type="button" class="kp-btn kp-btn-secondary" id="kpCopyBrief">Скопировать текст для вставки</button>' +
-      '<button type="button" class="kp-btn kp-btn-ghost" id="kpAiSuggest">Подсказать заголовок (AI)</button>' +
-      '</div>' +
-      '<p class="kp-gen-note">Автозапись макета в Canva без <a href="https://www.canva.com/developers/" target="_blank" rel="noopener">Canva Connect API</a> недоступна: дублируйте шаблон в Canva и подставьте поля вручную или через копирование текста выше.</p>' +
+      createKpBlock +
+      heroSectionHtml +
+      block2Html +
+      actionsHtml +
       '</div>';
 
     wire(mc);
