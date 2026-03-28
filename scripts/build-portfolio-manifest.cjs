@@ -19,7 +19,6 @@ const map = {
   elektromontazh: "Электромонтаж",
   "styazhka-pola": "Стяжка-Полав",
   "karkasnyy-dom": "ВашДом",
-  "vk-promo": "vk-promo",
 };
 
 const exts = new Set([".jpg", ".jpeg", ".png", ".webp", ".gif"]);

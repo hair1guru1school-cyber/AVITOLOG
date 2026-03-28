@@ -122,21 +122,31 @@ nav::after{content:'';position:absolute;bottom:0;left:0;right:0;height:1px;backg
 .nc-stat-lbl{font-size:10px;color:var(--muted)}
 
 /* PROCESS */
-.process-section .process-section{background:var(--bg2);overflow-x:hidden}
-.process-visual-wrap{position:relative;margin:clamp(12px,2.5vw,24px) auto clamp(20px,3.5vw,36px);width:100%;max-width:100%;min-width:0;box-sizing:border-box;border-radius:clamp(14px,2vw,22px);overflow:hidden;border:1px solid rgba(255,255,255,.1);box-shadow:0 22px 64px rgba(0,0,0,.52),0 0 0 1px rgba(232,0,29,.1),inset 0 1px 0 rgba(255,255,255,.06);background:#0a0e14}
-.process-visual-img{width:100%;max-width:100%;height:auto;display:block;vertical-align:middle}
-.process-visual-overlay{position:absolute;inset:0;background:linear-gradient(180deg,rgba(4,6,10,.5) 0%,rgba(4,6,10,.72) 35%,rgba(2,4,8,.88) 100%);pointer-events:none;z-index:1}
-.process-visual-caption{position:absolute;left:0;right:0;top:0;z-index:2;padding:clamp(18px,4vw,40px) clamp(16px,4vw,36px) clamp(12px,2vw,20px);text-align:left;box-sizing:border-box}
-.process-caption-lbl{color:var(--cyan);text-shadow:0 2px 16px rgba(0,0,0,.85)}
-.process-title-on-img{color:#f0f4ff;text-shadow:0 2px 28px rgba(0,0,0,.92),0 0 40px rgba(0,0,0,.5);margin-bottom:0}
+.sec.process-section{padding-top:clamp(24px,3.5vw,48px);padding-bottom:clamp(8px,1.2vw,18px)}
+.process-section{background:var(--bg2);overflow-x:hidden}
+.process-visual-wrap{position:relative;display:block;margin:0 auto;width:100%;max-width:min(1920px,100%);min-width:0;box-sizing:border-box;border-radius:clamp(12px,1.5vw,20px);overflow:hidden;border:1px solid rgba(255,255,255,.1);box-shadow:0 20px 56px rgba(0,0,0,.5);background:#05080f;line-height:0;aspect-ratio:16/5;max-height:min(40vw,540px)}
+.process-visual-img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center center;display:block}
+.process-visual-overlay{position:absolute;inset:0;z-index:1;pointer-events:none;background:linear-gradient(to bottom,rgba(0,0,0,0) 0%,rgba(0,0,0,.08) 38%,rgba(0,0,0,.55) 68%,rgba(0,0,0,.88) 88%,rgba(0,0,0,.96) 100%)}
+.process-visual-caption{position:absolute;left:0;right:0;top:0;z-index:3;padding:clamp(16px,3.2vw,36px) clamp(14px,3vw,32px) clamp(8px,1.5vw,16px);text-align:left;box-sizing:border-box;pointer-events:none;line-height:normal}
+.process-caption-lbl{color:var(--cyan);text-shadow:0 2px 14px rgba(0,0,0,.9)}
+.process-title-on-img{color:#f0f4ff;text-shadow:0 2px 20px rgba(0,0,0,.85);margin-bottom:0;font-size:clamp(26px,4.2vw,52px)}
 .process-title-on-img span{color:var(--red)}
-@media(max-width:700px){.process-visual-wrap{margin-left:0;margin-right:0;width:100%;border-radius:12px}.process-visual-caption{padding:16px 14px 10px}.process-title-on-img{font-size:clamp(22px,6.5vw,36px)}}
-.p-steps{display:grid;grid-template-columns:repeat(5,1fr);gap:0;position:relative;margin-top:clamp(32px,5vw,56px)}
-.p-steps::before{content:'';position:absolute;top:40px;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--red),rgba(232,0,29,.15));z-index:0}
-.pstep{padding:0 22px;position:relative;z-index:1}
-.p-num{width:78px;height:78px;display:flex;align-items:center;justify-content:center;background:var(--s2);border:2px solid var(--red);font-family:'Oswald',sans-serif;font-size:30px;font-weight:700;color:var(--red);text-shadow:0 0 16px var(--red-glow);margin-bottom:20px;clip-path:polygon(12px 0,100% 0,100% calc(100% - 12px),calc(100% - 12px) 100%,0 100%,0 12px)}
-.p-title{font-family:'Oswald',sans-serif;font-size:14px;font-weight:600;color:var(--text);letter-spacing:.5px;margin-bottom:8px}
-.p-desc{font-size:12px;color:var(--muted);line-height:1.6}
+.process-visual-wrap .p-steps{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:clamp(6px,1.2vw,14px);position:absolute;left:0;right:0;bottom:0;z-index:4;margin:0;padding:clamp(6px,1.2vw,12px) clamp(8px,1.8vw,24px) clamp(14px,2.5vw,28px);align-items:start;box-sizing:border-box;pointer-events:none;line-height:normal;overflow:visible}
+.process-visual-wrap .p-steps::before{content:'';position:absolute;left:5%;right:5%;top:clamp(20px,3.2vw,34px);height:2px;background:linear-gradient(90deg,rgba(232,0,29,.35),var(--red) 15% 85%,rgba(232,0,29,.25));z-index:0;pointer-events:none}
+.process-visual-wrap .pstep{padding:0 clamp(3px,0.7vw,10px);position:relative;z-index:1;pointer-events:auto}
+.process-visual-wrap .p-num{display:flex;align-items:center;justify-content:center;font-family:'Oswald',sans-serif;font-weight:700;width:clamp(40px,6.5vw,72px);height:clamp(40px,6.5vw,72px);font-size:clamp(16px,2.8vw,28px);margin-bottom:clamp(6px,1.2vw,12px);background:rgba(8,10,16,.92);backdrop-filter:blur(4px);border:2px solid var(--red);clip-path:polygon(10px 0,100% 0,100% calc(100% - 10px),calc(100% - 10px) 100%,0 100%,0 10px);position:relative;z-index:2}
+.process-visual-wrap .p-title{font-size:clamp(9px,1.05vw,13px);font-weight:600;color:#f5f8ff;text-shadow:0 1px 10px rgba(0,0,0,.95);margin-bottom:3px;line-height:1.25}
+.process-visual-wrap .p-desc{font-size:clamp(8px,0.9vw,11px);color:rgba(230,236,248,.95);line-height:1.4;text-shadow:0 1px 8px rgba(0,0,0,.9)}
+@media(max-width:900px){
+.process-visual-wrap{aspect-ratio:4/3;max-height:none;min-height:min(72vw,420px)}
+.process-visual-img{object-position:center 30%}
+.process-visual-wrap .p-steps{grid-template-columns:1fr 1fr;row-gap:10px;padding:10px 10px 16px;column-gap:8px}
+.process-visual-wrap .p-steps::before{display:none}
+.process-title-on-img{font-size:clamp(22px,5.5vw,34px)}
+}
+@media(max-width:520px){
+.process-visual-wrap .p-steps{grid-template-columns:1fr}
+}
 
 /* CASES — ниши столбцами, горизонтальный скролл, компактная высота */
 .cases-section{padding:22px 48px 28px!important}
@@ -214,7 +224,7 @@ nav::after{content:'';position:absolute;bottom:0;left:0;right:0;height:1px;backg
 
 .vk-promo + .sec{padding-top:clamp(56px,7vw,96px)}
 /* VK block */
-.vk-promo{position:relative;overflow:hidden;border-top:none;border-bottom:1px solid rgba(255,255,255,.06);background-color:#060a12;background-image:linear-gradient(180deg,rgba(2,4,10,.58) 0%,rgba(4,8,18,.82) 45%,rgba(5,8,16,.94) 100%),url('vk-promo-art.png?v=20260328-vk5');background-position:center center;background-size:cover;background-repeat:no-repeat;scroll-margin-top:72px}
+.vk-promo{position:relative;overflow:hidden;border-top:none;border-bottom:1px solid rgba(255,255,255,.06);background-color:#060a12;background-image:linear-gradient(180deg,rgba(2,4,10,.58) 0%,rgba(4,8,18,.82) 45%,rgba(5,8,16,.94) 100%),url('vk-promo-art.png?v=20260328-vk7');background-position:center 28%;background-size:cover;background-repeat:no-repeat;scroll-margin-top:72px}
 .vk-promo::before{content:'';position:absolute;left:0;right:0;top:0;height:clamp(64px,12vw,180px);z-index:1;pointer-events:none;background:linear-gradient(180deg,var(--bg) 0%,rgba(8,11,18,.55) 22%,rgba(6,10,18,.12) 58%,transparent 100%)}
 .vk-inner{position:relative;z-index:2;max-width:min(1280px,96vw);margin:0 auto;text-align:center;padding:clamp(40px,6vw,84px) clamp(20px,4vw,48px) clamp(96px,12vw,140px)}
 .vk-inner .sec-lbl{color:rgba(0,207,255,.95);text-shadow:0 2px 16px rgba(0,0,0,.85)}
@@ -347,45 +357,39 @@ footer{background:var(--bg);border-top:1px solid var(--border);padding:40px 80px
   .hs{flex:1;min-width:120px}
 }
 
-/* REVIEWS — карусель; фон без акцентов ВК (локальное затемнение брендинга на фото) */
-.reviews-sec{padding:80px 80px 100px;position:relative;isolation:isolate;overflow:hidden;background-color:#04060a;background-image:url('reviews-section-bg.png?v=20260328-rvbg3');background-size:cover;background-position:center;background-repeat:no-repeat}
-.reviews-sec::before{content:'';position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.58) 0%,rgba(2,4,8,.76) 45%,rgba(0,0,0,.88) 100%);z-index:0;pointer-events:none}
-.reviews-sec::after{content:'';position:absolute;inset:0;background:rgba(0,0,0,.32);z-index:0;pointer-events:none}
-.reviews-bg-brand-mask{position:absolute;inset:0;z-index:1;pointer-events:none;background:radial-gradient(ellipse 70% 48% at 50% 19%,rgba(2,4,9,.96) 0%,rgba(2,4,9,.55) 52%,transparent 74%),radial-gradient(ellipse 95% 50% at 14% 91%,rgba(0,0,0,.98) 0%,rgba(0,0,0,.62) 48%,transparent 76%),radial-gradient(ellipse 22% 16% at 46% 71%,rgba(3,5,10,.9) 0%,transparent 72%)}
-.reviews-sec > *:not(.reviews-bg-brand-mask){position:relative;z-index:2}
+/* REVIEWS — простая карусель отзывов, тёмный фон-картинка */
+.reviews-sec{padding:80px 80px 100px;position:relative;isolation:isolate;overflow:hidden;background-color:#020408;background-image:url('reviews-section-bg.png?v=20260328-rvbg4');background-size:cover;background-position:center 35%;background-repeat:no-repeat;background-attachment:scroll}
+.reviews-sec::before{content:'';position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.72) 0%,rgba(0,0,0,.82) 40%,rgba(0,0,0,.92) 100%);z-index:0;pointer-events:none}
+.reviews-sec::after{content:'';position:absolute;inset:0;background:rgba(0,0,0,.45);z-index:0;pointer-events:none}
+.reviews-sec > *{position:relative;z-index:1}
 .reviews-sec .sec-title{color:#f0f4ff}
-.reviews-sec .sec-desc{color:rgba(200,210,230,.9)}
-.reviews-sec .rv-avito-note{color:rgba(175,190,215,.82)}
+.reviews-sec .sec-desc{color:rgba(210,218,235,.92)}
+.reviews-sec .rv-avito-note{color:rgba(190,200,220,.88)}
 .rv-cta{margin-bottom:18px}
-.rv-carousel-wrap{margin-top:16px;border-radius:16px;overflow:hidden;border:1px solid rgba(255,255,255,.12);background:rgba(8,10,16,.72);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);box-shadow:0 0 0 1px rgba(255,255,255,.06),0 28px 64px rgba(0,0,0,.65),inset 0 1px 0 rgba(255,255,255,.06);max-width:1100px;margin-left:auto;margin-right:auto}
-.rv-carousel-head{display:flex;align-items:center;justify-content:center;gap:12px;padding:12px 16px;background:linear-gradient(180deg,rgba(20,24,32,.95),rgba(10,12,18,.92));border-bottom:1px solid rgba(255,255,255,.1)}
-.rv-carousel-title{font-family:'Oswald',sans-serif;font-size:11px;font-weight:600;letter-spacing:2px;color:rgba(240,244,255,.9);text-transform:uppercase;text-align:center}
-.rv-carousel-viewport{position:relative;width:100%;overflow:hidden;background:linear-gradient(180deg,#dfe5ee,#e8ecf2);padding:28px 44px 20px;min-height:min(580px,72vh)}
-.rv-carousel-edge{position:absolute;top:50%;transform:translateY(-50%);z-index:6;width:46px;height:86px;border:1px solid rgba(255,255,255,.12);background:rgba(6,8,14,.38);color:rgba(255,255,255,.92);font-size:30px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .2s,border-color .2s,opacity .2s;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
-.rv-carousel-edge-prev{left:6px;border-radius:0 14px 14px 0}
-.rv-carousel-edge-next{right:6px;border-radius:14px 0 0 14px}
-.rv-carousel-edge:hover:not(:disabled){background:rgba(232,0,29,.32);border-color:rgba(232,0,29,.45)}
-.rv-carousel-edge:disabled{opacity:.28;cursor:default}
-.rv-carousel-track{display:flex;flex-direction:row;align-items:center;gap:clamp(10px,2vw,18px);transition:transform .5s cubic-bezier(.25,.82,.2,1);will-change:transform;padding:0 4px}
-.rv-carousel-slide{flex:0 0 auto;width:clamp(150px,26vw,280px);height:clamp(200px,30vh,300px);min-height:200px;border-radius:18px;overflow:hidden;box-sizing:border-box;opacity:.72;transition:width .5s cubic-bezier(.25,.82,.2,1),height .5s cubic-bezier(.25,.82,.2,1),opacity .45s,box-shadow .45s,border-radius .45s;box-shadow:0 10px 28px rgba(0,0,0,.28)}
-.rv-carousel-slide.is-active{width:clamp(260px,48vw,620px);height:clamp(340px,64vh,560px);min-height:320px;opacity:1;z-index:2;border-radius:24px;box-shadow:0 22px 56px rgba(0,0,0,.45)}
-.rv-carousel-slide-inner{width:100%;height:100%;border-radius:inherit;overflow:hidden;background:#111;position:relative}
-.rv-carousel-slide img{width:100%;height:100%;display:block;object-fit:cover;object-position:top center;vertical-align:middle}
-.rv-carousel-dots{display:flex;justify-content:center;flex-wrap:wrap;gap:8px;padding:14px 12px;background:rgba(6,8,12,.88);border-top:1px solid rgba(255,255,255,.08)}
-.rv-carousel-dot{width:9px;height:9px;border-radius:50%;border:1px solid var(--border);background:transparent;cursor:pointer;padding:0;transition:all .2s}
+.rv-carousel-wrap{margin-top:16px;border-radius:14px;overflow:hidden;border:1px solid rgba(255,255,255,.14);background:rgba(6,8,12,.55);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);box-shadow:0 16px 48px rgba(0,0,0,.55);max-width:900px;margin-left:auto;margin-right:auto}
+.rv-carousel-head{display:none}
+.rv-carousel-viewport{position:relative;width:100%;overflow:hidden;background:#0c0f16;padding:0;min-height:min(420px,62vh)}
+.rv-carousel-edge{position:absolute;top:50%;transform:translateY(-50%);z-index:6;width:44px;height:80px;border:0;background:rgba(0,0,0,.35);color:rgba(255,255,255,.9);font-size:28px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .2s,opacity .2s}
+.rv-carousel-edge-prev{left:0;border-radius:0 12px 12px 0}
+.rv-carousel-edge-next{right:0;border-radius:12px 0 0 12px}
+.rv-carousel-edge:hover:not(:disabled){background:rgba(232,0,29,.4)}
+.rv-carousel-edge:disabled{opacity:.25;cursor:default}
+.rv-carousel-track{display:flex;transition:transform .45s cubic-bezier(.25,.8,.25,1);will-change:transform}
+.rv-carousel-slide{flex:0 0 100%;width:100%;min-width:100%;box-sizing:border-box;padding:0 2px}
+.rv-carousel-slide-inner{border-radius:10px;overflow:hidden;background:#e8ecf0;box-shadow:0 8px 32px rgba(0,0,0,.35)}
+.rv-carousel-slide img{width:100%;height:auto;display:block;object-fit:contain;object-position:top center;vertical-align:middle}
+.rv-carousel-dots{display:flex;justify-content:center;flex-wrap:wrap;gap:8px;padding:12px 10px;background:rgba(0,0,0,.35);border-top:1px solid rgba(255,255,255,.08)}
+.rv-carousel-dot{width:9px;height:9px;border-radius:50%;border:1px solid rgba(255,255,255,.35);background:transparent;cursor:pointer;padding:0;transition:all .2s}
 .rv-carousel-dot.active{background:var(--red);border-color:var(--red);box-shadow:0 0 10px var(--red-glow)}
-@media(max-width:768px){
-.rv-carousel-viewport{padding:22px 38px 16px;min-height:min(480px,68vh)}
-.rv-carousel-edge{width:40px;height:72px;font-size:24px}
-.rv-carousel-slide{width:clamp(120px,62vw,220px);height:clamp(160px,28vh,240px);min-height:160px;border-radius:14px}
-.rv-carousel-slide.is-active{width:clamp(220px,84vw,100%);height:clamp(280px,52vh,440px);min-height:260px;border-radius:20px}
-}
-.rv-avito-note{margin-top:16px;font-size:12px;color:var(--muted);text-align:center;max-width:640px;margin-left:auto;margin-right:auto;line-height:1.5}
+.rv-avito-note{margin-top:16px;font-size:12px;color:rgba(200,210,225,.85);text-align:center;max-width:640px;margin-left:auto;margin-right:auto;line-height:1.5}
 .rv-avito-note a{color:var(--cyan);text-decoration:none;border-bottom:1px dashed rgba(0,207,255,.35)}
 .rv-avito-note a:hover{color:#fff;border-bottom-color:var(--cyan)}
 @media(max-width:768px){
-.reviews-sec{padding:48px 24px 60px;background-position:center top}
+.reviews-sec{padding:48px 20px 56px;background-position:center top}
+.rv-carousel-viewport{min-height:min(360px,58vh)}
+.rv-carousel-edge{width:38px;height:68px;font-size:22px}
 }
+
 /* TURNKEY BANNER - Premium SaaS style */
 .turnkey-banner{position:relative;background:#070b14;padding:80px 24px 100px;overflow:hidden}
 .turnkey-banner::before{content:"";position:absolute;inset:0;background:linear-gradient(90deg,#070b14 0%,transparent 12%,transparent 88%,#070b14 100%);pointer-events:none;z-index:2}
@@ -532,20 +536,20 @@ footer{background:var(--bg);border-top:1px solid var(--border);padding:40px 80px
 <!-- PROCESS -->
 <section class="sec process-section" id="process">
   <figure class="process-visual-wrap">
-    <img class="process-visual-img" src="process-steps-panorama.png?v=20260328-ps2" alt="Пять этапов работы: консультация и аудит, стратегия и договор, упаковка магазина, запуск и масштаб, рост и отчётность" width="1920" height="640" loading="lazy" decoding="async" sizes="(max-width:900px) 100vw, min(1200px, 100vw)" />
+    <img class="process-visual-img" src="process-steps-panorama.png?v=20260328-ps4" alt="Пять этапов работы: консультация и аудит, стратегия и договор, упаковка магазина, запуск и масштаб, рост и отчётность" width="1920" height="640" loading="lazy" decoding="async" sizes="(max-width:900px) 100vw, min(1200px, 100vw)" />
     <div class="process-visual-overlay" aria-hidden="true"></div>
     <figcaption class="process-visual-caption">
       <div class="sec-lbl process-caption-lbl">Как работаем</div>
       <h2 class="sec-title process-title-on-img">5 ШАГОВ ДО<br><span>ПОТОКА ЗАЯВОК</span></h2>
     </figcaption>
+    <div class="p-steps">
+      <div class="pstep rev"><div class="p-num">01</div><div class="p-title">Консультация и аудит</div><div class="p-desc">Разбираем нишу, анализируем конкурентов, считаем потенциал. КП и анализ рынка — бесплатно.</div></div>
+      <div class="pstep rev"><div class="p-num">02</div><div class="p-title">Стратегия и договор</div><div class="p-desc">Прописываем план, фиксируем KPI в договоре с ИП. Никаких устных договорённостей.</div></div>
+      <div class="pstep rev"><div class="p-num">03</div><div class="p-title">Упаковка магазина</div><div class="p-desc">Дизайн, тексты, фото, инфографика — магазин, которому доверяют покупатели.</div></div>
+      <div class="pstep rev"><div class="p-num">04</div><div class="p-title">Запуск и масштаб</div><div class="p-desc">Автозагрузка, бот, реклама — первые заявки в течение 7 дней с гарантией.</div></div>
+      <div class="pstep rev"><div class="p-num">05</div><div class="p-title">Рост и отчётность</div><div class="p-desc">24/7 мониторинг, еженедельные отчёты, постоянная оптимизация — заявки только растут.</div></div>
+    </div>
   </figure>
-  <div class="p-steps">
-    <div class="pstep rev"><div class="p-num">01</div><div class="p-title">Консультация и аудит</div><div class="p-desc">Разбираем нишу, анализируем конкурентов, считаем потенциал. КП и анализ рынка — бесплатно.</div></div>
-    <div class="pstep rev"><div class="p-num">02</div><div class="p-title">Стратегия и договор</div><div class="p-desc">Прописываем план, фиксируем KPI в договоре с ИП. Никаких устных договорённостей.</div></div>
-    <div class="pstep rev"><div class="p-num">03</div><div class="p-title">Упаковка магазина</div><div class="p-desc">Дизайн, тексты, фото, инфографика — магазин, которому доверяют покупатели.</div></div>
-    <div class="pstep rev"><div class="p-num">04</div><div class="p-title">Запуск и масштаб</div><div class="p-desc">Автозагрузка, бот, реклама — первые заявки в течение 7 дней с гарантией.</div></div>
-    <div class="pstep rev"><div class="p-num">05</div><div class="p-title">Рост и отчётность</div><div class="p-desc">24/7 мониторинг, еженедельные отчёты, постоянная оптимизация — заявки только растут.</div></div>
-  </div>
 </section>
 
 <!-- CASES -->
@@ -722,26 +726,22 @@ footer{background:var(--bg);border-top:1px solid var(--border);padding:40px 80px
 
 <!-- REVIEWS -->
 <section class="sec reviews-sec" id="reviews">
-  <div class="reviews-bg-brand-mask" aria-hidden="true"></div>
-  <div class="sec-lbl">ОТЗЫВЫ</div>
+<div class="sec-lbl">ОТЗЫВЫ</div>
   <h2 class="sec-title">Отзывы · <span>профиль на Авито</span></h2>
   <p class="sec-desc">Скриншоты реальных отзывов с Авито — листайте карусель. Полный профиль откройте по ссылке.</p>
   <a href="https://www.avito.ru/brands/ai_avitolog_fil_ai/all/otzyvy?sellerId=8027d3f86387132e7d279156557bc0ab" target="_blank" rel="noopener" class="btn btn-red rv-cta">Открыть на avito.ru в новой вкладке</a>
 
   <div class="rv-carousel-wrap" id="rvCarousel">
-    <div class="rv-carousel-head">
-      <span class="rv-carousel-title">Отзывы на Авито — скриншоты</span>
-    </div>
     <div class="rv-carousel-viewport" id="rvViewport">
       <button type="button" class="rv-carousel-edge rv-carousel-edge-prev" id="rvPrev" aria-label="Предыдущий слайд">‹</button>
       <button type="button" class="rv-carousel-edge rv-carousel-edge-next" id="rvNext" aria-label="Следующий слайд">›</button>
       <div class="rv-carousel-track" id="rvTrack">
-        <div class="rv-carousel-slide"><div class="rv-carousel-slide-inner"><img src="reviews-carousel/slide-01.png?v=20260328-rv1" alt="Отзывы клиентов на Авито, фрагмент 1" loading="lazy" decoding="async" width="900" height="1200"></div></div>
-        <div class="rv-carousel-slide"><div class="rv-carousel-slide-inner"><img src="reviews-carousel/slide-02.png?v=20260328-rv1" alt="Отзывы клиентов на Авито, фрагмент 2" loading="lazy" decoding="async" width="900" height="1200"></div></div>
-        <div class="rv-carousel-slide"><div class="rv-carousel-slide-inner"><img src="reviews-carousel/slide-03.png?v=20260328-rv1" alt="Отзывы клиентов на Авито, фрагмент 3" loading="lazy" decoding="async" width="900" height="1200"></div></div>
-        <div class="rv-carousel-slide"><div class="rv-carousel-slide-inner"><img src="reviews-carousel/slide-04.png?v=20260328-rv1" alt="Отзывы клиентов на Авито, фрагмент 4" loading="lazy" decoding="async" width="900" height="1200"></div></div>
-        <div class="rv-carousel-slide"><div class="rv-carousel-slide-inner"><img src="reviews-carousel/slide-05.png?v=20260328-rv1" alt="Отзывы клиентов на Авито, фрагмент 5" loading="lazy" decoding="async" width="900" height="1200"></div></div>
-        <div class="rv-carousel-slide"><div class="rv-carousel-slide-inner"><img src="reviews-carousel/slide-06.png?v=20260328-rv1" alt="Отзывы клиентов на Авито, фрагмент 6" loading="lazy" decoding="async" width="900" height="1200"></div></div>
+        <div class="rv-carousel-slide"><div class="rv-carousel-slide-inner"><img src="reviews-carousel/slide-01.png?v=20260328-rv2" alt="Отзывы клиентов на Авито, фрагмент 1" loading="lazy" decoding="async" width="900" height="1200"></div></div>
+        <div class="rv-carousel-slide"><div class="rv-carousel-slide-inner"><img src="reviews-carousel/slide-02.png?v=20260328-rv2" alt="Отзывы клиентов на Авито, фрагмент 2" loading="lazy" decoding="async" width="900" height="1200"></div></div>
+        <div class="rv-carousel-slide"><div class="rv-carousel-slide-inner"><img src="reviews-carousel/slide-03.png?v=20260328-rv2" alt="Отзывы клиентов на Авито, фрагмент 3" loading="lazy" decoding="async" width="900" height="1200"></div></div>
+        <div class="rv-carousel-slide"><div class="rv-carousel-slide-inner"><img src="reviews-carousel/slide-04.png?v=20260328-rv2" alt="Отзывы клиентов на Авито, фрагмент 4" loading="lazy" decoding="async" width="900" height="1200"></div></div>
+        <div class="rv-carousel-slide"><div class="rv-carousel-slide-inner"><img src="reviews-carousel/slide-05.png?v=20260328-rv2" alt="Отзывы клиентов на Авито, фрагмент 5" loading="lazy" decoding="async" width="900" height="1200"></div></div>
+        <div class="rv-carousel-slide"><div class="rv-carousel-slide-inner"><img src="reviews-carousel/slide-06.png?v=20260328-rv2" alt="Отзывы клиентов на Авито, фрагмент 6" loading="lazy" decoding="async" width="900" height="1200"></div></div>
       </div>
     </div>
     <div class="rv-carousel-dots" id="rvDots" role="tablist" aria-label="Слайды отзывов"></div>
@@ -871,22 +871,13 @@ t.addEventListener("scroll",function(){var w=slides[0].offsetWidth+20;var i=Math
 var vp=document.getElementById('rvViewport'),track=document.getElementById('rvTrack'),prev=document.getElementById('rvPrev'),next=document.getElementById('rvNext'),dotsEl=document.getElementById('rvDots');
 if(!vp||!track||!prev||!next||!dotsEl)return;
 var slides=track.querySelectorAll('.rv-carousel-slide'),n=slides.length,idx=0;
-function align(){
-  var el=slides[idx];
-  if(!el)return;
-  var off=el.offsetLeft-(vp.clientWidth-el.offsetWidth)/2;
-  track.style.transform='translateX('+(-off)+'px)';
-}
+function slideW(){return vp.offsetWidth}
 function go(i){
   idx=Math.max(0,Math.min(i,n-1));
-  for(var k=0;k<n;k++){slides[k].classList.toggle('is-active',k===idx)}
+  track.style.transform='translateX('+(-idx*slideW())+'px)';
   dotsEl.querySelectorAll('.rv-carousel-dot').forEach(function(d,k){d.classList.toggle('active',k===idx);d.setAttribute('aria-selected',k===idx?'true':'false')});
   prev.disabled=idx===0;
   next.disabled=idx===n-1;
-  track.style.transition='transform .5s cubic-bezier(.25,.82,.2,1)';
-  requestAnimationFrame(function(){
-    requestAnimationFrame(align);
-  });
 }
 for(var i=0;i<n;i++){
   var dot=document.createElement('button');
@@ -900,16 +891,8 @@ for(var i=0;i<n;i++){
 }
 prev.addEventListener('click',function(){go(idx-1)});
 next.addEventListener('click',function(){go(idx+1)});
-function onResize(){
-  track.style.transition='none';
-  align();
-  requestAnimationFrame(function(){track.style.transition=''});
-}
-window.addEventListener('resize',onResize);
+window.addEventListener('resize',function(){track.style.transition='none';go(idx);requestAnimationFrame(function(){track.style.transition=''})});
 window.addEventListener('load',function(){go(idx)});
-track.querySelectorAll('img').forEach(function(im){
-  im.addEventListener('load',function(){go(idx)});
-});
 go(0);
 })();
 </script>
