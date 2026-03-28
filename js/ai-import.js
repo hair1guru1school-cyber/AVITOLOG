@@ -625,7 +625,7 @@
     if (days === 1) return 'завтра';
     if (days === -1) return 'вчера';
     if (days > 1 && days <= 60) return days + ' д';
-    if (days < -1 && days >= -30) return Math.abs(days) + ' д назад';
+    if (days < -1) return Math.abs(days) + ' д назад';
     return formatDateDDMM(dateStr);
   }
 
