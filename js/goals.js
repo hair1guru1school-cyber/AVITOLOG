@@ -102,6 +102,8 @@
       if (!d.pinnedMetrics) d.pinnedMetrics = [];
       if (!d.pinnedMetricsMain) d.pinnedMetricsMain = [];
       if (d.totalKpFullOverride === undefined) d.totalKpFullOverride = 342000;
+      if (!Array.isArray(d.workOrderWork)) d.workOrderWork = [];
+      if (d.workTargetFilter === undefined) d.workTargetFilter = false;
       return d;
     } catch (e) { return { projects: [], customMetrics: [], pinnedMetrics: [], pinnedMetricsMain: [], totalKpFullOverride: 342000 }; }
   }
@@ -587,9 +589,10 @@
       '</div>';
   }
 
-  function renderSection(title, icon, projects, footerHtml, showBadges, showSum, blockType) {
+  function renderSection(title, icon, projects, footerHtml, showBadges, showSum, blockType, blockOpts) {
     if (showSum === undefined) showSum = true;
     blockType = blockType || '';
+    blockOpts = blockOpts || {};
     var rows = (projects || []).map(function(p) {
       var kpPrice = getMinPrice(p) || p.mainPrice || (p.priceOptions && p.priceOptions[0]) || '';
       var salePrice = (blockType === 'sold' && p.saleAmount) ? String(p.saleAmount) : '';
@@ -623,6 +626,13 @@
         sumCell = '';
       }
       var rowClass = 'goal-row goal-row-alt' + (showSum ? '' : ' goal-row-alt-no-sum');
+      if (blockType === 'work' && p.workTarget) rowClass += ' goal-work-marked';
+      var dragAttrs = (blockType === 'work')
+        ? ' draggable="true" ondragstart="window.__goalsWorkDragStart&&window.__goalsWorkDragStart(event)" ondragover="window.__goalsWorkDragOver&&window.__goalsWorkDragOver(event)" ondragleave="window.__goalsWorkDragLeave&&window.__goalsWorkDragLeave(event)" ondrop="window.__goalsWorkDrop&&window.__goalsWorkDrop(event)" ondragend="window.__goalsWorkDragEnd&&window.__goalsWorkDragEnd(event)"'
+        : '';
+      var targetBtn = (blockType === 'work')
+        ? '<button type="button" class="goal-work-target-btn' + (p.workTarget ? ' on' : '') + '" onclick="event.stopPropagation();window.__goalsToggleWorkTarget&&window.__goalsToggleWorkTarget(\'' + esc(p.id) + '\')" title="В фокусе (мишень)">🎯</button>'
+        : '';
       var emoji = p.emoji || '📦';
       var folderIcon = (p.folderLink) ? '<a href="' + esc(p.folderLink) + '" target="_blank" rel="noopener" class="goal-folder-link" title="Открыть папку" onclick="event.stopPropagation()">💿</a>' : '';
       var archBtn = (blockType === 'archive') ? '<button type="button" class="goal-restore-btn" onclick="event.stopPropagation();window.__goalsSetStage&&window.__goalsSetStage(\'' + esc(p.id) + '\',\'weekly\')" title="Вернуть в неделю">&#8634;</button>' : '';
@@ -635,6 +645,7 @@
       var actionsHtml = (archBtn || '') + (toActiveBtn || '') + (workEditBtn || '') + (workToSoldBtn || '') + (workToArchiveBtn || '') + (delBtn || '');
       var actionsInName = (blockType === 'sold' || blockType === 'work') ? actionsHtml : '';
       var nameCell = '<span class="goal-name-cell" onclick="event.stopPropagation();window.__goalsEditNameCell&&window.__goalsEditNameCell(this)">' +
+        targetBtn +
         '<button type="button" class="goal-emoji-btn" onclick="event.stopPropagation();window.__goalsShowEmojiPicker&&window.__goalsShowEmojiPicker(this,\'' + esc(p.id) + '\')" title="Изменить иконку">' + emoji + '</button>' +
         (folderIcon ? folderIcon + ' ' : '') +
         '<span class="goal-name-inline goal-name-display" data-id="' + esc(p.id) + '" title="' + esc(p.name || '') + '">' + esc(dispName) + '</span>' +
@@ -649,7 +660,7 @@
           '</div>';
       }
       var sideActions = (blockType === 'work') ? '' : ('<span class="goal-row-actions">' + actionsHtml + '</span>');
-      return '<div class="' + rowClass + '" data-id="' + esc(p.id) + '">' +
+      return '<div class="' + rowClass + '" data-id="' + esc(p.id) + '"' + dragAttrs + '>' +
         '<span class="goal-date">' + esc(formatDateShort(p.date)) + '</span>' +
         '<span class="goal-name">' + nameCell + '</span>' +
         '<span class="goal-price-wrap">' + (sumCell || '') + '</span>' +
@@ -660,8 +671,14 @@
     var dropAttrs = (blockType === 'sold')
       ? ' ondragover="window.__goalsClientDragOver && window.__goalsClientDragOver(event)" ondrop="window.__goalsClientDropToSold && window.__goalsClientDropToSold(event)"'
       : '';
+    var titleHtml = (blockType === 'work')
+      ? '<div class="goal-block-title goal-block-title-work">' +
+        '<span class="goal-block-title-txt">' + icon + ' ' + title + '</span>' +
+        '<button type="button" class="goal-work-header-filter' + (blockOpts.workTargetFilter ? ' on' : '') + '" onclick="event.stopPropagation();window.__goalsToggleWorkTargetFilter&&window.__goalsToggleWorkTargetFilter()" title="Только строки с мишенью">🎯</button>' +
+        '</div>'
+      : '<div class="goal-block-title">' + icon + ' ' + title + '</div>';
     return '<div class="goal-block goal-block-' + (blockType || '') + '"' + dropAttrs + '>' +
-      '<div class="goal-block-title">' + icon + ' ' + title + '</div>' +
+      titleHtml +
       '<div class="goal-block-rows">' + (rows.length ? rows.join('') : '<div class="goal-empty">Пусто</div>') + '</div>' +
       (footerHtml || '') +
       '<button type="button" class="goal-block-add" onclick="window.__goalsOpenModalForBtn && window.__goalsOpenModalForBtn(event)">+ Добавить проект</button>' +
@@ -682,6 +699,46 @@
       if (isFinite(t) && t > 0) return t;
     }
     return 0;
+  }
+
+  /** Сохранённый порядок id для «В РАБОТЕ» + новые в конце по дате */
+  function sortWorkingBySavedOrder(workingArr, savedIds) {
+    var working = (workingArr || []).slice();
+    if (!savedIds || !savedIds.length) {
+      return working.sort(function(a, b) { return getGoalRecencyTs(b) - getGoalRecencyTs(a); });
+    }
+    var byId = {};
+    working.forEach(function(p) { if (p && p.id) byId[p.id] = p; });
+    var seen = {};
+    var out = [];
+    savedIds.forEach(function(id) {
+      if (byId[id] && !seen[id]) {
+        out.push(byId[id]);
+        seen[id] = true;
+      }
+    });
+    var rest = working.filter(function(p) { return p && p.id && !seen[p.id]; });
+    rest.sort(function(a, b) { return getGoalRecencyTs(b) - getGoalRecencyTs(a); });
+    return out.concat(rest);
+  }
+
+  function mergeWorkingOrderIds(savedIds, workingProjects) {
+    var ids = (workingProjects || []).map(function(p) { return p && p.id; }).filter(Boolean);
+    var seen = {};
+    var out = [];
+    (savedIds || []).forEach(function(id) {
+      if (ids.indexOf(id) >= 0 && !seen[id]) {
+        out.push(id);
+        seen[id] = true;
+      }
+    });
+    ids.forEach(function(id) {
+      if (!seen[id]) {
+        out.push(id);
+        seen[id] = true;
+      }
+    });
+    return out;
   }
   function render() {
     var data = loadData();
@@ -717,18 +774,23 @@
       else week4.push(p);
     });
 
-    working.sort(function(a, b) { return getGoalRecencyTs(b) - getGoalRecencyTs(a); });
+    working = sortWorkingBySavedOrder(working, data.workOrderWork || []);
+    var workingForList = data.workTargetFilter ? working.filter(function(p) { return p && p.workTarget; }) : working;
     var workExpanded = !!data.workExpanded;
     var WORK_LIMIT = 20;
-    var workingVisible = workExpanded ? working.slice() : working.slice(0, WORK_LIMIT);
-    var hasMoreWorking = working.length > WORK_LIMIT;
+    var workingVisible = workExpanded ? workingForList.slice() : workingForList.slice(0, WORK_LIMIT);
+    var hasMoreWorking = workingForList.length > WORK_LIMIT;
 
     var totalRevenue = sold.reduce(function(sum, p) {
       var val = p.saleAmount || p.mainPrice || (p.priceOptions && p.priceOptions[0]);
       var v = parseFloat(String(val || '0').replace(/\s/g, '')) || 0;
       return sum + v;
     }, 0);
-    var totalPotential = working.reduce(function(sum, p) {
+    var totalPotentialAll = working.reduce(function(sum, p) {
+      var v = parseFloat(String(p.mainPrice || p.priceOptions && p.priceOptions[0]).replace(/\s/g, '')) || 0;
+      return sum + v;
+    }, 0);
+    var totalPotential = workingForList.reduce(function(sum, p) {
       var v = parseFloat(String(p.mainPrice || p.priceOptions && p.priceOptions[0]).replace(/\s/g, '')) || 0;
       return sum + v;
     }, 0);
@@ -755,7 +817,7 @@
     var allWithKp = week1.concat(week2, week3, week4).filter(hasKpTag);
     var totalKpSum = allWithKp.reduce(function(s, p) { return s + getProjectSum(p); }, 0);
     var totalKpFull = totalKpSum + totalRevenue;
-    var funnelTotal = totalRevenue + totalPotential;
+    var funnelTotal = totalRevenue + totalPotentialAll;
     var kpCount = allWithKp.length;
     var totalCount = projects.length;
     var workingCount = working.length;
@@ -855,11 +917,12 @@
             'В РАБОТЕ',
             '🔥',
             workingVisible,
-            '<div class="goal-total">ОБЩИЙ ПОТЕНЦИАЛ: ' + esc(String(fmtNum(totalPotential))) + ' ₽</div>' +
-            (hasMoreWorking ? '<button type="button" class="goal-work-more-btn" onclick="window.__goalsToggleWorkRows&&window.__goalsToggleWorkRows()">' + (workExpanded ? 'Свернуть до 20' : ('Показать еще (' + (working.length - WORK_LIMIT) + ')')) + '</button>' : ''),
+            '<div class="goal-total">' + (data.workTargetFilter ? 'ПОТЕНЦИАЛ (видимые): ' : 'ОБЩИЙ ПОТЕНЦИАЛ: ') + esc(String(fmtNum(totalPotential))) + ' ₽</div>' +
+            (hasMoreWorking ? '<button type="button" class="goal-work-more-btn" onclick="window.__goalsToggleWorkRows&&window.__goalsToggleWorkRows()">' + (workExpanded ? 'Свернуть до 20' : ('Показать еще (' + Math.max(0, workingForList.length - WORK_LIMIT) + ')')) + '</button>' : ''),
             true,
             true,
-            'work'
+            'work',
+            { workTargetFilter: !!data.workTargetFilter }
           ) +
       '</div>' +
       '<div class="goals-archive-wrap">' +
@@ -1002,6 +1065,67 @@
       d.workExpanded = !d.workExpanded;
       saveData(d);
       render();
+    };
+    window.__goalsToggleWorkTarget = function(projectId) {
+      var d = loadData();
+      var p = (d.projects || []).find(function(x) { return x.id === projectId; });
+      if (!p) return;
+      p.workTarget = !p.workTarget;
+      saveData(d);
+      render();
+    };
+    window.__goalsToggleWorkTargetFilter = function() {
+      var d = loadData();
+      d.workTargetFilter = !d.workTargetFilter;
+      saveData(d);
+      render();
+    };
+    window.__goalsWorkDragStart = function(e) {
+      var el = e.target;
+      if (el && el.closest && el.closest('button, a, input, textarea, .goal-sum, .goal-designations')) {
+        e.preventDefault();
+        return false;
+      }
+      var row = e.currentTarget;
+      if (!row || !row.getAttribute('data-id')) return;
+      e.dataTransfer.setData('text/plain', row.getAttribute('data-id'));
+      e.dataTransfer.effectAllowed = 'move';
+      row.classList.add('goal-row-work-dragging');
+    };
+    window.__goalsWorkDragOver = function(e) {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      var row = e.currentTarget;
+      if (row && row.classList && row.classList.contains('goal-row-alt')) row.classList.add('goal-row-work-drag-over');
+    };
+    window.__goalsWorkDragLeave = function(e) {
+      var row = e.currentTarget;
+      if (row) row.classList.remove('goal-row-work-drag-over');
+    };
+    window.__goalsWorkDrop = function(e) {
+      e.preventDefault();
+      e.stopPropagation();
+      var row = e.currentTarget;
+      if (row) row.classList.remove('goal-row-work-drag-over');
+      var dragId = e.dataTransfer.getData('text/plain');
+      var dropId = row.getAttribute('data-id');
+      if (!dragId || !dropId || dragId === dropId) return;
+      var d = loadData();
+      var working = (d.projects || []).filter(function(p) { return p && p.stage === 'working'; });
+      var order = mergeWorkingOrderIds(d.workOrderWork || [], working);
+      var from = order.indexOf(dragId);
+      var to = order.indexOf(dropId);
+      if (from < 0 || to < 0) return;
+      order.splice(from, 1);
+      order.splice(to, 0, dragId);
+      d.workOrderWork = order;
+      saveData(d);
+      render();
+    };
+    window.__goalsWorkDragEnd = function(e) {
+      var row = e.currentTarget;
+      if (row) row.classList.remove('goal-row-work-dragging');
+      document.querySelectorAll('.goal-row-alt.goal-row-work-drag-over').forEach(function(r) { r.classList.remove('goal-row-work-drag-over'); });
     };
     window.__goalsScrollToWork = function() {
       var el = document.getElementById('goalsWorkBlockAnchor');

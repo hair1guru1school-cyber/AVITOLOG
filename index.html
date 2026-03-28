@@ -1894,6 +1894,19 @@ min-width:720px
 .goal-block-work .goal-row-alt .goal-row-actions{justify-content:flex-end;gap:4px}
 .goal-block-work .goal-row-alt:nth-child(odd){background:transparent}
 .goal-block-work .goal-row-alt:nth-child(even){background:transparent}
+.goal-block-title-work{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.goal-block-title-work .goal-block-title-txt{flex:1;min-width:0}
+.goal-work-header-filter{width:28px;height:28px;border-radius:8px;border:1px solid rgba(124,245,255,0.25);background:rgba(255,255,255,0.04);color:rgba(180,190,210,0.85);cursor:pointer;font-size:14px;display:inline-flex;align-items:center;justify-content:center;padding:0;transition:all .15s;flex-shrink:0}
+.goal-work-header-filter:hover{border-color:rgba(255,200,0,0.45);color:#ffd080}
+.goal-work-header-filter.on{border-color:rgba(255,200,0,0.55);background:rgba(255,200,0,0.14);color:#ffd080;box-shadow:0 0 12px rgba(255,200,0,0.15)}
+.goal-work-target-btn{width:22px;height:22px;min-width:22px;border-radius:6px;border:1px solid rgba(124,245,255,0.22);background:transparent;color:rgba(180,210,255,0.35);cursor:pointer;font-size:11px;display:inline-flex;align-items:center;justify-content:center;padding:0;margin-right:2px;flex-shrink:0;transition:all .12s}
+.goal-work-target-btn:hover{border-color:rgba(255,200,0,0.45);color:rgba(255,220,200,0.95)}
+.goal-work-target-btn.on{border-color:rgba(255,200,0,0.5);background:rgba(255,200,0,0.12);color:#ffd080;box-shadow:0 0 8px rgba(255,200,0,0.12)}
+.goal-block-work .goal-row-alt.goal-work-marked{background:rgba(255,200,0,0.07)!important;box-shadow:inset 0 0 0 1px rgba(255,200,0,0.14)}
+.goal-block-work .goal-row-alt.goal-row-work-dragging{opacity:0.55}
+.goal-block-work .goal-row-alt.goal-row-work-drag-over{box-shadow:inset 0 -2px 0 0 rgba(0,217,126,0.65)}
+.goal-block-work .goal-row-alt[draggable="true"]{cursor:grab}
+.goal-block-work .goal-row-alt[draggable="true"]:active{cursor:grabbing}
 .goal-row-alt.goal-row-alt-no-sum{grid-template-columns:32px 1fr 44px}
 .goal-row-actions{display:flex;align-items:center;justify-content:flex-end;gap:4px;flex-wrap:nowrap;white-space:nowrap}
 .goal-restore-btn{width:22px;height:22px;border:1px solid rgba(53,208,255,0.15);background:transparent;color:#7cf5ff;border-radius:50%;cursor:pointer;font-size:11px;display:flex;align-items:center;justify-content:center;padding:0;transition:all .1s}
@@ -2143,7 +2156,7 @@ min-width:720px
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 <script src="https://accounts.google.com/gsi/client" async></script>
-<script src="js/goals.js"></script>
+<script src="js/goals.js?v=20260328-2"></script>
 <script>
 if (!window.AVITOLOG_GOALS) {
   window.AVITOLOG_GOALS = window.__AVITOLOG_GOALS_LEGACY = { render: function() {
