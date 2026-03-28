@@ -276,8 +276,10 @@
     return [];
   }
 
-  function escHtmlNl(s) {
-    return esc(String(s || '')).replace(/\n/g, '<br>');
+  function kpResizePkgTextarea(ta) {
+    if (!ta || ta.tagName !== 'TEXTAREA') return;
+    ta.style.height = 'auto';
+    ta.style.height = Math.max(40, ta.scrollHeight) + 'px';
   }
 
   function buildBlock2PackagesPreviewHtml(packages) {
@@ -285,32 +287,33 @@
       return '<div class="kp-b2-empty">Выберите нишу — появятся 4 пакета (СТАРТ · ЗАПУСК · МИДЛ · АЛЬФА)</div>';
     }
     return (
-      '<div class="kp-b2-grid">' +
+      '<div class="kp-b2-stack">' +
       packages
         .map(function (p, idx) {
           return (
-            '<div class="kp-pkg-card">' +
-            '<div class="kp-pkg-card-head">' +
-            '<span class="kp-pkg-card-emoji">' +
-            esc(p.emoji || '📦') +
-            '</span>' +
-            '<span class="kp-pkg-card-name">' +
-            esc(p.name || '') +
-            '</span>' +
-            '<button type="button" class="kp-pkg-edit-btn" data-kp-pkg-idx="' +
+            '<div class="kp-pkg-strip" data-kp-pkg-idx="' +
             idx +
-            '" title="Настроить пакет">✎</button>' +
+            '">' +
+            '<div class="kp-pkg-strip-head">' +
+            '<input type="text" class="kp-pkg-inline-emoji" data-kp-field="emoji" value="' +
+            esc(p.emoji || '📦') +
+            '" maxlength="16" title="Эмодзи" aria-label="Эмодзи пакета">' +
+            '<input type="text" class="kp-pkg-inline-name" data-kp-field="name" value="' +
+            esc(p.name || '') +
+            '" placeholder="СТАРТ · ЗАПУСК …" aria-label="Название пакета">' +
             '</div>' +
-            (p.headerLine
-              ? '<div class="kp-pkg-line kp-pkg-header-txt">' + escHtmlNl(p.headerLine) + '</div>'
-              : '') +
-            (p.priceLine ? '<div class="kp-pkg-line kp-pkg-price-txt">' + escHtmlNl(p.priceLine) + '</div>' : '') +
-            (p.bullets
-              ? '<div class="kp-pkg-line kp-pkg-bullets-txt">' + escHtmlNl(p.bullets) + '</div>'
-              : '') +
-            (p.bonuses
-              ? '<div class="kp-pkg-line kp-pkg-bonus-txt">' + escHtmlNl(p.bonuses) + '</div>'
-              : '') +
+            '<textarea class="kp-ta kp-pkg-edit-ta kp-pkg-edit-header" data-kp-field="header" rows="2" placeholder="Заголовок (объём, кавычки)">' +
+            esc(p.headerLine || '') +
+            '</textarea>' +
+            '<textarea class="kp-ta kp-pkg-edit-ta kp-pkg-edit-price" data-kp-field="price" rows="2" placeholder="Строка с ценой (🔹)">' +
+            esc(p.priceLine || '') +
+            '</textarea>' +
+            '<textarea class="kp-ta kp-pkg-edit-ta kp-pkg-edit-bullets" data-kp-field="bullets" rows="4" placeholder="Основной список (строки с -)">' +
+            esc(p.bullets || '') +
+            '</textarea>' +
+            '<textarea class="kp-ta kp-pkg-edit-ta kp-pkg-edit-bonuses" data-kp-field="bonuses" rows="4" placeholder="Бонусы (строки с 🎁)">' +
+            esc(p.bonuses || '') +
+            '</textarea>' +
             '</div>'
           );
         })
@@ -525,106 +528,6 @@
         saveTemplatesState(T);
       }
       closeKpTplModal();
-      if (typeof window.__showKpGenerator === 'function' && mc) window.__showKpGenerator(mc);
-    };
-  }
-
-  function closeKpPkgModal() {
-    var m = document.getElementById('kpPkgEditModal');
-    if (m && m._kpPkgEsc) {
-      document.removeEventListener('keydown', m._kpPkgEsc);
-      m._kpPkgEsc = null;
-    }
-    if (m && m.parentNode) m.parentNode.removeChild(m);
-  }
-
-  function openKpPackageEditor(idx, mc) {
-    closeKpPkgModal();
-    var d = loadDraft();
-    ensureBlock2(d);
-    var pkgs = d.block2.packages || [];
-    var p = pkgs[idx];
-    if (!p) return;
-    var wrap = document.createElement('div');
-    wrap.id = 'kpPkgEditModal';
-    wrap.className = 'kp-tpl-modal';
-    var emojiGrid = KP_EMOJI_PICK.map(function (em) {
-      return (
-        '<button type="button" class="kp-emoji-cell" data-emoji="' +
-        esc(em) +
-        '">' +
-        esc(em) +
-        '</button>'
-      );
-    }).join('');
-    wrap.innerHTML =
-      '<div class="kp-tpl-modal-backdrop"></div>' +
-      '<div class="kp-tpl-modal-panel kp-pkg-edit-panel">' +
-      '<div class="kp-tpl-modal-title">Пакет: ' +
-      esc(p.name || '') +
-      '</div>' +
-      '<label class="kp-tpl-modal-lbl">Эмодзи пакета</label>' +
-      '<div class="kp-emoji-grid">' +
-      emojiGrid +
-      '</div>' +
-      '<label class="kp-tpl-modal-lbl">Название (СТАРТ / ЗАПУСК …)</label>' +
-      '<input type="text" class="kp-inp" id="kpPkgEditName" value="' +
-      esc(p.name || '') +
-      '">' +
-      '<label class="kp-tpl-modal-lbl">Заголовок (объём, кавычки)</label>' +
-      '<textarea class="kp-ta" id="kpPkgEditHeader" rows="2">' +
-      esc(p.headerLine || '') +
-      '</textarea>' +
-      '<label class="kp-tpl-modal-lbl">Цена / строка с 🔹</label>' +
-      '<textarea class="kp-ta" id="kpPkgEditPrice" rows="2">' +
-      esc(p.priceLine || '') +
-      '</textarea>' +
-      '<label class="kp-tpl-modal-lbl">Основной список (строки с -)</label>' +
-      '<textarea class="kp-ta" id="kpPkgEditBullets" rows="6" placeholder="Каждая строка с дефисом"></textarea>' +
-      '<label class="kp-tpl-modal-lbl">Бонусы (строки с 🎁)</label>' +
-      '<textarea class="kp-ta" id="kpPkgEditBonuses" rows="8" placeholder="Каждая строка с 🎁"></textarea>' +
-      '<div class="kp-tpl-modal-actions">' +
-      '<button type="button" class="kp-btn kp-btn-secondary" id="kpPkgEditCancel">Отмена</button>' +
-      '<button type="button" class="kp-btn kp-btn-primary" id="kpPkgEditSave">Сохранить</button>' +
-      '</div></div>';
-    document.body.appendChild(wrap);
-    wrap.querySelector('#kpPkgEditBullets').value = p.bullets || '';
-    wrap.querySelector('#kpPkgEditBonuses').value = p.bonuses || '';
-    var selEmoji = p.emoji || '📦';
-    function markSel() {
-      wrap.querySelectorAll('.kp-emoji-cell').forEach(function (b) {
-        b.classList.toggle('on', b.getAttribute('data-emoji') === selEmoji);
-      });
-    }
-    markSel();
-    wrap.querySelectorAll('.kp-emoji-cell').forEach(function (b) {
-      b.onclick = function () {
-        selEmoji = b.getAttribute('data-emoji') || '📦';
-        markSel();
-      };
-    });
-    wrap.querySelector('.kp-tpl-modal-backdrop').onclick = closeKpPkgModal;
-    wrap.querySelector('#kpPkgEditCancel').onclick = closeKpPkgModal;
-    function onEscPkg(ev) {
-      if (ev.key === 'Escape') closeKpPkgModal();
-    }
-    wrap._kpPkgEsc = onEscPkg;
-    document.addEventListener('keydown', onEscPkg);
-    wrap.querySelector('#kpPkgEditSave').onclick = function () {
-      var d2 = loadDraft();
-      ensureBlock2(d2);
-      var arr = d2.block2.packages || [];
-      var it = arr[idx];
-      if (it) {
-        it.name = String(wrap.querySelector('#kpPkgEditName').value || '').trim() || it.name;
-        it.emoji = selEmoji;
-        it.headerLine = String(wrap.querySelector('#kpPkgEditHeader').value || '').trim();
-        it.priceLine = String(wrap.querySelector('#kpPkgEditPrice').value || '').trim();
-        it.bullets = String(wrap.querySelector('#kpPkgEditBullets').value || '').trim();
-        it.bonuses = String(wrap.querySelector('#kpPkgEditBonuses').value || '').trim();
-        saveDraft(d2);
-      }
-      closeKpPkgModal();
       if (typeof window.__showKpGenerator === 'function' && mc) window.__showKpGenerator(mc);
     };
   }
@@ -883,13 +786,39 @@
         rerender();
       };
     }
-    mc.querySelectorAll('.kp-pkg-edit-btn').forEach(function (btn) {
-      btn.onclick = function (e) {
-        e.stopPropagation();
-        var i = parseInt(btn.getAttribute('data-kp-pkg-idx'), 10);
-        if (!isFinite(i)) return;
-        openKpPackageEditor(i, mc);
-      };
+    function persistBlock2PkgField(idx, fieldKey, raw) {
+      var d = loadDraft();
+      ensureBlock2(d);
+      var p = d.block2.packages[idx];
+      if (!p) return;
+      var v = String(raw || '');
+      if (fieldKey === 'emoji') p.emoji = v.trim().slice(0, 16) || '📦';
+      else if (fieldKey === 'name') p.name = v.trim();
+      else if (fieldKey === 'header') p.headerLine = v.trim();
+      else if (fieldKey === 'price') p.priceLine = v.trim();
+      else if (fieldKey === 'bullets') p.bullets = v.trim();
+      else if (fieldKey === 'bonuses') p.bonuses = v.trim();
+      saveDraft(d);
+    }
+    mc.querySelectorAll('.kp-pkg-strip').forEach(function (strip) {
+      var idx = parseInt(strip.getAttribute('data-kp-pkg-idx'), 10);
+      if (!isFinite(idx)) return;
+      strip.querySelectorAll('[data-kp-field]').forEach(function (inp) {
+        var key = inp.getAttribute('data-kp-field');
+        if (!key) return;
+        function save() {
+          persistBlock2PkgField(idx, key, inp.value);
+        }
+        inp.addEventListener('blur', save);
+        if (inp.tagName === 'TEXTAREA') {
+          inp.addEventListener('input', function () {
+            kpResizePkgTextarea(inp);
+          });
+        }
+      });
+    });
+    mc.querySelectorAll('.kp-pkg-edit-ta').forEach(function (ta) {
+      kpResizePkgTextarea(ta);
     });
   }
 
