@@ -125,8 +125,8 @@ nav::after{content:'';position:absolute;bottom:0;left:0;right:0;height:1px;backg
 .sec.process-section{margin-top:-1px;padding-top:calc(clamp(16px,2.5vw,32px) + 1px);padding-bottom:clamp(8px,1.2vw,16px);padding-left:0;padding-right:0}
 .process-section{background:var(--bg2);overflow-x:hidden}
 .process-visual-wrap{position:relative;display:block;margin:0;width:100%;max-width:none;min-width:0;box-sizing:border-box;border-radius:0;overflow:hidden;border:none;box-shadow:none;background:#05080f;line-height:0;width:100%;aspect-ratio:2/1;max-height:min(62vw,760px);min-height:min(340px,85vw);isolation:isolate}
-.process-visual-img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center 54%;display:block;backface-visibility:hidden;transform:translateZ(0)}
-.process-visual-overlay{position:absolute;inset:0;z-index:1;pointer-events:none;background:linear-gradient(180deg,rgba(0,0,0,.78) 0%,rgba(0,0,0,.62) 18%,rgba(0,0,0,.48) 36%,rgba(0,0,0,.52) 58%,rgba(0,0,0,.85) 86%,rgba(0,0,0,.93) 100%)}
+.process-visual-img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center 62%;display:block;backface-visibility:hidden;transform:translateZ(0)}
+.process-visual-overlay{position:absolute;inset:0;z-index:1;pointer-events:none;background:linear-gradient(180deg,rgba(0,0,0,.94) 0%,rgba(0,0,0,.88) 7%,rgba(0,0,0,.72) 16%,rgba(0,0,0,.48) 32%,rgba(0,0,0,.52) 58%,rgba(0,0,0,.86) 86%,rgba(0,0,0,.93) 100%)}
 .process-visual-caption{position:absolute;left:0;right:0;top:0;z-index:3;padding:clamp(14px,2.8vw,32px) clamp(20px,4vw,80px) 6px;text-align:left;box-sizing:border-box;pointer-events:none;line-height:normal}
 .process-caption-lbl{color:var(--cyan);text-shadow:0 2px 12px rgba(0,0,0,.95)}
 .process-title-on-img{color:#f0f4ff;text-shadow:0 2px 16px rgba(0,0,0,.9);margin-bottom:0;font-size:clamp(22px,3.6vw,44px)}
@@ -141,7 +141,7 @@ nav::after{content:'';position:absolute;bottom:0;left:0;right:0;height:1px;backg
 .process-visual-wrap .p-desc{font-size:clamp(7px,0.82vw,10px);color:rgba(230,236,248,.95);line-height:1.35;margin:0}
 @media(max-width:900px){
 .process-visual-wrap{aspect-ratio:4/3;max-height:none;min-height:0;max-width:100%}
-.process-visual-img{object-position:center 48%}
+.process-visual-img{object-position:center 58%}
 .process-visual-wrap .p-steps{grid-template-columns:1fr 1fr;row-gap:8px;padding:8px clamp(16px,4vw,40px) 14px;column-gap:6px}
 .process-title-on-img{font-size:clamp(18px,5vw,28px)}
 }
@@ -225,10 +225,10 @@ nav::after{content:'';position:absolute;bottom:0;left:0;right:0;height:1px;backg
 
 .vk-promo + .sec{margin-top:-1px;padding-top:calc(clamp(56px,7vw,96px) + 1px)}
 /* VK block */
-.vk-promo{position:relative;overflow:hidden;border-top:none;border-bottom:none;padding-top:clamp(10px,1.8vw,22px);box-sizing:border-box;background-color:#060a12;background-image:linear-gradient(180deg,rgba(2,4,10,.36) 0%,rgba(4,8,18,.5) 52%,rgba(5,8,16,.78) 100%),url('vk-promo-art.png?v=20260328-vk11');background-position:center 36%;background-size:cover;background-repeat:no-repeat;scroll-margin-top:72px;min-height:min(58vh,680px)}
-.vk-promo::before{content:'';position:absolute;left:0;right:0;top:0;height:clamp(36px,7vw,120px);z-index:1;pointer-events:none;background:linear-gradient(180deg,rgba(5,7,13,.4) 0%,rgba(5,7,13,.08) 65%,transparent 100%)}
-.vk-promo::after{content:'';position:absolute;left:0;right:0;bottom:0;height:min(48%,380px);z-index:1;pointer-events:none;background:linear-gradient(0deg,rgba(3,5,12,.88) 0%,rgba(6,10,18,.42) 42%,transparent 100%)}
-.vk-inner{position:relative;z-index:2;max-width:min(1180px,94vw);margin:0 auto;display:flex;align-items:center;justify-content:space-between;gap:clamp(24px,4vw,56px);text-align:left;padding:clamp(36px,5vw,76px) clamp(20px,4vw,48px) clamp(88px,11vw,128px)}
+.vk-promo{position:relative;overflow:hidden;border-top:none;border-bottom:none;padding-top:clamp(20px,3.2vw,44px);box-sizing:border-box;background-color:#060a12;background-image:linear-gradient(180deg,rgba(2,4,10,.32) 0%,rgba(4,8,18,.46) 48%,rgba(5,8,16,.72) 100%),url('vk-promo-art.png?v=20260328-vk12');background-position:center top;background-size:cover;background-repeat:no-repeat;scroll-margin-top:72px;min-height:min(74vh,900px)}
+.vk-promo::before{content:'';position:absolute;left:0;right:0;top:0;height:clamp(56px,11vw,200px);z-index:1;pointer-events:none;background:linear-gradient(180deg,var(--bg) 0%,rgba(5,7,13,.52) 38%,rgba(5,7,13,.14) 72%,transparent 100%)}
+.vk-promo::after{content:'';position:absolute;left:0;right:0;bottom:0;height:min(58%,520px);z-index:1;pointer-events:none;background:linear-gradient(0deg,var(--bg2) 0%,rgba(3,5,12,.72) 22%,rgba(6,10,18,.34) 52%,transparent 100%)}
+.vk-inner{position:relative;z-index:2;max-width:min(1180px,94vw);margin:0 auto;display:flex;align-items:center;justify-content:space-between;gap:clamp(24px,4vw,56px);text-align:left;padding:clamp(32px,5vw,72px) clamp(20px,4vw,48px) clamp(104px,14vw,168px)}
 .vk-col-text{flex:1;min-width:0;max-width:min(38em,100%)}
 .vk-col-text .sec-lbl,.vk-col-text .sec-title,.vk-col-text .sec-desc{text-align:left}
 .vk-col-text .sec-desc{margin-left:0;margin-right:0;max-width:100%}
@@ -246,7 +246,7 @@ nav::after{content:'';position:absolute;bottom:0;left:0;right:0;height:1px;backg
 .vk-col-text .sec-lbl,.vk-col-text .sec-title,.vk-col-text .sec-desc{text-align:center}
 .vk-col-text{max-width:42em}
 }
-@media(max-width:640px){.vk-promo{background-position:center 34%;min-height:min(62vh,560px)}.vk-inner{padding-left:16px;padding-right:16px}}
+@media(max-width:640px){.vk-promo{background-position:center top;min-height:min(72vh,720px)}.vk-inner{padding-left:16px;padding-right:16px}}
 
 /* AVITO WHY */
 .avwhy{position:relative;overflow:hidden;background:linear-gradient(180deg,transparent 0%,transparent 65%,rgba(6,10,18,.28) 82%,rgba(6,10,18,.62) 94%,rgba(6,10,18,.88) 100%),var(--bg);padding-bottom:clamp(48px,7vw,88px)}
@@ -554,7 +554,7 @@ footer{background:var(--bg);border-top:1px solid var(--border);padding:40px 80px
 <!-- PROCESS -->
 <section class="sec process-section" id="process">
   <figure class="process-visual-wrap" aria-label="5 шагов: 1. Консультация и аудит. 2. Стратегия и договор. 3. Упаковка магазина. 4. Запуск и масштаб. 5. Рост и отчётность.">
-    <img class="process-visual-img" src="process-steps-panorama.png?v=20260328-ps8" alt="Пять этапов работы: консультация и аудит, стратегия и договор, упаковка магазина, запуск и масштаб, рост и отчётность" width="1920" height="640" loading="lazy" decoding="async" sizes="(max-width:900px) 100vw, min(1200px, 100vw)" />
+    <img class="process-visual-img" src="process-steps-panorama.png?v=20260328-ps9" alt="Пять этапов работы: консультация и аудит, стратегия и договор, упаковка магазина, запуск и масштаб, рост и отчётность" width="1920" height="640" loading="lazy" decoding="async" sizes="(max-width:900px) 100vw, min(1200px, 100vw)" />
     <div class="process-visual-overlay" aria-hidden="true"></div>
     <figcaption class="process-visual-caption">
       <div class="sec-lbl process-caption-lbl">Как работаем</div>
