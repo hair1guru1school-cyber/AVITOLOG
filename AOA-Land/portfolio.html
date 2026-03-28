@@ -8,6 +8,7 @@
 <meta http-equiv="Expires" content="0">
 <title>Галерея работ — Портфолио | Aces of Ads</title>
 <link href="https://fonts.googleapis.com/css2?family=Exo+2:wght@300;400;600;700;800;900&family=Oswald:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="preload" href="portfolio-hero-bg.png" as="image">
 <style>
 :root{--bg:#020308;--bg2:#070c14;--surface:#0c121c;--s2:#121a28;--red:#e8001d;--red2:#ff2040;--red-dim:rgba(232,0,29,.12);--red-glow:rgba(232,0,29,.4);--cyan:#00cfff;--text:#f0f4ff;--muted:#7a9abb;--border:rgba(255,255,255,.08);--border-r:rgba(232,0,29,.3)}
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
@@ -22,14 +23,18 @@ nav::after{content:'';position:absolute;bottom:0;left:0;right:0;height:1px;backg
 .nav-tools{display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:flex-end}
 .nav-back{color:var(--muted);text-decoration:none;font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;padding:9px 18px;border:1px solid var(--border);transition:all .2s}
 .nav-back:hover{color:var(--red);border-color:var(--border-r);background:var(--red-dim)}
-.nav-sec{color:var(--muted);text-decoration:none;font-size:10px;font-weight:700;letter-spacing:1px;padding:8px 12px;border:1px dashed var(--border)}
-.nav-sec:hover{color:var(--cyan);border-color:var(--cyan)}
-.portfolio-hero{position:relative;z-index:1;padding:48px 48px 32px;max-width:1200px;margin:0 auto}
-.hero-lbl{display:inline-flex;align-items:center;gap:12px;font-size:11px;font-weight:700;letter-spacing:4px;text-transform:uppercase;color:var(--cyan);margin-bottom:16px}
-.hero-lbl::before{content:'';width:32px;height:1px;background:var(--cyan);box-shadow:0 0 8px var(--cyan)}
-.portfolio-h1{font-family:'Oswald',sans-serif;font-size:clamp(36px,6vw,72px);font-weight:700;line-height:1.05;letter-spacing:-.5px;margin-bottom:12px}
-.portfolio-h1 .accent{color:var(--red);text-shadow:0 0 40px rgba(232,0,29,.35)}
-.portfolio-sub{font-family:'Oswald',sans-serif;font-size:clamp(18px,2.5vw,26px);font-weight:400;color:rgba(240,244,255,.65);letter-spacing:1px}
+.nav-sec{color:var(--muted);text-decoration:none;font-size:10px;font-weight:700;letter-spacing:1px;padding:8px 12px;border:1px dashed var(--border);transition:none}
+.nav-sec:hover{color:var(--cyan);border-color:var(--cyan);transition:none}
+.portfolio-hero-wrap{position:relative;width:100vw;margin-left:calc(50% - 50vw);margin-right:calc(50% - 50vw);min-height:min(78vh,720px);display:flex;flex-direction:column;justify-content:flex-end;overflow:hidden;margin-bottom:6px;z-index:1}
+.portfolio-hero-bg{position:absolute;inset:0;background:url('portfolio-hero-bg.png') center 38%/cover no-repeat}
+.portfolio-hero-bg::before{content:'';position:absolute;inset:0;background:linear-gradient(180deg,rgba(2,3,8,.32) 0%,rgba(8,11,18,.42) 32%,rgba(8,11,18,.72) 62%,rgba(1,2,6,.9) 86%,var(--bg) 100%)}
+.portfolio-hero-inner{position:relative;z-index:2;max-width:1200px;margin:0 auto;width:100%;padding:56px 48px 44px}
+.portfolio-hero{position:relative;z-index:2;padding:0;max-width:none;margin:0}
+.hero-lbl{display:inline-flex;align-items:center;gap:12px;font-size:11px;font-weight:700;letter-spacing:4px;text-transform:uppercase;color:var(--cyan);margin-bottom:16px;text-shadow:0 2px 18px rgba(0,0,0,.75),0 0 20px rgba(0,207,255,.15)}
+.hero-lbl::before{content:'';width:32px;height:1px;background:var(--cyan);box-shadow:0 0 12px var(--cyan)}
+.portfolio-h1{font-family:'Oswald',sans-serif;font-size:clamp(36px,6vw,72px);font-weight:700;line-height:1.05;letter-spacing:-.5px;margin-bottom:14px;color:var(--text);text-shadow:0 0 40px rgba(0,0,0,.5),0 4px 24px rgba(0,0,0,.45),0 2px 4px rgba(0,0,0,.35)}
+.portfolio-h1 .accent{color:var(--red);text-shadow:0 0 48px rgba(232,0,29,.45),0 4px 20px rgba(0,0,0,.45)}
+.portfolio-sub{font-family:'Oswald',sans-serif;font-size:clamp(17px,2.4vw,25px);font-weight:400;color:rgba(240,244,255,.9);letter-spacing:.4px;margin:0;max-width:52ch;line-height:1.38;text-shadow:0 2px 18px rgba(0,0,0,.65),0 1px 2px rgba(0,0,0,.45)}
 .filters-wrap{position:relative;z-index:1;max-width:1200px;margin:0 auto;padding:0 48px 28px}
 .filters{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
 .fbtn{display:inline-flex;align-items:center;gap:8px;padding:10px 18px;background:transparent;border:1px solid var(--border);color:var(--muted);font-family:'Exo 2',sans-serif;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;cursor:pointer;transition:all .2s;clip-path:polygon(0 0,calc(100% - 8px) 0,100% 8px,100% 100%,8px 100%,0 calc(100% - 8px))}
@@ -72,7 +77,7 @@ nav::after{content:'';position:absolute;bottom:0;left:0;right:0;height:1px;backg
 .lb-nav.prev{left:8px}
 .lb-nav.next{right:8px}
 .lb-cap{position:absolute;bottom:-40px;left:0;right:0;text-align:center;font-size:12px;color:var(--muted)}
-@media(max-width:640px){.lb-nav{width:44px;height:44px;font-size:20px}.lb-nav.prev{left:4px}.lb-nav.next{right:4px}nav{padding:0 16px 0 20px}.portfolio-hero,.filters-wrap,.sec-pick,.gallery-sec{padding-left:20px;padding-right:20px}}
+@media(max-width:640px){.lb-nav{width:44px;height:44px;font-size:20px}.lb-nav.prev{left:4px}.lb-nav.next{right:4px}nav{padding:0 16px 0 20px}.portfolio-hero-inner,.filters-wrap,.sec-pick,.gallery-sec{padding-left:20px;padding-right:20px}.portfolio-hero-wrap{min-height:min(62vh,520px)}.portfolio-hero-inner{padding-top:40px;padding-bottom:32px}}
 footer{position:relative;z-index:1;background:rgba(1,2,6,.85);border-top:1px solid var(--border);padding:28px 48px;text-align:center;font-size:11px;color:var(--muted);letter-spacing:1px}
 footer a{color:var(--cyan);text-decoration:none}
 </style>
@@ -85,11 +90,16 @@ footer a{color:var(--cyan);text-decoration:none}
     <a class="nav-back" href="index.html">← На главную</a>
   </div>
 </nav>
-<header class="portfolio-hero">
-  <div class="hero-lbl">Реальные скриншоты магазинов</div>
-  <h1 class="portfolio-h1"><span class="accent">ПОРТФОЛИО</span> ДИЗАЙНОВ</h1>
-  <p class="portfolio-sub">Миниатюры лёгкие (быстрая загрузка), в лайтбоксе — полный кадр · фильтры</p>
-</header>
+<section class="portfolio-hero-wrap" aria-label="Портфолио дизайнов">
+  <div class="portfolio-hero-bg" aria-hidden="true"></div>
+  <div class="portfolio-hero-inner">
+    <header class="portfolio-hero">
+      <div class="hero-lbl">Реальные скриншоты магазинов</div>
+      <h1 class="portfolio-h1"><span class="accent">ПОРТФОЛИО</span> ДИЗАЙНОВ</h1>
+      <p class="portfolio-sub">Миниатюры лёгкие (быстрая загрузка), в лайтбоксе — полный кадр · фильтры</p>
+    </header>
+  </div>
+</section>
 <section class="filters-wrap" aria-label="Фильтры"><div class="filters" id="filterBar"></div></section>
 <section class="sec-pick">
   <div class="sec-lbl">Выбор проекта</div>
@@ -112,7 +122,7 @@ footer a{color:var(--cyan);text-decoration:none}
 <footer>
   <a href="index.html">Aces of Ads</a> · галерея с фото · <a href="portfolio-showcase.html">страница с макетами</a>
 </footer>
-<script src="portfolio-manifest.js?v=20260328-10"></script>
+<script src="portfolio-manifest.js?v=20260328-11"></script>
 <script>
 const projects=[{id:'disk-bdm',name:'Диск БДМ АЛМАЗ',category:'selhhoz',emoji:'⚙️'},{id:'zhatka-zhvr',name:'Жатка ЖВР-5',category:'selhhoz',emoji:'🌾'},{id:'harmony-orlando',name:'ORLANDO Мебель',category:'mebel',emoji:'🛋'},{id:'sergey-stroy',name:'Фундамент под ключ',category:'stroika',emoji:'🏗'},{id:'swantrade',name:'Представитель в Китае',category:'uslugi',emoji:'🇨🇳'},{id:'santehnika',name:'Сантехника под ключ',category:'uslugi',emoji:'🔧'},{id:'monolit-dom',name:'Монолитный дом',category:'stroika',emoji:'🏠'},{id:'gazoblok-dom',name:'Коробка из газоблока',category:'stroika',emoji:'🧱'},{id:'elektromontazh',name:'Электромонтаж',category:'uslugi',emoji:'⚡'},{id:'styazhka-pola',name:'Стяжка пола',category:'stroika',emoji:'🏢'},{id:'karkasnyy-dom',name:'Каркасный дом A-Frame',category:'stroika',emoji:'🏡'}];
 const FILTER_DEF=[{key:'all',label:'Все',emoji:'✨'},{key:'selhhoz',label:'Сельхозтехника',emoji:'🚜'},{key:'stroika',label:'Строительство',emoji:'🏗'},{key:'mebel',label:'Мебель',emoji:'🛋'},{key:'uslugi',label:'Услуги',emoji:'🔧'},{key:'oborudovanie',label:'Оборудование',emoji:'⚙️'}];
