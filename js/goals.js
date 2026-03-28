@@ -247,6 +247,7 @@
     var changed = false;
     (projects || []).forEach(function(p) {
       if (!p || typeof p !== 'object') return;
+      if (p.crmArchived) return;
       var current = String(p.emoji || '').trim();
       if (current && current !== '📦') return;
       var guessed = pickProjectEmojiByMeaning(p.name || '', p.category || '', p.company || '', p.note || '');
@@ -502,19 +503,22 @@
       var addBtn = '<button type="button" class="goal-add-status-btn" onclick="event.stopPropagation();window.__goalsShowStatusPicker&&window.__goalsShowStatusPicker(\'' + esc(p.id) + '\',this)" title="Добавить тег">+</button>';
       var revealOnClick = 'event.stopPropagation();var r=this.closest(\'.goal-row\');if(r)r.classList.add(\'goal-add-revealed\');';
       var priceHtml = '<span class="goal-sum goal-sum-edit goal-kp-trigger" onclick="' + revealOnClick + '"><input type="text" class="goal-sum-inline" data-id="' + esc(p.id) + '" data-block="weekly" value="' + esc(mainPrice) + '" onclick="' + revealOnClick + '" placeholder="0" title="Нажмите для изменения"><span class="goal-sum-ruble">₽</span></span>';
-      var emoji = p.emoji || '📦';
+      var emoji = p.crmArchived ? '💀' : (p.emoji || '📦');
       var folderIcon = (p.folderLink) ? '<a href="' + esc(p.folderLink) + '" target="_blank" rel="noopener" class="goal-folder-link" title="Открыть папку" onclick="event.stopPropagation()">💿</a>' : '';
       var designations = '<span class="goal-designations">' + (statusBadges ? '<span class="goal-badges">' + statusBadges + '</span>' : '') + (touchBadges ? '<span class="goal-touches">' + touchBadges + '</span>' : '') + customTags + addBtn + '</span>';
+      var archToCrmBtn = p.crmArchived
+        ? ''
+        : '<button type="button" class="goal-move-btn" onclick="event.stopPropagation();window.__goalsSetStage&&window.__goalsSetStage(\'' + esc(p.id) + '\',\'archive\')" title="В архив CRM (строка на неделе останется с 💀)">🗂</button>';
       var actionsBtns = '<span class="goal-actions goal-actions-inline">' +
         '<button type="button" class="goal-more-btn" onclick="event.stopPropagation();window.__goalsSelectRow&&window.__goalsSelectRow(\'' + esc(p.id) + '\')" title="Полное редактирование">⋯</button>' +
         '<button type="button" class="goal-move-btn" onclick="event.stopPropagation();window.__goalsSetStage&&window.__goalsSetStage(\'' + esc(p.id) + '\',\'sold\')" title="В Продано">✓</button>' +
         '<button type="button" class="goal-move-btn" onclick="event.stopPropagation();window.__goalsSetStage&&window.__goalsSetStage(\'' + esc(p.id) + '\',\'working\')" title="В работу">🔥</button>' +
-        '<button type="button" class="goal-move-btn" onclick="event.stopPropagation();window.__goalsSetStage&&window.__goalsSetStage(\'' + esc(p.id) + '\',\'archive\')" title="В архив">🗂</button>' +
+        archToCrmBtn +
         '<button type="button" class="goal-del-btn" onclick="event.stopPropagation();window.__goalsDelete&&window.__goalsDelete(\'' + esc(p.id) + '\',' + weekNum + ')" title="Удалить из недели">×</button>' +
         '</span>';
       var dispName = String(p.name || '').replace(/\s+/g, ' ').trim();
       var nameCell = '<span class="goal-name-cell" onclick="event.stopPropagation();window.__goalsEditNameCell&&window.__goalsEditNameCell(this)">' +
-        '<button type="button" class="goal-emoji-btn" onclick="event.stopPropagation();window.__goalsShowEmojiPicker&&window.__goalsShowEmojiPicker(this,\'' + esc(p.id) + '\')" title="Изменить иконку">' + emoji + '</button>' +
+        '<button type="button" class="goal-emoji-btn' + (p.crmArchived ? ' goal-emoji-crm-archived' : '') + '" onclick="event.stopPropagation();window.__goalsShowEmojiPicker&&window.__goalsShowEmojiPicker(this,\'' + esc(p.id) + '\')" title="' + (p.crmArchived ? 'В архиве CRM' : 'Изменить иконку') + '">' + emoji + '</button>' +
         (folderIcon ? folderIcon + ' ' : '') +
         '<span class="goal-name-inline goal-name-display" data-id="' + esc(p.id) + '" title="' + esc(p.name || '') + '">' + esc(dispName) + '</span>' +
         actionsBtns +
@@ -527,7 +531,7 @@
       if (!isActiveClientRow && selectedProjectNameNorm) {
         isActiveClientRow = (projectNameNorm === selectedProjectNameNorm || projectCompanyNorm === selectedProjectNameNorm);
       }
-      var rowClass = 'goal-row' + (isActiveClientRow ? ' goal-row-client-active' : '');
+      var rowClass = 'goal-row' + (isActiveClientRow ? ' goal-row-client-active' : '') + (p.crmArchived ? ' goal-row-crm-archived' : '');
       return '<div class="' + rowClass + '" data-id="' + esc(p.id) + '" data-week="' + weekNum + '" onclick="window.__goalsQuickAddClientToRow && window.__goalsQuickAddClientToRow(' + weekNum + ',\'' + esc(p.id) + '\',event)" ondragover="window.__goalsClientDragOver && window.__goalsClientDragOver(event)" ondrop="window.__goalsClientDropOnRow && window.__goalsClientDropOnRow(' + weekNum + ',\'' + esc(p.id) + '\',event)">' +
         '<span class="goal-date">' + esc(formatDateShort(p.date)) + '</span>' +
         '<span class="goal-name">' + nameCell + '</span>' +
@@ -635,7 +639,11 @@
         : '';
       var emoji = p.emoji || '📦';
       var folderIcon = (p.folderLink) ? '<a href="' + esc(p.folderLink) + '" target="_blank" rel="noopener" class="goal-folder-link" title="Открыть папку" onclick="event.stopPropagation()">💿</a>' : '';
-      var archBtn = (blockType === 'archive') ? '<button type="button" class="goal-restore-btn" onclick="event.stopPropagation();window.__goalsSetStage&&window.__goalsSetStage(\'' + esc(p.id) + '\',\'weekly\')" title="Вернуть в неделю">&#8634;</button>' : '';
+      var archBtn = (blockType === 'archive')
+        ? '<button type="button" class="goal-restore-btn" onclick="event.stopPropagation();window.__goalsSetStage&&window.__goalsSetStage(\'' + esc(p.id) + '\',\'weekly\')" title="' +
+          esc(p.archiveCopyOfWeekId ? 'Вернуть на неделю (убрать 💀 со строки)' : 'Вернуть в неделю') +
+          '">&#8634;</button>'
+        : '';
       var toActiveBtn = (blockType === 'sold') ? '<button type="button" class="goal-to-work-btn goal-to-active-btn" onclick="event.stopPropagation();window.__goalsCreateActiveFromSold&&window.__goalsCreateActiveFromSold(\'' + esc(p.id) + '\')" title="Создать активный проект в ПРОЕКТАХ">🅰️</button>' : '';
       var workEditBtn = (blockType === 'work') ? '<button type="button" class="goal-more-btn" onclick="event.stopPropagation();window.__goalsSelectRow&&window.__goalsSelectRow(\'' + esc(p.id) + '\')" title="Редактировать">⋯</button>' : '';
       var workToSoldBtn = (blockType === 'work') ? '<button type="button" class="goal-move-btn" onclick="event.stopPropagation();window.__goalsSetStage&&window.__goalsSetStage(\'' + esc(p.id) + '\',\'sold\')" title="В продано">✓</button>' : '';
@@ -1399,6 +1407,12 @@
     }, 10);
   }
 
+  function isProjectOnWeek(p) {
+    if (!p) return false;
+    var s = p.stage;
+    return s !== 'sold' && s !== 'working' && s !== 'archive';
+  }
+
   function setStage(projectId, stage) {
     var data = loadData();
     var p = (data.projects || []).find(function(x) { return x.id === projectId; });
@@ -1411,11 +1425,63 @@
         copy.stage = 'sold';
         copy.saleAmount = saleAmount || '';
         copy.soldFromId = projectId;
+        delete copy.crmArchived;
+        delete copy.emojiBeforeArchive;
+        delete copy.archiveCopyOfWeekId;
+        if (p.crmArchived) {
+          data.projects = (data.projects || []).filter(function(x) { return x.archiveCopyOfWeekId !== projectId; });
+          p.crmArchived = false;
+          if (p.emojiBeforeArchive) {
+            p.emoji = p.emojiBeforeArchive;
+            delete p.emojiBeforeArchive;
+          }
+        }
         data.projects.push(copy);
         saveData(data);
         render();
       });
       return;
+    }
+    /** Восстановление из дубликата архива: строка на неделе снова живая */
+    if ((stage === 'weekly' || stage === 'working') && p.stage === 'archive' && p.archiveCopyOfWeekId) {
+      var weekSrc = (data.projects || []).find(function(x) { return x.id === p.archiveCopyOfWeekId; });
+      if (weekSrc) {
+        weekSrc.crmArchived = false;
+        if (weekSrc.emojiBeforeArchive) {
+          weekSrc.emoji = weekSrc.emojiBeforeArchive;
+          delete weekSrc.emojiBeforeArchive;
+        }
+      }
+      data.projects = (data.projects || []).filter(function(x) { return x.id !== projectId; });
+      saveData(data);
+      render();
+      return;
+    }
+    /** С недели в архив CRM: строка на неделе остаётся (💀), суммы/КП те же; в «Архив» — копия */
+    if (stage === 'archive' && isProjectOnWeek(p)) {
+      if (p.crmArchived) return;
+      var archCopy = {};
+      for (var k in p) if (Object.prototype.hasOwnProperty.call(p, k)) archCopy[k] = p[k];
+      archCopy.id = generateId();
+      archCopy.stage = 'archive';
+      archCopy.archiveCopyOfWeekId = projectId;
+      delete archCopy.crmArchived;
+      delete archCopy.emojiBeforeArchive;
+      data.projects.push(archCopy);
+      p.emojiBeforeArchive = p.emoji || '📦';
+      p.emoji = '💀';
+      p.crmArchived = true;
+      saveData(data);
+      render();
+      return;
+    }
+    if (stage === 'working' && isProjectOnWeek(p) && p.crmArchived) {
+      data.projects = (data.projects || []).filter(function(x) { return x.archiveCopyOfWeekId !== p.id; });
+      p.crmArchived = false;
+      if (p.emojiBeforeArchive) {
+        p.emoji = p.emojiBeforeArchive;
+        delete p.emojiBeforeArchive;
+      }
     }
     p.stage = stage;
     saveData(data);
@@ -1466,7 +1532,19 @@
 
   function deletePermanent(projectId) {
     var data = loadData();
-    data.projects = (data.projects || []).filter(function(x) { return x.id !== projectId; });
+    var projects = data.projects || [];
+    var victim = projects.find(function(x) { return x.id === projectId; });
+    if (victim && victim.stage === 'archive' && victim.archiveCopyOfWeekId) {
+      var weekSrc = projects.find(function(x) { return x.id === victim.archiveCopyOfWeekId; });
+      if (weekSrc) {
+        weekSrc.crmArchived = false;
+        if (weekSrc.emojiBeforeArchive) {
+          weekSrc.emoji = weekSrc.emojiBeforeArchive;
+          delete weekSrc.emojiBeforeArchive;
+        }
+      }
+    }
+    data.projects = projects.filter(function(x) { return x.id !== projectId; });
     saveData(data);
     render();
   }
@@ -1477,6 +1555,7 @@
     var data = loadData();
     var p = (data.projects || []).find(function(x) { return x.id === projectId; });
     if (!p) return;
+    if (p.crmArchived) return;
     var picker = document.createElement('div');
     picker.id = 'goalEmojiPicker';
     picker.className = 'goal-emoji-picker-popup';
@@ -1648,7 +1727,11 @@
     var day = p.date ? parseInt(String(p.date).split('-')[2], 10) : new Date().getDate();
     var wi = (typeof p.weekIndex === 'number' && p.weekIndex >= 1 && p.weekIndex <= 4) ? p.weekIndex : getWeekIndex(day);
     if (wi !== weekNum) return;
-    data.projects = projects.filter(function(x) { return x.id !== projectId; });
+    data.projects = projects.filter(function(x) {
+      if (x.id === projectId) return false;
+      if (x.archiveCopyOfWeekId === projectId) return false;
+      return true;
+    });
     saveData(data);
     render();
   }

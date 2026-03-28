@@ -63,6 +63,7 @@ body.day-mode.goals-mode .goal-row-header{background:rgba(0,136,92,0.06);border-
 body.day-mode.goals-mode .goal-row{border-bottom-color:rgba(0,0,0,0.06)}
 body.day-mode.goals-mode .goal-row:hover{background:rgba(0,136,92,0.06)!important}
 body.day-mode.goals-mode .goal-row.goal-row-client-active{background:rgba(0,136,92,0.12)!important;box-shadow:inset 0 0 0 1px rgba(0,136,92,0.3)}
+body.day-mode.goals-mode .goal-row.goal-row-crm-archived{box-shadow:inset 0 0 0 1px rgba(0,0,0,0.1)}
 body.day-mode.goals-mode .goal-name-cell:hover{background:rgba(0,136,92,0.08)}
 body.day-mode.goals-mode .goal-name-cell.goal-name-editing{background:var(--surface2)}
 body.day-mode.goals-mode .goal-more-btn,body.day-mode.goals-mode .goal-move-btn,body.day-mode.goals-mode .goal-del-btn{border-color:var(--border);background:var(--surface2)}
@@ -1818,6 +1819,9 @@ body.goals-client-dragging .goal-block-sold{transition:all .18s ease}
 .goal-week-rows .goal-row button,
 .goal-week-rows .goal-row a{cursor:auto}
 .goal-row.goal-row-client-active{background:rgba(0,217,126,0.11)!important;box-shadow:inset 0 0 0 1px rgba(0,217,126,0.35)}
+.goal-row.goal-row-crm-archived{opacity:0.96;box-shadow:inset 0 0 0 1px rgba(160,170,200,0.22)}
+.goal-emoji-btn.goal-emoji-crm-archived{cursor:default}
+.goal-emoji-btn.goal-emoji-crm-archived:hover{transform:none;background:transparent}
 .goal-date{color:var(--muted);font-size:11px}
 .goal-name{color:var(--text);font-weight:700;min-width:0;line-height:1.35;display:flex;align-items:center;justify-content:space-between;gap:10px}
 .goal-name-cell{display:flex;align-items:center;gap:4px;flex:1;min-width:0;padding:2px 4px;margin:-2px -4px;border-radius:6px;cursor:pointer;transition:background .15s;white-space:nowrap!important;overflow:hidden!important;flex-wrap:nowrap!important}
@@ -2207,7 +2211,7 @@ min-width:720px
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 <script src="https://accounts.google.com/gsi/client" async></script>
-<script src="js/goals.js?v=20260328-3"></script>
+<script src="js/goals.js?v=20260328-4"></script>
 <script>
 if (!window.AVITOLOG_GOALS) {
   window.AVITOLOG_GOALS = window.__AVITOLOG_GOALS_LEGACY = { render: function() {
