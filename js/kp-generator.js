@@ -612,6 +612,53 @@
     a.href = t.editUrl || '#';
   }
 
+  /** Одна строка: уменьшаем шрифт, пока текст помещается в ширину карточки */
+  function fitKpTplCardLabels(root) {
+    if (!root || !root.querySelectorAll) return;
+    function run() {
+      var nodes = root.querySelectorAll('.kp-tpl-card .kp-tpl-name');
+      if (!nodes.length) return;
+      nodes.forEach(function (el) {
+        el.style.whiteSpace = 'nowrap';
+        el.style.wordBreak = 'keep-all';
+        el.style.overflow = 'hidden';
+        el.style.textOverflow = 'clip';
+        var maxPx = 11;
+        var minPx = 5.5;
+        el.style.fontSize = maxPx + 'px';
+        el.style.lineHeight = '1.08';
+        var px = maxPx;
+        var iter = 0;
+        while (el.scrollWidth > el.clientWidth && px > minPx && iter++ < 48) {
+          px -= 0.35;
+          el.style.fontSize = px.toFixed(2) + 'px';
+        }
+        if (el.scrollWidth > el.clientWidth) el.style.textOverflow = 'ellipsis';
+        else el.style.textOverflow = 'clip';
+      });
+    }
+    if (typeof requestAnimationFrame === 'function') {
+      requestAnimationFrame(function () {
+        requestAnimationFrame(run);
+      });
+    } else {
+      setTimeout(run, 0);
+    }
+    setTimeout(run, 60);
+  }
+
+  if (!window._kpTplFitResizeBound) {
+    window._kpTplFitResizeBound = true;
+    var _kpTplResizeT = null;
+    window.addEventListener('resize', function () {
+      clearTimeout(_kpTplResizeT);
+      _kpTplResizeT = setTimeout(function () {
+        var mc = document.getElementById('mainContent');
+        if (mc && mc.querySelector('.kp-tpl-zones')) fitKpTplCardLabels(mc);
+      }, 120);
+    });
+  }
+
   function buildTemplateZonesHtml(d) {
     var T = getMergedTemplates();
     function cardsHtml(list, cat) {
@@ -1181,5 +1228,7 @@
       '</div>';
 
     wire(mc);
+    fitKpTplCardLabels(mc);
   };
+  window.__fitKpTplCardLabels = fitKpTplCardLabels;
 })();
