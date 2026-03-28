@@ -1106,6 +1106,7 @@ body.day-mode .kp-tpl-card.kp-tpl-on{border-color:rgba(200,140,0,0.45);backgroun
 .ads-cell-inline-editor:empty::after{content:'|';animation:adsCaretBlink .9s step-end infinite;color:#7cf5ff}
 .ads-posts-planner-head{font-size:11px;font-weight:800;letter-spacing:1px;color:#7cf5ff;margin:0 0 10px;text-transform:uppercase}
 .ads-posts-head-row{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:0 0 8px}
+.ads-posts-head-row.ads-posts-head-row-tools{justify-content:flex-end}
 .ads-posts-head-row .ads-posts-planner-head{margin:0}
 .ads-posts-head-actions{display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:flex-end}
 .ads-posts-month-chip{height:22px;display:inline-flex;align-items:center;padding:0 8px;border-radius:7px;border:1px solid rgba(124,245,255,0.24);background:rgba(124,245,255,0.08);color:#bdefff;font-size:10px;font-weight:700;letter-spacing:.25px;text-transform:capitalize}
@@ -1113,12 +1114,16 @@ body.day-mode .kp-tpl-card.kp-tpl-on{border-color:rgba(200,140,0,0.45);backgroun
 .ads-posts-source-btn:hover{background:rgba(53,208,255,0.22);border-color:rgba(124,245,255,0.7)}
 .ads-posts-sync-status{font-size:11px;color:#8fefff;margin:0 0 8px}
 .ads-posts-sync-status.is-error{color:#ff9f9f}
+.ads-content-calendar{display:flex;flex-direction:column;gap:10px}
+.ads-posts-windows{display:flex;flex-direction:column;gap:10px}
+.ads-posts-window{border:1px solid rgba(124,245,255,0.22);border-radius:12px;background:rgba(0,0,0,0.22);padding:10px 10px 8px;display:flex;flex-direction:column;gap:6px;box-shadow:inset 0 1px 0 rgba(255,255,255,0.04)}
+.ads-posts-window-head{font-size:10px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;margin:0;color:#9fe7ff}
+.ads-posts-window-learn .ads-posts-window-head{color:#7cf5ff}
+.ads-posts-window-agency .ads-posts-window-head{color:#bde7ff}
+.ads-posts-window .ads-posts-wrap{overflow-x:auto;overflow-y:auto;max-height:200px}
 .ads-posts-wrap{overflow-x:auto;overflow-y:auto;max-height:280px}
 .ads-posts-table{border-collapse:separate;border-spacing:2px;font-size:11px;min-width:max-content}
 .ads-posts-table th,.ads-posts-table td{border:none;padding:0;text-align:center;height:38px;vertical-align:middle}
-.ads-posts-strip-row .ads-posts-strip-cell{height:auto;padding:6px 0 4px;text-align:left;vertical-align:middle}
-.ads-posts-agency-strip{width:100%;box-sizing:border-box;padding:6px 10px;border-radius:8px;background:linear-gradient(90deg,rgba(124,180,255,0.18),rgba(53,208,255,0.08));border:1px solid rgba(124,245,255,0.28);font-size:10px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:#9fe7ff}
-.ads-td-label-ghost{min-width:70px;background:transparent!important}
 .ads-post-td{min-width:44px;max-width:54px;background:rgba(255,255,255,0.03);border-radius:7px;padding:0 2px;transition:background .16s,box-shadow .16s}
 .ads-th-day{font-size:10px;white-space:nowrap;padding:0 3px}
 .ads-th-day.ads-day-past,.ads-post-td.ads-day-past{background:rgba(255,255,255,0.018)}
@@ -2592,7 +2597,7 @@ if (!window.AVITOLOG_GOALS) {
 <script src="js/projects.js?v=20260324-13"></script>
 <script src="js/ai-import.js?v=20260328-9"></script>
 <script src="js/contract-generator.js?v=20260324-13"></script>
-<script src="js/ads.js?v=20260328-15"></script>
+<script src="js/ads.js?v=20260328-16"></script>
 <script src="js/kp-generator.js?v=20260328-14"></script>
 <script src="js/main.js?v=20260328-2"></script>
 </body>

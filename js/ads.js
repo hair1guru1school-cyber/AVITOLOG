@@ -344,12 +344,29 @@
   }
   function autoScrollPostsTableToToday(container) {
     if (!container) return;
-    var wrap = container.querySelector(".ads-posts-wrap");
-    if (!wrap) return;
-    var todayTh = wrap.querySelector("th.ads-th-day.ads-day-today");
+    var wraps = container.querySelectorAll(".ads-posts-wrap");
+    if (!wraps.length) return;
+    var todayTh = wraps[0].querySelector("th.ads-th-day.ads-day-today");
     if (!todayTh) return;
     var desired = Math.max(0, todayTh.offsetLeft - 72);
-    wrap.scrollLeft = desired;
+    wraps.forEach(function(w) { w.scrollLeft = desired; });
+  }
+
+  function bindPostsScrollSync(container) {
+    var wraps = container.querySelectorAll(".ads-posts-wrap");
+    if (wraps.length < 2) return;
+    var syncing = false;
+    wraps.forEach(function(w) {
+      w.addEventListener("scroll", function() {
+        if (syncing) return;
+        syncing = true;
+        var left = w.scrollLeft;
+        wraps.forEach(function(other) {
+          if (other !== w) other.scrollLeft = left;
+        });
+        syncing = false;
+      });
+    });
   }
 
   function recomputeBothRow(state) {
@@ -493,16 +510,7 @@
       var monthOffset = baseOffset + monthShift;
       return { monthOffset: monthOffset, day: day };
     }
-    var html =
-      '<div class="ads-posts-head-row">' +
-        '<div class="ads-posts-planner-head">Посты на 30 дней в канала</div>' +
-        '<div class="ads-posts-head-actions">' +
-          '<span class="ads-posts-month-chip">' + escapeHtml(monthTitle) + "</span>" +
-          '<button type="button" class="ads-posts-source-btn" id="adsPostSourceBtn">Источник</button>' +
-        "</div>" +
-      "</div>" +
-      '<div class="ads-posts-sync-status" id="adsPostsSyncStatus">Синк с Google Sheets: готово</div>' +
-      '<div class="ads-posts-wrap"><table class="ads-posts-table"><thead><tr><th class="ads-th-label">Проект</th>';
+    var theadHtml = '<thead><tr><th class="ads-th-label">Проект</th>';
     for (var d = 1; d <= days; d++) {
       var meta = getColumnMeta(d);
       var metaMonth = getPostsMonthMeta(meta.monthOffset);
@@ -511,17 +519,13 @@
       else if (meta.monthOffset === baseOffset && todayDay && meta.day < anchorDay) headCls += " ads-day-past";
       else headCls += " ads-day-future";
       var dayLabel = getPostDayMonthLabel(metaMonth, meta.day);
-      html += '<th class="' + headCls + '" title="' + dayLabel + '">' + dayLabel + "</th>";
+      theadHtml += '<th class="' + headCls + '" title="' + dayLabel + '">' + dayLabel + "</th>";
     }
-    html += "</tr></thead><tbody>";
-    function postPlanRowHtml(row, ghostLabel) {
+    theadHtml += "</tr></thead>";
+    function postPlanRowHtml(row) {
       var r = "";
       r += '<tr class="ads-posts-data-row" data-post-row="' + row.key + '">';
-      if (ghostLabel) {
-        r += '<td class="ads-td-label ads-td-label-ghost" aria-hidden="true"></td>';
-      } else {
-        r += '<td class="ads-td-label">' + row.label + "</td>";
-      }
+      r += '<td class="ads-td-label">' + row.label + "</td>";
       for (var col = 1; col <= days; col++) {
         var cMeta = getColumnMeta(col);
         var monthState = getMonthState(cMeta.monthOffset);
@@ -550,17 +554,38 @@
       r += "</tr>";
       return r;
     }
-    html += postPlanRowHtml(POST_ROWS[0], false);
+    function onePostsTable(row) {
+      return (
+        '<div class="ads-posts-wrap">' +
+          '<table class="ads-posts-table">' +
+          theadHtml +
+          "<tbody>" +
+          postPlanRowHtml(row) +
+          "</tbody></table></div>"
+      );
+    }
+    var html =
+      '<div class="ads-content-calendar">' +
+        '<div class="ads-posts-head-row ads-posts-head-row-tools">' +
+          '<div class="ads-posts-head-actions">' +
+            '<span class="ads-posts-month-chip">' + escapeHtml(monthTitle) + "</span>" +
+            '<button type="button" class="ads-posts-source-btn" id="adsPostSourceBtn">Источник</button>' +
+          "</div>" +
+        "</div>" +
+        '<div class="ads-posts-sync-status" id="adsPostsSyncStatus">Синк с Google Sheets: готово</div>' +
+        '<div class="ads-posts-windows">' +
+          '<div class="ads-posts-window ads-posts-window-learn">' +
+            '<div class="ads-posts-window-head">Обучение</div>' +
+            onePostsTable(POST_ROWS[0]) +
+          "</div>";
     if (POST_ROWS[1]) {
       html +=
-        '<tr class="ads-posts-strip-row">' +
-          '<td class="ads-posts-strip-cell" colspan="' + (1 + days) + '">' +
-            '<div class="ads-posts-agency-strip">' + escapeHtml(POST_ROWS[1].label) + "</div>" +
-          "</td>" +
-        "</tr>";
-      html += postPlanRowHtml(POST_ROWS[1], true);
+        '<div class="ads-posts-window ads-posts-window-agency">' +
+          '<div class="ads-posts-window-head">Агентство</div>' +
+          onePostsTable(POST_ROWS[1]) +
+        "</div>";
     }
-    html += "</tbody></table></div>";
+    html += "</div></div>";
     container.innerHTML = html;
     container.querySelectorAll(".ads-post-cell").forEach(function(btn) {
       btn.addEventListener("click", function() {
@@ -581,6 +606,7 @@
         openPostsSourceSheet();
       });
     }
+    bindPostsScrollSync(container);
     autoScrollPostsTableToToday(container);
   }
   function openPostsSourceSheet() {
@@ -1011,17 +1037,13 @@
   }
   function renderPostsSourceTable(container, postsState, sourcesState, onSaved) {
     var days = 30;
-    var html = '<div class="ads-source-table-wrap"><table class="ads-posts-table"><thead><tr><th class="ads-th-label">Проект</th>';
-    for (var d = 1; d <= days; d++) html += '<th class="ads-th-day">' + d + "</th>";
-    html += "</tr></thead><tbody>";
-    function sourceRowHtml(row, ghostLabel) {
+    var theadHtml = '<thead><tr><th class="ads-th-label">Проект</th>';
+    for (var d = 1; d <= days; d++) theadHtml += '<th class="ads-th-day">' + d + "</th>";
+    theadHtml += "</tr></thead>";
+    function sourceRowHtml(row) {
       var r = "";
       r += '<tr class="ads-posts-data-row" data-post-row="' + row.key + '">';
-      if (ghostLabel) {
-        r += '<td class="ads-td-label ads-td-label-ghost" aria-hidden="true"></td>';
-      } else {
-        r += '<td class="ads-td-label">' + row.label + "</td>";
-      }
+      r += '<td class="ads-td-label">' + row.label + "</td>";
       for (var day = 1; day <= days; day++) {
         var pKey = getPostCellKey(row.key, day);
         var sKey = getPostSourceCellKey(row.key, day);
@@ -1039,17 +1061,31 @@
       r += "</tr>";
       return r;
     }
-    html += sourceRowHtml(POST_ROWS[0], false);
+    function oneSourceTable(row) {
+      return (
+        '<div class="ads-posts-wrap">' +
+          '<table class="ads-posts-table">' +
+          theadHtml +
+          "<tbody>" +
+          sourceRowHtml(row) +
+          "</tbody></table></div>"
+      );
+    }
+    var html =
+      '<div class="ads-source-table-wrap ads-content-calendar">' +
+        '<div class="ads-posts-windows">' +
+          '<div class="ads-posts-window ads-posts-window-learn">' +
+            '<div class="ads-posts-window-head">Обучение</div>' +
+            oneSourceTable(POST_ROWS[0]) +
+          "</div>";
     if (POST_ROWS[1]) {
       html +=
-        '<tr class="ads-posts-strip-row">' +
-          '<td class="ads-posts-strip-cell" colspan="' + (1 + days) + '">' +
-            '<div class="ads-posts-agency-strip">' + escapeHtml(POST_ROWS[1].label) + "</div>" +
-          "</td>" +
-        "</tr>";
-      html += sourceRowHtml(POST_ROWS[1], true);
+        '<div class="ads-posts-window ads-posts-window-agency">' +
+          '<div class="ads-posts-window-head">Агентство</div>' +
+          oneSourceTable(POST_ROWS[1]) +
+        "</div>";
     }
-    html += "</tbody></table></div>";
+    html += "</div></div>";
     container.innerHTML = html;
     container.querySelectorAll(".ads-post-cell").forEach(function(btn) {
       btn.addEventListener("click", function() {
@@ -1062,6 +1098,7 @@
         });
       });
     });
+    bindPostsScrollSync(container);
   }
   function openPostsSourceModal(postsState, sourcesState, onSaved) {
     closePostsSourceModal();
@@ -1296,7 +1333,7 @@
         '<div class="ads-body">' +
           '<div class="ads-main">' +
             '<div class="ads-card ads-expenses-card"><div class="ads-card-title">Расходы по дням</div><div id="adsExpensesContainer"></div></div>' +
-            '<div class="ads-card ads-posts-card"><div id="adsPostsPlanContainer"></div></div>' +
+            '<div class="ads-card ads-posts-card"><div class="ads-card-title">Контент календарь</div><div id="adsPostsPlanContainer"></div></div>' +
             '<div class="ads-card ads-links-card"><div id="adsLinksContainer"></div></div>' +
           "</div>" +
           '<div class="ads-sidebar"><div class="ads-card ads-totals-card"><div id="adsTotalsContainer"></div></div></div>' +
