@@ -631,7 +631,7 @@
         ? ' draggable="true" ondragstart="window.__goalsWorkDragStart&&window.__goalsWorkDragStart(event)" ondragover="window.__goalsWorkDragOver&&window.__goalsWorkDragOver(event)" ondragleave="window.__goalsWorkDragLeave&&window.__goalsWorkDragLeave(event)" ondrop="window.__goalsWorkDrop&&window.__goalsWorkDrop(event)" ondragend="window.__goalsWorkDragEnd&&window.__goalsWorkDragEnd(event)"'
         : '';
       var targetBtn = (blockType === 'work')
-        ? '<button type="button" class="goal-work-target-btn' + (p.workTarget ? ' on' : '') + '" onclick="event.stopPropagation();window.__goalsToggleWorkTarget&&window.__goalsToggleWorkTarget(\'' + esc(p.id) + '\')" title="В фокусе (мишень)">🎯</button>'
+        ? '<button type="button" class="goal-work-target-btn' + (p.workTarget ? ' on' : '') + '" onclick="event.stopPropagation();window.__goalsToggleWorkTarget&&window.__goalsToggleWorkTarget(\'' + esc(p.id) + '\')" title="Пометить как приоритетную цель (А)">🎯</button>'
         : '';
       var emoji = p.emoji || '📦';
       var folderIcon = (p.folderLink) ? '<a href="' + esc(p.folderLink) + '" target="_blank" rel="noopener" class="goal-folder-link" title="Открыть папку" onclick="event.stopPropagation()">💿</a>' : '';
@@ -674,10 +674,10 @@
     var titleHtml = (blockType === 'work')
       ? '<div class="goal-block-title goal-block-title-work">' +
         '<span class="goal-block-title-txt">' + icon + ' ' + title + '</span>' +
-        '<button type="button" class="goal-work-header-filter' + (blockOpts.workTargetFilter ? ' on' : '') + '" onclick="event.stopPropagation();window.__goalsToggleWorkTargetFilter&&window.__goalsToggleWorkTargetFilter()" title="Только строки с мишенью">🎯</button>' +
+        '<button type="button" class="goal-work-header-filter' + (blockOpts.workTargetFilter ? ' on' : '') + '" onclick="event.stopPropagation();window.__goalsToggleWorkTargetFilter&&window.__goalsToggleWorkTargetFilter()" title="А — приоритетные цели: сверху и подсветка">🎯</button>' +
         '</div>'
       : '<div class="goal-block-title">' + icon + ' ' + title + '</div>';
-    return '<div class="goal-block goal-block-' + (blockType || '') + '"' + dropAttrs + '>' +
+    return '<div class="goal-block goal-block-' + (blockType || '') + (blockType === 'work' && blockOpts.workTargetFilter ? ' goal-work-prioritize-on' : '') + '"' + dropAttrs + '>' +
       titleHtml +
       '<div class="goal-block-rows">' + (rows.length ? rows.join('') : '<div class="goal-empty">Пусто</div>') + '</div>' +
       (footerHtml || '') +
@@ -775,7 +775,17 @@
     });
 
     working = sortWorkingBySavedOrder(working, data.workOrderWork || []);
-    var workingForList = data.workTargetFilter ? working.filter(function(p) { return p && p.workTarget; }) : working;
+    /** При включённом режиме «А»: все строки видны; с 🎯 — сверху (порядок внутри групп как в сохранённом списке) */
+    function prioritizeWorkTargetsStable(ordered) {
+      var targets = [];
+      var rest = [];
+      (ordered || []).forEach(function (p) {
+        if (!p) return;
+        (p.workTarget ? targets : rest).push(p);
+      });
+      return targets.concat(rest);
+    }
+    var workingForList = data.workTargetFilter ? prioritizeWorkTargetsStable(working) : working;
     var workExpanded = !!data.workExpanded;
     var WORK_LIMIT = 20;
     var workingVisible = workExpanded ? workingForList.slice() : workingForList.slice(0, WORK_LIMIT);
@@ -917,7 +927,7 @@
             'В РАБОТЕ',
             '🔥',
             workingVisible,
-            '<div class="goal-total">' + (data.workTargetFilter ? 'ПОТЕНЦИАЛ (видимые): ' : 'ОБЩИЙ ПОТЕНЦИАЛ: ') + esc(String(fmtNum(totalPotential))) + ' ₽</div>' +
+            '<div class="goal-total">ОБЩИЙ ПОТЕНЦИАЛ: ' + esc(String(fmtNum(totalPotential))) + ' ₽</div>' +
             (hasMoreWorking ? '<button type="button" class="goal-work-more-btn" onclick="window.__goalsToggleWorkRows&&window.__goalsToggleWorkRows()">' + (workExpanded ? 'Свернуть до 20' : ('Показать еще (' + Math.max(0, workingForList.length - WORK_LIMIT) + ')')) + '</button>' : ''),
             true,
             true,
