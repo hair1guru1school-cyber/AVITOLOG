@@ -1,4 +1,9 @@
-<!DOCTYPE html>
+import fs from "fs";
+import path from "path";
+import { fileURLToPath } from "url";
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const html = `<!DOCTYPE html>
 <html lang="ru">
 <head>
 <meta charset="UTF-8">
@@ -135,4 +140,17 @@ document.addEventListener('keydown',function(e){var o=document.getElementById('l
 (function(){renderFilters();var list=filteredProjects();if(list.length)selectProject(list[0].id,false);else renderGallery()})();
 </script>
 </body>
-</html>
+</html>`;
+
+const targets = [
+  path.join(__dirname, "AOA-Land", "portfolio.html"),
+  path.join(__dirname, "..", "AOA-Land", "portfolio.html"),
+];
+for (const t of targets) {
+  try {
+    fs.writeFileSync(t, html, "utf8");
+    console.log("OK", t, fs.statSync(t).size);
+  } catch (e) {
+    console.warn("skip", t, e.message);
+  }
+}
