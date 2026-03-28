@@ -512,7 +512,7 @@
       var actionsBtns = '<span class="goal-actions goal-actions-inline">' +
         '<button type="button" class="goal-more-btn" onclick="event.stopPropagation();window.__goalsSelectRow&&window.__goalsSelectRow(\'' + esc(p.id) + '\')" title="Полное редактирование">⋯</button>' +
         '<button type="button" class="goal-move-btn" onclick="event.stopPropagation();window.__goalsSetStage&&window.__goalsSetStage(\'' + esc(p.id) + '\',\'sold\')" title="В Продано">✓</button>' +
-        '<button type="button" class="goal-move-btn" onclick="event.stopPropagation();window.__goalsSetStage&&window.__goalsSetStage(\'' + esc(p.id) + '\',\'working\')" title="В работу">🔥</button>' +
+        '<button type="button" class="goal-move-btn" onclick="event.stopPropagation();window.__goalsSetStage&&window.__goalsSetStage(\'' + esc(p.id) + '\',\'working\')" title="В работу (копия; строка на неделе остаётся)">🔥</button>' +
         archToCrmBtn +
         '<button type="button" class="goal-del-btn" onclick="event.stopPropagation();window.__goalsDelete&&window.__goalsDelete(\'' + esc(p.id) + '\',' + weekNum + ')" title="Удалить из недели">×</button>' +
         '</span>';
@@ -1475,13 +1475,38 @@
       render();
       return;
     }
-    if (stage === 'working' && isProjectOnWeek(p) && p.crmArchived) {
-      data.projects = (data.projects || []).filter(function(x) { return x.archiveCopyOfWeekId !== p.id; });
-      p.crmArchived = false;
-      if (p.emojiBeforeArchive) {
-        p.emoji = p.emojiBeforeArchive;
-        delete p.emojiBeforeArchive;
+    /** С недели в «В работу»: добавляется копия; строка на неделе не уходит (как архив, но неделя живая) */
+    if (stage === 'working' && isProjectOnWeek(p)) {
+      if (p.crmArchived) {
+        data.projects = (data.projects || []).filter(function(x) { return x.archiveCopyOfWeekId !== p.id; });
+        p.crmArchived = false;
+        if (p.emojiBeforeArchive) {
+          p.emoji = p.emojiBeforeArchive;
+          delete p.emojiBeforeArchive;
+        }
       }
+      var workCopy;
+      try {
+        workCopy = JSON.parse(JSON.stringify(p));
+      } catch (e1) {
+        workCopy = {};
+        for (var kw in p) if (Object.prototype.hasOwnProperty.call(p, kw)) workCopy[kw] = p[kw];
+      }
+      workCopy.id = generateId();
+      workCopy.stage = 'working';
+      workCopy.workCopyOfWeekId = projectId;
+      delete workCopy.crmArchived;
+      delete workCopy.emojiBeforeArchive;
+      delete workCopy.archiveCopyOfWeekId;
+      data.projects = (data.projects || []).filter(function(x) {
+        return !(x && x.stage === 'working' && x.workCopyOfWeekId === projectId);
+      });
+      data.projects.push(workCopy);
+      var workingAll = (data.projects || []).filter(function(x) { return x && x.stage === 'working'; });
+      data.workOrderWork = mergeWorkingOrderIds(data.workOrderWork || [], workingAll);
+      saveData(data);
+      render();
+      return;
     }
     p.stage = stage;
     saveData(data);
@@ -1730,6 +1755,7 @@
     data.projects = projects.filter(function(x) {
       if (x.id === projectId) return false;
       if (x.archiveCopyOfWeekId === projectId) return false;
+      if (x.workCopyOfWeekId === projectId) return false;
       return true;
     });
     saveData(data);
