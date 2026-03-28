@@ -75,24 +75,31 @@ nav::after{content:'';position:absolute;bottom:0;left:0;right:0;height:1px;backg
 .sec .sec-lbl{margin-top:2px}
 
 /* С НАМИ РАСТУТ - Carousel */
-.grow-carousel{position:relative;background:var(--bg2);padding:56px 24px 72px;overflow:hidden}
+.grow-carousel{position:relative;background:var(--bg2);padding:clamp(48px,5.5vw,88px) clamp(12px,2.5vw,28px) clamp(64px,8vw,104px);overflow:hidden}
 .grow-carousel .sec-lbl{margin-bottom:14px}
-.grow-carousel .sec-title{margin-bottom:20px}
-.grow-wrap{position:relative;max-width:1100px;margin:0 auto}
-.grow-track{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;scroll-behavior:smooth;scroll-padding:0 24px;-webkit-overflow-scrolling:touch;gap:20px;padding:12px 0;scrollbar-width:none}
+.grow-carousel .sec-title{margin-bottom:clamp(16px,2.2vw,26px)}
+.grow-carousel .sec-desc{margin-bottom:clamp(18px,2.8vw,36px)}
+.grow-wrap{position:relative;max-width:min(1680px,98vw);margin:0 auto}
+.grow-track{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;scroll-behavior:smooth;scroll-padding:0 4vw;-webkit-overflow-scrolling:touch;gap:clamp(18px,2.5vw,32px);padding:clamp(10px,1.8vw,20px) 0;scrollbar-width:none}
 .grow-track::-webkit-scrollbar{display:none}
-.grow-slide{flex:0 0 70%;scroll-snap-align:center;scroll-snap-stop:always;min-width:360px;max-width:500px}
-.grow-slide:hover img{transform:scale(1.02)}.grow-slide img{width:100%;height:auto;display:block;border-radius:14px;border:1px solid var(--border-r);box-shadow:0 12px 40px rgba(0,0,0,.5);object-fit:cover;aspect-ratio:16/10;transition:transform .4s cubic-bezier(.25,.46,.45,.94)}
-.grow-nav{position:absolute;top:50%;transform:translateY(-50%);width:48px;height:48px;border-radius:50%;background:rgba(232,0,29,.9);border:1px solid var(--red);color:#fff;font-size:24px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .25s;z-index:10}
+.grow-slide{flex:0 0 88%;scroll-snap-align:center;scroll-snap-stop:always;min-width:min(88vw,680px);max-width:min(1420px,92vw)}
+.grow-slide:hover img{transform:scale(1.012)}
+.grow-slide img{width:100%;height:auto;display:block;border-radius:clamp(12px,1.4vw,18px);border:1px solid var(--border-r);box-shadow:0 18px 60px rgba(0,0,0,.58);object-fit:contain;object-position:center top;background:rgba(5,7,12,.45);max-height:min(80vh,960px);transition:transform .4s cubic-bezier(.25,.46,.45,.94)}
+.grow-nav{position:absolute;top:50%;transform:translateY(-50%);width:52px;height:52px;border-radius:50%;background:rgba(232,0,29,.92);border:1px solid var(--red);color:#fff;font-size:24px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .25s;z-index:10}
 .grow-nav:hover{background:var(--red);box-shadow:0 0 24px var(--red-glow);transform:translateY(-50%) scale(1.05)}
-.grow-nav.prev{left:-20px}
-.grow-nav.next{right:-20px}
-.grow-dots{display:flex;justify-content:center;gap:10px;margin-top:24px}
+.grow-nav.prev{left:clamp(6px,1.5vw,20px)}
+.grow-nav.next{right:clamp(6px,1.5vw,20px)}
+.grow-dots{display:flex;justify-content:center;gap:10px;margin-top:clamp(20px,3vw,32px)}
 .grow-dot{width:10px;height:10px;border-radius:50%;border:2px solid var(--red);background:transparent;cursor:pointer;transition:all .25s}
 .grow-dot:hover,.grow-dot.active{background:var(--red);box-shadow:0 0 12px var(--red-glow)}
-@media(max-width:768px){
-.grow-slide{flex:0 0 90%;min-width:320px}
-.grow-nav{width:40px;height:40px;font-size:20px;left:-8px}.grow-nav.next{right:-8px}
+@media(max-width:900px){
+.grow-slide{flex:0 0 92%;min-width:min(92vw,520px);max-width:96vw}
+.grow-slide img{max-height:min(72vh,820px)}
+}
+@media(max-width:640px){
+.grow-slide{flex:0 0 96%;min-width:min(96vw,300px)}
+.grow-slide img{max-height:min(68vh,720px)}
+.grow-nav{width:44px;height:44px;font-size:20px;left:4px}.grow-nav.next{right:4px}
 }/* BANNERS ROW */
 .banners-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;background:var(--bg);padding:0 0 0 0}
 .av-banner{border:1px solid var(--border-r);overflow:hidden;position:relative}
@@ -505,32 +512,7 @@ footer{background:var(--bg);border-top:1px solid var(--border);padding:40px 80px
   </div>
 </section>
 
-<!-- С НАМИ РАСТУТ -->
-<section class="sec grow-carousel" id="grow">
-  <div class="sec-lbl">Кейсы</div>
-  <h2 class="sec-title">С НАМИ РАСТУТ</h2>
-  <p class="sec-desc">Реальные результаты — смотрите портфолио</p>
-  <div class="grow-wrap">
-    <button type="button" class="grow-nav prev" aria-label="Назад">‹</button>
-    <div class="grow-track" id="growTrack">
-    <div class="grow-slide"><img src="Кейсы -статитик/11.png" alt="Кейс 11" loading="lazy"></div>
-    <div class="grow-slide"><img src="Кейсы -статитик/13.png" alt="Кейс 13" loading="lazy"></div>
-    <div class="grow-slide"><img src="Кейсы -статитик/14.png" alt="Кейс 14" loading="lazy"></div>
-    <div class="grow-slide"><img src="Кейсы -статитик/15.png" alt="Кейс 15" loading="lazy"></div>
-    <div class="grow-slide"><img src="Кейсы -статитик/16.png" alt="Кейс 16" loading="lazy"></div>
-    <div class="grow-slide"><img src="Кейсы -статитик/17.png" alt="Кейс 17" loading="lazy"></div>
-    <div class="grow-slide"><img src="Кейсы -статитик/18.png" alt="Кейс 18" loading="lazy"></div>
-    <div class="grow-slide"><img src="Кейсы -статитик/19.png" alt="Кейс 19" loading="lazy"></div>
-    <div class="grow-slide"><img src="Кейсы -статитик/20.png" alt="Кейс 20" loading="lazy"></div>
-    <div class="grow-slide"><img src="Кейсы -статитик/21.png" alt="Кейс 21" loading="lazy"></div>
-    <div class="grow-slide"><img src="Кейсы -статитик/23.png" alt="Кейс 23" loading="lazy"></div>
-    <div class="grow-slide"><img src="Кейсы -статитик/25.png" alt="Кейс 25" loading="lazy"></div>
-    <div class="grow-slide"><img src="Кейсы -статитик/26.png" alt="Кейс 26" loading="lazy"></div>
-    </div>
-    <button type="button" class="grow-nav next" aria-label="Вперёд">›</button>
-  </div>
-  <div class="grow-dots" id="growDots"></div>
-</section>
+
 
 <!-- NICHES -->
 <section class="sec niches-on-image" id="niches">
@@ -671,6 +653,33 @@ footer{background:var(--bg);border-top:1px solid var(--border);padding:40px 80px
   </div>
   <div class="cases-scroll-hint" id="casesScrollHint" aria-hidden="true"><span class="cases-hint-arrow">›</span></div>
 </div>
+</section>
+
+<!-- С НАМИ РАСТУТ -->
+<section class="sec grow-carousel" id="grow">
+  <div class="sec-lbl">Кейсы</div>
+  <h2 class="sec-title">С НАМИ РАСТУТ</h2>
+  <p class="sec-desc">Реальные результаты — смотрите портфолио</p>
+  <div class="grow-wrap">
+    <button type="button" class="grow-nav prev" aria-label="Назад">‹</button>
+    <div class="grow-track" id="growTrack">
+    <div class="grow-slide"><img src="Кейсы -статитик/11.png" alt="Кейс 11" loading="lazy"></div>
+    <div class="grow-slide"><img src="Кейсы -статитик/13.png" alt="Кейс 13" loading="lazy"></div>
+    <div class="grow-slide"><img src="Кейсы -статитик/14.png" alt="Кейс 14" loading="lazy"></div>
+    <div class="grow-slide"><img src="Кейсы -статитик/15.png" alt="Кейс 15" loading="lazy"></div>
+    <div class="grow-slide"><img src="Кейсы -статитик/16.png" alt="Кейс 16" loading="lazy"></div>
+    <div class="grow-slide"><img src="Кейсы -статитик/17.png" alt="Кейс 17" loading="lazy"></div>
+    <div class="grow-slide"><img src="Кейсы -статитик/18.png" alt="Кейс 18" loading="lazy"></div>
+    <div class="grow-slide"><img src="Кейсы -статитик/19.png" alt="Кейс 19" loading="lazy"></div>
+    <div class="grow-slide"><img src="Кейсы -статитик/20.png" alt="Кейс 20" loading="lazy"></div>
+    <div class="grow-slide"><img src="Кейсы -статитик/21.png" alt="Кейс 21" loading="lazy"></div>
+    <div class="grow-slide"><img src="Кейсы -статитик/23.png" alt="Кейс 23" loading="lazy"></div>
+    <div class="grow-slide"><img src="Кейсы -статитик/25.png" alt="Кейс 25" loading="lazy"></div>
+    <div class="grow-slide"><img src="Кейсы -статитик/26.png" alt="Кейс 26" loading="lazy"></div>
+    </div>
+    <button type="button" class="grow-nav next" aria-label="Вперёд">›</button>
+  </div>
+  <div class="grow-dots" id="growDots"></div>
 </section>
 
 <!-- AVITO WHY -->
