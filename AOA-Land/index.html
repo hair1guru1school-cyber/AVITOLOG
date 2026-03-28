@@ -122,7 +122,10 @@ nav::after{content:'';position:absolute;bottom:0;left:0;right:0;height:1px;backg
 .nc-stat-lbl{font-size:10px;color:var(--muted)}
 
 /* PROCESS */
-.p-steps{display:grid;grid-template-columns:repeat(5,1fr);gap:0;position:relative;margin-top:56px}
+.process-section .process-visual-wrap{margin:clamp(12px,2.5vw,24px) 0 clamp(20px,3.5vw,36px);border-radius:clamp(14px,2vw,22px);overflow:hidden;border:1px solid rgba(255,255,255,.1);box-shadow:0 22px 64px rgba(0,0,0,.52),0 0 0 1px rgba(232,0,29,.1),inset 0 1px 0 rgba(255,255,255,.06);background:radial-gradient(ellipse 90% 45% at 50% -10%,rgba(232,0,29,.08),transparent 55%),linear-gradient(180deg,rgba(18,22,32,.5) 0%,rgba(6,8,14,.96) 100%)}
+.process-section .process-visual-wrap img{width:100%;height:auto;display:block;vertical-align:middle;object-fit:cover;object-position:center}
+@media(max-width:700px){.process-section .process-visual-wrap{margin-left:-8px;margin-right:-8px;width:calc(100% + 16px);border-radius:12px}}
+.p-steps{display:grid;grid-template-columns:repeat(5,1fr);gap:0;position:relative;margin-top:clamp(32px,5vw,56px)}
 .p-steps::before{content:'';position:absolute;top:40px;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--red),rgba(232,0,29,.15));z-index:0}
 .pstep{padding:0 22px;position:relative;z-index:1}
 .p-num{width:78px;height:78px;display:flex;align-items:center;justify-content:center;background:var(--s2);border:2px solid var(--red);font-family:'Oswald',sans-serif;font-size:30px;font-weight:700;color:var(--red);text-shadow:0 0 16px var(--red-glow);margin-bottom:20px;clip-path:polygon(12px 0,100% 0,100% calc(100% - 12px),calc(100% - 12px) 100%,0 100%,0 12px)}
@@ -205,8 +208,9 @@ nav::after{content:'';position:absolute;bottom:0;left:0;right:0;height:1px;backg
 
 .vk-promo + .sec{padding-top:clamp(56px,7vw,96px)}
 /* VK block */
-.vk-promo{position:relative;overflow:hidden;border-top:1px solid rgba(255,255,255,.06);border-bottom:1px solid rgba(255,255,255,.06);background-color:#060a12;background-image:linear-gradient(180deg,rgba(3,6,14,.48) 0%,rgba(5,10,20,.74) 48%,rgba(6,10,18,.9) 100%),url('vk-promo-art.png?v=20260328-vk2');background-position:center 22%;background-size:cover;background-repeat:no-repeat}
-.vk-inner{position:relative;z-index:1;max-width:min(1280px,96vw);margin:0 auto;text-align:center;padding:clamp(52px,7vw,92px) clamp(20px,4vw,48px) clamp(96px,12vw,140px)}
+.vk-promo{position:relative;overflow:hidden;border-top:none;border-bottom:1px solid rgba(255,255,255,.06);background-color:#060a12;background-image:linear-gradient(180deg,rgba(3,6,14,.48) 0%,rgba(5,10,20,.74) 48%,rgba(6,10,18,.9) 100%),url('vk-promo-art.png?v=20260328-vk3');background-position:center 22%;background-size:cover;background-repeat:no-repeat;scroll-margin-top:72px}
+.vk-promo::before{content:'';position:absolute;left:0;right:0;top:0;height:clamp(64px,12vw,180px);z-index:1;pointer-events:none;background:linear-gradient(180deg,var(--bg) 0%,rgba(8,11,18,.55) 22%,rgba(6,10,18,.12) 58%,transparent 100%)}
+.vk-inner{position:relative;z-index:2;max-width:min(1280px,96vw);margin:0 auto;text-align:center;padding:clamp(40px,6vw,84px) clamp(20px,4vw,48px) clamp(96px,12vw,140px)}
 .vk-inner .sec-lbl{color:rgba(0,207,255,.95);text-shadow:0 2px 16px rgba(0,0,0,.85)}
 .vk-inner .sec-title,.vk-inner .sec-title span{color:#f2f6ff;text-shadow:0 2px 24px rgba(0,0,0,.9),0 1px 3px rgba(0,0,0,.8)}
 .vk-inner .sec-desc{color:rgba(235,242,255,.92);max-width:min(52em,100%);margin-left:auto;margin-right:auto;text-shadow:0 2px 14px rgba(0,0,0,.75)}
@@ -216,7 +220,7 @@ nav::after{content:'';position:absolute;bottom:0;left:0;right:0;height:1px;backg
 @media(max-width:640px){.vk-promo{background-position:center top;min-height:min(56vh,480px)}.vk-inner{padding-left:16px;padding-right:16px;padding-bottom:96px}}
 
 /* AVITO WHY */
-.avwhy{position:relative;overflow:hidden;background:var(--bg);padding-bottom:clamp(40px,6vw,72px)}
+.avwhy{position:relative;overflow:hidden;background:linear-gradient(180deg,transparent 0%,transparent 65%,rgba(6,10,18,.28) 82%,rgba(6,10,18,.62) 94%,rgba(6,10,18,.88) 100%),var(--bg);padding-bottom:clamp(48px,7vw,88px)}
 .avwhy::before{content:'';position:absolute;top:0;right:0;width:50%;height:100%;background:url('trophy.png') center/cover no-repeat;opacity:.32}
 .avwhy::after{content:'';position:absolute;top:0;right:0;width:55%;height:100%;background:linear-gradient(90deg,var(--bg) 20%,transparent 100%)}
 .why-c{position:relative;z-index:10;max-width:58%}
@@ -507,9 +511,12 @@ footer{background:var(--bg);border-top:1px solid var(--border);padding:40px 80px
 </section>
 
 <!-- PROCESS -->
-<section class="sec" style="background:var(--bg2)">
+<section class="sec process-section" style="background:var(--bg2)" id="process">
   <div class="sec-lbl">Как работаем</div>
   <h2 class="sec-title">5 ШАГОВ ДО<br><span>ПОТОКА ЗАЯВОК</span></h2>
+  <figure class="process-visual-wrap">
+    <img src="process-steps-panorama.png?v=20260328-ps1" alt="Пять этапов работы: консультация и аудит, стратегия и договор, упаковка магазина, запуск и масштаб, рост и отчётность" width="1920" height="640" loading="lazy" decoding="async" />
+  </figure>
   <div class="p-steps">
     <div class="pstep rev"><div class="p-num">01</div><div class="p-title">Консультация и аудит</div><div class="p-desc">Разбираем нишу, анализируем конкурентов, считаем потенциал. КП и анализ рынка — бесплатно.</div></div>
     <div class="pstep rev"><div class="p-num">02</div><div class="p-title">Стратегия и договор</div><div class="p-desc">Прописываем план, фиксируем KPI в договоре с ИП. Никаких устных договорённостей.</div></div>
