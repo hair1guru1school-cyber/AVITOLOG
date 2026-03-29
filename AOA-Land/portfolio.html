@@ -90,13 +90,30 @@ nav::after{content:'';position:absolute;bottom:0;left:0;right:0;height:1px;backg
 @media(max-width:640px){.lb-nav{width:44px;height:44px;font-size:20px}.lb-nav.prev{left:4px}.lb-nav.next{right:4px}nav{padding:0 16px 0 20px}.portfolio-hero-inner,.filters-wrap,.sec-pick,.gallery-sec{padding-left:16px;padding-right:16px}.sec-pick::before{left:16px;right:16px}.portfolio-hero-wrap{min-height:min(74vh,680px)}.portfolio-hero-inner{padding-top:40px;padding-bottom:32px}}
 footer{position:relative;z-index:1;background:rgba(1,2,6,.85);border-top:1px solid var(--border);padding:28px 48px;text-align:center;font-size:11px;color:var(--muted);letter-spacing:1px}
 footer a{color:var(--cyan);text-decoration:none}
+.mobile-hero-img{display:none}
 @media(max-width:640px){
-body{
-background:
-linear-gradient(180deg,rgba(1,2,5,.72) 0%,rgba(3,6,12,.60) 40%,rgba(2,3,8,.78) 75%,rgba(1,2,5,.90) 100%),
-url('portfolio-bg-mobile.png') center top / cover no-repeat;
+  .mobile-hero-img{
+    display:block;
+    width:100%;
+    max-height:380px;
+    object-fit:cover;
+    object-position:center top;
+  }
+  .mobile-hero-img-wrap{
+    position:relative;
+    width:100%;
+    overflow:hidden;
+  }
+  .mobile-hero-img-wrap::after{
+    content:'';
+    position:absolute;
+    bottom:0;left:0;right:0;
+    height:120px;
+    background:linear-gradient(to bottom,transparent,#010205);
+    pointer-events:none;
+  }
 }
-}
+
 </style>
 </head>
 <body>
@@ -106,6 +123,7 @@ url('portfolio-bg-mobile.png') center top / cover no-repeat;
     <a class="nav-back" href="index.html">← На главную</a>
   </div>
 </nav>
+<div class="mobile-hero-img-wrap"><img class="mobile-hero-img" src="portfolio-bg-mobile.png" alt="" aria-hidden="true"></div>
 <section class="portfolio-hero-wrap" aria-label="Портфолио дизайнов">
   <div class="portfolio-hero-bg" aria-hidden="true"></div>
   <div class="portfolio-hero-inner">
