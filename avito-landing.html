@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="ru">
 <head>
 <meta charset="UTF-8">
@@ -170,19 +170,25 @@ h3 { font-size: 1.15rem; font-weight: 600; }
 @media (max-width: 1100px) { .process-grid { grid-template-columns: repeat(2, 1fr); } }
 @media (max-width: 520px) { .process-grid { grid-template-columns: 1fr; } }
 .process-card {
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: 16px;
-  padding: 28px;
+  padding: 8px 16px 24px;
   text-align: center;
-  transition: all 0.3s ease;
 }
-.process-card:hover {
-  border-color: rgba(230, 57, 70, 0.4);
-  transform: translateY(-4px);
+.process-icon {
+  width: 96px;
+  height: 96px;
+  object-fit: contain;
+  display: block;
+  margin: 0 auto 18px;
+  filter: drop-shadow(0 4px 16px rgba(230,57,70,.18));
+  transition: transform 0.3s ease, filter 0.3s ease;
 }
-.process-card .num { font-family: 'Unbounded'; font-size: 2rem; color: var(--accent); margin-bottom: 8px; opacity: 0.9; }
-.process-card .emoji { font-size: 32px; margin: 12px 0; }
+.process-card:hover .process-icon {
+  transform: translateY(-6px) scale(1.06);
+  filter: drop-shadow(0 8px 24px rgba(230,57,70,.30));
+}
+.process-card .num { font-family: 'Unbounded'; font-size: 0.65rem; color: var(--accent); letter-spacing: 3px; margin-bottom: 14px; opacity: 0.7; display: block; }
+.process-card h3 { font-size: 1.05rem; font-weight: 700; letter-spacing: 0.5px; margin-bottom: 10px; }
+.process-card p { font-size: 0.875rem; line-height: 1.6; color: var(--muted); max-width: 160px; margin: 0 auto; }
 
 /* BLOCK 6 - Advantages */
 .adv-list {
@@ -531,34 +537,34 @@ h3 { font-size: 1.15rem; font-weight: 600; }
     </div>
     <div class="process-grid">
       <div class="process-card">
-        <div class="num">01</div>
-        <h3>Анализ</h3>
-        <div class="emoji">🔍</div>
-        <p class="subtitle" style="margin-top:8px;font-size:0.9rem">Изучаем нишу, конкурентов и спрос.</p>
+        <span class="num">01</span>
+        <img class="process-icon" src="icons/step1.png" alt="Анализ рынка">
+        <h3>Анализ рынка</h3>
+        <p>Изучаем вашу нишу, топ конкурентов и реальный спрос.</p>
       </div>
       <div class="process-card">
-        <div class="num">02</div>
+        <span class="num">02</span>
+        <img class="process-icon" src="icons/step2.png" alt="Стратегия">
         <h3>Стратегия</h3>
-        <div class="emoji">🧠</div>
-        <p class="subtitle" style="margin-top:8px;font-size:0.9rem">Формируем план запуска и структуру объявлений.</p>
+        <p>Создаём план запуска, структуру объявлений и рекламный бюджет.</p>
       </div>
       <div class="process-card">
-        <div class="num">03</div>
+        <span class="num">03</span>
+        <img class="process-icon" src="icons/step3.png" alt="Упаковка">
         <h3>Упаковка</h3>
-        <div class="emoji">🎨</div>
-        <p class="subtitle" style="margin-top:8px;font-size:0.9rem">Создаём дизайн, тексты и карточки.</p>
+        <p>Продающие тексты, дизайн карточек и инфографика.</p>
       </div>
       <div class="process-card">
-        <div class="num">04</div>
+        <span class="num">04</span>
+        <img class="process-icon" src="icons/step4.png" alt="Запуск">
         <h3>Запуск</h3>
-        <div class="emoji">🚀</div>
-        <p class="subtitle" style="margin-top:8px;font-size:0.9rem">Автозагрузка и первые заявки.</p>
+        <p>Публикуем, настраиваем автозагрузку и получаем первые заявки.</p>
       </div>
       <div class="process-card">
-        <div class="num">05</div>
-        <h3>Масштаб</h3>
-        <div class="emoji">📈</div>
-        <p class="subtitle" style="margin-top:8px;font-size:0.9rem">Увеличиваем поток клиентов.</p>
+        <span class="num">05</span>
+        <img class="process-icon" src="icons/step5.png" alt="Масштабирование">
+        <h3>Масштабирование</h3>
+        <p>Анализируем, оптимизируем и наращиваем поток клиентов.</p>
       </div>
     </div>
   </div>
