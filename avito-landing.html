@@ -146,8 +146,9 @@ h3 { font-size: 1.15rem; font-weight: 600; }
   transform: translateY(-8px);
   box-shadow: 0 24px 56px rgba(0,0,0,0.4);
 }
-.case-card img { width: 100%; height: 200px; object-fit: cover; display: block; }
-.case-card-body { padding: 28px 36px 36px; }
+.case-card-img-wrap { margin: 14px 14px 0; border-radius: 16px; overflow: hidden; }
+.case-card img { width: 100%; height: 160px; object-fit: cover; display: block; }
+.case-card-body { padding: 20px 36px 36px; }
 .case-card h3 { font-size: 1.5rem; margin-bottom: 20px; }
 .case-card .stat { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; color: var(--muted); font-size: 0.95rem; }
 .case-card .stat strong { color: var(--accent); }
@@ -156,7 +157,7 @@ h3 { font-size: 1.15rem; font-weight: 600; }
 .cases-dots span.active { background: var(--accent); transform: scale(1.2); }
 @media (max-width: 480px) {
   .case-card { min-width: calc(100vw - 48px); flex: 0 0 calc(100vw - 48px); }
-  .case-card img { height: 180px; }
+  .case-card img { height: 140px; }
 }
 
 /* BLOCK 5 - Process */
@@ -454,7 +455,7 @@ h3 { font-size: 1.15rem; font-weight: 600; }
     <div class="cases-slider-wrap">
       <div class="cases-slider" id="casesSlider">
         <div class="case-card">
-          <img src="AOA-Land/Кейсы%20-статитик/14.png" alt="Пиломатериалы" onerror="this.src='https://images.unsplash.com/photo-1565538810643-b5bdb714032a?w=600&h=300&fit=crop'">
+          <div class="case-card-img-wrap"><img src="AOA-Land/Кейсы%20-статитик/14.png" alt="Пиломатериалы" onerror="this.src='https://images.unsplash.com/photo-1565538810643-b5bdb714032a?w=600&h=300&fit=crop'"></div>
           <div class="case-card-body">
             <h3>Пиломатериалы</h3>
             <div class="stat"><i data-lucide="trending-up" class="lucide" style="width:20px;height:20px"></i> <strong>402 заявки</strong></div>
@@ -463,7 +464,7 @@ h3 { font-size: 1.15rem; font-weight: 600; }
           </div>
         </div>
         <div class="case-card">
-          <img src="AOA-Land/Кейсы%20-статитик/13.png" alt="Оборудование" onerror="this.src='https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?w=600&h=300&fit=crop'">
+          <div class="case-card-img-wrap"><img src="AOA-Land/Кейсы%20-статитик/13.png" alt="Оборудование" onerror="this.src='https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?w=600&h=300&fit=crop'"></div>
           <div class="case-card-body">
             <h3>Оборудование</h3>
             <div class="stat"><i data-lucide="trending-up" class="lucide" style="width:20px;height:20px"></i> <strong>480 заявок</strong></div>
@@ -472,7 +473,7 @@ h3 { font-size: 1.15rem; font-weight: 600; }
           </div>
         </div>
         <div class="case-card">
-          <img src="AOA-Land/Кейсы%20-статитик/20.png" alt="Бассейны" onerror="this.src='https://images.unsplash.com/photo-1576013551627-0cc20b96c2a7?w=600&h=300&fit=crop'">
+          <div class="case-card-img-wrap"><img src="AOA-Land/Кейсы%20-статитик/20.png" alt="Бассейны" onerror="this.src='https://images.unsplash.com/photo-1576013551627-0cc20b96c2a7?w=600&h=300&fit=crop'"></div>
           <div class="case-card-body">
             <h3>Бассейны</h3>
             <div class="stat"><i data-lucide="trending-up" class="lucide" style="width:20px;height:20px"></i> <strong>911 заявок</strong></div>
