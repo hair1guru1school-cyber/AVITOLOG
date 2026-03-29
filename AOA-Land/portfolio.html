@@ -24,8 +24,6 @@ nav::after{content:'';position:absolute;bottom:0;left:0;right:0;height:1px;backg
 .nav-tools{display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:flex-end}
 .nav-back{color:var(--muted);text-decoration:none;font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;padding:9px 18px;border:1px solid var(--border);transition:all .2s}
 .nav-back:hover{color:var(--red);border-color:var(--border-r);background:var(--red-dim)}
-.nav-sec{color:var(--muted);text-decoration:none;font-size:10px;font-weight:700;letter-spacing:1px;padding:8px 12px;border:1px dashed var(--border);transition:none}
-.nav-sec:hover{color:var(--cyan);border-color:var(--cyan);transition:none}
 .portfolio-hero-wrap{position:relative;width:100vw;margin-left:calc(50% - 50vw);margin-right:calc(50% - 50vw);min-height:min(88vh,900px);display:flex;flex-direction:column;justify-content:flex-end;overflow:hidden;margin-bottom:6px;z-index:1}
 .portfolio-hero-bg{position:absolute;inset:0;background:url('portfolio-hero-bg.png') center top/cover no-repeat;background-color:#05080f}
 .portfolio-hero-bg::before{content:'';position:absolute;inset:0;background:linear-gradient(180deg,rgba(2,3,8,.14) 0%,rgba(8,11,18,.38) 38%,rgba(8,11,18,.68) 68%,rgba(1,2,6,.88) 88%,var(--bg) 100%)}
@@ -98,7 +96,6 @@ footer a{color:var(--cyan);text-decoration:none}
 <nav>
   <a class="nav-logo" href="index.html">ACES <span class="logo-badge">OF ADS</span></a>
   <div class="nav-tools">
-    <a class="nav-sec" href="portfolio-showcase.html">Только макеты (без фото)</a>
     <a class="nav-back" href="index.html">← На главную</a>
   </div>
 </nav>
@@ -146,7 +143,7 @@ footer a{color:var(--cyan);text-decoration:none}
   </div>
 </div>
 <footer>
-  <a href="index.html">Aces of Ads</a> · галерея с фото · <a href="portfolio-showcase.html">страница с макетами</a>
+  <a href="index.html">Aces of Ads</a> · галерея с фото
 </footer>
 <script src="portfolio-manifest.js?v=20260328-14"></script>
 <script>
