@@ -1,4 +1,4 @@
-{
+﻿{
   "disk-bdm": [
     "portfolio-images/ДИСК АЛЛМАЗ/hf_20260327_164104_41cb7698-1cf7-4215-9a04-0c1cd86771be.png",
     "portfolio-images/ДИСК АЛЛМАЗ/hf_20260327_164119_b4884acc-a2f0-4a0d-8a5c-f2070fef5340.png",
@@ -107,5 +107,56 @@
     "portfolio-images/ВашДом/hf_20260314_130709_18fe635e-5160-4c3c-bc91-d9732639d5d6.png",
     "portfolio-images/ВашДом/hf_20260314_130936_c1e5ad64-6873-4d99-9cc9-82da2cc42a18.png",
     "portfolio-images/ВашДом/photo_2026-02-13_21-32-39.jpg"
+  ],
+  "repetitor": [
+    "portfolio-images/Репетитор/01.jpeg",
+    "portfolio-images/Репетитор/hf_20260321_174803_3c879fe3-464e-4ed6-8b09-f410badc6ba0.jpeg",
+    "portfolio-images/Репетитор/hf_20260321_174955_696d78ce-ad50-4e4d-964f-561ec5a08e20.jpeg",
+    "portfolio-images/Репетитор/hf_20260321_175005_6ddf08c3-0b2b-43fe-a0fa-9cc47d9b486b.png",
+    "portfolio-images/Репетитор/hf_20260321_175013_65685a32-206e-44c1-9a22-126ee2729068.jpeg",
+    "portfolio-images/Репетитор/hf_20260321_175421_5feb6fbb-745f-44f5-89d5-cb6fbd0fbc7b.jpeg",
+    "portfolio-images/Репетитор/hf_20260321_175431_f5b3eff3-78c6-41e4-9159-5f462cb3f180.jpeg",
+    "portfolio-images/Репетитор/hf_20260321_175439_cd2469ab-de05-4ea3-be99-1b06f9009c1a.jpeg"
+  ],
+  "biznes-pavilony": [
+    "portfolio-images/Бизнес Павильоны/hf_20260309_142906_5a4365ca-3154-4aca-9d95-82bc05af6f3b (1).png",
+    "portfolio-images/Бизнес Павильоны/hf_20260309_142916_5fb3df61-461c-4589-ba28-0bd1ff976a34.png",
+    "portfolio-images/Бизнес Павильоны/hf_20260309_143005_ddd507f5-97ee-4f34-9df7-03a6297304c7 (1).png",
+    "portfolio-images/Бизнес Павильоны/hf_20260309_150940_f3656522-733f-4470-a836-08d941f68525 (1).png",
+    "portfolio-images/Бизнес Павильоны/hf_20260309_164233_c3cba217-b06a-4f3b-a6a4-e64f040fe2c3 (1).png",
+    "portfolio-images/Бизнес Павильоны/hf_20260309_173035_58601c5f-80c6-4e4f-b739-18db7acf48a0 (1).png"
+  ],
+  "vorota": [
+    "portfolio-images/Ворота/hf_20260326_025457_3531402d-a600-4638-a2c0-d0ea9ecbd7fd.jpeg",
+    "portfolio-images/Ворота/hf_20260326_025658_a5d3808a-e325-453c-a221-16c14125f421.jpeg",
+    "portfolio-images/Ворота/hf_20260326_030627_e8240e10-2fde-401f-b511-226216f6b3d6.jpeg",
+    "portfolio-images/Ворота/hf_20260326_030957_33cece35-a51f-420c-b0a8-72975359c5a1.jpeg",
+    "portfolio-images/Ворота/hf_20260326_031629_5008f5ef-da9f-4b07-9f60-9dc3e4721a2b.jpeg",
+    "portfolio-images/Ворота/hf_20260326_031638_c79e1003-c3bc-452f-9e1b-1749d252fe0e.jpeg",
+    "portfolio-images/Ворота/hf_20260326_031758_ce5b7bac-aedd-48cd-835b-5d898469a1f1.jpeg",
+    "portfolio-images/Ворота/hf_20260328_024551_8ba3d563-0adf-4a87-9eb1-9a7ba2068ac7 (2).png"
+  ],
+  "shkafyi-pod-klyuch": [
+    "portfolio-images/Шкафы под ключ/hf_20260320_032315_f89605f6-2327-4af2-ad6e-e89536f3711f.png",
+    "portfolio-images/Шкафы под ключ/hf_20260320_032321_70677a71-3fb8-427f-91fb-c30873b823be.png",
+    "portfolio-images/Шкафы под ключ/hf_20260320_032935_21a1de65-b6d9-4dc7-a618-4b2fcef3d7d0.png",
+    "portfolio-images/Шкафы под ключ/hf_20260320_032941_885a6c8f-bd1f-462e-9887-f812a6688edc.png",
+    "portfolio-images/Шкафы под ключ/hf_20260320_032946_259d038b-6e08-4be8-a9d3-fbca21f74a5d.png",
+    "portfolio-images/Шкафы под ключ/hf_20260320_033418_7a4beaf7-ae57-41e0-a333-1289d4b2f431.jpeg",
+    "portfolio-images/Шкафы под ключ/hf_20260320_033422_2247715c-2afd-4af6-b83a-67b3ebffcd32.jpeg",
+    "portfolio-images/Шкафы под ключ/hf_20260320_033427_55ad81b7-c2d4-4ab8-98d9-df7612cc1a5d.png",
+    "portfolio-images/Шкафы под ключ/hf_20260320_033432_30d405d5-b642-4eeb-abbb-5fd98ffb1218.png",
+    "portfolio-images/Шкафы под ключ/hf_20260320_033436_a5d9fb50-a6c1-4e01-a40d-42260c3a3416.png",
+    "portfolio-images/Шкафы под ключ/hf_20260320_033731_c60fce24-c2d2-474d-be84-e653e7624657.png",
+    "portfolio-images/Шкафы под ключ/hf_20260320_033735_7ef080ce-bd14-4cf4-894f-a0b1cd38a06a.png",
+    "portfolio-images/Шкафы под ключ/hf_20260320_033739_800232b5-1ed6-476f-bc11-26797b834f1a.png",
+    "portfolio-images/Шкафы под ключ/hf_20260320_033744_745145e7-ca24-4522-927b-2b5d07603925.png",
+    "portfolio-images/Шкафы под ключ/hf_20260320_035105_cd930ca4-cfb7-4baa-9294-5e00747c28bc.png",
+    "portfolio-images/Шкафы под ключ/hf_20260320_035110_0b47194a-689c-491b-90a0-4cd0b4bb8c0b.png",
+    "portfolio-images/Шкафы под ключ/hf_20260320_035115_4851634f-658e-4f84-845b-13856ebb12c4.jpeg",
+    "portfolio-images/Шкафы под ключ/hf_20260320_035121_d4ae5879-fd20-4ceb-8923-10c6f6c3519a.png",
+    "portfolio-images/Шкафы под ключ/hf_20260320_035126_2602d098-b5ad-4e63-bbdc-13e82ccf0793.png",
+    "portfolio-images/Шкафы под ключ/hf_20260320_035130_9b27d2e1-c6b7-4afd-8b93-95038d0fefc1.png",
+    "portfolio-images/Шкафы под ключ/hf_20260320_035136_6d8a1ae6-bfc0-4e46-89e6-0b2fb617a1cc.png"
   ]
 }
