@@ -40,6 +40,12 @@
         editUrl: 'https://www.canva.com/design/DAHC5vnvfls/cVLZMm8L_Z89cEzzXWRJ1g/edit'
       },
       {
+        id: 'beton_zbi',
+        label: 'Бетон ЖБИ',
+        emoji: '🪨',
+        editUrl: 'https://www.canva.com/design/DAHFS5_hNUc/epFjgRbmTlr43iw0pSnPBQ/edit'
+      },
+      {
         id: 'okna',
         label: 'Окна',
         emoji: '🪟',
