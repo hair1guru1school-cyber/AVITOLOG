@@ -168,7 +168,7 @@ h3 { font-size: 1.15rem; font-weight: 600; }
   margin-top: 48px;
 }
 @media (max-width: 1100px) { .process-grid { grid-template-columns: repeat(2, 1fr); } }
-@media (max-width: 520px) { .process-grid { grid-template-columns: 1fr; } }
+@media (max-width: 520px) { .process-grid { grid-template-columns: repeat(2, 1fr); gap: 16px; } }
 .process-card {
   padding: 12px 8px 28px;
   text-align: center;
@@ -177,16 +177,17 @@ h3 { font-size: 1.15rem; font-weight: 600; }
   align-items: center;
 }
 .process-icon {
-  width: 120px;
-  height: 120px;
-  object-fit: contain;
+  width: 100%;
+  max-width: 200px;
+  height: auto;
   display: block;
   margin: 0 auto 20px;
+  border-radius: 12px;
   filter: drop-shadow(0 6px 20px rgba(230,57,70,.25));
   transition: transform 0.35s ease, filter 0.35s ease;
 }
 .process-card:hover .process-icon {
-  transform: translateY(-8px) scale(1.08);
+  transform: translateY(-8px) scale(1.05);
   filter: drop-shadow(0 12px 28px rgba(230,57,70,.40));
 }
 .process-card .num {
