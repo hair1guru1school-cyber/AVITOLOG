@@ -768,9 +768,10 @@
     var myNameColW = calcNameColWidth(myList);
     var sashaNameColW = calcNameColWidth(sashaList);
     var myTotal = myList.reduce(function(a, p) { return a + (parseInt(String(p.paid || '').replace(/\s/g, ''), 10) || 0); }, 0);
-    var sashaTotal = sashaList.reduce(function(a, p) { return a + (parseInt(String(p.aoaPercent || '').replace(/\s/g, ''), 10) || 0); }, 0);
+    var sashaTotal = sashaList.reduce(function(a, p) { return a + (parseInt(String(p.soldFor || p.paid || '').replace(/\s/g, ''), 10) || 0); }, 0);
+    var sashaAoaTotal = sashaList.reduce(function(a, p) { return a + (parseInt(String(p.aoaPercent || '').replace(/\s/g, ''), 10) || 0); }, 0);
     var isSashaView = !!(typeof window !== 'undefined' && window.AVITOLOG_IS_SASHA);
-    var totalRub = myTotal + (isSashaView ? 0 : sashaTotal);
+    var totalRub = myTotal + (isSashaView ? 0 : sashaAoaTotal);
     var totalUsd = Math.round(totalRub / ASSETS_USD_RATE);
     var newClientsSum = calcNewClientsThisMonth();
     var newClientsVal = newClientsSum > 0 ? fmt(newClientsSum) : '';
