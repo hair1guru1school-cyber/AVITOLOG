@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ru">
 <head>
 <meta charset="UTF-8">
@@ -168,56 +168,21 @@ h3 { font-size: 1.15rem; font-weight: 600; }
   margin-top: 48px;
 }
 @media (max-width: 1100px) { .process-grid { grid-template-columns: repeat(2, 1fr); } }
-@media (max-width: 520px) { .process-grid { grid-template-columns: repeat(2, 1fr); gap: 16px; } }
+@media (max-width: 520px) { .process-grid { grid-template-columns: 1fr; } }
 .process-card {
-  padding: 12px 8px 28px;
-  text-align: center;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-}
-.process-icon {
-  width: 100%;
-  max-width: 200px;
-  height: auto;
-  display: block;
-  margin: 0 auto 20px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
   border-radius: 16px;
-  filter: drop-shadow(0 6px 24px rgba(230,57,70,.35));
-  transition: transform 0.35s ease, filter 0.35s ease;
+  padding: 28px;
+  text-align: center;
+  transition: all 0.3s ease;
 }
-.process-card:hover .process-icon {
-  transform: translateY(-8px) scale(1.05);
-  filter: drop-shadow(0 12px 32px rgba(230,57,70,.55));
+.process-card:hover {
+  border-color: rgba(230, 57, 70, 0.4);
+  transform: translateY(-4px);
 }
-.process-card .num {
-  width: 28px; height: 28px;
-  background: var(--accent);
-  border-radius: 50%;
-  color: #fff;
-  font-family: 'Unbounded';
-  font-size: 0.6rem;
-  font-weight: 700;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin: 0 auto 16px;
-}
-.process-card h3 {
-  font-size: 1.15rem;
-  font-weight: 800;
-  color: #ffffff;
-  letter-spacing: 0.3px;
-  margin-bottom: 10px;
-  line-height: 1.3;
-}
-.process-card p {
-  font-size: 0.92rem;
-  line-height: 1.65;
-  color: rgba(255,255,255,0.78);
-  max-width: 170px;
-  margin: 0 auto;
-}
+.process-card .num { font-family: 'Unbounded'; font-size: 2rem; color: var(--accent); margin-bottom: 8px; opacity: 0.9; }
+.process-card .emoji { font-size: 32px; margin: 12px 0; }
 
 /* BLOCK 6 - Advantages */
 .adv-list {
@@ -234,7 +199,7 @@ h3 { font-size: 1.15rem; font-weight: 600; }
   padding: 20px 24px;
   background: var(--bg-card);
   border: 1px solid var(--border);
-  border-radius: 16px;
+  border-radius: 12px;
   transition: all 0.25s ease;
 }
 .adv-item:hover {
@@ -254,7 +219,7 @@ h3 { font-size: 1.15rem; font-weight: 600; }
   aspect-ratio: 1;
   background: var(--bg-card);
   border: 1px solid var(--border);
-  border-radius: 16px;
+  border-radius: 12px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -334,7 +299,7 @@ h3 { font-size: 1.15rem; font-weight: 600; }
   align-items: center;
   gap: 10px;
   padding: 18px 36px;
-  border-radius: 16px;
+  border-radius: 12px;
   font-size: 1rem;
   font-weight: 700;
   font-family: inherit;
@@ -567,33 +532,33 @@ h3 { font-size: 1.15rem; font-weight: 600; }
     <div class="process-grid">
       <div class="process-card">
         <div class="num">01</div>
-        <img class="process-icon" src="Icons/icon1.jpg" alt="Анализ рынка">
-        <h3>Анализ рынка</h3>
-        <p>Изучаем вашу нишу, топ конкурентов и реальный спрос.</p>
+        <h3>Анализ</h3>
+        <div class="emoji">🔍</div>
+        <p class="subtitle" style="margin-top:8px;font-size:0.9rem">Изучаем нишу, конкурентов и спрос.</p>
       </div>
       <div class="process-card">
         <div class="num">02</div>
-        <img class="process-icon" src="Icons/icon2.jpg" alt="Стратегия">
         <h3>Стратегия</h3>
-        <p>Создаём план запуска, структуру объявлений и рекламный бюджет.</p>
+        <div class="emoji">🧠</div>
+        <p class="subtitle" style="margin-top:8px;font-size:0.9rem">Формируем план запуска и структуру объявлений.</p>
       </div>
       <div class="process-card">
         <div class="num">03</div>
-        <img class="process-icon" src="Icons/icon3.jpg" alt="Упаковка">
         <h3>Упаковка</h3>
-        <p>Продающие тексты, дизайн карточек и инфографика.</p>
+        <div class="emoji">🎨</div>
+        <p class="subtitle" style="margin-top:8px;font-size:0.9rem">Создаём дизайн, тексты и карточки.</p>
       </div>
       <div class="process-card">
         <div class="num">04</div>
-        <img class="process-icon" src="Icons/icon4.jpg" alt="Запуск">
         <h3>Запуск</h3>
-        <p>Публикуем, настраиваем автозагрузку и получаем первые заявки.</p>
+        <div class="emoji">🚀</div>
+        <p class="subtitle" style="margin-top:8px;font-size:0.9rem">Автозагрузка и первые заявки.</p>
       </div>
       <div class="process-card">
         <div class="num">05</div>
-        <img class="process-icon" src="Icons/icon5.jpg" alt="Масштабирование">
-        <h3>Масштабирование</h3>
-        <p>Анализируем, оптимизируем и наращиваем поток клиентов.</p>
+        <h3>Масштаб</h3>
+        <div class="emoji">📈</div>
+        <p class="subtitle" style="margin-top:8px;font-size:0.9rem">Увеличиваем поток клиентов.</p>
       </div>
     </div>
   </div>
