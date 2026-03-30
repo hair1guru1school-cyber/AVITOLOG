@@ -170,25 +170,53 @@ h3 { font-size: 1.15rem; font-weight: 600; }
 @media (max-width: 1100px) { .process-grid { grid-template-columns: repeat(2, 1fr); } }
 @media (max-width: 520px) { .process-grid { grid-template-columns: 1fr; } }
 .process-card {
-  padding: 8px 16px 24px;
+  padding: 12px 8px 28px;
   text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 .process-icon {
-  width: 96px;
-  height: 96px;
+  width: 120px;
+  height: 120px;
   object-fit: contain;
   display: block;
-  margin: 0 auto 18px;
-  filter: drop-shadow(0 4px 16px rgba(230,57,70,.18));
-  transition: transform 0.3s ease, filter 0.3s ease;
+  margin: 0 auto 20px;
+  filter: drop-shadow(0 6px 20px rgba(230,57,70,.25));
+  transition: transform 0.35s ease, filter 0.35s ease;
 }
 .process-card:hover .process-icon {
-  transform: translateY(-6px) scale(1.06);
-  filter: drop-shadow(0 8px 24px rgba(230,57,70,.30));
+  transform: translateY(-8px) scale(1.08);
+  filter: drop-shadow(0 12px 28px rgba(230,57,70,.40));
 }
-.process-card .num { font-family: 'Unbounded'; font-size: 0.65rem; color: var(--accent); letter-spacing: 3px; margin-bottom: 14px; opacity: 0.7; display: block; }
-.process-card h3 { font-size: 1.05rem; font-weight: 700; letter-spacing: 0.5px; margin-bottom: 10px; }
-.process-card p { font-size: 0.875rem; line-height: 1.6; color: var(--muted); max-width: 160px; margin: 0 auto; }
+.process-card .num {
+  width: 28px; height: 28px;
+  background: var(--accent);
+  border-radius: 50%;
+  color: #fff;
+  font-family: 'Unbounded';
+  font-size: 0.6rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 16px;
+}
+.process-card h3 {
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: #ffffff;
+  letter-spacing: 0.3px;
+  margin-bottom: 10px;
+  line-height: 1.3;
+}
+.process-card p {
+  font-size: 0.92rem;
+  line-height: 1.65;
+  color: rgba(255,255,255,0.78);
+  max-width: 170px;
+  margin: 0 auto;
+}
 
 /* BLOCK 6 - Advantages */
 .adv-list {
@@ -537,31 +565,31 @@ h3 { font-size: 1.15rem; font-weight: 600; }
     </div>
     <div class="process-grid">
       <div class="process-card">
-        <span class="num">01</span>
+        <div class="num">01</div>
         <img class="process-icon" src="Icons/step1.png" alt="Анализ рынка">
         <h3>Анализ рынка</h3>
         <p>Изучаем вашу нишу, топ конкурентов и реальный спрос.</p>
       </div>
       <div class="process-card">
-        <span class="num">02</span>
+        <div class="num">02</div>
         <img class="process-icon" src="Icons/step2.png" alt="Стратегия">
         <h3>Стратегия</h3>
         <p>Создаём план запуска, структуру объявлений и рекламный бюджет.</p>
       </div>
       <div class="process-card">
-        <span class="num">03</span>
+        <div class="num">03</div>
         <img class="process-icon" src="Icons/step3.png" alt="Упаковка">
         <h3>Упаковка</h3>
         <p>Продающие тексты, дизайн карточек и инфографика.</p>
       </div>
       <div class="process-card">
-        <span class="num">04</span>
+        <div class="num">04</div>
         <img class="process-icon" src="Icons/step4.png" alt="Запуск">
         <h3>Запуск</h3>
         <p>Публикуем, настраиваем автозагрузку и получаем первые заявки.</p>
       </div>
       <div class="process-card">
-        <span class="num">05</span>
+        <div class="num">05</div>
         <img class="process-icon" src="Icons/step5.png" alt="Масштабирование">
         <h3>Масштабирование</h3>
         <p>Анализируем, оптимизируем и наращиваем поток клиентов.</p>
