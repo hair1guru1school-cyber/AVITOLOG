@@ -471,6 +471,66 @@
   var ASSETS_FILTER_PAID_KEY = (typeof window.AVITOLOG_KEY === 'function') ? window.AVITOLOG_KEY('avitolog_assets_filter_paid') : 'avitolog_assets_filter_paid';
 
   var ASSETS_EMOJIS = ['📦','🪨','🏠','🏗️','🧱','🛋️','🚚','📊','💰','🚀','👷','🛠️','🚜','📚','👩🏻‍🏫','💻','📱','⚡️','🛌','🪟','🎄','🪵','🏎','🪨','🛌','🏠','🚜','👩🏻‍🏫','⚡️','🧱','🪑','🛏️','🏢','🏭','🔧','📐','⭐️','🔥','💎','🎯','✅','📋','📝','🖊️','📷','📡','🔌'];
+  var ASSETS_MONTH_NAMES = ['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'];
+  var _assetsViewMonth = null;
+
+  function assetsCurrentMonthKey() {
+    var n = new Date();
+    return n.getFullYear() + '-' + String(n.getMonth() + 1).padStart(2, '0');
+  }
+  function assetsMonthStorageKey(ym) { return ASSETS_MY_KEY + '_month_' + ym; }
+  function assetsSashaMonthStorageKey(ym) { return ASSETS_SASHA_KEY + '_month_' + ym; }
+  function assetsSnapshotCurrentMonth() {
+    try {
+      var ym = assetsCurrentMonthKey();
+      localStorage.setItem(assetsMonthStorageKey(ym), JSON.stringify(getAssetsMy()));
+      localStorage.setItem(assetsSashaMonthStorageKey(ym), JSON.stringify(getAssetsSasha()));
+    } catch(e) {}
+  }
+  function assetsLoadMonthSnapshot(ym) {
+    try {
+      var myRaw = localStorage.getItem(assetsMonthStorageKey(ym));
+      var saRaw = localStorage.getItem(assetsSashaMonthStorageKey(ym));
+      return {
+        my: myRaw ? JSON.parse(myRaw) : [],
+        sasha: saRaw ? JSON.parse(saRaw) : []
+      };
+    } catch(e) { return { my: [], sasha: [] }; }
+  }
+  function assetsGetAvailableMonths() {
+    var months = {};
+    var prefix1 = ASSETS_MY_KEY + '_month_';
+    var prefix2 = ASSETS_SASHA_KEY + '_month_';
+    for (var i = 0; i < localStorage.length; i++) {
+      var k = localStorage.key(i);
+      if (k) {
+        var ym = '';
+        if (k.indexOf(prefix1) === 0) ym = k.substring(prefix1.length);
+        else if (k.indexOf(prefix2) === 0) ym = k.substring(prefix2.length);
+        if (/^\d{4}-\d{2}$/.test(ym)) months[ym] = true;
+      }
+    }
+    months[assetsCurrentMonthKey()] = true;
+    return Object.keys(months).sort();
+  }
+  function assetsShiftMonth(dir) {
+    var months = assetsGetAvailableMonths();
+    var cur = _assetsViewMonth || assetsCurrentMonthKey();
+    var idx = months.indexOf(cur);
+    if (idx < 0) idx = months.length - 1;
+    var next = idx + dir;
+    if (next < 0) next = 0;
+    if (next >= months.length) next = months.length - 1;
+    _assetsViewMonth = months[next] === assetsCurrentMonthKey() ? null : months[next];
+    if (typeof window.__renderAssetsPage === 'function') window.__renderAssetsPage();
+  }
+  function assetsFormatMonthLabel(ym) {
+    var parts = ym.split('-');
+    var mi = parseInt(parts[1], 10) - 1;
+    return (ASSETS_MONTH_NAMES[mi] || '') + ' ' + parts[0];
+  }
+  window.__assetsMonthPrev = function() { assetsShiftMonth(-1); };
+  window.__assetsMonthNext = function() { assetsShiftMonth(1); };
   var ASSETS_LEGACY_KEY = 'avitolog_assets_projects_v1';
   var ASSETS_USD_RATE = 95;
   function readAssetsArrayByKey(key) {

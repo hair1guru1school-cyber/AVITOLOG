@@ -6,6 +6,62 @@
   'use strict';
 
   const STORAGE_KEY = (typeof window.AVITOLOG_KEY === 'function') ? window.AVITOLOG_KEY('avitolog_goals_v1') : 'avitolog_goals_v1';
+  var MONTH_NAMES_RU = ['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'];
+  var _goalsViewMonth = null; // null = current month (live); "2026-03" = archived month
+
+  function getCurrentMonthKey() {
+    var n = new Date();
+    return n.getFullYear() + '-' + String(n.getMonth() + 1).padStart(2, '0');
+  }
+  function monthStorageKey(ym) {
+    return STORAGE_KEY + '_month_' + ym;
+  }
+  function snapshotCurrentMonth(data) {
+    try {
+      var key = monthStorageKey(getCurrentMonthKey());
+      localStorage.setItem(key, JSON.stringify(data));
+    } catch(e) {}
+  }
+  function loadMonthSnapshot(ym) {
+    try {
+      var s = localStorage.getItem(monthStorageKey(ym));
+      if (s) return JSON.parse(s);
+    } catch(e) {}
+    return null;
+  }
+  function getAvailableMonths() {
+    var months = {};
+    var prefix = STORAGE_KEY + '_month_';
+    for (var i = 0; i < localStorage.length; i++) {
+      var k = localStorage.key(i);
+      if (k && k.indexOf(prefix) === 0) {
+        var ym = k.substring(prefix.length);
+        if (/^\d{4}-\d{2}$/.test(ym)) months[ym] = true;
+      }
+    }
+    var cur = getCurrentMonthKey();
+    months[cur] = true;
+    return Object.keys(months).sort();
+  }
+  function shiftViewMonth(dir) {
+    var months = getAvailableMonths();
+    var cur = _goalsViewMonth || getCurrentMonthKey();
+    var idx = months.indexOf(cur);
+    if (idx < 0) idx = months.length - 1;
+    var next = idx + dir;
+    if (next < 0) next = 0;
+    if (next >= months.length) next = months.length - 1;
+    _goalsViewMonth = months[next] === getCurrentMonthKey() ? null : months[next];
+    render();
+  }
+  function formatViewMonthLabel(ym) {
+    var parts = ym.split('-');
+    var mi = parseInt(parts[1], 10) - 1;
+    return (MONTH_NAMES_RU[mi] || '') + ' ' + parts[0];
+  }
+  window.__goalsMonthPrev = function() { shiftViewMonth(-1); };
+  window.__goalsMonthNext = function() { shiftViewMonth(1); };
+
   var STATUS_LEGACY = { kp_sent:'kp', invoice_sent:'invoice', contract_sent:'contract', instruction_sent:'instruction', deal_discussion:'negotiations' };
   const STATUS_OPTIONS = [
     { id: 'kp', label: 'КП', color: '#35d0ff' },
@@ -111,6 +167,7 @@
   function saveData(data) {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+      snapshotCurrentMonth(data);
     } catch (e) { console.warn('Goals save failed', e); }
   }
 
@@ -749,11 +806,23 @@
     return out;
   }
   function render() {
-    var data = loadData();
+    var isArchiveView = !!_goalsViewMonth;
+    var viewYM = _goalsViewMonth || getCurrentMonthKey();
+    var data;
+    if (isArchiveView) {
+      data = loadMonthSnapshot(viewYM) || loadData();
+    } else {
+      data = loadData();
+      snapshotCurrentMonth(data);
+    }
     var projects = (data.projects || []).filter(function(p){ return p && typeof p === 'object'; });
-    if (autoTuneProjectEmojis(projects)) saveData(data);
+    if (!isArchiveView && autoTuneProjectEmojis(projects)) saveData(data);
+    var viewParts = viewYM.split('-');
+    var y = parseInt(viewParts[0], 10);
+    var m = parseInt(viewParts[1], 10) - 1;
     var now = new Date();
-    var y = now.getFullYear(), m = now.getMonth();
+    var isCurrentMonth = !isArchiveView;
+    var viewDay = isArchiveView ? new Date(y, m + 1, 0).getDate() : now.getDate();
     var week1 = [], week2 = [], week3 = [], week4 = [];
     var sold = [], working = [], archive = [];
 
@@ -773,8 +842,8 @@
       var d = p.date ? (function() {
         var parts = String(p.date).split('-');
         if (parts.length >= 3) return parseInt(parts[2], 10);
-        return now.getDate();
-      }()) : now.getDate();
+        return viewDay;
+      }()) : viewDay;
       var wi = p.weekIndex || getWeekIndex(d);
       if (wi === 1) week1.push(p);
       else if (wi === 2) week2.push(p);
@@ -862,9 +931,9 @@
     function fmtNum(n) {
       return String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
     }
-    var monthNames = ['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'];
-    var monthName = monthNames[m] || '';
-    var currentWeekNum = getWeekIndex(now.getDate());
+    var monthName = MONTH_NAMES_RU[m] || '';
+    var viewMonthLabel = formatViewMonthLabel(viewYM);
+    var currentWeekNum = isArchiveView ? 4 : getWeekIndex(now.getDate());
     var soldFromCurrentWeek = sold.filter(function(p) {
       var d = p.date ? parseInt(String(p.date).split('-')[2], 10) : 0;
       var wi = (typeof p.weekIndex === 'number' && p.weekIndex >= 1 && p.weekIndex <= 4) ? p.weekIndex : getWeekIndex(d || 1);
@@ -900,10 +969,16 @@
         '<div class="goals-metrics-board" id="goalsMetricsBoard"></div>' +
         '<button type="button" class="goal-metrics-add-btn" id="goalsMetricsAddBtn" onclick="window.__goalsShowMetricsMenu&&window.__goalsShowMetricsMenu(event)" title="Добавить метрику">+</button>' +
       '</div>' +
+      (isArchiveView ? '<div class="goals-archive-banner">📁 Архив: ' + esc(viewMonthLabel) + '</div>' : '') +
       '<div class="goals-header">' +
         '<span class="goals-header-path">' +
+          '<span class="goal-month-nav-wrap">' +
+            '<button type="button" class="goal-month-nav-btn" onclick="window.__goalsMonthPrev()" title="Предыдущий месяц">◀</button>' +
+            '<span class="goal-month-nav-label">' + esc(viewMonthLabel) + '</span>' +
+            '<button type="button" class="goal-month-nav-btn" onclick="window.__goalsMonthNext()" title="Следующий месяц">▶</button>' +
+          '</span>' +
           '<button type="button" class="goal-work-eq-btn" onclick="window.__goalsScrollToWork && window.__goalsScrollToWork()" title="Перейти к блоку В РАБОТЕ">🎯 В РАБОТЕ</button>' +
-          '<button type="button" class="goal-add-btn" onclick="window.__goalsOpenModalForBtn && window.__goalsOpenModalForBtn(event)">+ ПРОЕКТ</button>' +
+          (!isArchiveView ? '<button type="button" class="goal-add-btn" onclick="window.__goalsOpenModalForBtn && window.__goalsOpenModalForBtn(event)">+ ПРОЕКТ</button>' : '') +
           '<span class="goals-path-sep">/</span>' +
           '<span class="goal-counter goal-counter-total" title="Всего проектов">ВСЕГО ПРОЕКТОВ <b>' + totalCount + '</b></span>' +
           '<span class="goals-path-sep">/</span>' +
@@ -923,10 +998,10 @@
       '</div>' +
       '<div class="goals-weeks-wrap">' +
         '<div class="goals-weeks">' +
-          (hasWeekStarted(4, now.getDate()) ? renderWeekSection(4, week4, sold, activeClient, currentWeekNum, y, m) : '') +
-          (hasWeekStarted(3, now.getDate()) ? renderWeekSection(3, week3, sold, activeClient, currentWeekNum, y, m) : '') +
-          (hasWeekStarted(2, now.getDate()) ? renderWeekSection(2, week2, sold, activeClient, currentWeekNum, y, m) : '') +
-          (hasWeekStarted(1, now.getDate()) ? renderWeekSection(1, week1, sold, activeClient, currentWeekNum, y, m) : '') +
+          ((isArchiveView || hasWeekStarted(4, now.getDate())) ? renderWeekSection(4, week4, sold, activeClient, currentWeekNum, y, m) : '') +
+          ((isArchiveView || hasWeekStarted(3, now.getDate())) ? renderWeekSection(3, week3, sold, activeClient, currentWeekNum, y, m) : '') +
+          ((isArchiveView || hasWeekStarted(2, now.getDate())) ? renderWeekSection(2, week2, sold, activeClient, currentWeekNum, y, m) : '') +
+          ((isArchiveView || hasWeekStarted(1, now.getDate())) ? renderWeekSection(1, week1, sold, activeClient, currentWeekNum, y, m) : '') +
         '</div>' +
       '</div>' +
       '<div class="goals-work-wrap">' +
