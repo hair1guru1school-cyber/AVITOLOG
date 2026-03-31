@@ -531,6 +531,30 @@
   }
   window.__assetsMonthPrev = function() { assetsShiftMonth(-1); };
   window.__assetsMonthNext = function() { assetsShiftMonth(1); };
+
+  var ASSETS_LAST_MONTH_MARKER = (typeof window.AVITOLOG_KEY === 'function') ? window.AVITOLOG_KEY('avitolog_assets_last_month') : 'avitolog_assets_last_month';
+  function assetsCheckMonthTransition() {
+    var currentYM = assetsCurrentMonthKey();
+    var lastYM = '';
+    try { lastYM = localStorage.getItem(ASSETS_LAST_MONTH_MARKER) || ''; } catch(e) {}
+    if (!lastYM) {
+      try { localStorage.setItem(ASSETS_LAST_MONTH_MARKER, currentYM); } catch(e) {}
+      return;
+    }
+    if (lastYM === currentYM) return;
+    assetsSnapshotCurrentMonth();
+    var oldMy = getAssetsMy();
+    var newMy = oldMy.map(function(p) {
+      var copy = JSON.parse(JSON.stringify(p));
+      copy.paid = '';
+      return copy;
+    });
+    saveAssetsMy(newMy);
+    saveAssetsSasha([]);
+    try { localStorage.setItem(ASSETS_LAST_MONTH_MARKER, currentYM); } catch(e) {}
+    assetsSnapshotCurrentMonth();
+  }
+
   var ASSETS_LEGACY_KEY = 'avitolog_assets_projects_v1';
   var ASSETS_USD_RATE = 95;
   function readAssetsArrayByKey(key) {
@@ -727,6 +751,7 @@
 
   function saveAssetsMy(arr) {
     try { localStorage.setItem(ASSETS_MY_KEY, JSON.stringify(arr)); } catch (e) {}
+    try { localStorage.setItem(assetsMonthStorageKey(assetsCurrentMonthKey()), JSON.stringify(arr)); } catch(e) {}
   }
 
   function getAssetsSasha() {
@@ -747,6 +772,7 @@
 
   function saveAssetsSasha(arr) {
     try { localStorage.setItem(ASSETS_SASHA_KEY, JSON.stringify(arr)); } catch (e) {}
+    try { localStorage.setItem(assetsSashaMonthStorageKey(assetsCurrentMonthKey()), JSON.stringify(arr)); } catch(e) {}
   }
 
   function getAssetsBase() {
@@ -804,6 +830,7 @@
   function renderAssetsPage() {
     var mc = document.getElementById('mainContent');
     if (!mc) return;
+    assetsCheckMonthTransition();
     var fmt = function(n) { return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ' '); };
     function calcNameColWidth(list) {
       var longest = 'Проект';
@@ -823,8 +850,18 @@
       if (!px) px = longest.length * 8;
       return Math.max(130, Math.min(360, px + 36));
     }
-    var myList = getAssetsMy();
-    var sashaList = getAssetsSasha();
+    var isAssetsArchive = !!_assetsViewMonth;
+    var assetsViewYM = _assetsViewMonth || assetsCurrentMonthKey();
+    var myList, sashaList;
+    if (isAssetsArchive) {
+      var snap = assetsLoadMonthSnapshot(assetsViewYM);
+      myList = snap.my || [];
+      sashaList = snap.sasha || [];
+    } else {
+      myList = getAssetsMy();
+      sashaList = getAssetsSasha();
+      assetsSnapshotCurrentMonth();
+    }
     var myNameColW = calcNameColWidth(myList);
     var sashaNameColW = calcNameColWidth(sashaList);
     var myTotal = myList.reduce(function(a, p) { return a + (parseInt(String(p.paid || '').replace(/\s/g, ''), 10) || 0); }, 0);
@@ -854,9 +891,8 @@
       var valHtml = r.val ? (r.main ? '<span class="assets-summary-val">' + esc(r.val) + ' ₽<span class="assets-summary-usd">$' + fmt(r.valUsd) + '</span></span>' : '<span class="assets-summary-val">' + esc(r.val) + ' ₽</span>') : '<span class="assets-summary-val">—</span>';
       return '<div class="' + rowCls + '"><span class="assets-summary-label">' + r.icon + ' ' + esc(r.label) + '</span>' + valHtml + '</div>';
     }).join('');
-    var monthNames = ['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'];
     var now = new Date();
-    var monthTitle = monthNames[now.getMonth()] || 'Март';
+    var monthTitle = assetsFormatMonthLabel(assetsViewYM);
     var filterPaid = !!localStorage.getItem(ASSETS_FILTER_PAID_KEY);
     var paidFirst = myList.filter(function(p) { return !!(p.paid && String(p.paid).replace(/\s/g, '')); });
     var notPaid = myList.filter(function(p) { return !(p.paid && String(p.paid).replace(/\s/g, '')); });
@@ -918,8 +954,15 @@
           '<div class="assets-col-add-row"><button type="button" class="assets-col-add" onclick="window.__assetsAddProject(\'sasha\')">+ Добавить</button><button type="button" class="assets-col-add assets-col-add-base" onclick="window.__assetsShowBasePicker(this)" title="Выбрать из базы">+ из базы</button></div>' +
         '</div>'
       );
+    var monthNavHtml = '<div class="assets-month-nav-wrap">' +
+      '<button type="button" class="assets-month-nav-btn" onclick="window.__assetsMonthPrev()" title="Предыдущий месяц">◀</button>' +
+      '<span class="assets-month-nav-label">' + esc(monthTitle) + '</span>' +
+      '<button type="button" class="assets-month-nav-btn" onclick="window.__assetsMonthNext()" title="Следующий месяц">▶</button>' +
+      '</div>';
+    var archiveBanner = isAssetsArchive ? '<div class="assets-archive-banner">📁 Архив: ' + esc(monthTitle) + '</div>' : '';
     mc.innerHTML = '<div class="assets-page-wrap">' +
-      '<div class="assets-summary-top"><div class="assets-month-title">' + esc(monthTitle) + '</div><div class="assets-summary-table">' + summaryHtml + '</div></div>' +
+      archiveBanner +
+      '<div class="assets-summary-top"><div class="assets-month-title">' + monthNavHtml + '</div><div class="assets-summary-table">' + summaryHtml + '</div></div>' +
       '<div class="assets-two-cols' + (isSashaView ? ' assets-single-col' : '') + '">' +
         '<div class="assets-col assets-col-me" id="assetsColMe" data-owner="me" style="--assets-name-col-width:' + myNameColW + 'px">' +
           '<div class="assets-col-title">💰 Мои клиенты <span class="assets-col-total">' + fmt(myTotal) + ' ₽</span><span class="assets-col-breakdown">· новые <span class="assets-col-me-new">' + fmt(myList.reduce(function(a,p){var v=parseInt(String(p.paid||'').replace(/\s/g,''),10)||0;return resolveAssetsClientType(p)==='new'?a+v:a;},0)) + '</span> ₽ · старые <span class="assets-col-me-old">' + fmt(myList.reduce(function(a,p){var v=parseInt(String(p.paid||'').replace(/\s/g,''),10)||0;return resolveAssetsClientType(p)!=='new'?a+v:a;},0)) + '</span> ₽</span></div>' +

@@ -2153,7 +2153,12 @@ body.day-mode.goals-mode .goal-block-archive .goal-row-alt{border-bottom-color:r
 /* Assets page */
 .assets-page-wrap{max-width:680px;margin:0 auto;padding:24px;display:flex;flex-direction:column;gap:20px;align-items:center}
 .assets-summary-top{display:flex;flex-direction:column;align-items:center;width:100%;margin-bottom:8px}
-.assets-month-title{font-family:'Bebas Neue',sans-serif;font-size:28px;letter-spacing:8px;color:rgba(255,255,255,0.65);font-weight:400;margin-bottom:14px;text-transform:uppercase;text-shadow:0 0 30px rgba(53,208,255,0.25)}
+.assets-month-title{font-family:'Bebas Neue',sans-serif;font-size:28px;letter-spacing:8px;color:rgba(255,255,255,0.65);font-weight:400;margin-bottom:14px;text-transform:uppercase;text-shadow:0 0 30px rgba(53,208,255,0.25);display:flex;align-items:center;justify-content:center}
+.assets-month-nav-wrap{display:inline-flex;align-items:center;gap:10px}
+.assets-month-nav-btn{background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.15);color:rgba(255,255,255,0.7);width:34px;height:34px;border-radius:8px;font-size:14px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;transition:all .15s;padding:0;font-family:inherit}
+.assets-month-nav-btn:hover{background:rgba(0,217,126,0.15);border-color:var(--accent);color:var(--accent)}
+.assets-month-nav-label{font-family:'Bebas Neue',sans-serif;font-size:28px;letter-spacing:8px;min-width:150px;text-align:center;white-space:nowrap}
+.assets-archive-banner{text-align:center;padding:8px 16px;background:rgba(255,165,0,0.12);border:1px solid rgba(255,165,0,0.3);border-radius:8px;color:#ffa500;font-weight:700;font-size:13px;width:100%;max-width:520px}
 .assets-summary-table{width:100%;border-radius:18px;overflow:hidden;border:1px solid var(--border);background:var(--surface2);box-shadow:0 4px 24px rgba(0,0,0,0.2);max-width:520px}
 .assets-summary-row{display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid rgba(255,255,255,0.06);min-height:26px;gap:16px;padding:0 12px}
 .assets-summary-row:last-child{border-bottom:none}
@@ -2290,7 +2295,7 @@ body.day-mode.goals-mode .goal-block-archive .goal-row-alt{border-bottom-color:r
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 <script src="https://accounts.google.com/gsi/client" async></script>
-<script src="js/goals.js?v=20260328-11"></script>
+<script src="js/goals.js?v=20260331-2"></script>
 <script>
 if (!window.AVITOLOG_GOALS) {
   window.AVITOLOG_GOALS = window.__AVITOLOG_GOALS_LEGACY = { render: function() {
@@ -2600,7 +2605,7 @@ if (!window.AVITOLOG_GOALS) {
 <script src="js/hero-asset.js?v=20260324-13"></script>
 <script src="js/core.js?v=20260328-1"></script>
 <script src="js/projects.js?v=20260324-13"></script>
-<script src="js/ai-import.js?v=20260330-03"></script>
+<script src="js/ai-import.js?v=20260331-2"></script>
 <script src="js/contract-generator.js?v=20260324-13"></script>
 <script src="js/ads.js?v=20260328-16"></script>
 <script src="js/kp-generator.js?v=20260331-1"></script>

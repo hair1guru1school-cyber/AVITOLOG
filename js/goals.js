@@ -805,15 +805,23 @@
     });
     return out;
   }
+  function getProjectYM(p) {
+    if (!p || !p.date) return '';
+    var parts = String(p.date).split('-');
+    if (parts.length >= 2) return parts[0] + '-' + String(parts[1]).padStart(2, '0');
+    return '';
+  }
+
   function render() {
     var isArchiveView = !!_goalsViewMonth;
     var viewYM = _goalsViewMonth || getCurrentMonthKey();
+    var liveData = loadData();
+    snapshotCurrentMonth(liveData);
     var data;
     if (isArchiveView) {
-      data = loadMonthSnapshot(viewYM) || loadData();
+      data = loadMonthSnapshot(viewYM) || liveData;
     } else {
-      data = loadData();
-      snapshotCurrentMonth(data);
+      data = liveData;
     }
     var projects = (data.projects || []).filter(function(p){ return p && typeof p === 'object'; });
     if (!isArchiveView && autoTuneProjectEmojis(projects)) saveData(data);
@@ -826,30 +834,42 @@
     var week1 = [], week2 = [], week3 = [], week4 = [];
     var sold = [], working = [], archive = [];
 
-    projects.forEach(function(p) {
-      if (p.stage === 'sold') {
-        sold.push(p);
-        return;
-      }
-      if (p.stage === 'working') {
-        working.push(p);
-        return;
-      }
-      if (p.stage === 'archive') {
-        archive.push(p);
-        return;
-      }
-      var d = p.date ? (function() {
-        var parts = String(p.date).split('-');
-        if (parts.length >= 3) return parseInt(parts[2], 10);
-        return viewDay;
-      }()) : viewDay;
-      var wi = p.weekIndex || getWeekIndex(d);
-      if (wi === 1) week1.push(p);
-      else if (wi === 2) week2.push(p);
-      else if (wi === 3) week3.push(p);
-      else week4.push(p);
-    });
+    if (isArchiveView) {
+      projects.forEach(function(p) {
+        if (p.stage === 'sold') { sold.push(p); return; }
+        if (p.stage === 'working') { working.push(p); return; }
+        if (p.stage === 'archive') { archive.push(p); return; }
+        var d = p.date ? (function() {
+          var parts = String(p.date).split('-');
+          if (parts.length >= 3) return parseInt(parts[2], 10);
+          return viewDay;
+        }()) : viewDay;
+        var wi = p.weekIndex || getWeekIndex(d);
+        if (wi === 1) week1.push(p);
+        else if (wi === 2) week2.push(p);
+        else if (wi === 3) week3.push(p);
+        else week4.push(p);
+      });
+    } else {
+      var liveProjects = (liveData.projects || []).filter(function(p){ return p && typeof p === 'object'; });
+      liveProjects.forEach(function(p) {
+        if (p.stage === 'working') { working.push(p); return; }
+        if (p.stage === 'archive') { archive.push(p); return; }
+        var pym = getProjectYM(p);
+        if (pym && pym !== viewYM) return;
+        if (p.stage === 'sold') { sold.push(p); return; }
+        var d = p.date ? (function() {
+          var parts = String(p.date).split('-');
+          if (parts.length >= 3) return parseInt(parts[2], 10);
+          return viewDay;
+        }()) : viewDay;
+        var wi = p.weekIndex || getWeekIndex(d);
+        if (wi === 1) week1.push(p);
+        else if (wi === 2) week2.push(p);
+        else if (wi === 3) week3.push(p);
+        else week4.push(p);
+      });
+    }
 
     working = sortWorkingBySavedOrder(working, data.workOrderWork || []);
     /** При включённом режиме «А»: все строки видны; с 🎯 — сверху (порядок внутри групп как в сохранённом списке) */
