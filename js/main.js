@@ -3089,13 +3089,10 @@ function callAPI(prompt, maxTokens) {
     throw new Error('Введи API ключ Anthropic в поле в шапке. Получить: console.anthropic.com');
   }
   var endpoint = getApiEndpoint();
-  var backendBase = (function() {
-    try {
-      return String(localStorage.getItem('crm_ads_avito_backend_base_v1') || 'http://localhost:8787/api').trim().replace(/\/+$/, '');
-    } catch (e) {
-      return 'http://localhost:8787/api';
-    }
-  })();
+  var _backendRaw = '';
+  try { _backendRaw = String(localStorage.getItem('crm_ads_avito_backend_base_v1') || '').trim(); } catch(e) {}
+  var backendExplicit = !!_backendRaw;
+  var backendBase = (_backendRaw || 'http://localhost:8787/api').replace(/\/+$/, '');
   var tryBackendFirst = true;
   var backendIsLocal = (function() {
     var bb = String(backendBase || '').toLowerCase();
@@ -3151,7 +3148,7 @@ function callAPI(prompt, maxTokens) {
     if (typeof AbortController !== 'undefined') {
       var ctl = new AbortController();
       opts.signal = ctl.signal;
-      setTimeout(function(){ ctl.abort(); }, 9000);
+      setTimeout(function(){ ctl.abort(); }, 60000);
     }
     return fetch(url, opts).then(function(r) {
       if (!r.ok) {
@@ -3283,17 +3280,20 @@ function callAPI(prompt, maxTokens) {
   var candidates = buildEndpointCandidates();
   var corePromise = (tryBackendFirst ? tryBackendModels(0).catch(function(err) {
       var msg = String((err && err.message) || err || '');
-      // If local backend is selected, never fallback to public proxies.
-      if (backendIsLocal) throw err;
-      // If backend is missing/unreachable, do not spam proxy attempts.
-      if (msg.indexOf('Локальный backend не запущен') >= 0 || msg.indexOf('Backend не ответил вовремя') >= 0) {
+      // If local backend was explicitly configured by user, never fallback.
+      if (backendIsLocal && backendExplicit) throw err;
+      // Default localhost backend not running — silently fallback to CORS proxies.
+      if (backendIsLocal && !backendExplicit && candidates.length) {
+        return tryEndpointChain(candidates, 0);
+      }
+      if (msg.indexOf('Backend не ответил вовремя') >= 0) {
         throw err;
       }
       return tryEndpointChain(candidates, 0);
     }) : tryEndpointChain(candidates, 0))
     .catch(function(err) {
       var known = String((err && err.message) || err || '');
-      if (known.indexOf('Локальный backend не запущен') >= 0 || known.indexOf('Backend не ответил вовремя') >= 0) {
+      if (known.indexOf('Backend не ответил вовремя') >= 0) {
         throw err;
       }
       var extra = '';
