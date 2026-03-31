@@ -68,6 +68,12 @@
         label: 'Бытовки',
         emoji: '🏢',
         editUrl: 'https://www.canva.com/design/DAHDnRFv_yY/9XFZv4Q3AkjDodwc_YgVbw/edit'
+      },
+      {
+        id: 'sypuchka',
+        label: 'Сыпучка',
+        emoji: '⛰️',
+        editUrl: 'https://www.canva.com/design/DAHFiTTtFnA/wVUev31RJLmc7PzUjDmvtA/edit'
       }
     ],
     services: [
