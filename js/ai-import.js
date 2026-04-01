@@ -551,7 +551,7 @@
   window.__assetsMonthPrev = function() { assetsShiftMonth(-1); };
   window.__assetsMonthNext = function() { assetsShiftMonth(1); };
 
-  var ASSETS_LAST_MONTH_MARKER = (typeof window.AVITOLOG_KEY === 'function') ? window.AVITOLOG_KEY('avitolog_assets_last_month') : 'avitolog_assets_last_month';
+  var ASSETS_LAST_MONTH_MARKER = (typeof window.AVITOLOG_KEY === 'function') ? window.AVITOLOG_KEY('avitolog_assets_last_month_v2') : 'avitolog_assets_last_month_v2';
   function assetsGetPrevMonthKey(ym) {
     var cp = ym.split('-');
     var py = parseInt(cp[0], 10), pm = parseInt(cp[1], 10) - 1;

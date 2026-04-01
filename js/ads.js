@@ -32,7 +32,7 @@
   var ADS_MONTH_NAMES = ["Январь","Февраль","Март","Апрель","Май","Июнь","Июль","Август","Сентябрь","Октябрь","Ноябрь","Декабрь"];
   var _adsViewMonth = null;
   var ADS_EXPENSES_MONTH_PREFIX = "crm_ads_expenses_month_";
-  var ADS_LAST_MONTH_MARKER = "crm_ads_last_month_v1";
+  var ADS_LAST_MONTH_MARKER = "crm_ads_last_month_v2";
 
   function adsCurrentMonthKey() {
     var n = new Date();
