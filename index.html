@@ -2326,6 +2326,7 @@ if (!window.AVITOLOG_GOALS) {
   <button type="button" id="dayModeToggle" class="header-day-toggle" onclick="toggleDayMode()" title="Дневной режим — светлый интерфейс">☀️</button>
   <button type="button" id="authBtn" class="header-drive-btn" onclick="startAuth(event)" title="Войти в Google Drive">🔑 Drive</button>
   <button type="button" id="employeeModeBtn" class="header-employee-btn" title="Режим сотрудника: смотреть и править данные как сотрудник" onclick="toggleEmployeeMode()">👤 Сотрудник</button>
+  <button type="button" id="sashaEmailBtn" class="header-employee-btn" title="Email Саши — когда он войдёт с этого аккаунта, автоматически загрузятся его личные данные" onclick="setSashaEmail()" style="display:none"></button>
   <form onsubmit="return false" style="display:flex;align-items:center;gap:8px">
     <input type="password" id="apiKeyInput" placeholder="sk-ant-... (API ключ с console.anthropic.com)"
       title="Anthropic API ключ. Получить: console.anthropic.com → API Keys"
@@ -2601,7 +2602,7 @@ if (!window.AVITOLOG_GOALS) {
 
 </div><!-- /mainApp -->
 <script src="https://unpkg.com/mammoth@1.6.0/mammoth.min.js"></script>
-<script src="js/user-config.js?v=20260324-13"></script>
+<script src="js/user-config.js?v=20260401-6"></script>
 <script src="js/hero-asset.js?v=20260324-13"></script>
 <script src="js/core.js?v=20260328-1"></script>
 <script src="js/projects.js?v=20260324-13"></script>
@@ -2609,6 +2610,6 @@ if (!window.AVITOLOG_GOALS) {
 <script src="js/contract-generator.js?v=20260324-13"></script>
 <script src="js/ads.js?v=20260401-4"></script>
 <script src="js/kp-generator.js?v=20260331-1"></script>
-<script src="js/main.js?v=20260331-1"></script>
+<script src="js/main.js?v=20260401-6"></script>
 </body>
 </html>

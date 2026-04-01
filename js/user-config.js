@@ -22,11 +22,29 @@
   }
   var email = '';
   try { email = String(localStorage.getItem('avitolog_drive_email') || '').trim().toLowerCase(); } catch(e3) {}
+
   var employeeMode = false;
   var employeeEmailOverride = '';
   try { employeeMode = localStorage.getItem('avitolog_employee_mode_v1') === '1'; } catch(e6) {}
   try { employeeEmailOverride = String(localStorage.getItem('avitolog_employee_email_override') || '').trim().toLowerCase(); } catch(e7) {}
   if (employeeMode && !employeeEmailOverride && email) employeeEmailOverride = email;
+
+  // Автодетект Саши по email: если залогиненный email совпадает с сохранённым
+  // email'ом Саши — автоматически переключаемся на его пространство данных
+  if (!employeeMode) {
+    var sashaEmail = '';
+    try { sashaEmail = String(localStorage.getItem('avitolog_sasha_email') || '').trim().toLowerCase(); } catch(eSasha) {}
+    if (sashaEmail && email) {
+      if (email === sashaEmail && legacyUser !== 'sasha') {
+        legacyUser = 'sasha';
+        try { localStorage.setItem('avitolog_current_user', 'sasha'); } catch(eSet) {}
+      } else if (email !== sashaEmail && legacyUser === 'sasha') {
+        // Фил зашёл со своего аккаунта — возвращаем его namespace
+        legacyUser = 'fil';
+        try { localStorage.setItem('avitolog_current_user', 'fil'); } catch(eReset) {}
+      }
+    }
+  }
   var employeeKeyPart = sanitizeEmailForKey(employeeEmailOverride || email);
   var suffix = '';
   if (employeeMode) {

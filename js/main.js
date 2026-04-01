@@ -209,6 +209,59 @@ function toggleEmployeeMode() {
 }
 window.toggleEmployeeMode = toggleEmployeeMode;
 
+// ── SASHA EMAIL CONFIG ──
+var SASHA_EMAIL_CONFIG_KEY = 'avitolog_sasha_email';
+
+function getSashaEmail() {
+  try { return String(localStorage.getItem(SASHA_EMAIL_CONFIG_KEY) || '').trim().toLowerCase(); } catch(e) { return ''; }
+}
+
+function setSashaEmail() {
+  var current = getSashaEmail();
+  var raw = prompt(
+    'Укажи Google-email Саши.\nКогда он войдёт с этого аккаунта — автоматически загрузятся его личные данные (CRM и КАССА).\n\nТекущий: ' + (current || '(не задан)'),
+    current
+  );
+  if (raw === null) return;
+  var email = String(raw || '').trim().toLowerCase();
+  if (email && email.indexOf('@') < 1) {
+    alert('Укажи корректный email (пример: sasha@gmail.com)');
+    return;
+  }
+  try {
+    if (email) {
+      localStorage.setItem(SASHA_EMAIL_CONFIG_KEY, email);
+    } else {
+      localStorage.removeItem(SASHA_EMAIL_CONFIG_KEY);
+    }
+  } catch(e) {}
+  updateSashaEmailBtn();
+  alert(email ? ('Email Саши сохранён: ' + email + '\nТеперь, когда он войдёт со своего Google — ему покажутся его личные данные.') : 'Email Саши удалён.');
+}
+window.setSashaEmail = setSashaEmail;
+
+function updateSashaEmailBtn() {
+  var btn = document.getElementById('sashaEmailBtn');
+  if (!btn) return;
+  var isSasha = !!(typeof window !== 'undefined' && window.AVITOLOG_IS_SASHA);
+  if (isSasha) {
+    // Саша видит только свой статус — кнопку скрываем
+    btn.style.display = 'none';
+    return;
+  }
+  var email = getSashaEmail();
+  if (email) {
+    btn.style.display = '';
+    btn.textContent = '👤 Саша: ' + email.split('@')[0];
+    btn.title = 'Email Саши: ' + email + '. Нажмите, чтобы изменить.';
+  } else {
+    btn.style.display = '';
+    btn.textContent = '👤 Задать email Саши';
+    btn.title = 'Укажи Google-email Саши, чтобы при его входе автоматически загружались его личные данные';
+  }
+}
+window.updateSashaEmailBtn = updateSashaEmailBtn;
+
 // ── CRM TASKS ──
 var CRM_TASKS_SHARED_KEY = 'crm_tasks_v1';
 var CRM_TASKS_KEY = (typeof window.AVITOLOG_KEY === 'function') ? window.AVITOLOG_KEY('crm_tasks_v1') : CRM_TASKS_SHARED_KEY;
@@ -4422,6 +4475,7 @@ function switchUser(u) {
 document.addEventListener('DOMContentLoaded', function() {
   initDayMode();
   updateEmployeeModeButtonUi();
+  updateSashaEmailBtn();
   applyMobileWebviewMode();
   applySidebarVisibilityFromStorage();
   window.addEventListener('resize', applyMobileWebviewMode);
