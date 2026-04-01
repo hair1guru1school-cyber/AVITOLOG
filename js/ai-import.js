@@ -578,29 +578,22 @@
   }
   function assetsCheckMonthTransition() {
     var currentYM = assetsCurrentMonthKey();
+    var lastYM = '';
+    try { lastYM = localStorage.getItem(ASSETS_LAST_MONTH_MARKER) || ''; } catch(e) {}
+    if (lastYM === currentYM) return;
     var prevYM = assetsGetPrevMonthKey(currentYM);
     var myData = getAssetsMy();
     var sashaData = getAssetsSasha();
-    var hasData = myData.some(function(p) { return p.paid && String(p.paid).replace(/\s/g, ''); });
     var hasPrevSnap = !!localStorage.getItem(assetsMonthStorageKey(prevYM));
+    var hasData = myData.some(function(p) { return p.paid && String(p.paid).replace(/\s/g, ''); });
     if (hasData && !hasPrevSnap) {
       try { localStorage.setItem(assetsMonthStorageKey(prevYM), JSON.stringify(myData)); } catch(e) {}
       try { localStorage.setItem(assetsSashaMonthStorageKey(prevYM), JSON.stringify(sashaData)); } catch(e) {}
       assetsClearForNewMonth(myData, sashaData);
-      try { localStorage.setItem(ASSETS_LAST_MONTH_MARKER, currentYM); } catch(e) {}
+    } else if (lastYM && lastYM < currentYM) {
       assetsSnapshotCurrentMonth();
-      return;
+      assetsClearForNewMonth(getAssetsMy(), getAssetsSasha());
     }
-    var lastYM = '';
-    try { lastYM = localStorage.getItem(ASSETS_LAST_MONTH_MARKER) || ''; } catch(e) {}
-    if (!lastYM) {
-      try { localStorage.setItem(ASSETS_LAST_MONTH_MARKER, currentYM); } catch(e) {}
-      assetsSnapshotCurrentMonth();
-      return;
-    }
-    if (lastYM === currentYM) return;
-    assetsSnapshotCurrentMonth();
-    assetsClearForNewMonth(getAssetsMy(), getAssetsSasha());
     try { localStorage.setItem(ASSETS_LAST_MONTH_MARKER, currentYM); } catch(e) {}
     assetsSnapshotCurrentMonth();
   }

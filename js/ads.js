@@ -115,30 +115,22 @@
   }
   function adsCheckMonthTransition() {
     var currentYM = adsCurrentMonthKey();
+    var lastYM = "";
+    try { lastYM = localStorage.getItem(ADS_LAST_MONTH_MARKER) || ""; } catch(e) {}
+    if (lastYM === currentYM) return;
     var prevYM = adsGetPrevMonthKey(currentYM);
     var hasPrevSnap = !!localStorage.getItem(adsExpensesMonthKey(prevYM));
     var currentState = loadExpenses();
     var hasData = Object.keys(currentState.data || {}).some(function(k) {
-      var v = parseNum(currentState.data[k]);
-      return v && v !== 0;
+      return parseNum(currentState.data[k]) !== 0;
     });
     if (hasData && !hasPrevSnap) {
       try { localStorage.setItem(adsExpensesMonthKey(prevYM), JSON.stringify(currentState)); } catch(e) {}
       adsClearExpensesForNewMonth();
-      try { localStorage.setItem(ADS_LAST_MONTH_MARKER, currentYM); } catch(e) {}
+    } else if (lastYM && lastYM < currentYM) {
       adsSnapshotCurrentMonth();
-      return;
+      adsClearExpensesForNewMonth();
     }
-    var lastYM = "";
-    try { lastYM = localStorage.getItem(ADS_LAST_MONTH_MARKER) || ""; } catch(e) {}
-    if (!lastYM) {
-      try { localStorage.setItem(ADS_LAST_MONTH_MARKER, currentYM); } catch(e) {}
-      adsSnapshotCurrentMonth();
-      return;
-    }
-    if (lastYM === currentYM) return;
-    adsSnapshotCurrentMonth();
-    adsClearExpensesForNewMonth();
     try { localStorage.setItem(ADS_LAST_MONTH_MARKER, currentYM); } catch(e) {}
     adsSnapshotCurrentMonth();
   }
