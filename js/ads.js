@@ -29,6 +29,97 @@
   var _adsPostSourceModalCleanup = null;
   var _postsSheetInitCache = {};
 
+  var ADS_MONTH_NAMES = ["Январь","Февраль","Март","Апрель","Май","Июнь","Июль","Август","Сентябрь","Октябрь","Ноябрь","Декабрь"];
+  var _adsViewMonth = null;
+  var ADS_EXPENSES_MONTH_PREFIX = "crm_ads_expenses_month_";
+  var ADS_LAST_MONTH_MARKER = "crm_ads_last_month_v1";
+
+  function adsCurrentMonthKey() {
+    var n = new Date();
+    return n.getFullYear() + "-" + String(n.getMonth() + 1).padStart(2, "0");
+  }
+  function adsExpensesMonthKey(ym) { return ADS_EXPENSES_MONTH_PREFIX + ym; }
+  function adsSnapshotCurrentMonth() {
+    try {
+      var state = loadExpenses();
+      localStorage.setItem(adsExpensesMonthKey(adsCurrentMonthKey()), JSON.stringify(state));
+    } catch(e) {}
+  }
+  function adsLoadMonthSnapshot(ym) {
+    try {
+      var raw = localStorage.getItem(adsExpensesMonthKey(ym));
+      if (raw) return JSON.parse(raw);
+    } catch(e) {}
+    return null;
+  }
+  function adsFillMonthRange(monthsObj) {
+    var keys = Object.keys(monthsObj).sort();
+    if (keys.length < 1) return;
+    var first = keys[0].split("-");
+    var last = keys[keys.length - 1].split("-");
+    var y = parseInt(first[0], 10), m = parseInt(first[1], 10);
+    var ly = parseInt(last[0], 10), lm = parseInt(last[1], 10);
+    while (y < ly || (y === ly && m <= lm)) {
+      monthsObj[y + "-" + String(m).padStart(2, "0")] = true;
+      m++;
+      if (m > 12) { m = 1; y++; }
+    }
+  }
+  function adsGetAvailableMonths() {
+    var months = {};
+    var prefix = ADS_EXPENSES_MONTH_PREFIX;
+    for (var i = 0; i < localStorage.length; i++) {
+      var k = localStorage.key(i);
+      if (k && k.indexOf(prefix) === 0) {
+        var ym = k.substring(prefix.length);
+        if (/^\d{4}-\d{2}$/.test(ym)) months[ym] = true;
+      }
+    }
+    var cur = adsCurrentMonthKey();
+    months[cur] = true;
+    var cp = cur.split("-");
+    var py = parseInt(cp[0], 10), pm = parseInt(cp[1], 10) - 1;
+    if (pm < 1) { pm = 12; py--; }
+    months[py + "-" + String(pm).padStart(2, "0")] = true;
+    adsFillMonthRange(months);
+    return Object.keys(months).sort();
+  }
+  function adsShiftMonth(dir) {
+    var months = adsGetAvailableMonths();
+    var cur = _adsViewMonth || adsCurrentMonthKey();
+    var idx = months.indexOf(cur);
+    if (idx < 0) idx = months.length - 1;
+    var next = idx + dir;
+    if (next < 0) next = 0;
+    if (next >= months.length) next = months.length - 1;
+    _adsViewMonth = months[next] === adsCurrentMonthKey() ? null : months[next];
+    if (typeof window.__showAdsPage === "function") {
+      var mc = document.getElementById("mainContent");
+      if (mc) window.__showAdsPage(mc);
+    }
+  }
+  function adsFormatMonthLabel(ym) {
+    var parts = ym.split("-");
+    var mi = parseInt(parts[1], 10) - 1;
+    return (ADS_MONTH_NAMES[mi] || "") + " " + parts[0];
+  }
+  function adsCheckMonthTransition() {
+    var currentYM = adsCurrentMonthKey();
+    var lastYM = "";
+    try { lastYM = localStorage.getItem(ADS_LAST_MONTH_MARKER) || ""; } catch(e) {}
+    if (!lastYM) {
+      try { localStorage.setItem(ADS_LAST_MONTH_MARKER, currentYM); } catch(e) {}
+      return;
+    }
+    if (lastYM === currentYM) return;
+    adsSnapshotCurrentMonth();
+    saveExpenses({ data: {}, year: String(new Date().getFullYear()), month: String(new Date().getMonth() + 1) });
+    try { localStorage.setItem(ADS_LAST_MONTH_MARKER, currentYM); } catch(e) {}
+    adsSnapshotCurrentMonth();
+  }
+  window.__adsMonthPrev = function() { adsShiftMonth(-1); };
+  window.__adsMonthNext = function() { adsShiftMonth(1); };
+
   var DEFAULT_LINKS = [
     { id: "channel_clients", category: "telegram", icon: "📣", label: "Канал для клиентов", url: "", snippet: "", avatar: "" },
     { id: "bot_clients", category: "telegram", icon: "🤖", label: "Бот для клиентов", url: "", snippet: "", avatar: "" },
@@ -88,6 +179,7 @@
         m: state.month,
         cells: state.data
       }));
+      localStorage.setItem(adsExpensesMonthKey(adsCurrentMonthKey()), JSON.stringify(state));
     } catch (e) {}
   }
 
@@ -449,11 +541,11 @@
     editor.focus();
   }
 
-  function renderExpensesTable(container, state, onChange) {
+  function renderExpensesTable(container, state, onChange, readOnly) {
     recomputeBothRow(state);
-    saveExpenses(state);
+    if (!readOnly) saveExpenses(state);
     var days = 31;
-    var todayDay = getTodayDayForState(state);
+    var todayDay = readOnly ? 0 : getTodayDayForState(state);
     var html = '<div class="ads-expenses-wrap"><table class="ads-expenses-table"><thead><tr><th class="ads-th-label">Ряд</th>';
     for (var d = 1; d <= days; d++) {
       html += '<th class="ads-th-day' + (d === todayDay ? " ads-day-today" : "") + '">' + d + "</th>";
@@ -468,8 +560,8 @@
         var displayVal = formatNum(parseNum(val));
         total += parseNum(val);
         var clsToday = day === todayDay ? " ads-day-today" : "";
-        if (rowKey === "both") {
-          html += '<td class="ads-td-cell ads-td-cell-auto' + clsToday + '" title="Авто: Основной + Новый">' + (displayVal || "") + "</td>";
+        if (rowKey === "both" || readOnly) {
+          html += '<td class="ads-td-cell ads-td-cell-auto' + clsToday + '" title="' + (readOnly ? 'Архив (только чтение)' : 'Авто: Основной + Новый') + '">' + (displayVal || "") + "</td>";
         } else {
           html += '<td class="ads-td-cell ads-td-cell-editable' + clsToday + '" data-row="' + rowKey + '" data-day="' + day + '" title="ПКМ: добавить сумму к этому дню">' + (displayVal || "") + "</td>";
         }
@@ -479,15 +571,17 @@
     html += "</tbody></table></div>";
     container.innerHTML = html;
 
-    container.querySelectorAll(".ads-td-cell-editable").forEach(function(td) {
-      td.addEventListener("contextmenu", function(e) {
-        e.preventDefault();
-        var row = td.getAttribute("data-row");
-        var day = parseInt(td.getAttribute("data-day"), 10);
-        if (!row || row === "both" || !day) return;
-        startCellAddMode(td, container, state, row, day, onChange);
+    if (!readOnly) {
+      container.querySelectorAll(".ads-td-cell-editable").forEach(function(td) {
+        td.addEventListener("contextmenu", function(e) {
+          e.preventDefault();
+          var row = td.getAttribute("data-row");
+          var day = parseInt(td.getAttribute("data-day"), 10);
+          if (!row || row === "both" || !day) return;
+          startCellAddMode(td, container, state, row, day, onChange);
+        });
       });
-    });
+    }
   }
 
   function renderPostsPlanTable(container, postsState, sourcesState, viewOpts) {
@@ -1313,16 +1407,38 @@
   }
 
   function renderAdsPage(mainContentEl) {
-    var state = loadExpenses();
+    adsCheckMonthTransition();
+    var isAdsArchive = !!_adsViewMonth;
+    var adsViewYM = _adsViewMonth || adsCurrentMonthKey();
+    var state;
+    if (isAdsArchive) {
+      state = adsLoadMonthSnapshot(adsViewYM) || { data: {}, year: adsViewYM.split("-")[0], month: String(parseInt(adsViewYM.split("-")[1], 10)) };
+    } else {
+      state = loadExpenses();
+      adsSnapshotCurrentMonth();
+    }
+    var monthLabel = adsFormatMonthLabel(adsViewYM);
     var postsMonthOffset = 0;
+    if (isAdsArchive) {
+      var curParts = adsCurrentMonthKey().split("-");
+      var viewParts = adsViewYM.split("-");
+      postsMonthOffset = (parseInt(viewParts[0], 10) - parseInt(curParts[0], 10)) * 12 + (parseInt(viewParts[1], 10) - parseInt(curParts[1], 10));
+    }
     var postsState = loadPostsPlan(postsMonthOffset);
     var postsVisibleDays = 60;
     var sourcesState = loadPostsSources();
     var links = loadLinks();
+    var archiveBanner = isAdsArchive ? '<div class="ads-archive-banner" style="text-align:center;padding:8px 16px;background:rgba(255,165,0,0.12);border:1px solid rgba(255,165,0,0.3);border-radius:8px;color:#ffa500;font-weight:700;font-size:13px;margin-bottom:8px">📁 Архив: ' + escapeHtml(monthLabel) + "</div>" : "";
+    var monthNavHtml = '<div class="ads-month-nav" style="display:inline-flex;align-items:center;gap:6px;margin-left:12px">' +
+      '<button type="button" class="goal-month-nav-btn" onclick="window.__adsMonthPrev()" title="Предыдущий месяц" style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.15);color:#fff;width:32px;height:32px;border-radius:6px;font-size:13px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;padding:0;font-family:inherit">◀</button>' +
+      '<span style="font-size:13px;font-weight:700;color:rgba(255,255,255,0.85);min-width:110px;text-align:center;white-space:nowrap">' + escapeHtml(monthLabel) + '</span>' +
+      '<button type="button" class="goal-month-nav-btn" onclick="window.__adsMonthNext()" title="Следующий месяц" style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.15);color:#fff;width:32px;height:32px;border-radius:6px;font-size:13px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;padding:0;font-family:inherit">▶</button>' +
+      "</div>";
     var wrap = document.createElement("div");
     wrap.className = "ads-page";
     wrap.innerHTML =
-      '<div class="ads-header">📢 РЕКЛАМА ПРОЕКТА</div>' +
+      archiveBanner +
+      '<div class="ads-header">📢 РЕКЛАМА ПРОЕКТА' + monthNavHtml + '</div>' +
       '<div class="ads-subtab-page on" data-ads-page="expenses">' +
         '<div class="ads-top-summary" id="adsTopSummary">' +
           '<div class="ads-summary-card ads-summary-all"><span class="ads-summary-label">Всего</span><span class="ads-summary-val" data-ads-val="all">0</span></div>' +
@@ -1406,7 +1522,7 @@
       });
       syncPostsFromSheetsIfNeeded();
     }
-    renderExpensesTable(expensesContainer, state, refreshTotals);
+    renderExpensesTable(expensesContainer, state, refreshTotals, isAdsArchive);
     rerenderPostsPlan();
     setTimeout(function() {
       var queued = loadPostsSyncQueue().length;

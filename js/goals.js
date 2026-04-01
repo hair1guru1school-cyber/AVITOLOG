@@ -29,6 +29,19 @@
     } catch(e) {}
     return null;
   }
+  function fillMonthRange(monthsObj) {
+    var keys = Object.keys(monthsObj).sort();
+    if (keys.length < 1) return;
+    var first = keys[0].split('-');
+    var last = keys[keys.length - 1].split('-');
+    var y = parseInt(first[0], 10), m = parseInt(first[1], 10);
+    var ly = parseInt(last[0], 10), lm = parseInt(last[1], 10);
+    while (y < ly || (y === ly && m <= lm)) {
+      monthsObj[y + '-' + String(m).padStart(2, '0')] = true;
+      m++;
+      if (m > 12) { m = 1; y++; }
+    }
+  }
   function getAvailableMonths() {
     var months = {};
     var prefix = STORAGE_KEY + '_month_';
@@ -41,6 +54,11 @@
     }
     var cur = getCurrentMonthKey();
     months[cur] = true;
+    var cp = cur.split('-');
+    var py = parseInt(cp[0], 10), pm = parseInt(cp[1], 10) - 1;
+    if (pm < 1) { pm = 12; py--; }
+    months[py + '-' + String(pm).padStart(2, '0')] = true;
+    fillMonthRange(months);
     return Object.keys(months).sort();
   }
   function shiftViewMonth(dir) {
@@ -819,7 +837,7 @@
     snapshotCurrentMonth(liveData);
     var data;
     if (isArchiveView) {
-      data = loadMonthSnapshot(viewYM) || liveData;
+      data = loadMonthSnapshot(viewYM) || { projects: [], customMetrics: [], pinnedMetrics: [] };
     } else {
       data = liveData;
     }
