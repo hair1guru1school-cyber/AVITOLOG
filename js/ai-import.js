@@ -558,40 +558,49 @@
     if (pm < 1) { pm = 12; py--; }
     return py + '-' + String(pm).padStart(2, '0');
   }
+  function assetsClearForNewMonth(myData, sashaData) {
+    var newMy = myData.map(function(p) {
+      var copy = JSON.parse(JSON.stringify(p));
+      var paidVal = String(copy.paid || '').replace(/\s/g, '');
+      if (paidVal && paidVal !== '0') copy.expected = copy.paid;
+      copy.paid = '';
+      return copy;
+    });
+    saveAssetsMy(newMy);
+    var newSasha = sashaData.map(function(p) {
+      var copy = JSON.parse(JSON.stringify(p));
+      copy.soldFor = '';
+      copy.toAgent = '';
+      copy.aoaPercent = '';
+      return copy;
+    });
+    saveAssetsSasha(newSasha);
+  }
   function assetsCheckMonthTransition() {
     var currentYM = assetsCurrentMonthKey();
+    var prevYM = assetsGetPrevMonthKey(currentYM);
+    var myData = getAssetsMy();
+    var sashaData = getAssetsSasha();
+    var hasData = myData.some(function(p) { return p.paid && String(p.paid).replace(/\s/g, ''); });
+    var hasPrevSnap = !!localStorage.getItem(assetsMonthStorageKey(prevYM));
+    if (hasData && !hasPrevSnap) {
+      try { localStorage.setItem(assetsMonthStorageKey(prevYM), JSON.stringify(myData)); } catch(e) {}
+      try { localStorage.setItem(assetsSashaMonthStorageKey(prevYM), JSON.stringify(sashaData)); } catch(e) {}
+      assetsClearForNewMonth(myData, sashaData);
+      try { localStorage.setItem(ASSETS_LAST_MONTH_MARKER, currentYM); } catch(e) {}
+      assetsSnapshotCurrentMonth();
+      return;
+    }
     var lastYM = '';
     try { lastYM = localStorage.getItem(ASSETS_LAST_MONTH_MARKER) || ''; } catch(e) {}
-    if (!lastYM || lastYM < currentYM) {
-      var prevYM = assetsGetPrevMonthKey(currentYM);
-      var myData = getAssetsMy();
-      var hasData = myData.some(function(p) { return p.paid && String(p.paid).replace(/\s/g, ''); });
-      var hasPrevSnap = !!localStorage.getItem(assetsMonthStorageKey(prevYM));
-      if (hasData && !hasPrevSnap) {
-        try { localStorage.setItem(assetsMonthStorageKey(prevYM), JSON.stringify(myData)); } catch(e) {}
-        try { localStorage.setItem(assetsSashaMonthStorageKey(prevYM), JSON.stringify(getAssetsSasha())); } catch(e) {}
-        var cleared = myData.map(function(p) {
-          var copy = JSON.parse(JSON.stringify(p));
-          copy.paid = '';
-          return copy;
-        });
-        saveAssetsMy(cleared);
-        saveAssetsSasha([]);
-      }
+    if (!lastYM) {
       try { localStorage.setItem(ASSETS_LAST_MONTH_MARKER, currentYM); } catch(e) {}
       assetsSnapshotCurrentMonth();
       return;
     }
     if (lastYM === currentYM) return;
     assetsSnapshotCurrentMonth();
-    var oldMy = getAssetsMy();
-    var newMy = oldMy.map(function(p) {
-      var copy = JSON.parse(JSON.stringify(p));
-      copy.paid = '';
-      return copy;
-    });
-    saveAssetsMy(newMy);
-    saveAssetsSasha([]);
+    assetsClearForNewMonth(getAssetsMy(), getAssetsSasha());
     try { localStorage.setItem(ASSETS_LAST_MONTH_MARKER, currentYM); } catch(e) {}
     assetsSnapshotCurrentMonth();
   }

@@ -103,17 +103,42 @@
     var mi = parseInt(parts[1], 10) - 1;
     return (ADS_MONTH_NAMES[mi] || "") + " " + parts[0];
   }
+  function adsGetPrevMonthKey(ym) {
+    var cp = ym.split("-");
+    var py = parseInt(cp[0], 10), pm = parseInt(cp[1], 10) - 1;
+    if (pm < 1) { pm = 12; py--; }
+    return py + "-" + String(pm).padStart(2, "0");
+  }
+  function adsClearExpensesForNewMonth() {
+    var now = new Date();
+    saveExpenses({ data: {}, year: String(now.getFullYear()), month: String(now.getMonth() + 1) });
+  }
   function adsCheckMonthTransition() {
     var currentYM = adsCurrentMonthKey();
+    var prevYM = adsGetPrevMonthKey(currentYM);
+    var hasPrevSnap = !!localStorage.getItem(adsExpensesMonthKey(prevYM));
+    var currentState = loadExpenses();
+    var hasData = Object.keys(currentState.data || {}).some(function(k) {
+      var v = parseNum(currentState.data[k]);
+      return v && v !== 0;
+    });
+    if (hasData && !hasPrevSnap) {
+      try { localStorage.setItem(adsExpensesMonthKey(prevYM), JSON.stringify(currentState)); } catch(e) {}
+      adsClearExpensesForNewMonth();
+      try { localStorage.setItem(ADS_LAST_MONTH_MARKER, currentYM); } catch(e) {}
+      adsSnapshotCurrentMonth();
+      return;
+    }
     var lastYM = "";
     try { lastYM = localStorage.getItem(ADS_LAST_MONTH_MARKER) || ""; } catch(e) {}
     if (!lastYM) {
       try { localStorage.setItem(ADS_LAST_MONTH_MARKER, currentYM); } catch(e) {}
+      adsSnapshotCurrentMonth();
       return;
     }
     if (lastYM === currentYM) return;
     adsSnapshotCurrentMonth();
-    saveExpenses({ data: {}, year: String(new Date().getFullYear()), month: String(new Date().getMonth() + 1) });
+    adsClearExpensesForNewMonth();
     try { localStorage.setItem(ADS_LAST_MONTH_MARKER, currentYM); } catch(e) {}
     adsSnapshotCurrentMonth();
   }
