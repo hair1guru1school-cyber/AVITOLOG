@@ -168,8 +168,28 @@
     return 'g_' + Date.now() + '_' + Math.random().toString(36).slice(2, 9);
   }
 
+  function normalizeLoadedData(d) {
+    if (!d.customMetrics) d.customMetrics = [];
+    if (!d.pinnedMetrics) d.pinnedMetrics = [];
+    if (!d.pinnedMetricsMain) d.pinnedMetricsMain = [];
+    if (d.totalKpFullOverride === undefined) d.totalKpFullOverride = 342000;
+    if (!Array.isArray(d.workOrderWork)) d.workOrderWork = [];
+    if (d.workTargetFilter === undefined) d.workTargetFilter = false;
+    return d;
+  }
+  function loadLiveData() {
+    try {
+      var s = localStorage.getItem(STORAGE_KEY);
+      return normalizeLoadedData(s ? JSON.parse(s) : { projects: [] });
+    } catch(e) {}
+    return normalizeLoadedData({ projects: [] });
+  }
   function loadData() {
     try {
+      if (_goalsViewMonth) {
+        var snap = loadMonthSnapshot(_goalsViewMonth);
+        if (snap) return normalizeLoadedData(snap);
+      }
       var s = localStorage.getItem(STORAGE_KEY);
       var d = s ? JSON.parse(s) : { projects: [] };
       if (!d.customMetrics) d.customMetrics = [];
@@ -184,6 +204,10 @@
 
   function saveData(data) {
     try {
+      if (_goalsViewMonth) {
+        localStorage.setItem(monthStorageKey(_goalsViewMonth), JSON.stringify(data));
+        return;
+      }
       localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
       snapshotCurrentMonth(data);
     } catch (e) { console.warn('Goals save failed', e); }
@@ -833,7 +857,7 @@
   function render() {
     var isArchiveView = !!_goalsViewMonth;
     var viewYM = _goalsViewMonth || getCurrentMonthKey();
-    var liveData = loadData();
+    var liveData = loadLiveData();
     snapshotCurrentMonth(liveData);
     var curYM = getCurrentMonthKey();
     var ccp = curYM.split('-');
@@ -845,7 +869,7 @@
     }
     var data;
     if (isArchiveView) {
-      data = loadMonthSnapshot(viewYM) || { projects: [], customMetrics: [], pinnedMetrics: [] };
+      data = loadMonthSnapshot(viewYM) || normalizeLoadedData({ projects: [], customMetrics: [], pinnedMetrics: [] });
     } else {
       data = liveData;
     }
@@ -1050,7 +1074,7 @@
           ((isArchiveView || hasWeekStarted(1, now.getDate())) ? renderWeekSection(1, week1, sold, activeClient, currentWeekNum, y, m) : '') +
         '</div>' +
       '</div>' +
-      '<div class="goals-work-wrap">' +
+      (!isArchiveView ? '<div class="goals-work-wrap">' +
           '<div id="goalsWorkBlockAnchor"></div>' +
           renderSection(
             'В РАБОТЕ',
@@ -1063,7 +1087,7 @@
             'work',
             { workTargetFilter: !!data.workTargetFilter }
           ) +
-      '</div>' +
+      '</div>' : '') +
       '<div class="goals-archive-wrap">' +
         renderSection('АРХИВ', '📁', archive, '', true, false, 'archive') +
       '</div></div>';
