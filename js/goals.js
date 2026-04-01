@@ -835,6 +835,14 @@
     var viewYM = _goalsViewMonth || getCurrentMonthKey();
     var liveData = loadData();
     snapshotCurrentMonth(liveData);
+    var curYM = getCurrentMonthKey();
+    var ccp = curYM.split('-');
+    var rpy = parseInt(ccp[0], 10), rpm = parseInt(ccp[1], 10) - 1;
+    if (rpm < 1) { rpm = 12; rpy--; }
+    var retroPrevYM = rpy + '-' + String(rpm).padStart(2, '0');
+    if (!loadMonthSnapshot(retroPrevYM)) {
+      try { localStorage.setItem(monthStorageKey(retroPrevYM), JSON.stringify(liveData)); } catch(e) {}
+    }
     var data;
     if (isArchiveView) {
       data = loadMonthSnapshot(viewYM) || { projects: [], customMetrics: [], pinnedMetrics: [] };

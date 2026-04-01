@@ -552,12 +552,34 @@
   window.__assetsMonthNext = function() { assetsShiftMonth(1); };
 
   var ASSETS_LAST_MONTH_MARKER = (typeof window.AVITOLOG_KEY === 'function') ? window.AVITOLOG_KEY('avitolog_assets_last_month') : 'avitolog_assets_last_month';
+  function assetsGetPrevMonthKey(ym) {
+    var cp = ym.split('-');
+    var py = parseInt(cp[0], 10), pm = parseInt(cp[1], 10) - 1;
+    if (pm < 1) { pm = 12; py--; }
+    return py + '-' + String(pm).padStart(2, '0');
+  }
   function assetsCheckMonthTransition() {
     var currentYM = assetsCurrentMonthKey();
     var lastYM = '';
     try { lastYM = localStorage.getItem(ASSETS_LAST_MONTH_MARKER) || ''; } catch(e) {}
-    if (!lastYM) {
+    if (!lastYM || lastYM < currentYM) {
+      var prevYM = assetsGetPrevMonthKey(currentYM);
+      var myData = getAssetsMy();
+      var hasData = myData.some(function(p) { return p.paid && String(p.paid).replace(/\s/g, ''); });
+      var hasPrevSnap = !!localStorage.getItem(assetsMonthStorageKey(prevYM));
+      if (hasData && !hasPrevSnap) {
+        try { localStorage.setItem(assetsMonthStorageKey(prevYM), JSON.stringify(myData)); } catch(e) {}
+        try { localStorage.setItem(assetsSashaMonthStorageKey(prevYM), JSON.stringify(getAssetsSasha())); } catch(e) {}
+        var cleared = myData.map(function(p) {
+          var copy = JSON.parse(JSON.stringify(p));
+          copy.paid = '';
+          return copy;
+        });
+        saveAssetsMy(cleared);
+        saveAssetsSasha([]);
+      }
       try { localStorage.setItem(ASSETS_LAST_MONTH_MARKER, currentYM); } catch(e) {}
+      assetsSnapshotCurrentMonth();
       return;
     }
     if (lastYM === currentYM) return;
