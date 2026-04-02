@@ -133,7 +133,8 @@
     }
   }
 
-  try {
-    ['avitolog_projects', 'avitolog_goals_v1', 'avitolog_clients', 'crm_tasks_v1', 'avitolog_assets_my_v2', 'avitolog_assets_sasha_v2'].forEach(recoverBaseKey);
-  } catch (e5) {}
+  // Аварийное восстановление отключено — оно перезаписывало живые данные снимками
+  // try {
+  //   ['avitolog_projects', 'avitolog_goals_v1', 'avitolog_clients', 'crm_tasks_v1', 'avitolog_assets_my_v2', 'avitolog_assets_sasha_v2'].forEach(recoverBaseKey);
+  // } catch (e5) {}
 })();
