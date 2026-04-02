@@ -576,6 +576,26 @@
     });
     saveAssetsSasha(newSasha);
   }
+  function assetsAutoRepairIfSnapshotBetter() {
+    // Если live-данные совпадают с ПРОШЛЫМ месяцем (баг recovery-логики),
+    // а снимок ТЕКУЩЕГО месяца содержит другие данные — восстанавливаем из снимка.
+    try {
+      var currentYM = assetsCurrentMonthKey();
+      var prevYM = assetsGetPrevMonthKey(currentYM);
+      var liveRaw = localStorage.getItem(ASSETS_MY_KEY);
+      var curSnapRaw = localStorage.getItem(assetsMonthStorageKey(currentYM));
+      var prevSnapRaw = localStorage.getItem(assetsMonthStorageKey(prevYM));
+      if (!liveRaw || !curSnapRaw || !prevSnapRaw) return;
+      // Проверяем: live == prevSnap? (признак бага)
+      if (liveRaw === prevSnapRaw && liveRaw !== curSnapRaw) {
+        // Восстанавливаем из снимка текущего месяца
+        localStorage.setItem(ASSETS_MY_KEY, curSnapRaw);
+        var curSashaSnapRaw = localStorage.getItem(assetsSashaMonthStorageKey(currentYM));
+        if (curSashaSnapRaw) localStorage.setItem(ASSETS_SASHA_KEY, curSashaSnapRaw);
+      }
+    } catch(e) {}
+  }
+
   function assetsCheckMonthTransition() {
     var currentYM = assetsCurrentMonthKey();
     var lastYM = '';
@@ -873,6 +893,7 @@
   function renderAssetsPage() {
     var mc = document.getElementById('mainContent');
     if (!mc) return;
+    assetsAutoRepairIfSnapshotBetter();
     assetsCheckMonthTransition();
     var fmt = function(n) { return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ' '); };
     function calcNameColWidth(list) {
