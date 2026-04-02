@@ -624,6 +624,61 @@
     } catch(e) {}
   }
 
+  // Перенести неоплаченные (с expected) проекты из предыдущего месяца в текущий
+  function assetsCarryOverFromPrevMonth() {
+    var currentYM = assetsCurrentMonthKey();
+    var prevYM = assetsGetPrevMonthKey(currentYM);
+    var prevRaw = localStorage.getItem(assetsMonthStorageKey(prevYM));
+    if (!prevRaw) { alert('Снимок ' + prevYM + ' не найден.'); return; }
+    var prevProjects;
+    try { prevProjects = JSON.parse(prevRaw); } catch(e) { alert('Ошибка чтения снимка.'); return; }
+    // Берём только проекты с expected > 0 (ещё не оплачены)
+    var toCarry = prevProjects.filter(function(p) {
+      var exp = parseInt(String(p.expected || '').replace(/\s/g, ''), 10) || 0;
+      return exp > 0;
+    });
+    if (!toCarry.length) { alert('Нет неоплаченных проектов в ' + prevYM + '.'); return; }
+    var current = getAssetsMy();
+    var currentNames = current.map(function(p) { return String(p.name || '').trim().toLowerCase(); });
+    var added = 0;
+    toCarry.forEach(function(p) {
+      var nm = String(p.name || '').trim().toLowerCase();
+      if (currentNames.indexOf(nm) >= 0) return; // уже есть
+      var copy = JSON.parse(JSON.stringify(p));
+      copy.paid = '';   // в новом месяце оплата = 0
+      // expected остаётся как было
+      current.push(copy);
+      currentNames.push(nm);
+      added++;
+    });
+    if (!added) { alert('Все проекты уже есть в апреле.'); return; }
+    saveAssetsMy(current);
+    if (typeof window.__renderAssetsPage === 'function') window.__renderAssetsPage();
+    alert('✅ Перенесено ' + added + ' проектов из ' + prevYM + ' в ' + currentYM + ' (с суммой ожидания).');
+  }
+  window.__assetsCarryOverFromPrevMonth = assetsCarryOverFromPrevMonth;
+
+  // Начать новый месяц вручную: снапшот → все проекты переезжают, paid→expected, paid=0
+  window.__assetsStartNewMonth = function() {
+    var currentYM = assetsCurrentMonthKey();
+    if (!confirm('Начать новый месяц?\n\nВсе проекты перейдут на ' + currentYM + '.\nСумма «Оплатили» станет «Ожидается», «Оплатили» обнулится.')) return;
+    // Снапшот текущего состояния
+    try {
+      localStorage.setItem(assetsMonthStorageKey(currentYM), JSON.stringify(getAssetsMy()));
+      localStorage.setItem(assetsSashaMonthStorageKey(currentYM), JSON.stringify(getAssetsSasha()));
+    } catch(e) {}
+    // Перенос: paid → expected, paid = ''
+    var newMy = getAssetsMy().map(function(p) {
+      var copy = JSON.parse(JSON.stringify(p));
+      var paidVal = parseInt(String(copy.paid || '').replace(/\s/g, ''), 10) || 0;
+      if (paidVal > 0) { copy.expected = copy.paid; }
+      copy.paid = '';
+      return copy;
+    });
+    saveAssetsMy(newMy);
+    if (typeof window.__renderAssetsPage === 'function') window.__renderAssetsPage();
+  };
+
   window.__assetsSaveSnapshotNow = function() {
     try {
       var ym = assetsCurrentMonthKey();
@@ -923,6 +978,19 @@
       item.toAgent = '';
       item.aoaPercent = '';
     }
+    // Авто-синхронизация с БАЗОЙ: если проекта нет — добавляем
+    (function() {
+      try {
+        var base = getAssetsBase();
+        var nm = String(name).trim().toLowerCase();
+        var inBase = base.some(function(b) { return String(b.name || '').trim().toLowerCase() === nm; });
+        if (!inBase) {
+          base.push({ emoji: emoji, name: name, paid: paid, expected: '', paymentDate: '', startDate: '', clientType: 'new', folderLink: folderLink || '' });
+          saveAssetsBase(base);
+        }
+      } catch(e) {}
+    })();
+
     if (owner === 'me') {
       var arr = getAssetsMy();
       arr.push(item);
@@ -1078,14 +1146,15 @@
           '<div class="assets-col-add-row"><button type="button" class="assets-col-add" onclick="window.__assetsAddProject(\'sasha\')">+ Добавить</button><button type="button" class="assets-col-add assets-col-add-base" onclick="window.__assetsShowBasePicker(this)" title="Выбрать из базы">+ из базы</button></div>' +
         '</div>'
       );
-    var saveSnapBtn = !isAssetsArchive
-      ? '<button type="button" class="assets-month-nav-btn" onclick="window.__assetsSaveSnapshotNow()" title="Зафиксировать текущие данные — сохранить резервную копию апреля" style="margin-left:8px;font-size:11px;background:rgba(0,217,126,0.15);border-color:rgba(0,217,126,0.4);color:#00d97e">💾</button>'
-      : '';
+    var ctrlBtns = !isAssetsArchive ? (
+      '<button type="button" class="assets-month-nav-btn" onclick="window.__assetsCarryOverFromPrevMonth()" title="Перенести неоплаченные проекты из предыдущего месяца (с суммой ожидания)" style="margin-left:8px;font-size:11px">📥 из предыдущего</button>' +
+      '<button type="button" class="assets-month-nav-btn" onclick="window.__assetsSaveSnapshotNow()" title="Зафиксировать текущие данные как резервную копию" style="margin-left:4px;font-size:11px;background:rgba(0,217,126,0.15);border-color:rgba(0,217,126,0.4);color:#00d97e">💾</button>'
+    ) : '';
     var monthNavHtml = '<div class="assets-month-nav-wrap">' +
       '<button type="button" class="assets-month-nav-btn" onclick="window.__assetsMonthPrev()" title="Предыдущий месяц">◀</button>' +
       '<span class="assets-month-nav-label">' + esc(monthTitle) + '</span>' +
       '<button type="button" class="assets-month-nav-btn" onclick="window.__assetsMonthNext()" title="Следующий месяц">▶</button>' +
-      saveSnapBtn +
+      ctrlBtns +
       '</div>';
     var archiveBanner = isAssetsArchive ? '<div class="assets-archive-banner">📁 Архив: ' + esc(monthTitle) + '</div>' : '';
     mc.innerHTML = '<div class="assets-page-wrap">' +
@@ -1278,11 +1347,20 @@
       var q = String(searchVal || '').trim().toLowerCase();
       var filtered = q ? base.filter(function(p) { var n = String(p.name || '').toLowerCase(); return n.indexOf(q) >= 0; }) : base;
       var fmt = function(n) { return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ' '); };
+      // Имена проектов, активных в КАССЕ прямо сейчас
+      var activeInKassa = {};
+      try {
+        getAssetsMy().forEach(function(p) { if (p.name) activeInKassa[String(p.name).trim().toLowerCase()] = true; });
+        getAssetsSasha().forEach(function(p) { if (p.name) activeInKassa[String(p.name).trim().toLowerCase()] = true; });
+      } catch(e) {}
       var rows = filtered.map(function(p) {
         var realIdx = base.indexOf(p);
         var paidFmt = (p.paid || '') ? fmt(String(p.paid).replace(/\s/g, '')) : '';
         var dt = [p.startDate||'', p.paymentDate||''].filter(Boolean).join(' / ') || '—';
-        return '<div class="assets-base-row" data-idx="' + realIdx + '"><span class="ab-col-name">' + (p.emoji || '') + ' ' + esc(p.name || '—') + '</span><span class="ab-col-date">' + esc(dt) + '</span><span class="ab-col-paid">' + esc(paidFmt || '—') + ' ₽</span><button type="button" class="ab-add-btn" title="В Мои клиенты">+</button><button type="button" class="ab-del-btn" title="Удалить из базы">✕</button></div>';
+        var isActive = !!activeInKassa[String(p.name || '').trim().toLowerCase()];
+        var activeMark = isActive ? ' <span style="color:#00d97e;font-size:10px;font-weight:700" title="Сейчас в КАССЕ">● в кассе</span>' : '';
+        var rowStyle = isActive ? ' style="background:rgba(0,217,126,0.07);border-left:2px solid #00d97e"' : '';
+        return '<div class="assets-base-row" data-idx="' + realIdx + '"' + rowStyle + '><span class="ab-col-name">' + (p.emoji || '') + ' ' + esc(p.name || '—') + activeMark + '</span><span class="ab-col-date">' + esc(dt) + '</span><span class="ab-col-paid">' + esc(paidFmt || '—') + ' ₽</span><button type="button" class="ab-add-btn" title="В Мои клиенты">+</button><button type="button" class="ab-del-btn" title="Удалить из базы">✕</button></div>';
       }).join('');
       var listEl = wrap.querySelector('.assets-base-list');
       if (listEl) listEl.innerHTML = rows || '<div class="assets-base-empty">База пуста. Вставь данные в ИИ-импорт или «+ в базу»</div>';
