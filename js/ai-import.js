@@ -576,25 +576,78 @@
     });
     saveAssetsSasha(newSasha);
   }
+  function assetsCalcPaidSum(arr) {
+    if (!Array.isArray(arr)) return 0;
+    return arr.reduce(function(s, p) {
+      return s + (parseInt(String((p && (p.paid || p.soldFor)) || '').replace(/\s/g, ''), 10) || 0);
+    }, 0);
+  }
+
   function assetsAutoRepairIfSnapshotBetter() {
-    // Если live-данные совпадают с ПРОШЛЫМ месяцем (баг recovery-логики),
-    // а снимок ТЕКУЩЕГО месяца содержит другие данные — восстанавливаем из снимка.
     try {
       var currentYM = assetsCurrentMonthKey();
       var prevYM = assetsGetPrevMonthKey(currentYM);
       var liveRaw = localStorage.getItem(ASSETS_MY_KEY);
       var curSnapRaw = localStorage.getItem(assetsMonthStorageKey(currentYM));
       var prevSnapRaw = localStorage.getItem(assetsMonthStorageKey(prevYM));
-      if (!liveRaw || !curSnapRaw || !prevSnapRaw) return;
-      // Проверяем: live == prevSnap? (признак бага)
-      if (liveRaw === prevSnapRaw && liveRaw !== curSnapRaw) {
-        // Восстанавливаем из снимка текущего месяца
-        localStorage.setItem(ASSETS_MY_KEY, curSnapRaw);
-        var curSashaSnapRaw = localStorage.getItem(assetsSashaMonthStorageKey(currentYM));
-        if (curSashaSnapRaw) localStorage.setItem(ASSETS_SASHA_KEY, curSashaSnapRaw);
+      if (!liveRaw || !prevSnapRaw) return;
+      var liveParsed = JSON.parse(liveRaw);
+      var prevParsed = JSON.parse(prevSnapRaw);
+      var liveSum = assetsCalcPaidSum(liveParsed);
+      var prevSum = assetsCalcPaidSum(prevParsed);
+      // Признак бага: сумма paid/soldFor у live совпадает с суммой прошлого месяца
+      var looksLikePrevMonth = (prevSum > 0 && Math.abs(liveSum - prevSum) < 500);
+      if (!looksLikePrevMonth) return;
+      // Пробуем восстановить из снимка текущего месяца
+      if (curSnapRaw) {
+        var curParsed = JSON.parse(curSnapRaw);
+        var curSum = assetsCalcPaidSum(curParsed);
+        if (curSum !== prevSum) {
+          localStorage.setItem(ASSETS_MY_KEY, curSnapRaw);
+          var curSashaSnapRaw = localStorage.getItem(assetsSashaMonthStorageKey(currentYM));
+          if (curSashaSnapRaw) localStorage.setItem(ASSETS_SASHA_KEY, curSashaSnapRaw);
+          return;
+        }
       }
+      // Снимок тоже перезаписан — очищаем live до пустого (нет paid),
+      // но сохраняем список клиентов с нулями
+      var clearedMy = liveParsed.map(function(p) {
+        var c = JSON.parse(JSON.stringify(p));
+        c.paid = ''; c.expected = '';
+        return c;
+      });
+      localStorage.setItem(ASSETS_MY_KEY, JSON.stringify(clearedMy));
+      localStorage.setItem(assetsMonthStorageKey(currentYM), JSON.stringify(clearedMy));
+      // Sasha: восстанавливаем из снимка если есть
+      var sashaSnapRaw = localStorage.getItem(assetsSashaMonthStorageKey(currentYM));
+      if (sashaSnapRaw) localStorage.setItem(ASSETS_SASHA_KEY, sashaSnapRaw);
     } catch(e) {}
   }
+
+  window.__assetsShowDiagnostic = function() {
+    var currentYM = assetsCurrentMonthKey();
+    var prevYM = assetsGetPrevMonthKey(currentYM);
+    var fmt = function(n) { return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ' '); };
+    function info(key) {
+      var raw = localStorage.getItem(key);
+      if (!raw) return '(нет)';
+      try {
+        var arr = JSON.parse(raw);
+        if (!Array.isArray(arr) || arr.length === 0) return '(пусто, 0 записей)';
+        var sum = assetsCalcPaidSum(arr);
+        var names = arr.map(function(p) { return (p.name || p.company || '?'); }).join(', ');
+        return arr.length + ' записей, сумма ' + fmt(sum) + ' ₽ [' + names + ']';
+      } catch(e) { return raw.slice(0, 80); }
+    }
+    var msg = '=== ДИАГНОСТИКА КАССА ===\n\n' +
+      'LIVE Мои: ' + info(ASSETS_MY_KEY) + '\n' +
+      'SNAP Мои ' + currentYM + ': ' + info(assetsMonthStorageKey(currentYM)) + '\n' +
+      'SNAP Мои ' + prevYM + ': ' + info(assetsMonthStorageKey(prevYM)) + '\n\n' +
+      'LIVE Саша: ' + info(ASSETS_SASHA_KEY) + '\n' +
+      'SNAP Саша ' + currentYM + ': ' + info(assetsSashaMonthStorageKey(currentYM)) + '\n' +
+      'SNAP Саша ' + prevYM + ': ' + info(assetsSashaMonthStorageKey(prevYM));
+    alert(msg);
+  };
 
   function assetsCheckMonthTransition() {
     var currentYM = assetsCurrentMonthKey();
@@ -1022,6 +1075,7 @@
       '<button type="button" class="assets-month-nav-btn" onclick="window.__assetsMonthPrev()" title="Предыдущий месяц">◀</button>' +
       '<span class="assets-month-nav-label">' + esc(monthTitle) + '</span>' +
       '<button type="button" class="assets-month-nav-btn" onclick="window.__assetsMonthNext()" title="Следующий месяц">▶</button>' +
+      '<button type="button" class="assets-month-nav-btn" onclick="window.__assetsShowDiagnostic()" title="Диагностика данных — покажет что сейчас в хранилище" style="margin-left:8px;font-size:11px;opacity:0.6">🔍</button>' +
       '</div>';
     var archiveBanner = isAssetsArchive ? '<div class="assets-archive-banner">📁 Архив: ' + esc(monthTitle) + '</div>' : '';
     mc.innerHTML = '<div class="assets-page-wrap">' +
