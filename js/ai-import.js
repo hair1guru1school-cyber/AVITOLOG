@@ -624,6 +624,15 @@
     } catch(e) {}
   }
 
+  window.__assetsSaveSnapshotNow = function() {
+    try {
+      var ym = assetsCurrentMonthKey();
+      localStorage.setItem(assetsMonthStorageKey(ym), JSON.stringify(getAssetsMy()));
+      localStorage.setItem(assetsSashaMonthStorageKey(ym), JSON.stringify(getAssetsSasha()));
+      alert('✅ Данные апреля зафиксированы как резервная копия.');
+    } catch(e) { alert('Ошибка: ' + e.message); }
+  };
+
   window.__assetsShowDiagnostic = function() {
     var currentYM = assetsCurrentMonthKey();
     var prevYM = assetsGetPrevMonthKey(currentYM);
@@ -1069,11 +1078,14 @@
           '<div class="assets-col-add-row"><button type="button" class="assets-col-add" onclick="window.__assetsAddProject(\'sasha\')">+ Добавить</button><button type="button" class="assets-col-add assets-col-add-base" onclick="window.__assetsShowBasePicker(this)" title="Выбрать из базы">+ из базы</button></div>' +
         '</div>'
       );
+    var saveSnapBtn = !isAssetsArchive
+      ? '<button type="button" class="assets-month-nav-btn" onclick="window.__assetsSaveSnapshotNow()" title="Зафиксировать текущие данные — сохранить резервную копию апреля" style="margin-left:8px;font-size:11px;background:rgba(0,217,126,0.15);border-color:rgba(0,217,126,0.4);color:#00d97e">💾</button>'
+      : '';
     var monthNavHtml = '<div class="assets-month-nav-wrap">' +
       '<button type="button" class="assets-month-nav-btn" onclick="window.__assetsMonthPrev()" title="Предыдущий месяц">◀</button>' +
       '<span class="assets-month-nav-label">' + esc(monthTitle) + '</span>' +
       '<button type="button" class="assets-month-nav-btn" onclick="window.__assetsMonthNext()" title="Следующий месяц">▶</button>' +
-      '<button type="button" class="assets-month-nav-btn" onclick="window.__assetsShowDiagnostic()" title="Диагностика данных — покажет что сейчас в хранилище" style="margin-left:8px;font-size:11px;opacity:0.6">🔍</button>' +
+      saveSnapBtn +
       '</div>';
     var archiveBanner = isAssetsArchive ? '<div class="assets-archive-banner">📁 Архив: ' + esc(monthTitle) + '</div>' : '';
     mc.innerHTML = '<div class="assets-page-wrap">' +
