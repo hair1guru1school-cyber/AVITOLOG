@@ -76,6 +76,9 @@
       for (var i = 0; i < localStorage.length; i++) {
         var k = localStorage.key(i);
         if (!k) continue;
+        // Исключаем месячные снимки (_month_YYYY-MM) — они не должны
+        // участвовать в восстановлении live-данных
+        if (k.indexOf('_month_') >= 0) continue;
         if (k === baseKey || k.indexOf(baseKey + '_') === 0 || k.indexOf(baseKey + '__') === 0) out.push(k);
       }
     } catch (e) {}
