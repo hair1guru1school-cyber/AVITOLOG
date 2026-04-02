@@ -946,8 +946,6 @@
   function renderAssetsPage() {
     var mc = document.getElementById('mainContent');
     if (!mc) return;
-    assetsAutoRepairIfSnapshotBetter();
-    assetsCheckMonthTransition();
     var fmt = function(n) { return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ' '); };
     function calcNameColWidth(list) {
       var longest = 'Проект';
