@@ -2892,9 +2892,7 @@ function renderProjectsScreen(opts) {
     var hoverPop = '<div class="proj-hover-pop"><button type="button" class="crm-bind-btn" onclick="startProjectFolderBind(\'' + p.id + '\', event)">CRM</button></div>';
     var moveBtn = '<button type="button" class="proj-move-btn" title="Переместить проект" onclick="event.stopPropagation();showProjectZoneMenu(this,\'' + p.id + '\')">&#8594;</button>';
     var taskCount = (typeof getTasksForProject === 'function' ? getTasksForProject(p.id) : []).length;
-    var caSticky = String(p.cardsActive || '').trim();
-    var cardsActiveStickyHtml = caSticky ? '<span class="proj-cards-active-mini" title="Актив карточек">' + escAttr(caSticky) + '</span>' : '';
-    var taskIndicatorsHtml = '<div class="proj-task-badge"><span class="proj-task-count">' + taskCount + '</span>' + cardsActiveStickyHtml + '</div>';
+    var taskIndicatorsHtml = '<div class="proj-task-badge"><span class="proj-task-count">' + taskCount + '</span></div>';
     var dragHandle = '<span class="proj-row-drag-handle" title="Тяните для перетаскивания строки">&#9776;</span>';
     if (hasChildLines && _expandedProjectIds[p.id] === undefined) _expandedProjectIds[p.id] = false;
     var showPositionRows = hasChildLines && _expandedProjectIds[p.id];
