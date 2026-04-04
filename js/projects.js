@@ -132,6 +132,9 @@ function startProjectsDayShiftTimer() {
 
 function loadProjectsData() {
   try {
+    if (typeof window.__projectsMergeCardsFromStorageBackups === 'function') {
+      try { window.__projectsMergeCardsFromStorageBackups(); } catch (eMerge) {}
+    }
     var s = localStorage.getItem(PROJECTS_DATA_KEY);
     var data = s ? JSON.parse(s) : null;
     if (!data || !data.projects || data.projects.length < 10) {

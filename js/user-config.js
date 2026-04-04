@@ -148,14 +148,46 @@
     var digits = (s.match(/\d/g) || []).length;
     return s.length * 100 + digits;
   }
-  /** По каждому project.id подтягиваем лучший cardsActive из любого ключа localStorage (старая копия часто сохранила метки). */
+  /** Ключи localStorage с JSON { projects: [...] } для текущего профиля (не смешиваем Фила и Сашу). Включает _month_ — только для подтягивания меток. */
+  function getProjectsMergeSourceKeys(targetKey) {
+    var out = [];
+    var seen = {};
+    function add(k) {
+      if (!k || seen[k]) return;
+      seen[k] = true;
+      out.push(k);
+    }
+    try {
+      for (var i = 0; i < localStorage.length; i++) {
+        var k = localStorage.key(i);
+        if (!k || k.indexOf('avitolog_projects') !== 0) continue;
+        if (targetKey === 'avitolog_projects') {
+          if (k === 'avitolog_projects_sasha' || k.indexOf('avitolog_projects_sasha_') === 0) continue;
+        } else if (targetKey === 'avitolog_projects_sasha') {
+          if (k !== 'avitolog_projects_sasha' && k.indexOf('avitolog_projects_sasha_') !== 0) continue;
+        } else if (targetKey && targetKey.indexOf('avitolog_projects') === 0) {
+          if (k !== targetKey && k.indexOf(targetKey + '_') !== 0 && k.indexOf(targetKey + '__') !== 0) continue;
+        }
+        if (/^avitolog_projects_(zoom|day_px|row_height|sticky_width|tasks_sort_v1|sidebar_hidden)$/.test(k)) continue;
+        if (k === 'avitolog_projects_path_defaults_off_v1') continue;
+        var raw = localStorage.getItem(k);
+        if (!raw || raw.charAt(0) !== '{') continue;
+        var parsed = safeParse(raw);
+        if (!parsed || !Array.isArray(parsed.projects)) continue;
+        add(k);
+      }
+    } catch (e) {}
+    add(targetKey);
+    return out;
+  }
+  /** По каждому project.id подтягиваем лучший cardsActive из любого ключа (в т.ч. старые копии и _month_). */
   function mergeProjectsFloatMarkersFromAllCandidates() {
     var baseKey = 'avitolog_projects';
     var targetKey = window.AVITOLOG_KEY(baseKey);
     var base = safeParse(localStorage.getItem(targetKey) || 'null');
     if (!base || !Array.isArray(base.projects)) return;
     var idToBest = {};
-    getAllCandidateKeys(baseKey).forEach(function(k) {
+    getProjectsMergeSourceKeys(targetKey).forEach(function(k) {
       var parsed = safeParse(localStorage.getItem(k) || 'null');
       if (!parsed || !Array.isArray(parsed.projects)) return;
       parsed.projects.forEach(function(p) {
@@ -178,9 +210,14 @@
       var best = idToBest[p.id];
       if (!best) return;
       var curSc = floatMarkerScore(p.cardsActive);
+      var curCa = String(p.cardsActive || '').trim();
+      var curCd = String(p.cardsActiveDate || '').trim();
       if (best.caScore > curSc) {
         p.cardsActive = best.cardsActive;
         if (best.cardsActiveDate) p.cardsActiveDate = best.cardsActiveDate;
+        changed = true;
+      } else if (curSc >= 0 && best.caScore === curSc && curCa && !curCd && best.cardsActiveDate) {
+        p.cardsActiveDate = best.cardsActiveDate;
         changed = true;
       }
     });
