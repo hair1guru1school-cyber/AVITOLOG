@@ -556,22 +556,12 @@ function openAnalyticsTab() {
   }
   updateTopRowButtons();
 }
-// Для Саши скрываем вкладки Фила и показываем только его личные
+// Для Саши все вкладки видны — данные изолированы через суффикс _sasha
 function applySashaTabVisibility() {
-  var isSasha = !!(typeof window !== 'undefined' && window.AVITOLOG_IS_SASHA);
-  // Вкладки которые видны только Филу
-  var filOnlyTabs = ['analytics', 'tasks', 'ads', 'agency', 'strategy'];
-  // Вкладки которые видны всем
-  var sharedTabs = ['goals', 'projects', 'assets'];
-  filOnlyTabs.forEach(function(tabId) {
-    var btn = document.querySelector('.btn-projects[data-tab="' + tabId + '"]');
-    if (btn) btn.style.display = isSasha ? 'none' : '';
+  // Убеждаемся что все вкладки видны
+  document.querySelectorAll('.btn-projects[data-tab]').forEach(function(btn) {
+    if (btn.id !== 'btnStrategy') btn.style.display = ''; // СТРАТЕГИЯ остаётся скрытой
   });
-  // Для Саши автоматически открываем КАССУ если он на "скрытой" вкладке
-  if (isSasha) {
-    var hiddenActive = document.querySelector('.btn-projects[data-tab].is-on[style*="display: none"], .btn-projects[data-tab].is-on[style*="display:none"]');
-    if (hiddenActive && typeof openAssetsTab === 'function') openAssetsTab();
-  }
 }
 window.applySashaTabVisibility = applySashaTabVisibility;
 
