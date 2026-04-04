@@ -135,8 +135,10 @@
     }
   }
 
-  // Аварийное восстановление отключено — оно перезаписывало живые данные снимками
-  // try {
-  //   ['avitolog_projects', 'avitolog_goals_v1', 'avitolog_clients', 'crm_tasks_v1', 'avitolog_assets_my_v2', 'avitolog_assets_sasha_v2'].forEach(recoverBaseKey);
-  // } catch (e5) {}
+  // Восстановление включено только для безопасных ключей.
+  // avitolog_assets_* исключены — там были баги с перезаписью живых данных снимками.
+  // Месячные снимки (_month_) уже исключены в getAllCandidateKeys выше.
+  try {
+    ['avitolog_projects', 'avitolog_goals_v1', 'avitolog_clients', 'crm_tasks_v1'].forEach(recoverBaseKey);
+  } catch (e5) {}
 })();
