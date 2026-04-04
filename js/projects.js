@@ -78,6 +78,14 @@ function toIsoDateLocal(d) {
   var day = String(d.getDate()).padStart(2, '0');
   return y + '-' + m + '-' + day;
 }
+/** Сопоставление с клетками календаря: 2026-4-4 → 2026-04-04 */
+function normalizeIsoDateStr(s) {
+  if (s == null || s === '') return '';
+  var t = String(s).trim();
+  var m = t.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+  if (!m) return '';
+  return m[1] + '-' + String(parseInt(m[2], 10)).padStart(2, '0') + '-' + String(parseInt(m[3], 10)).padStart(2, '0');
+}
 
 function stopProjectsSheetPullTimer() {
   if (_projectsSheetPullTimer) {
@@ -177,6 +185,10 @@ function loadProjectsData() {
       var cd = (p.cardsActiveDate || '').trim();
       var md = (p.mustLaunchDate || '').trim();
       var fix15to11 = function(d){ if (!d || d.length < 10) return d; if (d.slice(-2) === '15') return d.slice(0,-2) + '11'; return d; };
+      if (cd) {
+        var nrm = normalizeIsoDateStr(cd);
+        if (nrm && nrm !== cd) { p.cardsActiveDate = nrm; cardsMoved = true; cd = nrm; }
+      }
       if (p.cardsActive && cd) { var fixed = fix15to11(cd); if (fixed !== cd) { p.cardsActiveDate = fixed; cardsMoved = true; } }
       if (p.mustLaunchRequired && md) { var fixedM = fix15to11(md); if (fixedM !== md) { p.mustLaunchDate = fixedM; cardsMoved = true; } }
       cd = (p.cardsActiveDate || '').trim();
@@ -2731,6 +2743,10 @@ function renderProjectsScreen(opts) {
       var cd = (p.cardsActiveDate || '').trim();
       var md = (p.mustLaunchDate || '').trim();
       var fix15to11 = function(d){ if (!d || d.length < 10) return d; if (d.slice(-2) === '15') return d.slice(0,-2) + '11'; return d; };
+      if (cd) {
+        var nrm2 = normalizeIsoDateStr(cd);
+        if (nrm2 && nrm2 !== cd) { p.cardsActiveDate = nrm2; moved = true; cd = nrm2; }
+      }
       if (p.cardsActive && cd) { var fc = fix15to11(cd); if (fc !== cd) { p.cardsActiveDate = fc; moved = true; } }
       if (p.mustLaunchRequired && md) { var fm = fix15to11(md); if (fm !== md) { p.mustLaunchDate = fm; moved = true; } }
       cd = (p.cardsActiveDate || '').trim();
@@ -2876,7 +2892,9 @@ function renderProjectsScreen(opts) {
     var hoverPop = '<div class="proj-hover-pop"><button type="button" class="crm-bind-btn" onclick="startProjectFolderBind(\'' + p.id + '\', event)">CRM</button></div>';
     var moveBtn = '<button type="button" class="proj-move-btn" title="Переместить проект" onclick="event.stopPropagation();showProjectZoneMenu(this,\'' + p.id + '\')">&#8594;</button>';
     var taskCount = (typeof getTasksForProject === 'function' ? getTasksForProject(p.id) : []).length;
-    var taskIndicatorsHtml = '<div class="proj-task-badge"><span class="proj-task-count">' + taskCount + '</span></div>';
+    var caSticky = String(p.cardsActive || '').trim();
+    var cardsActiveStickyHtml = caSticky ? '<span class="proj-cards-active-mini" title="Актив карточек">' + escAttr(caSticky) + '</span>' : '';
+    var taskIndicatorsHtml = '<div class="proj-task-badge"><span class="proj-task-count">' + taskCount + '</span>' + cardsActiveStickyHtml + '</div>';
     var dragHandle = '<span class="proj-row-drag-handle" title="Тяните для перетаскивания строки">&#9776;</span>';
     if (hasChildLines && _expandedProjectIds[p.id] === undefined) _expandedProjectIds[p.id] = false;
     var showPositionRows = hasChildLines && _expandedProjectIds[p.id];
@@ -2895,8 +2913,10 @@ function renderProjectsScreen(opts) {
         var evt = evts[0] || null;
         var rocket = (events||[]).find(function(e){ return e.type==='not_launched_project_marker' && e.date===dStr; });
         var isTodayCell = (dStr === todayStr);
-        var cardsActiveDate = (p.cardsActiveDate || '') && String(p.cardsActive || '').trim();
-        var cardsActiveShown = (childLineIdx < 0) && cardsActiveDate && (dStr === p.cardsActiveDate);
+        var caRow = String(p.cardsActive || '').trim();
+        var cdNorm = normalizeIsoDateStr(p.cardsActiveDate);
+        if (caRow && !cdNorm) cdNorm = todayStr;
+        var cardsActiveShown = (childLineIdx < 0) && caRow && (dStr === cdNorm);
         var cardsVal = String(p.cardsActive || '').trim();
         var digitsCount = (cardsVal.match(/\d/g) || []).length;
         if (!digitsCount) digitsCount = cardsVal.length;
