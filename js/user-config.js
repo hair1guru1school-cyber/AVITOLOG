@@ -87,6 +87,33 @@
     if (out.indexOf(baseKey) < 0) out.push(baseKey);
     return out;
   }
+  /** Кандидаты для recover только внутри текущего профиля — иначе avitolog_projects_sasha перезаписывал Фила. */
+  function getRecoverCandidateKeys(baseKey) {
+    var targetKey = window.AVITOLOG_KEY(baseKey);
+    var suffix = window.AVITOLOG_KEY_SUFFIX || '';
+    var out = [];
+    try {
+      for (var i = 0; i < localStorage.length; i++) {
+        var k = localStorage.key(i);
+        if (!k) continue;
+        if (k.indexOf('_month_') >= 0) continue;
+        if (k.indexOf(baseKey) !== 0) continue;
+        var ok = false;
+        if (suffix === '') {
+          if (k === baseKey + '_sasha' || k.indexOf(baseKey + '_sasha_') === 0) continue;
+          if (k.indexOf(baseKey + '__') === 0) continue;
+          ok = (k === baseKey || k.indexOf(baseKey + '_') === 0);
+        } else if (suffix === '_sasha') {
+          ok = (k === baseKey + '_sasha' || k.indexOf(baseKey + '_sasha_') === 0);
+        } else {
+          ok = (k === targetKey || k.indexOf(targetKey + '_') === 0 || k.indexOf(targetKey + '__') === 0);
+        }
+        if (ok) out.push(k);
+      }
+    } catch (e) {}
+    if (out.indexOf(targetKey) < 0) out.push(targetKey);
+    return out;
+  }
   function scoreByBase(baseKey, parsed) {
     if (!parsed) return -1;
     if (baseKey === 'avitolog_projects') {
@@ -96,7 +123,7 @@
       var cardsBonus = 0;
       if (Array.isArray(parsed.projects)) {
         parsed.projects.forEach(function(proj) {
-          if (proj && proj.cardsActive && String(proj.cardsActive).trim()) cardsBonus += 10;
+          if (proj && proj.cardsActive && String(proj.cardsActive).trim()) cardsBonus += 500;
         });
       }
       return p * 1000 + t + cardsBonus;
@@ -128,7 +155,7 @@
     var bestKey = targetKey;
     var bestParsed = targetParsed;
     var bestScore = targetScore;
-    getAllCandidateKeys(baseKey).forEach(function(k) {
+    getRecoverCandidateKeys(baseKey).forEach(function(k) {
       var parsed = safeParse(localStorage.getItem(k) || 'null');
       var s = scoreByBase(baseKey, parsed);
       if (s > bestScore) {
@@ -235,5 +262,28 @@
   } catch (e5) {}
   try {
     window.__projectsMergeCardsFromStorageBackups = mergeProjectsFloatMarkersFromAllCandidates;
+    /** Ручной разовый перенос «актив карточек» с другого ключа (например если старая копия осталась только там). Только пустые у целевого. */
+    window.__projectsSalvageCardsFromStorageKey = function(donorKey) {
+      if (!donorKey) return false;
+      var targetKey = window.AVITOLOG_KEY('avitolog_projects');
+      var base = safeParse(localStorage.getItem(targetKey) || 'null');
+      var donor = safeParse(localStorage.getItem(donorKey) || 'null');
+      if (!base || !donor || !Array.isArray(base.projects) || !Array.isArray(donor.projects)) return false;
+      var byId = {};
+      donor.projects.forEach(function(p) { if (p && p.id) byId[p.id] = p; });
+      var changed = false;
+      base.projects.forEach(function(p) {
+        if (!p || !p.id) return;
+        if (String(p.cardsActive || '').trim()) return;
+        var d = byId[p.id];
+        if (d && String(d.cardsActive || '').trim()) {
+          p.cardsActive = d.cardsActive;
+          if (String(d.cardsActiveDate || '').trim()) p.cardsActiveDate = d.cardsActiveDate;
+          changed = true;
+        }
+      });
+      if (changed) try { localStorage.setItem(targetKey, JSON.stringify(base)); } catch (e) {}
+      return changed;
+    };
   } catch (e6) {}
 })();
