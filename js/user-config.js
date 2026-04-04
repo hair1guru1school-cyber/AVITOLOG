@@ -29,17 +29,19 @@
   try { employeeEmailOverride = String(localStorage.getItem('avitolog_employee_email_override') || '').trim().toLowerCase(); } catch(e7) {}
   if (employeeMode && !employeeEmailOverride && email) employeeEmailOverride = email;
 
-  // Автодетект Саши по email: если залогиненный email совпадает с сохранённым
-  // email'ом Саши — автоматически переключаемся на его пространство данных
+  // Автодетект Саши по email — работает на любом устройстве
+  var SASHA_KNOWN_EMAIL = 'cyplakovaleksandr153@gmail.com';
   if (!employeeMode) {
-    var sashaEmail = '';
-    try { sashaEmail = String(localStorage.getItem('avitolog_sasha_email') || '').trim().toLowerCase(); } catch(eSasha) {}
+    var sashaEmail = SASHA_KNOWN_EMAIL;
+    try {
+      var stored = String(localStorage.getItem('avitolog_sasha_email') || '').trim().toLowerCase();
+      if (stored) sashaEmail = stored; // если вручную переопределили — используем
+    } catch(eSasha) {}
     if (sashaEmail && email) {
       if (email === sashaEmail && legacyUser !== 'sasha') {
         legacyUser = 'sasha';
         try { localStorage.setItem('avitolog_current_user', 'sasha'); } catch(eSet) {}
       } else if (email !== sashaEmail && legacyUser === 'sasha') {
-        // Фил зашёл со своего аккаунта — возвращаем его namespace
         legacyUser = 'fil';
         try { localStorage.setItem('avitolog_current_user', 'fil'); } catch(eReset) {}
       }
