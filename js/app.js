@@ -7902,8 +7902,14 @@ document.addEventListener('DOMContentLoaded', function() {
   }
   applyAnalyticsModeDefault();
   applyTopTabOrder();
-  openProjectsTab();
-  switchTab('analysis');
+  if (typeof applySashaTabVisibility === 'function') applySashaTabVisibility();
+  // Для Саши сразу открываем КАССУ, для Фила — проекты
+  if (typeof window !== 'undefined' && window.AVITOLOG_IS_SASHA) {
+    if (typeof openAssetsTab === 'function') openAssetsTab();
+  } else {
+    openProjectsTab();
+    switchTab('analysis');
+  }
   // Восстанавливаем активного клиента
   _activeClient = getActiveClient();
   updateClientBadge();
