@@ -178,9 +178,12 @@ function loadProjectsData() {
       var md = (p.mustLaunchDate || '').trim();
       var fix15to11 = function(d){ if (!d || d.length < 10) return d; if (d.slice(-2) === '15') return d.slice(0,-2) + '11'; return d; };
       if (p.cardsActive && cd) { var fixed = fix15to11(cd); if (fixed !== cd) { p.cardsActiveDate = fixed; cardsMoved = true; } }
-      if (p.mustLaunchRequired && md) { var fixed = fix15to11(md); if (fixed !== md) { p.mustLaunchDate = fixed; cardsMoved = true; } }
-      var needCardsToday = p.cardsActive && (cd === '' || cd < todayStr || cd > todayStr);
-      var needMustToday = p.mustLaunchRequired && (md === '' || md < todayStr || md > todayStr);
+      if (p.mustLaunchRequired && md) { var fixedM = fix15to11(md); if (fixedM !== md) { p.mustLaunchDate = fixedM; cardsMoved = true; } }
+      cd = (p.cardsActiveDate || '').trim();
+      md = (p.mustLaunchDate || '').trim();
+      // Только пустая дата или прошлое — переносим на сегодня. Будущие даты не трогаем (цифры остаются в своих колонках календаря).
+      var needCardsToday = p.cardsActive && (cd === '' || cd < todayStr);
+      var needMustToday = p.mustLaunchRequired && (md === '' || md < todayStr);
       if (needCardsToday) { p.cardsActiveDate = todayStr; cardsMoved = true; }
       if (needMustToday) { p.mustLaunchDate = todayStr; cardsMoved = true; }
     });

@@ -128,24 +128,15 @@
     var bestKey = targetKey;
     var bestParsed = targetParsed;
     var bestScore = targetScore;
-    var candidates = getAllCandidateKeys(baseKey);
-    candidates.forEach(function(k) {
+    getAllCandidateKeys(baseKey).forEach(function(k) {
       var parsed = safeParse(localStorage.getItem(k) || 'null');
       var s = scoreByBase(baseKey, parsed);
-      if (baseKey === 'avitolog_projects') {
-        var pCount = Array.isArray(parsed && parsed.projects) ? parsed.projects.length : 'n/a';
-        var cCount = Array.isArray(parsed && parsed.projects) ? parsed.projects.filter(function(x){ return x && x.cardsActive && String(x.cardsActive).trim(); }).length : 'n/a';
-        console.log('[recover] candidate:', k, '| projects:', pCount, '| cardsActive:', cCount, '| score:', s);
-      }
       if (s > bestScore) {
         bestScore = s;
         bestParsed = parsed;
         bestKey = k;
       }
     });
-    if (baseKey === 'avitolog_projects') {
-      console.log('[recover] winner:', bestKey, '| score:', bestScore, '| changed:', bestKey !== targetKey);
-    }
     if (bestParsed && bestKey !== targetKey && bestScore > 0) {
       try { localStorage.setItem(targetKey, JSON.stringify(bestParsed)); } catch (e2) {}
     }
