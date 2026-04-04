@@ -4511,6 +4511,7 @@ document.addEventListener('DOMContentLoaded', function() {
   updateEmployeeModeButtonUi();
   updateUserSwitchBtn();
   updateSashaEmailBtn();
+  if (typeof applySashaTabVisibility === 'function') applySashaTabVisibility();
   applyMobileWebviewMode();
   applySidebarVisibilityFromStorage();
   window.addEventListener('resize', applyMobileWebviewMode);
@@ -4551,8 +4552,13 @@ document.addEventListener('DOMContentLoaded', function() {
   }
   applyAnalyticsModeDefault();
   applyTopTabOrder();
-  openProjectsTab();
-  switchTab('analysis');
+  if (typeof applySashaTabVisibility === 'function') applySashaTabVisibility();
+  if (typeof window !== 'undefined' && window.AVITOLOG_IS_SASHA) {
+    if (typeof openAssetsTab === 'function') openAssetsTab();
+  } else {
+    openProjectsTab();
+    switchTab('analysis');
+  }
   _activeClient = getActiveClient();
   updateClientBadge();
   updateGenButtonState();
