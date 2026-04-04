@@ -142,10 +142,61 @@
     }
   }
 
+  function floatMarkerScore(str) {
+    var s = String(str || '').trim();
+    if (!s) return -1;
+    var digits = (s.match(/\d/g) || []).length;
+    return s.length * 100 + digits;
+  }
+  /** По каждому project.id подтягиваем лучший cardsActive из любого ключа localStorage (старая копия часто сохранила метки). */
+  function mergeProjectsFloatMarkersFromAllCandidates() {
+    var baseKey = 'avitolog_projects';
+    var targetKey = window.AVITOLOG_KEY(baseKey);
+    var base = safeParse(localStorage.getItem(targetKey) || 'null');
+    if (!base || !Array.isArray(base.projects)) return;
+    var idToBest = {};
+    getAllCandidateKeys(baseKey).forEach(function(k) {
+      var parsed = safeParse(localStorage.getItem(k) || 'null');
+      if (!parsed || !Array.isArray(parsed.projects)) return;
+      parsed.projects.forEach(function(p) {
+        if (!p || !p.id) return;
+        var ca = String(p.cardsActive || '').trim();
+        if (!ca) return;
+        var sc = floatMarkerScore(ca);
+        var prev = idToBest[p.id];
+        if (!prev || sc > prev.caScore) {
+          idToBest[p.id] = {
+            caScore: sc,
+            cardsActive: p.cardsActive,
+            cardsActiveDate: String(p.cardsActiveDate || '').trim()
+          };
+        }
+      });
+    });
+    var changed = false;
+    base.projects.forEach(function(p) {
+      var best = idToBest[p.id];
+      if (!best) return;
+      var curSc = floatMarkerScore(p.cardsActive);
+      if (best.caScore > curSc) {
+        p.cardsActive = best.cardsActive;
+        if (best.cardsActiveDate) p.cardsActiveDate = best.cardsActiveDate;
+        changed = true;
+      }
+    });
+    if (changed) {
+      try { localStorage.setItem(targetKey, JSON.stringify(base)); } catch (e3) {}
+    }
+  }
+
   // Восстановление включено только для безопасных ключей.
   // avitolog_assets_* исключены — там были баги с перезаписью живых данных снимками.
   // Месячные снимки (_month_) уже исключены в getAllCandidateKeys выше.
   try {
     ['avitolog_projects', 'avitolog_goals_v1', 'avitolog_clients', 'crm_tasks_v1'].forEach(recoverBaseKey);
+    mergeProjectsFloatMarkersFromAllCandidates();
   } catch (e5) {}
+  try {
+    window.__projectsMergeCardsFromStorageBackups = mergeProjectsFloatMarkersFromAllCandidates;
+  } catch (e6) {}
 })();
