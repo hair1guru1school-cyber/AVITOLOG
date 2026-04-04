@@ -209,6 +209,40 @@ function toggleEmployeeMode() {
 }
 window.toggleEmployeeMode = toggleEmployeeMode;
 
+// ── USER PROFILE SWITCHER ──
+function updateUserSwitchBtn() {
+  var btn = document.getElementById('userSwitchBtn');
+  if (!btn) return;
+  var isSasha = !!(window.AVITOLOG_IS_SASHA);
+  if (isSasha) {
+    btn.textContent = '👤 Саша';
+    btn.style.background = 'rgba(255,165,0,0.15)';
+    btn.style.borderColor = 'rgba(255,165,0,0.5)';
+    btn.style.color = '#ffa500';
+    btn.title = 'Профиль: Саша. Нажмите чтобы переключиться.';
+  } else {
+    btn.textContent = '👤 Фил';
+    btn.style.background = '';
+    btn.style.borderColor = '';
+    btn.style.color = '';
+    btn.title = 'Профиль: Фил. Нажмите чтобы переключиться.';
+  }
+}
+window.updateUserSwitchBtn = updateUserSwitchBtn;
+
+function switchUserProfile() {
+  var isSasha = !!(window.AVITOLOG_IS_SASHA);
+  if (isSasha) {
+    if (!confirm('Переключиться на профиль Фила?\n\nДанные Саши сохранятся — можно вернуться обратно.')) return;
+    try { localStorage.setItem('avitolog_current_user', 'fil'); } catch(e) {}
+  } else {
+    if (!confirm('Переключиться на профиль Саши?\n\nДанные Фила сохранятся — можно вернуться обратно.')) return;
+    try { localStorage.setItem('avitolog_current_user', 'sasha'); } catch(e) {}
+  }
+  location.reload();
+}
+window.switchUserProfile = switchUserProfile;
+
 // ── SASHA EMAIL CONFIG ──
 var SASHA_EMAIL_CONFIG_KEY = 'avitolog_sasha_email';
 
@@ -4475,6 +4509,7 @@ function switchUser(u) {
 document.addEventListener('DOMContentLoaded', function() {
   initDayMode();
   updateEmployeeModeButtonUi();
+  updateUserSwitchBtn();
   updateSashaEmailBtn();
   applyMobileWebviewMode();
   applySidebarVisibilityFromStorage();
