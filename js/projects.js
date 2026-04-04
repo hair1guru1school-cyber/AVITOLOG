@@ -163,9 +163,6 @@ function loadProjectsData() {
       p.events = events.filter(function(e){
         return e && e.type !== 'cards_count_without_active_upload' && e.type !== 'deadline';
       });
-      // If legacy markers existed, reset floating markers too.
-      p.cardsActive = '';
-      p.mustLaunchRequired = false;
       sanitized = true;
     });
     if (sanitized) saveProjectsData(data);
@@ -304,9 +301,12 @@ async function hydrateProjectsFromActiveSheet(forceMerge) {
           }
         }
       }
+      // Не затираем локальные «Актив карточек» пустой ячейкой таблицы — иначе метки пропадают после pull
       if (hasCardsCol && (p.cardsActive || '') !== cardsActive) {
-        p.cardsActive = cardsActive;
-        changed = true;
+        if (cardsActive !== '' || String(p.cardsActive || '').trim() === '') {
+          p.cardsActive = cardsActive;
+          changed = true;
+        }
       }
       var hadLegacyCardsEvent = (p.events || []).some(function(e){ return e && e.type === 'cards_count_without_active_upload'; });
       if (hadLegacyCardsEvent) {
@@ -2720,37 +2720,37 @@ function renderProjectsScreen(opts) {
   _renderProjectsInProgress = true;
   try {
     var data = loadProjectsData();
+    var todayStr = getTodayISOmsk();
   // Повторная миграция !! и Актив на сегодня МСК (правило 00:00 МСК)
   (function migrateCardsToToday() {
-    var todayStr = getTodayISOmsk();
     var moved = false;
     (data.projects || []).forEach(function(p) {
       var cd = (p.cardsActiveDate || '').trim();
       var md = (p.mustLaunchDate || '').trim();
       var fix15to11 = function(d){ if (!d || d.length < 10) return d; if (d.slice(-2) === '15') return d.slice(0,-2) + '11'; return d; };
-      if (p.cardsActive && cd && fix15to11(cd) !== cd) { p.cardsActiveDate = fix15to11(cd); moved = true; cd = p.cardsActiveDate; }
-      if (p.mustLaunchRequired && md && fix15to11(md) !== md) { p.mustLaunchDate = fix15to11(md); moved = true; md = p.mustLaunchDate; }
-      if (p.cardsActive && (cd === '' || cd < todayStr || cd > todayStr)) { p.cardsActiveDate = todayStr; moved = true; }
-      if (p.mustLaunchRequired && (md === '' || md < todayStr || md > todayStr)) { p.mustLaunchDate = todayStr; moved = true; }
+      if (p.cardsActive && cd) { var fc = fix15to11(cd); if (fc !== cd) { p.cardsActiveDate = fc; moved = true; } }
+      if (p.mustLaunchRequired && md) { var fm = fix15to11(md); if (fm !== md) { p.mustLaunchDate = fm; moved = true; } }
+      cd = (p.cardsActiveDate || '').trim();
+      md = (p.mustLaunchDate || '').trim();
+      // Как в loadProjectsData: только пусто или прошлое → сегодня; будущие даты не трогаем (иначе метки пропадают при каждом рендере).
+      if (p.cardsActive && (cd === '' || cd < todayStr)) { p.cardsActiveDate = todayStr; moved = true; }
+      if (p.mustLaunchRequired && (md === '' || md < todayStr)) { p.mustLaunchDate = todayStr; moved = true; }
     });
     if (moved) saveProjectsData(data);
   })();
   var DAY_PX = getSavedProjectsDayPx() || 28;
   var DAYS_LEFT = 0;
   var DAYS_RIGHT = 60;
-  var today = new Date();
-  today.setHours(0,0,0,0);
-  var startDate = new Date(today);
-  var endDate = new Date(today);
-  endDate.setDate(endDate.getDate() + DAYS_RIGHT);
+  // Якорь полосы — календарный «сегодня» по МСК (как cardsActiveDate), иначе local midnight ≠ MSK и метки не попадают в клетки
+  var mskParts = todayStr.split('-');
+  var startDate = new Date(parseInt(mskParts[0], 10), parseInt(mskParts[1], 10) - 1, parseInt(mskParts[2], 10));
+  startDate.setHours(0, 0, 0, 0);
   var dates = [];
   for (var i = 0; i <= DAYS_RIGHT; i++) {
     var d = new Date(startDate);
     d.setDate(d.getDate() + i);
     dates.push(d);
   }
-  // Индекс сегодня: клетка = день, ищем по дате (MSK, fallback local)
-  var todayStr = getTodayISOmsk();
   var todayIndex = dates.findIndex(function(dd){ return toIsoDateLocal(dd) === todayStr; });
   if (todayIndex < 0) todayIndex = dates.findIndex(function(dd){ return toIsoDateLocal(dd) === getTodayISO(); });
   if (todayIndex < 0) todayIndex = DAYS_LEFT;
