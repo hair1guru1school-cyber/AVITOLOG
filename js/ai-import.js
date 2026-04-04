@@ -1336,11 +1336,35 @@
     wrap.style.cssText = 'right:' + rightPos + 'px;top:' + topPos + 'px;width:' + w + 'px;height:' + h + 'px;left:auto';
     var searchVal = '';
     var _basePickerAiRows = [];
+    var _shiftExpanded = false;
+
+    function expandToFiveCols() {
+      if (_shiftExpanded) return;
+      _shiftExpanded = true;
+      var expandW = Math.min(window.innerWidth - 48, 1260);
+      var expandH = Math.min(window.innerHeight - 48, Math.max(580, Math.floor(window.innerHeight * 0.85)));
+      wrap.style.width = expandW + 'px';
+      wrap.style.height = expandH + 'px';
+      wrap.style.left = Math.max(0, Math.floor((window.innerWidth - expandW) / 2)) + 'px';
+      wrap.style.right = 'auto';
+      wrap.style.top = Math.max(16, Math.floor((window.innerHeight - expandH) / 2)) + 'px';
+      wrap.classList.add('wide-grid');
+    }
+
     function updateBasePickerLayoutMode() {
       if (!wrap) return;
+      if (_shiftExpanded) { wrap.classList.add('wide-grid'); return; }
       var wNow = wrap.offsetWidth || parseInt(wrap.style.width || '0', 10) || 0;
       wrap.classList.toggle('wide-grid', wNow >= 860);
     }
+
+    function onKeyDown(e) {
+      if (e.key === 'Shift' && !_shiftExpanded) expandToFiveCols();
+    }
+    document.addEventListener('keydown', onKeyDown);
+    // Снимаем слушатель при закрытии окна
+    var _origClose;
+    function cleanupKeyListener() { document.removeEventListener('keydown', onKeyDown); }
 
     function renderList() {
       var base = getAssetsBase();
@@ -1442,7 +1466,7 @@
       addToBaseFromPicker({ emoji: '📦', name: 'Новый в базе', paid: '', expected: '', paymentDate: '', startDate: '', clientType: 'new', folderLink: '', crmClientId: '' });
       renderList();
     };
-    wrap.querySelector('.base-picker-close').onclick = function() { wrap.remove(); };
+    wrap.querySelector('.base-picker-close').onclick = function() { cleanupKeyListener(); wrap.remove(); };
     wrap.onclick = function(e) {
       var delBtn = e.target.closest('.ab-del-btn');
       if (delBtn) {
@@ -1451,10 +1475,23 @@
         if (row) { removeFromBase(parseInt(row.getAttribute('data-idx'), 10)); renderList(); }
         return;
       }
+      var addBtn = e.target.closest('.ab-add-btn');
       var row = e.target.closest('.assets-base-row');
-      if (row && !e.target.closest('.ab-del-btn')) {
-        e.stopPropagation();
-        addFromBaseToActive(parseInt(row.getAttribute('data-idx'), 10));
+      if (!row) return;
+      e.stopPropagation();
+      var idx = parseInt(row.getAttribute('data-idx'), 10);
+      if (e.shiftKey || _shiftExpanded) {
+        // Shift-режим: добавляем без закрытия, обновляем список
+        addFromBaseToActive(idx);
+        renderList(); // обновить подсветку "в кассе"
+        // Визуальный флеш строки
+        row.style.transition = 'background 0.3s';
+        row.style.background = 'rgba(0,217,126,0.35)';
+        setTimeout(function() { if (row.parentNode) row.style.background = ''; }, 400);
+      } else {
+        // Обычный клик: добавляем и закрываем
+        addFromBaseToActive(idx);
+        cleanupKeyListener();
         wrap.remove();
       }
     };
