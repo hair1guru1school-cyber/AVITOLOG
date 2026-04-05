@@ -1,5 +1,7 @@
 // ── PROJECTS SCREEN ──
-var PROJECTS_DATA_KEY = (typeof window.AVITOLOG_KEY === 'function') ? window.AVITOLOG_KEY('avitolog_projects') : 'avitolog_projects';
+function projectsDataKey() {
+  return (typeof window.AVITOLOG_KEY === 'function') ? window.AVITOLOG_KEY('avitolog_projects') : 'avitolog_projects';
+}
 var PROJECT_STATUSES = ['Ожидают','В работе','Готово!','ЛИМИТ','OFF','След. мес.','Жду','ПАРКУЙ','О бюджете'];
 var PROJECT_STATUS_COLORS = {'Ожидают':'#7c6af7','В работе':'#00d97e','Готово!':'#00d97e','ЛИМИТ':'#ff6b35','OFF':'#666','След. мес.':'#ffcc00','Жду':'#ffcc00','ПАРКУЙ':'#666','О бюджете':'#ff6b35'};
 var PROJECT_EMOJIS = [
@@ -143,9 +145,15 @@ function loadProjectsData() {
     if (typeof window.__projectsMergeCardsFromStorageBackups === 'function') {
       try { window.__projectsMergeCardsFromStorageBackups(); } catch (eMerge) {}
     }
-    var s = localStorage.getItem(PROJECTS_DATA_KEY);
+    var s = localStorage.getItem(projectsDataKey());
     var data = s ? JSON.parse(s) : null;
-    if (!data || !data.projects || data.projects.length < 10) {
+    var isSasha = typeof window !== 'undefined' && window.AVITOLOG_IS_SASHA;
+    if (!data || !Array.isArray(data.projects)) {
+      if (isSasha) return { projects: [], hiddenProjects: [], tasks: [], taskLog: [] };
+      return getDefaultProjectsData();
+    }
+    /** У Саши нет демо-списка Фила: при <10 проектах раньше подставлялся getDefaultProjectsData() (30 строк). */
+    if (data.projects.length < 10 && !isSasha) {
       return getDefaultProjectsData();
     }
     // Migration: once switch default path buttons to OFF for existing local data.
@@ -205,16 +213,21 @@ function loadProjectsData() {
     if (!Array.isArray(data.tasks)) data.tasks = [];
     if (!Array.isArray(data.taskLog)) data.taskLog = [];
     return data;
-  } catch(e) { return getDefaultProjectsData(); }
+  } catch (e) {
+    if (typeof window !== 'undefined' && window.AVITOLOG_IS_SASHA) {
+      return { projects: [], hiddenProjects: [], tasks: [], taskLog: [] };
+    }
+    return getDefaultProjectsData();
+  }
 }
 function saveProjectsData(data) {
-  try { localStorage.setItem(PROJECTS_DATA_KEY, JSON.stringify(data)); } catch(e) {}
+  try { localStorage.setItem(projectsDataKey(), JSON.stringify(data)); } catch(e) {}
 }
 async function hydrateProjectsFromActiveSheet(forceMerge) {
   if (!_driveToken) return false;
   if (typeof forceMerge === 'undefined') forceMerge = false;
   try {
-    var localRaw = localStorage.getItem(PROJECTS_DATA_KEY);
+    var localRaw = localStorage.getItem(projectsDataKey());
     if (!forceMerge && localRaw) {
       var localData = JSON.parse(localRaw);
       if (localData && localData.projects && localData.projects.length >= 10) return false;
