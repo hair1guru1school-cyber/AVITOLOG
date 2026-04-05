@@ -8,8 +8,20 @@ const PORT = Number(process.env.PORT || 8787);
 const AVITO_API_BASE = String(process.env.AVITO_API_BASE || 'https://api.avito.ru').replace(/\/+$/, '');
 const PERPLEXITY_API_BASE = String(process.env.PERPLEXITY_API_BASE || 'https://api.perplexity.ai').replace(/\/+$/, '');
 const ANTHROPIC_API_BASE = String(process.env.ANTHROPIC_API_BASE || 'https://api.anthropic.com').replace(/\/+$/, '');
+const LISTEN_HOST = String(process.env.HOST || '0.0.0.0').trim() || '0.0.0.0';
+const CORS_ORIGIN = String(process.env.CORS_ORIGIN || '').trim();
 
-app.use(cors());
+if (CORS_ORIGIN) {
+  var origins = CORS_ORIGIN.split(',').map(function (s) { return s.trim(); }).filter(Boolean);
+  app.use(
+    cors({
+      origin: origins.length === 1 ? origins[0] : origins,
+      credentials: true
+    })
+  );
+} else {
+  app.use(cors());
+}
 app.use(express.json({ limit: '1mb' }));
 
 app.get('/api/health', (req, res) => {
@@ -259,6 +271,6 @@ app.post('/api/llm/anthropic', async (req, res) => {
   }
 });
 
-app.listen(PORT, () => {
-  console.log('[avitolog-backend] listening on http://localhost:' + PORT);
+app.listen(PORT, LISTEN_HOST, () => {
+  console.log('[avitolog-backend] listening on http://' + LISTEN_HOST + ':' + PORT);
 });

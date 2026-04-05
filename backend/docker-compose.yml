@@ -1,0 +1,12 @@
+services:
+  avitolog-backend:
+    build: .
+    container_name: avitolog-backend
+    ports:
+      - "${BACKEND_PUBLISH:-8787}:8787"
+    env_file:
+      - .env
+    environment:
+      HOST: 0.0.0.0
+      PORT: ${PORT:-8787}
+    restart: unless-stopped
