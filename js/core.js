@@ -263,6 +263,7 @@ function addGoalsProjectFromLeft(weekNum, beforeProjectId, targetStage) {
     }
     if (price && !ex.mainPrice) ex.mainPrice = price;
     localStorage.setItem((typeof window.AVITOLOG_KEY === 'function' ? window.AVITOLOG_KEY('avitolog_goals_v1') : 'avitolog_goals_v1'), JSON.stringify(data));
+    try { if (typeof window.__syncGoalPaidToAssetsFromCrm === 'function') window.__syncGoalPaidToAssetsFromCrm(ex); } catch (eSync) {}
     if (window.AVITOLOG_GOALS && typeof window.AVITOLOG_GOALS.render === 'function') {
       try { window.AVITOLOG_GOALS.render(); } catch (e2) {}
     }
@@ -278,6 +279,7 @@ function addGoalsProjectFromLeft(weekNum, beforeProjectId, targetStage) {
     data.projects.unshift(project);
   }
   localStorage.setItem((typeof window.AVITOLOG_KEY === 'function' ? window.AVITOLOG_KEY('avitolog_goals_v1') : 'avitolog_goals_v1'), JSON.stringify(data));
+  try { if (typeof window.__syncGoalPaidToAssetsFromCrm === 'function') window.__syncGoalPaidToAssetsFromCrm(project); } catch (eSync) {}
   if (window.AVITOLOG_GOALS && typeof window.AVITOLOG_GOALS.render === 'function') {
     try { window.AVITOLOG_GOALS.render(); } catch (e2) {}
   }
@@ -298,6 +300,7 @@ function quickEditGoalPrice(projectId) {
   p.mainPrice = clean || '';
   p.priceOptions = clean ? [clean] : [];
   localStorage.setItem((typeof window.AVITOLOG_KEY === 'function' ? window.AVITOLOG_KEY('avitolog_goals_v1') : 'avitolog_goals_v1'), JSON.stringify(data));
+  try { if (typeof window.__syncGoalPaidToAssetsFromCrm === 'function') window.__syncGoalPaidToAssetsFromCrm(p); } catch (eSync) {}
   if (window.AVITOLOG_GOALS && typeof window.AVITOLOG_GOALS.render === 'function') {
     try { window.AVITOLOG_GOALS.render(); } catch (e2) {}
   }

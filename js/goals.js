@@ -243,6 +243,16 @@
     var sid = String(id || '').trim();
     return STATUS_LEGACY[sid] || sid;
   }
+  function syncGoalToKassaIfReady(p) {
+    try {
+      if (typeof window.__syncGoalPaidToAssetsFromCrm === 'function') window.__syncGoalPaidToAssetsFromCrm(p);
+    } catch (e) {}
+  }
+  function removeKassaByGoalId(id) {
+    try {
+      if (typeof window.__removeKassaRowByGoalProjectId === 'function') window.__removeKassaRowByGoalProjectId(id);
+    } catch (e) {}
+  }
   function getStatusDateMap(project) {
     if (!project.statusDates || typeof project.statusDates !== 'object') project.statusDates = {};
     return project.statusDates;
@@ -1435,6 +1445,7 @@
     var statusDates = getStatusDateMap(p);
     delete statusDates[sid];
     saveData(data);
+    syncGoalToKassaIfReady(p);
     render();
   }
 
@@ -1461,6 +1472,7 @@
     var statusDates = getStatusDateMap(p);
     statusDates[sid] = getTodayISO();
     saveData(data);
+    syncGoalToKassaIfReady(p);
     render();
   }
 
@@ -1583,6 +1595,7 @@
         }
         data.projects.push(copy);
         saveData(data);
+        syncGoalToKassaIfReady(copy);
         render();
       });
       return;
@@ -1704,6 +1717,7 @@
     var data = loadData();
     var projects = data.projects || [];
     var victim = projects.find(function(x) { return x.id === projectId; });
+    removeKassaByGoalId(projectId);
     if (victim && victim.stage === 'archive' && victim.archiveCopyOfWeekId) {
       var weekSrc = projects.find(function(x) { return x.id === victim.archiveCopyOfWeekId; });
       if (weekSrc) {
@@ -1884,6 +1898,7 @@
       p.tags = editTags;
       var data = loadData();
       saveData(data);
+      syncGoalToKassaIfReady(p);
       modal.remove();
       render();
     };
@@ -1897,6 +1912,7 @@
     var day = p.date ? parseInt(String(p.date).split('-')[2], 10) : new Date().getDate();
     var wi = (typeof p.weekIndex === 'number' && p.weekIndex >= 1 && p.weekIndex <= 4) ? p.weekIndex : getWeekIndex(day);
     if (wi !== weekNum) return;
+    removeKassaByGoalId(projectId);
     data.projects = projects.filter(function(x) {
       if (x.id === projectId) return false;
       if (x.archiveCopyOfWeekId === projectId) return false;
@@ -1925,8 +1941,10 @@
     copy.tags = (copy.tags || []).slice();
     if (copy.tags.indexOf('new') < 0) copy.tags.unshift('new');
     data.projects = data.projects.filter(function(x) { return x.id !== projectId; });
+    removeKassaByGoalId(projectId);
     data.projects.push(copy);
     saveData(data);
+    syncGoalToKassaIfReady(copy);
     if (typeof window.__onGoalsProjectSentToActive === 'function') {
       try { window.__onGoalsProjectSentToActive(copy); } catch (e) { console.warn('Goals→Active callback failed', e); }
     }
@@ -1954,6 +1972,7 @@
       }
     }
     saveData(data);
+    syncGoalToKassaIfReady(p);
     render();
   }
 
@@ -2242,6 +2261,7 @@
         existing.statusDates.paid = getTodayISO();
       }
       saveData(data);
+      syncGoalToKassaIfReady(existing);
       render();
       return;
     }
@@ -2253,6 +2273,7 @@
       data.projects.unshift(project);
     }
     saveData(data);
+    syncGoalToKassaIfReady(project);
     render();
   }
 

@@ -1004,6 +1004,108 @@
     if (typeof window.__wireAssetsDragTargets === 'function') window.__wireAssetsDragTargets();
   }
 
+  var GOAL_STATUS_LEGACY_SYNC = { kp_sent: 'kp', invoice_sent: 'invoice', contract_sent: 'contract', instruction_sent: 'instruction', deal_discussion: 'negotiations' };
+  function normalizeGoalStatusIdForKassa(id) {
+    var sid = String(id || '').trim();
+    return GOAL_STATUS_LEGACY_SYNC[sid] || sid;
+  }
+  function goalHasPaidStatusForKassa(p) {
+    return (p.status || []).some(function(id) { return normalizeGoalStatusIdForKassa(id) === 'paid'; });
+  }
+  function parseGoalAmountForKassa(p) {
+    if (!p) return '';
+    var sa = String(p.saleAmount || '').replace(/\s/g, '').replace(/[^\d]/g, '');
+    if (sa) return sa;
+    var mp = String(p.mainPrice || '').replace(/\s/g, '').replace(/[^\d]/g, '');
+    if (mp) return mp;
+    var opts = p.priceOptions || [];
+    for (var i = 0; i < opts.length; i++) {
+      var o = String(opts[i] || '').replace(/\s/g, '').replace(/[^\d]/g, '');
+      if (o) return o;
+    }
+    return '';
+  }
+  function goalProjectShouldSyncPaidToKassa(p) {
+    if (!p) return false;
+    if (goalHasPaidStatusForKassa(p)) return true;
+    if (p.stage === 'sold') {
+      var amt = parseGoalAmountForKassa(p);
+      return !!(amt && String(amt).match(/\d/));
+    }
+    return false;
+  }
+  function removeAssetsRowByGoalProjectId(goalProjectId) {
+    var gid = String(goalProjectId || '').trim();
+    if (!gid) return;
+    var arr = getAssetsMy();
+    var idx = arr.findIndex(function(r) { return r && String(r.goalProjectId || '').trim() === gid; });
+    if (idx < 0) return;
+    arr.splice(idx, 1);
+    saveAssetsMy(arr);
+    if (typeof window.__renderAssetsPage === 'function') window.__renderAssetsPage();
+    if (typeof window.__wireAssetsDragTargets === 'function') window.__wireAssetsDragTargets();
+  }
+  function syncGoalPaidToAssetsFromCrm(p) {
+    if (!p || !p.id) return;
+    if (!goalProjectShouldSyncPaidToKassa(p)) {
+      removeAssetsRowByGoalProjectId(p.id);
+      return;
+    }
+    var paidStr = parseGoalAmountForKassa(p);
+    if (!paidStr || !String(paidStr).replace(/\s/g, '').match(/\d/)) {
+      removeAssetsRowByGoalProjectId(p.id);
+      return;
+    }
+    var name = String(p.name || p.company || '').trim() || 'Проект';
+    var emoji = p.emoji || '📦';
+    var folderLink = String(p.folderLink || (p.folderId ? 'https://drive.google.com/drive/folders/' + p.folderId : '') || '').trim();
+    var crmClientId = String(p.crmClientId || p.folderId || '').trim();
+    var arr = getAssetsMy();
+    var idx = arr.findIndex(function(r) { return r && String(r.goalProjectId || '').trim() === String(p.id); });
+    var paidClean = String(paidStr).replace(/\s/g, '');
+    if (idx >= 0) {
+      var prev = arr[idx];
+      arr[idx] = {
+        emoji: emoji,
+        name: name,
+        paid: paidClean,
+        expected: '',
+        paymentDate: prev.paymentDate || '',
+        startDate: prev.startDate || '',
+        clientType: prev.clientType || 'new',
+        folderLink: folderLink || prev.folderLink || '',
+        crmClientId: crmClientId || prev.crmClientId || '',
+        goalProjectId: p.id,
+        paymentHistory: prev.paymentHistory
+      };
+    } else {
+      arr.push({
+        emoji: emoji,
+        name: name,
+        paid: paidClean,
+        expected: '',
+        paymentDate: '',
+        startDate: '',
+        clientType: 'new',
+        folderLink: folderLink,
+        crmClientId: crmClientId,
+        goalProjectId: p.id
+      });
+      try {
+        var base = getAssetsBase();
+        var nm = name.trim().toLowerCase();
+        var inBase = base.some(function(b) { return String(b.name || '').trim().toLowerCase() === nm; });
+        if (!inBase) {
+          base.push({ emoji: emoji, name: name, paid: paidClean, expected: '', paymentDate: '', startDate: '', clientType: 'new', folderLink: folderLink });
+          saveAssetsBase(base);
+        }
+      } catch (e1) {}
+    }
+    saveAssetsMy(arr);
+    if (typeof window.__renderAssetsPage === 'function') window.__renderAssetsPage();
+    if (typeof window.__wireAssetsDragTargets === 'function') window.__wireAssetsDragTargets();
+  }
+
   function removeAssetsProject(owner, idx) {
     if (owner === 'me') {
       var arr = getAssetsMy();
@@ -1782,6 +1884,9 @@
     }
     if (typeof window.__renderAssetsPage === 'function') window.__renderAssetsPage();
   }
+
+  window.__syncGoalPaidToAssetsFromCrm = syncGoalPaidToAssetsFromCrm;
+  window.__removeKassaRowByGoalProjectId = removeAssetsRowByGoalProjectId;
 
   window.__aiImportParse = parseAndShow;
   window.__aiImportRejectRow = rejectRow;
