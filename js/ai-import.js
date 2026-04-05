@@ -1247,7 +1247,7 @@
         '</div>'
       );
     var ctrlBtns = !isAssetsArchive ? (
-      '<button type="button" class="assets-month-nav-btn" onclick="window.__assetsCarryOverFromPrevMonth()" title="Перенести неоплаченные проекты из предыдущего месяца (с суммой ожидания)" style="margin-left:8px;font-size:11px">📥 из предыдущего</button>' +
+      '<button type="button" class="assets-month-nav-btn" onclick="window.__assetsCarryOverFromPrevMonth()" title="Перенести неоплаченные проекты из предыдущего месяца (с суммой ожидания)" aria-label="Из предыдущего месяца" style="margin-left:8px">📥</button>' +
       '<button type="button" class="assets-month-nav-btn" onclick="window.__assetsSaveSnapshotNow()" title="Зафиксировать текущие данные как резервную копию" style="margin-left:4px;font-size:11px;background:rgba(0,217,126,0.15);border-color:rgba(0,217,126,0.4);color:#00d97e">💾</button>'
     ) : '';
     var monthNavHtml = '<div class="assets-month-nav-wrap">' +
