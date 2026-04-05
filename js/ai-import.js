@@ -896,10 +896,8 @@
   function getAssetsMy() {
     try {
       var isSasha = !!(typeof window !== 'undefined' && window.AVITOLOG_IS_SASHA);
-      var fallbackMyKeys = isSasha
-        ? ['avitolog_assets_my_v2_sasha', 'avitolog_assets_my_v2']
-        : ['avitolog_assets_my_v2', 'avitolog_assets_my_v2_sasha'];
-      var arr = bootstrapAssetsArray(ASSETS_MY_KEY, fallbackMyKeys);
+      /** Не подставляем чужой профиль: иначе у Саши в «Мои клиенты» оказывались строки Фила (и наоборот). */
+      var arr = bootstrapAssetsArray(ASSETS_MY_KEY, []);
       if (arr !== null) {
         if (arr.length === 0) {
           if (isSasha) { return []; }
@@ -937,7 +935,7 @@
   function getAssetsSasha() {
     if (typeof window !== 'undefined' && window.AVITOLOG_IS_SASHA) return [];
     try {
-      var arrExisting = bootstrapAssetsArray(ASSETS_SASHA_KEY, ['avitolog_assets_sasha_v2', 'avitolog_assets_sasha_v2_sasha']);
+      var arrExisting = bootstrapAssetsArray(ASSETS_SASHA_KEY, []);
       if (arrExisting !== null) return arrExisting;
       var legacy = JSON.parse(localStorage.getItem(ASSETS_LEGACY_KEY) || '{}');
       var arr = [];
