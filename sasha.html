@@ -2,11 +2,18 @@
 <html lang="ru">
 <head>
   <meta charset="utf-8">
-  <title>Открыть профиль Саши</title>
-  <meta http-equiv="refresh" content="0; url=index.html?u=sasha">
-  <script>location.replace('index.html?u=sasha');</script>
+  <title>AVITOLOG — вход Саши</title>
+  <!-- Короткая ссылка: данные только профиля Саши (ключи localStorage …_sasha) -->
+  <meta http-equiv="refresh" content="0; url=https://hair1guru1school-cyber.github.io/AVITOLOG/index.html?u=sasha">
+  <script>
+    (function() {
+      var u = 'https://hair1guru1school-cyber.github.io/AVITOLOG/index.html?u=sasha';
+      try { location.replace(u); } catch (e) { location.href = u; }
+    })();
+  </script>
 </head>
 <body style="background:#0f1115;color:#888;font-family:system-ui,sans-serif;padding:24px;text-align:center">
-  Переход в профиль Саши… <a href="index.html?u=sasha" style="color:#00d97e">index.html?u=sasha</a>
+  <p>Переход в профиль Саши…</p>
+  <p><a href="https://hair1guru1school-cyber.github.io/AVITOLOG/index.html?u=sasha" style="color:#00d97e">Открыть AVITOLOG (Саша)</a></p>
 </body>
 </html>

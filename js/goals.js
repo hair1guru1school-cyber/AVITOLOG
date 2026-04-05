@@ -915,9 +915,14 @@
       liveProjects.forEach(function(p) {
         if (p.stage === 'working') { working.push(p); return; }
         if (p.stage === 'archive') { archive.push(p); return; }
+        /** «Продано» до фильтра месяца для недель — иначе sold с «чужим» месяцем в date никогда не попадал в блок */
+        if (p.stage === 'sold') {
+          var pymSold = getProjectYM(p);
+          if (!pymSold || pymSold === viewYM) sold.push(p);
+          return;
+        }
         var pym = getProjectYM(p);
         if (pym && pym !== viewYM) return;
-        if (p.stage === 'sold') { sold.push(p); return; }
         var d = p.date ? (function() {
           var parts = String(p.date).split('-');
           if (parts.length >= 3) return parseInt(parts[2], 10);
@@ -1583,6 +1588,7 @@
         if (cur.stage === 'working') {
           cur.stage = 'sold';
           cur.saleAmount = saleAmount || '';
+          cur.date = getTodayISO();
           if (cur.workCopyOfWeekId) cur.soldFromId = cur.workCopyOfWeekId;
           delete cur.workCopyOfWeekId;
           data.workOrderWork = (data.workOrderWork || []).filter(function(id) { return id !== cur.id; });
