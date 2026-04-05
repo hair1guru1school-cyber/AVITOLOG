@@ -5,7 +5,10 @@
 (function() {
   'use strict';
 
-  const STORAGE_KEY = (typeof window.AVITOLOG_KEY === 'function') ? window.AVITOLOG_KEY('avitolog_goals_v1') : 'avitolog_goals_v1';
+  /** Ключ после user-config (AVITOLOG_KEY); не константа на parse-time — иначе CRM всегда в avitolog_goals_v1 без суффикса. */
+  function goalsStorageKey() {
+    return (typeof window.AVITOLOG_KEY === 'function') ? window.AVITOLOG_KEY('avitolog_goals_v1') : 'avitolog_goals_v1';
+  }
   var MONTH_NAMES_RU = ['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'];
   var _goalsViewMonth = null; // null = current month (live); "2026-03" = archived month
 
@@ -14,7 +17,7 @@
     return n.getFullYear() + '-' + String(n.getMonth() + 1).padStart(2, '0');
   }
   function monthStorageKey(ym) {
-    return STORAGE_KEY + '_month_' + ym;
+    return goalsStorageKey() + '_month_' + ym;
   }
   function snapshotCurrentMonth(data) {
     try {
@@ -44,7 +47,7 @@
   }
   function getAvailableMonths() {
     var months = {};
-    var prefix = STORAGE_KEY + '_month_';
+    var prefix = goalsStorageKey() + '_month_';
     for (var i = 0; i < localStorage.length; i++) {
       var k = localStorage.key(i);
       if (k && k.indexOf(prefix) === 0) {
@@ -179,7 +182,7 @@
   }
   function loadLiveData() {
     try {
-      var s = localStorage.getItem(STORAGE_KEY);
+      var s = localStorage.getItem(goalsStorageKey());
       return normalizeLoadedData(s ? JSON.parse(s) : { projects: [] });
     } catch(e) {}
     return normalizeLoadedData({ projects: [] });
@@ -190,7 +193,7 @@
         var snap = loadMonthSnapshot(_goalsViewMonth);
         if (snap) return normalizeLoadedData(snap);
       }
-      var s = localStorage.getItem(STORAGE_KEY);
+      var s = localStorage.getItem(goalsStorageKey());
       var d = s ? JSON.parse(s) : { projects: [] };
       if (!d.customMetrics) d.customMetrics = [];
       if (!d.pinnedMetrics) d.pinnedMetrics = [];
@@ -208,7 +211,7 @@
         localStorage.setItem(monthStorageKey(_goalsViewMonth), JSON.stringify(data));
         return;
       }
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+      localStorage.setItem(goalsStorageKey(), JSON.stringify(data));
       snapshotCurrentMonth(data);
     } catch (e) { console.warn('Goals save failed', e); }
   }
