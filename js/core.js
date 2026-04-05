@@ -312,6 +312,7 @@ function addGoalsProjectToActiveProjects(goalProject, addAtTopAndHighlight) {
   if (typeof loadProjectsData !== 'function' || typeof saveProjectsData !== 'function') return;
   var data = loadProjectsData();
   data.projects = data.projects || [];
+  if (goalProject.id && data.projects.some(function(x) { return x && x.goalsSourceId === goalProject.id; })) return;
   var projId = 'g2a_' + (goalProject.id || Date.now());
   if (data.projects.some(function(x){ return x.id === projId; })) projId = 'g2a_' + Date.now();
   var zoneItems = data.projects.filter(function(p){ return (p.zone || 'active') === 'active'; });

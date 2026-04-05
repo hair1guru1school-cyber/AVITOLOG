@@ -1576,8 +1576,29 @@
     if (!p) return;
     if (stage === 'sold') {
       showSaleAmountPicker(projectId, p, function(saleAmount) {
+        var data = loadData();
+        var cur = (data.projects || []).find(function(x) { return x.id === projectId; });
+        if (!cur) return;
+        /** Из «В работе»: та же строка становится «Продано», дубликата в работе нет; касса + активный проект — как 🅰️ */
+        if (cur.stage === 'working') {
+          cur.stage = 'sold';
+          cur.saleAmount = saleAmount || '';
+          if (cur.workCopyOfWeekId) cur.soldFromId = cur.workCopyOfWeekId;
+          delete cur.workCopyOfWeekId;
+          data.workOrderWork = (data.workOrderWork || []).filter(function(id) { return id !== cur.id; });
+          var workingAll = (data.projects || []).filter(function(x) { return x && x.stage === 'working'; });
+          data.workOrderWork = mergeWorkingOrderIds(data.workOrderWork || [], workingAll);
+          saveData(data);
+          syncGoalToKassaIfReady(cur);
+          try {
+            if (typeof window.__goalsCreateActiveFromSold === 'function') window.__goalsCreateActiveFromSold(cur.id);
+          } catch (eAct) {}
+          render();
+          return;
+        }
+        var src = cur;
         var copy = {};
-        for (var k in p) if (Object.prototype.hasOwnProperty.call(p, k)) copy[k] = p[k];
+        for (var k in src) if (Object.prototype.hasOwnProperty.call(src, k)) copy[k] = src[k];
         copy.id = generateId();
         copy.stage = 'sold';
         copy.saleAmount = saleAmount || '';
@@ -1585,12 +1606,12 @@
         delete copy.crmArchived;
         delete copy.emojiBeforeArchive;
         delete copy.archiveCopyOfWeekId;
-        if (p.crmArchived) {
+        if (src.crmArchived) {
           data.projects = (data.projects || []).filter(function(x) { return x.archiveCopyOfWeekId !== projectId; });
-          p.crmArchived = false;
-          if (p.emojiBeforeArchive) {
-            p.emoji = p.emojiBeforeArchive;
-            delete p.emojiBeforeArchive;
+          src.crmArchived = false;
+          if (src.emojiBeforeArchive) {
+            src.emoji = src.emojiBeforeArchive;
+            delete src.emojiBeforeArchive;
           }
         }
         data.projects.push(copy);

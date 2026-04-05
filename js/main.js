@@ -234,10 +234,16 @@ function switchUserProfile() {
   var isSasha = !!(window.AVITOLOG_IS_SASHA);
   if (isSasha) {
     if (!confirm('Переключиться на профиль Фила?\n\nДанные Саши сохранятся — можно вернуться обратно.')) return;
-    try { localStorage.setItem('avitolog_current_user', 'fil'); } catch(e) {}
+    try {
+      localStorage.setItem('avitolog_current_user', 'fil');
+      localStorage.removeItem('avitolog_profile_bookmark');
+    } catch(e) {}
   } else {
     if (!confirm('Переключиться на профиль Саши?\n\nДанные Фила сохранятся — можно вернуться обратно.')) return;
-    try { localStorage.setItem('avitolog_current_user', 'sasha'); } catch(e) {}
+    try {
+      localStorage.setItem('avitolog_current_user', 'sasha');
+      localStorage.setItem('avitolog_profile_bookmark', 'sasha');
+    } catch(e) {}
   }
   location.reload();
 }
@@ -4077,12 +4083,14 @@ async function browseFolder(folderId, folderName) {
   // Кнопка выбора только на уровне 2+ (внутри категории)
   var selectBtn = _browseLevel >= 2 ? '<button type="button" class="primary" onclick="selectBrowseFolder()">✓ Выбрать</button>' : '';
   var newFolderBtn = '<button type="button" class="primary" onclick="createBrowseFolder()">+ Папка</button>';
+  /** «+ Папка» всегда в .cm-tools; в подвале дублировать нельзя — при «Назад»+«Выбрать» три кнопки не помещались (flex + min-width). В корне — одна широкая кнопка внизу, как раньше. */
+  var footInner = _browseStack.length === 0 ? newFolderBtn : (backBtn + selectBtn);
 
   menu.innerHTML = '<div class="cm-head"><span>📁 ' + folderName + '</span><span class="cm-close" onclick="closeClientMenu()">✕</span></div>' +
     '<div class="cm-path">' + pathStr + '</div>' +
     '<div class="cm-tools"><input type="search" id="cmSearch" placeholder="Поиск папки..." oninput="filterBrowseFolders(this.value)"><button type="button" onclick="createBrowseFolder()">+ Папка</button></div>' +
     '<div class="cm-list"><div style="padding:20px;text-align:center;color:var(--muted);font-size:11px">⏳</div></div>' +
-    '<div class="cm-foot">' + backBtn + newFolderBtn + selectBtn + '</div>';
+    '<div class="cm-foot">' + footInner + '</div>';
 
   try {
     var token = _driveToken;

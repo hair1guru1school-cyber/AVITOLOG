@@ -299,6 +299,7 @@ function addGoalsProjectToActiveProjects(goalProject, addAtTopAndHighlight) {
   if (typeof loadProjectsData !== 'function' || typeof saveProjectsData !== 'function') return;
   var data = loadProjectsData();
   data.projects = data.projects || [];
+  if (goalProject.id && data.projects.some(function(x) { return x && x.goalsSourceId === goalProject.id; })) return;
   var projId = 'g2a_' + (goalProject.id || Date.now());
   if (data.projects.some(function(x){ return x.id === projId; })) projId = 'g2a_' + Date.now();
   var zoneItems = data.projects.filter(function(p){ return (p.zone || 'active') === 'active'; });
@@ -7448,12 +7449,14 @@ async function browseFolder(folderId, folderName) {
   var backBtn = _browseStack.length > 0 ? '<button type="button" onclick="browseBack()">← Назад</button>' : '';
   // Кнопка выбора только на уровне 2+ (внутри категории)
   var selectBtn = _browseLevel >= 2 ? '<button type="button" class="primary" onclick="selectBrowseFolder()">✓ Выбрать</button>' : '';
+  var newFolderBtn = '<button type="button" class="primary" onclick="createBrowseFolder()">+ Папка</button>';
+  var footInner = _browseStack.length === 0 ? newFolderBtn : (backBtn + selectBtn);
 
   menu.innerHTML = '<div class="cm-head"><span>📁 ' + folderName + '</span><span class="cm-close" onclick="closeClientMenu()">✕</span></div>' +
     '<div class="cm-path">' + pathStr + '</div>' +
     '<div class="cm-tools"><input type="search" id="cmSearch" placeholder="Поиск папки..." oninput="filterBrowseFolders(this.value)"><button type="button" onclick="createBrowseFolder()">+ Папка</button></div>' +
     '<div class="cm-list"><div style="padding:20px;text-align:center;color:var(--muted);font-size:11px">⏳</div></div>' +
-    (backBtn || selectBtn ? '<div class="cm-foot">' + backBtn + selectBtn + '</div>' : '');
+    '<div class="cm-foot">' + footInner + '</div>';
 
   try {
     var token = _driveToken;

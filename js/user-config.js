@@ -12,10 +12,40 @@
       .replace(/^_+|_+$/g, '')
       .slice(0, 72);
   }
+  /** Ссылка «войти как Саша»: index.html?u=sasha (или ?profile=sasha). Фил: ?u=fil — сбрасывает закладку профиля. */
+  var PROFILE_BOOKMARK_KEY = 'avitolog_profile_bookmark';
+  var profileFromUrl = '';
+  try {
+    var sp = new URLSearchParams(window.location.search);
+    var uq = (sp.get('u') || sp.get('profile') || '').trim().toLowerCase();
+    if (uq === 'sasha' || uq === 's') profileFromUrl = 'sasha';
+    else if (uq === 'fil' || uq === 'f') profileFromUrl = 'fil';
+    if (profileFromUrl && typeof history !== 'undefined' && history.replaceState) {
+      sp.delete('u');
+      sp.delete('profile');
+      var qs = sp.toString();
+      var cleanPath = window.location.pathname + (qs ? '?' + qs : '') + (window.location.hash || '');
+      history.replaceState(null, '', cleanPath);
+    }
+  } catch (eUrl) {}
+
   var legacyUser = '';
   try {
     legacyUser = String(localStorage.getItem('avitolog_current_user') || '').trim().toLowerCase();
   } catch(e2) {}
+  if (profileFromUrl === 'sasha') {
+    legacyUser = 'sasha';
+    try {
+      localStorage.setItem('avitolog_current_user', 'sasha');
+      localStorage.setItem(PROFILE_BOOKMARK_KEY, 'sasha');
+    } catch (ePb) {}
+  } else if (profileFromUrl === 'fil') {
+    legacyUser = 'fil';
+    try {
+      localStorage.setItem('avitolog_current_user', 'fil');
+      localStorage.removeItem(PROFILE_BOOKMARK_KEY);
+    } catch (ePf) {}
+  }
   if (legacyUser !== 'sasha' && legacyUser !== 'fil') {
     legacyUser = 'fil';
     try { localStorage.setItem('avitolog_current_user', legacyUser); } catch(e4) {}
@@ -42,8 +72,12 @@
         legacyUser = 'sasha';
         try { localStorage.setItem('avitolog_current_user', 'sasha'); } catch(eSet) {}
       } else if (email !== sashaEmail && legacyUser === 'sasha') {
-        legacyUser = 'fil';
-        try { localStorage.setItem('avitolog_current_user', 'fil'); } catch(eReset) {}
+        var bookmarkSasha = false;
+        try { bookmarkSasha = localStorage.getItem(PROFILE_BOOKMARK_KEY) === 'sasha'; } catch (eBm) {}
+        if (!bookmarkSasha) {
+          legacyUser = 'fil';
+          try { localStorage.setItem('avitolog_current_user', 'fil'); } catch(eReset) {}
+        }
       }
     }
   }
