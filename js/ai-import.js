@@ -954,6 +954,87 @@
     try { localStorage.setItem(assetsSashaMonthStorageKey(assetsCurrentMonthKey()), JSON.stringify(arr)); } catch(e) {}
   }
 
+  /** «Мои клиенты» в профиле Саша (AVITOLOG_KEY_SUFFIX === '_sasha'), отдельно от данных Фила. */
+  var ASSETS_MY_KEY_SASHA_PROFILE = 'avitolog_assets_my_v2_sasha';
+
+  function assetsDedupeKeyForSashaSync(p) {
+    if (!p) return '';
+    if (p.id) return 'id:' + String(p.id);
+    var cid = String(p.crmClientId || '').trim();
+    if (cid) return 'cid:' + cid;
+    return 'name:' + String(p.name || '').trim().toLowerCase();
+  }
+
+  function mapSashaColRowToSashaProfileMy(p) {
+    var copy = JSON.parse(JSON.stringify(p || {}));
+    delete copy.paymentHistory;
+    return {
+      emoji: copy.emoji || '📦',
+      name: String(copy.name || '').trim() || 'Проект',
+      paid: String(copy.soldFor || copy.paid || '').replace(/\s/g, ''),
+      expected: String(copy.expected || '').replace(/\s/g, ''),
+      paymentDate: (copy.paymentDate || '').trim(),
+      startDate: (copy.startDate || '').trim(),
+      clientType: copy.clientType || 'new',
+      folderLink: copy.folderLink || '',
+      crmClientId: copy.crmClientId || ''
+    };
+  }
+
+  function syncSashaFromKassaColumn() {
+    if (typeof window !== 'undefined' && window.AVITOLOG_IS_SASHA) {
+      alert('Синхронизация доступна в профиле Фила.');
+      return;
+    }
+    var sourceList;
+    if (_assetsViewMonth) {
+      var snap = assetsLoadMonthSnapshot(_assetsViewMonth);
+      sourceList = snap.sasha || [];
+    } else {
+      sourceList = getAssetsSasha();
+    }
+    if (!sourceList || !sourceList.length) {
+      alert('В колонке «Клиенты Саши» нет проектов для синхронизации.');
+      return;
+    }
+    var target = [];
+    try {
+      var raw = localStorage.getItem(ASSETS_MY_KEY_SASHA_PROFILE);
+      target = raw ? JSON.parse(raw) : [];
+      if (!Array.isArray(target)) target = [];
+    } catch (e1) { target = []; }
+
+    var existingKeys = {};
+    target.forEach(function(row) {
+      var k = assetsDedupeKeyForSashaSync(row);
+      if (k) existingKeys[k] = true;
+    });
+
+    var added = 0;
+    sourceList.forEach(function(src) {
+      if (!String(src.name || '').trim()) return;
+      var k = assetsDedupeKeyForSashaSync(src);
+      if (!k) return;
+      if (existingKeys[k]) return;
+      existingKeys[k] = true;
+      target.push(mapSashaColRowToSashaProfileMy(src));
+      added++;
+    });
+
+    if (added === 0) {
+      alert('Новых данных нет — в кассе у Саши уже есть эти проекты.');
+      return;
+    }
+    try {
+      localStorage.setItem(ASSETS_MY_KEY_SASHA_PROFILE, JSON.stringify(target));
+      localStorage.setItem(ASSETS_MY_KEY_SASHA_PROFILE + '_month_' + assetsCurrentMonthKey(), JSON.stringify(target));
+    } catch (e2) {
+      alert('Ошибка сохранения: ' + (e2 && e2.message ? e2.message : e2));
+      return;
+    }
+    alert('✅ У Саши добавлено новых проектов: ' + added + '.');
+  }
+
   function getAssetsBase() {
     try {
       var s = localStorage.getItem(ASSETS_BASE_KEY);
@@ -1244,7 +1325,7 @@
         '<div class="assets-col assets-col-sasha" id="assetsColSasha" data-owner="sasha" style="--assets-name-col-width:' + sashaNameColW + 'px">' +
           '<div class="assets-col-title">👤 Клиенты Саши <span class="assets-col-total">' + fmt(sashaSoldTotal) + ' ₽</span><span class="assets-col-breakdown">· Саше <span class="assets-col-sasha-agent">' + fmt(sashaList.reduce(function(a,p){return a+(parseInt(String(p.toAgent||'').replace(/\s/g,''),10)||0);},0)) + '</span> ₽ · Агентству <span class="assets-col-sasha-agency">' + fmt(sashaList.reduce(function(a,p){return a+(parseInt(String(p.aoaPercent||'').replace(/\s/g,''),10)||0);},0)) + '</span> ₽</span></div>' +
           '<div class="assets-col-list">' + colHeaderSasha + sashaRows + '</div>' +
-          '<div class="assets-col-add-row"><button type="button" class="assets-col-add" onclick="window.__assetsAddProject(\'sasha\')">+ Добавить</button><button type="button" class="assets-col-add assets-col-add-base" onclick="window.__assetsShowBasePicker(this)" title="Выбрать из базы">+ из базы</button></div>' +
+          '<div class="assets-col-add-row"><button type="button" class="assets-col-add" onclick="window.__assetsAddProject(\'sasha\')">+ Добавить</button><button type="button" class="assets-col-add assets-col-add-base" onclick="window.__assetsShowBasePicker(this)" title="Выбрать из базы">+ из базы</button><button type="button" class="assets-col-add assets-col-add-sync" onclick="window.__assetsSyncSashaFromKassa && window.__assetsSyncSashaFromKassa()" title="Добавить в кассу Саши (его профиль) только новые проекты из этой колонки">🔄 Синхронизировать</button></div>' +
         '</div>'
       );
     var ctrlBtns = !isAssetsArchive ? (
@@ -1908,6 +1989,7 @@
     else alert('Сначала выберите проект слева');
   };
   window.__assetsShowBasePicker = showAssetsBasePicker;
+  window.__assetsSyncSashaFromKassa = syncSashaFromKassaColumn;
   window.__wireAssetsDragTargets = wireAssetsDragTargets;
 
   function initRightPanelAssets() {
