@@ -1984,14 +1984,12 @@ function openTaskTemplateMiniMenu(projectId, templateKey, anchorEl) {
     applyTaskTemplate(projectId, templateKey);
     return;
   }
-  var defaultChecked = (tpl.pickCount && tpl.pickCount.length) ? Math.min.apply(null, tpl.pickCount) : tasks.length;
   var menu = document.createElement('div');
   menu.id = 'taskTemplateMiniMenu';
   menu.className = 'task-template-mini-menu';
   var esc = function(s){ return escAttr(String(s || '')); };
   var rows = tasks.map(function(title, idx) {
-    var checked = idx < defaultChecked ? ' checked' : '';
-    return '<label class="task-template-mini-row"><input type="checkbox" class="task-template-mini-cb" data-index="' + idx + '"' + checked + '> <span>' + esc(title) + '</span></label>';
+    return '<label class="task-template-mini-row"><input type="checkbox" class="task-template-mini-cb" data-index="' + idx + '"> <span>' + esc(title) + '</span></label>';
   }).join('');
   menu.innerHTML =
     '<div class="task-template-mini-head">' + esc((tpl.emoji ? (tpl.emoji + ' ') : '') + (tpl.name || templateKey)) + '</div>' +
