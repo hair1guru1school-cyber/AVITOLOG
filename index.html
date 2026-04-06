@@ -1789,16 +1789,9 @@ body.goals-mode .content::before{content:'';position:fixed;top:0;left:0;right:0;
 .goal-achievement-badge-coin--pic .goal-achievement-badge-img{width:100%;max-width:76px;height:auto;object-fit:contain;border-radius:14px;display:block;vertical-align:top;background:transparent!important}
 .goal-achievement-badge-coin--rail50{background:transparent!important;box-shadow:none!important;border-radius:0!important}
 .goal-achievement-badge-img--rail50{max-width:84px!important;width:100%;height:auto;object-fit:contain;background:transparent!important;-webkit-backface-visibility:hidden}
-/* milestone-50k.png без альфа (RGB): на тёмном фоне multiply убирает белую «плашку» */
-body.goals-mode:not(.day-mode) .goal-achievement-badge-img--rail50,
-body.goals-mode:not(.day-mode) .goal-achievement-log-img{mix-blend-mode:multiply}
-body.goals-mode:not(.day-mode) .goal-achievement-toast-icon-img{mix-blend-mode:multiply}
-body.day-mode.goals-mode .goal-achievement-badge-img--rail50,
-body.day-mode.goals-mode .goal-achievement-log-img,
-body.day-mode.goals-mode .goal-achievement-toast-icon-img{mix-blend-mode:multiply}
 .goal-achievement-badge--unlocked .goal-achievement-badge-img--rail50{filter:drop-shadow(0 2px 4px rgba(0,0,0,0.35)) drop-shadow(0 0 14px rgba(255,210,90,0.8))}
 .goal-achievement-badge--locked .goal-achievement-badge-img--rail50{filter:grayscale(0.9) brightness(0.85);opacity:0.95}
-.goal-achievement-badge-caption{display:block;text-align:center;font-size:10px;font-weight:800;color:rgba(255,255,255,0.72);line-height:1.25;margin-top:10px;max-width:110px;letter-spacing:0.02em}
+.goal-achievement-badge-caption{display:block;text-align:center;font-size:12px;font-weight:800;color:rgba(255,255,255,0.72);line-height:1.3;margin-top:10px;max-width:120px;letter-spacing:0.02em}
 .goal-achievement-badge--unlocked .goal-achievement-badge-caption{color:#00d97e}
 .goal-achievement-badge--unlocked .goal-achievement-badge-coin--pic:not(.goal-achievement-badge-coin--rail50){box-shadow:0 0 22px rgba(255,200,80,0.55),0 0 42px rgba(0,217,126,0.22),0 4px 14px rgba(0,0,0,0.45);border-radius:16px}
 .goal-achievement-badge--unlocked .goal-achievement-badge-img:not(.goal-achievement-badge-img--rail50){filter:drop-shadow(0 2px 4px rgba(0,0,0,0.35)) drop-shadow(0 0 12px rgba(255,210,90,0.75))}
@@ -2406,7 +2399,7 @@ body.day-mode.goals-mode .goal-block-archive .goal-row-alt{border-bottom-color:r
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 <script src="https://accounts.google.com/gsi/client" async></script>
 <script src="js/user-config.js?v=20260404-11"></script>
-<script src="js/goals.js?v=20260404-18"></script>
+<script src="js/goals.js?v=20260404-19"></script>
 <script>
 if (!window.AVITOLOG_GOALS) {
   window.AVITOLOG_GOALS = window.__AVITOLOG_GOALS_LEGACY = { render: function() {

@@ -881,7 +881,7 @@
   /** PNG в assets/achievements/; при отсутствии — fallback .svg с тем же базовым именем. */
   var ACHIEVEMENT_50K_ICON_BASE = 'assets/achievements/milestone-50k';
   var ACHIEVEMENT_100K_ICON_BASE = 'assets/achievements/milestone-100k';
-  var ACHIEVEMENT_ASSETS_VER = '10';
+  var ACHIEVEMENT_ASSETS_VER = '11';
   var MONTHLY_ACHIEVEMENT_50K = { key: '50k', label: 'Разгон месяца', short: '50k', iconBase: ACHIEVEMENT_50K_ICON_BASE };
   var MONTHLY_ACHIEVEMENT_100K = { key: '100k', label: 'Первая сотня', short: '100k', iconBase: ACHIEVEMENT_100K_ICON_BASE };
   function achievementIconImgHtml(iconBase, imgClass) {
