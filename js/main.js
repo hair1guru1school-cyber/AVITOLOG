@@ -3969,11 +3969,12 @@ function closeClientMenu() {
 }
 var SIDEBAR_HIDE_KEY = 'avitolog_sidebar_hidden_v1';
 function syncSidebarToggleBtn() {
-  var btn = document.getElementById('sidebarToggleBtn');
-  if (!btn) return;
+  var peek = document.getElementById('sidebarTogglePeek');
   var hidden = document.body.classList.contains('sidebar-hidden');
-  btn.textContent = hidden ? '▶' : '◀';
-  btn.title = hidden ? 'Показать левое меню' : 'Скрыть левое меню';
+  var narrow = window.matchMedia && window.matchMedia('(max-width: 980px)').matches;
+  if (peek) {
+    peek.style.display = !narrow && hidden ? 'flex' : 'none';
+  }
 }
 function applySidebarVisibilityFromStorage() {
   var hidden = false;

@@ -1913,11 +1913,28 @@ var TASK_TEMPLATES = {
   ad_post: { name:'Объявление', emoji:'📜', tasks:['Выложить объявление (1)'] },
   infographic: { name:'Инфографика', emoji:'&#128202;', tasks:['Подготовить ТЗ инфографики','Создать инфографику','Проверить визуал','Согласовать инфографику'] },
   autoload: { name:'Автозагрузка', emoji:'&#128230;', tasks:['Подготовить Excel автозагрузки','Проверить структуру объявлений','Загрузить объявления','Проверить публикацию'] },
-  design_ext: { name:'Дизайн аккаунта · Расширенный', emoji:'&#128396;', tasks:['Подготовить дизайн аккаунта','Добавить информацию в аккаунт','Добавить логотип аккаунта','Проверить оформление'] },
-  design_max: { name:'Дизайн аккаунта · Максимальный', emoji:'&#128396;', tasks:['Подготовить дизайн аккаунта','Добавить информацию в аккаунт','Добавить логотип аккаунта','Проверить оформление'] },
+  design_account: { name:'Дизайн аккаунта', emoji:'&#128396;' },
+  to_client: { name:'Клиенту', emoji:'👤', tasks:['Матрица заголовков','Дорожная карта запуска','Глубокая аналитика'] },
   portfolio: { name:'Портфолио', emoji:'&#11088;', tasks:['Подготовить кейс','Подготовить скриншоты','Оформить портфолио','Добавить портфолио в аккаунт'] }
 };
-var TASK_TEMPLATE_ORDER = ['mini_prep','brief','os_brief','texts','ad_post','infographic','autoload','design_ext','design_max','portfolio'];
+var TASK_TEMPLATE_ORDER = ['mini_prep','brief','os_brief','texts','ad_post','infographic','autoload','design_account','to_client','portfolio'];
+var DESIGN_ACCOUNT_BASE = ['Подготовить дизайн аккаунта','Добавить информацию в аккаунт','Добавить логотип аккаунта','Проверить оформление'];
+var DESIGN_ACCOUNT_VARIANTS = [
+  { label:'2 баннера Расширенный' },
+  { label:'3 баннера Максимальный' },
+  { label:'Упаковка Максимального Лендинг' }
+];
+function getDesignAccountTaskTitles(variantIdx) {
+  var v = DESIGN_ACCOUNT_VARIANTS[variantIdx];
+  if (!v) return [];
+  return [v.label].concat(DESIGN_ACCOUNT_BASE);
+}
+function applyDesignAccountVariant(projectId, variantIdx) {
+  var titles = getDesignAccountTaskTitles(variantIdx);
+  if (!titles.length || !projectId) return;
+  var tpl = TASK_TEMPLATES.design_account;
+  applyTaskTemplateInner(projectId, 'design_account', titles, tpl && tpl.emoji ? tpl.emoji : '&#128396;');
+}
 function getOrderedTaskTemplateKeys() {
   var keys = Object.keys(TASK_TEMPLATES || {});
   var out = [];
@@ -1944,6 +1961,10 @@ function applyTaskTemplate(projectId, templateKey) {
     showAdPostCountPicker(projectId, templateKey);
     return;
   }
+  if (templateKey === 'design_account') {
+    showDesignAccountModal(projectId);
+    return;
+  }
   if (tpl.pickCount) {
     showTextsCountPicker(projectId, templateKey);
     return;
@@ -1967,9 +1988,85 @@ function closeTaskTemplateMiniMenu() {
     window._taskTemplateMiniMenuOutsideHandler = null;
   }
 }
+function closeDesignAccountModal() {
+  var m = document.getElementById('taskDesignAccountModal');
+  if (m) m.remove();
+}
+function showDesignAccountModal(projectId) {
+  closeDesignAccountModal();
+  var tpl = TASK_TEMPLATES.design_account;
+  if (!tpl || !projectId) return;
+  var esc = function(s){ return escAttr(String(s || '')); };
+  var head = (tpl.emoji ? (tpl.emoji + ' ') : '') + esc(tpl.name || 'Дизайн аккаунта');
+  var rows = DESIGN_ACCOUNT_VARIANTS.map(function(v, idx){
+    return '<button type="button" class="task-design-account-variant task-design-account-variant-modal" data-idx="' + idx + '">' + esc(v.label) + '</button>';
+  }).join('');
+  var modal = document.createElement('div');
+  modal.id = 'taskDesignAccountModal';
+  modal.className = 'task-add-modal-overlay';
+  modal.innerHTML = '<div class="task-add-modal" style="max-width:340px"><div class="task-add-modal-title">' + head + '</div><div class="task-design-account-modal-btns">' + rows + '</div><button type="button" class="btn-secondary" style="margin-top:12px;width:100%">Отмена</button></div>';
+  modal.onclick = function(e){ if (e.target === modal) closeDesignAccountModal(); };
+  document.body.appendChild(modal);
+  var cancelBtn = modal.querySelector('.btn-secondary');
+  if (cancelBtn) cancelBtn.onclick = function(e){ e.stopPropagation(); closeDesignAccountModal(); };
+  modal.querySelectorAll('.task-design-account-variant-modal').forEach(function(btn){
+    btn.onclick = function(e){
+      e.preventDefault();
+      e.stopPropagation();
+      var idx = parseInt(btn.getAttribute('data-idx') || '-1', 10);
+      if (idx >= 0) applyDesignAccountVariant(projectId, idx);
+      closeDesignAccountModal();
+    };
+  });
+}
+function openDesignAccountVariantMenu(projectId, anchorEl) {
+  closeTaskTemplateMiniMenu();
+  var tpl = TASK_TEMPLATES.design_account;
+  if (!tpl || !projectId || !anchorEl) return;
+  var esc = function(s){ return escAttr(String(s || '')); };
+  var head = (tpl.emoji ? (tpl.emoji + ' ') : '') + esc(tpl.name || 'Дизайн аккаунта');
+  var rows = DESIGN_ACCOUNT_VARIANTS.map(function(v, idx){
+    return '<button type="button" class="task-design-account-variant" data-idx="' + idx + '">' + esc(v.label) + '</button>';
+  }).join('');
+  var menu = document.createElement('div');
+  menu.id = 'taskTemplateMiniMenu';
+  menu.className = 'task-template-mini-menu task-design-account-menu';
+  menu.innerHTML = '<div class="task-template-mini-head">' + head + '</div><div class="task-template-mini-list task-design-account-list">' + rows + '</div><div class="task-template-mini-actions"><button type="button" class="task-template-mini-btn" data-act="cancel">Отмена</button></div>';
+  document.body.appendChild(menu);
+  var ar = anchorEl.getBoundingClientRect();
+  var mr = menu.getBoundingClientRect();
+  var left = Math.max(8, Math.min(ar.left, window.innerWidth - mr.width - 8));
+  var top = ar.bottom + 6;
+  if (top + mr.height > window.innerHeight - 8) top = Math.max(8, ar.top - mr.height - 6);
+  menu.style.left = Math.round(left) + 'px';
+  menu.style.top = Math.round(top) + 'px';
+  menu.querySelectorAll('.task-design-account-variant').forEach(function(btn){
+    btn.onclick = function(e){
+      e.preventDefault();
+      e.stopPropagation();
+      var idx = parseInt(btn.getAttribute('data-idx') || '-1', 10);
+      if (idx >= 0) applyDesignAccountVariant(projectId, idx);
+      closeTaskTemplateMiniMenu();
+    };
+  });
+  menu.querySelectorAll('.task-template-mini-btn[data-act="cancel"]').forEach(function(btn){
+    btn.onclick = function(e){ e.preventDefault(); e.stopPropagation(); closeTaskTemplateMiniMenu(); };
+  });
+  window._taskTemplateMiniMenuOutsideHandler = function(ev) {
+    var mm = document.getElementById('taskTemplateMiniMenu');
+    if (!mm) return;
+    if (mm.contains(ev.target) || anchorEl.contains(ev.target)) return;
+    closeTaskTemplateMiniMenu();
+  };
+  document.addEventListener('pointerdown', window._taskTemplateMiniMenuOutsideHandler, true);
+}
 function openTaskTemplateMiniMenu(projectId, templateKey, anchorEl) {
   var tpl = TASK_TEMPLATES[templateKey];
   if (!tpl || !projectId || !anchorEl) return;
+  if (templateKey === 'design_account') {
+    openDesignAccountVariantMenu(projectId, anchorEl);
+    return;
+  }
   closeTaskTemplateMiniMenu();
   var tasks = [];
   if (Array.isArray(tpl.tasks) && tpl.tasks.length) {
@@ -2608,7 +2705,7 @@ function renderTaskPanel() {
       var lbl = (tag && tag.label) ? String(tag.label) : 'тег';
       return '<span class="task-panel-tag" title="' + escAttr(lbl) + '">' + escAttr(e) + ' ' + escAttr(lbl) + '<button type="button" class="task-panel-tag-rm" onclick="event.stopPropagation();removeTaskTag(\'' + escAttr(t.id) + '\',' + idx + ')" title="Удалить тег">×</button></span>';
     }).join('') + '</div>' : '';
-    var rowCls = 'task-panel-row' + (isDone ? ' task-panel-row-done' : '') + (isOverdue ? ' task-panel-row-overdue' : '');
+    var rowCls = 'task-panel-row' + (tags.length ? '' : ' task-panel-row-compact') + (isDone ? ' task-panel-row-done' : '') + (isOverdue ? ' task-panel-row-overdue' : '');
     var doneBtn = isDone ? '' : '<button type="button" class="task-panel-row-done-btn" data-task-id="' + escAttr(t.id) + '" onclick="event.stopPropagation();markTaskDone(\'' + escAttr(t.id) + '\', this)" title="Выполнить">&#10003;</button>';
     var extendBtn = isOverdue ? '<button type="button" class="task-panel-row-extend-btn" onclick="event.stopPropagation();showExtendDeadlineModal(\'' + escAttr(t.id) + '\')" title="Перенести дедлайн">&#128197;</button>' : '';
     var tagBtn = '<button type="button" class="task-panel-row-tag-btn" onclick="event.stopPropagation();addTaskTag(\'' + escAttr(t.id) + '\')" title="Добавить тег">🏷</button>';

@@ -644,6 +644,14 @@ body.projects-mode .gen-extra-prompt,body.projects-mode .gen-buttons-row{display
 .header-menu-btn:hover{background:rgba(0,217,126,0.15);border-color:var(--accent);color:var(--accent)}
 .header-sidebar-toggle{width:38px;height:38px;border:1px solid var(--border);background:var(--surface2);color:var(--text);border-radius:10px;cursor:pointer;font-size:15px;display:flex;align-items:center;justify-content:center;transition:all .2s}
 .header-sidebar-toggle:hover{background:rgba(0,217,126,0.15);border-color:var(--accent);color:var(--accent)}
+.sidebar-top-row{display:flex;align-items:center;gap:10px;margin-bottom:8px;min-width:0}
+.sidebar-top-row .sec.sidebar-sec-first{margin:0!important;margin-top:0!important;flex:1;min-width:0}
+.sidebar-inner-toggle{width:38px;height:38px;flex-shrink:0;border:1px solid var(--border);background:var(--surface2);color:var(--text);border-radius:10px;cursor:pointer;font-size:15px;display:flex;align-items:center;justify-content:center;transition:all .2s}
+.sidebar-inner-toggle:hover{background:rgba(0,217,126,0.15);border-color:var(--accent);color:var(--accent)}
+.sidebar-toggle-peek{display:none;position:fixed;left:0;top:50%;transform:translateY(-50%);z-index:500;width:28px;min-height:52px;padding:0 2px 0 0;border:1px solid var(--border);border-left:none;border-radius:0 12px 12px 0;background:var(--surface2);color:var(--text);font-size:14px;cursor:pointer;align-items:center;justify-content:center;box-shadow:4px 0 18px rgba(0,0,0,0.28);transition:background .2s,border-color .2s}
+.sidebar-toggle-peek:hover{background:rgba(0,217,126,0.15);border-color:var(--accent);color:var(--accent)}
+body.day-mode .sidebar-inner-toggle,body.day-mode .sidebar-toggle-peek{background:var(--surface2);border-color:var(--border)}
+body.day-mode .sidebar-inner-toggle:hover,body.day-mode .sidebar-toggle-peek:hover{background:rgba(0,136,92,0.12);border-color:rgba(0,136,92,0.4);color:var(--accent)}
 .header-drive-btn{height:38px;padding:0 12px;border:1px solid rgba(0,217,126,0.45);background:rgba(0,217,126,0.12);color:var(--accent);border-radius:10px;cursor:pointer;font-size:13px;font-weight:800;display:inline-flex;align-items:center;justify-content:center;gap:6px;transition:all .2s}
 .header-drive-btn:hover{background:rgba(0,217,126,0.2);border-color:var(--accent)}
 .header-employee-btn{height:38px;padding:0 12px;border:1px solid rgba(255,190,110,0.5);background:rgba(255,190,110,0.12);color:#ffd59b;border-radius:10px;cursor:pointer;font-size:13px;font-weight:800;display:inline-flex;align-items:center;justify-content:center;gap:6px;transition:all .2s;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -1429,6 +1437,10 @@ body.task-panel-font-l .task-panel-content{--tf:1.15}
 .task-panel-row-del{width:20px;height:20px;min-width:20px;border:none;border-radius:6px;background:rgba(255,107,53,0.2);color:#ff6b35;font-size:14px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all 0.15s}
 .task-panel-row-del:hover{background:rgba(255,107,53,0.4);color:#fff}
 .task-panel-row-actions{display:flex;flex-direction:column;gap:4px;align-items:center;flex-shrink:0}
+.task-panel-row-compact{align-items:center;padding:5px 8px;margin-bottom:4px}
+.task-panel-row-compact .task-panel-row-main{gap:0}
+.task-panel-row-compact .task-panel-row-actions{flex-direction:row;flex-wrap:wrap;justify-content:flex-end;align-items:center;gap:4px}
+.task-panel-row-compact .task-panel-row-emoji{align-self:center}
 .task-panel-row-done-btn{width:20px;height:20px;min-width:20px;border:none;border-radius:6px;background:rgba(255,255,255,0.08);backdrop-filter:blur(6px);border:1px solid rgba(0,217,126,0.35);color:var(--accent);font-size:12px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:transform 0.2s ease,opacity 0.2s ease}
 .task-panel-row-done-btn:hover{background:rgba(0,217,126,0.2);border-color:var(--accent)}
 .task-panel-row-done-btn:active{transform:scale(0.85)}
@@ -1477,6 +1489,13 @@ body.task-panel-font-l .task-panel-content{--tf:1.15}
 .task-template-mini-btn:hover{border-color:rgba(124,245,255,0.55);color:#a9edff}
 .task-template-mini-btn.ok{border-color:rgba(0,217,126,0.55);background:rgba(0,217,126,0.14);color:#7bf0b5}
 .task-template-mini-btn.ok:hover{border-color:var(--accent);background:rgba(0,217,126,0.22);color:#b8ffdb}
+.task-design-account-list{display:flex;flex-direction:column;gap:6px;max-height:none}
+.task-design-account-variant{width:100%;text-align:left;border:1px solid rgba(53,208,255,0.28);background:rgba(255,255,255,0.05);color:#dce9fa;font-size:12px;font-weight:600;padding:10px 12px;border-radius:8px;cursor:pointer;font-family:inherit;line-height:1.35;transition:background .15s,border-color .15s}
+.task-design-account-variant:hover{background:rgba(53,208,255,0.12);border-color:rgba(53,208,255,0.5);color:#fff}
+.task-design-account-modal-btns{display:flex;flex-direction:column;gap:8px;margin-top:4px}
+.task-design-account-variant-modal{width:100%}
+body.day-mode .task-design-account-variant{background:#fff;border-color:var(--border);color:var(--text)}
+body.day-mode .task-design-account-variant:hover{background:rgba(0,136,92,0.08);border-color:rgba(0,136,92,0.35)}
 .projects-head-spacer{width:58px;min-width:58px;flex-shrink:0}
 .projects-head-actions{display:flex;align-items:center;gap:10px;flex-wrap:nowrap;align-self:stretch;min-width:0}
 .projects-head-actions .projects-add-btn{min-width:180px}
@@ -2339,7 +2358,6 @@ if (!window.AVITOLOG_GOALS) {
   <button type="button" class="header-menu-btn" id="headerMenuBtn" onclick="toggleMobileSidebar()" title="Меню" aria-label="Меню">☰</button>
   <div class="logo">🃏AVITOBO$$</div>
   <div style="flex:1"></div>
-  <button type="button" id="sidebarToggleBtn" class="header-sidebar-toggle" onclick="toggleSidebarVisibility()" title="Скрыть левое меню">◀</button>
   <button type="button" id="openSecondTabBtn" class="header-day-toggle" onclick="__avitologOpenNewTab && __avitologOpenNewTab()" title="Открыть копию в новой вкладке — данные синхронизируются между вкладками">📑</button>
   <button type="button" id="dayModeToggle" class="header-day-toggle" onclick="toggleDayMode()" title="Дневной режим — светлый интерфейс">☀️</button>
   <button type="button" id="authBtn" class="header-drive-btn" onclick="startAuth(event)" title="Войти в Google Drive">🔑 Drive</button>
@@ -2370,11 +2388,14 @@ if (!window.AVITOLOG_GOALS) {
   <button type="button" class="mobile-webview-btn" onclick="mobileWebviewZoomReset()">100</button>
 </div>
 <div class="layout">
+<button type="button" id="sidebarTogglePeek" class="sidebar-toggle-peek" onclick="toggleSidebarVisibility()" title="Показать левое меню" aria-label="Показать левое меню" style="display:none">▶</button>
 
 <div class="sidebar">
-  
+  <div class="sidebar-top-row">
+    <button type="button" id="sidebarToggleBtn" class="sidebar-inner-toggle" onclick="toggleSidebarVisibility()" title="Скрыть левое меню" aria-label="Скрыть левое меню">◀</button>
+    <div class="sec sidebar-sec-first">&#129309; Клиент</div>
+  </div>
 
-  <div class="sec">&#129309; Клиент</div>
   <div id="crmToggleWrap" style="position:absolute;width:0;height:0;overflow:hidden;opacity:0;pointer-events:none">
     <input type="checkbox" id="crmToggle" checked>
   </div>
@@ -2622,7 +2643,7 @@ if (!window.AVITOLOG_GOALS) {
 <script src="https://unpkg.com/mammoth@1.6.0/mammoth.min.js"></script>
 <script src="js/hero-asset.js?v=20260404-1"></script>
 <script src="js/core.js?v=20260404-4"></script>
-<script src="js/projects.js?v=20260404-11"></script>
+<script src="js/projects.js?v=20260404-14"></script>
 <script src="js/ai-import.js?v=20260404-7"></script>
 <script src="js/contract-generator.js?v=20260404-1"></script>
 <script src="js/ads.js?v=20260404-1"></script>
