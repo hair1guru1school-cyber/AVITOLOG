@@ -437,7 +437,7 @@ function openGoalsTab() {
   assetsMode = false;
   adsMode = false;
   tasksMode = false;
-  if (typeof closeTaskPanel === 'function') closeTaskPanel();
+  if (typeof collapseTaskPanelForOtherTabs === 'function') collapseTaskPanelForOtherTabs();
   document.body.classList.remove('projects-mode');
   document.body.classList.remove('projects-sidebar-hidden');
   document.body.classList.remove('agency-mode');
@@ -498,6 +498,7 @@ function openGoalsTab() {
     }
   }
   setTimeout(doRender, 0);
+  if (typeof syncTaskPanelBodyClass === 'function') syncTaskPanelBodyClass();
   updateTopRowButtons();
 }
 function openProjectsTab() {
@@ -528,6 +529,7 @@ function openProjectsTab() {
   startProjectsSheetPullTimer();
   startProjectsDayShiftTimer();
   syncActiveProjectsSheetExact('calendar_snapshot_open').catch(function(){});
+  if (typeof syncTaskPanelBodyClass === 'function') syncTaskPanelBodyClass();
   updateTopRowButtons();
 }
 function openAnalyticsTab() {
@@ -538,7 +540,7 @@ function openAnalyticsTab() {
   adsMode = false;
   tasksMode = false;
   projectsMode = false;
-  if (typeof closeTaskPanel === 'function') closeTaskPanel();
+  if (typeof collapseTaskPanelForOtherTabs === 'function') collapseTaskPanelForOtherTabs();
   document.body.classList.remove('projects-mode');
   document.body.classList.remove('projects-sidebar-hidden');
   document.body.classList.remove('goals-mode');
@@ -550,6 +552,7 @@ function openAnalyticsTab() {
   updateProjectsSidebarOffset();
   stopProjectsSheetPullTimer();
   stopProjectsDayShiftTimer();
+  if (typeof syncTaskPanelBodyClass === 'function') syncTaskPanelBodyClass();
   if (currentTab === 'analysis' && docReady && currentHtml) {
     renderDoc(currentHtml);
   } else if (currentTab === 'kp' && typeof window.__showKpGenerator === 'function') {
@@ -582,7 +585,7 @@ function openAssetsTab() {
   document.body.classList.add('assets-mode');
   document.body.classList.remove('projects-sidebar-hidden');
   hideChat();
-  if (typeof closeTaskPanel === 'function') closeTaskPanel();
+  if (typeof collapseTaskPanelForOtherTabs === 'function') collapseTaskPanelForOtherTabs();
   stopProjectsSheetPullTimer();
   stopProjectsDayShiftTimer();
   var mc = document.getElementById('mainContent');
@@ -591,6 +594,7 @@ function openAssetsTab() {
     mc.style.display = '';
     mc.scrollTop = 0;
   }
+  if (typeof syncTaskPanelBodyClass === 'function') syncTaskPanelBodyClass();
   if (typeof window.__renderAssetsPage === 'function') {
     window.__renderAssetsPage();
   } else {
@@ -1081,12 +1085,13 @@ function openTasksTab() {
   document.body.classList.remove('projects-sidebar-hidden');
   document.body.classList.remove('sidebar-hidden');
   hideChat();
-  if (typeof closeTaskPanel === 'function') closeTaskPanel();
+  if (typeof collapseTaskPanelForOtherTabs === 'function') collapseTaskPanelForOtherTabs();
   stopProjectsSheetPullTimer();
   stopProjectsDayShiftTimer();
   renderTasksBoardIntoMainContent(document.getElementById('mainContent'));
   if (typeof crmTaskEnsureBlock === 'function') crmTaskEnsureBlock();
   if (typeof crmTaskRender === 'function') crmTaskRender();
+  if (typeof syncTaskPanelBodyClass === 'function') syncTaskPanelBodyClass();
   updateTopRowButtons();
 }
 function openAdsTab() {
@@ -1106,11 +1111,12 @@ function openAdsTab() {
   document.body.classList.add('ads-mode');
   document.body.classList.remove('projects-sidebar-hidden');
   hideChat();
-  if (typeof closeTaskPanel === 'function') closeTaskPanel();
+  if (typeof collapseTaskPanelForOtherTabs === 'function') collapseTaskPanelForOtherTabs();
   stopProjectsSheetPullTimer();
   stopProjectsDayShiftTimer();
   var mc = document.getElementById('mainContent');
   renderAdsIntoMainContent(mc);
+  if (typeof syncTaskPanelBodyClass === 'function') syncTaskPanelBodyClass();
   updateTopRowButtons();
 }
 function openAgencyTab() {
@@ -1132,9 +1138,11 @@ function openAgencyTab() {
   document.body.classList.remove('tasks-mode');
   document.body.classList.add('agency-mode');
   hideChat();
+  if (typeof collapseTaskPanelForOtherTabs === 'function') collapseTaskPanelForOtherTabs();
   stopProjectsSheetPullTimer();
   stopProjectsDayShiftTimer();
   renderAgencyPage();
+  if (typeof syncTaskPanelBodyClass === 'function') syncTaskPanelBodyClass();
   updateTopRowButtons();
 }
 function openStrategyTab() {
@@ -1146,7 +1154,7 @@ function openStrategyTab() {
   adsMode = false;
   tasksMode = false;
   strategyMode = true;
-  if (typeof closeTaskPanel === 'function') closeTaskPanel();
+  if (typeof collapseTaskPanelForOtherTabs === 'function') collapseTaskPanelForOtherTabs();
   document.body.classList.remove('projects-mode');
   document.body.classList.remove('projects-sidebar-hidden');
   document.body.classList.remove('goals-mode');
@@ -1166,6 +1174,7 @@ function openStrategyTab() {
     _strategySelectedProjectId = (withChat && withChat.id) || (projs[0] && projs[0].id) || null;
   }
   renderStrategyPage();
+  if (typeof syncTaskPanelBodyClass === 'function') syncTaskPanelBodyClass();
   updateTopRowButtons();
 }
 function toggleProjectsScreen() {

@@ -309,6 +309,7 @@ var _crmTaskFilter = 'all';
 
 function crmTaskNowIso() { return new Date().toISOString(); }
 function crmTaskEnsureBlock() {
+  return;
   if (document.getElementById('crmTasksWrap')) return;
   var saveBtn = document.getElementById('saveClientBtn');
   if (!saveBtn || !saveBtn.parentElement) return;

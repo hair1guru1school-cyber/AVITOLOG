@@ -2539,7 +2539,8 @@ function openTaskPanel(projectId) {
   renderTaskPanel();
   var el = document.getElementById('taskPanelDrawer');
   if (el) el.classList.add('open');
-  applyTaskPanelCollapsedUI();
+  setTaskPanelCollapsed(false);
+  syncTaskPanelBodyClass();
 }
 
 function showCalTaskHoverPreview(taskId, title, projectId) {
@@ -2557,6 +2558,7 @@ function closeTaskPanel() {
   var el = document.getElementById('taskPanelDrawer');
   if (el) el.classList.remove('open');
   applyTaskPanelCollapsedUI();
+  syncTaskPanelBodyClass();
   if (typeof rerenderProjectsPreserveScroll === 'function') rerenderProjectsPreserveScroll();
 }
 
@@ -2614,6 +2616,21 @@ function applyTaskPanelCollapsedUI() {
     tab.setAttribute('aria-hidden', show ? 'false' : 'true');
   }
 }
+function syncTaskPanelBodyClass() {
+  try {
+    document.body.classList.toggle('has-task-panel-project', !!_taskPanelProjectId);
+  } catch (e) {}
+}
+function collapseTaskPanelForOtherTabs() {
+  if (!_taskPanelProjectId) {
+    syncTaskPanelBodyClass();
+    return;
+  }
+  setTaskPanelCollapsed(true);
+  syncTaskPanelBodyClass();
+}
+window.syncTaskPanelBodyClass = syncTaskPanelBodyClass;
+window.collapseTaskPanelForOtherTabs = collapseTaskPanelForOtherTabs;
 
 function getSelectedCellInfo(projectId, dateStr, childLineIdx) {
   var data = loadProjectsData();
@@ -2766,6 +2783,7 @@ function renderTaskPanel() {
 
   setTaskPanelFontSize(fontSize);
   applyTaskPanelCollapsedUI();
+  syncTaskPanelBodyClass();
   var addModal = document.getElementById('taskAddModal');
   if (addModal) addModal.remove();
   bindTaskPanelResize();

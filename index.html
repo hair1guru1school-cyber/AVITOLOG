@@ -1374,7 +1374,7 @@ body.projects-mode.projects-sidebar-hidden .sidebar{min-width:0;width:0;padding:
 .task-ind-type,.task-ind-date{opacity:0.85}
 .task-ind-empty{opacity:0.4}
 .task-panel-wrap{display:none;position:fixed;top:0;right:0;bottom:0;z-index:900;pointer-events:none}
-body.projects-mode .task-panel-wrap,body.tasks-mode .task-panel-wrap{display:block;pointer-events:auto}
+body.projects-mode .task-panel-wrap,body.tasks-mode .task-panel-wrap,body.has-task-panel-project .task-panel-wrap{display:block}
 .task-panel-expand-tab{display:none;position:fixed;right:0;top:50%;transform:translateY(-50%);z-index:901;flex-direction:column;align-items:center;justify-content:center;width:22px;min-height:76px;padding:10px 0;border:none;border-radius:10px 0 0 10px;background:linear-gradient(180deg,#13241a,#0c1210);border:1px solid rgba(0,217,126,0.28);border-right:none;color:var(--accent);cursor:pointer;font-size:13px;line-height:1;box-shadow:-4px 0 18px rgba(0,0,0,0.45);pointer-events:auto;transition:background .15s,color .15s}
 .task-panel-expand-tab:hover{background:rgba(0,217,126,0.14)}
 .task-panel-drawer{width:280px;min-width:220px;max-width:480px;height:100%;background:linear-gradient(180deg,#0f1419 0%,#0a0d12 100%);border-left:1px solid var(--border);box-shadow:-8px 0 24px rgba(0,0,0,0.5),0 0 20px rgba(0,217,126,0.08);display:flex;flex-direction:column;transform:translateX(100%);transition:transform 0.25s ease;pointer-events:auto}
@@ -2495,42 +2495,6 @@ if (!window.AVITOLOG_GOALS) {
   </div>
   <button type="button" class="btn-add" onclick="addPos()">+ Добавить позицию</button>
   <button type="button" class="btn-save" id="saveClientBtn" onclick="saveClient()">💾 Сохранить</button>
-  <div class="crm-tasks-wrap" id="crmTasksWrap">
-    <div class="crm-tasks-head">
-      <div class="crm-tasks-title">📋 ВАЖНЫЕ ЗАДАЧИ</div>
-      <button type="button" class="crm-task-new-btn" onclick="crmTaskToggleForm()">+ Новая задача</button>
-    </div>
-    <div class="crm-task-form" id="crmTaskForm">
-      <div class="crm-task-form-grid">
-        <div class="fg"><label>Название</label><input type="text" id="crmTaskTitleInp" placeholder="Например: Выставить счёт"></div>
-        <div class="fg"><label>Клиент / проект</label><input type="text" id="crmTaskProjectInp" placeholder="Проект или клиент"></div>
-        <div class="fg"><label>Тип</label><select id="crmTaskTypeInp"><option value="normal">normal</option><option value="money">money</option><option value="urgent">urgent</option></select></div>
-        <div class="fg"><label>Дедлайн</label><input type="datetime-local" id="crmTaskDeadlineInp"></div>
-        <div class="fg"><label>Эмодзи</label><input type="text" id="crmTaskEmojiInp" placeholder="🔥"></div>
-        <div class="fg"><label>Теги</label><input type="text" id="crmTaskTagsInp" placeholder="📞 звонок, 💰 счёт"></div>
-      </div>
-      <div class="crm-task-form-actions">
-        <button type="button" class="crm-task-act" onclick="crmTaskCreate()">Создать</button>
-        <button type="button" class="crm-task-act" onclick="crmTaskToggleForm(false)">Отмена</button>
-      </div>
-    </div>
-    <div class="crm-task-filters" id="crmTaskFilters">
-      <button type="button" class="crm-task-filter-btn on" data-filter="all" onclick="crmTaskSetFilter('all')">Все</button>
-      <button type="button" class="crm-task-filter-btn" data-filter="today" onclick="crmTaskSetFilter('today')">Сегодня</button>
-      <button type="button" class="crm-task-filter-btn" data-filter="money" onclick="crmTaskSetFilter('money')">Деньги 💰</button>
-      <button type="button" class="crm-task-filter-btn" data-filter="overdue" onclick="crmTaskSetFilter('overdue')">Просрочено</button>
-      <button type="button" class="crm-task-filter-btn" data-filter="projects" onclick="crmTaskSetFilter('projects')">Проекты</button>
-    </div>
-    <div class="crm-task-summary" id="crmTaskSummary"></div>
-    <div class="crm-task-list-title">✔ Выполненные сегодня</div>
-    <div class="crm-task-list" id="crmTaskDoneList"></div>
-    <div class="crm-task-list-title">⏳ В работе</div>
-    <div class="crm-task-list" id="crmTaskActiveList"></div>
-    <div class="crm-task-list-title">❌ Просроченные</div>
-    <div class="crm-task-list" id="crmTaskOverdueList"></div>
-    <div class="crm-task-list-title">💰 ЗАДАЧИ С ДЕНЬГАМИ</div>
-    <div class="crm-task-list" id="crmTaskMoneyList"></div>
-  </div>
 </div>
 
 <div class="content-wrap">
@@ -2642,12 +2606,12 @@ if (!window.AVITOLOG_GOALS) {
 </div><!-- /mainApp -->
 <script src="https://unpkg.com/mammoth@1.6.0/mammoth.min.js"></script>
 <script src="js/hero-asset.js?v=20260404-1"></script>
-<script src="js/core.js?v=20260404-4"></script>
-<script src="js/projects.js?v=20260404-14"></script>
+<script src="js/core.js?v=20260404-5"></script>
+<script src="js/projects.js?v=20260404-15"></script>
 <script src="js/ai-import.js?v=20260404-7"></script>
 <script src="js/contract-generator.js?v=20260404-1"></script>
 <script src="js/ads.js?v=20260404-1"></script>
 <script src="js/kp-generator.js?v=20260404-1"></script>
-<script src="js/main.js?v=20260404-8"></script>
+<script src="js/main.js?v=20260404-9"></script>
 </body>
 </html>
