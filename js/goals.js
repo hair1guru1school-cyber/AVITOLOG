@@ -881,7 +881,7 @@
   /** PNG в assets/achievements/; при отсутствии — fallback .svg с тем же базовым именем. */
   var ACHIEVEMENT_50K_ICON_BASE = 'assets/achievements/milestone-50k';
   var ACHIEVEMENT_100K_ICON_BASE = 'assets/achievements/milestone-100k';
-  var ACHIEVEMENT_ASSETS_VER = '8';
+  var ACHIEVEMENT_ASSETS_VER = '9';
   var MONTHLY_ACHIEVEMENT_50K = { key: '50k', label: 'Разгон месяца', short: '50k', iconBase: ACHIEVEMENT_50K_ICON_BASE };
   var MONTHLY_ACHIEVEMENT_100K = { key: '100k', label: 'Первая сотня', short: '100k', iconBase: ACHIEVEMENT_100K_ICON_BASE };
   function achievementIconImgHtml(iconBase, imgClass) {
@@ -1027,8 +1027,8 @@
     var railHint = 'Награды по сумме продаж за месяц (накопительно): от 50 000 ₽ — разгон месяца, от 100 000 ₽ — первая сотня. Награда при первом пересечении порога.';
     var badgeCls = 'goal-achievement-badge' + (railUnlocked ? ' goal-achievement-badge--unlocked' : ' goal-achievement-badge--locked');
     var badges = '<div class="' + badgeCls + '" title="' + esc(railHint) + '">' +
-      '<span class="goal-achievement-badge-coin goal-achievement-badge-coin--pic">' + achievementIconImgHtml(ACHIEVEMENT_50K_ICON_BASE, 'goal-achievement-badge-img') + '</span>' +
-      '<span class="goal-achievement-badge-count">' + (railUnlocked ? '✓' : '—') + '</span></div>';
+      '<span class="goal-achievement-badge-coin goal-achievement-badge-coin--pic goal-achievement-badge-coin--rail50">' + achievementIconImgHtml(ACHIEVEMENT_50K_ICON_BASE, 'goal-achievement-badge-img goal-achievement-badge-img--rail50') + '</span>' +
+      '<span class="goal-achievement-badge-caption">Продано на 50к</span></div>';
     var monthEvents = (o.events || []).filter(function(e) {
       return e && e.monthKey === viewYM && e.type === 'month_total_milestone';
     });
