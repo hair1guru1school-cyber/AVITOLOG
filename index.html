@@ -1788,7 +1788,10 @@ body.goals-mode .content::before{content:'';position:fixed;top:0;left:0;right:0;
 .goal-achievement-badge--unlocked .goal-achievement-badge-img{filter:drop-shadow(0 2px 4px rgba(0,0,0,0.35)) drop-shadow(0 0 12px rgba(255,210,90,0.75))}
 .goal-achievement-badge-count{font-size:11px;font-weight:800;color:#00d97e;line-height:1}
 .goals-achievements-log{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
-.goals-achievements-log-item{display:flex;flex-direction:column;gap:2px;font-size:10px;line-height:1.25;padding:6px 4px;border-radius:6px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.05)}
+.goals-achievements-log-item{display:flex;flex-direction:row;align-items:flex-start;gap:8px;font-size:10px;line-height:1.25;padding:6px 4px;border-radius:6px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.05)}
+.gal-icon-wrap{flex-shrink:0;width:40px;line-height:0}
+.goal-achievement-log-img{width:40px;height:40px;object-fit:contain;display:block;border-radius:8px}
+.gal-log-main{display:flex;flex-direction:column;gap:2px;flex:1;min-width:0}
 .gal-date{font-size:9px;color:rgba(255,255,255,0.35);font-weight:600}
 .gal-tier{font-size:10px;font-weight:900;color:#e8c44a}
 .gal-total{font-size:9px;font-weight:700;color:rgba(255,255,255,0.4)}
@@ -2387,7 +2390,7 @@ body.day-mode.goals-mode .goal-block-archive .goal-row-alt{border-bottom-color:r
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 <script src="https://accounts.google.com/gsi/client" async></script>
 <script src="js/user-config.js?v=20260404-11"></script>
-<script src="js/goals.js?v=20260404-12"></script>
+<script src="js/goals.js?v=20260404-15"></script>
 <script>
 if (!window.AVITOLOG_GOALS) {
   window.AVITOLOG_GOALS = window.__AVITOLOG_GOALS_LEGACY = { render: function() {

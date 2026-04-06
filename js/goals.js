@@ -881,11 +881,13 @@
   /** PNG в assets/achievements/; при отсутствии — fallback .svg с тем же базовым именем. */
   var ACHIEVEMENT_50K_ICON_BASE = 'assets/achievements/milestone-50k';
   var ACHIEVEMENT_100K_ICON_BASE = 'assets/achievements/milestone-100k';
+  var ACHIEVEMENT_ASSETS_VER = '7';
   var MONTHLY_ACHIEVEMENT_50K = { key: '50k', label: 'Разгон месяца', short: '50k', iconBase: ACHIEVEMENT_50K_ICON_BASE };
   var MONTHLY_ACHIEVEMENT_100K = { key: '100k', label: 'Первая сотня', short: '100k', iconBase: ACHIEVEMENT_100K_ICON_BASE };
   function achievementIconImgHtml(iconBase, imgClass) {
     var b = iconBase || ACHIEVEMENT_50K_ICON_BASE;
-    return '<img class="' + esc(imgClass) + '" src="' + b + '.png" alt="" decoding="async" loading="lazy" onerror="this.onerror=null;this.src=\'' + b + '.svg\'" />';
+    var q = '?v=' + ACHIEVEMENT_ASSETS_VER;
+    return '<img class="' + esc(imgClass) + '" src="' + b + '.png' + q + '" alt="" decoding="async" loading="lazy" onerror="this.onerror=null;this.src=\'' + b + '.svg' + q + '\'" />';
   }
   function achievementsStorageKey() {
     return (typeof window.AVITOLOG_KEY === 'function') ? window.AVITOLOG_KEY('avitolog_goal_achievements_v1') : 'avitolog_goal_achievements_v1';
@@ -1011,18 +1013,6 @@
       showGoalAchievementToast(tierForToast, totalAfter, projectName, sub);
     }
   }
-  function buildOneMilestoneBadge(tierDef, unlocked, thresholdRub) {
-    var badgeCls = 'goal-achievement-badge' + (unlocked ? ' goal-achievement-badge--unlocked' : ' goal-achievement-badge--locked');
-    var hint;
-    if (tierDef.key === '50k') {
-      hint = 'Разгон месяца' + (unlocked ? ' — получено. ' : '. ') + '50k и 100k — по сумме всех продаж месяца (накопительно). Награда появится при первом пересечении порога.';
-    } else {
-      hint = 'Первая сотня' + (unlocked ? ' — получено. ' : '. ') + 'Сумма всех продаж за месяц от ' + fmtNumAch(thresholdRub) + ' ₽.';
-    }
-    return '<div class="' + badgeCls + '" title="' + esc(hint) + '">' +
-      '<span class="goal-achievement-badge-coin goal-achievement-badge-coin--pic">' + achievementIconImgHtml(tierDef.iconBase, 'goal-achievement-badge-img') + '</span>' +
-      '<span class="goal-achievement-badge-count">' + (unlocked ? '✓' : '—') + '</span></div>';
-  }
   function milestoneTierShort(ev) {
     if (ev && ev.tier === '100k') return MONTHLY_ACHIEVEMENT_100K.short;
     return MONTHLY_ACHIEVEMENT_50K.short;
@@ -1033,24 +1023,30 @@
     var mm = o.monthMilestones[viewYM] || {};
     var unlocked50 = !!mm['50k'];
     var unlocked100 = !!mm['100k'];
+    var railUnlocked = unlocked50 || unlocked100;
+    var railHint = 'Награды по сумме продаж за месяц (накопительно): от 50 000 ₽ — разгон месяца, от 100 000 ₽ — первая сотня. Награда при первом пересечении порога.';
+    var badgeCls = 'goal-achievement-badge' + (railUnlocked ? ' goal-achievement-badge--unlocked' : ' goal-achievement-badge--locked');
+    var badges = '<div class="' + badgeCls + '" title="' + esc(railHint) + '">' +
+      '<span class="goal-achievement-badge-coin goal-achievement-badge-coin--pic">' + achievementIconImgHtml(ACHIEVEMENT_50K_ICON_BASE, 'goal-achievement-badge-img') + '</span>' +
+      '<span class="goal-achievement-badge-count">' + (railUnlocked ? '✓' : '—') + '</span></div>';
     var monthEvents = (o.events || []).filter(function(e) {
       return e && e.monthKey === viewYM && e.type === 'month_total_milestone';
     });
-    var badges = buildOneMilestoneBadge(MONTHLY_ACHIEVEMENT_50K, unlocked50, MONTHLY_TOTAL_THRESHOLD_50K) +
-      buildOneMilestoneBadge(MONTHLY_ACHIEVEMENT_100K, unlocked100, MONTHLY_TOTAL_THRESHOLD_100K);
     var recent = monthEvents.slice().sort(function(a, b) { return (b.at || 0) - (a.at || 0); }).slice(0, 12);
     var logHtml = recent.map(function(ev) {
       var nm = ev.projectName || 'Продажа';
       var nameShort = nm.length > 20 ? nm.slice(0, 18) + '…' : nm;
       return '<li class="goals-achievements-log-item">' +
+        '<span class="gal-icon-wrap">' + achievementIconImgHtml(ACHIEVEMENT_50K_ICON_BASE, 'goal-achievement-log-img') + '</span>' +
+        '<div class="gal-log-main">' +
         '<span class="gal-date">' + esc(formatBadgeDateShort(ev.saleDate) || '—') + '</span>' +
         '<span class="gal-tier">' + esc(milestoneTierShort(ev)) + '</span>' +
         '<span class="gal-total">итого ' + esc(fmtNumAch(ev.totalAtUnlock || 0)) + ' ₽</span>' +
         '<span class="gal-name">' + esc(nameShort) + '</span>' +
-        '</li>';
+        '</div></li>';
     }).join('');
-    return '<aside class="goals-achievements-rail" aria-label="Успехи по продажам">' +
-      '<div class="goals-achievements-rail-head">УСПЕХИ</div>' +
+    return '<aside class="goals-achievements-rail" aria-label="Награды по продажам">' +
+      '<div class="goals-achievements-rail-head">НАГРАДЫ</div>' +
       '<div class="goals-achievements-rail-period">' + esc(periodLabel || viewYM) + '</div>' +
       '<div class="goals-achievements-total-gray">Всего продаж за месяц<br><span class="goals-achievements-total-num">' + fmtNumAch(totalRevenueMonth) + ' ₽</span></div>' +
       '<div class="goals-achievements-badges">' + badges + '</div>' +
