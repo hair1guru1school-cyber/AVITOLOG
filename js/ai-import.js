@@ -827,7 +827,14 @@
       var amt = parseInt(String(p[amountField] || '').replace(/\s/g, ''), 10) || 0;
       sum += amt;
     }
-    myList.forEach(function(p) { addIfNewThisMonth(p, 'paid'); });
+    var isSasha = isSashaKassaProfile();
+    myList.forEach(function(p) {
+      if (resolveAssetsClientType(p) !== 'new') return;
+      var dateStr = (p.paymentDate || p.startDate || '').trim();
+      if (!dateStr || !isDateInThisMonth(dateStr)) return;
+      var amt = isSasha ? assetsSashaMyProfitRub(p) : (parseInt(String(p.paid || '').replace(/\s/g, ''), 10) || 0);
+      sum += amt;
+    });
     sashaList.forEach(function(p) { addIfNewThisMonth(p, 'soldFor'); });
     return sum;
   }
@@ -843,7 +850,14 @@
       var amt = parseInt(String(p[amountField] || '').replace(/\s/g, ''), 10) || 0;
       sum += amt;
     }
-    myList.forEach(function(p) { addIfActiveThisMonth(p, 'paid'); });
+    var isSasha = isSashaKassaProfile();
+    myList.forEach(function(p) {
+      if (resolveAssetsClientType(p) === 'new') return;
+      var dateStr = (p.paymentDate || p.startDate || '').trim();
+      if (!dateStr || !isDateInThisMonth(dateStr)) return;
+      var amt = isSasha ? assetsSashaMyProfitRub(p) : (parseInt(String(p.paid || '').replace(/\s/g, ''), 10) || 0);
+      sum += amt;
+    });
     sashaList.forEach(function(p) { addIfActiveThisMonth(p, 'soldFor'); });
     return sum;
   }
@@ -894,9 +908,27 @@
     return formatDateDDMM(dateStr);
   }
 
+  /** Профиль Саши в кассе: ?u=sasha, закладка, суффикс ключа — не только AVITOLOG_IS_SASHA (иначе кнопки/суммы не показывались). */
+  function isSashaKassaProfile() {
+    try {
+      var cu = String(localStorage.getItem('avitolog_current_user') || '').trim().toLowerCase();
+      if (cu === 'sasha') return true;
+    } catch (e0) {}
+    try {
+      if (typeof window !== 'undefined' && window.AVITOLOG_IS_SASHA) return true;
+    } catch (e1) {}
+    try {
+      if (typeof window !== 'undefined' && window.AVITOLOG_KEY_SUFFIX === '_sasha') return true;
+    } catch (e2) {}
+    try {
+      if (String(localStorage.getItem('avitolog_profile_bookmark') || '') === 'sasha') return true;
+    } catch (e3) {}
+    return false;
+  }
+
   function getAssetsMy() {
     try {
-      var isSasha = !!(typeof window !== 'undefined' && window.AVITOLOG_IS_SASHA);
+      var isSasha = isSashaKassaProfile();
       /** Не подставляем чужой профиль: иначе у Саши в «Мои клиенты» оказывались строки Фила (и наоборот). */
       var arr = bootstrapAssetsArray(ASSETS_MY_KEY, []);
       if (arr !== null) {
@@ -922,7 +954,7 @@
       saveAssetsMy(DEFAULT_MY.slice());
       return DEFAULT_MY.slice();
     } catch (e) {
-      if (typeof window !== 'undefined' && window.AVITOLOG_IS_SASHA) return [];
+      if (isSashaKassaProfile()) return [];
       saveAssetsMy(DEFAULT_MY.slice());
       return DEFAULT_MY.slice();
     }
@@ -933,8 +965,14 @@
     try { localStorage.setItem(assetsMonthStorageKey(assetsCurrentMonthKey()), JSON.stringify(arr)); } catch(e) {}
   }
 
+  /** У Саши «Получено за все» = только «Оплатил» — туда синком пишется доля («Агенту»), без полной суммы сделки. */
+  function assetsSashaMyProfitRub(p) {
+    if (!p) return 0;
+    return parseInt(String(p.paid || '').replace(/\s/g, ''), 10) || 0;
+  }
+
   function getAssetsSasha() {
-    if (typeof window !== 'undefined' && window.AVITOLOG_IS_SASHA) return [];
+    if (isSashaKassaProfile()) return [];
     try {
       var arrExisting = bootstrapAssetsArray(ASSETS_SASHA_KEY, []);
       if (arrExisting !== null) return arrExisting;
@@ -965,14 +1003,19 @@
     return 'name:' + String(p.name || '').trim().toLowerCase();
   }
 
+  /** В кассу профиля Саши («Оплатил») переносим только заработок Саши — сумма из колонки «Агенту» (toAgent), не «Продано за». */
   function mapSashaColRowToSashaProfileMy(p) {
     var copy = JSON.parse(JSON.stringify(p || {}));
     delete copy.paymentHistory;
+    delete copy.soldFor;
+    delete copy.toAgent;
+    delete copy.aoaPercent;
+    var toAgentOnly = String((p && p.toAgent) || '').replace(/\s/g, '');
     return {
       emoji: copy.emoji || '📦',
       name: String(copy.name || '').trim() || 'Проект',
-      paid: String(copy.soldFor || copy.paid || '').replace(/\s/g, ''),
-      expected: String(copy.expected || '').replace(/\s/g, ''),
+      paid: toAgentOnly,
+      expected: '',
       paymentDate: (copy.paymentDate || '').trim(),
       startDate: (copy.startDate || '').trim(),
       clientType: copy.clientType || 'new',
@@ -981,25 +1024,49 @@
     };
   }
 
-  function syncSashaFromKassaColumn() {
-    if (typeof window !== 'undefined' && window.AVITOLOG_IS_SASHA) {
-      alert('Синхронизация доступна в профиле Фила.');
-      return;
-    }
-    var sourceList;
+  /** Данные колонки Фила «Клиенты Саши» (без суффикса профиля) — то же, что читает getAssetsSasha() у Фила. */
+  var FIL_SASHA_COLUMN_KEY = 'avitolog_assets_sasha_v2';
+
+  function getSourceListForSashaSync() {
     if (_assetsViewMonth) {
-      var snap = assetsLoadMonthSnapshot(_assetsViewMonth);
-      sourceList = snap.sasha || [];
-    } else {
-      sourceList = getAssetsSasha();
+      var ym = _assetsViewMonth;
+      try {
+        var rawFil = localStorage.getItem(FIL_SASHA_COLUMN_KEY + '_month_' + ym);
+        if (rawFil) {
+          var parsed = JSON.parse(rawFil);
+          if (Array.isArray(parsed)) return parsed;
+        }
+      } catch (e0) {}
+      if (!isSashaKassaProfile()) {
+        var snap = assetsLoadMonthSnapshot(ym);
+        return (snap && snap.sasha) ? snap.sasha : [];
+      }
+      return [];
     }
+    if (isSashaKassaProfile()) {
+      try {
+        var live = localStorage.getItem(FIL_SASHA_COLUMN_KEY);
+        var arr = live ? JSON.parse(live) : [];
+        return Array.isArray(arr) ? arr : [];
+      } catch (e1) { return []; }
+    }
+    return getAssetsSasha();
+  }
+
+  function syncSashaFromKassaColumn() {
+    var isSashaUser = isSashaKassaProfile();
+    /** Фил пишет в кассу Саши по фикс. ключу; сам Саша — в свой текущий ASSETS_MY_KEY (в т.ч. employee). */
+    var targetKey = isSashaUser ? ASSETS_MY_KEY : ASSETS_MY_KEY_SASHA_PROFILE;
+    var sourceList = getSourceListForSashaSync();
     if (!sourceList || !sourceList.length) {
-      alert('В колонке «Клиенты Саши» нет проектов для синхронизации.');
+      alert(isSashaUser
+        ? 'Нет данных колонки «Клиенты Саши» Фила в этом браузере (ключ avitolog_assets_sasha_v2). Открой кассу под профилем Фила и сохрани, либо перенеси бэкап.'
+        : 'В колонке «Клиенты Саши» нет проектов для синхронизации.');
       return;
     }
     var target = [];
     try {
-      var raw = localStorage.getItem(ASSETS_MY_KEY_SASHA_PROFILE);
+      var raw = localStorage.getItem(targetKey);
       target = raw ? JSON.parse(raw) : [];
       if (!Array.isArray(target)) target = [];
     } catch (e1) { target = []; }
@@ -1011,28 +1078,58 @@
     });
 
     var added = 0;
+    var updated = 0;
     sourceList.forEach(function(src) {
       if (!String(src.name || '').trim()) return;
       var k = assetsDedupeKeyForSashaSync(src);
       if (!k) return;
-      if (existingKeys[k]) return;
-      existingKeys[k] = true;
-      target.push(mapSashaColRowToSashaProfileMy(src));
-      added++;
+      var newRow = mapSashaColRowToSashaProfileMy(src);
+      var existingIdx = -1;
+      for (var i = 0; i < target.length; i++) {
+        if (assetsDedupeKeyForSashaSync(target[i]) === k) {
+          existingIdx = i;
+          break;
+        }
+      }
+      if (existingIdx >= 0) {
+        var ex = target[existingIdx];
+        var paidEq = String(ex.paid || '').replace(/\s/g, '') === newRow.paid;
+        var dateEq = String(ex.paymentDate || '').trim() === newRow.paymentDate;
+        var nameEq = String(ex.name || '').trim() === newRow.name;
+        if (!paidEq || !dateEq || !nameEq) {
+          ex.paid = newRow.paid;
+          ex.expected = '';
+          ex.paymentDate = newRow.paymentDate;
+          ex.startDate = newRow.startDate;
+          ex.emoji = newRow.emoji;
+          ex.name = newRow.name;
+          ex.clientType = newRow.clientType;
+          ex.folderLink = newRow.folderLink;
+          ex.crmClientId = newRow.crmClientId;
+          updated++;
+        }
+      } else {
+        existingKeys[k] = true;
+        target.push(newRow);
+        added++;
+      }
     });
 
-    if (added === 0) {
-      alert('Новых данных нет — в кассе у Саши уже есть эти проекты.');
+    if (added === 0 && updated === 0) {
+      alert('Новых данных нет — суммы «Агенту» уже совпадают с кассой Саши.');
       return;
     }
     try {
-      localStorage.setItem(ASSETS_MY_KEY_SASHA_PROFILE, JSON.stringify(target));
-      localStorage.setItem(ASSETS_MY_KEY_SASHA_PROFILE + '_month_' + assetsCurrentMonthKey(), JSON.stringify(target));
+      localStorage.setItem(targetKey, JSON.stringify(target));
+      localStorage.setItem(targetKey + '_month_' + assetsCurrentMonthKey(), JSON.stringify(target));
     } catch (e2) {
       alert('Ошибка сохранения: ' + (e2 && e2.message ? e2.message : e2));
       return;
     }
-    alert('✅ У Саши добавлено новых проектов: ' + added + '.');
+    var parts = [];
+    if (added) parts.push('добавлено строк: ' + added);
+    if (updated) parts.push('обновлено: ' + updated);
+    alert('✅ ' + parts.join(', ') + '. В «Оплатил» — только твоя доля («Агенту»), в «Получено за все» суммируется она же.');
   }
 
   function getAssetsBase() {
@@ -1072,6 +1169,9 @@
     })();
 
     if (owner === 'me') {
+      if (isSashaKassaProfile()) {
+        item.paid = '';
+      }
       var arr = getAssetsMy();
       arr.push(item);
       saveAssetsMy(arr);
@@ -1143,6 +1243,44 @@
     var arr = getAssetsMy();
     var idx = arr.findIndex(function(r) { return r && String(r.goalProjectId || '').trim() === String(p.id); });
     var paidClean = String(paidStr).replace(/\s/g, '');
+    var isSasha = isSashaKassaProfile();
+    /** У Саши в кассу не подставляем полную сумму сделки из CRM — только доля через «Синхронизировать» с Филом или вручную в «Оплатил». */
+    if (isSasha) {
+      if (idx >= 0) {
+        var prevS = arr[idx];
+        var keepPaid = String(prevS.paid || '').replace(/\s/g, '');
+        arr[idx] = {
+          emoji: emoji,
+          name: name,
+          paid: keepPaid,
+          expected: '',
+          paymentDate: prevS.paymentDate || '',
+          startDate: prevS.startDate || '',
+          clientType: prevS.clientType || 'new',
+          folderLink: folderLink || prevS.folderLink || '',
+          crmClientId: crmClientId || prevS.crmClientId || '',
+          goalProjectId: p.id,
+          paymentHistory: prevS.paymentHistory
+        };
+      } else {
+        arr.push({
+          emoji: emoji,
+          name: name,
+          paid: '',
+          expected: '',
+          paymentDate: '',
+          startDate: '',
+          clientType: 'new',
+          folderLink: folderLink,
+          crmClientId: crmClientId,
+          goalProjectId: p.id
+        });
+      }
+      saveAssetsMy(arr);
+      if (typeof window.__renderAssetsPage === 'function') window.__renderAssetsPage();
+      if (typeof window.__wireAssetsDragTargets === 'function') window.__wireAssetsDragTargets();
+      return;
+    }
     if (idx >= 0) {
       var prev = arr[idx];
       arr[idx] = {
@@ -1238,10 +1376,13 @@
     }
     var myNameColW = calcNameColWidth(myList);
     var sashaNameColW = calcNameColWidth(sashaList);
-    var myTotal = myList.reduce(function(a, p) { return a + (parseInt(String(p.paid || '').replace(/\s/g, ''), 10) || 0); }, 0);
+    var isSashaView = isSashaKassaProfile();
+    var myTotal = myList.reduce(function(a, p) {
+      var v = isSashaView ? assetsSashaMyProfitRub(p) : (parseInt(String(p.paid || '').replace(/\s/g, ''), 10) || 0);
+      return a + v;
+    }, 0);
     var sashaSoldTotal = sashaList.reduce(function(a, p) { return a + (parseInt(String(p.soldFor || p.paid || '').replace(/\s/g, ''), 10) || 0); }, 0);
     var sashaAoaTotal = sashaList.reduce(function(a, p) { return a + (parseInt(String(p.aoaPercent || '').replace(/\s/g, ''), 10) || 0); }, 0);
-    var isSashaView = !!(typeof window !== 'undefined' && window.AVITOLOG_IS_SASHA);
     var totalRub = myTotal + (isSashaView ? 0 : sashaAoaTotal);
     var totalUsd = Math.round(totalRub / ASSETS_USD_RATE);
     var newClientsSum = calcNewClientsThisMonth();
@@ -1252,8 +1393,8 @@
     var expectedVal = expectedSum > 0 ? fmt(expectedSum) : '';
     var aoaSum = isSashaView ? 0 : sashaList.reduce(function(a, p) { return a + (parseInt(String(p.aoaPercent || '').replace(/\s/g, ''), 10) || 0); }, 0);
     var summaryRows = [
-      { icon: '💰', label: 'Получено за все', val: totalRub > 0 ? fmt(totalRub) : '', valUsd: totalUsd, main: true },
-      { icon: '✅', label: 'Оплаты клиентов', val: totalRub > 0 ? fmt(totalRub) : '', valUsd: null },
+      { icon: '💰', label: isSashaView ? 'Получено за все (только твоя доля)' : 'Получено за все', val: totalRub > 0 ? fmt(totalRub) : '', valUsd: totalUsd, main: true },
+      { icon: '✅', label: isSashaView ? 'Оплаты (твоя доля)' : 'Оплаты клиентов', val: totalRub > 0 ? fmt(totalRub) : '', valUsd: null },
       { icon: '🌿', label: 'Ожидается еще', val: expectedVal },
       { icon: '📊', label: 'Ожидается за мес', val: expectedVal },
       { icon: '📈', label: 'Агентство AoA %', val: aoaSum > 0 ? fmt(aoaSum) : '' },
@@ -1268,8 +1409,12 @@
     var now = new Date();
     var monthTitle = assetsFormatMonthLabel(assetsViewYM);
     var filterPaid = !!localStorage.getItem(ASSETS_FILTER_PAID_KEY);
-    var paidFirst = myList.filter(function(p) { return !!(p.paid && String(p.paid).replace(/\s/g, '')); });
-    var notPaid = myList.filter(function(p) { return !(p.paid && String(p.paid).replace(/\s/g, '')); });
+    function myRowHasPaidAmount(p) {
+      if (isSashaView) return assetsSashaMyProfitRub(p) > 0;
+      return !!(p.paid && String(p.paid).replace(/\s/g, ''));
+    }
+    var paidFirst = myList.filter(myRowHasPaidAmount);
+    var notPaid = myList.filter(function(p) { return !myRowHasPaidAmount(p); });
     var mySorted = filterPaid ? paidFirst : (paidFirst.concat(notPaid));
     function renderColRow(p, idx, owner) {
       var paidFmt = (p.paid || '') ? fmt(String(p.paid).replace(/\s/g, '')) : '';
@@ -1280,7 +1425,7 @@
       var payDate = (p.paymentDate || '').trim();
       var startDate = (p.startDate || '').trim();
       var barFill = getPaymentBarFill(payDate);
-      var isPaid = !!(p.paid && String(p.paid).replace(/\s/g, ''));
+      var isPaid = owner === 'me' && (isSashaView ? assetsSashaMyProfitRub(p) > 0 : !!(p.paid && String(p.paid).replace(/\s/g, '')));
       var rowCls = 'assets-col-row' + (owner === 'me' && isPaid ? ' assets-row-paid' : '');
       var barPct = Math.round(barFill * 100);
       var resolvedType = resolveAssetsClientType(p);
@@ -1307,7 +1452,7 @@
           '<span class="assets-col-extra"><input type="text" value="' + esc(toAgentFmt) + '" placeholder="0" data-field="toAgent" onblur="window.__assetsSaveColRow(this)" title="Агенту"></span>' +
           '<span class="assets-col-extra"><input type="text" value="' + esc(aoaFmt) + '" placeholder="0" data-field="aoaPercent" onblur="window.__assetsSaveColRow(this)" title="AoA %"></span>';
       } else {
-        base += '<span class="assets-col-paid"><input type="text" value="' + esc(paidFmt) + '" placeholder="0" data-field="paid" onblur="window.__assetsSaveColRow(this)"></span>' +
+        base += '<span class="assets-col-paid"><input type="text" value="' + esc(paidFmt) + '" placeholder="0" data-field="paid" onblur="window.__assetsSaveColRow(this)" title="' + (isSashaView ? 'Твоя доля от сделки (сумма «Агенту» с Фила или вручную)' : '') + '"></span>' +
           '<span class="assets-col-expected"><input type="text" value="' + esc(expectedFmt) + '" placeholder="0" data-field="expected" onblur="window.__assetsSaveColRow(this)"></span>';
       }
       base += '<button type="button" class="assets-col-remove" onclick="window.__assetsRemoveProject(\'' + owner + '\',' + idx + ')" title="Удалить">✕</button>' +
@@ -1325,7 +1470,7 @@
         '<div class="assets-col assets-col-sasha" id="assetsColSasha" data-owner="sasha" style="--assets-name-col-width:' + sashaNameColW + 'px">' +
           '<div class="assets-col-title">👤 Клиенты Саши <span class="assets-col-total">' + fmt(sashaSoldTotal) + ' ₽</span><span class="assets-col-breakdown">· Саше <span class="assets-col-sasha-agent">' + fmt(sashaList.reduce(function(a,p){return a+(parseInt(String(p.toAgent||'').replace(/\s/g,''),10)||0);},0)) + '</span> ₽ · Агентству <span class="assets-col-sasha-agency">' + fmt(sashaList.reduce(function(a,p){return a+(parseInt(String(p.aoaPercent||'').replace(/\s/g,''),10)||0);},0)) + '</span> ₽</span></div>' +
           '<div class="assets-col-list">' + colHeaderSasha + sashaRows + '</div>' +
-          '<div class="assets-col-add-row"><button type="button" class="assets-col-add" onclick="window.__assetsAddProject(\'sasha\')">+ Добавить</button><button type="button" class="assets-col-add assets-col-add-base" onclick="window.__assetsShowBasePicker(this)" title="Выбрать из базы">+ из базы</button><button type="button" class="assets-col-add assets-col-add-sync" onclick="window.__assetsSyncSashaFromKassa && window.__assetsSyncSashaFromKassa()" title="Добавить в кассу Саши (его профиль) только новые проекты из этой колонки">🔄 Синхронизировать</button></div>' +
+          '<div class="assets-col-add-row"><button type="button" class="assets-col-add" onclick="window.__assetsAddProject(\'sasha\')">+ Добавить</button><button type="button" class="assets-col-add assets-col-add-base" onclick="window.__assetsShowBasePicker(this)" title="Выбрать из базы">+ из базы</button><button type="button" class="assets-col-add assets-col-add-sync" onclick="window.__assetsSyncSashaFromKassa && window.__assetsSyncSashaFromKassa()" title="В профиль Саши: в «Оплатил» только сумма «Агенту» (его %). Остальные поля колонки не переносятся.">🔄 Синхронизировать</button></div>' +
         '</div>'
       );
     var ctrlBtns = !isAssetsArchive ? (
@@ -1337,6 +1482,7 @@
       '<span class="assets-month-nav-label">' + esc(monthTitle) + '</span>' +
       '<button type="button" class="assets-month-nav-btn" onclick="window.__assetsMonthNext()" title="Следующий месяц">▶</button>' +
       ctrlBtns +
+      (isSashaView ? '<button type="button" class="assets-sasha-sync-top" onclick="window.__assetsSyncSashaFromKassa && window.__assetsSyncSashaFromKassa()" title="Синхронизировать: в «Оплатил» только сумма «Агенту» (твоя доля)">🔄 Синхронизировать</button>' : '') +
       '</div>';
     var archiveBanner = isAssetsArchive ? '<div class="assets-archive-banner">📁 Архив: ' + esc(monthTitle) + '</div>' : '';
     mc.innerHTML = '<div class="assets-page-wrap">' +
@@ -1344,10 +1490,12 @@
       '<div class="assets-summary-top"><div class="assets-month-title">' + monthNavHtml + '</div><div class="assets-summary-table">' + summaryHtml + '</div></div>' +
       '<div class="assets-two-cols' + (isSashaView ? ' assets-single-col' : '') + '">' +
         '<div class="assets-col assets-col-me" id="assetsColMe" data-owner="me" style="--assets-name-col-width:' + myNameColW + 'px">' +
-          '<div class="assets-col-title">💰 Мои клиенты <span class="assets-col-total">' + fmt(myTotal) + ' ₽</span><span class="assets-col-breakdown">· новые <span class="assets-col-me-new">' + fmt(myList.reduce(function(a,p){var v=parseInt(String(p.paid||'').replace(/\s/g,''),10)||0;return resolveAssetsClientType(p)==='new'?a+v:a;},0)) + '</span> ₽ · старые <span class="assets-col-me-old">' + fmt(myList.reduce(function(a,p){var v=parseInt(String(p.paid||'').replace(/\s/g,''),10)||0;return resolveAssetsClientType(p)!=='new'?a+v:a;},0)) + '</span> ₽</span></div>' +
+          '<div class="assets-col-title">💰 Мои клиенты' + (isSashaView ? ' <span class="assets-col-sasha-hint">· твоя доля</span>' : '') + ' <span class="assets-col-total">' + fmt(myTotal) + ' ₽</span><span class="assets-col-breakdown">· новые <span class="assets-col-me-new">' + fmt(myList.reduce(function(a,p){var v=isSashaView?assetsSashaMyProfitRub(p):(parseInt(String(p.paid||'').replace(/\s/g,''),10)||0);return resolveAssetsClientType(p)==='new'?a+v:a;},0)) + '</span> ₽ · старые <span class="assets-col-me-old">' + fmt(myList.reduce(function(a,p){var v=isSashaView?assetsSashaMyProfitRub(p):(parseInt(String(p.paid||'').replace(/\s/g,''),10)||0);return resolveAssetsClientType(p)!=='new'?a+v:a;},0)) + '</span> ₽</span></div>' +
           '<button type="button" class="assets-filter-btn' + (filterPaid ? ' on' : '') + '" onclick="window.__assetsToggleFilterPaid && window.__assetsToggleFilterPaid()">💰 оплатили</button>' +
           '<div class="assets-col-list">' + colHeaderMe + myRows + '</div>' +
-          '<div class="assets-col-add-row"><button type="button" class="assets-col-add assets-col-add-new" onclick="window.__assetsAddProject(\'me\')">Добавить NEW</button><button type="button" class="assets-col-add assets-col-add-base" onclick="window.__assetsShowBasePicker(this)" title="Выбрать из базы">+ из базы</button></div>' +
+          '<div class="assets-col-add-row"><button type="button" class="assets-col-add assets-col-add-new" onclick="window.__assetsAddProject(\'me\')">Добавить NEW</button><button type="button" class="assets-col-add assets-col-add-base" onclick="window.__assetsShowBasePicker(this)" title="Выбрать из базы">+ из базы</button>' +
+          (isSashaView ? '<button type="button" class="assets-col-add assets-col-add-sync" onclick="window.__assetsSyncSashaFromKassa && window.__assetsSyncSashaFromKassa()" title="Подтянуть из колонки Фила «Клиенты Саши»: в «Оплатил» попадёт только сумма «Агенту» (твой %)">🔄 Синхронизировать</button>' : '') +
+          '</div>' +
         '</div>' +
         sashaColHtml +
       '</div>' +
@@ -1416,10 +1564,14 @@
     var fmt = function(n) { return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ' '); };
     var myList = getAssetsMy();
     var sashaList = getAssetsSasha();
-    var myTotal = myList.reduce(function(a, p) { return a + (parseInt(String(p.paid || '').replace(/\s/g, ''), 10) || 0); }, 0);
+    var isSasha = isSashaKassaProfile();
+    var myTotal = myList.reduce(function(a, p) {
+      var v = isSasha ? assetsSashaMyProfitRub(p) : (parseInt(String(p.paid || '').replace(/\s/g, ''), 10) || 0);
+      return a + v;
+    }, 0);
     var myNew = 0, myOld = 0;
     myList.forEach(function(p) {
-      var v = parseInt(String(p.paid || '').replace(/\s/g, ''), 10) || 0;
+      var v = isSasha ? assetsSashaMyProfitRub(p) : (parseInt(String(p.paid || '').replace(/\s/g, ''), 10) || 0);
       var t = resolveAssetsClientType(p);
       if (t === 'new') myNew += v; else myOld += v;
     });

@@ -2260,7 +2260,9 @@ body.day-mode.goals-mode .goal-block-archive .goal-row-alt{border-bottom-color:r
 .assets-page-wrap{max-width:680px;margin:0 auto;padding:24px;display:flex;flex-direction:column;gap:20px;align-items:center}
 .assets-summary-top{display:flex;flex-direction:column;align-items:center;width:100%;margin-bottom:8px}
 .assets-month-title{font-family:'Bebas Neue',sans-serif;font-size:28px;letter-spacing:8px;color:rgba(255,255,255,0.65);font-weight:400;margin-bottom:14px;text-transform:uppercase;text-shadow:0 0 30px rgba(53,208,255,0.25);display:flex;align-items:center;justify-content:center}
-.assets-month-nav-wrap{display:inline-flex;align-items:center;gap:10px}
+.assets-month-nav-wrap{display:inline-flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:center}
+.assets-sasha-sync-top{margin-left:4px;padding:8px 14px;font-size:11px;font-weight:800;border-radius:10px;cursor:pointer;font-family:inherit;background:rgba(186,130,255,0.18);border:1px solid rgba(186,130,255,0.5);color:#d4b8ff;white-space:nowrap;transition:all .15s}
+.assets-sasha-sync-top:hover{background:rgba(186,130,255,0.28);border-color:rgba(186,130,255,0.65)}
 .assets-month-nav-btn{background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.15);color:rgba(255,255,255,0.7);width:34px;height:34px;border-radius:8px;font-size:14px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;transition:all .15s;padding:0;font-family:inherit}
 .assets-month-nav-btn:hover{background:rgba(0,217,126,0.15);border-color:var(--accent);color:var(--accent)}
 .assets-month-nav-label{font-family:'Bebas Neue',sans-serif;font-size:28px;letter-spacing:8px;min-width:150px;text-align:center;white-space:nowrap}
@@ -2289,6 +2291,8 @@ body.day-mode.goals-mode .goal-block-archive .goal-row-alt{border-bottom-color:r
 .assets-col-total{color:#00d97e;font-variant-numeric:tabular-nums}
 .assets-col-sasha .assets-col-total{color:#35d0ff}
 .assets-col-breakdown{font-size:11px;font-weight:600;color:var(--muted);margin-left:4px;font-variant-numeric:tabular-nums}
+.assets-col-sasha-hint{font-size:11px;font-weight:700;color:rgba(0,217,126,0.75)}
+body.day-mode .assets-col-sasha-hint{color:var(--accent)}
 .assets-filter-btn{font-size:12px;font-weight:700;color:var(--muted);padding:6px 14px;margin:0 16px 8px;background:rgba(255,220,100,0.08);border:1px solid var(--border);border-radius:8px;cursor:pointer;transition:all .15s}
 .assets-filter-btn:hover{background:rgba(255,220,100,0.15);color:var(--text)}
 .assets-filter-btn.on{background:rgba(0,217,126,0.2);border-color:rgba(0,217,126,0.5);color:#00d97e}
@@ -2688,7 +2692,7 @@ if (!window.AVITOLOG_GOALS) {
 <script src="js/hero-asset.js?v=20260404-1"></script>
 <script src="js/core.js?v=20260404-5"></script>
 <script src="js/projects.js?v=20260404-15"></script>
-<script src="js/ai-import.js?v=20260404-7"></script>
+<script src="js/ai-import.js?v=20260404-24"></script>
 <script src="js/contract-generator.js?v=20260404-1"></script>
 <script src="js/ads.js?v=20260404-1"></script>
 <script src="js/kp-generator.js?v=20260404-1"></script>
