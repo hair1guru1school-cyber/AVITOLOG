@@ -875,6 +875,141 @@
     return '';
   }
 
+  /** Успехи: накопительная сумма продаж за месяц (CRM). Пока только порог 50k; 100/150/200 — позже. */
+  var MONTHLY_TOTAL_THRESHOLD_50K = 50000;
+  var MONTHLY_ACHIEVEMENT_50K = { key: '50k', label: 'Разгон месяца', short: '50k' };
+  function achievementsStorageKey() {
+    return (typeof window.AVITOLOG_KEY === 'function') ? window.AVITOLOG_KEY('avitolog_goal_achievements_v1') : 'avitolog_goal_achievements_v1';
+  }
+  function loadAchievements() {
+    try {
+      var raw = localStorage.getItem(achievementsStorageKey());
+      var o = raw ? JSON.parse(raw) : { events: [], monthMilestones: {} };
+      if (!o.events || !Array.isArray(o.events)) o.events = [];
+      if (!o.monthMilestones || typeof o.monthMilestones !== 'object') o.monthMilestones = {};
+      return o;
+    } catch (e) { return { events: [], monthMilestones: {} }; }
+  }
+  function saveAchievements(o) {
+    try { localStorage.setItem(achievementsStorageKey(), JSON.stringify(o)); } catch (e) {}
+  }
+  function parseRublesSale(val) {
+    return parseFloat(String(val || '0').replace(/\s/g, '').replace(',', '.')) || 0;
+  }
+  function dateFromSaleYMD(ymd) {
+    if (!ymd) return new Date();
+    var p = String(ymd).split('-');
+    if (p.length >= 3) return new Date(parseInt(p[0], 10), parseInt(p[1], 10) - 1, parseInt(p[2], 10));
+    return new Date();
+  }
+  function projectSoldRub(p) {
+    var val = p.saleAmount || p.mainPrice || (p.priceOptions && p.priceOptions[0]);
+    return parseRublesSale(val);
+  }
+  function getSoldTotalForMonthFromData(data, monthKey) {
+    var sum = 0;
+    (data.projects || []).forEach(function(p) {
+      if (!p || p.stage !== 'sold') return;
+      if (getProjectYM(p) !== monthKey) return;
+      sum += projectSoldRub(p);
+    });
+    return sum;
+  }
+  function fmtNumAch(n) {
+    return String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+  }
+  function showGoalAchievementToast(tier, highlightAmount, projectName, customSubLine) {
+    var ex = document.getElementById('goalAchievementToast');
+    if (ex) ex.remove();
+    var el = document.createElement('div');
+    el.id = 'goalAchievementToast';
+    el.className = 'goal-achievement-toast';
+    el.setAttribute('role', 'status');
+    var sub = customSubLine != null ? customSubLine : (esc(tier.short) + ' · ' + fmtNumAch(highlightAmount) + ' ₽');
+    el.innerHTML = '<div class="goal-achievement-toast-backdrop"></div><div class="goal-achievement-toast-card">' +
+      '<div class="goal-achievement-toast-icon" aria-hidden="true">🏆</div>' +
+      '<div class="goal-achievement-toast-text">' +
+        '<div class="goal-achievement-toast-kicker">УСПЕХ</div>' +
+        '<div class="goal-achievement-toast-title">' + esc(tier.label) + '</div>' +
+        '<div class="goal-achievement-toast-sub">' + sub + '</div>' +
+        (projectName ? '<div class="goal-achievement-toast-proj">' + esc(projectName) + '</div>' : '') +
+      '</div></div>';
+    document.body.appendChild(el);
+    var hideToast = function() {
+      if (!el.parentNode) return;
+      el.classList.remove('goal-achievement-toast--in');
+      el.classList.add('goal-achievement-toast--out');
+      setTimeout(function() { if (el.parentNode) el.parentNode.removeChild(el); }, 420);
+    };
+    var bd = el.querySelector('.goal-achievement-toast-backdrop');
+    var tmo = setTimeout(hideToast, 5400);
+    if (bd) bd.addEventListener('click', function() { clearTimeout(tmo); hideToast(); });
+    requestAnimationFrame(function() { el.classList.add('goal-achievement-toast--in'); });
+  }
+  /** Без уведомления: если сумма за месяц уже ≥ 50k — отметить награду (миграция / открытие CRM). */
+  function ensureMonth50kMilestoneFromTotal(monthKey, totalMonthRub) {
+    if (totalMonthRub < MONTHLY_TOTAL_THRESHOLD_50K) return;
+    var o = loadAchievements();
+    if (!o.monthMilestones[monthKey]) o.monthMilestones[monthKey] = {};
+    if (o.monthMilestones[monthKey]['50k']) return;
+    o.monthMilestones[monthKey]['50k'] = true;
+    saveAchievements(o);
+  }
+  /** После продажи: если суммарно за месяц впервые ≥ 50k — запись + тост (один раз за месяц). */
+  function checkMonthlyTotalAchievements(dataAfterSave, saleDateIso, projectName) {
+    var dt = dateFromSaleYMD(saleDateIso);
+    var monthKey = dt.getFullYear() + '-' + pad2(dt.getMonth() + 1);
+    var totalAfter = getSoldTotalForMonthFromData(dataAfterSave, monthKey);
+    var o = loadAchievements();
+    if (!o.monthMilestones[monthKey]) o.monthMilestones[monthKey] = {};
+    if (totalAfter < MONTHLY_TOTAL_THRESHOLD_50K) return;
+    if (o.monthMilestones[monthKey]['50k']) return;
+    o.monthMilestones[monthKey]['50k'] = true;
+    o.events.push({
+      type: 'month_total_milestone',
+      tier: '50k',
+      monthKey: monthKey,
+      totalAtUnlock: totalAfter,
+      saleDate: saleDateIso || '',
+      projectName: projectName || '',
+      at: Date.now()
+    });
+    saveAchievements(o);
+    var sub = 'Сумма продаж за месяц: ' + fmtNumAch(totalAfter) + ' ₽';
+    showGoalAchievementToast(MONTHLY_ACHIEVEMENT_50K, totalAfter, projectName, sub);
+  }
+  function buildGoalsAchievementsRail(viewYM, periodLabel, totalRevenueMonth) {
+    ensureMonth50kMilestoneFromTotal(viewYM, totalRevenueMonth);
+    var o = loadAchievements();
+    var unlocked50 = !!(o.monthMilestones[viewYM] && o.monthMilestones[viewYM]['50k']);
+    var monthEvents = (o.events || []).filter(function(e) {
+      return e && e.monthKey === viewYM && e.type === 'month_total_milestone';
+    });
+    var badgeCls = 'goal-achievement-badge' + (unlocked50 ? ' goal-achievement-badge--unlocked' : ' goal-achievement-badge--locked');
+    var badges = '<div class="' + badgeCls + '" title="' + esc(MONTHLY_ACHIEVEMENT_50K.label + (unlocked50 ? ' — получено' : ' — накопительно за месяц от ' + fmtNumAch(MONTHLY_TOTAL_THRESHOLD_50K) + ' ₽')) + '">' +
+      '<span class="goal-achievement-badge-coin"><span class="goal-achievement-badge-coin-txt">' + esc(MONTHLY_ACHIEVEMENT_50K.short) + '</span></span>' +
+      '<span class="goal-achievement-badge-count">' + (unlocked50 ? '✓' : '—') + '</span></div>';
+    var recent = monthEvents.slice().sort(function(a, b) { return (b.at || 0) - (a.at || 0); }).slice(0, 12);
+    var logHtml = recent.map(function(ev) {
+      var nm = ev.projectName || 'Продажа';
+      var nameShort = nm.length > 20 ? nm.slice(0, 18) + '…' : nm;
+      return '<li class="goals-achievements-log-item">' +
+        '<span class="gal-date">' + esc(formatBadgeDateShort(ev.saleDate) || '—') + '</span>' +
+        '<span class="gal-tier">' + esc(MONTHLY_ACHIEVEMENT_50K.short) + '</span>' +
+        '<span class="gal-total">итого ' + esc(fmtNumAch(ev.totalAtUnlock || 0)) + ' ₽</span>' +
+        '<span class="gal-name">' + esc(nameShort) + '</span>' +
+        '</li>';
+    }).join('');
+    return '<aside class="goals-achievements-rail" aria-label="Успехи по продажам">' +
+      '<div class="goals-achievements-rail-head">УСПЕХИ</div>' +
+      '<div class="goals-achievements-rail-period">' + esc(periodLabel || viewYM) + '</div>' +
+      '<div class="goals-achievements-total-gray">Всего продаж за месяц<br><span class="goals-achievements-total-num">' + fmtNumAch(totalRevenueMonth) + ' ₽</span></div>' +
+      '<div class="goals-achievements-badges">' + badges + '</div>' +
+      '<div class="goals-achievements-milestone-hint">Награда 50k — когда сумма всех продаж месяца ≥ 50 000 ₽</div>' +
+      (recent.length ? '<ul class="goals-achievements-log">' + logHtml + '</ul>' : '<div class="goals-achievements-empty">Награда появится при первом пересечении порога</div>') +
+      '</aside>';
+  }
+
   function render() {
     var isArchiveView = !!_goalsViewMonth;
     var viewYM = _goalsViewMonth || getCurrentMonthKey();
@@ -1046,7 +1181,7 @@
     var kpCountSh = kpCount;
     var convPct = (kpCountSh > 0 && soldCount > 0) ? Math.round((soldCount / kpCountSh) * 100) : 0;
     var activeClient = (typeof window.__goalsGetActiveClient === 'function' && window.__goalsGetActiveClient()) || null;
-    var html = '<div class="goals-page">' +
+    var html = '<div class="goals-layout-with-achievements"><div class="goals-page">' +
       '<div class="goals-kpi-tablo">' +
         '<div class="goal-kpi-card goal-kpi-sold goal-kpi-tablo-big"><span class="goal-kpi-num-wrap"><span class="goal-kpi-num">' + fmtNum(totalRevenue) + '</span><span class="goal-kpi-ruble">₽</span></span><span class="goal-kpi-sub-line">' + soldCount + ' шт · ' + monthName + ' · нед.' + currentWeekNum + ': ' + fmtNum(revenueThisWeek) + ' ₽</span><span class="goal-kpi-label">ПРОДАНО СУММА</span></div>' +
         '<div class="goal-kpi-card goal-kpi-funnel goal-kpi-tablo-big"><span class="goal-kpi-num-wrap"><span class="goal-kpi-num">' + fmtNum(totalKpSum) + '</span><span class="goal-kpi-ruble">₽</span></span><span class="goal-kpi-sub-line">' + kpCountSh + ' шт · ' + monthName + '</span><span class="goal-kpi-label">ВОРОНКА (месяц)</span></div>' +
@@ -1116,7 +1251,7 @@
       '</div>' : '') +
       '<div class="goals-archive-wrap">' +
         renderSection('АРХИВ', '📁', archive, '', true, false, 'archive') +
-      '</div></div>';
+      '</div></div>' + buildGoalsAchievementsRail(viewYM, viewMonthLabel, totalRevenue) + '</div>';
 
     var main = document.getElementById('mainContent');
     if (main) {
@@ -1606,6 +1741,9 @@
           var workingAll = (data.projects || []).filter(function(x) { return x && x.stage === 'working'; });
           data.workOrderWork = mergeWorkingOrderIds(data.workOrderWork || [], workingAll);
           saveData(data);
+          try {
+            checkMonthlyTotalAchievements(loadData(), cur.date, cur.name || cur.title || '');
+          } catch (eAch) {}
           syncGoalToKassaIfReady(cur);
           try {
             if (typeof window.__goalsCreateActiveFromSold === 'function') window.__goalsCreateActiveFromSold(cur.id);
@@ -1633,6 +1771,9 @@
         }
         data.projects.push(copy);
         saveData(data);
+        try {
+          checkMonthlyTotalAchievements(loadData(), copy.date || getTodayISO(), copy.name || copy.title || '');
+        } catch (eAch2) {}
         syncGoalToKassaIfReady(copy);
         render();
       });
