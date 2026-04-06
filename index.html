@@ -99,6 +99,7 @@ body.day-mode.goals-mode .goal-counter-kp{background:rgba(92,70,180,0.08);border
 body.day-mode.goals-mode .goal-counter-kp b{color:var(--accent3)}
 body.day-mode.goals-mode .goals-achievements-rail{background:rgba(255,255,255,0.5);border-left-color:var(--border)}
 body.day-mode.goals-mode .goals-achievements-rail-head{color:var(--text)}
+body.day-mode.goals-mode .goals-achievements-rail-count{color:var(--accent)}
 body.day-mode.goals-mode .goals-achievements-rail-period{color:var(--muted)}
 body.day-mode.goals-mode .goal-achievement-badge--locked .goal-achievement-badge-coin--pic:not(.goal-achievement-badge-coin--rail50){box-shadow:none}
 body.day-mode.goals-mode .goal-achievement-badge--unlocked .goal-achievement-badge-coin--pic:not(.goal-achievement-badge-coin--rail50){box-shadow:0 0 20px rgba(255,170,50,0.4),0 0 38px rgba(0,136,92,0.14)}
@@ -1775,7 +1776,9 @@ body.goals-mode .content::before{content:'';position:fixed;top:0;left:0;right:0;
 .goals-achievements-rail{width:132px;flex-shrink:0;position:sticky;top:8px;align-self:flex-start;padding:10px 8px 20px 10px;border-left:1px solid rgba(255,255,255,0.07);background:rgba(0,0,0,0.35);min-height:160px;max-height:calc(100vh - 48px);overflow-y:auto;scrollbar-width:thin;scrollbar-color:rgba(0,217,126,0.35) rgba(0,0,0,0.2)}
 .goals-achievements-rail::-webkit-scrollbar{width:5px}
 .goals-achievements-rail::-webkit-scrollbar-thumb{background:rgba(0,217,126,0.35);border-radius:4px}
-.goals-achievements-rail-head{font-size:11px;font-weight:900;letter-spacing:2px;color:rgba(255,255,255,0.85);margin-bottom:4px}
+.goals-achievements-rail-head-row{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:4px;min-width:0}
+.goals-achievements-rail-head{font-size:11px;font-weight:900;letter-spacing:2px;color:rgba(255,255,255,0.85);margin:0;flex:1;min-width:0}
+.goals-achievements-rail-count{font-size:13px;font-weight:900;font-variant-numeric:tabular-nums;color:#00d97e;line-height:1;flex-shrink:0}
 .goals-achievements-rail-period{font-size:10px;font-weight:700;color:rgba(255,255,255,0.45);margin-bottom:10px;line-height:1.25}
 .goals-achievements-total-gray{font-size:10px;font-weight:600;color:rgba(255,255,255,0.38);line-height:1.35;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid rgba(255,255,255,0.06)}
 .goals-achievements-total-num{display:block;margin-top:4px;font-size:13px;font-weight:800;color:rgba(255,255,255,0.52);letter-spacing:0.02em}
@@ -2401,7 +2404,7 @@ body.day-mode.goals-mode .goal-block-archive .goal-row-alt{border-bottom-color:r
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 <script src="https://accounts.google.com/gsi/client" async></script>
 <script src="js/user-config.js?v=20260404-11"></script>
-<script src="js/goals.js?v=20260404-19"></script>
+<script src="js/goals.js?v=20260404-21"></script>
 <script>
 if (!window.AVITOLOG_GOALS) {
   window.AVITOLOG_GOALS = window.__AVITOLOG_GOALS_LEGACY = { render: function() {
@@ -2497,6 +2500,14 @@ if (!window.AVITOLOG_GOALS) {
     <button type="button" id="crmSaveDriveBtn" class="crm-save-btn" onclick="saveClient()" title="Сохранить в Drive">💾</button>
   </div>
   <div id="crmSt" class="crm-st" style="display:none;margin-top:4px"></div>
+  <div class="avitolog-backup-row" style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border);display:flex;flex-wrap:wrap;gap:6px;align-items:center">
+    <span style="font-size:11px;color:var(--muted);white-space:nowrap">💾 Резерв</span>
+    <button type="button" class="badge" onclick="window.__avitologDownloadDataBackup && window.__avitologDownloadDataBackup()" title="Касса, CRM, проекты, цели — один JSON-файл для восстановления">Скачать бэкап</button>
+    <label class="badge" style="cursor:pointer;margin:0;font-weight:600" title="Восстановить из ранее скачанного JSON (заменит данные в этом браузере)">
+      Восстановить…
+      <input type="file" accept=".json,application/json" style="display:none" onchange="window.__avitologRestoreDataBackupFromFile && window.__avitologRestoreDataBackupFromFile(this)">
+    </label>
+  </div>
 
   <div class="row3">
     <div class="fg"><label>&#127970; Компания</label><input type="search" id="company" autocomplete="new-password" placeholder="СтройДом, ИП..."></div>
@@ -2682,5 +2693,6 @@ if (!window.AVITOLOG_GOALS) {
 <script src="js/ads.js?v=20260404-1"></script>
 <script src="js/kp-generator.js?v=20260404-1"></script>
 <script src="js/main.js?v=20260404-9"></script>
+<script src="js/data-backup.js?v=20260404-1"></script>
 </body>
 </html>

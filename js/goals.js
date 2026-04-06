@@ -1024,15 +1024,20 @@
     var unlocked50 = !!mm['50k'];
     var unlocked100 = !!mm['100k'];
     var railUnlocked = unlocked50 || unlocked100;
-    var railHint = 'Награды по сумме продаж за месяц (накопительно): от 50 000 ₽ — разгон месяца, от 100 000 ₽ — первая сотня. Награда при первом пересечении порога.';
-    var badgeCls = 'goal-achievement-badge' + (railUnlocked ? ' goal-achievement-badge--unlocked' : ' goal-achievement-badge--locked');
-    var badges = '<div class="' + badgeCls + '" title="' + esc(railHint) + '">' +
-      '<span class="goal-achievement-badge-coin goal-achievement-badge-coin--pic goal-achievement-badge-coin--rail50">' + achievementIconImgHtml(ACHIEVEMENT_50K_ICON_BASE, 'goal-achievement-badge-img goal-achievement-badge-img--rail50') + '</span>' +
-      '<span class="goal-achievement-badge-caption">Продано на 50к</span></div>';
     var monthEvents = (o.events || []).filter(function(e) {
       return e && e.monthKey === viewYM && e.type === 'month_total_milestone';
     });
     var recent = monthEvents.slice().sort(function(a, b) { return (b.at || 0) - (a.at || 0); }).slice(0, 12);
+    /** Пока ни одна награда за месяц не открыта — колонку не показываем (без «замка» и превью). */
+    if (!railUnlocked && !recent.length) return '';
+    var railHint = 'Награды по сумме продаж за месяц (накопительно): от 50 000 ₽ — разгон месяца, от 100 000 ₽ — первая сотня. Награда при первом пересечении порога.';
+    var badges = '';
+    if (railUnlocked) {
+      var badgeCls = 'goal-achievement-badge goal-achievement-badge--unlocked';
+      badges = '<div class="goals-achievements-badges"><div class="' + badgeCls + '" title="' + esc(railHint) + '">' +
+        '<span class="goal-achievement-badge-coin goal-achievement-badge-coin--pic goal-achievement-badge-coin--rail50">' + achievementIconImgHtml(ACHIEVEMENT_50K_ICON_BASE, 'goal-achievement-badge-img goal-achievement-badge-img--rail50') + '</span>' +
+        '<span class="goal-achievement-badge-caption">Продано на 50к</span></div></div>';
+    }
     var logHtml = recent.map(function(ev) {
       var nm = ev.projectName || 'Продажа';
       var nameShort = nm.length > 20 ? nm.slice(0, 18) + '…' : nm;
@@ -1045,11 +1050,20 @@
         '<span class="gal-name">' + esc(nameShort) + '</span>' +
         '</div></li>';
     }).join('');
+    var openAchievementsCount = (unlocked50 ? 1 : 0) + (unlocked100 ? 1 : 0);
+    if (openAchievementsCount === 0 && recent.length) {
+      var u50 = recent.some(function(e) { return e && e.tier === '50k'; });
+      var u100 = recent.some(function(e) { return e && e.tier === '100k'; });
+      openAchievementsCount = (u50 ? 1 : 0) + (u100 ? 1 : 0);
+    }
     return '<aside class="goals-achievements-rail" aria-label="Награды по продажам">' +
-      '<div class="goals-achievements-rail-head">НАГРАДЫ</div>' +
+      '<div class="goals-achievements-rail-head-row">' +
+      '<span class="goals-achievements-rail-head">НАГРАДЫ</span>' +
+      '<span class="goals-achievements-rail-count" title="Открыто наград за этот месяц">' + openAchievementsCount + 'x</span>' +
+      '</div>' +
       '<div class="goals-achievements-rail-period">' + esc(periodLabel || viewYM) + '</div>' +
       '<div class="goals-achievements-total-gray">Всего продаж за месяц<br><span class="goals-achievements-total-num">' + fmtNumAch(totalRevenueMonth) + ' ₽</span></div>' +
-      '<div class="goals-achievements-badges">' + badges + '</div>' +
+      badges +
       (recent.length ? '<ul class="goals-achievements-log">' + logHtml + '</ul>' : '') +
       '</aside>';
   }
