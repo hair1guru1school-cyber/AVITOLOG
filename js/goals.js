@@ -878,9 +878,9 @@
   /** Успехи: накопительная сумма продаж за месяц (CRM). Пороги 50k и 100k. */
   var MONTHLY_TOTAL_THRESHOLD_50K = 50000;
   var MONTHLY_TOTAL_THRESHOLD_100K = 100000;
-  /** Иконки: положите PNG рядом с тем же базовым именем — иначе подставится SVG. «Первая сотня» — файл first-100k.png (можно переименовать экспорт ChatGPT). */
-  var ACHIEVEMENT_50K_ICON_BASE = 'assets/achievements/213b529d-b2c8-4aa0-b52c-289a3ebcb0a0';
-  var ACHIEVEMENT_100K_ICON_BASE = 'assets/achievements/first-100k';
+  /** PNG в assets/achievements/; при отсутствии — fallback .svg с тем же базовым именем. */
+  var ACHIEVEMENT_50K_ICON_BASE = 'assets/achievements/milestone-50k';
+  var ACHIEVEMENT_100K_ICON_BASE = 'assets/achievements/milestone-100k';
   var MONTHLY_ACHIEVEMENT_50K = { key: '50k', label: 'Разгон месяца', short: '50k', iconBase: ACHIEVEMENT_50K_ICON_BASE };
   var MONTHLY_ACHIEVEMENT_100K = { key: '100k', label: 'Первая сотня', short: '100k', iconBase: ACHIEVEMENT_100K_ICON_BASE };
   function achievementIconImgHtml(iconBase, imgClass) {
@@ -1013,7 +1013,12 @@
   }
   function buildOneMilestoneBadge(tierDef, unlocked, thresholdRub) {
     var badgeCls = 'goal-achievement-badge' + (unlocked ? ' goal-achievement-badge--unlocked' : ' goal-achievement-badge--locked');
-    var hint = tierDef.label + (unlocked ? ' — получено' : ' — сумма продаж за месяц от ' + fmtNumAch(thresholdRub) + ' ₽');
+    var hint;
+    if (tierDef.key === '50k') {
+      hint = 'Разгон месяца' + (unlocked ? ' — получено. ' : '. ') + '50k и 100k — по сумме всех продаж месяца (накопительно). Награда появится при первом пересечении порога.';
+    } else {
+      hint = 'Первая сотня' + (unlocked ? ' — получено. ' : '. ') + 'Сумма всех продаж за месяц от ' + fmtNumAch(thresholdRub) + ' ₽.';
+    }
     return '<div class="' + badgeCls + '" title="' + esc(hint) + '">' +
       '<span class="goal-achievement-badge-coin goal-achievement-badge-coin--pic">' + achievementIconImgHtml(tierDef.iconBase, 'goal-achievement-badge-img') + '</span>' +
       '<span class="goal-achievement-badge-count">' + (unlocked ? '✓' : '—') + '</span></div>';
@@ -1049,8 +1054,7 @@
       '<div class="goals-achievements-rail-period">' + esc(periodLabel || viewYM) + '</div>' +
       '<div class="goals-achievements-total-gray">Всего продаж за месяц<br><span class="goals-achievements-total-num">' + fmtNumAch(totalRevenueMonth) + ' ₽</span></div>' +
       '<div class="goals-achievements-badges">' + badges + '</div>' +
-      '<div class="goals-achievements-milestone-hint">50k и 100k — по сумме всех продаж месяца (накопительно)</div>' +
-      (recent.length ? '<ul class="goals-achievements-log">' + logHtml + '</ul>' : '<div class="goals-achievements-empty">Награда появится при первом пересечении порога</div>') +
+      (recent.length ? '<ul class="goals-achievements-log">' + logHtml + '</ul>' : '') +
       '</aside>';
   }
 

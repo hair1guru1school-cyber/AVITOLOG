@@ -111,7 +111,6 @@ body.day-mode.goals-mode .goal-achievement-toast-sub{color:var(--muted)}
 body.day-mode.goals-mode .goal-achievement-toast-proj{color:var(--muted)}
 body.day-mode.goals-mode .goals-achievements-total-gray{color:var(--muted)}
 body.day-mode.goals-mode .goals-achievements-total-num{color:var(--text)}
-body.day-mode.goals-mode .goals-achievements-milestone-hint{color:var(--muted)}
 body.day-mode.goals-mode .gal-total{color:var(--muted)}
 *{box-sizing:border-box;margin:0;padding:0}
 *::-webkit-scrollbar{width:4px;height:4px}
@@ -1783,7 +1782,6 @@ body.goals-mode .content::before{content:'';position:fixed;top:0;left:0;right:0;
 .goal-achievement-badge--locked .goal-achievement-badge-img{filter:grayscale(0.9) brightness(0.85);opacity:0.95}
 .goal-achievement-badge--locked .goal-achievement-badge-count{color:rgba(255,255,255,0.25)}
 .goal-achievement-badge--unlocked .goal-achievement-badge-coin--pic{opacity:1}
-.goals-achievements-milestone-hint{font-size:9px;font-weight:600;color:rgba(255,255,255,0.28);line-height:1.3;margin-bottom:10px}
 .goal-achievement-badge-coin--pic{width:56px;height:56px;border-radius:50%;background:transparent;border:none;padding:0;display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:none}
 .goal-achievement-badge-coin--pic .goal-achievement-badge-img{width:100%;height:100%;object-fit:contain;border-radius:50%;display:block}
 .goal-achievement-badge--unlocked .goal-achievement-badge-coin--pic{box-shadow:0 0 22px rgba(255,200,80,0.55),0 0 42px rgba(0,217,126,0.22),0 4px 14px rgba(0,0,0,0.45);border-radius:50%}
@@ -1795,7 +1793,6 @@ body.goals-mode .content::before{content:'';position:fixed;top:0;left:0;right:0;
 .gal-tier{font-size:10px;font-weight:900;color:#e8c44a}
 .gal-total{font-size:9px;font-weight:700;color:rgba(255,255,255,0.4)}
 .gal-name{font-size:10px;color:rgba(255,255,255,0.65);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.goals-achievements-empty{font-size:10px;color:rgba(255,255,255,0.3);line-height:1.35}
 .goal-achievement-toast{position:fixed;inset:0;z-index:100000;display:flex;align-items:center;justify-content:center;padding:24px;opacity:0;transition:opacity .38s ease;pointer-events:none}
 .goal-achievement-toast--in{opacity:1}
 .goal-achievement-toast--out{opacity:0}
@@ -2390,7 +2387,7 @@ body.day-mode.goals-mode .goal-block-archive .goal-row-alt{border-bottom-color:r
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 <script src="https://accounts.google.com/gsi/client" async></script>
 <script src="js/user-config.js?v=20260404-11"></script>
-<script src="js/goals.js?v=20260404-11"></script>
+<script src="js/goals.js?v=20260404-12"></script>
 <script>
 if (!window.AVITOLOG_GOALS) {
   window.AVITOLOG_GOALS = window.__AVITOLOG_GOALS_LEGACY = { render: function() {
