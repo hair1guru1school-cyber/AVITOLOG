@@ -48,6 +48,7 @@ var _projectsZoneTab = 'active'; // active | second_chance | archive
 var TASKS_LAYER_ON_KEY = (typeof window.AVITOLOG_KEY === 'function') ? window.AVITOLOG_KEY('avitolog_tasks_layer_on') : 'avitolog_tasks_layer_on';
 var TASK_PANEL_FONT_KEY = (typeof window.AVITOLOG_KEY === 'function') ? window.AVITOLOG_KEY('avitolog_task_panel_font') : 'avitolog_task_panel_font';
 var TASK_PANEL_WIDTH_KEY = (typeof window.AVITOLOG_KEY === 'function') ? window.AVITOLOG_KEY('avitolog_task_panel_width') : 'avitolog_task_panel_width';
+var TASK_PANEL_COLLAPSED_KEY = (typeof window.AVITOLOG_KEY === 'function') ? window.AVITOLOG_KEY('avitolog_task_panel_collapsed_v1') : 'avitolog_task_panel_collapsed_v1';
 var _tasksLayerOn = (function(){ try{ var v=localStorage.getItem(TASKS_LAYER_ON_KEY); return v!=='0'; }catch(e){ return true; }})();
 var TASKS_SORT_ON_KEY = (typeof window.AVITOLOG_KEY === 'function') ? window.AVITOLOG_KEY('avitolog_projects_tasks_sort_v1') : 'avitolog_projects_tasks_sort_v1';
 var _projectsTasksSortOn = (function(){ try{ return localStorage.getItem(TASKS_SORT_ON_KEY)==='1'; }catch(e){ return false; }})();
@@ -2443,6 +2444,7 @@ function openTaskPanel(projectId) {
   renderTaskPanel();
   var el = document.getElementById('taskPanelDrawer');
   if (el) el.classList.add('open');
+  applyTaskPanelCollapsedUI();
 }
 
 function showCalTaskHoverPreview(taskId, title, projectId) {
@@ -2459,6 +2461,7 @@ function closeTaskPanel() {
   hideCalTaskHoverPreview();
   var el = document.getElementById('taskPanelDrawer');
   if (el) el.classList.remove('open');
+  applyTaskPanelCollapsedUI();
   if (typeof rerenderProjectsPreserveScroll === 'function') rerenderProjectsPreserveScroll();
 }
 
@@ -2485,6 +2488,36 @@ function setTaskPanelWidth(w) {
   try { localStorage.setItem(TASK_PANEL_WIDTH_KEY, String(w)); } catch(e){}
   var el = document.getElementById('taskPanelDrawer');
   if (el) el.style.width = w + 'px';
+}
+
+function getTaskPanelCollapsed() {
+  try { return localStorage.getItem(TASK_PANEL_COLLAPSED_KEY) === '1'; } catch (e) { return false; }
+}
+function setTaskPanelCollapsed(collapsed) {
+  try { localStorage.setItem(TASK_PANEL_COLLAPSED_KEY, collapsed ? '1' : '0'); } catch (e) {}
+  applyTaskPanelCollapsedUI();
+}
+function toggleTaskPanelCollapsed() {
+  var drawer = document.getElementById('taskPanelDrawer');
+  if (!drawer || !drawer.classList.contains('open')) return;
+  setTaskPanelCollapsed(!getTaskPanelCollapsed());
+}
+function expandTaskPanelFromTab(ev) {
+  if (ev && ev.stopPropagation) ev.stopPropagation();
+  setTaskPanelCollapsed(false);
+}
+function applyTaskPanelCollapsedUI() {
+  var drawer = document.getElementById('taskPanelDrawer');
+  var tab = document.getElementById('taskPanelExpandTab');
+  if (!drawer) return;
+  var open = drawer.classList.contains('open');
+  var show = getTaskPanelCollapsed() && open;
+  drawer.classList.toggle('task-panel-drawer--collapsed', show);
+  if (!open) drawer.classList.remove('task-panel-drawer--collapsed');
+  if (tab) {
+    tab.style.display = show ? 'flex' : 'none';
+    tab.setAttribute('aria-hidden', show ? 'false' : 'true');
+  }
 }
 
 function getSelectedCellInfo(projectId, dateStr, childLineIdx) {
@@ -2633,9 +2666,11 @@ function renderTaskPanel() {
   var fontBtns = '<span class="task-panel-font-btns"><button type="button" class="task-panel-font-btn' + (fontSize==='s'?' active':'') + '" onclick="setTaskPanelFontSize(\'s\')" title="Мелкий шрифт">A−</button><button type="button" class="task-panel-font-btn' + (fontSize==='m'?' active':'') + '" onclick="setTaskPanelFontSize(\'m\')" title="Обычный">A</button><button type="button" class="task-panel-font-btn' + (fontSize==='l'?' active':'') + '" onclick="setTaskPanelFontSize(\'l\')" title="Крупный">A+</button></span>';
 
   var aiRowHtml = pid ? '<button type="button" class="task-panel-ai-row" onclick="handleTaskPanelAI(\'' + escAttr(pid) + '\')" title="Быстрый ИИ-ввод задач: Создать задачу ...">&#129302; ИИ — задачи, дедлайны, история</button>' : '';
-wrap.innerHTML = '<div id="taskPanelDrawer" class="task-panel-drawer' + (pid ? ' open' : '') + '" style="width:' + getTaskPanelWidth() + 'px"><div class="task-panel-resizer" onmousedown="startTaskPanelResize(event)" title="Тяните — ширину и шрифт"></div><div class="task-panel-header"><span class="task-panel-title">' + (project ? escAttr(String(project.emoji || '') + ' ' + (project.title || 'Без названия')) : 'Задачи') + '</span><div style="display:flex;align-items:center;gap:8px">' + fontBtns + '<button type="button" class="task-panel-close" onclick="closeTaskPanel()" title="Закрыть">×</button></div></div>' + aiRowHtml + '<div class="task-panel-content">' + (cellSectionHtml || '') + (linkDayHtml || '') + templatesHtml + listSectionHtml + '<button type="button" class="task-panel-add-btn" onclick="showAddTaskForm(\'' + (pid || '') + '\')">+ ЗАДАЧА</button></div></div>';
+  wrap.innerHTML = '<button type="button" class="task-panel-expand-tab" id="taskPanelExpandTab" onclick="expandTaskPanelFromTab(event)" title="Показать задачи" aria-label="Показать панель задач">&#9664;</button>' +
+    '<div id="taskPanelDrawer" class="task-panel-drawer' + (pid ? ' open' : '') + '" style="width:' + getTaskPanelWidth() + 'px"><div class="task-panel-resizer" onmousedown="startTaskPanelResize(event)" title="Тяните — ширину и шрифт"></div><div class="task-panel-header"><button type="button" class="task-panel-collapse-btn" onclick="toggleTaskPanelCollapsed()" title="Свернуть панель вправо">&#9654;</button><span class="task-panel-title">' + (project ? escAttr(String(project.emoji || '') + ' ' + (project.title || 'Без названия')) : 'Задачи') + '</span><div class="task-panel-header-actions">' + fontBtns + '<button type="button" class="task-panel-close" onclick="closeTaskPanel()" title="Закрыть">×</button></div></div>' + aiRowHtml + '<div class="task-panel-content">' + (cellSectionHtml || '') + (linkDayHtml || '') + templatesHtml + listSectionHtml + '<button type="button" class="task-panel-add-btn" onclick="showAddTaskForm(\'' + (pid || '') + '\')">+ ЗАДАЧА</button></div></div>';
 
   setTaskPanelFontSize(fontSize);
+  applyTaskPanelCollapsedUI();
   var addModal = document.getElementById('taskAddModal');
   if (addModal) addModal.remove();
   bindTaskPanelResize();

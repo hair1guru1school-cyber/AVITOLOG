@@ -22,6 +22,10 @@ body.day-mode .task-panel-drawer{background:linear-gradient(180deg,#fff,#f8fafc)
 body.day-mode .task-panel-header{background:rgba(0,136,92,0.08);border-bottom-color:var(--border)}
 body.day-mode .task-panel-close{background:var(--surface2);color:var(--muted)}
 body.day-mode .task-panel-close:hover{background:rgba(232,90,42,0.2);color:var(--accent2)}
+body.day-mode .task-panel-collapse-btn{background:var(--surface2);color:var(--muted);border-color:var(--border)}
+body.day-mode .task-panel-collapse-btn:hover{background:rgba(0,136,92,0.15);color:var(--accent);border-color:rgba(0,136,92,0.35)}
+body.day-mode .task-panel-expand-tab{background:linear-gradient(180deg,#fff,#f0f4f2);border-color:var(--border);color:var(--accent);box-shadow:-3px 0 12px rgba(0,0,0,0.08)}
+body.day-mode .task-panel-expand-tab:hover{background:rgba(0,136,92,0.12)}
 body.day-mode .task-panel-font-btn{background:var(--surface2);color:var(--muted)}
 body.day-mode .task-panel-font-btn:hover{background:rgba(0,136,92,0.15);color:var(--accent)}
 body.day-mode .task-panel-font-btn.active{background:rgba(0,136,92,0.2);color:var(--accent)}
@@ -62,7 +66,10 @@ body.day-mode.goals-mode .goals-funnel-visual{background:var(--surface2);border-
 body.day-mode.goals-mode .goal-row-header{background:rgba(0,136,92,0.06);border-bottom-color:var(--border);color:var(--accent)}
 body.day-mode.goals-mode .goal-row{border-bottom-color:rgba(0,0,0,0.06)}
 body.day-mode.goals-mode .goal-row:hover{background:rgba(0,136,92,0.06)!important}
+body.day-mode.goals-mode .goal-week-rows .goal-row.goal-row-week-sold:hover{background:rgba(0,136,92,0.1)!important}
 body.day-mode.goals-mode .goal-row.goal-row-client-active{background:rgba(0,136,92,0.12)!important;box-shadow:inset 0 0 0 1px rgba(0,136,92,0.3)}
+body.day-mode.goals-mode .goal-row.goal-row-week-sold{background:rgba(0,136,92,0.07)!important;box-shadow:inset 0 0 0 1px rgba(0,136,92,0.22),0 0 12px rgba(0,136,92,0.06)}
+body.day-mode.goals-mode .goal-row.goal-row-week-sold.goal-row-client-active{background:rgba(0,136,92,0.14)!important;box-shadow:inset 0 0 0 1px rgba(0,136,92,0.34),0 0 14px rgba(0,136,92,0.08)}
 body.day-mode.goals-mode .goal-row.goal-row-crm-archived{box-shadow:inset 0 0 0 1px rgba(0,0,0,0.1)}
 body.day-mode.goals-mode .goal-name-cell:hover{background:rgba(0,136,92,0.08)}
 body.day-mode.goals-mode .goal-name-cell.goal-name-editing{background:var(--surface2)}
@@ -1360,8 +1367,11 @@ body.projects-mode.projects-sidebar-hidden .sidebar{min-width:0;width:0;padding:
 .task-ind-empty{opacity:0.4}
 .task-panel-wrap{display:none;position:fixed;top:0;right:0;bottom:0;z-index:900;pointer-events:none}
 body.projects-mode .task-panel-wrap,body.tasks-mode .task-panel-wrap{display:block;pointer-events:auto}
+.task-panel-expand-tab{display:none;position:fixed;right:0;top:50%;transform:translateY(-50%);z-index:901;flex-direction:column;align-items:center;justify-content:center;width:22px;min-height:76px;padding:10px 0;border:none;border-radius:10px 0 0 10px;background:linear-gradient(180deg,#13241a,#0c1210);border:1px solid rgba(0,217,126,0.28);border-right:none;color:var(--accent);cursor:pointer;font-size:13px;line-height:1;box-shadow:-4px 0 18px rgba(0,0,0,0.45);pointer-events:auto;transition:background .15s,color .15s}
+.task-panel-expand-tab:hover{background:rgba(0,217,126,0.14)}
 .task-panel-drawer{width:280px;min-width:220px;max-width:480px;height:100%;background:linear-gradient(180deg,#0f1419 0%,#0a0d12 100%);border-left:1px solid var(--border);box-shadow:-8px 0 24px rgba(0,0,0,0.5),0 0 20px rgba(0,217,126,0.08);display:flex;flex-direction:column;transform:translateX(100%);transition:transform 0.25s ease;pointer-events:auto}
 .task-panel-drawer.open{transform:translateX(0)}
+.task-panel-drawer.open.task-panel-drawer--collapsed{transform:translateX(100%)!important}
 .task-panel-drawer.resize-mode{transition:none}
 .task-panel-resizer{position:absolute;left:0;top:0;bottom:0;width:6px;cursor:ew-resize;z-index:10}
 .task-panel-resizer:hover{background:rgba(0,217,126,0.15)}
@@ -1380,7 +1390,11 @@ body.task-panel-font-l .task-panel-content{--tf:1.15}
 .task-panel-content .task-group-title{font-size:calc(10px * var(--tf))}
 .task-panel-content .task-panel-section-title{font-size:calc(10px * var(--tf))}
 .task-panel-content .task-template-btn{font-size:calc(11px * var(--tf))}
-.task-panel-header{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;border-bottom:1px solid var(--border);font-size:13px;font-weight:700;color:var(--accent);background:rgba(0,217,126,0.06)}
+.task-panel-header{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:12px 14px;border-bottom:1px solid var(--border);font-size:13px;font-weight:700;color:var(--accent);background:rgba(0,217,126,0.06);min-width:0}
+.task-panel-header .task-panel-title{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.task-panel-header-actions{display:flex;align-items:center;gap:8px;flex-shrink:0}
+.task-panel-collapse-btn{width:28px;height:28px;flex-shrink:0;border:1px solid rgba(0,217,126,0.22);background:rgba(255,255,255,0.06);color:var(--accent);border-radius:8px;cursor:pointer;font-size:12px;line-height:1;display:flex;align-items:center;justify-content:center;transition:all 0.15s;padding:0}
+.task-panel-collapse-btn:hover{background:rgba(0,217,126,0.18);border-color:rgba(0,217,126,0.45)}
 .task-panel-close{width:28px;height:28px;border:none;background:rgba(255,255,255,0.08);color:var(--muted);border-radius:8px;cursor:pointer;font-size:18px;line-height:1;display:flex;align-items:center;justify-content:center;transition:all 0.15s}
 .task-panel-close:hover{background:rgba(255,107,53,0.3);color:#ff6b35}
 .task-panel-ai-row{padding:6px 14px;font-size:10px;color:var(--muted);border-bottom:1px solid var(--border);flex-shrink:0;display:flex;align-items:center;gap:6px;line-height:1.3;background:transparent;width:100%;text-align:left;border-left:none;border-right:none;border-top:none;cursor:pointer}
@@ -1865,11 +1879,14 @@ body.goals-client-dragging .goal-block-sold{transition:all .18s ease}
 .goal-week-rows .goal-row:nth-child(odd):not(.goal-row-header){background:transparent}
 .goal-week-rows .goal-row:nth-child(even){background:transparent}
 .goal-row:hover{background:rgba(0,217,126,0.04)!important}
+.goal-week-rows .goal-row.goal-row-week-sold:hover{background:rgba(0,217,126,0.09)!important}
 .goal-week-rows .goal-row{cursor:copy}
 .goal-week-rows .goal-row input,
 .goal-week-rows .goal-row button,
 .goal-week-rows .goal-row a{cursor:auto}
 .goal-row.goal-row-client-active{background:rgba(0,217,126,0.11)!important;box-shadow:inset 0 0 0 1px rgba(0,217,126,0.35)}
+.goal-row.goal-row-week-sold{background:rgba(0,217,126,0.06)!important;box-shadow:inset 0 0 0 1px rgba(0,217,126,0.22),0 0 14px rgba(0,217,126,0.07)}
+.goal-row.goal-row-week-sold.goal-row-client-active{background:rgba(0,217,126,0.13)!important;box-shadow:inset 0 0 0 1px rgba(0,217,126,0.38),0 0 16px rgba(0,217,126,0.1)}
 .goal-row.goal-row-crm-archived{opacity:0.96;box-shadow:inset 0 0 0 1px rgba(160,170,200,0.22)}
 .goal-emoji-btn.goal-emoji-crm-archived{cursor:default}
 .goal-emoji-btn.goal-emoji-crm-archived:hover{transform:none;background:transparent}
@@ -2296,7 +2313,7 @@ body.day-mode.goals-mode .goal-block-archive .goal-row-alt{border-bottom-color:r
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 <script src="https://accounts.google.com/gsi/client" async></script>
 <script src="js/user-config.js?v=20260404-11"></script>
-<script src="js/goals.js?v=20260404-6"></script>
+<script src="js/goals.js?v=20260404-7"></script>
 <script>
 if (!window.AVITOLOG_GOALS) {
   window.AVITOLOG_GOALS = window.__AVITOLOG_GOALS_LEGACY = { render: function() {
@@ -2605,7 +2622,7 @@ if (!window.AVITOLOG_GOALS) {
 <script src="https://unpkg.com/mammoth@1.6.0/mammoth.min.js"></script>
 <script src="js/hero-asset.js?v=20260404-1"></script>
 <script src="js/core.js?v=20260404-4"></script>
-<script src="js/projects.js?v=20260404-9"></script>
+<script src="js/projects.js?v=20260404-10"></script>
 <script src="js/ai-import.js?v=20260404-7"></script>
 <script src="js/contract-generator.js?v=20260404-1"></script>
 <script src="js/ads.js?v=20260404-1"></script>

@@ -593,6 +593,10 @@
     if (typeof window.__goalsGetSelectedProjectName === 'function') {
       selectedProjectNameNorm = String(window.__goalsGetSelectedProjectName() || '').trim().toLowerCase();
     }
+    var soldLinkedByWeekId = {};
+    (soldAll || []).forEach(function(s) {
+      if (s && s.soldFromId) soldLinkedByWeekId[String(s.soldFromId)] = true;
+    });
     var rows = projects.map(function(p) {
       var rawMain = getMinPrice(p);
       var mainPrice = rawMain ? formatSumForDisplay(rawMain) : '—';
@@ -643,8 +647,12 @@
       if (!isActiveClientRow && selectedProjectNameNorm) {
         isActiveClientRow = (projectNameNorm === selectedProjectNameNorm || projectCompanyNorm === selectedProjectNameNorm);
       }
-      var rowClass = 'goal-row' + (isActiveClientRow ? ' goal-row-client-active' : '') + (p.crmArchived ? ' goal-row-crm-archived' : '');
-      return '<div class="' + rowClass + '" data-id="' + esc(p.id) + '" data-week="' + weekNum + '" onclick="window.__goalsQuickAddClientToRow && window.__goalsQuickAddClientToRow(' + weekNum + ',\'' + esc(p.id) + '\',event)" ondragover="window.__goalsClientDragOver && window.__goalsClientDragOver(event)" ondrop="window.__goalsClientDropOnRow && window.__goalsClientDropOnRow(' + weekNum + ',\'' + esc(p.id) + '\',event)">' +
+      var hasSoldCopy = !!(p && p.id && soldLinkedByWeekId[String(p.id)]);
+      var rowClass = 'goal-row' +
+        (isActiveClientRow ? ' goal-row-client-active' : '') +
+        (p.crmArchived ? ' goal-row-crm-archived' : '') +
+        (hasSoldCopy ? ' goal-row-week-sold' : '');
+      return '<div class="' + rowClass + '" data-id="' + esc(p.id) + '" data-week="' + weekNum + '" data-week-sold="' + (hasSoldCopy ? '1' : '0') + '" onclick="window.__goalsQuickAddClientToRow && window.__goalsQuickAddClientToRow(' + weekNum + ',\'' + esc(p.id) + '\',event)" ondragover="window.__goalsClientDragOver && window.__goalsClientDragOver(event)" ondrop="window.__goalsClientDropOnRow && window.__goalsClientDropOnRow(' + weekNum + ',\'' + esc(p.id) + '\',event)">' +
         '<span class="goal-date">' + esc(formatDateShort(p.date)) + '</span>' +
         '<span class="goal-name">' + nameCell + '</span>' +
         '<span class="goal-price-wrap">' + priceHtml + '</span>' +
