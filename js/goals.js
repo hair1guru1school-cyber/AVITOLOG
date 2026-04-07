@@ -1034,15 +1034,25 @@
     var badges = '';
     if (railUnlocked) {
       var badgeCls = 'goal-achievement-badge goal-achievement-badge--unlocked';
-      badges = '<div class="goals-achievements-badges"><div class="' + badgeCls + '" title="' + esc(railHint) + '">' +
-        '<span class="goal-achievement-badge-coin goal-achievement-badge-coin--pic goal-achievement-badge-coin--rail50">' + achievementIconImgHtml(ACHIEVEMENT_50K_ICON_BASE, 'goal-achievement-badge-img goal-achievement-badge-img--rail50') + '</span>' +
-        '<span class="goal-achievement-badge-caption">Продано на 50к</span></div></div>';
+      var badgeParts = [];
+      if (unlocked50) {
+        badgeParts.push('<div class="' + badgeCls + '" title="' + esc(railHint) + '">' +
+          '<span class="goal-achievement-badge-coin goal-achievement-badge-coin--pic goal-achievement-badge-coin--rail50">' + achievementIconImgHtml(ACHIEVEMENT_50K_ICON_BASE, 'goal-achievement-badge-img goal-achievement-badge-img--rail50') + '</span>' +
+          '<span class="goal-achievement-badge-caption">Продано на 50к</span></div>');
+      }
+      if (unlocked100) {
+        badgeParts.push('<div class="' + badgeCls + '" title="' + esc(railHint) + '">' +
+          '<span class="goal-achievement-badge-coin goal-achievement-badge-coin--pic goal-achievement-badge-coin--rail100">' + achievementIconImgHtml(ACHIEVEMENT_100K_ICON_BASE, 'goal-achievement-badge-img goal-achievement-badge-img--rail100') + '</span>' +
+          '<span class="goal-achievement-badge-caption">Продано на 100к</span></div>');
+      }
+      badges = '<div class="goals-achievements-badges">' + badgeParts.join('') + '</div>';
     }
     var logHtml = recent.map(function(ev) {
       var nm = ev.projectName || 'Продажа';
       var nameShort = nm.length > 20 ? nm.slice(0, 18) + '…' : nm;
+      var logIconBase = (ev && ev.tier === '100k') ? ACHIEVEMENT_100K_ICON_BASE : ACHIEVEMENT_50K_ICON_BASE;
       return '<li class="goals-achievements-log-item">' +
-        '<span class="gal-icon-wrap">' + achievementIconImgHtml(ACHIEVEMENT_50K_ICON_BASE, 'goal-achievement-log-img') + '</span>' +
+        '<span class="gal-icon-wrap">' + achievementIconImgHtml(logIconBase, 'goal-achievement-log-img') + '</span>' +
         '<div class="gal-log-main">' +
         '<span class="gal-date">' + esc(formatBadgeDateShort(ev.saleDate) || '—') + '</span>' +
         '<span class="gal-tier">' + esc(milestoneTierShort(ev)) + '</span>' +

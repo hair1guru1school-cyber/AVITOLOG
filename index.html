@@ -101,10 +101,10 @@ body.day-mode.goals-mode .goals-achievements-rail{background:rgba(255,255,255,0.
 body.day-mode.goals-mode .goals-achievements-rail-head{color:var(--text)}
 body.day-mode.goals-mode .goals-achievements-rail-count{color:var(--accent)}
 body.day-mode.goals-mode .goals-achievements-rail-period{color:var(--muted)}
-body.day-mode.goals-mode .goal-achievement-badge--locked .goal-achievement-badge-coin--pic:not(.goal-achievement-badge-coin--rail50){box-shadow:none}
-body.day-mode.goals-mode .goal-achievement-badge--unlocked .goal-achievement-badge-coin--pic:not(.goal-achievement-badge-coin--rail50){box-shadow:0 0 20px rgba(255,170,50,0.4),0 0 38px rgba(0,136,92,0.14)}
-body.day-mode.goals-mode .goal-achievement-badge--unlocked .goal-achievement-badge-img:not(.goal-achievement-badge-img--rail50){filter:drop-shadow(0 2px 4px rgba(0,0,0,0.18)) drop-shadow(0 0 12px rgba(255,180,60,0.55))}
-body.day-mode.goals-mode .goal-achievement-badge--unlocked .goal-achievement-badge-img--rail50{filter:brightness(1.06) saturate(1.05) drop-shadow(0 0 12px rgba(255,210,120,0.85)) drop-shadow(0 0 26px rgba(255,170,50,0.45))}
+body.day-mode.goals-mode .goal-achievement-badge--locked .goal-achievement-badge-coin--pic:not(.goal-achievement-badge-coin--rail50):not(.goal-achievement-badge-coin--rail100){box-shadow:none}
+body.day-mode.goals-mode .goal-achievement-badge--unlocked .goal-achievement-badge-coin--pic:not(.goal-achievement-badge-coin--rail50):not(.goal-achievement-badge-coin--rail100){box-shadow:0 0 20px rgba(255,170,50,0.4),0 0 38px rgba(0,136,92,0.14)}
+body.day-mode.goals-mode .goal-achievement-badge--unlocked .goal-achievement-badge-img:not(.goal-achievement-badge-img--rail50):not(.goal-achievement-badge-img--rail100){filter:drop-shadow(0 2px 4px rgba(0,0,0,0.18)) drop-shadow(0 0 12px rgba(255,180,60,0.55))}
+body.day-mode.goals-mode .goal-achievement-badge--unlocked .goal-achievement-badge-img--rail50,body.day-mode.goals-mode .goal-achievement-badge--unlocked .goal-achievement-badge-img--rail100{filter:brightness(1.06) saturate(1.05) drop-shadow(0 0 12px rgba(255,210,120,0.85)) drop-shadow(0 0 26px rgba(255,170,50,0.45))}
 body.day-mode.goals-mode .goal-achievement-badge-caption{color:var(--muted)}
 body.day-mode.goals-mode .goal-achievement-badge--unlocked .goal-achievement-badge-caption{color:var(--accent)}
 body.day-mode.goals-mode .goals-achievements-log-item{background:rgba(0,0,0,0.04);border-color:var(--border)}
@@ -1790,14 +1790,14 @@ body.goals-mode .content::before{content:'';position:fixed;top:0;left:0;right:0;
 .goal-achievement-badge--unlocked .goal-achievement-badge-coin--pic{opacity:1}
 .goal-achievement-badge-coin--pic{width:auto;max-width:76px;background:transparent;border:none;padding:0;display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:none;border-radius:16px}
 .goal-achievement-badge-coin--pic .goal-achievement-badge-img{width:100%;max-width:76px;height:auto;object-fit:contain;border-radius:14px;display:block;vertical-align:top;background:transparent!important}
-.goal-achievement-badge-coin--rail50{background:transparent!important;box-shadow:none!important;border-radius:0!important}
-.goal-achievement-badge-img--rail50{max-width:97px!important;width:100%;height:auto;object-fit:contain;background:transparent!important;-webkit-backface-visibility:hidden}
-.goal-achievement-badge--unlocked .goal-achievement-badge-img--rail50{filter:brightness(1.08) saturate(1.06) drop-shadow(0 0 14px rgba(255,235,190,0.95)) drop-shadow(0 0 28px rgba(255,200,80,0.65)) drop-shadow(0 0 42px rgba(0,217,126,0.32))}
-.goal-achievement-badge--locked .goal-achievement-badge-img--rail50{filter:grayscale(0.9) brightness(0.85);opacity:0.95}
+.goal-achievement-badge-coin--rail50,.goal-achievement-badge-coin--rail100{background:transparent!important;box-shadow:none!important;border-radius:0!important}
+.goal-achievement-badge-img--rail50,.goal-achievement-badge-img--rail100{max-width:97px!important;width:100%;height:auto;object-fit:contain;background:transparent!important;-webkit-backface-visibility:hidden}
+.goal-achievement-badge--unlocked .goal-achievement-badge-img--rail50,.goal-achievement-badge--unlocked .goal-achievement-badge-img--rail100{filter:brightness(1.08) saturate(1.06) drop-shadow(0 0 14px rgba(255,235,190,0.95)) drop-shadow(0 0 28px rgba(255,200,80,0.65)) drop-shadow(0 0 42px rgba(0,217,126,0.32))}
+.goal-achievement-badge--locked .goal-achievement-badge-img--rail50,.goal-achievement-badge--locked .goal-achievement-badge-img--rail100{filter:grayscale(0.9) brightness(0.85);opacity:0.95}
 .goal-achievement-badge-caption{display:block;text-align:center;font-size:12px;font-weight:800;color:rgba(255,255,255,0.72);line-height:1.3;margin-top:10px;max-width:120px;letter-spacing:0.02em}
 .goal-achievement-badge--unlocked .goal-achievement-badge-caption{color:#00d97e}
-.goal-achievement-badge--unlocked .goal-achievement-badge-coin--pic:not(.goal-achievement-badge-coin--rail50){box-shadow:0 0 22px rgba(255,200,80,0.55),0 0 42px rgba(0,217,126,0.22),0 4px 14px rgba(0,0,0,0.45);border-radius:16px}
-.goal-achievement-badge--unlocked .goal-achievement-badge-img:not(.goal-achievement-badge-img--rail50){filter:drop-shadow(0 2px 4px rgba(0,0,0,0.35)) drop-shadow(0 0 12px rgba(255,210,90,0.75))}
+.goal-achievement-badge--unlocked .goal-achievement-badge-coin--pic:not(.goal-achievement-badge-coin--rail50):not(.goal-achievement-badge-coin--rail100){box-shadow:0 0 22px rgba(255,200,80,0.55),0 0 42px rgba(0,217,126,0.22),0 4px 14px rgba(0,0,0,0.45);border-radius:16px}
+.goal-achievement-badge--unlocked .goal-achievement-badge-img:not(.goal-achievement-badge-img--rail50):not(.goal-achievement-badge-img--rail100){filter:drop-shadow(0 2px 4px rgba(0,0,0,0.35)) drop-shadow(0 0 12px rgba(255,210,90,0.75))}
 .goal-achievement-badge-count{font-size:11px;font-weight:800;color:#00d97e;line-height:1}
 .goals-achievements-log{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
 .goals-achievements-log-item{display:flex;flex-direction:row;align-items:flex-start;gap:8px;font-size:10px;line-height:1.25;padding:6px 4px;border-radius:6px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.05)}
@@ -2408,7 +2408,7 @@ body.day-mode .assets-col-sasha-hint{color:var(--accent)}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 <script src="https://accounts.google.com/gsi/client" async></script>
 <script src="js/user-config.js?v=20260404-11"></script>
-<script src="js/goals.js?v=20260404-21"></script>
+<script src="js/goals.js?v=20260404-22"></script>
 <script>
 if (!window.AVITOLOG_GOALS) {
   window.AVITOLOG_GOALS = window.__AVITOLOG_GOALS_LEGACY = { render: function() {
