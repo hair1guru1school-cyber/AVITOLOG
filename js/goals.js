@@ -883,7 +883,7 @@
   var ACHIEVEMENT_100K_ICON_BASE = 'assets/achievements/milestone-100k';
   var ACHIEVEMENT_ASSETS_VER = '11';
   var MONTHLY_ACHIEVEMENT_50K = { key: '50k', label: 'Разгон месяца', short: '50k', iconBase: ACHIEVEMENT_50K_ICON_BASE };
-  var MONTHLY_ACHIEVEMENT_100K = { key: '100k', label: 'Первая сотня', short: '100k', iconBase: ACHIEVEMENT_100K_ICON_BASE };
+  var MONTHLY_ACHIEVEMENT_100K = { key: '100k', label: 'Продано на 100к', short: '100k', iconBase: ACHIEVEMENT_100K_ICON_BASE };
   function achievementIconImgHtml(iconBase, imgClass) {
     var b = iconBase || ACHIEVEMENT_50K_ICON_BASE;
     var q = '?v=' + ACHIEVEMENT_ASSETS_VER;
@@ -936,15 +936,20 @@
     el.id = 'goalAchievementToast';
     el.className = 'goal-achievement-toast';
     el.setAttribute('role', 'status');
+    var is100k = tier && tier.key === '100k';
     var sub = customSubLine != null ? customSubLine : (esc(tier.short) + ' · ' + fmtNumAch(highlightAmount) + ' ₽');
     var iconB = (tier && tier.iconBase) ? tier.iconBase : ACHIEVEMENT_50K_ICON_BASE;
+    var iconImgCls = 'goal-achievement-toast-icon-img' + (is100k ? ' goal-achievement-toast-icon-img--100k' : '');
+    var tail100k = is100k ? '' : (
+      '<div class="goal-achievement-toast-sub">' + sub + '</div>' +
+      (projectName ? '<div class="goal-achievement-toast-proj">' + esc(projectName) + '</div>' : '')
+    );
     el.innerHTML = '<div class="goal-achievement-toast-backdrop"></div><div class="goal-achievement-toast-card">' +
-      '<div class="goal-achievement-toast-icon-wrap" aria-hidden="true">' + achievementIconImgHtml(iconB, 'goal-achievement-toast-icon-img') + '</div>' +
+      '<div class="goal-achievement-toast-icon-wrap" aria-hidden="true">' + achievementIconImgHtml(iconB, iconImgCls) + '</div>' +
       '<div class="goal-achievement-toast-text">' +
         '<div class="goal-achievement-toast-kicker">УСПЕХ</div>' +
         '<div class="goal-achievement-toast-title">' + esc(tier.label) + '</div>' +
-        '<div class="goal-achievement-toast-sub">' + sub + '</div>' +
-        (projectName ? '<div class="goal-achievement-toast-proj">' + esc(projectName) + '</div>' : '') +
+        tail100k +
       '</div></div>';
     document.body.appendChild(el);
     var hideToast = function() {
@@ -1013,10 +1018,6 @@
       showGoalAchievementToast(tierForToast, totalAfter, projectName, sub);
     }
   }
-  function milestoneTierShort(ev) {
-    if (ev && ev.tier === '100k') return MONTHLY_ACHIEVEMENT_100K.short;
-    return MONTHLY_ACHIEVEMENT_50K.short;
-  }
   function buildGoalsAchievementsRail(viewYM, periodLabel, totalRevenueMonth) {
     ensureMonthMilestonesFromTotal(viewYM, totalRevenueMonth);
     var o = loadAchievements();
@@ -1024,12 +1025,8 @@
     var unlocked50 = !!mm['50k'];
     var unlocked100 = !!mm['100k'];
     var railUnlocked = unlocked50 || unlocked100;
-    var monthEvents = (o.events || []).filter(function(e) {
-      return e && e.monthKey === viewYM && e.type === 'month_total_milestone';
-    });
-    var recent = monthEvents.slice().sort(function(a, b) { return (b.at || 0) - (a.at || 0); }).slice(0, 12);
     /** Пока ни одна награда за месяц не открыта — колонку не показываем (без «замка» и превью). */
-    if (!railUnlocked && !recent.length) return '';
+    if (!railUnlocked) return '';
     var railHint = 'Награды по сумме продаж за месяц (накопительно): от 50 000 ₽ — разгон месяца, от 100 000 ₽ — первая сотня. Награда при первом пересечении порога.';
     var badges = '';
     if (railUnlocked) {
@@ -1047,25 +1044,7 @@
       }
       badges = '<div class="goals-achievements-badges">' + badgeParts.join('') + '</div>';
     }
-    var logHtml = recent.map(function(ev) {
-      var nm = ev.projectName || 'Продажа';
-      var nameShort = nm.length > 20 ? nm.slice(0, 18) + '…' : nm;
-      var logIconBase = (ev && ev.tier === '100k') ? ACHIEVEMENT_100K_ICON_BASE : ACHIEVEMENT_50K_ICON_BASE;
-      return '<li class="goals-achievements-log-item">' +
-        '<span class="gal-icon-wrap">' + achievementIconImgHtml(logIconBase, 'goal-achievement-log-img') + '</span>' +
-        '<div class="gal-log-main">' +
-        '<span class="gal-date">' + esc(formatBadgeDateShort(ev.saleDate) || '—') + '</span>' +
-        '<span class="gal-tier">' + esc(milestoneTierShort(ev)) + '</span>' +
-        '<span class="gal-total">итого ' + esc(fmtNumAch(ev.totalAtUnlock || 0)) + ' ₽</span>' +
-        '<span class="gal-name">' + esc(nameShort) + '</span>' +
-        '</div></li>';
-    }).join('');
     var openAchievementsCount = (unlocked50 ? 1 : 0) + (unlocked100 ? 1 : 0);
-    if (openAchievementsCount === 0 && recent.length) {
-      var u50 = recent.some(function(e) { return e && e.tier === '50k'; });
-      var u100 = recent.some(function(e) { return e && e.tier === '100k'; });
-      openAchievementsCount = (u50 ? 1 : 0) + (u100 ? 1 : 0);
-    }
     return '<aside class="goals-achievements-rail" aria-label="Награды по продажам">' +
       '<div class="goals-achievements-rail-head-row">' +
       '<span class="goals-achievements-rail-head">НАГРАДЫ</span>' +
@@ -1074,7 +1053,6 @@
       '<div class="goals-achievements-rail-period">' + esc(periodLabel || viewYM) + '</div>' +
       '<div class="goals-achievements-total-gray">Всего продаж за месяц<br><span class="goals-achievements-total-num">' + fmtNumAch(totalRevenueMonth) + ' ₽</span></div>' +
       badges +
-      (recent.length ? '<ul class="goals-achievements-log">' + logHtml + '</ul>' : '') +
       '</aside>';
   }
 
