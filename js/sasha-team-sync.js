@@ -1,0 +1,405 @@
+/**
+ * Синхронизация профиля «Саша» с Google Drive (как общая таблица):
+ * — любое сохранение ключей *_sasha в localStorage → через ~2 с выгрузка merge в Drive;
+ * — каждые ~8 с (если вкладка видна) — подтягивание с Drive и мягкое обновление CRM/Проекты/Касса.
+ * Саша пишет у себя — файл на твоём Google Drive обновляется; у тебя данные подтягиваются автоматически.
+ */
+(function() {
+  'use strict';
+
+  var FORMAT = 'avitolog-sasha-team-v1';
+  var SYNC_FOLDER = 'AVITOLOG_SASHA_TEAM';
+  var SYNC_FILENAME = 'sasha-team-data.json';
+  var LS_FILE_ID = 'avitolog_sasha_team_sync_file_id';
+  var LS_FOLDER_ID = 'avitolog_sasha_team_sync_folder_id';
+
+  var PUSH_DEBOUNCE_MS = 2200;
+  var PULL_INTERVAL_MS = 8000;
+  var _syncApplyDepth = 0;
+  var _debouncePushTimer = null;
+  var _pushRunning = false;
+  var _pullRunning = false;
+  var _autoPullTimer = null;
+
+  function driveEmail() {
+    try { return String(localStorage.getItem('avitolog_drive_email') || '').trim().toLowerCase(); } catch (e) { return ''; }
+  }
+
+  function shouldOfferSync() {
+    if (typeof window.AVITOLOG_IS_SASHA === 'undefined' || !window.AVITOLOG_IS_SASHA) return false;
+    if (window.AVITOLOG_EMPLOYEE_MODE) return false;
+    return true;
+  }
+
+  function isSyncableKey(k) {
+    if (!k || typeof k !== 'string') return false;
+    if (k.indexOf('avitolog_drive_') === 0) return false;
+    if (k.indexOf('_month_') >= 0) return false;
+    if (k === LS_FILE_ID || k === LS_FOLDER_ID) return false;
+    if (k === 'avitolog_current_user' || k === 'avitolog_profile_bookmark') return false;
+    if (/_sasha$/.test(k)) return true;
+    if (k.indexOf('_sasha_') >= 0) return true;
+    return false;
+  }
+
+  function collectSashaKeys() {
+    var out = {};
+    try {
+      for (var i = 0; i < localStorage.length; i++) {
+        var k = localStorage.key(i);
+        if (!isSyncableKey(k)) continue;
+        try {
+          var v = localStorage.getItem(k);
+          if (v !== null) out[k] = v;
+        } catch (e) {}
+      }
+    } catch (e) {}
+    return out;
+  }
+
+  function applyKeysToLocal(keys) {
+    if (!keys || typeof keys !== 'object') return 0;
+    var n = 0;
+    _syncApplyDepth++;
+    try {
+      Object.keys(keys).forEach(function(k) {
+        if (!isSyncableKey(k)) return;
+        try {
+          var v = keys[k];
+          if (v === null || v === undefined) return;
+          var nv = String(v);
+          var prev = localStorage.getItem(k);
+          if (prev === nv) return;
+          localStorage.setItem(k, nv);
+          n++;
+        } catch (e) {}
+      });
+    } finally {
+      _syncApplyDepth--;
+    }
+    return n;
+  }
+
+  function crmRootId() {
+    if (typeof CRM_ROOT !== 'undefined' && CRM_ROOT) return CRM_ROOT;
+    return '1d8oElVgTO2vzbs0HjOYPnReVmGUPltIk';
+  }
+
+  async function ensureFolderId() {
+    try {
+      var cached = localStorage.getItem(LS_FOLDER_ID);
+      if (cached) return cached;
+    } catch (e) {}
+    if (typeof driveGetOrCreateFolder !== 'function') throw new Error('Drive API не загружен');
+    var id = await driveGetOrCreateFolder(SYNC_FOLDER, crmRootId());
+    if (!id) throw new Error('Не удалось создать папку синка');
+    try { localStorage.setItem(LS_FOLDER_ID, id); } catch (e2) {}
+    return id;
+  }
+
+  async function findSyncFileId(parentId) {
+    var token = await getDriveToken();
+    var safeName = SYNC_FILENAME.replace(/'/g, "\\'");
+    var q = "name='" + safeName + "' and '" + parentId + "' in parents and trashed=false";
+    var r = await fetch('https://www.googleapis.com/drive/v3/files?q=' + encodeURIComponent(q) + '&fields=files(id,modifiedTime)', {
+      headers: { Authorization: 'Bearer ' + token }
+    });
+    var d = await r.json();
+    if (!r.ok || !d.files || !d.files.length) return null;
+    return d.files[0].id;
+  }
+
+  async function ensureSyncFileId() {
+    try {
+      var fid = localStorage.getItem(LS_FILE_ID);
+      if (fid) return fid;
+    } catch (e) {}
+    var parentId = await ensureFolderId();
+    var found = await findSyncFileId(parentId);
+    if (found) {
+      try { localStorage.setItem(LS_FILE_ID, found); } catch (e2) {}
+      return found;
+    }
+    return null;
+  }
+
+  async function createSyncFile(parentId, bodyText) {
+    var token = await getDriveToken();
+    var boundary = 'avitolog_sasha_' + Date.now();
+    var nl = '\r\n';
+    var meta = JSON.stringify({ name: SYNC_FILENAME, parents: [parentId] });
+    var enc = new TextEncoder();
+    var pre = '--' + boundary + nl + 'Content-Type: application/json; charset=UTF-8' + nl + nl + meta + nl +
+      '--' + boundary + nl + 'Content-Type: application/json; charset=UTF-8' + nl + nl;
+    var post = nl + '--' + boundary + '--';
+    var preB = enc.encode(pre);
+    var textB = enc.encode(bodyText || '{}');
+    var postB = enc.encode(post);
+    var buf = new Uint8Array(preB.length + textB.length + postB.length);
+    buf.set(preB, 0);
+    buf.set(textB, preB.length);
+    buf.set(postB, preB.length + textB.length);
+    var resp = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id', {
+      method: 'POST',
+      headers: { Authorization: 'Bearer ' + token, 'Content-Type: 'multipart/related; boundary=' + boundary },
+      body: buf
+    });
+    var result = await resp.json();
+    if (!result.id) throw new Error((result.error && result.error.message) || 'Не создан файл синка');
+    try { localStorage.setItem(LS_FILE_ID, result.id); } catch (e3) {}
+    return result.id;
+  }
+
+  async function updateSyncFile(fileId, bodyText) {
+    var token = await getDriveToken();
+    var blob = new Blob([bodyText], { type: 'application/json' });
+    var resp = await fetch('https://www.googleapis.com/upload/drive/v3/files/' + encodeURIComponent(fileId) + '?uploadType=media', {
+      method: 'PATCH',
+      headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
+      body: blob
+    });
+    if (!resp.ok) {
+      var errT = await resp.text();
+      throw new Error('Запись в Drive: ' + resp.status + ' ' + errT.slice(0, 200));
+    }
+  }
+
+  async function readRemotePayload() {
+    var fileId = await ensureSyncFileId();
+    if (!fileId) return null;
+    var raw = await driveGetFileContent(fileId, 'application/json');
+    if (!raw) return null;
+    try {
+      var obj = JSON.parse(raw);
+      if (!obj || obj.format !== FORMAT || !obj.keys || typeof obj.keys !== 'object') return null;
+      return obj;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  async function pullMerge() {
+    var remote = await readRemotePayload();
+    if (!remote) {
+      return { ok: true, message: 'В облаке ещё нет файла синка.', applied: 0 };
+    }
+    var local = collectSashaKeys();
+    var merged = Object.assign({}, local, remote.keys);
+    var n = applyKeysToLocal(merged);
+    return { ok: true, message: 'Подтянуто, изменено полей: ' + n, applied: n };
+  }
+
+  async function pushMerge() {
+    var parentId = await ensureFolderId();
+    var fileId = await ensureSyncFileId();
+    var remote = await readRemotePayload();
+    var local = collectSashaKeys();
+    var baseKeys = (remote && remote.keys) ? remote.keys : {};
+    var merged = Object.assign({}, baseKeys, local);
+    var payload = {
+      format: FORMAT,
+      updatedAt: new Date().toISOString(),
+      updatedAtMs: Date.now(),
+      byEmail: driveEmail() || '',
+      note: 'CRM+Проекты+Касса (ключи *_sasha). Автосинк.',
+      keyCount: Object.keys(merged).length,
+      keys: merged
+    };
+    var text = JSON.stringify(payload);
+    if (!fileId) {
+      await createSyncFile(parentId, text);
+    } else {
+      await updateSyncFile(fileId, text);
+    }
+    return { ok: true, message: 'Выгружено ключей: ' + Object.keys(merged).length };
+  }
+
+  async function bidirectionalSync() {
+    var r1 = await pullMerge();
+    var r2 = await pushMerge();
+    return {
+      ok: true,
+      message: r1.message + '\n\n' + r2.message,
+      pullApplied: r1.applied || 0
+    };
+  }
+
+  function refreshUiAfterPull() {
+    try {
+      if (typeof rerenderProjectsPreserveScroll === 'function' && typeof projectsMode !== 'undefined' && projectsMode) {
+        rerenderProjectsPreserveScroll();
+      }
+    } catch (e) {}
+    try {
+      if (window.AVITOLOG_GOALS && typeof window.AVITOLOG_GOALS.render === 'function' && typeof goalsMode !== 'undefined' && goalsMode) {
+        window.AVITOLOG_GOALS.render();
+      }
+    } catch (e2) {}
+    try {
+      if (typeof window.__renderAssetsPage === 'function' && typeof assetsMode !== 'undefined' && assetsMode) {
+        window.__renderAssetsPage();
+      }
+    } catch (e3) {}
+    try {
+      if (typeof refreshClientContents === 'function' && typeof docReady !== 'undefined' && !docReady &&
+          typeof currentTab !== 'undefined' && ['analysis', 'presale', 'avito1'].indexOf(currentTab) >= 0 &&
+          typeof projectsMode !== 'undefined' && !projectsMode && typeof goalsMode !== 'undefined' && !goalsMode) {
+        refreshClientContents(true);
+      }
+    } catch (e4) {}
+  }
+
+  function scheduleAutoPush() {
+    if (!shouldOfferSync()) return;
+    if (_syncApplyDepth > 0) return;
+    if (_debouncePushTimer) clearTimeout(_debouncePushTimer);
+    _debouncePushTimer = setTimeout(function() {
+      _debouncePushTimer = null;
+      if (!shouldOfferSync() || document.hidden) return;
+      if (_pushRunning || _pullRunning) return;
+      _pushRunning = true;
+      Promise.resolve()
+        .then(function() {
+          if (typeof getDriveToken !== 'function') return;
+          return getDriveToken();
+        })
+        .then(function() {
+          return pushMerge();
+        })
+        .catch(function(e) {
+          console.warn('sasha-team-sync auto-push', e && e.message ? e.message : e);
+        })
+        .finally(function() {
+          _pushRunning = false;
+        });
+    }, PUSH_DEBOUNCE_MS);
+  }
+
+  function runAutoPull() {
+    if (!shouldOfferSync() || document.hidden) return;
+    if (_pushRunning || _pullRunning) return;
+    _pullRunning = true;
+    Promise.resolve()
+      .then(function() {
+        if (typeof getDriveToken !== 'function') return null;
+        return getDriveToken();
+      })
+      .then(function() {
+        return pullMerge();
+      })
+      .then(function(res) {
+        if (res && res.applied > 0) {
+          refreshUiAfterPull();
+          try {
+            var st = document.getElementById('crmSt');
+            if (st) {
+              st.style.display = 'block';
+              st.className = 'crm-st';
+              st.textContent = '☁️ Синк Саша: обновлено с Drive (' + res.applied + ').';
+            }
+          } catch (e) {}
+        }
+      })
+      .catch(function() {})
+      .finally(function() {
+        _pullRunning = false;
+      });
+  }
+
+  function installLocalStorageHook() {
+    try {
+      var proto = Storage.prototype;
+      var origSet = proto.setItem;
+      if (proto.setItem.__avitologSashaPatched) return;
+      proto.setItem = function(key, value) {
+        origSet.call(this, key, value);
+        if (this !== localStorage) return;
+        if (_syncApplyDepth > 0) return;
+        if (!shouldOfferSync()) return;
+        if (!isSyncableKey(key)) return;
+        scheduleAutoPush();
+      };
+      proto.setItem.__avitologSashaPatched = true;
+    } catch (e) {
+      console.warn('sasha-team-sync hook', e);
+    }
+  }
+
+  function updateSashaTeamSyncBtn() {
+    var btn = document.getElementById('sashaTeamSyncBtn');
+    if (!btn) return;
+    var show = shouldOfferSync();
+    btn.style.display = show ? 'inline-flex' : 'none';
+    if (show) {
+      btn.title = 'Синк Саша ↔ Google Drive (авто: запись ~2 с после правок, подтягивание ~каждые 8 с). Вручную — полный цикл.';
+    }
+  }
+
+  async function syncUi() {
+    if (!shouldOfferSync()) {
+      alert('Синк только в профиле «Саша».');
+      return;
+    }
+    try {
+      if (typeof getDriveToken !== 'function') {
+        alert('Нет Drive API.');
+        return;
+      }
+      await getDriveToken();
+    } catch (e) {
+      alert('Войди в Google Drive (🔑 Drive).');
+      return;
+    }
+    var choice = confirm(
+      'Полный синк\n\nOK — подтянуть с Drive, затем отправить объединённое.\nОтмена — только подтянуть.'
+    );
+    try {
+      var res = choice ? await bidirectionalSync() : await pullMerge();
+      alert(res.message || 'Готово.');
+      var pulled = (res.pullApplied || 0) + (res.applied || 0);
+      if (pulled > 0) refreshUiAfterPull();
+      if (choice || pulled > 0) {
+        if (confirm('Перезагрузить страницу (F5)?')) location.reload();
+      }
+    } catch (err) {
+      alert('Ошибка: ' + (err && err.message ? err.message : err));
+    }
+  }
+
+  window.__avitologSashaTeamPull = pullMerge;
+  window.__avitologSashaTeamPush = pushMerge;
+  window.__avitologSashaTeamBidirectional = bidirectionalSync;
+  window.__avitologSashaTeamPushSilent = function() {
+    return pushMerge().catch(function() {});
+  };
+  window.__avitologSashaTeamSyncUi = syncUi;
+  window.__avitologUpdateSashaTeamSyncBtn = updateSashaTeamSyncBtn;
+
+  function startIntervals() {
+    if (_autoPullTimer) clearInterval(_autoPullTimer);
+    _autoPullTimer = setInterval(runAutoPull, PULL_INTERVAL_MS);
+  }
+
+  function onVisibility() {
+    if (!document.hidden && shouldOfferSync()) {
+      runAutoPull();
+      scheduleAutoPush();
+    }
+  }
+
+  function init() {
+    installLocalStorageHook();
+    updateSashaTeamSyncBtn();
+    startIntervals();
+    document.addEventListener('visibilitychange', onVisibility);
+    setTimeout(function() {
+      if (shouldOfferSync()) runAutoPull();
+    }, 1500);
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+})();

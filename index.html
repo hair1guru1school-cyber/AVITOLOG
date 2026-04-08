@@ -699,6 +699,7 @@ body.day-mode .sidebar-inner-toggle:hover,body.day-mode .sidebar-toggle-peek:hov
   body.mobile-webview-on .header-menu-btn{display:none !important}
   .header-drive-btn{display:none}
   .header-employee-btn{display:none}
+  .header-sasha-sync-btn{display:inline-flex!important;max-width:48px;padding:0 8px;border-color:rgba(53,208,255,0.45);color:#9fe7ff}
   .header-sidebar-toggle{display:none}
   body.mobile-webview-on .sidebar-overlay{display:none !important}
   body.mobile-webview-on .content-wrap{grid-area:auto;min-width:0;padding-bottom:0}
@@ -2493,6 +2494,7 @@ if (!window.AVITOLOG_GOALS) {
   <button type="button" id="dayModeToggle" class="header-day-toggle" onclick="toggleDayMode()" title="Дневной режим — светлый интерфейс">☀️</button>
   <button type="button" id="authBtn" class="header-drive-btn" onclick="startAuth(event)" title="Войти в Google Drive">🔑 Drive</button>
   <button type="button" id="userSwitchBtn" class="header-employee-btn" onclick="switchUserProfile()" title="Переключить профиль пользователя"></button>
+  <button type="button" id="sashaTeamSyncBtn" class="header-employee-btn header-sasha-sync-btn" style="display:none;border-color:rgba(53,208,255,0.45);color:#9fe7ff" onclick="window.__avitologSashaTeamSyncUi&&window.__avitologSashaTeamSyncUi()" title="Синхронизация профиля Саша с Google Drive">☁️</button>
   <button type="button" id="employeeModeBtn" class="header-employee-btn" title="Режим сотрудника: смотреть и править данные как сотрудник" onclick="toggleEmployeeMode()">👤 Сотрудник</button>
   <form onsubmit="return false" style="display:flex;align-items:center;gap:8px">
     <input type="password" id="apiKeyInput" placeholder="sk-ant-... (API ключ с console.anthropic.com)"
@@ -2751,7 +2753,8 @@ if (!window.AVITOLOG_GOALS) {
 <script src="js/contract-generator.js?v=20260404-1"></script>
 <script src="js/ads.js?v=20260404-1"></script>
 <script src="js/kp-generator.js?v=20260404-1"></script>
-<script src="js/main.js?v=20260408-2"></script>
+<script src="js/main.js?v=20260408-4"></script>
+<script src="js/sasha-team-sync.js?v=20260408-2"></script>
 <script src="js/data-backup.js?v=20260404-1"></script>
 </body>
 </html>

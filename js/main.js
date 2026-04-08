@@ -227,6 +227,7 @@ function updateUserSwitchBtn() {
     btn.style.color = '';
     btn.title = 'Профиль: Фил. Нажмите чтобы переключиться.';
   }
+  if (typeof window.__avitologUpdateSashaTeamSyncBtn === 'function') window.__avitologUpdateSashaTeamSyncBtn();
 }
 window.updateUserSwitchBtn = updateUserSwitchBtn;
 
@@ -248,6 +249,21 @@ function switchUserProfile() {
   location.reload();
 }
 window.switchUserProfile = switchUserProfile;
+
+function getConfiguredSashaEmailLower() {
+  try {
+    var s = String(localStorage.getItem('avitolog_sasha_email') || '').trim().toLowerCase();
+    if (s) return s;
+  } catch (e) {}
+  return 'cyplakovaleksandr153@gmail.com';
+}
+/** true только если вошли в Drive с email Саши — тогда старт с «КАССА». Иначе (Фил смотрит профиль Саши) — открываем CRM, те же ключи avitolog_*_sasha. */
+function isLikelyRealSashaDriveSession() {
+  try {
+    var em = String(localStorage.getItem('avitolog_drive_email') || '').trim().toLowerCase();
+    return !!em && em === getConfiguredSashaEmailLower();
+  } catch (e) { return false; }
+}
 
 // ── SASHA EMAIL CONFIG ──
 var SASHA_EMAIL_CONFIG_KEY = 'avitolog_sasha_email';
@@ -4584,7 +4600,13 @@ document.addEventListener('DOMContentLoaded', function() {
   applyTopTabOrder();
   if (typeof applySashaTabVisibility === 'function') applySashaTabVisibility();
   if (typeof window !== 'undefined' && window.AVITOLOG_IS_SASHA) {
-    if (typeof openAssetsTab === 'function') openAssetsTab();
+    if (isLikelyRealSashaDriveSession() && typeof openAssetsTab === 'function') {
+      openAssetsTab();
+    } else if (typeof openGoalsTab === 'function') {
+      openGoalsTab();
+    } else if (typeof openAssetsTab === 'function') {
+      openAssetsTab();
+    }
   } else {
     openProjectsTab();
     switchTab('analysis');

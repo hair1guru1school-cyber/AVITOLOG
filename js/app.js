@@ -2472,7 +2472,7 @@ function selectProjectRow(projectId) {
       }
     } else {
       _activeClient = null;
-      localStorage.removeItem('avitolog_active_client');
+      localStorage.removeItem(_avitologStorageKey('avitolog_active_client'));
       showClientQuestionState(p);
     }
   }
@@ -7282,18 +7282,21 @@ function findClientIndexByData(list, d) {
   });
 }
 
+function _avitologStorageKey(k) {
+  return (typeof window.AVITOLOG_KEY === 'function' ? window.AVITOLOG_KEY(k) : k);
+}
 function getCrmClients() {
-  try { return JSON.parse(localStorage.getItem('avitolog_clients') || '[]'); } catch(e) { return []; }
+  try { return JSON.parse(localStorage.getItem(_avitologStorageKey('avitolog_clients')) || '[]'); } catch(e) { return []; }
 }
 function saveCrmClients(list) {
-  localStorage.setItem('avitolog_clients', JSON.stringify(list));
+  localStorage.setItem(_avitologStorageKey('avitolog_clients'), JSON.stringify(list));
 }
 function getActiveClient() {
-  try { return JSON.parse(localStorage.getItem('avitolog_active_client')); } catch(e) { return null; }
+  try { return JSON.parse(localStorage.getItem(_avitologStorageKey('avitolog_active_client'))); } catch(e) { return null; }
 }
 function setActiveClient(client) {
   _activeClient = client;
-  localStorage.setItem('avitolog_active_client', JSON.stringify(client));
+  localStorage.setItem(_avitologStorageKey('avitolog_active_client'), JSON.stringify(client));
   updateClientBadge();
   if (!projectsMode && !goalsMode && !agencyMode && ['analysis','presale','avito1'].indexOf(currentTab) >= 0 && !docReady) refreshClientContents();
   if (goalsMode && window.AVITOLOG_GOALS && typeof window.AVITOLOG_GOALS.render === 'function') window.AVITOLOG_GOALS.render();
@@ -7398,7 +7401,7 @@ window.__goalsGetActiveClientAvatar = function() {
 };
 function clearActiveClient() {
   _activeClient = null;
-  localStorage.removeItem('avitolog_active_client');
+  localStorage.removeItem(_avitologStorageKey('avitolog_active_client'));
   updateClientBadge();
   if (goalsMode && window.AVITOLOG_GOALS && typeof window.AVITOLOG_GOALS.render === 'function') window.AVITOLOG_GOALS.render();
   if (!projectsMode && !goalsMode && !agencyMode && ['analysis','presale','avito1'].indexOf(currentTab) >= 0 && !docReady) refreshClientContents();
