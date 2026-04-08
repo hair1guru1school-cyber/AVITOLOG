@@ -4036,12 +4036,18 @@ function applyMobileWebviewMode() {
   document.body.classList.toggle('mobile-webview-on', on);
   if (!on) document.body.classList.remove('sidebar-open-mobile');
 
+  if (on) {
+    document.body.style.setProperty('--mw-scale', String(scale));
+  } else {
+    document.body.style.removeProperty('--mw-scale');
+  }
+
   if (app) {
     if (on) {
       app.style.transformOrigin = 'top left';
       app.style.transform = 'scale(' + scale + ')';
       app.style.width = (100 / scale) + '%';
-      app.style.minHeight = 'calc(100vh / ' + scale + ')';
+      app.style.minHeight = '';
     } else {
       app.style.transform = '';
       app.style.transformOrigin = '';
