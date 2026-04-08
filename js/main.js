@@ -4003,16 +4003,22 @@ function closeMobileSidebar() {
 }
 var MOBILE_WEBVIEW_ON_KEY = 'avitolog_mobile_webview_on';
 var MOBILE_WEBVIEW_SCALE_KEY = 'avitolog_mobile_webview_scale';
+/** Узкий экран или телефон в альбоме (ширина до ~932 и невысокий) — панель WEB/масштаб и мини-режим. */
 function isMobileViewport() {
-  return window.matchMedia && window.matchMedia('(max-width: 768px)').matches;
+  if (!window.matchMedia) return false;
+  if (window.matchMedia('(max-width: 768px)').matches) return true;
+  if (window.matchMedia('(orientation: landscape)').matches &&
+      window.matchMedia('(max-width: 932px)').matches &&
+      window.matchMedia('(max-height: 520px)').matches) return true;
+  return false;
 }
 function getMobileWebviewScale() {
-  var raw = parseFloat(localStorage.getItem(MOBILE_WEBVIEW_SCALE_KEY) || '0.58');
-  if (!isFinite(raw)) raw = 0.58;
-  return Math.max(0.35, Math.min(1, raw));
+  var raw = parseFloat(localStorage.getItem(MOBILE_WEBVIEW_SCALE_KEY) || '0.45');
+  if (!isFinite(raw)) raw = 0.45;
+  return Math.max(0.22, Math.min(1, raw));
 }
 function setMobileWebviewScale(nextScale) {
-  var s = Math.max(0.35, Math.min(1, Number(nextScale) || 1));
+  var s = Math.max(0.22, Math.min(1, Number(nextScale) || 1));
   localStorage.setItem(MOBILE_WEBVIEW_SCALE_KEY, String(s));
   applyMobileWebviewMode();
 }
@@ -4058,15 +4064,15 @@ function toggleMobileWebviewMode() {
 }
 function mobileWebviewZoomOut() {
   if (localStorage.getItem(MOBILE_WEBVIEW_ON_KEY) !== '1') localStorage.setItem(MOBILE_WEBVIEW_ON_KEY, '1');
-  setMobileWebviewScale(getMobileWebviewScale() - 0.08);
+  setMobileWebviewScale(getMobileWebviewScale() - 0.06);
 }
 function mobileWebviewZoomIn() {
   if (localStorage.getItem(MOBILE_WEBVIEW_ON_KEY) !== '1') localStorage.setItem(MOBILE_WEBVIEW_ON_KEY, '1');
-  setMobileWebviewScale(getMobileWebviewScale() + 0.08);
+  setMobileWebviewScale(getMobileWebviewScale() + 0.06);
 }
 function mobileWebviewZoomReset() {
   if (localStorage.getItem(MOBILE_WEBVIEW_ON_KEY) !== '1') localStorage.setItem(MOBILE_WEBVIEW_ON_KEY, '1');
-  setMobileWebviewScale(0.58);
+  setMobileWebviewScale(0.45);
 }
 window.toggleMobileWebviewMode = toggleMobileWebviewMode;
 window.mobileWebviewZoomOut = mobileWebviewZoomOut;
@@ -4526,6 +4532,13 @@ document.addEventListener('DOMContentLoaded', function() {
   applyMobileWebviewMode();
   applySidebarVisibilityFromStorage();
   window.addEventListener('resize', applyMobileWebviewMode);
+  window.addEventListener('orientationchange', function() {
+    setTimeout(function() {
+      applyMobileWebviewMode();
+      if (typeof syncSidebarToggleBtn === 'function') syncSidebarToggleBtn();
+      try { document.body.classList.remove('sidebar-open-mobile'); } catch (e) {}
+    }, 120);
+  });
   window.addEventListener('resize', syncSidebarToggleBtn);
   updateDriveUI();
   var banner = document.getElementById('githubPagesBanner');

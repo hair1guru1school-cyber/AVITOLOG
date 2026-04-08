@@ -1083,7 +1083,12 @@ function openTasksTab() {
   document.body.classList.remove('projects-mode', 'goals-mode', 'agency-mode', 'strategy-mode', 'assets-mode', 'ads-mode');
   document.body.classList.add('tasks-mode');
   document.body.classList.remove('projects-sidebar-hidden');
-  document.body.classList.remove('sidebar-hidden');
+  if (typeof toggleSidebarVisibility === 'function') toggleSidebarVisibility(true);
+  else {
+    document.body.classList.add('sidebar-hidden');
+    try { localStorage.setItem('avitolog_sidebar_hidden_v1', '1'); } catch (e) {}
+    if (typeof syncSidebarToggleBtn === 'function') syncSidebarToggleBtn();
+  }
   hideChat();
   if (typeof collapseTaskPanelForOtherTabs === 'function') collapseTaskPanelForOtherTabs();
   stopProjectsSheetPullTimer();
