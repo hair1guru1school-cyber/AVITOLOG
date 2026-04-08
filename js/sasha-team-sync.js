@@ -26,9 +26,8 @@
   }
 
   function shouldOfferSync() {
-    if (typeof window.AVITOLOG_IS_SASHA === 'undefined' || !window.AVITOLOG_IS_SASHA) return false;
-    if (window.AVITOLOG_EMPLOYEE_MODE) return false;
-    return true;
+    // Любой контекст с ключами *_sasha (в т.ч. режим сотрудника с email Саши) — иначе pull/push и обновление UI отключались.
+    return typeof window.AVITOLOG_KEY_SUFFIX === 'string' && window.AVITOLOG_KEY_SUFFIX === '_sasha';
   }
 
   function isSyncableKey(k) {
@@ -181,7 +180,7 @@
   async function pullMerge() {
     var remote = await readRemotePayload();
     if (!remote) {
-      return { ok: true, message: 'В облаке ещё нет файла синка.', applied: 0 };
+      return { ok: true, message: 'В облаке ещё нет файла синка — нажми ☁️ у Саши после входа в Drive.', applied: 0, noRemoteFile: true };
     }
     var local = collectSashaKeys();
     var merged = Object.assign({}, local, remote.keys);
@@ -337,7 +336,7 @@
 
   async function syncUi() {
     if (!shouldOfferSync()) {
-      alert('Синк только в профиле «Саша».');
+      alert('Синк только для данных Саши: профиль «Саша» в шапке или режим сотрудника с его email.');
       return;
     }
     try {
@@ -366,6 +365,51 @@
     }
   }
 
+  function pullNowWithRetries() {
+    var attempt = 0;
+    var max = 14;
+    function step() {
+      attempt++;
+      return Promise.resolve()
+        .then(function() {
+          if (typeof getDriveToken !== 'function') throw new Error('getDriveToken');
+          return getDriveToken();
+        })
+        .then(function() {
+          return pullMerge();
+        })
+        .catch(function() {
+          if (attempt < max) {
+            return new Promise(function(r) { setTimeout(r, 320); }).then(step);
+          }
+          return { ok: false, applied: 0, message: 'Не удалось подключиться к Drive после нескольких попыток.', noRemoteFile: false, driveFailed: true };
+        });
+    }
+    return step().then(function(res) {
+      try {
+        if (!shouldOfferSync()) return res;
+        if (res && res.applied > 0) refreshUiAfterPull();
+        if (res && res.noRemoteFile) {
+          var st = document.getElementById('crmSt');
+          if (st) {
+            st.style.display = 'block';
+            st.className = 'crm-st';
+            st.textContent = '☁️ Нет общего файла данных Саши на Drive. Саша: войди в 🔑 Drive → профиль «Саша» → поработай или нажми ☁️. У обоих должен быть доступ к корню CRM.';
+          }
+        } else if (res && res.driveFailed) {
+          var st2 = document.getElementById('crmSt');
+          if (st2) {
+            st2.style.display = 'block';
+            st2.className = 'crm-st err';
+            st2.textContent = '🔑 Войди в Google Drive — иначе не подтянуть данные Саши с облака.';
+          }
+        }
+      } catch (e) {}
+      return res;
+    });
+  }
+
+  window.__avitologSashaPullNow = pullNowWithRetries;
   window.__avitologSashaTeamPull = pullMerge;
   window.__avitologSashaTeamPush = pushMerge;
   window.__avitologSashaTeamBidirectional = bidirectionalSync;

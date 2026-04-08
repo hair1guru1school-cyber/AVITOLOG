@@ -213,7 +213,7 @@ window.toggleEmployeeMode = toggleEmployeeMode;
 function updateUserSwitchBtn() {
   var btn = document.getElementById('userSwitchBtn');
   if (!btn) return;
-  var isSasha = !!(window.AVITOLOG_IS_SASHA);
+  var isSasha = !!(window.AVITOLOG_PROFILE_SASHA);
   if (isSasha) {
     btn.textContent = '👤 Саша';
     btn.style.background = 'rgba(255,165,0,0.15)';
@@ -232,7 +232,7 @@ function updateUserSwitchBtn() {
 window.updateUserSwitchBtn = updateUserSwitchBtn;
 
 function switchUserProfile() {
-  var isSasha = !!(window.AVITOLOG_IS_SASHA);
+  var isSasha = !!(window.AVITOLOG_PROFILE_SASHA);
   if (isSasha) {
     if (!confirm('Переключиться на профиль Фила?\n\nДанные Саши сохранятся — можно вернуться обратно.')) return;
     try {
@@ -299,7 +299,7 @@ window.setSashaEmail = setSashaEmail;
 function updateSashaEmailBtn() {
   var btn = document.getElementById('sashaEmailBtn');
   if (!btn) return;
-  var isSasha = !!(typeof window !== 'undefined' && window.AVITOLOG_IS_SASHA);
+  var isSasha = !!(typeof window !== 'undefined' && window.AVITOLOG_PROFILE_SASHA);
   if (isSasha) {
     // Саша видит только свой статус — кнопку скрываем
     btn.style.display = 'none';
@@ -4599,65 +4599,76 @@ document.addEventListener('DOMContentLoaded', function() {
   applyAnalyticsModeDefault();
   applyTopTabOrder();
   if (typeof applySashaTabVisibility === 'function') applySashaTabVisibility();
-  if (typeof window !== 'undefined' && window.AVITOLOG_IS_SASHA) {
-    if (isLikelyRealSashaDriveSession() && typeof openAssetsTab === 'function') {
-      openAssetsTab();
-    } else if (typeof openGoalsTab === 'function') {
-      openGoalsTab();
-    } else if (typeof openAssetsTab === 'function') {
-      openAssetsTab();
-    }
-  } else {
-    openProjectsTab();
-    switchTab('analysis');
-  }
-  _activeClient = getActiveClient();
-  updateClientBadge();
-  updateGenButtonState();
-  if (_activeClient) loadClient(-1);
-  updateProjectsSidebarOffset();
-  window.addEventListener('resize', updateProjectsSidebarOffset);
-  document.addEventListener('visibilitychange', function() {
-    if (!projectsMode) return;
-    if (document.hidden) {
-      stopProjectsSheetPullTimer();
-      stopProjectsDayShiftTimer();
+
+  function finishInitAfterSashaPull() {
+    if (typeof window !== 'undefined' && window.AVITOLOG_IS_SASHA) {
+      if (isLikelyRealSashaDriveSession() && typeof openAssetsTab === 'function') {
+        openAssetsTab();
+      } else if (typeof openGoalsTab === 'function') {
+        openGoalsTab();
+      } else if (typeof openAssetsTab === 'function') {
+        openAssetsTab();
+      }
     } else {
-      startProjectsSheetPullTimer();
-      startProjectsDayShiftTimer();
+      openProjectsTab();
+      switchTab('analysis');
     }
-  });
-  document.addEventListener('mouseup', finishCalendarPaint);
-  document.addEventListener('keydown', function(e) {
-    if (e.key === 'Escape') {
-      _calendarPaintMode = null;
-      _calendarPainting = false;
-      _calendarPaintErase = false;
-      document.body.classList.remove('calendar-launch-mode');
-      document.body.classList.remove('calendar-erase-mode');
-      hideProjectsCalMenu();
-      document.querySelectorAll('.projects-cal-day.cal-launch-preview, .projects-cal-day.cal-launch-preview-last').forEach(function(el) {
-        el.classList.remove('cal-launch-preview', 'cal-launch-preview-last');
-      });
+    _activeClient = getActiveClient();
+    updateClientBadge();
+    updateGenButtonState();
+    if (_activeClient) loadClient(-1);
+    updateProjectsSidebarOffset();
+    window.addEventListener('resize', updateProjectsSidebarOffset);
+    document.addEventListener('visibilitychange', function() {
+      if (!projectsMode) return;
+      if (document.hidden) {
+        stopProjectsSheetPullTimer();
+        stopProjectsDayShiftTimer();
+      } else {
+        startProjectsSheetPullTimer();
+        startProjectsDayShiftTimer();
+      }
+    });
+    document.addEventListener('mouseup', finishCalendarPaint);
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape') {
+        _calendarPaintMode = null;
+        _calendarPainting = false;
+        _calendarPaintErase = false;
+        document.body.classList.remove('calendar-launch-mode');
+        document.body.classList.remove('calendar-erase-mode');
+        hideProjectsCalMenu();
+        document.querySelectorAll('.projects-cal-day.cal-launch-preview, .projects-cal-day.cal-launch-preview-last').forEach(function(el) {
+          el.classList.remove('cal-launch-preview', 'cal-launch-preview-last');
+        });
+      }
+    });
+    document.addEventListener('click', function(e) {
+      var menu = document.getElementById('clientMenu');
+      if (menu && menu.classList.contains('show') && !e.target.closest('.client-menu') && !e.target.closest('.crm-row')) {
+        menu.classList.remove('show');
+      }
+    });
+    var crmMenu = document.getElementById('clientMenu');
+    if (crmMenu) {
+      crmMenu.addEventListener('click', function(e) {
+        var item = e.target.closest('.client-item[data-folder-id]');
+        if (!item) return;
+        e.preventDefault();
+        e.stopPropagation();
+        var id = item.getAttribute('data-folder-id');
+        var name = item.getAttribute('data-folder-name') || '';
+        if (id) enterFolder(id, name);
+      }, true);
     }
-  });
-  document.addEventListener('click', function(e) {
-    var menu = document.getElementById('clientMenu');
-    if (menu && menu.classList.contains('show') && !e.target.closest('.client-menu') && !e.target.closest('.crm-row')) {
-      menu.classList.remove('show');
-    }
-  });
-  var crmMenu = document.getElementById('clientMenu');
-  if (crmMenu) {
-    crmMenu.addEventListener('click', function(e) {
-      var item = e.target.closest('.client-item[data-folder-id]');
-      if (!item) return;
-      e.preventDefault();
-      e.stopPropagation();
-      var id = item.getAttribute('data-folder-id');
-      var name = item.getAttribute('data-folder-name') || '';
-      if (id) enterFolder(id, name);
-    }, true);
+  }
+
+  if (window.AVITOLOG_IS_SASHA && typeof window.__avitologSashaPullNow === 'function') {
+    window.__avitologSashaPullNow()
+      .catch(function() { return null; })
+      .then(function() { finishInitAfterSashaPull(); });
+  } else {
+    finishInitAfterSashaPull();
   }
 });
 document.addEventListener('DOMContentLoaded', function() {
