@@ -1935,6 +1935,50 @@ function applyDesignAccountVariant(projectId, variantIdx) {
   var tpl = TASK_TEMPLATES.design_account;
   applyTaskTemplateInner(projectId, 'design_account', titles, tpl && tpl.emoji ? tpl.emoji : '&#128396;');
 }
+function closeDesignAccountPickModal() {
+  var m = document.getElementById('taskDesignAccountPickModal');
+  if (m) m.remove();
+  window._designAccountPickCtx = null;
+}
+function applyDesignAccountPickSelection() {
+  var ctx = window._designAccountPickCtx;
+  var modal = document.getElementById('taskDesignAccountPickModal');
+  if (!ctx || !modal || !ctx.projectId) { closeDesignAccountPickModal(); return; }
+  var checked = modal.querySelectorAll('.task-design-account-pick-cb:checked');
+  var tasks = [];
+  checked.forEach(function(cb) {
+    var i = parseInt(cb.getAttribute('data-index'), 10);
+    if (!isNaN(i) && ctx.titles[i]) tasks.push(ctx.titles[i]);
+  });
+  if (tasks.length) applyTaskTemplateInner(ctx.projectId, 'design_account', tasks, ctx.emoji);
+  closeDesignAccountPickModal();
+  if (typeof renderTaskPanel === 'function') renderTaskPanel();
+  if (typeof rerenderProjectsPreserveScroll === 'function') rerenderProjectsPreserveScroll();
+}
+/** Выбор задач варианта по галочкам (не вся цепочка сразу). */
+function showDesignAccountPickModal(projectId, variantIdx) {
+  closeDesignAccountPickModal();
+  var titles = getDesignAccountTaskTitles(variantIdx);
+  if (!titles.length || !projectId) return;
+  var tpl = TASK_TEMPLATES.design_account;
+  var emoji = tpl && tpl.emoji ? tpl.emoji : '&#128396;';
+  var v = DESIGN_ACCOUNT_VARIANTS[variantIdx];
+  var vlabel = v && v.label ? v.label : 'Дизайн аккаунта';
+  var listHtml = titles.map(function(t, i) {
+    return '<label class="task-partial-row"><input type="checkbox" class="task-design-account-pick-cb" data-index="' + i + '" checked> ' + escAttr(t) + '</label>';
+  }).join('');
+  var modal = document.createElement('div');
+  modal.id = 'taskDesignAccountPickModal';
+  modal.className = 'task-add-modal-overlay';
+  modal.innerHTML = '<div class="task-add-modal" style="max-width:380px"><div class="task-add-modal-title">' + escAttr(vlabel) + '</div><p style="font-size:11px;opacity:0.7;margin:6px 0 10px;line-height:1.35">Снимите галочки с лишних — добавятся только отмеченные. Всю цепочку сразу — кнопка &#128279; у варианта.</p><div class="task-partial-list">' + listHtml + '</div><div class="task-add-actions" style="margin-top:12px"><button type="button" class="btn-secondary task-design-account-pick-cancel">Отмена</button><button type="button" class="btn-primary task-design-account-pick-add">Добавить</button></div></div>';
+  modal.onclick = function(e) { if (e.target === modal) closeDesignAccountPickModal(); };
+  document.body.appendChild(modal);
+  window._designAccountPickCtx = { projectId: projectId, titles: titles, emoji: emoji };
+  var c = modal.querySelector('.task-design-account-pick-cancel');
+  var a = modal.querySelector('.task-design-account-pick-add');
+  if (c) c.onclick = function(e) { e.stopPropagation(); closeDesignAccountPickModal(); };
+  if (a) a.onclick = function(e) { e.stopPropagation(); applyDesignAccountPickSelection(); };
+}
 function getOrderedTaskTemplateKeys() {
   var keys = Object.keys(TASK_TEMPLATES || {});
   var out = [];
@@ -1999,17 +2043,30 @@ function showDesignAccountModal(projectId) {
   var esc = function(s){ return escAttr(String(s || '')); };
   var head = (tpl.emoji ? (tpl.emoji + ' ') : '') + esc(tpl.name || 'Дизайн аккаунта');
   var rows = DESIGN_ACCOUNT_VARIANTS.map(function(v, idx){
-    return '<button type="button" class="task-design-account-variant task-design-account-variant-modal" data-idx="' + idx + '">' + esc(v.label) + '</button>';
+    return '<div class="task-design-account-modal-row">' +
+      '<button type="button" class="task-design-account-variant task-design-account-variant-modal task-design-account-variant-pick" data-idx="' + idx + '">' + esc(v.label) + '</button>' +
+      '<button type="button" class="task-design-account-chain-btn" data-idx="' + idx + '" title="Добавить всю цепочку" aria-label="Вся цепочка">&#128279;</button></div>';
   }).join('');
   var modal = document.createElement('div');
   modal.id = 'taskDesignAccountModal';
   modal.className = 'task-add-modal-overlay';
-  modal.innerHTML = '<div class="task-add-modal" style="max-width:340px"><div class="task-add-modal-title">' + head + '</div><div class="task-design-account-modal-btns">' + rows + '</div><button type="button" class="btn-secondary" style="margin-top:12px;width:100%">Отмена</button></div>';
+  modal.innerHTML = '<div class="task-add-modal" style="max-width:380px"><div class="task-add-modal-title">' + head + '</div><div class="task-design-account-modal-btns">' + rows + '</div><button type="button" class="btn-secondary" style="margin-top:12px;width:100%">Отмена</button></div>';
   modal.onclick = function(e){ if (e.target === modal) closeDesignAccountModal(); };
   document.body.appendChild(modal);
   var cancelBtn = modal.querySelector('.btn-secondary');
   if (cancelBtn) cancelBtn.onclick = function(e){ e.stopPropagation(); closeDesignAccountModal(); };
-  modal.querySelectorAll('.task-design-account-variant-modal').forEach(function(btn){
+  modal.querySelectorAll('.task-design-account-variant-pick').forEach(function(btn){
+    btn.onclick = function(e){
+      e.preventDefault();
+      e.stopPropagation();
+      var idx = parseInt(btn.getAttribute('data-idx') || '-1', 10);
+      if (idx >= 0) {
+        closeDesignAccountModal();
+        showDesignAccountPickModal(projectId, idx);
+      }
+    };
+  });
+  modal.querySelectorAll('.task-design-account-chain-btn').forEach(function(btn){
     btn.onclick = function(e){
       e.preventDefault();
       e.stopPropagation();
@@ -2026,7 +2083,9 @@ function openDesignAccountVariantMenu(projectId, anchorEl) {
   var esc = function(s){ return escAttr(String(s || '')); };
   var head = (tpl.emoji ? (tpl.emoji + ' ') : '') + esc(tpl.name || 'Дизайн аккаунта');
   var rows = DESIGN_ACCOUNT_VARIANTS.map(function(v, idx){
-    return '<button type="button" class="task-design-account-variant" data-idx="' + idx + '">' + esc(v.label) + '</button>';
+    return '<div class="task-design-account-menu-row">' +
+      '<button type="button" class="task-design-account-variant task-design-account-variant-pick" data-idx="' + idx + '">' + esc(v.label) + '</button>' +
+      '<button type="button" class="task-design-account-chain-mini" data-idx="' + idx + '" title="Вся цепочка">&#128279;</button></div>';
   }).join('');
   var menu = document.createElement('div');
   menu.id = 'taskTemplateMiniMenu';
@@ -2040,7 +2099,18 @@ function openDesignAccountVariantMenu(projectId, anchorEl) {
   if (top + mr.height > window.innerHeight - 8) top = Math.max(8, ar.top - mr.height - 6);
   menu.style.left = Math.round(left) + 'px';
   menu.style.top = Math.round(top) + 'px';
-  menu.querySelectorAll('.task-design-account-variant').forEach(function(btn){
+  menu.querySelectorAll('.task-design-account-variant-pick').forEach(function(btn){
+    btn.onclick = function(e){
+      e.preventDefault();
+      e.stopPropagation();
+      var idx = parseInt(btn.getAttribute('data-idx') || '-1', 10);
+      if (idx >= 0) {
+        closeTaskTemplateMiniMenu();
+        showDesignAccountPickModal(projectId, idx);
+      }
+    };
+  });
+  menu.querySelectorAll('.task-design-account-chain-mini').forEach(function(btn){
     btn.onclick = function(e){
       e.preventDefault();
       e.stopPropagation();

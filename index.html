@@ -1540,9 +1540,18 @@ body.task-panel-font-l .task-panel-content{--tf:1.15}
 .task-design-account-variant{width:100%;text-align:left;border:1px solid rgba(53,208,255,0.28);background:rgba(255,255,255,0.05);color:#dce9fa;font-size:12px;font-weight:600;padding:10px 12px;border-radius:8px;cursor:pointer;font-family:inherit;line-height:1.35;transition:background .15s,border-color .15s}
 .task-design-account-variant:hover{background:rgba(53,208,255,0.12);border-color:rgba(53,208,255,0.5);color:#fff}
 .task-design-account-modal-btns{display:flex;flex-direction:column;gap:8px;margin-top:4px}
-.task-design-account-variant-modal{width:100%}
+.task-design-account-variant-modal{width:auto;flex:1;min-width:0;text-align:left}
+.task-design-account-modal-row{display:flex;align-items:stretch;gap:8px}
+.task-design-account-chain-btn{flex-shrink:0;width:46px;min-width:46px;border:1px solid rgba(53,208,255,0.45);background:rgba(53,208,255,0.12);border-radius:8px;font-size:20px;line-height:1;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;transition:background .15s,border-color .15s}
+.task-design-account-chain-btn:hover{background:rgba(53,208,255,0.22);border-color:#35d0ff}
+.task-design-account-menu-row{display:flex;align-items:stretch;gap:6px}
+.task-design-account-menu-row .task-design-account-variant-pick{flex:1;min-width:0;width:auto}
+.task-design-account-chain-mini{flex-shrink:0;width:40px;min-width:40px;border:1px solid rgba(53,208,255,0.38);background:rgba(53,208,255,0.1);border-radius:8px;font-size:17px;line-height:1;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center}
+.task-design-account-chain-mini:hover{background:rgba(53,208,255,0.2);border-color:#35d0ff}
 body.day-mode .task-design-account-variant{background:#fff;border-color:var(--border);color:var(--text)}
 body.day-mode .task-design-account-variant:hover{background:rgba(0,136,92,0.08);border-color:rgba(0,136,92,0.35)}
+body.day-mode .task-design-account-chain-btn,body.day-mode .task-design-account-chain-mini{background:var(--surface2);border-color:var(--border);color:var(--text)}
+body.day-mode .task-design-account-chain-btn:hover,body.day-mode .task-design-account-chain-mini:hover{background:rgba(0,136,92,0.1);border-color:rgba(0,136,92,0.4)}
 .projects-head-spacer{width:58px;min-width:58px;flex-shrink:0}
 .projects-head-actions{display:flex;align-items:center;gap:10px;flex-wrap:nowrap;align-self:stretch;min-width:0}
 .projects-head-actions .projects-add-btn{min-width:180px}
@@ -2720,7 +2729,7 @@ if (!window.AVITOLOG_GOALS) {
 <script src="https://unpkg.com/mammoth@1.6.0/mammoth.min.js"></script>
 <script src="js/hero-asset.js?v=20260404-1"></script>
 <script src="js/core.js?v=20260404-5"></script>
-<script src="js/projects.js?v=20260404-15"></script>
+<script src="js/projects.js?v=20260408-1"></script>
 <script src="js/ai-import.js?v=20260404-24"></script>
 <script src="js/contract-generator.js?v=20260404-1"></script>
 <script src="js/ads.js?v=20260404-1"></script>
