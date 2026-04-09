@@ -4661,6 +4661,18 @@ document.addEventListener('DOMContentLoaded', function() {
         if (id) enterFolder(id, name);
       }, true);
     }
+    if (typeof window !== 'undefined' && window.AVITOLOG_IS_SASHA) {
+      setTimeout(function() {
+        try {
+          if (typeof goalsMode !== 'undefined' && goalsMode && window.AVITOLOG_GOALS && typeof window.AVITOLOG_GOALS.render === 'function') {
+            window.AVITOLOG_GOALS.render();
+          }
+          if (typeof window.__renderAssetsPage === 'function' && typeof assetsMode !== 'undefined' && assetsMode) {
+            window.__renderAssetsPage();
+          }
+        } catch (eRf) {}
+      }, 120);
+    }
   }
 
   if (window.AVITOLOG_IS_SASHA && typeof window.__avitologSashaPullNow === 'function') {

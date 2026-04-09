@@ -126,6 +126,60 @@
     return baseKey + (window.AVITOLOG_KEY_SUFFIX || '');
   };
 
+  /** Разово: на устройстве, где в Drive залогинен email Саши, копируем live-данные из ключей без суффикса в *_sasha,
+   *  если *_sasha пусты. Иначе у него всё жило в avitolog_goals_v1 / avitolog_clients, а профиль «Саша» и ☁️ читали только *_sasha — «пусто». У Фила (другой email) не выполняется. */
+  (function migrateSashaNamespaceFromLegacyIfOwnAccount() {
+    try {
+      var em = String(localStorage.getItem('avitolog_drive_email') || '').trim().toLowerCase();
+      if (!em || em !== sashaEmail) return;
+      if (suffix !== '_sasha') return;
+      var flag = 'avitolog_migrate_legacy_into_sasha_v1_done';
+      if (localStorage.getItem(flag) === '1') return;
+      function projectLikeEmpty(sr) {
+        if (!sr) return true;
+        try {
+          var o = JSON.parse(sr);
+          return !o || !Array.isArray(o.projects) || o.projects.length === 0;
+        } catch (e) { return true; }
+      }
+      function arrEmpty(sr) {
+        if (!sr) return true;
+        try {
+          var o = JSON.parse(sr);
+          return !Array.isArray(o) || o.length === 0;
+        } catch (e) { return true; }
+      }
+      var pairs = [
+        { base: 'avitolog_goals_v1', empty: projectLikeEmpty },
+        { base: 'avitolog_projects', empty: projectLikeEmpty },
+        { base: 'avitolog_clients', empty: arrEmpty },
+        { base: 'crm_tasks_v1', empty: arrEmpty },
+        { base: 'avitolog_goal_achievements_v1', empty: arrEmpty },
+        { base: 'avitolog_assets_my_v2', empty: arrEmpty },
+        { base: 'avitolog_assets_sasha_v2', empty: arrEmpty },
+        { base: 'avitolog_assets_base_v2', empty: arrEmpty }
+      ];
+      pairs.forEach(function(p) {
+        try {
+          var sk = p.base + '_sasha';
+          var br = localStorage.getItem(p.base);
+          var sr = localStorage.getItem(sk);
+          if (!br || !p.empty(sr)) return;
+          if (p.empty(br)) return;
+          localStorage.setItem(sk, br);
+        } catch (eP) {}
+      });
+      try {
+        var acB = localStorage.getItem('avitolog_active_client');
+        var acS = localStorage.getItem('avitolog_active_client_sasha');
+        if (acB && (!acS || acS === 'null' || acS === '{}')) {
+          localStorage.setItem('avitolog_active_client_sasha', acB);
+        }
+      } catch (eAc) {}
+      try { localStorage.setItem(flag, '1'); } catch (eF) {}
+    } catch (e) {}
+  })();
+
   // Аварийное восстановление: выбираем самый полный набор из всех вариантов ключа
   function safeParse(raw) {
     try { return JSON.parse(raw); } catch (e) { return null; }
