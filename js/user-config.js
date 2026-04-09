@@ -53,11 +53,13 @@
   var email = '';
   try { email = String(localStorage.getItem('avitolog_drive_email') || '').trim().toLowerCase(); } catch(e3) {}
 
-  var employeeMode = false;
-  var employeeEmailOverride = '';
-  try { employeeMode = localStorage.getItem('avitolog_employee_mode_v1') === '1'; } catch(e6) {}
-  try { employeeEmailOverride = String(localStorage.getItem('avitolog_employee_email_override') || '').trim().toLowerCase(); } catch(e7) {}
-  if (employeeMode && !employeeEmailOverride && email) employeeEmailOverride = email;
+  // Режим «сотрудник» отключён: только переключатель Фил/Саша + ключи *_sasha (см. запрос).
+  try {
+    if (localStorage.getItem('avitolog_employee_mode_v1') === '1') {
+      localStorage.removeItem('avitolog_employee_mode_v1');
+      localStorage.removeItem('avitolog_employee_email_override');
+    }
+  } catch (eClrEmp) {}
 
   // Автодетект Саши по email — работает на любом устройстве
   var SASHA_KNOWN_EMAIL = 'cyplakovaleksandr153@gmail.com';
@@ -66,60 +68,32 @@
     var storedSasha = String(localStorage.getItem('avitolog_sasha_email') || '').trim().toLowerCase();
     if (storedSasha) sashaEmail = storedSasha;
   } catch (eSasha) {}
-  if (!employeeMode) {
-    if (sashaEmail && email) {
-      if (email === sashaEmail && legacyUser !== 'sasha') {
-        legacyUser = 'sasha';
-        try { localStorage.setItem('avitolog_current_user', 'sasha'); } catch (eSet) {}
-      } else if (email !== sashaEmail && legacyUser === 'sasha') {
-        var bookmarkSasha = false;
-        try { bookmarkSasha = localStorage.getItem(PROFILE_BOOKMARK_KEY) === 'sasha'; } catch (eBm) {}
-        if (!bookmarkSasha) {
-          legacyUser = 'fil';
-          try { localStorage.setItem('avitolog_current_user', 'fil'); } catch (eReset) {}
-        }
+  if (sashaEmail && email) {
+    if (email === sashaEmail && legacyUser !== 'sasha') {
+      legacyUser = 'sasha';
+      try { localStorage.setItem('avitolog_current_user', 'sasha'); } catch (eSet) {}
+    } else if (email !== sashaEmail && legacyUser === 'sasha') {
+      var bookmarkSasha = false;
+      try { bookmarkSasha = localStorage.getItem(PROFILE_BOOKMARK_KEY) === 'sasha'; } catch (eBm) {}
+      if (!bookmarkSasha) {
+        legacyUser = 'fil';
+        try { localStorage.setItem('avitolog_current_user', 'fil'); } catch (eReset) {}
       }
     }
   }
-  var employeeKeyPart = sanitizeEmailForKey(employeeEmailOverride || email);
-  var sashaKeyPart = sanitizeEmailForKey(sashaEmail);
   var suffix = '';
-  // Сначала профиль из кнопки «👤 Саша»: иначе при включённом режиме сотрудника (email Фила)
-  // оставались ключи __emp_* — визуально «Саша», а данные Фила.
   if (legacyUser === 'sasha') {
     suffix = '_sasha';
-  } else if (employeeMode) {
-    // Режим сотрудника с email Саши → те же ключи *_sasha, что и у кнопки «Саша»
-    if (employeeKeyPart && sashaKeyPart && employeeKeyPart === sashaKeyPart) {
-      suffix = '_sasha';
-    } else {
-      suffix = employeeKeyPart ? ('__emp_' + employeeKeyPart) : '__emp_default';
-    }
-  } else {
-    suffix = '';
   }
-  if (suffix === '_sasha' && employeeMode && employeeKeyPart) {
-    var empSuffix = '__emp_' + employeeKeyPart;
-    var migrateBases = ['avitolog_clients', 'avitolog_goals_v1', 'avitolog_projects', 'crm_tasks_v1', 'avitolog_goal_achievements_v1', 'avitolog_assets_my_v2', 'avitolog_assets_sasha_v2', 'avitolog_assets_base_v2', 'avitolog_assets_filter_paid', 'avitolog_assets_last_month_v2', 'avitolog_analysis_sections', 'avitolog_active_client'];
-    migrateBases.forEach(function(base) {
-      try {
-        var nk = base + '_sasha';
-        var ok = base + empSuffix;
-        if (!localStorage.getItem(nk) && localStorage.getItem(ok)) {
-          localStorage.setItem(nk, localStorage.getItem(ok));
-        }
-      } catch (eM) {}
-    });
-  }
-  window.AVITOLOG_USER = employeeMode ? 'employee' : (legacyUser || (email ? 'email_user' : 'default'));
-  /** Данные в пространстве *_sasha (профиль Саша или сотрудник с email Саши). */
+  window.AVITOLOG_USER = legacyUser || (email ? 'email_user' : 'default');
+  /** Данные в пространстве *_sasha (профиль «Саша» в шапке). */
   window.AVITOLOG_IS_SASHA = (suffix === '_sasha');
-  /** В шапке «👤 Саша», если в storage выбран профиль Саши (в т.ч. при режиме сотрудника). */
+  /** В шапке «👤 Саша», если выбран профиль Саши. */
   window.AVITOLOG_PROFILE_SASHA = (legacyUser === 'sasha');
   window.AVITOLOG_KEY_EMAIL = email || '';
-  window.AVITOLOG_EMPLOYEE_MODE = !!employeeMode;
-  window.AVITOLOG_EMPLOYEE_EMAIL = employeeEmailOverride || '';
-  window.AVITOLOG_EMPLOYEE_KEY_PART = employeeKeyPart || '';
+  window.AVITOLOG_EMPLOYEE_MODE = false;
+  window.AVITOLOG_EMPLOYEE_EMAIL = '';
+  window.AVITOLOG_EMPLOYEE_KEY_PART = '';
   window.AVITOLOG_KEY_SUFFIX = suffix;
   window.AVITOLOG_KEY = function(baseKey, shared) {
     if (shared) return baseKey;

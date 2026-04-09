@@ -700,6 +700,8 @@ body.day-mode .sidebar-inner-toggle:hover,body.day-mode .sidebar-toggle-peek:hov
   .header-drive-btn{display:none}
   .header-employee-btn{display:none}
   .header-sasha-sync-btn{display:inline-flex!important;max-width:48px;padding:0 8px;border-color:rgba(53,208,255,0.45);color:#9fe7ff}
+  .header-drive-btn.header-mobile-show{display:inline-flex!important;max-width:72px;padding:0 8px;font-size:11px;font-weight:800}
+  .header-employee-btn.header-mobile-show{display:inline-flex!important;max-width:100px;padding:0 8px;font-size:11px;font-weight:800;flex-shrink:0}
   .header-sidebar-toggle{display:none}
   body.mobile-webview-on .sidebar-overlay{display:none !important}
   body.mobile-webview-on .content-wrap{grid-area:auto;min-width:0;padding-bottom:0}
@@ -2463,7 +2465,7 @@ body.day-mode .assets-col-sasha-hint{color:var(--accent)}
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 <script src="https://accounts.google.com/gsi/client" async></script>
-<script src="js/user-config.js?v=20260408-4"></script>
+<script src="js/user-config.js?v=20260408-5"></script>
 <script src="js/goals.js?v=20260407-3"></script>
 <script>
 if (!window.AVITOLOG_GOALS) {
@@ -2492,10 +2494,9 @@ if (!window.AVITOLOG_GOALS) {
   <div style="flex:1"></div>
   <button type="button" id="openSecondTabBtn" class="header-day-toggle" onclick="__avitologOpenNewTab && __avitologOpenNewTab()" title="Открыть копию в новой вкладке — данные синхронизируются между вкладками">📑</button>
   <button type="button" id="dayModeToggle" class="header-day-toggle" onclick="toggleDayMode()" title="Дневной режим — светлый интерфейс">☀️</button>
-  <button type="button" id="authBtn" class="header-drive-btn" onclick="startAuth(event)" title="Войти в Google Drive">🔑 Drive</button>
-  <button type="button" id="userSwitchBtn" class="header-employee-btn" onclick="switchUserProfile()" title="Переключить профиль пользователя"></button>
-  <button type="button" id="sashaTeamSyncBtn" class="header-employee-btn header-sasha-sync-btn" style="display:none;border-color:rgba(53,208,255,0.45);color:#9fe7ff" onclick="window.__avitologSashaTeamSyncUi&&window.__avitologSashaTeamSyncUi()" title="Синхронизация профиля Саша с Google Drive">☁️</button>
-  <button type="button" id="employeeModeBtn" class="header-employee-btn" title="Режим сотрудника: смотреть и править данные как сотрудник" onclick="toggleEmployeeMode()">👤 Сотрудник</button>
+  <button type="button" id="authBtn" class="header-drive-btn header-mobile-show" onclick="startAuth(event)" title="Войти в Google Drive">🔑 Drive</button>
+  <button type="button" id="userSwitchBtn" class="header-employee-btn header-mobile-show" onclick="switchUserProfile()" title="Переключить профиль пользователя"></button>
+  <button type="button" id="sashaTeamSyncBtn" class="header-employee-btn header-sasha-sync-btn header-mobile-show" style="border-color:rgba(53,208,255,0.45);color:#9fe7ff" onclick="window.__avitologSashaTeamSyncUi&&window.__avitologSashaTeamSyncUi()" title="Синхронизация профиля Саша с Google Drive">☁️</button>
   <form onsubmit="return false" style="display:flex;align-items:center;gap:8px">
     <input type="password" id="apiKeyInput" placeholder="sk-ant-... (API ключ с console.anthropic.com)"
       title="Anthropic API ключ. Получить: console.anthropic.com → API Keys"
@@ -2753,8 +2754,8 @@ if (!window.AVITOLOG_GOALS) {
 <script src="js/contract-generator.js?v=20260404-1"></script>
 <script src="js/ads.js?v=20260404-1"></script>
 <script src="js/kp-generator.js?v=20260404-1"></script>
-<script src="js/main.js?v=20260408-7"></script>
-<script src="js/sasha-team-sync.js?v=20260408-4"></script>
+<script src="js/main.js?v=20260408-8"></script>
+<script src="js/sasha-team-sync.js?v=20260408-6"></script>
 <script src="js/data-backup.js?v=20260404-1"></script>
 </body>
 </html>

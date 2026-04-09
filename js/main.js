@@ -132,13 +132,8 @@ function crmTaskTagsToInput(tags) {
   return crmTaskNormalizeTags(tags).map(function(t) { return (t.emoji || '🏷️') + ' ' + t.label; }).join(', ');
 }
 
-var EMPLOYEE_MODE_KEY = 'avitolog_employee_mode_v1';
-var EMPLOYEE_EMAIL_OVERRIDE_KEY = 'avitolog_employee_email_override';
 var KNOWN_EMPLOYEE_EMAILS_KEY = 'avitolog_known_employee_emails_v1';
 
-function employeeModeIsEnabled() {
-  try { return localStorage.getItem(EMPLOYEE_MODE_KEY) === '1'; } catch(e) { return false; }
-}
 function getCurrentDriveEmail() {
   try { return String(localStorage.getItem('avitolog_drive_email') || '').trim().toLowerCase(); } catch(e) { return ''; }
 }
@@ -162,52 +157,6 @@ function addKnownEmployeeEmail(email) {
   if (list.indexOf(em) < 0) list.unshift(em);
   saveKnownEmployeeEmails(list);
 }
-function getEmployeeOverrideEmail() {
-  try { return String(localStorage.getItem(EMPLOYEE_EMAIL_OVERRIDE_KEY) || '').trim().toLowerCase(); } catch(e) { return ''; }
-}
-function updateEmployeeModeButtonUi() {
-  var btn = document.getElementById('employeeModeBtn');
-  if (!btn) return;
-  var on = employeeModeIsEnabled();
-  var email = getEmployeeOverrideEmail() || getCurrentDriveEmail();
-  btn.classList.toggle('on', !!on);
-  if (on) {
-    var caption = email ? email.split('@')[0] : 'без email';
-    btn.textContent = '👤 Сотр: ' + caption;
-    btn.title = email
-      ? ('Режим сотрудника включен: ' + email + '. Нажмите, чтобы выйти.')
-      : 'Режим сотрудника включен. Нажмите, чтобы выйти.';
-  } else {
-    btn.textContent = '👤 Сотрудник';
-    btn.title = 'Режим сотрудника: смотреть и править систему как сотрудник (не Саша)';
-  }
-}
-function toggleEmployeeMode() {
-  var isOn = employeeModeIsEnabled();
-  if (isOn) {
-    if (!confirm('Выключить режим сотрудника и вернуться к обычному режиму?')) return;
-    try { localStorage.removeItem(EMPLOYEE_MODE_KEY); } catch(e1) {}
-    try { localStorage.removeItem(EMPLOYEE_EMAIL_OVERRIDE_KEY); } catch(e2) {}
-    location.reload();
-    return;
-  }
-  var known = loadKnownEmployeeEmails();
-  var currentEmail = getCurrentDriveEmail();
-  var defaultEmail = currentEmail || (known[0] || '');
-  var helper = known.length ? ('\n\nСохраненные сотрудники:\n' + known.join('\n')) : '';
-  var raw = prompt('Email сотрудника (Google):' + helper, defaultEmail);
-  if (raw === null) return;
-  var email = String(raw || '').trim().toLowerCase();
-  if (!email || email.indexOf('@') < 1) {
-    alert('Укажите корректный email сотрудника.');
-    return;
-  }
-  addKnownEmployeeEmail(email);
-  try { localStorage.setItem(EMPLOYEE_MODE_KEY, '1'); } catch(e3) {}
-  try { localStorage.setItem(EMPLOYEE_EMAIL_OVERRIDE_KEY, email); } catch(e4) {}
-  location.reload();
-}
-window.toggleEmployeeMode = toggleEmployeeMode;
 
 // ── USER PROFILE SWITCHER ──
 function updateUserSwitchBtn() {
@@ -374,7 +323,7 @@ function crmTaskLoad() {
   try {
     var arr = JSON.parse(localStorage.getItem(CRM_TASKS_KEY) || '[]');
     if (Array.isArray(arr) && arr.length) return arr;
-    if (!employeeModeIsEnabled() && CRM_TASKS_KEY !== CRM_TASKS_SHARED_KEY) {
+    if (CRM_TASKS_KEY !== CRM_TASKS_SHARED_KEY) {
       var legacyArr = JSON.parse(localStorage.getItem(CRM_TASKS_SHARED_KEY) || '[]');
       if (Array.isArray(legacyArr)) return legacyArr;
     }
@@ -4547,7 +4496,6 @@ function switchUser(u) {
 }
 document.addEventListener('DOMContentLoaded', function() {
   initDayMode();
-  updateEmployeeModeButtonUi();
   updateUserSwitchBtn();
   updateSashaEmailBtn();
   if (typeof applySashaTabVisibility === 'function') applySashaTabVisibility();

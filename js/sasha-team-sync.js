@@ -327,16 +327,30 @@
   function updateSashaTeamSyncBtn() {
     var btn = document.getElementById('sashaTeamSyncBtn');
     if (!btn) return;
-    var show = shouldOfferSync();
-    btn.style.display = show ? 'inline-flex' : 'none';
-    if (show) {
+    var can = shouldOfferSync();
+    btn.style.display = 'inline-flex';
+    btn.style.alignItems = 'center';
+    btn.style.justifyContent = 'center';
+    if (can) {
+      btn.style.opacity = '1';
+      btn.style.filter = '';
       btn.title = 'Синк Саша ↔ Google Drive (авто: запись ~2 с после правок, подтягивание ~каждые 8 с). Вручную — полный цикл.';
+    } else {
+      btn.style.opacity = '0.55';
+      btn.style.filter = 'grayscale(0.35)';
+      btn.title = 'Сначала нажми «👤 Саша» в шапке и войди в 🔑 Drive — тогда подтянутся его CRM/Касса. Нажми для переключения на профиль Саши.';
     }
   }
 
   async function syncUi() {
     if (!shouldOfferSync()) {
-      alert('Синк только для данных Саши: профиль «Саша» в шапке или режим сотрудника с его email.');
+      if (confirm('Сейчас открыт профиль «Фил», не данные Саши.\n\nПереключить на «Саша» и перезагрузить? Тогда подключатся ключи *_sasha, синк с Drive и всё, что вводит Саша.')) {
+        try {
+          localStorage.setItem('avitolog_current_user', 'sasha');
+          localStorage.setItem('avitolog_profile_bookmark', 'sasha');
+        } catch (e) {}
+        location.reload();
+      }
       return;
     }
     try {
