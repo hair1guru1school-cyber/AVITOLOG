@@ -2647,11 +2647,21 @@ function getCategoryNameById(catId) {
 
 async function driveGetOrCreateFolder(name, parentId) {
   var token = await getDriveToken();
-  var q = "name='" + name.replace(/'/g,"\\'") + "' and '" + parentId + "' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false";
+  var esc = name.replace(/'/g, "\\'");
+  var q = "name='" + esc + "' and '" + parentId + "' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false";
   var sr = await fetch('https://www.googleapis.com/drive/v3/files?q=' + encodeURIComponent(q) + '&fields=files(id)', {
     headers: {'Authorization': 'Bearer ' + token}
   });
   var sd = await sr.json();
+  if (!sr.ok) {
+    var em = (sd.error && sd.error.message) ? sd.error.message : ('HTTP ' + sr.status);
+    if (sr.status === 401 || (sd.error && sd.error.code === 401)) {
+      _driveToken = null;
+      clearStoredDriveAuth();
+      updateDriveUI();
+    }
+    throw new Error('Drive (поиск папки): ' + em);
+  }
   if (sd.files && sd.files.length > 0) return sd.files[0].id;
   var cr = await fetch('https://www.googleapis.com/drive/v3/files', {
     method: 'POST',
@@ -2659,6 +2669,19 @@ async function driveGetOrCreateFolder(name, parentId) {
     body: JSON.stringify({name: name, mimeType: 'application/vnd.google-apps.folder', parents: [parentId]})
   });
   var cd = await cr.json();
+  if (!cr.ok || !cd.id) {
+    var em2 = (cd.error && cd.error.message) ? cd.error.message : ('HTTP ' + cr.status);
+    if (cr.status === 401 || (cd.error && cd.error.code === 401)) {
+      _driveToken = null;
+      clearStoredDriveAuth();
+      updateDriveUI();
+    }
+    var is403 = (cr.status === 403 || (cd.error && cd.error.code === 403));
+    var hint = is403
+      ? ' Владелец диска должен открыть доступ к корневой папке CRM (ID в коде) для этого Google-аккаунта (редактор).'
+      : '';
+    throw new Error('Drive (папка «' + name + '» в CRM): ' + em2 + hint);
+  }
   return cd.id;
 }
 

@@ -84,6 +84,24 @@
     return '1d8oElVgTO2vzbs0HjOYPnReVmGUPltIk';
   }
 
+  function showTeamSyncLine(kind, text) {
+    try {
+      var st = document.getElementById('crmSt');
+      if (!st) return;
+      st.style.display = 'block';
+      st.className = kind === 'err' ? 'crm-st err' : 'crm-st';
+      st.textContent = text;
+    } catch (e) {}
+  }
+
+  window.__avitologSashaTeamResetCache = function() {
+    try {
+      localStorage.removeItem(LS_FILE_ID);
+      localStorage.removeItem(LS_FOLDER_ID);
+    } catch (e) {}
+    showTeamSyncLine('ok', '☁️ Кэш пути к файлу синка сброшен. Нажми ☁️ ещё раз.');
+  };
+
   async function ensureFolderId() {
     try {
       var cached = localStorage.getItem(LS_FOLDER_ID);
@@ -167,6 +185,12 @@
     var fileId = await ensureSyncFileId();
     if (!fileId) return null;
     var raw = await driveGetFileContent(fileId, 'application/json');
+    if (!raw) {
+      try { localStorage.removeItem(LS_FILE_ID); } catch (e) {}
+      fileId = await ensureSyncFileId();
+      if (!fileId) return null;
+      raw = await driveGetFileContent(fileId, 'application/json');
+    }
     if (!raw) return null;
     try {
       var obj = JSON.parse(raw);
@@ -178,39 +202,53 @@
   }
 
   async function pullMerge() {
-    var remote = await readRemotePayload();
-    if (!remote) {
-      return { ok: true, message: 'В облаке ещё нет файла синка — нажми ☁️ у Саши после входа в Drive.', applied: 0, noRemoteFile: true };
+    try {
+      var remote = await readRemotePayload();
+      if (!remote) {
+        return { ok: true, message: 'В облаке ещё нет файла синка — открой доступ к папке CRM обоим аккаунтам, профиль «Саша», затем ☁️.', applied: 0, noRemoteFile: true };
+      }
+      var local = collectSashaKeys();
+      var merged = Object.assign({}, local, remote.keys);
+      var n = applyKeysToLocal(merged);
+      return { ok: true, message: 'Подтянуто, изменено полей: ' + n, applied: n };
+    } catch (e) {
+      var msg = (e && e.message) ? e.message : String(e);
+      showTeamSyncLine('err', '☁️ Ошибка чтения синка: ' + msg);
+      return { ok: false, applied: 0, message: msg, syncError: true };
     }
-    var local = collectSashaKeys();
-    var merged = Object.assign({}, local, remote.keys);
-    var n = applyKeysToLocal(merged);
-    return { ok: true, message: 'Подтянуто, изменено полей: ' + n, applied: n };
   }
 
   async function pushMerge() {
-    var parentId = await ensureFolderId();
-    var fileId = await ensureSyncFileId();
-    var remote = await readRemotePayload();
-    var local = collectSashaKeys();
-    var baseKeys = (remote && remote.keys) ? remote.keys : {};
-    var merged = Object.assign({}, baseKeys, local);
-    var payload = {
-      format: FORMAT,
-      updatedAt: new Date().toISOString(),
-      updatedAtMs: Date.now(),
-      byEmail: driveEmail() || '',
-      note: 'CRM+Проекты+Касса (ключи *_sasha). Автосинк.',
-      keyCount: Object.keys(merged).length,
-      keys: merged
-    };
-    var text = JSON.stringify(payload);
-    if (!fileId) {
-      await createSyncFile(parentId, text);
-    } else {
-      await updateSyncFile(fileId, text);
+    try {
+      var parentId = await ensureFolderId();
+      var fileId = await ensureSyncFileId();
+      var remote = await readRemotePayload();
+      var local = collectSashaKeys();
+      var baseKeys = (remote && remote.keys) ? remote.keys : {};
+      var merged = Object.assign({}, baseKeys, local);
+      var payload = {
+        format: FORMAT,
+        updatedAt: new Date().toISOString(),
+        updatedAtMs: Date.now(),
+        byEmail: driveEmail() || '',
+        note: 'CRM+Проекты+Касса (ключи *_sasha). Автосинк.',
+        keyCount: Object.keys(merged).length,
+        keys: merged
+      };
+      var text = JSON.stringify(payload);
+      if (!fileId) {
+        await createSyncFile(parentId, text);
+      } else {
+        await updateSyncFile(fileId, text);
+      }
+      var nKeys = Object.keys(merged).length;
+      showTeamSyncLine('ok', '☁️ Выгружено в Drive: ' + nKeys + ' ключей.');
+      return { ok: true, message: 'Выгружено ключей: ' + nKeys };
+    } catch (e) {
+      var msg = (e && e.message) ? e.message : String(e);
+      showTeamSyncLine('err', '☁️ Ошибка синка (запись/папка CRM): ' + msg);
+      throw e;
     }
-    return { ok: true, message: 'Выгружено ключей: ' + Object.keys(merged).length };
   }
 
   async function bidirectionalSync() {
