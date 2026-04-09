@@ -84,15 +84,17 @@
   var employeeKeyPart = sanitizeEmailForKey(employeeEmailOverride || email);
   var sashaKeyPart = sanitizeEmailForKey(sashaEmail);
   var suffix = '';
-  if (employeeMode) {
-    // Режим сотрудника с email Саши → те же ключи *_sasha, что и у кнопки «Саша» (иначе синк Drive и данные расходились)
+  // Сначала профиль из кнопки «👤 Саша»: иначе при включённом режиме сотрудника (email Фила)
+  // оставались ключи __emp_* — визуально «Саша», а данные Фила.
+  if (legacyUser === 'sasha') {
+    suffix = '_sasha';
+  } else if (employeeMode) {
+    // Режим сотрудника с email Саши → те же ключи *_sasha, что и у кнопки «Саша»
     if (employeeKeyPart && sashaKeyPart && employeeKeyPart === sashaKeyPart) {
       suffix = '_sasha';
     } else {
       suffix = employeeKeyPart ? ('__emp_' + employeeKeyPart) : '__emp_default';
     }
-  } else if (legacyUser === 'sasha') {
-    suffix = '_sasha';
   } else {
     suffix = '';
   }
@@ -112,8 +114,8 @@
   window.AVITOLOG_USER = employeeMode ? 'employee' : (legacyUser || (email ? 'email_user' : 'default'));
   /** Данные в пространстве *_sasha (профиль Саша или сотрудник с email Саши). */
   window.AVITOLOG_IS_SASHA = (suffix === '_sasha');
-  /** Только кнопка переключения Фил/Саша в шапке — не путать с режимом «сотрудник Саши». */
-  window.AVITOLOG_PROFILE_SASHA = (!employeeMode && legacyUser === 'sasha');
+  /** В шапке «👤 Саша», если в storage выбран профиль Саши (в т.ч. при режиме сотрудника). */
+  window.AVITOLOG_PROFILE_SASHA = (legacyUser === 'sasha');
   window.AVITOLOG_KEY_EMAIL = email || '';
   window.AVITOLOG_EMPLOYEE_MODE = !!employeeMode;
   window.AVITOLOG_EMPLOYEE_EMAIL = employeeEmailOverride || '';
