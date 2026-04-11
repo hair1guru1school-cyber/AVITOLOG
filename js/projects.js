@@ -141,14 +141,40 @@ function startProjectsDayShiftTimer() {
   }, 60000);
 }
 
+/** Профиль Саша: данные могли остаться в avitolog_projects без суффикса — копируем в ключ профиля при первой загрузке. */
+function tryPromoteLegacyProjectsIntoSashaProfile() {
+  if (typeof window === 'undefined' || !window.AVITOLOG_IS_SASHA) return false;
+  try {
+    var targetKey = projectsDataKey();
+    if (targetKey === 'avitolog_projects') return false;
+    var raw = localStorage.getItem('avitolog_projects');
+    if (!raw || raw.charAt(0) !== '{') return false;
+    var d = JSON.parse(raw);
+    if (!d || !Array.isArray(d.projects) || d.projects.length === 0) return false;
+    try { localStorage.setItem(targetKey, raw); } catch (e2) {}
+    return true;
+  } catch (e) { return false; }
+}
+
 function loadProjectsData() {
   try {
     if (typeof window.__projectsMergeCardsFromStorageBackups === 'function') {
       try { window.__projectsMergeCardsFromStorageBackups(); } catch (eMerge) {}
     }
-    var s = localStorage.getItem(projectsDataKey());
-    var data = s ? JSON.parse(s) : null;
     var isSasha = typeof window !== 'undefined' && window.AVITOLOG_IS_SASHA;
+    var s = localStorage.getItem(projectsDataKey());
+    var data = null;
+    try {
+      data = s ? JSON.parse(s) : null;
+    } catch (eParse) {
+      data = null;
+    }
+    if (isSasha && (!data || !Array.isArray(data.projects) || data.projects.length === 0)) {
+      if (tryPromoteLegacyProjectsIntoSashaProfile()) {
+        s = localStorage.getItem(projectsDataKey());
+        try { data = s ? JSON.parse(s) : null; } catch (e2) { data = null; }
+      }
+    }
     if (!data || !Array.isArray(data.projects)) {
       if (isSasha) return { projects: [], hiddenProjects: [], tasks: [], taskLog: [] };
       return getDefaultProjectsData();
@@ -216,6 +242,7 @@ function loadProjectsData() {
     return data;
   } catch (e) {
     if (typeof window !== 'undefined' && window.AVITOLOG_IS_SASHA) {
+      if (tryPromoteLegacyProjectsIntoSashaProfile()) return loadProjectsData();
       return { projects: [], hiddenProjects: [], tasks: [], taskLog: [] };
     }
     return getDefaultProjectsData();

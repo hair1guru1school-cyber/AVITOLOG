@@ -800,8 +800,19 @@ function renderTasksBoardIntoMainContent(mc) {
   projectsData.tasks = Array.isArray(projectsData.tasks) ? projectsData.tasks : [];
   var crmTasks = [];
   try {
-    crmTasks = JSON.parse(localStorage.getItem('crm_tasks_v1') || '[]');
-    if (!Array.isArray(crmTasks)) crmTasks = [];
+    if (typeof crmTaskLoad === 'function') {
+      crmTasks = crmTaskLoad();
+    } else {
+      var _crmK = (typeof window.AVITOLOG_KEY === 'function') ? window.AVITOLOG_KEY('crm_tasks_v1') : 'crm_tasks_v1';
+      crmTasks = JSON.parse(localStorage.getItem(_crmK) || '[]');
+      if (!Array.isArray(crmTasks) || !crmTasks.length) {
+        if (_crmK !== 'crm_tasks_v1') {
+          var _crmLeg = JSON.parse(localStorage.getItem('crm_tasks_v1') || '[]');
+          if (Array.isArray(_crmLeg)) crmTasks = _crmLeg;
+        }
+      }
+      if (!Array.isArray(crmTasks)) crmTasks = [];
+    }
   } catch (e1) { crmTasks = []; }
 
   var query = '';
@@ -1017,12 +1028,17 @@ function tasksBoardSetDone(taskId, source) {
   if (!taskId) return;
   if (source === 'crm') {
     if (typeof crmTaskMutate === 'function') crmTaskMutate(taskId, function(t){ t.status = 'completed'; t.completedAt = crmTaskNowIso(); });
-    else {
+    else if (typeof crmTaskLoad === 'function' && typeof crmTaskSave === 'function') {
+      var listDone = crmTaskLoad();
+      listDone.forEach(function(t){ if (t.id === taskId) { t.status = 'completed'; t.completedAt = new Date().toISOString(); } });
+      crmTaskSave(listDone);
+    } else {
       var list = [];
-      try { list = JSON.parse(localStorage.getItem('crm_tasks_v1') || '[]'); } catch(e0) {}
+      var _kDone = (typeof window.AVITOLOG_KEY === 'function') ? window.AVITOLOG_KEY('crm_tasks_v1') : 'crm_tasks_v1';
+      try { list = JSON.parse(localStorage.getItem(_kDone) || '[]'); } catch(e0) {}
       if (!Array.isArray(list)) list = [];
       list.forEach(function(t){ if (t.id === taskId) { t.status = 'completed'; t.completedAt = new Date().toISOString(); } });
-      try { localStorage.setItem('crm_tasks_v1', JSON.stringify(list)); } catch(e1) {}
+      try { localStorage.setItem(_kDone, JSON.stringify(list)); } catch(e1) {}
     }
   } else if (typeof updateTask === 'function') {
     updateTask(taskId, { status: 'done' });
@@ -1037,12 +1053,17 @@ function tasksBoardSetWork(taskId, source) {
   if (!taskId) return;
   if (source === 'crm') {
     if (typeof crmTaskMutate === 'function') crmTaskMutate(taskId, function(t){ t.status = 'active'; t.completedAt = ''; });
-    else {
-      var list = [];
-      try { list = JSON.parse(localStorage.getItem('crm_tasks_v1') || '[]'); } catch(e0) {}
-      if (!Array.isArray(list)) list = [];
-      list.forEach(function(t){ if (t.id === taskId) { t.status = 'active'; t.completedAt = ''; } });
-      try { localStorage.setItem('crm_tasks_v1', JSON.stringify(list)); } catch(e1) {}
+    else if (typeof crmTaskLoad === 'function' && typeof crmTaskSave === 'function') {
+      var listW = crmTaskLoad();
+      listW.forEach(function(t){ if (t.id === taskId) { t.status = 'active'; t.completedAt = ''; } });
+      crmTaskSave(listW);
+    } else {
+      var list2 = [];
+      var _kW = (typeof window.AVITOLOG_KEY === 'function') ? window.AVITOLOG_KEY('crm_tasks_v1') : 'crm_tasks_v1';
+      try { list2 = JSON.parse(localStorage.getItem(_kW) || '[]'); } catch(e0) {}
+      if (!Array.isArray(list2)) list2 = [];
+      list2.forEach(function(t){ if (t.id === taskId) { t.status = 'active'; t.completedAt = ''; } });
+      try { localStorage.setItem(_kW, JSON.stringify(list2)); } catch(e1) {}
     }
   } else if (typeof updateTask === 'function') {
     updateTask(taskId, { status: 'work' });
