@@ -3791,12 +3791,29 @@ function findClientIndexByData(list, d) {
 }
 
 function _ck(k) { return (typeof window.AVITOLOG_KEY === 'function' ? window.AVITOLOG_KEY(k) : k); }
+/** CRM-клиенты: только текущий профиль — avitolog_clients (Фил) или avitolog_clients_sasha (Саша). Без слияния и без записи в чужой ключ. */
 function getCrmClients() {
   try { return JSON.parse(localStorage.getItem(_ck('avitolog_clients')) || '[]'); } catch(e) { return []; }
 }
 function saveCrmClients(list) {
   localStorage.setItem(_ck('avitolog_clients'), JSON.stringify(list));
 }
+/** После ☁️ синка Саши: обновить списки CRM (данные уже в *_sasha). */
+window.__crmRefreshAfterSashaSync = function() {
+  try {
+    if (typeof crmTaskRender === 'function') crmTaskRender();
+  } catch (e1) {}
+  try {
+    if (typeof updateClientBadge === 'function') updateClientBadge();
+  } catch (e2) {}
+  try {
+    if (typeof refreshClientContents === 'function' && typeof docReady !== 'undefined' && !docReady &&
+        typeof currentTab !== 'undefined' && ['analysis', 'presale', 'avito1'].indexOf(currentTab) >= 0 &&
+        typeof projectsMode !== 'undefined' && !projectsMode && typeof goalsMode !== 'undefined' && !goalsMode) {
+      refreshClientContents(true);
+    }
+  } catch (e3) {}
+};
 function getActiveClient() {
   try { return JSON.parse(localStorage.getItem(_ck('avitolog_active_client'))); } catch(e) { return null; }
 }
@@ -4573,6 +4590,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
   function finishInitAfterSashaPull() {
     if (typeof window !== 'undefined' && window.AVITOLOG_IS_SASHA) {
+      if (typeof window.__crmRefreshAfterSashaSync === 'function') {
+        try { window.__crmRefreshAfterSashaSync(); } catch (eCrm1) {}
+      }
       if (isLikelyRealSashaDriveSession() && typeof openAssetsTab === 'function') {
         openAssetsTab();
       } else if (typeof openGoalsTab === 'function') {

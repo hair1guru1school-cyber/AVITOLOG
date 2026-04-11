@@ -926,9 +926,68 @@
     return false;
   }
 
+  /** Данные колонки «Клиенты Саши» в кассе (ключ без суффикса профиля) — сюда пишутся строки по Саше, пока открыт профиль Фила. */
+  var FIL_SASHA_COLUMN_KEY = 'avitolog_assets_sasha_v2';
+
+  /** В «Мои клиенты» профиля Саши («Оплатил») переносим заработок из колонки — сумма «Агенту» (toAgent), не «Продано за». */
+  function mapSashaColRowToSashaProfileMy(p) {
+    var copy = JSON.parse(JSON.stringify(p || {}));
+    delete copy.paymentHistory;
+    delete copy.soldFor;
+    delete copy.toAgent;
+    delete copy.aoaPercent;
+    var toAgentOnly = String((p && p.toAgent) || '').replace(/\s/g, '');
+    return {
+      emoji: copy.emoji || '📦',
+      name: String(copy.name || '').trim() || 'Проект',
+      paid: toAgentOnly,
+      expected: '',
+      paymentDate: (copy.paymentDate || '').trim(),
+      startDate: (copy.startDate || '').trim(),
+      clientType: copy.clientType || 'new',
+      folderLink: copy.folderLink || '',
+      crmClientId: copy.crmClientId || ''
+    };
+  }
+
+  /** Пустой профиль «Саша» в кассе: подтягиваем записи из колонки «Клиенты Саши», иначе переключатель показывает пусто, хотя данные есть в avitolog_assets_sasha_v2. */
+  function tryPromoteFilSashaColumnIntoSashaMy() {
+    try {
+      if (!isSashaKassaProfile()) return;
+      var rawMy = localStorage.getItem(ASSETS_MY_KEY);
+      var cur = [];
+      if (rawMy) {
+        try { cur = JSON.parse(rawMy); } catch (eJ) { cur = []; }
+      }
+      if (!Array.isArray(cur) || cur.length > 0) return;
+      var src = [];
+      if (_assetsViewMonth) {
+        try {
+          var rawHist = localStorage.getItem(FIL_SASHA_COLUMN_KEY + '_month_' + _assetsViewMonth);
+          if (rawHist) {
+            var h = JSON.parse(rawHist);
+            if (Array.isArray(h) && h.length) src = h;
+          }
+        } catch (eH) {}
+      } else {
+        try {
+          var rawFil = localStorage.getItem(FIL_SASHA_COLUMN_KEY);
+          if (rawFil) {
+            var z = JSON.parse(rawFil);
+            if (Array.isArray(z) && z.length) src = z;
+          }
+        } catch (eF) {}
+      }
+      if (!src.length) return;
+      var out = src.map(function(row) { return mapSashaColRowToSashaProfileMy(row); });
+      saveAssetsMy(out);
+    } catch (e) {}
+  }
+
   function getAssetsMy() {
     try {
       var isSasha = isSashaKassaProfile();
+      if (isSasha) tryPromoteFilSashaColumnIntoSashaMy();
       /** Не подставляем чужой профиль: иначе у Саши в «Мои клиенты» оказывались строки Фила (и наоборот). */
       var arr = bootstrapAssetsArray(ASSETS_MY_KEY, []);
       if (arr !== null) {
@@ -1002,30 +1061,6 @@
     if (cid) return 'cid:' + cid;
     return 'name:' + String(p.name || '').trim().toLowerCase();
   }
-
-  /** В кассу профиля Саши («Оплатил») переносим только заработок Саши — сумма из колонки «Агенту» (toAgent), не «Продано за». */
-  function mapSashaColRowToSashaProfileMy(p) {
-    var copy = JSON.parse(JSON.stringify(p || {}));
-    delete copy.paymentHistory;
-    delete copy.soldFor;
-    delete copy.toAgent;
-    delete copy.aoaPercent;
-    var toAgentOnly = String((p && p.toAgent) || '').replace(/\s/g, '');
-    return {
-      emoji: copy.emoji || '📦',
-      name: String(copy.name || '').trim() || 'Проект',
-      paid: toAgentOnly,
-      expected: '',
-      paymentDate: (copy.paymentDate || '').trim(),
-      startDate: (copy.startDate || '').trim(),
-      clientType: copy.clientType || 'new',
-      folderLink: copy.folderLink || '',
-      crmClientId: copy.crmClientId || ''
-    };
-  }
-
-  /** Данные колонки Фила «Клиенты Саши» (без суффикса профиля) — то же, что читает getAssetsSasha() у Фила. */
-  var FIL_SASHA_COLUMN_KEY = 'avitolog_assets_sasha_v2';
 
   function getSourceListForSashaSync() {
     if (_assetsViewMonth) {

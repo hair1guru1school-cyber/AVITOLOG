@@ -263,6 +263,9 @@
 
   function refreshUiAfterPull() {
     try {
+      if (typeof window.__crmRefreshAfterSashaSync === 'function') window.__crmRefreshAfterSashaSync();
+    } catch (eCrm) {}
+    try {
       if (typeof rerenderProjectsPreserveScroll === 'function' && typeof projectsMode !== 'undefined' && projectsMode) {
         rerenderProjectsPreserveScroll();
       }
