@@ -669,11 +669,11 @@ function getTasksBoardColsOnPage() {
   try {
     var n = parseInt(localStorage.getItem(TASKS_BOARD_COLS_KEY) || '6', 10);
     if (!isFinite(n)) return 6;
-    return Math.max(3, Math.min(8, n));
+    return Math.max(2, Math.min(8, n));
   } catch (e) { return 6; }
 }
 function setTasksBoardColsOnPage(n) {
-  var v = Math.max(3, Math.min(8, parseInt(n, 10) || 6));
+  var v = Math.max(2, Math.min(8, parseInt(n, 10) || 6));
   try { localStorage.setItem(TASKS_BOARD_COLS_KEY, String(v)); } catch (e) {}
 }
 function getTasksBoardColScale() {
@@ -987,22 +987,26 @@ function renderTasksBoardIntoMainContent(mc) {
 
   var colsOnPage = getTasksBoardColsOnPage();
   var colScale = getTasksBoardColScale();
-  var colScaleUnit = Math.max(0.75, Math.min(1.3, colScale / 100));
+  var usableWidth = Math.max(480, (mc && mc.clientWidth ? mc.clientWidth : window.innerWidth || 1400) - 48);
+  var gapPx = 10;
+  var baseColW = Math.floor((usableWidth - gapPx * Math.max(0, colsOnPage - 1)) / colsOnPage);
+  baseColW = Math.max(200, Math.min(380, baseColW));
+  var colWidth = Math.max(190, Math.round(baseColW * (colScale / 100)));
 
   mc.innerHTML = '<div class="tasks-board-page">' +
     '<div class="tasks-board-head">' +
-    '<div class="tasks-board-head-title-row"><div><div class="tasks-board-title">ЗАДАЧИ ПО ПРОЕКТАМ</div><div class="tasks-board-sub">Сетка: в одном ряду столько проектов, сколько выбрано слева (4–6 и др.); остальные переносятся на следующие строки. Полоса прокрутки — по вертикали.</div></div></div>' +
+    '<div class="tasks-board-head-title-row"><div><div class="tasks-board-title">ЗАДАЧИ ПО ПРОЕКТАМ</div><div class="tasks-board-sub">Карточки как раньше: скругление и «Размер». В ряду — 2–8 колонок (выбор слева), следующие проекты переносятся ниже.</div></div></div>' +
     '<div class="tasks-board-toolbar">' +
     '<div class="tasks-board-toolbar-left">' +
     '<input id="tasksBoardSearch" class="tasks-board-search" placeholder="Поиск по проекту или задаче" value="' + esc(query) + '" oninput="renderTasksBoardIntoMainContent(document.getElementById(\'mainContent\'))">' +
     '<select id="tasksBoardStatusFilter" class="tasks-board-filter" onchange="renderTasksBoardIntoMainContent(document.getElementById(\'mainContent\'))"><option value="open"' + (status === 'open' ? ' selected' : '') + '>Открытые</option><option value="all"' + (status === 'all' ? ' selected' : '') + '>Все</option><option value="overdue"' + (status === 'overdue' ? ' selected' : '') + '>Просрочка</option><option value="done"' + (status === 'done' ? ' selected' : '') + '>Выполненные</option></select>' +
-    '<select id="tasksBoardColsOnPage" class="tasks-board-filter" onchange="setTasksBoardColsOnPage(this.value);renderTasksBoardIntoMainContent(document.getElementById(\'mainContent\'))"><option value="3"' + (colsOnPage === 3 ? ' selected' : '') + '>3 кол.</option><option value="4"' + (colsOnPage === 4 ? ' selected' : '') + '>4 кол.</option><option value="5"' + (colsOnPage === 5 ? ' selected' : '') + '>5 кол.</option><option value="6"' + (colsOnPage === 6 ? ' selected' : '') + '>6 кол.</option><option value="7"' + (colsOnPage === 7 ? ' selected' : '') + '>7 кол.</option><option value="8"' + (colsOnPage === 8 ? ' selected' : '') + '>8 кол.</option></select>' +
+    '<select id="tasksBoardColsOnPage" class="tasks-board-filter" onchange="setTasksBoardColsOnPage(this.value);renderTasksBoardIntoMainContent(document.getElementById(\'mainContent\'))"><option value="2"' + (colsOnPage === 2 ? ' selected' : '') + '>2 в ряд</option><option value="3"' + (colsOnPage === 3 ? ' selected' : '') + '>3 в ряд</option><option value="4"' + (colsOnPage === 4 ? ' selected' : '') + '>4 в ряд</option><option value="5"' + (colsOnPage === 5 ? ' selected' : '') + '>5 в ряд</option><option value="6"' + (colsOnPage === 6 ? ' selected' : '') + '>6 в ряд</option><option value="7"' + (colsOnPage === 7 ? ' selected' : '') + '>7 в ряд</option><option value="8"' + (colsOnPage === 8 ? ' selected' : '') + '>8 в ряд</option></select>' +
     '</div>' +
     '<label class="tasks-board-size tasks-board-size--center">Размер <input id="tasksBoardColScale" type="range" min="75" max="130" step="5" value="' + colScale + '" oninput="setTasksBoardColScale(this.value);renderTasksBoardIntoMainContent(document.getElementById(\'mainContent\'))"></label>' +
     '<div class="tasks-board-toolbar-right" aria-hidden="true"></div>' +
     '</div></div>' +
     '<div class="tasks-board-strip"><span class="tasks-board-chip">Проектов: ' + visible.length + '</span><span class="tasks-board-chip">Задач: ' + total + '</span><span class="tasks-board-chip">Done: ' + doneCount + '</span><span class="tasks-board-chip">Overdue: ' + overdueCount + '</span></div>' +
-    '<div class="tasks-board-wrap"><div class="tasks-board-columns" style="--tasks-cols-per-row:' + colsOnPage + ';--tasks-col-scale:' + colScaleUnit + '">' + colsHtml + '</div></div>' +
+    '<div class="tasks-board-wrap"><div class="tasks-board-columns" style="--tasks-cols-per-row:' + colsOnPage + ';--tasks-col-width:' + colWidth + 'px">' + colsHtml + '</div></div>' +
   '</div>';
   if (typeof tasksBoardEnsureTaskPanelActive === 'function') tasksBoardEnsureTaskPanelActive();
 }
