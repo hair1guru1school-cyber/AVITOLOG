@@ -987,13 +987,16 @@ function renderTasksBoardIntoMainContent(mc) {
 
   var colsOnPage = getTasksBoardColsOnPage();
   var colScale = getTasksBoardColScale();
-  var nCols = Math.max(2, Math.min(8, parseInt(colsOnPage, 10) || 2));
-  var gridTemplateColumns = 'repeat(' + nCols + ', minmax(160px, 1fr))';
+  var usableWidth = Math.max(480, (mc && mc.clientWidth ? mc.clientWidth : window.innerWidth || 1400) - 48);
+  var gapPx = 12;
+  var baseColW = Math.floor((usableWidth - gapPx * Math.max(0, colsOnPage - 1)) / colsOnPage);
+  baseColW = Math.max(200, Math.min(380, baseColW));
+  var colWidth = Math.max(190, Math.round(baseColW * (colScale / 100)));
   var scaleUnit = Math.max(0.75, Math.min(1.3, colScale / 100));
 
   mc.innerHTML = '<div class="tasks-board-page">' +
     '<div class="tasks-board-head">' +
-    '<div class="tasks-board-head-title-row"><div><div class="tasks-board-title">ЗАДАЧИ ПО ПРОЕКТАМ</div><div class="tasks-board-sub">В один горизонтальный ряд — столько карточек проектов, сколько выбрано (2–8). Следующие проекты — в следующем ряду ниже. «Размер» — масштаб текста в карточках.</div></div></div>' +
+    '<div class="tasks-board-head-title-row"><div><div class="tasks-board-title">ЗАДАЧИ ПО ПРОЕКТАМ</div><div class="tasks-board-sub">Один ряд столбцов слева направо: один проект = одна колонка. Если не помещается — прокрутка по горизонтали. Цифра «в ряд» задаёт ширину колонки под экран, «Размер» — масштаб текста.</div></div></div>' +
     '<div class="tasks-board-toolbar">' +
     '<div class="tasks-board-toolbar-left">' +
     '<input id="tasksBoardSearch" class="tasks-board-search" placeholder="Поиск по проекту или задаче" value="' + esc(query) + '" oninput="renderTasksBoardIntoMainContent(document.getElementById(\'mainContent\'))">' +
@@ -1004,7 +1007,7 @@ function renderTasksBoardIntoMainContent(mc) {
     '<div class="tasks-board-toolbar-spacer" aria-hidden="true"></div>' +
     '</div></div>' +
     '<div class="tasks-board-strip"><span class="tasks-board-chip">Проектов: ' + visible.length + '</span><span class="tasks-board-chip">Задач: ' + total + '</span><span class="tasks-board-chip">Done: ' + doneCount + '</span><span class="tasks-board-chip">Overdue: ' + overdueCount + '</span></div>' +
-    '<div class="tasks-board-wrap"><div class="tasks-board-columns" style="grid-template-columns:' + gridTemplateColumns + ';--tasks-scale:' + scaleUnit + '">' + colsHtml + '</div></div>' +
+    '<div class="tasks-board-wrap"><div class="tasks-board-columns" style="--tasks-col-width:' + colWidth + 'px;--tasks-scale:' + scaleUnit + '">' + colsHtml + '</div></div>' +
   '</div>';
   if (typeof tasksBoardEnsureTaskPanelActive === 'function') tasksBoardEnsureTaskPanelActive();
 }
