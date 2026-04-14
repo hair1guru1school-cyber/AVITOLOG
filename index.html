@@ -2763,5 +2763,27 @@ if (!window.AVITOLOG_GOALS) {
 <script src="js/main.js?v=20260414-3"></script>
 <script src="js/sasha-team-sync.js?v=20260414-5"></script>
 <script src="js/data-backup.js?v=20260404-1"></script>
+<script>
+/* Запрет горизонтального скролла всего документа (Shift+колёсико и т.п.) */
+(function(){
+  document.documentElement.scrollLeft = 0;
+  document.body.scrollLeft = 0;
+  window.addEventListener('wheel', function(e){
+    if (e.shiftKey || Math.abs(e.deltaX) > Math.abs(e.deltaY)) {
+      var t = e.target;
+      while (t && t !== document.body) {
+        var cs = getComputedStyle(t);
+        var ox = cs.overflowX;
+        if ((ox === 'auto' || ox === 'scroll') && t.scrollWidth > t.clientWidth) return;
+        t = t.parentElement;
+      }
+      e.preventDefault();
+    }
+  }, { passive: false });
+  window.addEventListener('scroll', function(){
+    if (window.scrollX !== 0) window.scrollTo(0, window.scrollY);
+  }, { passive: true });
+})();
+</script>
 </body>
 </html>
