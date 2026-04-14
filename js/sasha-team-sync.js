@@ -433,43 +433,45 @@
     }
   }
 
+  /**
+   * Ручной ☁️: без confirm/alert после await — в Safari/моб. WebView они часто блокируются
+   * («ничего не происходит»). Один тап = полный цикл pull+push.
+   */
   async function syncUi() {
+    showSashaTeamToast('☁️ Синхронизация…', false);
     if (!shouldOfferSync()) {
-      if (confirm('Сейчас открыт профиль «Фил», не данные Саши.\n\nПереключить на «Саша» и перезагрузить? Тогда подключатся ключи *_sasha, синк с Drive и всё, что вводит Саша.')) {
-        try {
-          localStorage.setItem('avitolog_current_user', 'sasha');
-          localStorage.setItem('avitolog_profile_bookmark', 'sasha');
-        } catch (e) {}
-        location.reload();
-      }
+      showSashaTeamToast('Переключаю на профиль Саша…', false);
+      try {
+        localStorage.setItem('avitolog_current_user', 'sasha');
+        localStorage.setItem('avitolog_profile_bookmark', 'sasha');
+      } catch (e0) {}
+      setTimeout(function() { location.reload(); }, 400);
       return;
     }
     try {
       if (typeof getDriveToken !== 'function') {
-        alert('Нет Drive API.');
+        showSashaTeamToast('Не загружен модуль Drive. Обнови страницу.', true);
         return;
       }
       await getDriveToken();
     } catch (e) {
-      alert('Войди в Google Drive (🔑 Drive).');
+      showSashaTeamToast('Нужен вход в Google. Нажми 🔑 Drive — после входа снова ☁️.', true);
+      try {
+        if (typeof window.startAuth === 'function') window.startAuth(null);
+      } catch (e2) {}
       return;
     }
-    var choice = confirm(
-      'Полный синк\n\nOK — подтянуть с Drive, затем отправить объединённое.\nОтмена — только подтянуть.'
-    );
     try {
-      var res = choice ? await bidirectionalSync() : await pullMerge();
-      alert(res.message || 'Готово.');
-      if (!choice && res && res.applied > 0) {
-        showSashaTeamToast('Подтянуто с облака: изменено полей ' + res.applied + '.', false);
-      }
-      var pulled = (res.pullApplied || 0) + (res.applied || 0);
-      if (pulled > 0) refreshUiAfterPull();
-      if (choice || pulled > 0) {
-        if (confirm('Перезагрузить страницу (F5)?')) location.reload();
-      }
+      showSashaTeamToast('☁️ Обмен с Google Drive…', false);
+      var res = await bidirectionalSync();
+      var msg = (res && res.message) ? String(res.message) : 'Готово.';
+      var oneLine = msg.replace(/\s+/g, ' ').trim();
+      if (oneLine.length > 200) oneLine = oneLine.slice(0, 197) + '…';
+      showSashaTeamToast('☁️ ' + oneLine, false);
+      refreshUiAfterPull();
     } catch (err) {
-      alert('Ошибка: ' + (err && err.message ? err.message : err));
+      var em = err && err.message ? err.message : String(err);
+      showSashaTeamToast('Ошибка: ' + em, true);
     }
   }
 
