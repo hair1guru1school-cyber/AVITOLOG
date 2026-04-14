@@ -33,12 +33,51 @@
   function isSyncableKey(k) {
     if (!k || typeof k !== 'string') return false;
     if (k.indexOf('avitolog_drive_') === 0) return false;
-    if (k.indexOf('_month_') >= 0) return false;
     if (k === LS_FILE_ID || k === LS_FOLDER_ID) return false;
     if (k === 'avitolog_current_user' || k === 'avitolog_profile_bookmark') return false;
+    /** Месячные снимки кассы только для профиля Саша (см. user-config migrate). Иначе _month_ отрезали бы всю историю кассы в ☁️. */
+    if (k.indexOf('_month_') >= 0) {
+      if (!/_sasha(?:_|$)/.test(k)) return false;
+      if (!/^avitolog_assets_(?:my|sasha|base)_v2_sasha_month_\d{4}-\d{2}$/.test(k)) return false;
+      return true;
+    }
     if (/_sasha$/.test(k)) return true;
     if (k.indexOf('_sasha_') >= 0) return true;
     return false;
+  }
+
+  function coalesceLegacyIntoSashaBeforeSync() {
+    try {
+      if (typeof window.__avitologMigrateLegacyIntoSashaIfOwnAccount === 'function') {
+        window.__avitologMigrateLegacyIntoSashaIfOwnAccount();
+      }
+    } catch (e) {}
+  }
+
+  var _toastTimer = null;
+  function showSashaTeamToast(text, isErr) {
+    try {
+      var el = document.getElementById('avitologSashaSyncToast');
+      if (!el) {
+        el = document.createElement('div');
+        el.id = 'avitologSashaSyncToast';
+        el.setAttribute('role', 'status');
+        el.style.cssText = 'position:fixed;left:50%;bottom:22px;transform:translateX(-50%);z-index:2000;max-width:min(92vw,420px);padding:10px 14px;border-radius:12px;font-size:12px;font-weight:700;line-height:1.35;box-shadow:0 8px 28px rgba(0,0,0,0.45);pointer-events:none;transition:opacity .2s';
+        document.body.appendChild(el);
+      }
+      el.style.background = isErr ? 'linear-gradient(180deg,rgba(90,24,30,0.96),rgba(50,12,18,0.98))' : 'linear-gradient(180deg,rgba(12,52,42,0.96),rgba(8,32,28,0.98))';
+      el.style.border = isErr ? '1px solid rgba(255,140,140,0.45)' : '1px solid rgba(0,217,126,0.45)';
+      el.style.color = isErr ? '#ffd6d6' : '#d4fff0';
+      el.textContent = text;
+      el.style.opacity = '1';
+      if (_toastTimer) clearTimeout(_toastTimer);
+      _toastTimer = setTimeout(function() {
+        _toastTimer = null;
+        try {
+          if (el) el.style.opacity = '0';
+        } catch (e2) {}
+      }, 4200);
+    } catch (e) {}
   }
 
   function collectSashaKeys() {
@@ -203,6 +242,7 @@
 
   async function pullMerge() {
     try {
+      coalesceLegacyIntoSashaBeforeSync();
       var remote = await readRemotePayload();
       if (!remote) {
         return { ok: true, message: 'В облаке ещё нет файла синка — открой доступ к папке CRM обоим аккаунтам, профиль «Саша», затем ☁️.', applied: 0, noRemoteFile: true };
@@ -218,8 +258,11 @@
     }
   }
 
-  async function pushMerge() {
+  async function pushMerge(opts) {
+    opts = opts || {};
+    var silentToast = !!opts.silentToast;
     try {
+      coalesceLegacyIntoSashaBeforeSync();
       var parentId = await ensureFolderId();
       var fileId = await ensureSyncFileId();
       var remote = await readRemotePayload();
@@ -243,6 +286,13 @@
       }
       var nKeys = Object.keys(merged).length;
       showTeamSyncLine('ok', '☁️ Выгружено в Drive: ' + nKeys + ' ключей.');
+      if (!silentToast) {
+        if (nKeys === 0) {
+          showSashaTeamToast('В облако нечего выгрузить: нет ключей *_sasha (проверь профиль «Саша» и 🔑 Drive).', true);
+        } else {
+          showSashaTeamToast('Данные сгружены в облако (' + nKeys + ' ключей).', false);
+        }
+      }
       return { ok: true, message: 'Выгружено ключей: ' + nKeys };
     } catch (e) {
       var msg = (e && e.message) ? e.message : String(e);
@@ -304,7 +354,7 @@
           return getDriveToken();
         })
         .then(function() {
-          return pushMerge();
+          return pushMerge({ silentToast: true });
         })
         .catch(function(e) {
           console.warn('sasha-team-sync auto-push', e && e.message ? e.message : e);
@@ -410,6 +460,9 @@
     try {
       var res = choice ? await bidirectionalSync() : await pullMerge();
       alert(res.message || 'Готово.');
+      if (!choice && res && res.applied > 0) {
+        showSashaTeamToast('Подтянуто с облака: изменено полей ' + res.applied + '.', false);
+      }
       var pulled = (res.pullApplied || 0) + (res.applied || 0);
       if (pulled > 0) refreshUiAfterPull();
       if (choice || pulled > 0) {
@@ -469,7 +522,7 @@
   window.__avitologSashaTeamPush = pushMerge;
   window.__avitologSashaTeamBidirectional = bidirectionalSync;
   window.__avitologSashaTeamPushSilent = function() {
-    return pushMerge().catch(function() {});
+    return pushMerge({ silentToast: true }).catch(function() {});
   };
   window.__avitologSashaTeamSyncUi = syncUi;
   window.__avitologUpdateSashaTeamSyncBtn = updateSashaTeamSyncBtn;
