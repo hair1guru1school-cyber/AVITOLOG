@@ -2502,7 +2502,7 @@ if (!window.AVITOLOG_GOALS) {
   <button type="button" id="dayModeToggle" class="header-day-toggle" onclick="toggleDayMode()" title="Дневной режим — светлый интерфейс">☀️</button>
   <button type="button" id="authBtn" class="header-drive-btn header-mobile-show" onclick="startAuth(event)" title="Войти в Google Drive">🔑 Drive</button>
   <button type="button" id="userSwitchBtn" class="header-employee-btn header-mobile-show" onclick="switchUserProfile()" title="Переключить профиль пользователя"></button>
-  <button type="button" id="sashaTeamSyncBtn" class="header-employee-btn header-sasha-sync-btn header-mobile-show" style="border-color:rgba(53,208,255,0.45);color:#9fe7ff" onclick="window.__avitologSashaTeamSyncUi&&window.__avitologSashaTeamSyncUi()" title="Синхронизация профиля Саша с Google Drive">☁️</button>
+  <button type="button" id="sashaTeamSyncBtn" class="header-employee-btn header-sasha-sync-btn header-mobile-show" style="border-color:rgba(53,208,255,0.45);color:#9fe7ff" onclick="window.__avitologSashaCloudClick&&window.__avitologSashaCloudClick()" title="Синхронизация профиля Саша с Google Drive">☁️</button>
   <form onsubmit="return false" style="display:flex;align-items:center;gap:8px">
     <input type="password" id="apiKeyInput" placeholder="sk-ant-... (API ключ с console.anthropic.com)"
       title="Anthropic API ключ. Получить: console.anthropic.com → API Keys"
@@ -2761,7 +2761,7 @@ if (!window.AVITOLOG_GOALS) {
 <script src="js/ads.js?v=20260404-1"></script>
 <script src="js/kp-generator.js?v=20260404-1"></script>
 <script src="js/main.js?v=20260414-3"></script>
-<script src="js/sasha-team-sync.js?v=20260414-3"></script>
+<script src="js/sasha-team-sync.js?v=20260414-5"></script>
 <script src="js/data-backup.js?v=20260404-1"></script>
 </body>
 </html>

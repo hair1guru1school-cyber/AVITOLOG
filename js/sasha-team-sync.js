@@ -49,22 +49,52 @@
         el = document.createElement('div');
         el.id = 'avitologSashaSyncToast';
         el.setAttribute('role', 'status');
-        el.style.cssText = 'position:fixed;left:50%;bottom:22px;transform:translateX(-50%);z-index:2000;max-width:min(92vw,420px);padding:10px 14px;border-radius:12px;font-size:12px;font-weight:700;line-height:1.35;box-shadow:0 8px 28px rgba(0,0,0,0.45);pointer-events:none;transition:opacity .2s';
+        el.style.cssText = 'position:fixed;left:50%;bottom:max(22px,env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:2147483000;max-width:min(92vw,440px);padding:12px 16px;border-radius:14px;font-size:13px;font-weight:700;line-height:1.4;box-shadow:0 12px 40px rgba(0,0,0,0.55);pointer-events:none;transition:opacity .25s;white-space:pre-wrap;word-break:break-word;text-align:center';
         document.body.appendChild(el);
       }
-      el.style.background = isErr ? 'linear-gradient(180deg,rgba(90,24,30,0.96),rgba(50,12,18,0.98))' : 'linear-gradient(180deg,rgba(12,52,42,0.96),rgba(8,32,28,0.98))';
-      el.style.border = isErr ? '1px solid rgba(255,140,140,0.45)' : '1px solid rgba(0,217,126,0.45)';
+      el.style.background = isErr ? 'linear-gradient(180deg,rgba(90,24,30,0.98),rgba(50,12,18,0.99))' : 'linear-gradient(180deg,rgba(12,52,42,0.98),rgba(8,32,28,0.99))';
+      el.style.border = isErr ? '1px solid rgba(255,140,140,0.55)' : '1px solid rgba(0,217,126,0.55)';
       el.style.color = isErr ? '#ffd6d6' : '#d4fff0';
       el.textContent = text;
       el.style.opacity = '1';
       if (_toastTimer) clearTimeout(_toastTimer);
+      var hideMs = isErr ? 10000 : 5200;
       _toastTimer = setTimeout(function() {
         _toastTimer = null;
         try {
           if (el) el.style.opacity = '0';
         } catch (e2) {}
-      }, 4200);
+      }, hideMs);
     } catch (e) {}
+  }
+
+  /** Тост + строка под CRM — на телефоне/ GitHub Pages так видно, что ☁️ сработал. */
+  function cloudSyncUserHint(kind, text) {
+    showSashaTeamToast(text, kind === 'err');
+    try {
+      showTeamSyncLine(kind === 'err' ? 'err' : 'ok', text);
+    } catch (e) {}
+  }
+
+  function waitForGoogleIdentityMs(maxMs) {
+    var step = 120;
+    var deadline = Date.now() + (maxMs || 5000);
+    return new Promise(function(resolve) {
+      function tick() {
+        try {
+          if (typeof google !== 'undefined' && google.accounts && google.accounts.oauth2) {
+            resolve(true);
+            return;
+          }
+        } catch (e) {}
+        if (Date.now() >= deadline) {
+          resolve(false);
+          return;
+        }
+        setTimeout(tick, step);
+      }
+      tick();
+    });
   }
 
   function collectSashaKeys() {
@@ -419,46 +449,74 @@
   }
 
   /**
-   * Ручной ☁️: без confirm/alert после await — в Safari/моб. WebView они часто блокируются
-   * («ничего не происходит»). Один тап = полный цикл pull+push.
+   * Ручной ☁️: без confirm после await. Всегда дублируем статус в crmSt + тост (GitHub Pages / моб.).
    */
   async function syncUi() {
-    showSashaTeamToast('☁️ Синхронизация…', false);
-    if (!shouldOfferSync()) {
-      showSashaTeamToast('Переключаю на профиль Саша…', false);
-      try {
-        localStorage.setItem('avitolog_current_user', 'sasha');
-        localStorage.setItem('avitolog_profile_bookmark', 'sasha');
-      } catch (e0) {}
-      setTimeout(function() { location.reload(); }, 400);
-      return;
-    }
     try {
-      if (typeof getDriveToken !== 'function') {
-        showSashaTeamToast('Не загружен модуль Drive. Обнови страницу.', true);
+      cloudSyncUserHint('ok', '☁️ Нажато: готовлю синхронизацию…');
+      if (!shouldOfferSync()) {
+        cloudSyncUserHint('ok', '☁️ Включаю профиль «Саша» и перезагружаю страницу… Открой ссылку с ?u=sasha если снова пусто.');
+        try {
+          localStorage.setItem('avitolog_current_user', 'sasha');
+          localStorage.setItem('avitolog_profile_bookmark', 'sasha');
+        } catch (e0) {}
+        setTimeout(function() { location.reload(); }, 500);
         return;
       }
-      await getDriveToken();
-    } catch (e) {
-      showSashaTeamToast('Нужен вход в Google. Нажми 🔑 Drive — после входа снова ☁️.', true);
+      if (typeof getDriveToken !== 'function') {
+        cloudSyncUserHint('err', '☁️ Ошибка: не загружен main.js. Обнови страницу (Ctrl+F5).');
+        return;
+      }
+      var gisReady = await waitForGoogleIdentityMs(6000);
+      if (!gisReady) {
+        cloudSyncUserHint('err', '☁️ Не подгрузился Google (кнопка 🔑). Проверь интернет, обнови страницу и нажми 🔑 Drive, затем ☁️.');
+        return;
+      }
       try {
-        if (typeof window.startAuth === 'function') window.startAuth(null);
-      } catch (e2) {}
-      return;
-    }
-    try {
-      showSashaTeamToast('☁️ Обмен с Google Drive…', false);
+        await getDriveToken();
+      } catch (eTok) {
+        cloudSyncUserHint('err', '☁️ Нет входа в Google Drive. Сейчас откроется окно входа — выбери аккаунт, после перезагрузки нажми ☁️ ещё раз.');
+        try {
+          if (typeof window.startAuth === 'function') window.startAuth(null);
+        } catch (e2) {}
+        return;
+      }
+      cloudSyncUserHint('ok', '☁️ Обмен с Google Drive (загрузка и отправка данных)…');
       var res = await bidirectionalSync();
       var msg = (res && res.message) ? String(res.message) : 'Готово.';
       var oneLine = msg.replace(/\s+/g, ' ').trim();
-      if (oneLine.length > 200) oneLine = oneLine.slice(0, 197) + '…';
-      showSashaTeamToast('☁️ ' + oneLine, false);
+      if (oneLine.length > 220) oneLine = oneLine.slice(0, 217) + '…';
+      cloudSyncUserHint('ok', '☁️ Готово: ' + oneLine);
       refreshUiAfterPull();
     } catch (err) {
       var em = err && err.message ? err.message : String(err);
-      showSashaTeamToast('Ошибка: ' + em, true);
+      cloudSyncUserHint('err', '☁️ Ошибка: ' + em);
     }
   }
+
+  /** Вызывается из HTML до загрузки скрипта — не даём «пустому» клику. */
+  window.__avitologSashaCloudClick = function() {
+    try {
+      if (typeof window.__avitologSashaTeamSyncUi === 'function') {
+        var p = window.__avitologSashaTeamSyncUi();
+        if (p && typeof p.catch === 'function') p.catch(function(e) {
+          cloudSyncUserHint('err', '☁️ Сбой: ' + (e && e.message ? e.message : e));
+        });
+        return;
+      }
+    } catch (e) {}
+    try {
+      var st = document.getElementById('crmSt');
+      if (st) {
+        st.style.display = 'block';
+        st.className = 'crm-st err';
+        st.textContent = '☁️ Обнови страницу (Ctrl+F5) — скрипт синка не подгрузился.';
+      }
+    } catch (e2) {}
+    try {
+      alert('☁️ Обнови страницу полностью (Ctrl+F5), затем снова нажми облако.');
+    } catch (e3) {}
+  };
 
   function pullNowWithRetries() {
     var attempt = 0;
