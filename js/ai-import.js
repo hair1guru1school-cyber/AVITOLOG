@@ -908,7 +908,8 @@
     return formatDateDDMM(dateStr);
   }
 
-  /** Профиль Саши в кассе: ?u=sasha, закладка, суффикс ключа — не только AVITOLOG_IS_SASHA (иначе кнопки/суммы не показывались). */
+  /** Профиль Саши в кассе: current_user / суффикс ключей / AVITOLOG_IS_SASHA.
+   *  НЕ используем avitolog_profile_bookmark: у Фила могла остаться закладка «sasha», и тогда getAssetsSasha() возвращал [] — пропадала колонка «Клиенты Саши» в кассе Фила. */
   function isSashaKassaProfile() {
     try {
       var cu = String(localStorage.getItem('avitolog_current_user') || '').trim().toLowerCase();
@@ -920,9 +921,6 @@
     try {
       if (typeof window !== 'undefined' && window.AVITOLOG_KEY_SUFFIX === '_sasha') return true;
     } catch (e2) {}
-    try {
-      if (String(localStorage.getItem('avitolog_profile_bookmark') || '') === 'sasha') return true;
-    } catch (e3) {}
     return false;
   }
 
