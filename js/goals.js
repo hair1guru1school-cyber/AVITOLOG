@@ -1586,7 +1586,7 @@
     };
     window.__goalsScrollToWork = function() {
       var el = document.getElementById('goalsWorkBlockAnchor');
-      if (el && el.scrollIntoView) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      if (el && el.scrollIntoView) el.scrollIntoView({ behavior: 'auto', block: 'start' });
     };
     window.__goalsRemoveMetric = function(metricId) {
       var d = loadData();
