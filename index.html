@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=0.25, maximum-scale=5, viewport-fit=cover, user-scalable=yes">
 <title>AVITOBO$$</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🃏</text></svg>">
-<link rel="stylesheet" href="styles.css?v=20260414-6">
+<link rel="stylesheet" href="styles.css?v=20260414-7">
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Golos+Text:wght@400;500;600;700;900&display=swap');
 :root{--bg:#0c0c0e;--surface:#141416;--surface2:#1c1c1f;--border:#2a2a2e;--accent:#00d97e;--accent2:#ff6b35;--accent3:#7c6af7;--text:#ebebeb;--muted:#666;--muted2:#333}
@@ -118,11 +118,11 @@ body.day-mode.goals-mode .goals-achievements-total-gray{color:var(--muted)}
 body.day-mode.goals-mode .goals-achievements-total-num{color:var(--text)}
 body.day-mode.goals-mode .gal-total{color:var(--muted)}
 *{box-sizing:border-box;margin:0;padding:0}
-/* Вся страница не уезжает влево/вправо при Shift+колёсико; правая колонка остаётся в кадре */
-html{overflow-x:hidden;max-width:100%}
-body{overflow-x:hidden;max-width:100vw;overscroll-behavior-x:none}
-#mainApp{overflow-x:hidden;max-width:100%}
-.layout{width:100%;max-width:100vw;min-width:0;box-sizing:border-box}
+/* Shift+колёсико: без горизонтального скролла документа. НЕ использовать max-width:100vw на body — иначе полоса прокрутки даёт лишние px и режется левый край */
+html{overflow-x:hidden}
+body{overflow-x:hidden;overscroll-behavior-x:none}
+#mainApp{overflow-x:hidden}
+.layout{width:100%;min-width:0;box-sizing:border-box}
 .layout > .sidebar,
 .layout > .content-wrap,
 .layout > .right-panel-wrap{min-width:0}
