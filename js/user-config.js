@@ -100,14 +100,15 @@
     return baseKey + (window.AVITOLOG_KEY_SUFFIX || '');
   };
 
-  /** На устройстве, где в Drive залогинен email Саши, копируем live-данные из ключей без суффикса в *_sasha,
-   *  если *_sasha пусты. Идемпотентно (без «разового» флага) — иначе после первой неудачной синхронизации данные так и оставались в avitolog_clients без _sasha, а ☁️ выгружал пустоту.
-   *  У Фила (другой email) не выполняется. Вызывается снова перед ☁️ push. */
-  function migrateSashaNamespaceFromLegacyIfOwnAccount() {
+  /** Разово: на устройстве, где в Drive залогинен email Саши, копируем live-данные из ключей без суффикса в *_sasha,
+   *  если *_sasha пусты. Иначе у него всё жило в avitolog_goals_v1 / avitolog_clients, а профиль «Саша» и ☁️ читали только *_sasha — «пусто». У Фила (другой email) не выполняется. */
+  (function migrateSashaNamespaceFromLegacyIfOwnAccount() {
     try {
       var em = String(localStorage.getItem('avitolog_drive_email') || '').trim().toLowerCase();
       if (!em || em !== sashaEmail) return;
       if (suffix !== '_sasha') return;
+      var flag = 'avitolog_migrate_legacy_into_sasha_v1_done';
+      if (localStorage.getItem(flag) === '1') return;
       function projectLikeEmpty(sr) {
         if (!sr) return true;
         try {
@@ -149,40 +150,9 @@
           localStorage.setItem('avitolog_active_client_sasha', acB);
         }
       } catch (eAc) {}
-      /** Месячные снимки кассы: без суффикса профиля → *_sasha_month_* (иначе в ☁️ не попадали — isSyncableKey режет _month_, кроме sasha). */
-      function monthArrEmpty(sr) {
-        if (!sr) return true;
-        try {
-          var o = JSON.parse(sr);
-          return !Array.isArray(o) || o.length === 0;
-        } catch (e2) { return true; }
-      }
-      var assetBases = ['avitolog_assets_my_v2', 'avitolog_assets_sasha_v2', 'avitolog_assets_base_v2'];
-      assetBases.forEach(function(ap) {
-        try {
-          var toCopy = [];
-          for (var ii = 0; ii < localStorage.length; ii++) {
-            var kk = localStorage.key(ii);
-            if (!kk || kk.indexOf(ap + '_month_') !== 0) continue;
-            if (kk.indexOf('_sasha_month_') >= 0) continue;
-            var ymPart = kk.substring((ap + '_month_').length);
-            if (!/^\d{4}-\d{2}$/.test(ymPart)) continue;
-            var toKey = ap + '_sasha_month_' + ymPart;
-            var fromRaw = localStorage.getItem(kk);
-            var toRaw = localStorage.getItem(toKey);
-            if (!fromRaw || !monthArrEmpty(toRaw)) continue;
-            if (monthArrEmpty(fromRaw)) continue;
-            toCopy.push({ toKey: toKey, fromRaw: fromRaw });
-          }
-          toCopy.forEach(function(row) {
-            try { localStorage.setItem(row.toKey, row.fromRaw); } catch (eOne) {}
-          });
-        } catch (eAss) {}
-      });
+      try { localStorage.setItem(flag, '1'); } catch (eF) {}
     } catch (e) {}
-  }
-  migrateSashaNamespaceFromLegacyIfOwnAccount();
-  window.__avitologMigrateLegacyIntoSashaIfOwnAccount = migrateSashaNamespaceFromLegacyIfOwnAccount;
+  })();
 
   // Аварийное восстановление: выбираем самый полный набор из всех вариантов ключа
   function safeParse(raw) {

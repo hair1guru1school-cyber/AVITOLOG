@@ -33,25 +33,12 @@
   function isSyncableKey(k) {
     if (!k || typeof k !== 'string') return false;
     if (k.indexOf('avitolog_drive_') === 0) return false;
+    if (k.indexOf('_month_') >= 0) return false;
     if (k === LS_FILE_ID || k === LS_FOLDER_ID) return false;
     if (k === 'avitolog_current_user' || k === 'avitolog_profile_bookmark') return false;
-    /** Месячные снимки кассы только для профиля Саша (см. user-config migrate). Иначе _month_ отрезали бы всю историю кассы в ☁️. */
-    if (k.indexOf('_month_') >= 0) {
-      if (!/_sasha(?:_|$)/.test(k)) return false;
-      if (!/^avitolog_assets_(?:my|sasha|base)_v2_sasha_month_\d{4}-\d{2}$/.test(k)) return false;
-      return true;
-    }
     if (/_sasha$/.test(k)) return true;
     if (k.indexOf('_sasha_') >= 0) return true;
     return false;
-  }
-
-  function coalesceLegacyIntoSashaBeforeSync() {
-    try {
-      if (typeof window.__avitologMigrateLegacyIntoSashaIfOwnAccount === 'function') {
-        window.__avitologMigrateLegacyIntoSashaIfOwnAccount();
-      }
-    } catch (e) {}
   }
 
   var _toastTimer = null;
@@ -242,7 +229,6 @@
 
   async function pullMerge() {
     try {
-      coalesceLegacyIntoSashaBeforeSync();
       var remote = await readRemotePayload();
       if (!remote) {
         return { ok: true, message: 'В облаке ещё нет файла синка — открой доступ к папке CRM обоим аккаунтам, профиль «Саша», затем ☁️.', applied: 0, noRemoteFile: true };
@@ -262,7 +248,6 @@
     opts = opts || {};
     var silentToast = !!opts.silentToast;
     try {
-      coalesceLegacyIntoSashaBeforeSync();
       var parentId = await ensureFolderId();
       var fileId = await ensureSyncFileId();
       var remote = await readRemotePayload();

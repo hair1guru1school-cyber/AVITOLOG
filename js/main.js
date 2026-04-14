@@ -3807,27 +3807,6 @@ window.__crmRefreshAfterSashaSync = function() {
     if (typeof updateClientBadge === 'function') updateClientBadge();
   } catch (e2) {}
   try {
-    if (window.AVITOLOG_GOALS && typeof window.AVITOLOG_GOALS.render === 'function') {
-      window.AVITOLOG_GOALS.render();
-    }
-  } catch (eG) {}
-  try {
-    if (typeof rerenderProjectsPreserveScroll === 'function' && typeof projectsMode !== 'undefined' && projectsMode) {
-      rerenderProjectsPreserveScroll();
-    }
-  } catch (eP) {}
-  try {
-    if (typeof window.__renderAssetsPage === 'function' && typeof assetsMode !== 'undefined' && assetsMode) {
-      window.__renderAssetsPage();
-    }
-  } catch (eA) {}
-  try {
-    var cm = document.getElementById('clientMenu');
-    if (cm && cm.classList.contains('show') && typeof browseFolder === 'function' && typeof _browseCurrentId !== 'undefined' && _browseCurrentId) {
-      browseFolder(_browseCurrentId, _browseCurrentName || 'CRM');
-    }
-  } catch (eMenu) {}
-  try {
     if (typeof refreshClientContents === 'function' && typeof docReady !== 'undefined' && !docReady &&
         typeof currentTab !== 'undefined' && ['analysis', 'presale', 'avito1'].indexOf(currentTab) >= 0 &&
         typeof projectsMode !== 'undefined' && !projectsMode && typeof goalsMode !== 'undefined' && !goalsMode) {
