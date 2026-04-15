@@ -135,7 +135,17 @@
     return n;
   }
 
+  function isSashaDriveSession() {
+    try {
+      var em = String(localStorage.getItem('avitolog_drive_email') || '').trim().toLowerCase();
+      var sashaEm = String(localStorage.getItem('avitolog_sasha_email') || 'cyplakovaleksandr153@gmail.com').trim().toLowerCase();
+      return !!em && !!sashaEm && em === sashaEm;
+    } catch (e) { return false; }
+  }
+
   function crmRootId() {
+    // Если залогинен именно Саша — пишем в его Drive root, а не в папку Фила
+    if (isSashaDriveSession()) return null;
     if (typeof CRM_ROOT !== 'undefined' && CRM_ROOT) return CRM_ROOT;
     return '1d8oElVgTO2vzbs0HjOYPnReVmGUPltIk';
   }
@@ -182,15 +192,24 @@
     return d.files[0].id;
   }
 
+  var LS_REMOTE_FILE_ID = 'avitolog_sasha_sync_remote_file_id';
+
   async function ensureSyncFileId() {
     try {
       var fid = localStorage.getItem(LS_FILE_ID);
       if (fid) return fid;
     } catch (e) {}
+    // Фил смотрит профиль Саши — пробуем файл из Сашиного Drive (если он поделился)
+    if (!isSashaDriveSession()) {
+      try {
+        var remoteId = localStorage.getItem(LS_REMOTE_FILE_ID);
+        if (remoteId) return remoteId;
+      } catch (e2) {}
+    }
     var parentId = await ensureFolderId();
     var found = await findSyncFileId(parentId);
     if (found) {
-      try { localStorage.setItem(LS_FILE_ID, found); } catch (e2) {}
+      try { localStorage.setItem(LS_FILE_ID, found); } catch (e3) {}
       return found;
     }
     return null;
@@ -214,7 +233,7 @@
     buf.set(postB, preB.length + textB.length);
     var resp = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id', {
       method: 'POST',
-      headers: { Authorization: 'Bearer ' + token, 'Content-Type: 'multipart/related; boundary=' + boundary },
+      headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'multipart/related; boundary=' + boundary },
       body: buf
     });
     var result = await resp.json();
@@ -300,15 +319,21 @@
         await updateSyncFile(fileId, text);
       }
       var nKeys = Object.keys(merged).length;
-      showTeamSyncLine('ok', '☁️ Выгружено в Drive: ' + nKeys + ' ключей.');
+      var storedFileId = '';
+      try { storedFileId = localStorage.getItem(LS_FILE_ID) || ''; } catch (e) {}
+      showTeamSyncLine('ok', '☁️ Выгружено в Drive: ' + nKeys + ' ключей.' + (isSashaDriveSession() && storedFileId ? ' ID файла: ' + storedFileId : ''));
       if (!silentToast) {
         if (nKeys === 0) {
           showSashaTeamToast('В облако нечего выгрузить: нет ключей *_sasha (проверь профиль «Саша» и 🔑 Drive).', true);
         } else {
-          showSashaTeamToast('Данные сгружены в облако (' + nKeys + ' ключей).', false);
+          var msg = 'Данные сгружены в облако (' + nKeys + ' ключей).';
+          if (isSashaDriveSession() && storedFileId) {
+            msg += '\n\nID файла для Фила:\n' + storedFileId;
+          }
+          showSashaTeamToast(msg, false);
         }
       }
-      return { ok: true, message: 'Выгружено ключей: ' + nKeys };
+      return { ok: true, message: 'Выгружено ключей: ' + nKeys, fileId: storedFileId };
     } catch (e) {
       var msg = (e && e.message) ? e.message : String(e);
       showTeamSyncLine('err', '☁️ Ошибка синка (запись/папка CRM): ' + msg);
