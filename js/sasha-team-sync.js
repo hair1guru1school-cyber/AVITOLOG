@@ -145,7 +145,7 @@
 
   function crmRootId() {
     // Если залогинен именно Саша — пишем в его Drive root, а не в папку Фила
-    if (isSashaDriveSession()) return null;
+    if (isSashaDriveSession()) return 'root';
     if (typeof CRM_ROOT !== 'undefined' && CRM_ROOT) return CRM_ROOT;
     return '1d8oElVgTO2vzbs0HjOYPnReVmGUPltIk';
   }
