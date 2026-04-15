@@ -12,7 +12,9 @@
       .replace(/^_+|_+$/g, '')
       .slice(0, 72);
   }
-  /** Ссылка «войти как Саша»: index.html?u=sasha (или ?profile=sasha). Фил: ?u=fil — сбрасывает закладку профиля. */
+  /** Ссылка «войти как Саша»: index.html?u=sasha (или ?profile=sasha). Фил: ?u=fil — сбрасывает закладку профиля.
+   *  Добавь &sync=1 — страница автоматически запустит полный синк после загрузки:
+   *  index.html?u=sasha&sync=1 */
   var PROFILE_BOOKMARK_KEY = 'avitolog_profile_bookmark';
   var profileFromUrl = '';
   try {
@@ -20,9 +22,16 @@
     var uq = (sp.get('u') || sp.get('profile') || '').trim().toLowerCase();
     if (uq === 'sasha' || uq === 's') profileFromUrl = 'sasha';
     else if (uq === 'fil' || uq === 'f') profileFromUrl = 'fil';
-    if (profileFromUrl && typeof history !== 'undefined' && history.replaceState) {
+    var syncParam = sp.get('sync') || sp.get('autosync') || '';
+    if (syncParam === '1' || syncParam === 'true' || syncParam === '') {
+      if (sp.has('sync') || sp.has('autosync')) window.AVITOLOG_AUTOSYNC_ON_LOAD = true;
+    }
+    var needClean = !!(profileFromUrl || window.AVITOLOG_AUTOSYNC_ON_LOAD);
+    if (needClean && typeof history !== 'undefined' && history.replaceState) {
       sp.delete('u');
       sp.delete('profile');
+      sp.delete('sync');
+      sp.delete('autosync');
       var qs = sp.toString();
       var cleanPath = window.location.pathname + (qs ? '?' + qs : '') + (window.location.hash || '');
       history.replaceState(null, '', cleanPath);

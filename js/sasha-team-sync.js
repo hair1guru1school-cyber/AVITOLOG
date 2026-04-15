@@ -592,6 +592,14 @@
     setTimeout(function() {
       if (shouldOfferSync()) runAutoPull();
     }, 1500);
+    if (window.AVITOLOG_AUTOSYNC_ON_LOAD && shouldOfferSync()) {
+      showSashaTeamToast('☁️ Автосинк: запускаю синхронизацию данных Саши…', false);
+      setTimeout(function() {
+        syncUi().catch(function(e) {
+          cloudSyncUserHint('err', '☁️ Автосинк: ' + (e && e.message ? e.message : String(e)));
+        });
+      }, 2800);
+    }
   }
 
   if (document.readyState === 'loading') {
