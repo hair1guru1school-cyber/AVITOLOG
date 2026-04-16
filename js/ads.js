@@ -143,44 +143,102 @@
     try { localStorage.setItem(ADS_LAST_MONTH_MARKER, currentYM); } catch(e) {}
     adsSnapshotCurrentMonth();
   }
-  // One-time recovery: if current month expenses are empty but the previous
-  // month's archive has data, the marker-rename transition likely moved the
-  // current month's data into the archive by mistake — restore it.
-  var ADS_RECOVER_FLAG = "crm_ads_recover_misarchive_v1";
-  function adsMaybeRecoverMisarchivedData() {
+  // Recovery flags
+  var ADS_RECOVER_FLAG   = "crm_ads_recover_misarchive_v1";   // old flag (ran, may have moved wrong data)
+  var ADS_RECOVER_FLAG2  = "crm_ads_recover_misarchive_v2";   // new flag: safe recovery already evaluated
+  var ADS_UNDO_DONE_FLAG = "crm_ads_recover_undo_done_v1";    // undo was applied
+
+  function adsExpensesTotal(cells) {
+    return Object.keys(cells || {}).reduce(function(s, k) { return s + parseNum(cells[k]); }, 0);
+  }
+
+  // Undo the first (wrong) recovery that moved March data into April.
+  // Called automatically once when the old v1 flag is present.
+  function adsMaybeUndoWrongRecovery() {
     try {
-      if (localStorage.getItem(ADS_RECOVER_FLAG) === "1") return;
+      if (localStorage.getItem(ADS_UNDO_DONE_FLAG) === "1") return false;
+      if (localStorage.getItem(ADS_RECOVER_FLAG) !== "1") return false; // old recovery never ran
       var currentYM = adsCurrentMonthKey();
       var prevYM = adsGetPrevMonthKey(currentYM);
       var currentState = loadExpenses();
-      var hasCurrentData = Object.keys(currentState.data || {}).some(function(k) {
-        return parseNum(currentState.data[k]) !== 0;
-      });
-      if (hasCurrentData) {
-        localStorage.setItem(ADS_RECOVER_FLAG, "1");
-        return;
+      var hasCurrentData = adsExpensesTotal(currentState.data) !== 0;
+      if (!hasCurrentData) {
+        // Nothing to undo — April is already empty
+        localStorage.setItem(ADS_UNDO_DONE_FLAG, "1");
+        return false;
       }
-      var prevSnapRaw = localStorage.getItem(adsExpensesMonthKey(prevYM));
-      if (!prevSnapRaw) {
-        localStorage.setItem(ADS_RECOVER_FLAG, "1");
-        return;
-      }
-      var prevSnap;
-      try { prevSnap = JSON.parse(prevSnapRaw); } catch(e) { prevSnap = null; }
-      var prevHasData = prevSnap && Object.keys(prevSnap.data || {}).some(function(k) {
-        return parseNum(prevSnap.data[k]) !== 0;
-      });
-      if (!prevHasData) {
-        localStorage.setItem(ADS_RECOVER_FLAG, "1");
-        return;
-      }
-      // Restore: move misarchived data back to current month
-      var restored = { data: prevSnap.data || {}, year: currentYM.split("-")[0], month: String(parseInt(currentYM.split("-")[1], 10)) };
-      saveExpenses(restored);
-      // Remove the wrong archive entry so it doesn't persist as "March data"
-      try { localStorage.removeItem(adsExpensesMonthKey(prevYM)); } catch(e2) {}
-      localStorage.setItem(ADS_RECOVER_FLAG, "1");
+      // Move what's in April back to the previous month archive (without overwriting April snapshot)
+      var prevKey = adsExpensesMonthKey(prevYM);
+      var prevParts = prevYM.split("-");
+      try {
+        localStorage.setItem(prevKey, JSON.stringify({
+          data: currentState.data,
+          year: prevParts[0],
+          month: String(parseInt(prevParts[1], 10))
+        }));
+      } catch(e) {}
+      // Clear April live key only — do NOT call saveExpenses (it would also nuke the month snapshot)
+      try {
+        var cp = currentYM.split("-");
+        localStorage.setItem(EXPENSES_KEY, JSON.stringify({ y: cp[0], m: String(parseInt(cp[1], 10)), cells: {} }));
+      } catch(e) {}
+      localStorage.setItem(ADS_UNDO_DONE_FLAG, "1");
+      return true; // signals caller to show "April cleared" notice
     } catch(e) {}
+    return false;
+  }
+
+  // Safe one-time recovery (v2): only runs when v2 flag is absent AND undo-done flag is present
+  // (meaning the undo ran → April is empty → now try to load the real April snapshot if it exists)
+  function adsMaybeSafeRecover() {
+    try {
+      if (localStorage.getItem(ADS_RECOVER_FLAG2) === "1") return;
+      if (localStorage.getItem(ADS_UNDO_DONE_FLAG) !== "1") return; // wait for undo first
+      var currentYM = adsCurrentMonthKey();
+      // Check current month's own snapshot — it may have been saved before the bug hit
+      var snapKey = adsExpensesMonthKey(currentYM);
+      var snapRaw = localStorage.getItem(snapKey);
+      if (snapRaw) {
+        var snap;
+        try { snap = JSON.parse(snapRaw); } catch(e) { snap = null; }
+        var snapTotal = snap ? adsExpensesTotal(snap.data) : 0;
+        if (snapTotal !== 0) {
+          // Restore live key from this snapshot (snapshot key stays intact)
+          var cp = currentYM.split("-");
+          try {
+            localStorage.setItem(EXPENSES_KEY, JSON.stringify({ y: cp[0], m: String(parseInt(cp[1], 10)), cells: snap.data || {} }));
+          } catch(e) {}
+          localStorage.setItem(ADS_RECOVER_FLAG2, "1");
+          return;
+        }
+      }
+      localStorage.setItem(ADS_RECOVER_FLAG2, "1");
+    } catch(e) {}
+  }
+
+  // Expose a console diagnostic so the real totals from every ads key are visible
+  window.__adsDiagnose = function() {
+    var out = {};
+    try {
+      for (var i = 0; i < localStorage.length; i++) {
+        var k = localStorage.key(i);
+        if (!k || k.indexOf("crm_ads_expenses") !== 0) continue;
+        try {
+          var raw = localStorage.getItem(k) || "";
+          var obj = JSON.parse(raw);
+          var cells = obj.cells || obj.data || {};
+          var total = adsExpensesTotal(cells);
+          out[k] = "total=" + total + " cells=" + Object.keys(cells).length;
+        } catch(e2) { out[k] = "parse-error"; }
+      }
+    } catch(e) {}
+    console.table(out);
+    return out;
+  };
+
+  function adsMaybeRecoverMisarchivedData() {
+    var undid = adsMaybeUndoWrongRecovery();
+    if (!undid) adsMaybeSafeRecover();
   }
   window.__adsMonthPrev = function() { adsShiftMonth(-1); };
   window.__adsMonthNext = function() { adsShiftMonth(1); };
@@ -1495,6 +1553,23 @@
     var sourcesState = loadPostsSources();
     var links = loadLinks();
     var archiveBanner = isAdsArchive ? '<div class="ads-archive-banner" style="text-align:center;padding:8px 16px;background:rgba(255,165,0,0.12);border:1px solid rgba(255,165,0,0.3);border-radius:8px;color:#ffa500;font-weight:700;font-size:13px;margin-bottom:8px">📁 Архив: ' + escapeHtml(monthLabel) + "</div>" : "";
+    // Show a notice if the wrong-recovery undo ran (April was cleared — user needs to re-enter)
+    var undoBanner = "";
+    try {
+      if (
+        !isAdsArchive &&
+        localStorage.getItem(ADS_UNDO_DONE_FLAG) === "1" &&
+        adsExpensesTotal(loadExpenses().data) === 0
+      ) {
+        var prevYM2 = adsGetPrevMonthKey(adsCurrentMonthKey());
+        undoBanner =
+          '<div id="adsUndoBanner" style="padding:10px 16px;background:rgba(255,80,80,0.13);border:1px solid rgba(255,80,80,0.45);border-radius:8px;color:#ff9999;font-size:12px;font-weight:700;margin-bottom:8px">' +
+          '⚠️ Апрель был очищен автоматически: предыдущие данные (" мартовские ") перемещены в архив ' + escapeHtml(adsFormatMonthLabel(prevYM2)) + '. ' +
+          'Введи реальные данные апреля заново. ' +
+          'Для диагностики всех ключей открой консоль браузера и выполни: <code style="background:rgba(0,0,0,0.4);padding:2px 6px;border-radius:4px;font-size:11px">window.__adsDiagnose()</code>' +
+          '</div>';
+      }
+    } catch(e) {}
     var monthNavHtml = '<div class="ads-month-nav" style="display:inline-flex;align-items:center;gap:6px;margin-left:12px">' +
       '<button type="button" class="goal-month-nav-btn" onclick="window.__adsMonthPrev()" title="Предыдущий месяц" style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.15);color:#fff;width:32px;height:32px;border-radius:6px;font-size:13px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;padding:0;font-family:inherit">◀</button>' +
       '<span style="font-size:13px;font-weight:700;color:rgba(255,255,255,0.85);min-width:110px;text-align:center;white-space:nowrap">' + escapeHtml(monthLabel) + '</span>' +
@@ -1504,6 +1579,7 @@
     wrap.className = "ads-page";
     wrap.innerHTML =
       archiveBanner +
+      undoBanner +
       '<div class="ads-header">📢 РЕКЛАМА ПРОЕКТА' + monthNavHtml + '</div>' +
       '<div class="ads-subtab-page on" data-ads-page="expenses">' +
         '<div class="ads-top-summary" id="adsTopSummary">' +
