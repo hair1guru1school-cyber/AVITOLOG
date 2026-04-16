@@ -118,21 +118,69 @@
     var lastYM = "";
     try { lastYM = localStorage.getItem(ADS_LAST_MONTH_MARKER) || ""; } catch(e) {}
     if (lastYM === currentYM) return;
-    var prevYM = adsGetPrevMonthKey(currentYM);
-    var hasPrevSnap = !!localStorage.getItem(adsExpensesMonthKey(prevYM));
-    var currentState = loadExpenses();
-    var hasData = Object.keys(currentState.data || {}).some(function(k) {
-      return parseNum(currentState.data[k]) !== 0;
-    });
-    if (hasData && !hasPrevSnap) {
-      try { localStorage.setItem(adsExpensesMonthKey(prevYM), JSON.stringify(currentState)); } catch(e) {}
-      adsClearExpensesForNewMonth();
-    } else if (lastYM && lastYM < currentYM) {
+    // First-time marker init (e.g. after marker key rename): never clear data
+    if (!lastYM) {
+      try { localStorage.setItem(ADS_LAST_MONTH_MARKER, currentYM); } catch(e) {}
       adsSnapshotCurrentMonth();
-      adsClearExpensesForNewMonth();
+      return;
+    }
+    // Real month rollover
+    if (lastYM < currentYM) {
+      var prevYM = adsGetPrevMonthKey(currentYM);
+      var hasPrevSnap = !!localStorage.getItem(adsExpensesMonthKey(prevYM));
+      var currentState = loadExpenses();
+      var hasData = Object.keys(currentState.data || {}).some(function(k) {
+        return parseNum(currentState.data[k]) !== 0;
+      });
+      if (hasData && !hasPrevSnap) {
+        try { localStorage.setItem(adsExpensesMonthKey(prevYM), JSON.stringify(currentState)); } catch(e) {}
+        adsClearExpensesForNewMonth();
+      } else {
+        adsSnapshotCurrentMonth();
+        adsClearExpensesForNewMonth();
+      }
     }
     try { localStorage.setItem(ADS_LAST_MONTH_MARKER, currentYM); } catch(e) {}
     adsSnapshotCurrentMonth();
+  }
+  // One-time recovery: if current month expenses are empty but the previous
+  // month's archive has data, the marker-rename transition likely moved the
+  // current month's data into the archive by mistake — restore it.
+  var ADS_RECOVER_FLAG = "crm_ads_recover_misarchive_v1";
+  function adsMaybeRecoverMisarchivedData() {
+    try {
+      if (localStorage.getItem(ADS_RECOVER_FLAG) === "1") return;
+      var currentYM = adsCurrentMonthKey();
+      var prevYM = adsGetPrevMonthKey(currentYM);
+      var currentState = loadExpenses();
+      var hasCurrentData = Object.keys(currentState.data || {}).some(function(k) {
+        return parseNum(currentState.data[k]) !== 0;
+      });
+      if (hasCurrentData) {
+        localStorage.setItem(ADS_RECOVER_FLAG, "1");
+        return;
+      }
+      var prevSnapRaw = localStorage.getItem(adsExpensesMonthKey(prevYM));
+      if (!prevSnapRaw) {
+        localStorage.setItem(ADS_RECOVER_FLAG, "1");
+        return;
+      }
+      var prevSnap;
+      try { prevSnap = JSON.parse(prevSnapRaw); } catch(e) { prevSnap = null; }
+      var prevHasData = prevSnap && Object.keys(prevSnap.data || {}).some(function(k) {
+        return parseNum(prevSnap.data[k]) !== 0;
+      });
+      if (!prevHasData) {
+        localStorage.setItem(ADS_RECOVER_FLAG, "1");
+        return;
+      }
+      // Restore: move misarchived data back to current month
+      var restored = { data: prevSnap.data || {}, year: currentYM.split("-")[0], month: String(parseInt(currentYM.split("-")[1], 10)) };
+      saveExpenses(restored);
+      // Remove the wrong archive entry so it doesn't persist as "March data"
+      try { localStorage.removeItem(adsExpensesMonthKey(prevYM)); } catch(e2) {}
+      localStorage.setItem(ADS_RECOVER_FLAG, "1");
+    } catch(e) {}
   }
   window.__adsMonthPrev = function() { adsShiftMonth(-1); };
   window.__adsMonthNext = function() { adsShiftMonth(1); };
@@ -1424,6 +1472,7 @@
   }
 
   function renderAdsPage(mainContentEl) {
+    adsMaybeRecoverMisarchivedData();
     adsCheckMonthTransition();
     var isAdsArchive = !!_adsViewMonth;
     var adsViewYM = _adsViewMonth || adsCurrentMonthKey();
