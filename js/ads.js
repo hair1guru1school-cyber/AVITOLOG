@@ -143,6 +143,30 @@
     try { localStorage.setItem(ADS_LAST_MONTH_MARKER, currentYM); } catch(e) {}
     adsSnapshotCurrentMonth();
   }
+  // One-time restore from backup (2026-04-14 backup data)
+  var ADS_BACKUP_RESTORE_FLAG = "crm_ads_restored_from_backup_apr2026_v1";
+  function adsRestoreFromBackup() {
+    try {
+      if (localStorage.getItem(ADS_BACKUP_RESTORE_FLAG) === "1") return;
+      // Real April 2026 data (from backup 2026-04-14-2110)
+      var aprilCells = {"main_1":2000,"main_4":2300,"new_4":1000,"main_5":2000,"main_6":3377,"main_7":2200,"main_8":1500,"main_9":1000,"main_10":500,"main_11":500,"main_12":1000,"main_13":7700,"main_14":850};
+      // Real March 2026 archive (from same backup)
+      var marchData = {"main_1":"1000","main_2":"2850","main_3":"1350","main_4":"1500","main_5":"3450","main_6":"1500","main_7":"0","main_8":"0","main_9":"1600","main_10":"2700","main_11":"9500","main_12":"500","main_13":"1000","main_14":"1300","main_15":"1500","main_16":"1500","new_6":"2000","main_17":5177,"main_18":2500,"main_19":1500,"main_20":2000,"main_21":1500,"main_22":850,"main_23":1500,"main_24":3100,"main_26":2300,"main_25":1600,"main_28":1000,"main_29":2000,"main_30":1300,"main_31":3800};
+      // Write April live key
+      localStorage.setItem(EXPENSES_KEY, JSON.stringify({ y: "2026", m: "4", cells: aprilCells }));
+      // Write April snapshot
+      localStorage.setItem(adsExpensesMonthKey("2026-04"), JSON.stringify({ data: aprilCells, year: "2026", month: "4" }));
+      // Write March archive
+      localStorage.setItem(adsExpensesMonthKey("2026-03"), JSON.stringify({ data: marchData, year: "2026", month: "3" }));
+      // Mark all recovery flags as done so nothing else overwrites this
+      localStorage.setItem(ADS_RECOVER_FLAG, "1");
+      localStorage.setItem(ADS_RECOVER_FLAG2, "1");
+      localStorage.setItem(ADS_UNDO_DONE_FLAG, "1");
+      localStorage.setItem(ADS_LAST_MONTH_MARKER, "2026-04");
+      localStorage.setItem(ADS_BACKUP_RESTORE_FLAG, "1");
+    } catch(e) {}
+  }
+
   // Recovery flags
   var ADS_RECOVER_FLAG   = "crm_ads_recover_misarchive_v1";   // old flag (ran, may have moved wrong data)
   var ADS_RECOVER_FLAG2  = "crm_ads_recover_misarchive_v2";   // new flag: safe recovery already evaluated
@@ -1530,6 +1554,7 @@
   }
 
   function renderAdsPage(mainContentEl) {
+    adsRestoreFromBackup();
     adsMaybeRecoverMisarchivedData();
     adsCheckMonthTransition();
     var isAdsArchive = !!_adsViewMonth;
