@@ -7452,12 +7452,12 @@ async function browseFolder(folderId, folderName) {
   var backBtn = _browseStack.length > 0 ? '<button type="button" onclick="browseBack()">← Назад</button>' : '';
   // Кнопка выбора только на уровне 2+ (внутри категории)
   var selectBtn = _browseLevel >= 2 ? '<button type="button" class="primary" onclick="selectBrowseFolder()">✓ Выбрать</button>' : '';
-  var newFolderBtn = '<button type="button" class="primary" onclick="createBrowseFolder()">+ Папка</button>';
-  var footInner = _browseStack.length === 0 ? newFolderBtn : (backBtn + selectBtn);
+  var newFolderBtn = '<button type="button" onclick="createBrowseFolder()">+ Папка</button>';
+  var footInner = backBtn + newFolderBtn + selectBtn;
 
   menu.innerHTML = '<div class="cm-head"><span>📁 ' + folderName + '</span><span class="cm-close" onclick="closeClientMenu()">✕</span></div>' +
     '<div class="cm-path">' + pathStr + '</div>' +
-    '<div class="cm-tools"><input type="search" id="cmSearch" placeholder="Поиск папки..." oninput="filterBrowseFolders(this.value)"><button type="button" onclick="createBrowseFolder()">+ Папка</button></div>' +
+    '<div class="cm-tools"><input type="search" id="cmSearch" placeholder="Поиск папки..." oninput="filterBrowseFolders(this.value)"></div>' +
     '<div class="cm-list"><div style="padding:20px;text-align:center;color:var(--muted);font-size:11px">⏳</div></div>' +
     '<div class="cm-foot">' + footInner + '</div>';
 
