@@ -2770,5 +2770,34 @@ if (!window.AVITOLOG_GOALS) {
 <script src="js/main.js?v=20260414-3"></script>
 <script src="js/sasha-team-sync.js?v=20260414-5"></script>
 <script src="js/data-backup.js?v=20260404-1"></script>
+<script>
+(function(){
+  var DONE = 'avitolog_base_restore_apr2026_v1';
+  if (localStorage.getItem(DONE)) return;
+  var suffix = (typeof window.AVITOLOG_KEY_SUFFIX === 'string') ? window.AVITOLOG_KEY_SUFFIX : '_sasha';
+  var KEY = 'avitolog_assets_base_v2' + suffix;
+  var cur = []; try { cur = JSON.parse(localStorage.getItem(KEY) || '[]'); } catch(e) {}
+  if (cur.length <= 1) {
+    var base = [
+      {"emoji":"📦","name":"Новый проект","paid":"","expected":"","paymentDate":"","startDate":"","clientType":"new","folderLink":""},
+      {"emoji":"🪨","name":"Камни и Пеллеты","paid":"","expected":"","paymentDate":"","startDate":"","clientType":"new","folderLink":""},
+      {"emoji":"🛌","name":"Кирилл Кровати","paid":"","expected":"","paymentDate":"","startDate":"","clientType":"new","folderLink":""},
+      {"emoji":"🏠","name":"Дмитрий Бани Каркасные","paid":"","expected":"","paymentDate":"","startDate":"","clientType":"new","folderLink":""},
+      {"emoji":"🚜","name":"СельхозТехника","paid":"","expected":"","paymentDate":"","startDate":"","clientType":"new","folderLink":""},
+      {"emoji":"👩🏻‍🏫","name":"Ксения Сергеевна","paid":"","expected":"","paymentDate":"","startDate":"","clientType":"new","folderLink":""},
+      {"emoji":"⚡️","name":"Электрик Крым Александр","paid":"","expected":"","paymentDate":"","startDate":"","clientType":"new","folderLink":""},
+      {"emoji":"🧱","name":"Иван Сияр Сендвич","paid":"","expected":"","paymentDate":"","startDate":"","clientType":"new","folderLink":""},
+      {"emoji":"🧱","name":"Дома Андрей","paid":"","expected":"","paymentDate":"","startDate":"","clientType":"new","folderLink":""},
+      {"emoji":"⚡","name":"Автосервис Илья","paid":"","expected":"","paymentDate":"","startDate":"","clientType":"new","folderLink":""},
+      {"emoji":"🛠️","name":"Олег Бурение скважин","paid":"","expected":"","paymentDate":"","startDate":"","clientType":"new","folderLink":""},
+      {"emoji":"🎯","name":"Печать на футболках и тд","paid":"","expected":"","paymentDate":"","startDate":"","clientType":"new","folderLink":""},
+      {"emoji":"🛻","name":"Логистика","paid":"","expected":"","paymentDate":"","startDate":"","clientType":"new","folderLink":""},
+      {"emoji":"🪑","name":"Рушан Корпусная мебель","paid":"","expected":"","paymentDate":"","startDate":"","clientType":"new","folderLink":""}
+    ];
+    try { localStorage.setItem(KEY, JSON.stringify(base)); } catch(e) {}
+  }
+  localStorage.setItem(DONE, '1');
+})();
+</script>
 </body>
 </html>
