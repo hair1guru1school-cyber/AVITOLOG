@@ -1,0 +1,822 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>CRM — Таблица данных</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0f1117;--surface:#181c27;--surface2:#1e2435;--surface3:#252c3e;
+  --border:#2a3248;--border2:#35406a;
+  --text:#e8eaf0;--text2:#9aa3be;--text3:#5a6585;
+  --accent:#7c6af7;--accent2:#35d0ff;--green:#00d97e;--red:#ff4444;--yellow:#ffcc00;--orange:#ff6b35;
+  --row-even:#181c27;--row-odd:#1c2033;--row-hover:#242b42;
+  --sheet-active:#7c6af7;--sheet-bg:#141824;
+}
+html,body{height:100%;overflow:hidden;font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);font-size:13px}
+
+/* ── HEADER ── */
+#hdr{display:flex;align-items:center;gap:12px;padding:8px 16px;background:var(--surface);border-bottom:1px solid var(--border);height:44px;flex-shrink:0}
+#hdr-title{font-size:15px;font-weight:700;color:var(--text);letter-spacing:.5px}
+#hdr-title span{color:var(--accent)}
+.hdr-badge{font-size:11px;padding:2px 8px;border-radius:10px;background:var(--surface3);color:var(--text2);border:1px solid var(--border)}
+#hdr-sync-time{font-size:11px;color:var(--text3);margin-left:auto}
+#btn-refresh{background:var(--accent);color:#fff;border:none;border-radius:6px;padding:5px 14px;font-size:12px;cursor:pointer;font-weight:600;letter-spacing:.3px;transition:opacity .15s}
+#btn-refresh:hover{opacity:.85}
+#btn-export{background:var(--surface3);color:var(--text2);border:1px solid var(--border2);border-radius:6px;padding:5px 14px;font-size:12px;cursor:pointer;font-weight:600;letter-spacing:.3px;transition:all .15s}
+#btn-export:hover{background:var(--green);color:#000;border-color:var(--green)}
+#btn-restore{background:var(--surface3);color:var(--orange);border:1px solid var(--orange);border-radius:6px;padding:5px 14px;font-size:12px;cursor:pointer;font-weight:600;letter-spacing:.3px;transition:all .15s}
+#btn-restore:hover{background:var(--orange);color:#000}
+
+/* ── TOOLBAR ── */
+#toolbar{display:flex;align-items:center;gap:10px;padding:6px 14px;background:var(--surface);border-bottom:1px solid var(--border);flex-shrink:0}
+#search-box{background:var(--surface3);border:1px solid var(--border2);border-radius:6px;color:var(--text);padding:5px 10px;font-size:12px;width:240px;outline:none}
+#search-box:focus{border-color:var(--accent)}
+#search-box::placeholder{color:var(--text3)}
+#row-count{font-size:11px;color:var(--text3);margin-left:auto}
+
+/* ── MAIN LAYOUT ── */
+#layout{display:flex;flex-direction:column;height:calc(100vh - 44px)}
+
+/* ── TABLE AREA ── */
+#table-wrap{flex:1;overflow:auto;padding:0}
+table{width:100%;border-collapse:collapse;table-layout:fixed}
+thead{position:sticky;top:0;z-index:10}
+thead th{background:var(--surface2);color:var(--text2);font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.6px;padding:8px 10px;border-bottom:2px solid var(--border2);text-align:left;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer;user-select:none}
+thead th:hover{color:var(--text);background:var(--surface3)}
+thead th.sorted-asc::after{content:' ↑';color:var(--accent)}
+thead th.sorted-desc::after{content:' ↓';color:var(--accent)}
+tbody tr:nth-child(even){background:var(--row-even)}
+tbody tr:nth-child(odd){background:var(--row-odd)}
+tbody tr:hover{background:var(--row-hover)}
+tbody td{padding:6px 10px;border-bottom:1px solid var(--border);color:var(--text);font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;vertical-align:middle}
+tbody td.wrap{white-space:normal;word-break:break-word;line-height:1.5}
+tbody td.mono{font-family:monospace;font-size:11px;color:var(--text2)}
+.badge{display:inline-block;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700;letter-spacing:.3px;white-space:nowrap}
+.empty-state{text-align:center;padding:60px 20px;color:var(--text3);font-size:14px}
+.empty-state b{display:block;font-size:28px;margin-bottom:8px}
+#no-data{display:none;text-align:center;padding:60px;color:var(--text3)}
+
+/* ── SHEET TABS ── */
+#sheets-bar{display:flex;align-items:stretch;background:var(--sheet-bg);border-top:1px solid var(--border);height:34px;overflow-x:auto;flex-shrink:0}
+#sheets-bar::-webkit-scrollbar{height:4px}
+#sheets-bar::-webkit-scrollbar-thumb{background:var(--border2)}
+.sheet-tab{display:flex;align-items:center;gap:6px;padding:0 16px;font-size:12px;font-weight:600;color:var(--text3);cursor:pointer;border-right:1px solid var(--border);white-space:nowrap;transition:all .15s;border-top:2px solid transparent;flex-shrink:0}
+.sheet-tab:hover{color:var(--text);background:var(--surface2)}
+.sheet-tab.active{color:#fff;background:var(--surface2);border-top-color:var(--sheet-active)}
+.sheet-tab .cnt{font-size:10px;padding:1px 5px;border-radius:8px;background:var(--surface3);color:var(--text2)}
+.sheet-tab.active .cnt{background:var(--accent);color:#fff}
+
+/* ── STATUS BADGES ── */
+.s-kp{background:#1a3a4a;color:#35d0ff}
+.s-negotiations{background:#2a1f5a;color:#9b8af7}
+.s-invoice{background:#0d3a28;color:#00d97e}
+.s-contract{background:#0d3a28;color:#00d97e}
+.s-instruction{background:#0d3a28;color:#00d97e}
+.s-paid{background:#0a2e1e;color:#00ff88}
+.s-reading{background:#1a3a4a;color:#35d0ff}
+.s-not_reading{background:#3a1e1a;color:#ff6b35}
+.s-drain{background:#3a1111;color:#ff4444}
+.s-active{background:#0d3a28;color:#00d97e}
+.s-waiting{background:#3a2a0d;color:#ffcc00}
+.s-park{background:#252525;color:#888}
+.s-default{background:#252535;color:#7c6af7}
+
+/* ── СТРЕЛКИ ПРОЕКТА ── */
+.project-status{font-size:11px;padding:2px 7px;border-radius:4px;display:inline-block}
+
+/* ── LOADER ── */
+#loader{display:flex;align-items:center;justify-content:center;height:100%;color:var(--text3);font-size:14px;gap:10px}
+.spin{width:18px;height:18px;border:2px solid var(--border2);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ── SCROLLBAR ── */
+::-webkit-scrollbar{width:6px;height:6px}
+::-webkit-scrollbar-track{background:var(--bg)}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
+
+/* ── TOAST ── */
+#toast{position:fixed;bottom:50px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--green);color:#000;padding:8px 20px;border-radius:8px;font-weight:700;font-size:13px;opacity:0;transition:all .3s;pointer-events:none;z-index:999}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+</style>
+</head>
+<body>
+
+<div id="hdr">
+  <div id="hdr-title"><span>CRM</span> — Таблица данных</div>
+  <div class="hdr-badge" id="hdr-origin">файл://</div>
+  <span id="hdr-sync-time">Синхронизируется…</span>
+  <button id="btn-restore" onclick="restoreFromShadow()">Восстановить из резерва</button>
+  <button id="btn-export" onclick="exportJSON()">Экспорт JSON</button>
+  <button id="btn-refresh" onclick="loadAll()">↻ Обновить</button>
+</div>
+
+<div id="layout">
+  <div id="toolbar">
+    <input id="search-box" placeholder="🔍 Поиск по всем данным…" oninput="applySearch(this.value)"/>
+    <span id="row-count"></span>
+  </div>
+  <div id="table-wrap">
+    <div id="loader"><div class="spin"></div> Загрузка данных…</div>
+    <table id="main-table" style="display:none">
+      <thead id="thead-row"></thead>
+      <tbody id="tbody-rows"></tbody>
+    </table>
+    <div id="no-data">Нет данных для этого листа</div>
+  </div>
+  <div id="sheets-bar" id="sheets-bar"></div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+// ─────────────────────────────────────────────────────────────
+//  КОНФИГ
+// ─────────────────────────────────────────────────────────────
+var DB_NAME    = 'avitolog_shadow_v1';
+var LIVE_STORE = 'live';
+var SNAP_STORE = 'snapshots';
+
+var BACKUP_PREFIXES = [
+  'avitolog_projects',
+  'avitolog_goals_v1',
+  'avitolog_goal_achievements_v1',
+  'avitolog_clients',
+  'avitolog_active_client',
+  'crm_tasks_v1',
+  'avitolog_assets',
+  'client_tags_',
+  'client_avatar_',
+  'crm_ads_'
+];
+var BACKUP_EXACT = ['avitolog_assets_projects_v1'];
+
+function isBackupKey(k) {
+  if (!k) return false;
+  if (BACKUP_EXACT.indexOf(k) !== -1) return true;
+  for (var i = 0; i < BACKUP_PREFIXES.length; i++) {
+    if (k.indexOf(BACKUP_PREFIXES[i]) === 0) return true;
+  }
+  return false;
+}
+
+// ─────────────────────────────────────────────────────────────
+//  СОСТОЯНИЕ
+// ─────────────────────────────────────────────────────────────
+var _db         = null;
+var _allData    = {};   // ключ → строка JSON из localStorage / IDB
+var _activeSheet = 'projects';
+var _sheets     = [];   // [{id, label, icon, cols, rows, buildFn}]
+var _searchVal  = '';
+var _sortCol    = null;
+var _sortDir    = 1;
+var _sheetRows  = {};   // id → [{...}]
+
+// ─────────────────────────────────────────────────────────────
+//  IndexedDB
+// ─────────────────────────────────────────────────────────────
+function openIDB(cb) {
+  try {
+    var req = indexedDB.open(DB_NAME, 1);
+    req.onupgradeneeded = function(e) {
+      var db = e.target.result;
+      if (!db.objectStoreNames.contains(LIVE_STORE))
+        db.createObjectStore(LIVE_STORE, { keyPath: 'key' });
+      if (!db.objectStoreNames.contains(SNAP_STORE))
+        db.createObjectStore(SNAP_STORE, { keyPath: 'savedAt' });
+    };
+    req.onsuccess = function(e) { cb(e.target.result); };
+    req.onerror   = function()  { cb(null); };
+  } catch(e) { cb(null); }
+}
+
+function readFromIDB(db, cb) {
+  if (!db) { cb({}); return; }
+  try {
+    var result = {};
+    var tx  = db.transaction(LIVE_STORE, 'readonly');
+    var req = tx.objectStore(LIVE_STORE).openCursor();
+    req.onsuccess = function(e) {
+      var c = e.target.result;
+      if (c) { result[c.value.key] = c.value; c.continue(); }
+      else   { cb(result); }
+    };
+    req.onerror = function() { cb({}); };
+  } catch(e) { cb({}); }
+}
+
+function getLastIDBSnap(db, cb) {
+  if (!db) { cb(null); return; }
+  try {
+    var tx  = db.transaction(SNAP_STORE, 'readonly');
+    var req = tx.objectStore(SNAP_STORE).openCursor(null, 'prev');
+    req.onsuccess = function(e) {
+      var c = e.target.result;
+      cb(c ? c.value : null);
+    };
+    req.onerror = function() { cb(null); };
+  } catch(e) { cb(null); }
+}
+
+// ─────────────────────────────────────────────────────────────
+//  ЗАГРУЗКА ДАННЫХ
+// ─────────────────────────────────────────────────────────────
+function loadAll() {
+  showLoader(true);
+  _allData = {};
+
+  // 1. Сначала читаем localStorage (если доступен)
+  try {
+    for (var i = 0; i < localStorage.length; i++) {
+      var k = localStorage.key(i);
+      if (isBackupKey(k)) {
+        try { _allData[k] = localStorage.getItem(k); } catch(e){}
+      }
+    }
+  } catch(e) {}
+
+  // 2. Открываем IDB и читаем shadow-копии для дополнения
+  openIDB(function(db) {
+    _db = db;
+    readFromIDB(db, function(idbData) {
+      // Дополняем данные из IDB если в localStorage чего-то нет
+      var idbKeys = Object.keys(idbData);
+      var newFromIDB = 0;
+      idbKeys.forEach(function(k) {
+        if (!_allData[k] && idbData[k] && idbData[k].value) {
+          _allData[k] = idbData[k].value;
+          newFromIDB++;
+        }
+      });
+
+      // Обновляем время синхронизации
+      getLastIDBSnap(db, function(snap) {
+        var syncEl = document.getElementById('hdr-sync-time');
+        if (syncEl) {
+          var lsSnap = '';
+          try { lsSnap = localStorage.getItem('_crm_shadow_last_snap') || ''; } catch(e){}
+          var t = (snap && snap.savedAt) || lsSnap || '';
+          if (t) {
+            var d = new Date(t);
+            syncEl.textContent = 'Резерв: ' + d.toLocaleDateString('ru') + ' ' + d.toLocaleTimeString('ru') +
+              (idbKeys.length ? ' | IDB: ' + idbKeys.length + ' ключей' : '');
+          } else {
+            syncEl.textContent = 'IndexedDB: нет снимков (открой основное приложение)';
+          }
+        }
+        buildSheets();
+        renderActiveSheet();
+        showLoader(false);
+      });
+    });
+  });
+
+  // Обновляем origin badge
+  try {
+    var orig = document.getElementById('hdr-origin');
+    if (orig) orig.textContent = location.origin || location.protocol;
+  } catch(e){}
+}
+
+// ─────────────────────────────────────────────────────────────
+//  ПАРСИНГ ДАННЫХ
+// ─────────────────────────────────────────────────────────────
+function parseJSON(str) {
+  try { return JSON.parse(str); } catch(e) { return null; }
+}
+
+// Найти значение по префиксу ключа
+function getByPrefix(prefix) {
+  var keys = Object.keys(_allData).filter(function(k){ return k.indexOf(prefix)===0; });
+  if (keys.length === 0) return null;
+  // Приоритет: без суффикса (_Sasha, _Fil) — т.е. основной
+  keys.sort(function(a,b){ return a.length - b.length; });
+  return _allData[keys[0]];
+}
+
+// ── ПРОЕКТЫ ──
+function buildProjectRows() {
+  var raw = getByPrefix('avitolog_projects');
+  var rows = [];
+  if (!raw) return rows;
+  var data = parseJSON(raw);
+  if (!Array.isArray(data)) return rows;
+  data.forEach(function(p) {
+    if (!p || typeof p !== 'object') return;
+    // Подсчёт задач
+    var taskCount = 0;
+    if (Array.isArray(p.childLines)) {
+      p.childLines.forEach(function(cl) {
+        if (Array.isArray(cl.tasks)) taskCount += cl.tasks.length;
+      });
+    }
+    rows.push({
+      emoji:      p.emoji || '📦',
+      name:       p.name || '—',
+      status:     p.status || '',
+      type:       p.type || '',
+      dateStart:  p.dateStart || '',
+      dateEnd:    p.dateEnd || '',
+      budget:     p.budget != null ? String(p.budget) : '',
+      tasks:      String(taskCount),
+      note:       p.note || p.notes || '',
+      id:         p.id || ''
+    });
+  });
+  return rows;
+}
+
+// ── CRM / ЦЕЛИ ──
+function buildGoalRows() {
+  var rows = [];
+  var raw = getByPrefix('avitolog_goals_v1');
+  if (!raw) return rows;
+  var data = parseJSON(raw);
+  if (!data) return rows;
+  // Структура: data.projects — массив целей
+  var projects = Array.isArray(data.projects) ? data.projects : [];
+  // Или data может быть массивом
+  if (Array.isArray(data)) projects = data;
+  projects.forEach(function(p) {
+    if (!p || typeof p !== 'object') return;
+    // Определяем статус
+    var status = p.status || p.currentStatus || '';
+    if (typeof status === 'object' && status !== null) status = status.id || '';
+    rows.push({
+      emoji:    p.emoji || '🎯',
+      name:     p.name || '—',
+      niche:    p.niche || '',
+      phone:    p.phone || '',
+      status:   String(status),
+      budget:   p.budget != null ? String(p.budget) : '',
+      week:     p.week != null ? String(p.week) : '',
+      note:     p.note || '',
+      created:  p.createdAt ? fmtDate(p.createdAt) : ''
+    });
+  });
+  return rows;
+}
+
+// ── КЛИЕНТЫ ──
+function buildClientRows() {
+  var rows = [];
+  var raw = getByPrefix('avitolog_clients');
+  if (!raw) return rows;
+  var data = parseJSON(raw);
+  var list = Array.isArray(data) ? data : (data && Array.isArray(data.list) ? data.list : []);
+  list.forEach(function(c) {
+    if (!c || typeof c !== 'object') return;
+    rows.push({
+      name:    c.name || c.title || '—',
+      niche:   c.niche || '',
+      phone:   c.phone || c.contact || '',
+      status:  c.status || '',
+      budget:  c.budget != null ? String(c.budget) : '',
+      note:    c.note || c.notes || '',
+      created: c.createdAt ? fmtDate(c.createdAt) : ''
+    });
+  });
+  return rows;
+}
+
+// ── ЗАДАЧИ CRM ──
+function buildTaskRows() {
+  var rows = [];
+  Object.keys(_allData).forEach(function(k) {
+    if (k.indexOf('crm_tasks_v1') !== 0) return;
+    var data = parseJSON(_allData[k]);
+    if (!data) return;
+    var tasks = Array.isArray(data) ? data : (data.tasks || []);
+    tasks.forEach(function(t) {
+      if (!t || typeof t !== 'object') return;
+      rows.push({
+        text:      t.text || t.title || t.name || '—',
+        done:      t.done || t.completed ? '✅' : '⬜',
+        priority:  t.priority || '',
+        project:   t.projectId || t.project || '',
+        deadline:  t.deadline ? fmtDate(t.deadline) : (t.date ? fmtDate(t.date) : ''),
+        note:      t.note || ''
+      });
+    });
+  });
+  return rows;
+}
+
+// ── КАССА / АКТИВЫ ──
+function buildAssetRows() {
+  var rows = [];
+  var raw = getByPrefix('avitolog_assets');
+  if (!raw) return rows;
+  var data = parseJSON(raw);
+  if (!data) return rows;
+  var items = Array.isArray(data) ? data
+    : (data.items || data.records || data.payments || data.rows || []);
+  if (!Array.isArray(items)) {
+    // Попробуем все значения объекта
+    items = Object.values(data).filter(function(v){ return Array.isArray(v); }).flat();
+  }
+  items.forEach(function(a) {
+    if (!a || typeof a !== 'object') return;
+    rows.push({
+      date:    a.date ? fmtDate(a.date) : (a.createdAt ? fmtDate(a.createdAt) : ''),
+      name:    a.name || a.title || a.description || '—',
+      amount:  a.amount != null ? fmtMoney(a.amount) : (a.sum != null ? fmtMoney(a.sum) : ''),
+      type:    a.type || a.category || '',
+      project: a.projectId || a.project || a.clientName || '',
+      note:    a.note || ''
+    });
+  });
+  return rows;
+}
+
+// ── РЕКЛАМА ──
+function buildAdsRows() {
+  var rows = [];
+  Object.keys(_allData).forEach(function(k) {
+    if (k.indexOf('crm_ads_') !== 0) return;
+    var data = parseJSON(_allData[k]);
+    if (!data) return;
+    var list = Array.isArray(data) ? data : (data.ads || data.items || []);
+    list.forEach(function(a) {
+      if (!a || typeof a !== 'object') return;
+      rows.push({
+        title:   a.title || a.name || '—',
+        status:  a.status || a.state || '',
+        budget:  a.budget != null ? fmtMoney(a.budget) : '',
+        spent:   a.spent != null ? fmtMoney(a.spent) : '',
+        clicks:  a.clicks != null ? String(a.clicks) : '',
+        project: a.projectId || a.clientId || k.replace('crm_ads_','') || '',
+        note:    a.note || ''
+      });
+    });
+  });
+  return rows;
+}
+
+// ── ВСЕ КЛЮЧИ (RAW) ──
+function buildRawRows() {
+  var rows = [];
+  Object.keys(_allData).sort().forEach(function(k) {
+    var val = _allData[k] || '';
+    var size = Math.round(val.length / 1024 * 10) / 10;
+    rows.push({
+      key:     k,
+      size:    size + ' KB',
+      preview: val.slice(0, 120) + (val.length > 120 ? '…' : '')
+    });
+  });
+  return rows;
+}
+
+// ─────────────────────────────────────────────────────────────
+//  ЛИСТЫ (SHEETS)
+// ─────────────────────────────────────────────────────────────
+var SHEET_DEFS = [
+  {
+    id: 'projects', label: 'Проекты', icon: '📦',
+    cols: [
+      { key:'emoji',     label:'',          w:36  },
+      { key:'name',      label:'Название',   w:200, wrap:true },
+      { key:'status',    label:'Статус',     w:110, badge:'project' },
+      { key:'type',      label:'Тип',        w:100 },
+      { key:'dateStart', label:'Старт',      w:90  },
+      { key:'dateEnd',   label:'Дедлайн',    w:90  },
+      { key:'budget',    label:'Бюджет',     w:90  },
+      { key:'tasks',     label:'Задач',      w:60  },
+      { key:'note',      label:'Заметки',    w:260, wrap:true }
+    ],
+    buildFn: buildProjectRows
+  },
+  {
+    id: 'goals', label: 'CRM / Цели', icon: '🎯',
+    cols: [
+      { key:'emoji',   label:'',           w:36  },
+      { key:'name',    label:'Название',    w:200, wrap:true },
+      { key:'niche',   label:'Ниша',        w:140 },
+      { key:'phone',   label:'Телефон',     w:130 },
+      { key:'status',  label:'Статус',      w:120, badge:'crm' },
+      { key:'budget',  label:'Бюджет',      w:90  },
+      { key:'week',    label:'Неделя',      w:70  },
+      { key:'created', label:'Добавлен',    w:90  },
+      { key:'note',    label:'Заметка',     w:260, wrap:true }
+    ],
+    buildFn: buildGoalRows
+  },
+  {
+    id: 'clients', label: 'Клиенты', icon: '👥',
+    cols: [
+      { key:'name',    label:'Название',    w:200, wrap:true },
+      { key:'niche',   label:'Ниша',        w:140 },
+      { key:'phone',   label:'Телефон',     w:130 },
+      { key:'status',  label:'Статус',      w:120, badge:'crm' },
+      { key:'budget',  label:'Бюджет',      w:90  },
+      { key:'created', label:'Добавлен',    w:90  },
+      { key:'note',    label:'Заметки',     w:260, wrap:true }
+    ],
+    buildFn: buildClientRows
+  },
+  {
+    id: 'tasks', label: 'Задачи', icon: '✅',
+    cols: [
+      { key:'done',     label:'',           w:32  },
+      { key:'text',     label:'Задача',      w:280, wrap:true },
+      { key:'priority', label:'Приоритет',   w:90  },
+      { key:'deadline', label:'Дедлайн',     w:90  },
+      { key:'project',  label:'Проект',      w:160 },
+      { key:'note',     label:'Заметка',     w:200, wrap:true }
+    ],
+    buildFn: buildTaskRows
+  },
+  {
+    id: 'assets', label: 'Касса', icon: '💰',
+    cols: [
+      { key:'date',    label:'Дата',        w:90  },
+      { key:'name',    label:'Описание',    w:220, wrap:true },
+      { key:'amount',  label:'Сумма',       w:100 },
+      { key:'type',    label:'Тип',         w:100 },
+      { key:'project', label:'Проект',      w:160 },
+      { key:'note',    label:'Заметка',     w:200, wrap:true }
+    ],
+    buildFn: buildAssetRows
+  },
+  {
+    id: 'ads', label: 'Реклама', icon: '📣',
+    cols: [
+      { key:'title',   label:'Объявление',  w:220, wrap:true },
+      { key:'status',  label:'Статус',      w:100, badge:'crm' },
+      { key:'budget',  label:'Бюджет',      w:90  },
+      { key:'spent',   label:'Потрачено',   w:90  },
+      { key:'clicks',  label:'Клики',       w:70  },
+      { key:'project', label:'Клиент',      w:160 },
+      { key:'note',    label:'Заметка',     w:160, wrap:true }
+    ],
+    buildFn: buildAdsRows
+  },
+  {
+    id: 'raw', label: 'Все ключи', icon: '🗄️',
+    cols: [
+      { key:'key',     label:'Ключ localStorage', w:380 },
+      { key:'size',    label:'Размер',              w:80  },
+      { key:'preview', label:'Содержимое (фрагмент)', w:500, wrap:true, mono:true }
+    ],
+    buildFn: buildRawRows
+  }
+];
+
+function buildSheets() {
+  _sheets = SHEET_DEFS.map(function(def) {
+    var rows = def.buildFn ? def.buildFn() : [];
+    _sheetRows[def.id] = rows;
+    return Object.assign({}, def, { count: rows.length });
+  });
+  renderSheetTabs();
+}
+
+// ─────────────────────────────────────────────────────────────
+//  РЕНДЕР ВКЛАДОК
+// ─────────────────────────────────────────────────────────────
+function renderSheetTabs() {
+  var bar = document.getElementById('sheets-bar');
+  bar.innerHTML = _sheets.map(function(s) {
+    return '<div class="sheet-tab' + (s.id === _activeSheet ? ' active' : '') + '" onclick="switchSheet(\'' + s.id + '\')">' +
+      '<span>' + s.icon + ' ' + s.label + '</span>' +
+      '<span class="cnt">' + s.count + '</span>' +
+      '</div>';
+  }).join('');
+}
+
+function switchSheet(id) {
+  _activeSheet = id;
+  _searchVal   = '';
+  _sortCol     = null;
+  _sortDir     = 1;
+  var sb = document.getElementById('search-box');
+  if (sb) sb.value = '';
+  renderSheetTabs();
+  renderActiveSheet();
+}
+
+// ─────────────────────────────────────────────────────────────
+//  РЕНДЕР ТАБЛИЦЫ
+// ─────────────────────────────────────────────────────────────
+function renderActiveSheet() {
+  var def  = _sheets.find(function(s){ return s.id === _activeSheet; });
+  if (!def) return;
+  var rows = filterRows(_sheetRows[_activeSheet] || []);
+  if (_sortCol) rows = sortRows(rows, _sortCol, _sortDir);
+
+  var table  = document.getElementById('main-table');
+  var thead  = document.getElementById('thead-row');
+  var tbody  = document.getElementById('tbody-rows');
+  var noData = document.getElementById('no-data');
+
+  if (rows.length === 0) {
+    table.style.display  = 'none';
+    noData.style.display = 'block';
+    noData.innerHTML     = '<div class="empty-state"><b>' + def.icon + '</b>Данных нет<br><small>Открой основное приложение и внеси данные</small></div>';
+    document.getElementById('row-count').textContent = '0 строк';
+    return;
+  }
+
+  noData.style.display = 'none';
+  table.style.display  = 'table';
+
+  // Thead
+  thead.innerHTML = '<tr>' + def.cols.map(function(col, idx) {
+    var cls = _sortCol === col.key ? (_sortDir > 0 ? ' sorted-asc' : ' sorted-desc') : '';
+    return '<th style="width:' + (col.w||100) + 'px" class="' + cls + '" onclick="toggleSort(\'' + col.key + '\')">' +
+      esc(col.label) + '</th>';
+  }).join('') + '</tr>';
+
+  // Tbody
+  var html = '';
+  rows.forEach(function(row) {
+    html += '<tr>';
+    def.cols.forEach(function(col) {
+      var val = row[col.key] != null ? String(row[col.key]) : '';
+      var cellCls = (col.wrap ? ' wrap' : '') + (col.mono ? ' mono' : '');
+      if (col.badge) {
+        html += '<td class="' + cellCls + '">' + renderBadge(val, col.badge) + '</td>';
+      } else {
+        html += '<td class="' + cellCls + '" title="' + esc(val) + '">' + esc(val) + '</td>';
+      }
+    });
+    html += '</tr>';
+  });
+  tbody.innerHTML = html;
+
+  document.getElementById('row-count').textContent = rows.length + ' строк' + (_searchVal ? ' (фильтр)' : '');
+}
+
+// ─────────────────────────────────────────────────────────────
+//  БЕЙДЖИ СТАТУСОВ
+// ─────────────────────────────────────────────────────────────
+var STATUS_LABELS_CRM = {
+  kp:'КП', negotiations:'Переговоры', invoice:'Счёт', contract:'Договор',
+  instruction:'Инструкция', paid:'Оплачено', reading:'Читает',
+  not_reading:'Не читает', drain:'Слив'
+};
+var STATUS_LABELS_PROJECT = {
+  'Ожидают':'⏳ Ожидают','В работе':'🔥 В работе','Готово!':'✅ Готово!',
+  'ЛИМИТ':'🔴 ЛИМИТ','OFF':'⚫ OFF','След. мес.':'🌙 След. мес.',
+  'Жду':'⏸ Жду','ПАРКУЙ':'🅿 Паркуй','О бюджете':'💬 О бюджете'
+};
+
+function renderBadge(val, type) {
+  if (!val) return '<span style="color:var(--text3)">—</span>';
+  if (type === 'crm') {
+    var label = STATUS_LABELS_CRM[val] || val;
+    return '<span class="badge s-' + esc(val) + '">' + esc(label) + '</span>';
+  }
+  if (type === 'project') {
+    var label2 = STATUS_LABELS_PROJECT[val] || val;
+    var col = {
+      'В работе':'#00d97e','Готово!':'#00d97e','Ожидают':'#7c6af7',
+      'ЛИМИТ':'#ff6b35','OFF':'#666','След. мес.':'#ffcc00','Жду':'#ffcc00',
+      'ПАРКУЙ':'#666','О бюджете':'#ff6b35'
+    }[val] || '#7c6af7';
+    return '<span class="badge" style="background:' + col + '22;color:' + col + '">' + esc(label2) + '</span>';
+  }
+  return '<span class="badge s-default">' + esc(val) + '</span>';
+}
+
+// ─────────────────────────────────────────────────────────────
+//  ПОИСК И СОРТИРОВКА
+// ─────────────────────────────────────────────────────────────
+function filterRows(rows) {
+  if (!_searchVal) return rows;
+  var q = _searchVal.toLowerCase();
+  return rows.filter(function(row) {
+    return Object.values(row).some(function(v) {
+      return String(v).toLowerCase().indexOf(q) !== -1;
+    });
+  });
+}
+
+function sortRows(rows, col, dir) {
+  return rows.slice().sort(function(a, b) {
+    var av = String(a[col] || '').toLowerCase();
+    var bv = String(b[col] || '').toLowerCase();
+    var an = parseFloat(av), bn = parseFloat(bv);
+    if (!isNaN(an) && !isNaN(bn)) return (an - bn) * dir;
+    return av < bv ? -dir : av > bv ? dir : 0;
+  });
+}
+
+function applySearch(val) {
+  _searchVal = val;
+  renderActiveSheet();
+}
+
+function toggleSort(col) {
+  if (_sortCol === col) _sortDir = -_sortDir;
+  else { _sortCol = col; _sortDir = 1; }
+  renderActiveSheet();
+}
+
+// ─────────────────────────────────────────────────────────────
+//  ЭКСПОРТ
+// ─────────────────────────────────────────────────────────────
+function exportJSON() {
+  var payload = {
+    exportedAt: new Date().toISOString(),
+    source:     location.href,
+    keyCount:   Object.keys(_allData).length,
+    keys:       _allData
+  };
+  var blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json;charset=utf-8' });
+  var a    = document.createElement('a');
+  var now  = new Date();
+  var pad  = function(n){ return String(n).padStart(2,'0'); };
+  a.href   = URL.createObjectURL(blob);
+  a.download = 'crm-backup-' + now.getFullYear() + '-' + pad(now.getMonth()+1) + '-' + pad(now.getDate()) +
+               '-' + pad(now.getHours()) + pad(now.getMinutes()) + '.json';
+  a.rel    = 'noopener';
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(function(){ URL.revokeObjectURL(a.href); a.remove(); }, 0);
+  toast('JSON-файл скачан ✓');
+}
+
+// ─────────────────────────────────────────────────────────────
+//  ВОССТАНОВЛЕНИЕ ИЗ РЕЗЕРВА (IndexedDB → localStorage)
+// ─────────────────────────────────────────────────────────────
+function restoreFromShadow() {
+  if (!_db) {
+    alert('IndexedDB недоступна. Откройте основное приложение (index.html) — оно создаст резервную копию.');
+    return;
+  }
+  getLastIDBSnap(_db, function(snap) {
+    if (!snap || !snap.keys || Object.keys(snap.keys).length === 0) {
+      alert('Резервных снимков нет.\n\nОткройте основное приложение index.html — оно автоматически создаст резерв в IndexedDB.');
+      return;
+    }
+    var count = Object.keys(snap.keys).length;
+    var d     = new Date(snap.savedAt);
+    var msg   = 'Восстановить ' + count + ' ключей из резерва от\n' +
+                d.toLocaleDateString('ru') + ' ' + d.toLocaleTimeString('ru') + '?\n\n' +
+                'Текущие данные localStorage будут перезаписаны!';
+    if (!confirm(msg)) return;
+    var ok = 0;
+    Object.keys(snap.keys).forEach(function(k) {
+      try { localStorage.setItem(k, snap.keys[k]); ok++; } catch(e){}
+    });
+    toast('Восстановлено ключей: ' + ok + ' ✓');
+    setTimeout(loadAll, 500);
+  });
+}
+
+// ─────────────────────────────────────────────────────────────
+//  ВСПОМОГАТЕЛЬНЫЕ
+// ─────────────────────────────────────────────────────────────
+function showLoader(v) {
+  document.getElementById('loader').style.display      = v ? 'flex'  : 'none';
+  document.getElementById('main-table').style.display  = v ? 'none'  : 'table';
+  document.getElementById('no-data').style.display     = 'none';
+}
+
+function esc(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function fmtDate(s) {
+  if (!s) return '';
+  try {
+    var d = new Date(s);
+    if (isNaN(d)) return String(s).slice(0,10);
+    return d.toLocaleDateString('ru');
+  } catch(e) { return String(s).slice(0,10); }
+}
+
+function fmtMoney(v) {
+  var n = parseFloat(v);
+  if (isNaN(n)) return String(v);
+  return n.toLocaleString('ru') + ' ₽';
+}
+
+function toast(msg) {
+  var el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  setTimeout(function(){ el.classList.remove('show'); }, 2500);
+}
+
+// ─────────────────────────────────────────────────────────────
+//  АВТО-ОБНОВЛЕНИЕ
+// ─────────────────────────────────────────────────────────────
+setInterval(function() {
+  loadAll();
+}, 60 * 1000); // каждую минуту
+
+// ─────────────────────────────────────────────────────────────
+//  СТАРТ
+// ─────────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', function() {
+  // Предотвращаем пустое отображение до загрузки
+  document.getElementById('no-data').style.display = 'none';
+  loadAll();
+});
+</script>
+</body>
+</html>
