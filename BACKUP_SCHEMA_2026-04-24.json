@@ -1,0 +1,507 @@
+{
+  "_meta": {
+    "createdAt": "2026-04-24",
+    "description": "Полная схема данных AVITOLOG: все ключи localStorage, структуры объектов, взаимосвязи между сущностями",
+    "version": "2"
+  },
+
+  "localStorage_keys": {
+
+    "ОБЩИЕ": {
+      "avitolog_current_user": {
+        "type": "string",
+        "values": ["fil", "sasha"],
+        "description": "Текущий активный профиль"
+      },
+      "avitolog_profile_bookmark": {
+        "type": "string",
+        "values": ["sasha"],
+        "description": "Закладка профиля (последний открытый)"
+      },
+      "avitolog_drive_email": {
+        "type": "string",
+        "description": "Email Google Drive аккаунта (для Фила)"
+      },
+      "avitolog_sasha_email": {
+        "type": "string",
+        "description": "Email Саши (override)"
+      },
+      "avitolog_api_key": {
+        "type": "string",
+        "description": "Anthropic API ключ (вводит пользователь)"
+      }
+    },
+
+    "ПРОФИЛЬ_ФИЛ": {
+      "avitolog_projects": {
+        "type": "JSON object",
+        "schema": {
+          "projects": "array of Project",
+          "hiddenProjects": "array",
+          "tasks": "array",
+          "taskLog": "array"
+        }
+      },
+      "avitolog_goals_v1": {
+        "type": "JSON object",
+        "schema": {
+          "projects": "array of GoalProject",
+          "customMetrics": "array",
+          "pinnedMetrics": "array",
+          "pinnedMetricsMain": "array",
+          "totalKpFullOverride": "number",
+          "workOrderWork": "array of goal IDs",
+          "workTargetFilter": "boolean"
+        }
+      },
+      "avitolog_clients": {
+        "type": "JSON array of Client"
+      },
+      "crm_tasks_v1": {
+        "type": "JSON array of Task"
+      },
+      "avitolog_assets_my_v2": {
+        "type": "JSON array of AssetRow",
+        "description": "Касса «мои» текущего месяца"
+      },
+      "avitolog_assets_sasha_v2": {
+        "type": "JSON array of AssetRow",
+        "description": "Касса «Саша» (видна у Фила)"
+      },
+      "avitolog_assets_base_v2": {
+        "type": "JSON array of AssetRow",
+        "description": "Базовый шаблон кассы"
+      },
+      "avitolog_goal_achievements_v1": {
+        "type": "JSON object",
+        "schema": {
+          "events": "array of Achievement",
+          "monthMilestones": "object { YYYY-MM: { 50k: bool, 100k: bool } }"
+        }
+      },
+      "avitolog_goals_v1_month_YYYY-MM": {
+        "type": "JSON object (snapshot)",
+        "description": "Снимок воронки Фила за месяц"
+      },
+      "avitolog_assets_my_v2_month_YYYY-MM": {
+        "type": "JSON array (snapshot)",
+        "description": "Снимок кассы Фила за месяц"
+      }
+    },
+
+    "ПРОФИЛЬ_САША": {
+      "avitolog_projects_sasha": {
+        "type": "JSON object",
+        "schema": {
+          "projects": "array of Project",
+          "hiddenProjects": "array",
+          "tasks": "array",
+          "taskLog": "array"
+        }
+      },
+      "avitolog_goals_v1_sasha": {
+        "type": "JSON object",
+        "schema": {
+          "projects": "array of GoalProject",
+          "customMetrics": "array",
+          "pinnedMetrics": "array",
+          "pinnedMetricsMain": "array",
+          "totalKpFullOverride": "number",
+          "workOrderWork": "array of goal IDs (stage=working)",
+          "workTargetFilter": "boolean"
+        }
+      },
+      "avitolog_clients_sasha": {
+        "type": "JSON array of Client"
+      },
+      "crm_tasks_v1_sasha": {
+        "type": "JSON array of Task"
+      },
+      "avitolog_assets_my_v2_sasha": {
+        "type": "JSON array of AssetRow",
+        "description": "Касса «мои» Саши (текущий месяц)"
+      },
+      "avitolog_assets_sasha_v2_sasha": {
+        "type": "JSON array of AssetRow",
+        "description": "Касса «Саша» Саши"
+      },
+      "avitolog_assets_base_v2_sasha": {
+        "type": "JSON array of AssetRow",
+        "description": "Базовый шаблон кассы Саши"
+      },
+      "avitolog_goal_achievements_v1_sasha": {
+        "type": "JSON object",
+        "schema": {
+          "events": "array of Achievement",
+          "monthMilestones": "object { YYYY-MM: { 50k: bool, 100k: bool } }"
+        }
+      },
+      "avitolog_goals_v1_sasha_month_YYYY-MM": {
+        "type": "JSON object (snapshot)",
+        "description": "Снимок воронки Саши за месяц"
+      },
+      "avitolog_assets_my_v2_sasha_month_YYYY-MM": {
+        "type": "JSON array (snapshot)",
+        "description": "Снимок кассы Саши за месяц"
+      },
+      "avitolog_projects_sasha_month_YYYY-MM": {
+        "type": "JSON object (snapshot)",
+        "description": "Снимок проектов Саши за месяц"
+      }
+    },
+
+    "НАСТРОЙКИ_САША": {
+      "avitolog_projects_zoom_sasha": {
+        "type": "string (number)",
+        "example": "0.49999999999999994",
+        "description": "Зум доски проектов"
+      },
+      "avitolog_projects_day_px_sasha": {
+        "type": "string (number)",
+        "example": "64",
+        "description": "Пикселей на день (доска Гантта)"
+      },
+      "avitolog_projects_path_defaults_off_v1": {
+        "type": "string",
+        "example": "1",
+        "description": "Отключение авто-path для клиентов"
+      }
+    },
+
+    "РЕКЛАМА_CRM": {
+      "crm_ads_expenses_v1": {
+        "type": "JSON object",
+        "schema": {
+          "y": "string year",
+          "m": "string month",
+          "cells": "object { both_N: value | null }"
+        },
+        "description": "Расходы на рекламу текущего месяца"
+      },
+      "crm_ads_expenses_month_YYYY-MM": {
+        "type": "JSON object (snapshot)",
+        "schema": {
+          "data": "object { both_N: value | null }",
+          "year": "string",
+          "month": "string"
+        }
+      },
+      "crm_ads_links_v1": {
+        "type": "JSON array",
+        "schema": {
+          "id": "string",
+          "category": "telegram | vk | avito | sites",
+          "icon": "string emoji",
+          "label": "string",
+          "url": "string",
+          "snippet": "string",
+          "avatar": "string"
+        }
+      },
+      "crm_ads_posts_plan_v1": {
+        "type": "JSON object",
+        "schema": {
+          "y": "string year",
+          "m": "string month",
+          "cells": "object { learn_N | agency_N: text }",
+          "months": "object { YYYY-MM: cells snapshot }"
+        }
+      },
+      "crm_ads_last_month_v2": {
+        "type": "string",
+        "example": "2026-04",
+        "description": "Последний активный месяц рекламы"
+      }
+    },
+
+    "ТЕНЕВОЕ_ХРАНИЛИЩЕ": {
+      "_crm_shadow_last_snap": {
+        "type": "string ISO date",
+        "description": "Дата последнего снимка IndexedDB"
+      }
+    },
+
+    "EMAIL_BASED_KEYS": {
+      "description": "Ключи привязанные к email аккаунта Google Drive (формат: _emp_EMAIL_KEY)",
+      "examples": [
+        "avitolog_assets_my_v2__emp_cyplakovaleksandr153_gmail_com",
+        "avitolog_assets_my_v2__emp_cyplakovaleksandr153_gmail_com_month_2026-04",
+        "avitolog_assets_sasha_v2__emp_cyplakovaleksandr153_gmail_com",
+        "avitolog_assets_sasha_v2__emp_cyplakovaleksandr153_gmail_com_month_2026-04"
+      ]
+    }
+  },
+
+  "entity_schemas": {
+
+    "Project": {
+      "id": "string (e.g. 'p1')",
+      "emoji": "string",
+      "title": "string",
+      "name": "string (alias)",
+      "clientType": "old | new",
+      "zone": "active | archive",
+      "status": "string (В работе | Готово! | Ожидают | ЛИМИТ | OFF | ...)",
+      "sortOrder": "number",
+      "clientPath": {
+        "autoload": "boolean",
+        "analytics": "boolean",
+        "texts": "boolean",
+        "packaging": "boolean",
+        "portfolio": "boolean"
+      },
+      "events": "array",
+      "childLines": "array of ChildLine",
+      "optionalField": "string (ниша/категория)",
+      "folderLink": "string (Google Drive URL)",
+      "folderId": "string (Google Drive folder ID)",
+      "categoryFolderId": "string (Google Drive category folder ID)",
+      "mustLaunchRequired": "boolean",
+      "cardsActive": "string"
+    },
+
+    "GoalProject": {
+      "id": "string (e.g. 'g_1775652213264_rqcliox'  → timestamp_random)",
+      "name": "string",
+      "emoji": "string",
+      "folderLink": "string",
+      "date": "string YYYY-MM-DD",
+      "weekIndex": "number (1 | 2 | 3 | 4)",
+      "mainPrice": "string",
+      "priceOptions": "array of string prices",
+      "status": "array of status IDs (воронка прогресса)",
+      "statusDates": "object { statusId: dateString }",
+      "touchMarkers": "array of string",
+      "touchDates": "object { markerId: dateString }",
+      "tags": "array",
+      "note": "string",
+      "stage": "weekly | sold | working",
+      "saleAmount": "string (если stage=sold)",
+      "soldFromId": "string goalId (если stage=sold — ссылка на исходный weekly)",
+      "workCopyOfWeekId": "string goalId (если stage=working — ссылка на weekly)"
+    },
+
+    "Client": {
+      "client_id": "string UUID",
+      "company": "string",
+      "contact_name": "string",
+      "phone": "string",
+      "telegram": "string",
+      "avito_account": "string",
+      "client_type": "string (ООО | ИП | ...)",
+      "category": "string (ниша)",
+      "city": "string",
+      "notes": "string",
+      "positions": "string",
+      "kp_count": "string",
+      "createdAt": "string date",
+      "folderId": "string",
+      "folderLink": "string",
+      "folder_name": "string",
+      "categoryFolderId": "string"
+    },
+
+    "AssetRow": {
+      "emoji": "string",
+      "name": "string (клиент/проект)",
+      "paid": "string number (оплачено ₽)",
+      "expected": "string number (ожидается ₽)",
+      "paymentDate": "string date",
+      "startDate": "string date",
+      "clientType": "new | old",
+      "folderLink": "string",
+      "crmClientId": "string (→ Client.client_id)",
+      "goalProjectId": "string (→ GoalProject.id)"
+    },
+
+    "Achievement": {
+      "type": "month_total_milestone",
+      "tier": "50k | 100k | 200k | 300k",
+      "monthKey": "string YYYY-MM",
+      "totalAtUnlock": "number",
+      "saleDate": "string YYYY-MM-DD",
+      "projectName": "string",
+      "at": "number (timestamp ms)"
+    }
+  },
+
+  "goal_status_pipeline": {
+    "description": "Воронка CRM — статусы в порядке прохождения",
+    "statuses": [
+      { "id": "kp",           "label": "КП",           "color": "#35d0ff" },
+      { "id": "negotiations", "label": "Переговоры",   "color": "#9b8af7" },
+      { "id": "reading",      "label": "Читает",        "color": "#35d0ff" },
+      { "id": "not_reading",  "label": "Не читает",     "color": "#ff6b35" },
+      { "id": "invoice",      "label": "Счёт",          "color": "#00d97e" },
+      { "id": "contract",     "label": "Договор",       "color": "#00d97e" },
+      { "id": "instruction",  "label": "Инструкция",    "color": "#00d97e" },
+      { "id": "paid",         "label": "Оплачено",      "color": "#00ff88" },
+      { "id": "drain",        "label": "Слив",          "color": "#ff4444" }
+    ]
+  },
+
+  "project_status_options": [
+    "В работе", "Готово!", "Ожидают", "ЛИМИТ", "OFF",
+    "След. мес.", "Жду", "ПАРКУЙ", "О бюджете"
+  ],
+
+  "goal_stages": {
+    "weekly": "Активный лид в воронке (текущей недели)",
+    "sold":   "Закрыт (продан). soldFromId → исходный weekly ID",
+    "working": "Находится в работе. workCopyOfWeekId → исходный weekly ID"
+  },
+
+  "key_relationships": {
+    "AssetRow.goalProjectId → GoalProject.id": "Строка кассы привязана к цели CRM",
+    "AssetRow.crmClientId → Client.client_id": "Строка кассы привязана к CRM клиенту",
+    "GoalProject.soldFromId → GoalProject.id": "«Проданный» лид ссылается на исходный weekly лид",
+    "GoalProject.workCopyOfWeekId → GoalProject.id": "«Рабочая копия» ссылается на weekly лид",
+    "Project.folderId → Google Drive folder": "Папка клиента на Google Drive",
+    "Project.categoryFolderId → Google Drive folder": "Папка категории/ниши на Google Drive",
+    "Client.folderId → Google Drive folder": "Папка клиента на Google Drive",
+    "workOrderWork[] → GoalProject.id": "Порядок отображения рабочих проектов"
+  },
+
+  "google_drive_folders": {
+    "Андрей Молл-Строй": {
+      "folderId": "1HYG1Oz5Ps-B0rlrGHZZ6apBOxd-0ueC4",
+      "categoryFolderId": "12QkZZOOmrTqtVEgS89H45eeAJzm5tiI2",
+      "categoryNote": "Доска / Брус"
+    },
+    "Автосервис Илья": {
+      "folderId": "1W0-OfJY8Ab-xx1pekv_pTP8yNGq9mebJ"
+    },
+    "Очистка участков и вырубка деревьев": {
+      "folderId": "1ddQVJGYNFurS4Q84jkQ0pVYi7yRJpGGF"
+    },
+    "Асхат Дома (Дожим)": {
+      "folderId": "1zjQHewfhfeR7Li4HcdNJiXkGeqR7r1p3"
+    },
+    "Бурение Антон": {
+      "folderId": "1ZN6jywexjULtn8nS9WG87xh_R-rudZfg"
+    },
+    "100 кубов - Ксения (06.04.2026)": {
+      "folderId": "1wOJy8aiFSK38ZRcp7KxyPGRTdzYE67sK",
+      "categoryFolderId": "1UgnWOC7tBupL_FSYV0T9RU4Lg6GOEqNa"
+    }
+  },
+
+  "gcp_service_account": {
+    "project_id": "avito-489218",
+    "key_id": "2e0898c9d84e22adae5684bd74952da87d6539d1",
+    "client_email": "avitolog-crm@avito-489218.iam.gserviceaccount.com",
+    "client_id": "109250961278853797480",
+    "key_file": "avito-489218-2e0898c9d84e.json"
+  },
+
+  "github": {
+    "repo": "https://github.com/hair1guru1school-cyber/AVITOLOG.git",
+    "email": "hair1guru1school@gmail.com",
+    "username": "hair1guru1school-cyber"
+  },
+
+  "profiles": {
+    "fil": {
+      "url_param": "u=fil  или  u=f",
+      "key_suffix": "(нет суффикса)",
+      "example_keys": ["avitolog_projects", "avitolog_goals_v1", "avitolog_clients"]
+    },
+    "sasha": {
+      "url_param": "u=sasha  или  u=s",
+      "email": "cyplakovaleksandr153@gmail.com",
+      "key_suffix": "_sasha",
+      "example_keys": ["avitolog_projects_sasha", "avitolog_goals_v1_sasha", "avitolog_clients_sasha"]
+    }
+  },
+
+  "backend": {
+    "host": "0.0.0.0",
+    "port": 8787,
+    "pm2_name": "avitolog-backend",
+    "env_file": "backend/.env",
+    "routes": {
+      "/api/avito/*": "proxy → https://api.avito.ru",
+      "/api/perplexity/*": "proxy → https://api.perplexity.ai",
+      "/api/anthropic/*": "proxy → https://api.anthropic.com"
+    }
+  },
+
+  "existing_backup_files": {
+    "avitolog-backup-2026-04-15-1349-Sasha.json": {
+      "date": "2026-04-15 13:49",
+      "format": "avitolog-backup-v1",
+      "keyCount": 25,
+      "contains": "Касса (активы, снимки месяцев), CRM (клиенты, задачи, теги, аватары, реклама), проекты и цели Саши",
+      "keys_list": [
+        "avitolog_projects_sasha",
+        "avitolog_assets_my_v2_sasha_month_2026-04",
+        "avitolog_goals_v1_sasha_month_2026-04",
+        "avitolog_projects_day_px_sasha",
+        "avitolog_assets_my_v2__emp_cyplakovaleksandr153_gmail_com_month_2026-04",
+        "avitolog_assets_sasha_v2_sasha_month_2026-04",
+        "avitolog_assets_base_v2",
+        "avitolog_goals_v1_month_2026-03",
+        "crm_ads_expenses_v1",
+        "avitolog_assets_sasha_v2__emp_cyplakovaleksandr153_gmail_com",
+        "avitolog_clients_sasha",
+        "avitolog_assets_sasha_v2__emp_cyplakovaleksandr153_gmail_com_month_2026-04",
+        "avitolog_goals_v1_sasha_month_2026-03",
+        "avitolog_assets_my_v2_sasha",
+        "avitolog_assets_base_v2_sasha",
+        "avitolog_projects_path_defaults_off_v1",
+        "crm_ads_links_v1",
+        "avitolog_goal_achievements_v1_sasha",
+        "crm_ads_expenses_month_2026-04",
+        "avitolog_assets_my_v2__emp_cyplakovaleksandr153_gmail_com",
+        "avitolog_goals_v1_month_2026-04",
+        "avitolog_goals_v1_sasha",
+        "crm_ads_last_month_v2",
+        "crm_ads_posts_plan_v1",
+        "avitolog_projects_zoom_sasha"
+      ]
+    },
+    "fil-april-snapshot.json": {
+      "date": "апрель 2026",
+      "contains": "Снимок данных Фила — апрель 2026",
+      "note": "Файл содержит бинарные данные, частично нечитаем"
+    },
+    "fil-march-goals-raw.json": {
+      "date": "март 2026",
+      "contains": "Сырые цели Фила — март 2026",
+      "note": "Файл содержит бинарные данные, частично нечитаем"
+    },
+    "fil-march-assets-raw.json": {
+      "date": "март 2026",
+      "contains": "Сырые активы Фила — март 2026",
+      "note": "Файл содержит бинарные данные, частично нечитаем"
+    }
+  },
+
+  "indexedDB": {
+    "db_name": "avitolog_shadow_v1",
+    "stores": {
+      "live": "Текущие данные (keyPath: 'key'). Структура: { key, value }",
+      "snapshots": "Снимки во времени (keyPath: 'savedAt'). Структура: { savedAt, keys: { key: value } }"
+    },
+    "description": "Теневая копия localStorage. Обновляется автоматически при открытии основного приложения."
+  },
+
+  "crm_table_backup_prefixes": {
+    "description": "Префиксы ключей которые попадают в CRM-таблицу (table.html)",
+    "prefixes": [
+      "avitolog_projects",
+      "avitolog_goals_v1",
+      "avitolog_goal_achievements_v1",
+      "avitolog_clients",
+      "avitolog_active_client",
+      "crm_tasks_v1",
+      "avitolog_assets",
+      "client_tags_",
+      "client_avatar_",
+      "crm_ads_"
+    ],
+    "exact": [
+      "avitolog_assets_projects_v1"
+    ]
+  }
+}
