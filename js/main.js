@@ -6,12 +6,26 @@ function switchTab(tab) {
     openAnalyticsTab();
   }
   currentTab = tab;
-  ['kp','analysis','presale','avito1','contract'].forEach(function(t) {
+  ['scripts','kp','analysis','presale','avito1','contract'].forEach(function(t) {
     var el = document.getElementById('tab-'+t);
     if (el) el.classList.toggle('active', t===tab);
   });
   document.body.classList.toggle('contract-tab', tab === 'contract');
   document.body.classList.toggle('kp-tab', tab === 'kp');
+  if (tab === 'scripts') {
+    var barScr = document.getElementById('depthBar');
+    var secBarScr = document.getElementById('secBar');
+    if (barScr) barScr.style.display = 'none';
+    if (secBarScr) secBarScr.style.display = 'none';
+    var tumblerScr = document.getElementById('analyticsTumbler');
+    if (tumblerScr) tumblerScr.classList.add('hide');
+    var mcScr = document.getElementById('mainContent');
+    if (mcScr && typeof window.__showScriptsPanel === 'function') {
+      window.__showScriptsPanel(mcScr);
+    }
+    if (typeof updateGenButtonState === 'function') updateGenButtonState();
+    return;
+  }
   if (tab === 'contract') {
     var bar = document.getElementById('depthBar');
     var secBar = document.getElementById('secBar');
