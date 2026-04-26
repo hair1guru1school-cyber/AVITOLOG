@@ -10,6 +10,11 @@ function switchTab(tab) {
     var el = document.getElementById('tab-'+t);
     if (el) el.classList.toggle('active', t===tab);
   });
+  // Restore gen row/extra prompt for all tabs (scripts hides them below)
+  var _genRow = document.getElementById('genButtonsRow');
+  var _genExtra = document.getElementById('genExtraPrompt');
+  if (_genRow) _genRow.style.display = '';
+  if (_genExtra) _genExtra.style.display = '';
   document.body.classList.toggle('contract-tab', tab === 'contract');
   document.body.classList.toggle('kp-tab', tab === 'kp');
   if (tab === 'scripts') {
@@ -19,6 +24,10 @@ function switchTab(tab) {
     if (secBarScr) secBarScr.style.display = 'none';
     var tumblerScr = document.getElementById('analyticsTumbler');
     if (tumblerScr) tumblerScr.classList.add('hide');
+    var genRowScr = document.getElementById('genButtonsRow');
+    if (genRowScr) genRowScr.style.display = 'none';
+    var genExtraScr = document.getElementById('genExtraPrompt');
+    if (genExtraScr) genExtraScr.style.display = 'none';
     var mcScr = document.getElementById('mainContent');
     if (mcScr && typeof window.__showScriptsPanel === 'function') {
       window.__showScriptsPanel(mcScr);
