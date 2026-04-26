@@ -553,11 +553,18 @@ function openAnalyticsTab() {
   stopProjectsSheetPullTimer();
   stopProjectsDayShiftTimer();
   if (typeof syncTaskPanelBodyClass === 'function') syncTaskPanelBodyClass();
+  var clientTabs = ['analysis', 'presale', 'avito1'];
   if (currentTab === 'analysis' && docReady && currentHtml) {
     renderDoc(currentHtml);
   } else if (currentTab === 'kp' && typeof window.__showKpGenerator === 'function') {
     var mcK = document.getElementById('mainContent');
     if (mcK) window.__showKpGenerator(mcK);
+  } else if (currentTab === 'scripts' && typeof window.__showScriptsPanel === 'function') {
+    var mcSp = document.getElementById('mainContent');
+    if (mcSp) window.__showScriptsPanel(mcSp);
+  } else if (clientTabs.indexOf(currentTab) === -1) {
+    // Coming back from CRM/goals with a non-client tab active — default to analysis
+    if (typeof switchTab === 'function') switchTab('analysis');
   } else {
     refreshClientContents();
   }
