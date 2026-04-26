@@ -553,7 +553,6 @@ function openAnalyticsTab() {
   stopProjectsSheetPullTimer();
   stopProjectsDayShiftTimer();
   if (typeof syncTaskPanelBodyClass === 'function') syncTaskPanelBodyClass();
-  var clientTabs = ['analysis', 'presale', 'avito1'];
   if (currentTab === 'analysis' && docReady && currentHtml) {
     renderDoc(currentHtml);
   } else if (currentTab === 'kp' && typeof window.__showKpGenerator === 'function') {
@@ -562,10 +561,16 @@ function openAnalyticsTab() {
   } else if (currentTab === 'scripts' && typeof window.__showScriptsPanel === 'function') {
     var mcSp = document.getElementById('mainContent');
     if (mcSp) window.__showScriptsPanel(mcSp);
-  } else if (clientTabs.indexOf(currentTab) === -1) {
-    // Coming back from CRM/goals with a non-client tab active — default to analysis
-    if (typeof switchTab === 'function') switchTab('analysis');
   } else {
+    // If returning from CRM and currentTab is not a content-rendering tab,
+    // silently switch active marker to 'analysis' so refreshClientContents works
+    if (['analysis','presale','avito1'].indexOf(currentTab) === -1) {
+      currentTab = 'analysis';
+      ['scripts','kp','analysis','presale','avito1','contract'].forEach(function(t) {
+        var el = document.getElementById('tab-' + t);
+        if (el) el.classList.toggle('active', t === 'analysis');
+      });
+    }
     refreshClientContents();
   }
   updateTopRowButtons();
