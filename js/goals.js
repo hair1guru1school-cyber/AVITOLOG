@@ -179,6 +179,105 @@
     return ch;
   };
 
+  /** ── РАЗОВАЯ САНАЦИЯ: убрать «нелегальные» sold из CRM ──
+   *
+   * До 1 мая 2026 в коде была обратная связь «касса → CRM»:
+   * confirmImport() писал ИИ-импортированные оплаты прямо в `avitolog_goals_v1`
+   * как `stage='sold'`. Это противоречит правилу «связь только CRM → касса».
+   *
+   * Тут чистим как live-данные, так и все месячные снимки от:
+   *  1) sold-записей с `sourceNote` начинающимся на «🤖 AI Import» (всё что пришло из ИИ-импорта оплат).
+   *  2) sold-записей из явного чёрного списка имён (которые точно попали в апрель ошибочно).
+   *
+   * Идемпотентно: маркер `avitolog_goals_repair_kassa_v1` гарантирует один прогон. */
+  function goalsRepairMarkerKey() {
+    return (typeof window.AVITOLOG_KEY === 'function')
+      ? window.AVITOLOG_KEY('avitolog_goals_repair_kassa_v1')
+      : 'avitolog_goals_repair_kassa_v1';
+  }
+  /** Чёрный список имён: эти sold-записи однозначно не относятся к апрелю
+   *  (Александр Крым Электро — март/раньше, Кристина-репетитор — март, Сельхозтехника — март).
+   *  Сравнение по нормализованной нижней регистре с подстрокой — устойчиво к разным написаниям. */
+  var GOALS_REPAIR_NAME_BLACKLIST = [
+    'александр крым',
+    'крым электро',
+    'крым алексан',
+    'кристина репетит',
+    'кристина-репетит',
+    'кристина  репетит',
+    'сельхозтехник'
+  ];
+  function goalsRepairIsAiImportSold(p) {
+    if (!p || p.stage !== 'sold') return false;
+    var note = String(p.sourceNote || '').trim();
+    if (!note) return false;
+    return note.indexOf('🤖 AI Import') === 0 || note.indexOf('AI Import') === 0;
+  }
+  function goalsRepairIsBlacklisted(p) {
+    if (!p || p.stage !== 'sold') return false;
+    var nm = String(p.name || '').toLowerCase().replace(/ё/g, 'е').replace(/\s+/g, ' ').trim();
+    if (!nm) return false;
+    for (var i = 0; i < GOALS_REPAIR_NAME_BLACKLIST.length; i++) {
+      if (nm.indexOf(GOALS_REPAIR_NAME_BLACKLIST[i]) >= 0) return true;
+    }
+    return false;
+  }
+  function goalsRepairFilterProjects(projects) {
+    var arr = Array.isArray(projects) ? projects : [];
+    var removed = [];
+    var kept = arr.filter(function(p) {
+      if (goalsRepairIsAiImportSold(p) || goalsRepairIsBlacklisted(p)) {
+        removed.push({ id: p.id, name: p.name, stage: p.stage, sourceNote: p.sourceNote, saleAmount: p.saleAmount });
+        return false;
+      }
+      return true;
+    });
+    return { kept: kept, removed: removed };
+  }
+  function goalsRepairCleanKey(storageKey, label, report) {
+    var raw;
+    try { raw = localStorage.getItem(storageKey); } catch(e) { return; }
+    if (!raw) return;
+    var data;
+    try { data = JSON.parse(raw); } catch(e) { return; }
+    if (!data || typeof data !== 'object' || !Array.isArray(data.projects)) return;
+    var res = goalsRepairFilterProjects(data.projects);
+    if (!res.removed.length) return;
+    data.projects = res.kept;
+    try { localStorage.setItem(storageKey, JSON.stringify(data)); } catch(e) { return; }
+    report.push({ key: storageKey, label: label, removed: res.removed.length, names: res.removed.map(function(x) { return x.name; }) });
+  }
+  function repairCrmFromKassaImports(force) {
+    var markerKey = goalsRepairMarkerKey();
+    if (!force) {
+      var done = '';
+      try { done = localStorage.getItem(markerKey) || ''; } catch(e) {}
+      if (done === 'v1') return null;
+    }
+    var report = [];
+    var liveKey = goalsStorageKey();
+    goalsRepairCleanKey(liveKey, 'live', report);
+    /** Все месячные снимки этого профиля. */
+    var snapPrefix = liveKey + '_month_';
+    var keysToClean = [];
+    try {
+      for (var i = 0; i < localStorage.length; i++) {
+        var k = localStorage.key(i);
+        if (k && k.indexOf(snapPrefix) === 0) keysToClean.push(k);
+      }
+    } catch(e) {}
+    keysToClean.forEach(function(k) {
+      var ym = k.substring(snapPrefix.length);
+      goalsRepairCleanKey(k, 'snapshot ' + ym, report);
+    });
+    try { localStorage.setItem(markerKey, 'v1'); } catch(e) {}
+    if (report.length && typeof console !== 'undefined' && console.log) {
+      console.log('[goals] CRM очищен от ИИ-импортных и blacklist sold-записей:', report);
+    }
+    return report;
+  }
+  window.__goalsRepairCrmFromKassaImports = function() { return repairCrmFromKassaImports(true); };
+
   var STATUS_LEGACY = { kp_sent:'kp', invoice_sent:'invoice', contract_sent:'contract', instruction_sent:'instruction', deal_discussion:'negotiations' };
   const STATUS_OPTIONS = [
     { id: 'kp', label: 'КП', color: '#35d0ff' },
@@ -2766,6 +2865,9 @@
   window.AVITOLOG_GOALS = { render: render, __externalVersion: 'goals-js-v2' };
   window.__AVITOLOG_GOALS_LEGACY = window.AVITOLOG_GOALS;
 
+  /** Сначала разово вычищаем «нелегальные» sold-записи из CRM
+   *  (последствия старого ИИ-импорта оплат, который писал в goals напрямую). */
+  try { repairCrmFromKassaImports(false); } catch (eRepair) {}
   /** Запускаем переход месяца сразу при загрузке скрипта.
    *  31-го числа предыдущий месяц автоматически становится архивом,
    *  а в новом месяце «продано», «недели», «КП» и «новые проекты» начинаются с нуля.

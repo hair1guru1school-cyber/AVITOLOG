@@ -402,51 +402,39 @@
       alert('Нет записей для импорта. Убери отметки отклонения или разбери текст заново.');
       return;
     }
-    var inAssets = typeof assetsMode !== 'undefined' && assetsMode;
-    if (inAssets && typeof getAssetsMy === 'function' && typeof getAssetsSasha === 'function') {
-      toImport.forEach(function(row) {
-        var owner = (row.raw && row.raw.isSasha) ? 'sasha' : 'me';
-        var name = row.client || 'Без названия';
-        var paid = String(row.paid || '').replace(/\s/g, '');
-        var ct = (row.raw && row.raw.isNew === false) ? 'old' : 'new';
-        var item = { emoji: (row.raw && row.raw.emoji) || '💰', name: name, paid: paid, expected: row.expected || '', paymentDate: row.date || (row.raw && row.raw.date) || '', startDate: '', clientType: ct, folderLink: row.folderLink || '', crmClientId: row.folderId || '' };
-        if (owner === 'sasha') { item.soldFor = paid; item.toAgent = ''; item.aoaPercent = ''; }
-        if (owner === 'me') {
-          var arr = getAssetsMy();
-          arr.push(item);
-          saveAssetsMy(arr);
-        } else {
-          var arr2 = getAssetsSasha();
-          arr2.push(item);
-          saveAssetsSasha(arr2);
-        }
-      });
-    } else {
-      var goalsData = getGoalsData();
-      goalsData.projects = goalsData.projects || [];
-      var today = getTodayStr();
-      var weekIndex = Math.ceil(new Date().getDate() / 7);
-      if (weekIndex > 4) weekIndex = 4;
-      toImport.forEach(function(row) {
-        var saleAmount = String(row.paid || '').replace(/\s/g, '');
-        goalsData.projects.push({
-          id: generateId(),
-          name: row.client || 'Без названия',
-          emoji: '💰',
-          folderLink: row.folderLink || '',
-          date: row.date || today,
-          weekIndex: weekIndex,
-          mainPrice: saleAmount,
-          priceOptions: [saleAmount || '—'],
-          status: ['paid'],
-          stage: 'sold',
-          saleAmount: saleAmount,
-          sourceNote: '🤖 AI Import: ' + (row.raw && row.raw.comments ? row.raw.comments : '')
-        });
-      });
-      try { localStorage.setItem((typeof window.AVITOLOG_KEY === 'function' ? window.AVITOLOG_KEY('avitolog_goals_v1') : 'avitolog_goals_v1'), JSON.stringify(goalsData)); } catch (e) {}
-      if (window.AVITOLOG_GOALS && typeof window.AVITOLOG_GOALS.render === 'function') window.AVITOLOG_GOALS.render();
+    /** ИИ-импорт оплат идёт ТОЛЬКО в кассу. CRM/«Продано» наполняется вручную пользователем —
+     *  никаких автосозданий sold-проектов из текста оплат. Связь односторонняя: CRM → касса. */
+    if (typeof getAssetsMy !== 'function' || typeof getAssetsSasha !== 'function') {
+      alert('Касса недоступна. Перезагрузите страницу и попробуйте ещё раз.');
+      return;
     }
+    toImport.forEach(function(row) {
+      var owner = (row.raw && row.raw.isSasha) ? 'sasha' : 'me';
+      var name = row.client || 'Без названия';
+      var paid = String(row.paid || '').replace(/\s/g, '');
+      var ct = (row.raw && row.raw.isNew === false) ? 'old' : 'new';
+      var item = {
+        emoji: (row.raw && row.raw.emoji) || '💰',
+        name: name,
+        paid: paid,
+        expected: row.expected || '',
+        paymentDate: row.date || (row.raw && row.raw.date) || '',
+        startDate: '',
+        clientType: ct,
+        folderLink: row.folderLink || '',
+        crmClientId: row.folderId || ''
+      };
+      if (owner === 'sasha') { item.soldFor = paid; item.toAgent = ''; item.aoaPercent = ''; }
+      if (owner === 'me') {
+        var arr = getAssetsMy();
+        arr.push(item);
+        saveAssetsMy(arr);
+      } else {
+        var arr2 = getAssetsSasha();
+        arr2.push(item);
+        saveAssetsSasha(arr2);
+      }
+    });
 
     _aiImportRows = [];
     if (document.getElementById('aiImportTextarea')) document.getElementById('aiImportTextarea').value = '';
@@ -455,7 +443,7 @@
     var empty = document.getElementById('aiImportPreviewEmpty');
     if (wrap) wrap.style.display = '';
     if (empty) {
-      empty.innerHTML = inAssets ? '✓ Импортировано в колонки' : '✓ Импортировано. Перейди в ЦЕЛИ → Оплачено.';
+      empty.innerHTML = '✓ Импортировано в кассу';
       empty.style.display = '';
     }
     if (typeof window.__renderAssetsPage === 'function') window.__renderAssetsPage();
