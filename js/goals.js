@@ -1371,46 +1371,69 @@
     var week1 = [], week2 = [], week3 = [], week4 = [];
     var sold = [], working = [], archive = [];
 
+    /** ── Источник истины для КП и продано ──
+     *  Недели и sold ВСЕГДА фильтруются по `date` строго равному текущему просматриваемому месяцу.
+     *  Никаких подстановок «без даты — показывать», никаких чужих месяцев из снимка.
+     *  Working/archive — это снимок состояния (моментальный), фильтруются только по stage. */
+    var seenInWeeks = {};
+    function pushUniqueToWeek(arrTarget, p) {
+      var key = p && p.id ? String(p.id) : ('nm:' + String((p && p.name) || '') + '|sum:' + String((p && (p.mainPrice || (p.priceOptions && p.priceOptions[0]))) || ''));
+      if (seenInWeeks[key]) return;
+      seenInWeeks[key] = true;
+      arrTarget.push(p);
+    }
+    var seenInSold = {};
+    function pushUniqueToSold(p) {
+      var key = p && p.id ? String(p.id) : ('nm:' + String((p && p.name) || '') + '|sum:' + String((p && (p.saleAmount || p.mainPrice || (p.priceOptions && p.priceOptions[0]))) || ''));
+      if (seenInSold[key]) return;
+      seenInSold[key] = true;
+      sold.push(p);
+    }
     if (isArchiveView) {
       projects.forEach(function(p) {
-        if (p.stage === 'sold') { sold.push(p); return; }
+        var pym = getProjectYM(p);
+        if (p.stage === 'sold') {
+          if (pym && pym === viewYM) pushUniqueToSold(p);
+          return;
+        }
         if (p.stage === 'working') { working.push(p); return; }
         if (p.stage === 'archive') { archive.push(p); return; }
+        /** Недели — только проекты с датой строго в просматриваемом месяце.
+         *  Если в снимке оказался мартовский weekly с weekIndex=2 — он НЕ должен попасть во вторую неделю апреля. */
+        if (!pym || pym !== viewYM) return;
         var d = p.date ? (function() {
           var parts = String(p.date).split('-');
           if (parts.length >= 3) return parseInt(parts[2], 10);
           return viewDay;
         }()) : viewDay;
         var wi = p.weekIndex || getWeekIndex(d);
-        if (wi === 1) week1.push(p);
-        else if (wi === 2) week2.push(p);
-        else if (wi === 3) week3.push(p);
-        else week4.push(p);
+        if (wi === 1) pushUniqueToWeek(week1, p);
+        else if (wi === 2) pushUniqueToWeek(week2, p);
+        else if (wi === 3) pushUniqueToWeek(week3, p);
+        else pushUniqueToWeek(week4, p);
       });
     } else {
       var liveProjects = (liveData.projects || []).filter(function(p){ return p && typeof p === 'object'; });
       liveProjects.forEach(function(p) {
         if (p.stage === 'working') { working.push(p); return; }
         if (p.stage === 'archive') { archive.push(p); return; }
-        /** «Продано» — только продажи ТЕКУЩЕГО месяца. Никаких fallback'ов «без даты — показывать»,
-         *  иначе старые продажи без даты тянутся в новый месяц и портят статистику. */
+        var pym = getProjectYM(p);
         if (p.stage === 'sold') {
-          var pymSold = getProjectYM(p);
-          if (pymSold && pymSold === viewYM) sold.push(p);
+          if (pym && pym === viewYM) pushUniqueToSold(p);
           return;
         }
-        var pym = getProjectYM(p);
-        if (pym && pym !== viewYM) return;
+        /** Weekly без даты или из чужого месяца не должны попадать в недели нового месяца. */
+        if (!pym || pym !== viewYM) return;
         var d = p.date ? (function() {
           var parts = String(p.date).split('-');
           if (parts.length >= 3) return parseInt(parts[2], 10);
           return viewDay;
         }()) : viewDay;
         var wi = p.weekIndex || getWeekIndex(d);
-        if (wi === 1) week1.push(p);
-        else if (wi === 2) week2.push(p);
-        else if (wi === 3) week3.push(p);
-        else week4.push(p);
+        if (wi === 1) pushUniqueToWeek(week1, p);
+        else if (wi === 2) pushUniqueToWeek(week2, p);
+        else if (wi === 3) pushUniqueToWeek(week3, p);
+        else pushUniqueToWeek(week4, p);
       });
     }
 
@@ -1466,7 +1489,10 @@
     }
     var allWithKp = week1.concat(week2, week3, week4).filter(hasKpTag);
     var totalKpSum = allWithKp.reduce(function(s, p) { return s + getProjectSum(p); }, 0);
-    var totalKpFull = totalKpSum + totalRevenue;
+    /** «Общая сумма КП месяца» = сумма проектов в неделях с тегом КП + сумма апрельских sold,
+     *  у которых тоже был тег КП. Раньше плюсовали ВСЕ продажи (даже без kp-тега), что задвоило цифры. */
+    var soldWithKpSum = sold.filter(hasKpTag).reduce(function(s, p) { return s + getProjectSum(p); }, 0);
+    var totalKpFull = totalKpSum + soldWithKpSum;
     var funnelTotal = totalRevenue + totalPotentialAll;
     var kpCount = allWithKp.length;
     var totalCount = projects.length;
@@ -1517,7 +1543,7 @@
       '<div class="goals-kpi-tablo">' +
         '<div class="goal-kpi-card goal-kpi-sold goal-kpi-tablo-big"><span class="goal-kpi-num-wrap"><span class="goal-kpi-num">' + fmtNum(totalRevenue) + '</span><span class="goal-kpi-ruble">₽</span></span><span class="goal-kpi-sub-line">' + soldCount + ' шт · ' + monthName + ' · нед.' + currentWeekNum + ': ' + fmtNum(revenueThisWeek) + ' ₽</span><span class="goal-kpi-label">ПРОДАНО СУММА</span></div>' +
         '<div class="goal-kpi-card goal-kpi-funnel goal-kpi-tablo-big"><span class="goal-kpi-num-wrap"><span class="goal-kpi-num">' + fmtNum(totalKpSum) + '</span><span class="goal-kpi-ruble">₽</span></span><span class="goal-kpi-sub-line">' + kpCountSh + ' шт · ' + monthName + '</span><span class="goal-kpi-label">ВОРОНКА (месяц)</span></div>' +
-        '<div class="goal-kpi-card goal-kpi-kp goal-kpi-tablo-big" title="Клик — редактировать. ИИ: общая сумма кп 342000"><span class="goal-kpi-num-wrap"><span class="goal-kpi-num">' + fmtNum((data.totalKpFullOverride !== undefined && data.totalKpFullOverride !== null && data.totalKpFullOverride > 0) ? data.totalKpFullOverride : totalKpFull) + '</span><span class="goal-kpi-ruble">₽</span></span><span class="goal-kpi-sub-line">месяц · нед.' + currentWeekNum + ': ' + fmtNum(totalKpFullWeek) + ' ₽</span><span class="goal-kpi-label">ОБЩАЯ СУММА КП</span></div>' +
+        '<div class="goal-kpi-card goal-kpi-kp goal-kpi-tablo-big" title="Клик — редактировать. ИИ: общая сумма кп 342000"><span class="goal-kpi-num-wrap"><span class="goal-kpi-num">' + fmtNum((!isArchiveView && data.totalKpFullOverride !== undefined && data.totalKpFullOverride !== null && data.totalKpFullOverride > 0) ? data.totalKpFullOverride : totalKpFull) + '</span><span class="goal-kpi-ruble">₽</span></span><span class="goal-kpi-sub-line">месяц · нед.' + currentWeekNum + ': ' + fmtNum(totalKpFullWeek) + ' ₽</span><span class="goal-kpi-label">ОБЩАЯ СУММА КП</span></div>' +
         '<div class="goal-kpi-card goal-kpi-small-card"><span class="goal-kpi-num">' + kpCountSh + '</span><span class="goal-kpi-label">КП УШЛО</span></div>' +
         '<div class="goal-kpi-card goal-kpi-small-card"><span class="goal-kpi-num">' + newCount + '</span><span class="goal-kpi-label">НОВЫХ</span></div>' +
         '<div class="goal-kpi-card goal-kpi-small-card goal-kpi-conv"><span class="goal-kpi-num">' + convPct + '%</span><span class="goal-kpi-label">Конверсия КП в продажу</span></div>' +
