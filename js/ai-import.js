@@ -714,27 +714,74 @@
     alert(msg);
   };
 
+  /** Полная очистка всех денежных полей: paid, expected, soldFor, toAgent, aoaPercent.
+   *  Используется при переходе месяца — новый месяц всегда «с нуля». */
+  function assetsClearAllSumsForNewMonth() {
+    var newMy = getAssetsMy().map(function(p) {
+      var copy = JSON.parse(JSON.stringify(p));
+      copy.paid = '';
+      copy.expected = '';
+      copy.paymentDate = '';
+      delete copy.paymentHistory;
+      return copy;
+    });
+    saveAssetsMy(newMy);
+    var newSasha = getAssetsSasha().map(function(p) {
+      var copy = JSON.parse(JSON.stringify(p));
+      copy.paid = '';
+      copy.expected = '';
+      copy.soldFor = '';
+      copy.toAgent = '';
+      copy.aoaPercent = '';
+      copy.paymentDate = '';
+      delete copy.paymentHistory;
+      return copy;
+    });
+    saveAssetsSasha(newSasha);
+  }
+
+  /** Идемпотентный переход месяца для кассы:
+   *   1. Если снимок прошлого месяца отсутствует — фиксируем текущий live как «архив прошлого месяца».
+   *   2. Если live всё ещё совпадает по сумме paid с прошлым месяцем (пользователь не успел ничего изменить) —
+   *      обнуляем все денежные поля. Иначе НЕ трогаем (вдруг уже есть оплаты текущего месяца).
+   *   3. Ставим маркер «переход выполнен», чтобы не повторять. */
   function assetsCheckMonthTransition() {
     var currentYM = assetsCurrentMonthKey();
     var lastYM = '';
     try { lastYM = localStorage.getItem(ASSETS_LAST_MONTH_MARKER) || ''; } catch(e) {}
-    if (lastYM === currentYM) return;
+    if (lastYM === currentYM) return false;
     var prevYM = assetsGetPrevMonthKey(currentYM);
     var myData = getAssetsMy();
     var sashaData = getAssetsSasha();
-    var hasPrevSnap = !!localStorage.getItem(assetsMonthStorageKey(prevYM));
-    var hasData = myData.some(function(p) { return p.paid && String(p.paid).replace(/\s/g, ''); });
-    if (hasData && !hasPrevSnap) {
+    var prevSnapMyRaw = localStorage.getItem(assetsMonthStorageKey(prevYM));
+    var prevSnapSashaRaw = localStorage.getItem(assetsSashaMonthStorageKey(prevYM));
+
+    if (!prevSnapMyRaw) {
       try { localStorage.setItem(assetsMonthStorageKey(prevYM), JSON.stringify(myData)); } catch(e) {}
       try { localStorage.setItem(assetsSashaMonthStorageKey(prevYM), JSON.stringify(sashaData)); } catch(e) {}
-      assetsClearForNewMonth(myData, sashaData);
-    } else if (lastYM && lastYM < currentYM) {
-      assetsSnapshotCurrentMonth();
-      assetsClearForNewMonth(getAssetsMy(), getAssetsSasha());
+      assetsClearAllSumsForNewMonth();
+    } else {
+      var liveSum = assetsCalcPaidSum(myData);
+      var prevSum = 0;
+      try { prevSum = assetsCalcPaidSum(JSON.parse(prevSnapMyRaw)); } catch(e) {}
+      /** Если live и прошлый снимок практически совпадают — это «оставшиеся данные прошлого месяца», обнуляем.
+       *  Если live уже отличается (есть оплаты нового месяца) — не трогаем. */
+      if (liveSum > 0 && Math.abs(liveSum - prevSum) < 500) {
+        assetsClearAllSumsForNewMonth();
+      }
     }
+
     try { localStorage.setItem(ASSETS_LAST_MONTH_MARKER, currentYM); } catch(e) {}
-    assetsSnapshotCurrentMonth();
+    return true;
   }
+  window.__assetsCheckMonthTransition = assetsCheckMonthTransition;
+  /** Принудительный сброс маркера + повторный прогон — на случай ручного запуска. */
+  window.__assetsForceMonthTransition = function() {
+    try { localStorage.removeItem(ASSETS_LAST_MONTH_MARKER); } catch(e) {}
+    var ch = assetsCheckMonthTransition();
+    if (typeof window.__renderAssetsPage === 'function') window.__renderAssetsPage();
+    return ch;
+  };
 
   var ASSETS_LEGACY_KEY = 'avitolog_assets_projects_v1';
   var ASSETS_USD_RATE = 95;
@@ -1376,6 +1423,8 @@
   function renderAssetsPage() {
     var mc = document.getElementById('mainContent');
     if (!mc) return;
+    /** Авто-переход месяца: апрель консервируем как архив, май = «всё с нуля» по суммам. */
+    try { assetsCheckMonthTransition(); } catch(eMT) {}
     var fmt = function(n) { return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ' '); };
     function calcNameColWidth(list) {
       var longest = 'Проект';
@@ -2224,4 +2273,8 @@
   }
 
   window.__assetsPagePostRender = assetsPagePostRender;
+
+  /** Запускаем переход месяца сразу при загрузке скрипта — так даже без открытия страницы кассы
+   *  апрель будет зафиксирован как архив, а live будет очищен под май. */
+  try { assetsCheckMonthTransition(); } catch (eAutoMT) {}
 })();

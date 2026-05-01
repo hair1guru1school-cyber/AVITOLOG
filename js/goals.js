@@ -83,6 +83,102 @@
   window.__goalsMonthPrev = function() { shiftViewMonth(-1); };
   window.__goalsMonthNext = function() { shiftViewMonth(1); };
 
+  /** Маркер «месяц перехода уже выполнен» — отдельный ключ на профиль. */
+  function goalsLastMonthMarkerKey() {
+    return (typeof window.AVITOLOG_KEY === 'function')
+      ? window.AVITOLOG_KEY('avitolog_goals_last_month_v1')
+      : 'avitolog_goals_last_month_v1';
+  }
+  function goalsPrevMonthKey(ym) {
+    var p = String(ym || '').split('-');
+    var y = parseInt(p[0], 10), m = parseInt(p[1], 10) - 1;
+    if (!isFinite(y) || !isFinite(m)) return '';
+    if (m < 1) { m = 12; y--; }
+    return y + '-' + String(m).padStart(2, '0');
+  }
+  function goalsExtractYM(p) {
+    if (!p) return '';
+    var d = String(p.date || '').trim();
+    if (d) {
+      var parts = d.split('-');
+      if (parts.length >= 2) return parts[0] + '-' + String(parts[1]).padStart(2, '0');
+    }
+    return '';
+  }
+  /**
+   * Закрытие предыдущего месяца:
+   *   1. Сохраняем снимок прошлого месяца (если ещё не сохранён) — он уйдёт в архив.
+   *   2. Все weekly-проекты с датой прошлого (или более раннего) месяца переходят в "В работе".
+   *      Они НЕ считаются новыми лидами в новом месяце и не показываются в неделях.
+   *   3. Сбрасываем «общая сумма КП» (override) — это была цифра прошлого месяца.
+   *   4. workOrderWork обновляем, чтобы новые working были в порядке.
+   *   5. Ставим маркер, чтобы транзицию не повторять.
+   * Идемпотентно: если маркер совпал с текущим месяцем — выходим сразу.
+   */
+  function checkAndApplyMonthTransition() {
+    var currentYM = getCurrentMonthKey();
+    var lastYM = '';
+    try { lastYM = localStorage.getItem(goalsLastMonthMarkerKey()) || ''; } catch(e) {}
+    if (lastYM === currentYM) return false;
+
+    var liveData;
+    try {
+      var raw = localStorage.getItem(goalsStorageKey());
+      liveData = raw ? JSON.parse(raw) : { projects: [] };
+    } catch(e) { liveData = { projects: [] }; }
+    if (!liveData || typeof liveData !== 'object') liveData = { projects: [] };
+    if (!Array.isArray(liveData.projects)) liveData.projects = [];
+
+    var prevYM = goalsPrevMonthKey(currentYM);
+
+    /** Если снимок прошлого месяца ещё не сохранён — фиксируем live как «архив прошлого месяца».
+     *  Это снимок состояния «как было на конец прошлого месяца», что нам и нужно. */
+    if (prevYM && !loadMonthSnapshot(prevYM)) {
+      try { localStorage.setItem(monthStorageKey(prevYM), JSON.stringify(liveData)); } catch(e) {}
+    }
+
+    var changed = false;
+    /** Weekly-лиды старых месяцев → "в работе". Новые недели нового месяца остаются нетронутыми. */
+    liveData.projects.forEach(function(p) {
+      if (!p) return;
+      var stage = p.stage || 'weekly';
+      if (stage !== 'weekly' && stage !== '') return;
+      var pym = goalsExtractYM(p);
+      if (!pym) return; // нет даты — не трогаем (битая запись)
+      if (pym >= currentYM) return; // уже текущего месяца или будущего
+      p.stage = 'working';
+      delete p.crmArchived;
+      delete p.emojiBeforeArchive;
+      changed = true;
+    });
+
+    /** Общая сумма КП — это была цифра прошлого месяца. В новом месяце — с нуля. */
+    if (liveData.totalKpFullOverride !== 0) {
+      liveData.totalKpFullOverride = 0;
+      changed = true;
+    }
+
+    /** Обновляем порядок working: добавляем новые id (которые только что переехали из weekly). */
+    if (changed) {
+      var workingAll = liveData.projects.filter(function(x) { return x && x.stage === 'working'; });
+      liveData.workOrderWork = mergeWorkingOrderIds(liveData.workOrderWork || [], workingAll);
+      try { localStorage.setItem(goalsStorageKey(), JSON.stringify(liveData)); } catch(e) {}
+      /** Снимок текущего месяца тоже обновляем — иначе при первом render() запишется старый. */
+      try { localStorage.setItem(monthStorageKey(currentYM), JSON.stringify(liveData)); } catch(e) {}
+    }
+
+    try { localStorage.setItem(goalsLastMonthMarkerKey(), currentYM); } catch(e) {}
+    return changed;
+  }
+  window.__goalsCheckMonthTransition = checkAndApplyMonthTransition;
+  /** Принудительный сброс маркера + повторный прогон (если что-то пошло не так). */
+  window.__goalsForceMonthTransition = function() {
+    try { localStorage.removeItem(goalsLastMonthMarkerKey()); } catch(e) {}
+    var ch = checkAndApplyMonthTransition();
+    if (typeof render === 'function') render();
+    return ch;
+  };
+
   var STATUS_LEGACY = { kp_sent:'kp', invoice_sent:'invoice', contract_sent:'contract', instruction_sent:'instruction', deal_discussion:'negotiations' };
   const STATUS_OPTIONS = [
     { id: 'kp', label: 'КП', color: '#35d0ff' },
@@ -175,7 +271,7 @@
     if (!d.customMetrics) d.customMetrics = [];
     if (!d.pinnedMetrics) d.pinnedMetrics = [];
     if (!d.pinnedMetricsMain) d.pinnedMetricsMain = [];
-    if (d.totalKpFullOverride === undefined) d.totalKpFullOverride = 342000;
+    if (d.totalKpFullOverride === undefined) d.totalKpFullOverride = 0;
     if (!Array.isArray(d.workOrderWork)) d.workOrderWork = [];
     if (d.workTargetFilter === undefined) d.workTargetFilter = false;
     return d;
@@ -198,11 +294,11 @@
       if (!d.customMetrics) d.customMetrics = [];
       if (!d.pinnedMetrics) d.pinnedMetrics = [];
       if (!d.pinnedMetricsMain) d.pinnedMetricsMain = [];
-      if (d.totalKpFullOverride === undefined) d.totalKpFullOverride = 342000;
+      if (d.totalKpFullOverride === undefined) d.totalKpFullOverride = 0;
       if (!Array.isArray(d.workOrderWork)) d.workOrderWork = [];
       if (d.workTargetFilter === undefined) d.workTargetFilter = false;
       return d;
-    } catch (e) { return { projects: [], customMetrics: [], pinnedMetrics: [], pinnedMetricsMain: [], totalKpFullOverride: 342000 }; }
+    } catch (e) { return { projects: [], customMetrics: [], pinnedMetrics: [], pinnedMetricsMain: [], totalKpFullOverride: 0 }; }
   }
 
   function saveData(data) {
@@ -1144,6 +1240,9 @@
   }
 
   function render() {
+    /** Авто-переход месяца: 31-го числа фиксируем апрель как архив,
+     *  открываем май чистым; апрельские weekly-лиды без оплаты → "в работе". */
+    try { checkAndApplyMonthTransition(); } catch(eMT) {}
     var isArchiveView = !!_goalsViewMonth;
     var viewYM = _goalsViewMonth || getCurrentMonthKey();
     var liveData = loadLiveData();
@@ -1194,10 +1293,11 @@
       liveProjects.forEach(function(p) {
         if (p.stage === 'working') { working.push(p); return; }
         if (p.stage === 'archive') { archive.push(p); return; }
-        /** «Продано» до фильтра месяца для недель — иначе sold с «чужим» месяцем в date никогда не попадал в блок */
+        /** «Продано» — только продажи ТЕКУЩЕГО месяца. Никаких fallback'ов «без даты — показывать»,
+         *  иначе старые продажи без даты тянутся в новый месяц и портят статистику. */
         if (p.stage === 'sold') {
           var pymSold = getProjectYM(p);
-          if (!pymSold || pymSold === viewYM) sold.push(p);
+          if (pymSold && pymSold === viewYM) sold.push(p);
           return;
         }
         var pym = getProjectYM(p);
@@ -2665,6 +2765,12 @@
 
   window.AVITOLOG_GOALS = { render: render, __externalVersion: 'goals-js-v2' };
   window.__AVITOLOG_GOALS_LEGACY = window.AVITOLOG_GOALS;
+
+  /** Запускаем переход месяца сразу при загрузке скрипта.
+   *  31-го числа предыдущий месяц автоматически становится архивом,
+   *  а в новом месяце «продано», «недели», «КП» и «новые проекты» начинаются с нуля.
+   *  Все weekly-лиды старого месяца, которые не дошли до продажи, автоматически уходят в «В работе». */
+  try { checkAndApplyMonthTransition(); } catch (eAutoMT) {}
   window.__goalsAddClientToWeek = addClientToWeek;
   window.__goalsClientDragStart = startClientDrag;
   window.__goalsClientDragEnd = endClientDrag;
