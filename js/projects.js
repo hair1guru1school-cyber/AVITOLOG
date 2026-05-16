@@ -75,6 +75,19 @@ function getTodayISOmsk() {
     return y + '-' + m + '-' + d;
   } catch(e) { return getTodayISO(); }
 }
+/** Счётчик «сколько дней проект ждёт» рядом с ‼.
+ *  День постановки (или день, когда запуск стал просроченным) = 0 (без числа);
+ *  следующий день = 1; через день = 2 и т.д. */
+function computeMustLaunchWaitDays(setSinceIso, todayIso) {
+  if (!setSinceIso || !todayIso) return 0;
+  try {
+    var a = new Date(String(setSinceIso) + 'T00:00:00');
+    var b = new Date(String(todayIso) + 'T00:00:00');
+    if (isNaN(a.getTime()) || isNaN(b.getTime())) return 0;
+    var diff = Math.round((b.getTime() - a.getTime()) / 86400000);
+    return diff > 0 ? diff : 0;
+  } catch (e) { return 0; }
+}
 function toIsoDateLocal(d) {
   var y = d.getFullYear();
   var m = String(d.getMonth() + 1).padStart(2, '0');
@@ -233,6 +246,41 @@ function loadProjectsData() {
       var needMustToday = p.mustLaunchRequired && (md === '' || md < todayStr);
       if (needCardsToday) { p.cardsActiveDate = todayStr; cardsMoved = true; }
       if (needMustToday) { p.mustLaunchDate = todayStr; cardsMoved = true; }
+
+      /** Авто-связка «запуск → !!»:
+       *  Если запуск был назначен на прошлое число (launch_range.endDate < сегодня),
+       *  а никакой активности после этого не было (нет active_range, перекрывающего
+       *  сегодня или будущее, и нет более позднего launch_range) — система сама
+       *  переводит проект в режим «должен быть запущен» (!!), фиксируя точку
+       *  отсчёта ожидания (mustLaunchSetSince) = дата запуска, который пропустили.
+       *  Это даёт «ракету, которая никуда не уехала» — день за днём растущий счётчик
+       *  напротив !!. */
+      if (!p.mustLaunchRequired) {
+        var allLr = (p.events || []).filter(function(e){ return e && e.type === 'launch_range' && e.endDate; });
+        var lastLr = null;
+        for (var iLr = 0; iLr < allLr.length; iLr++) {
+          if (!lastLr || (allLr[iLr].endDate || '') > (lastLr.endDate || '')) lastLr = allLr[iLr];
+        }
+        if (lastLr && lastLr.endDate < todayStr) {
+          var hasActiveTodayOrFuture = (p.events || []).some(function(e){
+            return e && e.type === 'active_range' && (e.endDate || '') >= todayStr;
+          });
+          var dismissedFor = String(p.mustLaunchAutoDismissedAt || '');
+          if (!hasActiveTodayOrFuture && dismissedFor !== lastLr.endDate) {
+            p.mustLaunchRequired = true;
+            p.mustLaunchDate = todayStr;
+            p.mustLaunchSetSince = lastLr.endDate;
+            p.mustLaunchAutoFromLaunch = true;
+            cardsMoved = true;
+          }
+        }
+      }
+      /** Backfill для уже существующих ручных «‼»: точка отсчёта = текущая дата
+       *  показа (после переноса md = сегодня), чтобы счётчик не «прыгал» сразу. */
+      if (p.mustLaunchRequired && !p.mustLaunchSetSince) {
+        p.mustLaunchSetSince = (p.mustLaunchDate || todayStr);
+        cardsMoved = true;
+      }
     });
     if (cardsMoved) saveProjectsData(data);
     persistProjectTypeNormalization(data);
@@ -1446,6 +1494,15 @@ function applyProjectLaunchRange(projectId, startDate, endDate, childLineIndex) 
     p.childLineEvents[clIdx] = targetEvents;
   } else {
     p.events = targetEvents;
+    /** Новый запуск в будущем сбрасывает авто-«‼» от прошлого пропущенного запуска
+     *  — пользователь явно перепланировал, ждать больше нечего. */
+    var todayIsoNL = getTodayISOmsk();
+    if (p.mustLaunchAutoFromLaunch && e >= todayIsoNL) {
+      p.mustLaunchRequired = false;
+      p.mustLaunchSetSince = '';
+      p.mustLaunchAutoFromLaunch = false;
+      p.mustLaunchAutoDismissedAt = '';
+    }
   }
   saveProjectsData(data);
   rerenderProjectsPreserveScroll();
@@ -1537,6 +1594,9 @@ function applyProjectAutoloadRangeForRow(projectId, childLineIdx, startDate, end
     p.events.push({type:'active_range', startDate:s, endDate:e});
     if (p.mustLaunchRequired && e > todayIso) {
       p.mustLaunchRequired = false;
+      p.mustLaunchSetSince = '';
+      p.mustLaunchAutoFromLaunch = false;
+      p.mustLaunchAutoDismissedAt = '';
       _projectMustLaunchDetachArmedId = null;
     }
   }
@@ -3182,7 +3242,13 @@ function renderProjectsScreen(opts) {
         var isCalSelected = _selectedCalCell && _selectedCalCell.projectId === p.id && _selectedCalCell.dateStr === dStr && ((childLineIdx < 0 && (_selectedCalCell.childLineIdx == null || _selectedCalCell.childLineIdx < 0)) || (childLineIdx >= 0 && _selectedCalCell.childLineIdx === childLineIdx));
         var dayCls = 'projects-cal-day' + (isTodayCell ? ' today' : '') + (isCalSelected ? ' cal-day-selected' : '');
         if (cardsActiveShown) cellHtml = '<div class="cal-cards' + cardsToneClass + '"><span class="cal-cards-del">×</span><span class="cal-cards-num">' + escAttr(p.cardsActive || '') + '</span></div>';
-        else if (mustLaunchShown) cellHtml = '<div class="cal-deadline"><span class="cal-deadline-del">×</span><span class="cal-deadline-icon">!!</span></div>';
+        else if (mustLaunchShown) {
+          var mlSince = String(p.mustLaunchSetSince || p.mustLaunchDate || todayStr);
+          var mlWaitDays = (typeof computeMustLaunchWaitDays === 'function') ? computeMustLaunchWaitDays(mlSince, todayStr) : 0;
+          var mlDaysHtml = (mlWaitDays > 0) ? '<span class="cal-deadline-days" title="Проект ждёт ' + mlWaitDays + ' дн. с ' + escAttr(mlSince) + '">' + mlWaitDays + '</span>' : '';
+          var mlExtraCls = mlWaitDays > 0 ? ' cal-deadline-with-days' : '';
+          cellHtml = '<div class="cal-deadline' + mlExtraCls + '"><span class="cal-deadline-del">×</span><span class="cal-deadline-icon">!!</span>' + mlDaysHtml + '</div>';
+        }
         else if (rocket) { cellHtml = '<div class="cal-launch-tip cal-launch-rocket">🚀</div>'; dayCls += ' day-launch-end'; }
         else if (launchEvt) {
           var isLaunchLast = (dStr === launchEvt.endDate);
@@ -3634,8 +3700,39 @@ function setProjectMustLaunchWithDate(projectId, enabled, date) {
   var p = data.projects.find(function(x){ return x.id===projectId; });
   if (!p) return;
   p.events = (p.events || []).filter(function(e){ return e && e.type !== 'deadline'; });
+  var wasEnabled = !!p.mustLaunchRequired;
+  var wasAutoFromLaunch = !!p.mustLaunchAutoFromLaunch;
+  var prevSetSince = String(p.mustLaunchSetSince || '');
   p.mustLaunchRequired = !!enabled;
   p.mustLaunchDate = (enabled && date) ? date : '';
+  if (enabled) {
+    /** Точка отсчёта ожидания: ставится один раз при включении и не сбрасывается
+     *  при ежедневных авто-переносах mustLaunchDate. */
+    if (!wasEnabled || !prevSetSince) {
+      p.mustLaunchSetSince = (date || getTodayISOmsk());
+    }
+    /** Ручная установка из меню — не «от просроченного запуска». */
+    p.mustLaunchAutoFromLaunch = false;
+    p.mustLaunchAutoDismissedAt = '';
+  } else {
+    /** Сброс: запомнить дату пропущенного запуска, чтобы авто-логика не воткнула
+     *  ‼ обратно сразу на следующем рендере. Также убираем launch_range и ракету
+     *  из календаря — пользователь сказал «я разобрался». */
+    if (wasAutoFromLaunch) {
+      var lastLrEnd = '';
+      (p.events || []).forEach(function(ev){
+        if (ev && ev.type === 'launch_range' && ev.endDate && (!lastLrEnd || ev.endDate > lastLrEnd)) {
+          lastLrEnd = ev.endDate;
+        }
+      });
+      if (lastLrEnd) p.mustLaunchAutoDismissedAt = lastLrEnd;
+      p.events = (p.events || []).filter(function(ev){
+        return ev && ev.type !== 'launch_range' && ev.type !== 'not_launched_project_marker';
+      });
+    }
+    p.mustLaunchSetSince = '';
+    p.mustLaunchAutoFromLaunch = false;
+  }
   _projectMustLaunchDetachArmedId = null;
   saveProjectsData(data);
   rerenderProjectsPreserveScroll();
