@@ -22,6 +22,12 @@ var PROJECTS_ROW_HEIGHT_KEY = (typeof window.AVITOLOG_KEY === 'function') ? wind
 var PROJECTS_DAY_PX_KEY = (typeof window.AVITOLOG_KEY === 'function') ? window.AVITOLOG_KEY('avitolog_projects_day_px') : 'avitolog_projects_day_px';
 var PROJECTS_ZOOM_KEY = (typeof window.AVITOLOG_KEY === 'function') ? window.AVITOLOG_KEY('avitolog_projects_zoom') : 'avitolog_projects_zoom';
 var _dragProjectId = null;
+/** Кэш drop-маркера (избавляет dragover от querySelectorAll на каждый mousemove). */
+var _lastDropMarkedRow = null;
+var _lastDropMarkedPlace = null; // 'before' | 'after' | null
+var _dragOverRafScheduled = false;
+var _dragOverPendingRow = null;
+var _dragOverPendingPlace = null;
 var _projectFolderBindTargetId = null;
 var _calendarCtx = { projectId: null, date: null };
 var _calendarPaintMode = null; // null | 'launch'
@@ -1881,9 +1887,21 @@ function finishCalendarPaint() {
   _calendarPaintChildLineIndex = -1;
 }
 function clearProjectDropMarks() {
-  document.querySelectorAll('.projects-table-row.drop-before, .projects-table-row.drop-after').forEach(function(r) {
-    r.classList.remove('drop-before', 'drop-after');
-  });
+  /** Быстрый путь: используем кэшированную ссылку (O(1)). */
+  if (_lastDropMarkedRow) {
+    try { _lastDropMarkedRow.classList.remove('drop-before', 'drop-after'); } catch(_e) {}
+  }
+  /** Защитный фолбэк: только если что-то осталось от старого рендера (O(n), редко). */
+  var stale = document.querySelector('.projects-table-row.drop-before, .projects-table-row.drop-after');
+  if (stale) {
+    document.querySelectorAll('.projects-table-row.drop-before, .projects-table-row.drop-after').forEach(function(r) {
+      r.classList.remove('drop-before', 'drop-after');
+    });
+  }
+  _lastDropMarkedRow = null;
+  _lastDropMarkedPlace = null;
+  _dragOverPendingRow = null;
+  _dragOverPendingPlace = null;
 }
 function createProjectRowDragGhost(row) {
   if (!row) return null;
@@ -1917,14 +1935,46 @@ function handleProjectRowDragOver(e, row, targetProjectId) {
   if (!_dragProjectId || _dragProjectId === targetProjectId) return;
   e.preventDefault();
   if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
-  clearProjectDropMarks();
+  /** Cтоимость: один getBoundingClientRect на событие (browser native, дёшево),
+   *  всё остальное (querySelector/classList) — только при смене позиции. */
   var rect = row.getBoundingClientRect();
   var placeAfter = (e.clientY - rect.top) > rect.height / 2;
-  row.classList.add(placeAfter ? 'drop-after' : 'drop-before');
+  var place = placeAfter ? 'after' : 'before';
+  /** Идемпотентно: если уже подсвечено в нужном месте — ничего не делаем. */
+  if (_lastDropMarkedRow === row && _lastDropMarkedPlace === place) return;
+  _dragOverPendingRow = row;
+  _dragOverPendingPlace = place;
+  if (_dragOverRafScheduled) return;
+  _dragOverRafScheduled = true;
+  /** rAF гасит шквал dragover-событий до 1 апдейта DOM за кадр. */
+  var raf = window.requestAnimationFrame || function(fn){ return setTimeout(fn, 16); };
+  raf(function() {
+    _dragOverRafScheduled = false;
+    var nextRow = _dragOverPendingRow;
+    var nextPlace = _dragOverPendingPlace;
+    if (!nextRow || !nextPlace) return;
+    if (_lastDropMarkedRow === nextRow && _lastDropMarkedPlace === nextPlace) return;
+    if (_lastDropMarkedRow && _lastDropMarkedRow !== nextRow) {
+      try { _lastDropMarkedRow.classList.remove('drop-before', 'drop-after'); } catch(_e) {}
+    } else if (_lastDropMarkedRow === nextRow) {
+      try { _lastDropMarkedRow.classList.remove('drop-before', 'drop-after'); } catch(_e) {}
+    }
+    try { nextRow.classList.add(nextPlace === 'after' ? 'drop-after' : 'drop-before'); } catch(_e2) {}
+    _lastDropMarkedRow = nextRow;
+    _lastDropMarkedPlace = nextPlace;
+  });
 }
 function handleProjectRowDragLeave(e, row) {
   if (!row) return;
-  row.classList.remove('drop-before', 'drop-after');
+  /** Только если уходим именно с подсвеченной строки — снимаем кэш.
+   *  Иначе во время быстрого перетаскивания leave чужой строки гасил бы метку. */
+  if (_lastDropMarkedRow === row) {
+    try { row.classList.remove('drop-before', 'drop-after'); } catch(_e) {}
+    _lastDropMarkedRow = null;
+    _lastDropMarkedPlace = null;
+  } else {
+    try { row.classList.remove('drop-before', 'drop-after'); } catch(_e) {}
+  }
 }
 function reorderProjectsWithinZone(sourceId, targetId, placeAfter) {
   var data = loadProjectsData();
@@ -1948,8 +1998,47 @@ function reorderProjectsWithinZone(sourceId, targetId, placeAfter) {
     if (p) p.sortOrder = idx;
   });
   saveProjectsData(data);
-  rerenderProjectsPreserveScroll();
+  /** Производительность: ре-рендер всей таблицы (60 колонок × N строк × калькуляции
+   *  событий) даёт «фриз» на drop. Делаем точечный DOM-move строки(и) проекта в
+   *  пределах своей зоны — визуально мгновенно, данные уже сохранены выше.
+   *  Полный ре-рендер всё равно происходит при смене вкладок/фильтров/зум-изменении. */
+  var domMoved = false;
+  try {
+    if (!_projectsTasksSortOn && !_projectsTypeSortPriority &&
+        !_projectsFilterLaunch && !_projectsFilterAutoload && !_projectsFilterMustLaunch) {
+      domMoved = moveProjectRowsInDom(sourceId, targetId, !!placeAfter);
+    }
+  } catch (eDom) { domMoved = false; }
+  if (!domMoved) {
+    rerenderProjectsPreserveScroll();
+  }
   syncProjectToActiveSheet(sourceId, 'row_reorder');
+  return true;
+}
+/** Переставляет в DOM все строки проекта (главная + дочерние позиции),
+ *  относящиеся к sourceId, рядом со строками targetId. Возвращает true при успехе.
+ *  Используется как fast-path для drag-reorder, чтобы не пересобирать всю таблицу. */
+function moveProjectRowsInDom(sourceId, targetId, placeAfter) {
+  if (!sourceId || !targetId || sourceId === targetId) return false;
+  var table = document.querySelector('.projects-table');
+  if (!table) return false;
+  var srcRows = table.querySelectorAll('.projects-table-row[data-id="' + sourceId + '"]');
+  var tgtRows = table.querySelectorAll('.projects-table-row[data-id="' + targetId + '"]');
+  if (!srcRows.length || !tgtRows.length) return false;
+  /** Якорь вставки: «before» = первая строка таргета, «after» = nextSibling после
+   *  последней строки таргета (или null = в самый конец). */
+  var anchor = placeAfter ? (tgtRows[tgtRows.length - 1].nextSibling || null) : tgtRows[0];
+  /** Если якорь оказался внутри блока источника — fallback. */
+  for (var i = 0; i < srcRows.length; i++) {
+    if (anchor && (anchor === srcRows[i] || (anchor.compareDocumentPosition && (anchor.compareDocumentPosition(srcRows[i]) & Node.DOCUMENT_POSITION_CONTAINS)))) {
+      return false;
+    }
+  }
+  for (var j = 0; j < srcRows.length; j++) {
+    var row = srcRows[j];
+    if (row === anchor) continue;
+    table.insertBefore(row, anchor);
+  }
   return true;
 }
 function handleProjectRowDrop(e, targetProjectId) {
