@@ -2144,8 +2144,16 @@ body.goals-client-dragging .goal-block-sold{transition:all .18s ease}
 .goal-picker-tag-inp:focus{outline:none;border-color:var(--accent)}
 .goal-picker-tag-add{width:28px;height:28px;border-radius:6px;border:1px solid var(--accent);background:rgba(0,217,126,0.12);color:var(--accent);font-size:16px;font-weight:700;cursor:pointer;flex-shrink:0}
 .goal-picker-tag-add:hover{background:rgba(0,217,126,0.2)}
+.goal-send-week-picker{min-width:200px;max-width:240px}
+.goal-week-pick-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.goal-week-pick-opt{padding:8px 10px;border-radius:8px;border:1px solid rgba(124,245,255,0.25);background:rgba(124,245,255,0.06);color:var(--text);font-size:12px;font-weight:700;cursor:pointer;text-align:center;font-family:inherit;transition:all .12s}
+.goal-week-pick-opt:hover{background:rgba(124,245,255,0.16);border-color:rgba(124,245,255,0.5)}
+.goal-week-pick-cur{border-color:rgba(0,217,126,0.55);background:rgba(0,217,126,0.12);color:#7df5b8}
+.goal-week-pick-cur:hover{background:rgba(0,217,126,0.22)}
 .goal-actions{display:flex;gap:4px;align-items:center;flex-wrap:nowrap;white-space:nowrap;flex-shrink:0}
-.goal-row .goal-move-btn,.goal-row .goal-more-btn,.goal-row .goal-del-btn,.goal-row .goal-to-work-btn{width:22px;height:22px;min-width:22px;font-size:12px;flex-shrink:0}
+.goal-row .goal-move-btn,.goal-row .goal-more-btn,.goal-row .goal-del-btn,.goal-row .goal-to-work-btn,.goal-row .goal-to-week-btn{width:22px;height:22px;min-width:22px;font-size:12px;flex-shrink:0}
+.goal-to-week-btn{color:#7cf5ff}
+.goal-to-week-btn:hover{border-color:#7cf5ff;color:#7cf5ff;background:rgba(124,245,255,0.08)}
 .goal-move-btn{width:22px;height:22px;border:1px solid rgba(255,255,255,0.12);background:transparent;color:var(--muted);border-radius:6px;cursor:pointer;font-size:13px;display:flex;align-items:center;justify-content:center;padding:0;transition:all .1s}
 .goal-move-btn:hover{border-color:var(--accent);color:var(--accent)}
 .goal-del-btn{width:22px;height:22px;border:1px solid rgba(255,255,255,0.12);background:transparent;color:var(--muted);border-radius:6px;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;padding:0;flex-shrink:0;transition:all .1s}
@@ -2518,7 +2526,7 @@ body.day-mode .assets-col-sasha-hint{color:var(--accent)}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 <script src="https://accounts.google.com/gsi/client" async></script>
 <script src="js/user-config.js?v=20260414-3"></script>
-<script src="js/goals.js?v=20260501-4"></script>
+<script src="js/goals.js?v=20260518-1"></script>
 <script>
 if (!window.AVITOLOG_GOALS) {
   window.AVITOLOG_GOALS = window.__AVITOLOG_GOALS_LEGACY = { render: function() {

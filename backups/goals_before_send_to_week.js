@@ -1123,12 +1123,11 @@
         : '';
       var toActiveBtn = (blockType === 'sold') ? '<button type="button" class="goal-to-work-btn goal-to-active-btn" onclick="event.stopPropagation();window.__goalsCreateActiveFromSold&&window.__goalsCreateActiveFromSold(\'' + esc(p.id) + '\')" title="Создать активный проект в ПРОЕКТАХ">🅰️</button>' : '';
       var workEditBtn = (blockType === 'work') ? '<button type="button" class="goal-more-btn" onclick="event.stopPropagation();window.__goalsSelectRow&&window.__goalsSelectRow(\'' + esc(p.id) + '\')" title="Редактировать">⋯</button>' : '';
-      var workToWeekBtn = (blockType === 'work') ? '<button type="button" class="goal-move-btn goal-to-week-btn" onclick="event.stopPropagation();window.__goalsShowSendToWeek&&window.__goalsShowSendToWeek(\'' + esc(p.id) + '\',this)" title="Отправить в неделю">📅</button>' : '';
       var workToSoldBtn = (blockType === 'work') ? '<button type="button" class="goal-move-btn" onclick="event.stopPropagation();window.__goalsSetStage&&window.__goalsSetStage(\'' + esc(p.id) + '\',\'sold\')" title="В продано">✓</button>' : '';
       var workToArchiveBtn = (blockType === 'work') ? '<button type="button" class="goal-move-btn" onclick="event.stopPropagation();window.__goalsSetStage&&window.__goalsSetStage(\'' + esc(p.id) + '\',\'archive\')" title="В архив">🗂</button>' : '';
       var delBtn = (blockType === 'sold' || blockType === 'work') ? '<button type="button" class="goal-del-btn" onclick="event.stopPropagation();window.__goalsDeletePermanent&&window.__goalsDeletePermanent(\'' + esc(p.id) + '\')" title="Удалить">×</button>' : '';
       var dispName = String(p.name || '').replace(/\s+/g, ' ').trim();
-      var actionsHtml = (archBtn || '') + (toActiveBtn || '') + (workEditBtn || '') + (workToWeekBtn || '') + (workToSoldBtn || '') + (workToArchiveBtn || '') + (delBtn || '');
+      var actionsHtml = (archBtn || '') + (toActiveBtn || '') + (workEditBtn || '') + (workToSoldBtn || '') + (workToArchiveBtn || '') + (delBtn || '');
       var actionsInName = (blockType === 'sold' || blockType === 'work') ? actionsHtml : '';
       var nameCell = '<span class="goal-name-cell" onclick="event.stopPropagation();window.__goalsEditNameCell&&window.__goalsEditNameCell(this)">' +
         targetBtn +
@@ -1955,8 +1954,6 @@
       openModal(btn, null, stage);
     };
     window.__goalsSetStage = setStage;
-    window.__goalsShowSendToWeek = showSendToWeekPopup;
-    window.__goalsSendWorkingToWeek = sendWorkingToWeek;
     window.__goalsRemoveTag = removeTag;
     window.__goalsRemoveStatus = removeStatus;
     window.__goalsRemoveTouch = removeTouch;
@@ -2430,117 +2427,6 @@
     p.stage = stage;
     saveData(data);
     render();
-  }
-
-  /** Отправить проект из «В работе» на конкретную неделю текущего месяца.
-   *  weekNum: 1..4. Дата = сегодня, если сегодня попадает в эту неделю; иначе —
-   *  первый день недели (1/8/15/22) в текущем месяце.
-   *  Если строка в работе — копия с недели (workCopyOfWeekId), обновляем
-   *  weekIndex/date у оригинала и удаляем копию (без дублей). Иначе строка
-   *  становится weekly сама. Карточка автоматически уйдёт из «В работе»,
-   *  т.к. в работе показываются только stage === 'working'. На рубеже месяца
-   *  системная логика «прошлый месяц + weekly + не sold/archive → в работу»
-   *  всё равно вернёт её в «В работе», если она там останется висеть. */
-  function sendWorkingToWeek(projectId, weekNum) {
-    weekNum = parseInt(weekNum, 10);
-    if (!(weekNum >= 1 && weekNum <= 4)) return;
-    var data = loadData();
-    var p = (data.projects || []).find(function(x) { return x && x.id === projectId; });
-    if (!p) return;
-    if (p.stage !== 'working') return;
-    var nowD = new Date();
-    var y = nowD.getFullYear();
-    var m = nowD.getMonth();
-    var today = nowD.getDate();
-    var todayWeek = getWeekIndex(today);
-    var firstDayOfWeek = { 1: 1, 2: 8, 3: 15, 4: 22 };
-    var targetDay = (todayWeek === weekNum) ? today : firstDayOfWeek[weekNum];
-    var lastDay = new Date(y, m + 1, 0).getDate();
-    if (targetDay > lastDay) targetDay = lastDay;
-    var dateStr = y + '-' + pad2(m + 1) + '-' + pad2(targetDay);
-    var srcId = p.workCopyOfWeekId || '';
-    var weekSrc = srcId ? (data.projects || []).find(function(x) { return x && x.id === srcId; }) : null;
-    if (weekSrc) {
-      weekSrc.stage = 'weekly';
-      weekSrc.weekIndex = weekNum;
-      weekSrc.date = dateStr;
-      if (weekSrc.crmArchived) {
-        weekSrc.crmArchived = false;
-        if (weekSrc.emojiBeforeArchive) {
-          weekSrc.emoji = weekSrc.emojiBeforeArchive;
-          delete weekSrc.emojiBeforeArchive;
-        }
-      }
-      data.projects = (data.projects || []).filter(function(x) { return x && x.id !== projectId; });
-    } else {
-      p.stage = 'weekly';
-      p.weekIndex = weekNum;
-      p.date = dateStr;
-      delete p.workCopyOfWeekId;
-    }
-    data.workOrderWork = (data.workOrderWork || []).filter(function(id) { return id !== projectId; });
-    var workingAll = (data.projects || []).filter(function(x) { return x && x.stage === 'working'; });
-    data.workOrderWork = mergeWorkingOrderIds(data.workOrderWork || [], workingAll);
-    saveData(data);
-    render();
-  }
-
-  function showSendToWeekPopup(projectId, anchorEl) {
-    var data = loadData();
-    var p = (data.projects || []).find(function(x) { return x && x.id === projectId; });
-    if (!p || p.stage !== 'working') return;
-    var existing = document.getElementById('goalSendToWeekPopup');
-    if (existing) { existing.remove(); return; }
-    var nowD = new Date();
-    var curWeek = getWeekIndex(nowD.getDate());
-    var monthLabel = ['янв', 'фев', 'мар', 'апр', 'май', 'июн', 'июл', 'авг', 'сен', 'окт', 'ноя', 'дек'][nowD.getMonth()];
-    var weeksHtml = '';
-    for (var w = 1; w <= 4; w++) {
-      var isCur = (w === curWeek);
-      var lbl = 'Неделя ' + w + (isCur ? ' · сейчас' : '');
-      weeksHtml += '<button type="button" class="goal-picker-opt goal-week-pick-opt' + (isCur ? ' goal-week-pick-cur' : '') + '" data-week="' + w + '" title="Переместить в неделю ' + w + ' (' + monthLabel + ')">' + lbl + '</button>';
-    }
-    var popup = document.createElement('div');
-    popup.id = 'goalSendToWeekPopup';
-    popup.className = 'goal-status-picker goal-send-week-picker';
-    popup.innerHTML = '<div class="goal-picker-inner">' +
-      '<div class="goal-picker-label">Отправить в неделю</div>' +
-      '<div class="goal-week-pick-grid">' + weeksHtml + '</div>' +
-      '</div>';
-    document.body.appendChild(popup);
-    popup.querySelectorAll('.goal-week-pick-opt').forEach(function(btn) {
-      btn.onclick = function(e) {
-        e.stopPropagation();
-        var w = parseInt(btn.getAttribute('data-week'), 10);
-        popup.remove();
-        sendWorkingToWeek(projectId, w);
-      };
-    });
-    var anchor = anchorEl || null;
-    if (anchor && anchor.getBoundingClientRect) {
-      var r = anchor.getBoundingClientRect();
-      var w = popup.offsetWidth || 200;
-      var h = popup.offsetHeight || 180;
-      var left = r.right + 8;
-      if (left + w > window.innerWidth - 8) left = Math.max(8, r.left - w - 8);
-      var top = r.top;
-      if (top + h > window.innerHeight - 8) top = Math.max(8, window.innerHeight - h - 8);
-      popup.style.left = left + 'px';
-      popup.style.top = top + 'px';
-    } else {
-      popup.style.left = '50%';
-      popup.style.top = '40%';
-      popup.style.transform = 'translate(-50%,-50%)';
-    }
-    setTimeout(function() {
-      function onDocClick(ev) {
-        if (!popup.contains(ev.target)) {
-          popup.remove();
-          document.removeEventListener('mousedown', onDocClick, true);
-        }
-      }
-      document.addEventListener('mousedown', onDocClick, true);
-    }, 0);
   }
 
   function showSaleAmountPicker(projectId, p, onConfirm) {
