@@ -28,12 +28,6 @@ var _lastDropMarkedPlace = null; // 'before' | 'after' | null
 var _dragOverRafScheduled = false;
 var _dragOverPendingRow = null;
 var _dragOverPendingPlace = null;
-/** Кэш DOM-строк проектов на время drag (без querySelectorAll на drop). */
-var _dragRowDomById = null;
-/** In-memory кэш projects data — без JSON.parse на каждый drop/reorder. */
-var _projectsDataMem = null;
-var _projectsDataMemKey = null;
-var _projectsStorageFlushTimer = null;
 var _projectFolderBindTargetId = null;
 var _calendarCtx = { projectId: null, date: null };
 var _calendarPaintMode = null; // null | 'launch'
@@ -181,15 +175,8 @@ function tryPromoteLegacyProjectsIntoSashaProfile() {
   } catch (e) { return false; }
 }
 
-function loadProjectsData(forceReload) {
+function loadProjectsData() {
   try {
-    var storageKey = projectsDataKey();
-    if (forceReload) {
-      _projectsDataMem = null;
-      _projectsDataMemKey = null;
-    } else if (_projectsDataMem && _projectsDataMemKey === storageKey) {
-      return _projectsDataMem;
-    }
     if (typeof window.__projectsMergeCardsFromStorageBackups === 'function') {
       try { window.__projectsMergeCardsFromStorageBackups(); } catch (eMerge) {}
     }
@@ -306,45 +293,17 @@ function loadProjectsData(forceReload) {
     if (!Array.isArray(data.hiddenProjects)) data.hiddenProjects = [];
     if (!Array.isArray(data.tasks)) data.tasks = [];
     if (!Array.isArray(data.taskLog)) data.taskLog = [];
-    _projectsDataMem = data;
-    _projectsDataMemKey = storageKey;
     return data;
   } catch (e) {
     if (typeof window !== 'undefined' && window.AVITOLOG_IS_SASHA) {
-      if (tryPromoteLegacyProjectsIntoSashaProfile()) return loadProjectsData(true);
+      if (tryPromoteLegacyProjectsIntoSashaProfile()) return loadProjectsData();
       return { projects: [], hiddenProjects: [], tasks: [], taskLog: [] };
     }
     return getDefaultProjectsData();
   }
 }
-function saveProjectsData(data, opts) {
-  var key = projectsDataKey();
-  _projectsDataMem = data;
-  _projectsDataMemKey = key;
-  if (opts && opts.deferStorage) {
-    scheduleProjectsStorageFlush(data);
-    return;
-  }
-  flushProjectsDataToStorage(data);
-}
-function flushProjectsDataToStorage(data) {
-  if (_projectsStorageFlushTimer) {
-    clearTimeout(_projectsStorageFlushTimer);
-    _projectsStorageFlushTimer = null;
-  }
-  var key = projectsDataKey();
-  _projectsDataMem = data;
-  _projectsDataMemKey = key;
-  try { localStorage.setItem(key, JSON.stringify(data)); } catch(e) {}
-}
-function scheduleProjectsStorageFlush(data) {
-  _projectsDataMem = data;
-  _projectsDataMemKey = projectsDataKey();
-  if (_projectsStorageFlushTimer) clearTimeout(_projectsStorageFlushTimer);
-  _projectsStorageFlushTimer = setTimeout(function() {
-    _projectsStorageFlushTimer = null;
-    try { localStorage.setItem(_projectsDataMemKey, JSON.stringify(_projectsDataMem)); } catch(e) {}
-  }, 0);
+function saveProjectsData(data) {
+  try { localStorage.setItem(projectsDataKey(), JSON.stringify(data)); } catch(e) {}
 }
 async function hydrateProjectsFromActiveSheet(forceMerge) {
   if (!_driveToken) return false;
@@ -1928,65 +1887,21 @@ function finishCalendarPaint() {
   _calendarPaintChildLineIndex = -1;
 }
 function clearProjectDropMarks() {
+  /** Быстрый путь: используем кэшированную ссылку (O(1)). */
   if (_lastDropMarkedRow) {
     try { _lastDropMarkedRow.classList.remove('drop-before', 'drop-after'); } catch(_e) {}
-    _lastDropMarkedRow = null;
-    _lastDropMarkedPlace = null;
   }
+  /** Защитный фолбэк: только если что-то осталось от старого рендера (O(n), редко). */
+  var stale = document.querySelector('.projects-table-row.drop-before, .projects-table-row.drop-after');
+  if (stale) {
+    document.querySelectorAll('.projects-table-row.drop-before, .projects-table-row.drop-after').forEach(function(r) {
+      r.classList.remove('drop-before', 'drop-after');
+    });
+  }
+  _lastDropMarkedRow = null;
+  _lastDropMarkedPlace = null;
   _dragOverPendingRow = null;
   _dragOverPendingPlace = null;
-}
-function buildDragRowDomCache(table) {
-  var byId = {};
-  if (!table) return byId;
-  var rows = table.querySelectorAll('.projects-table-row[data-id]');
-  for (var i = 0; i < rows.length; i++) {
-    var row = rows[i];
-    var id = row.getAttribute('data-id');
-    if (!id) continue;
-    if (!byId[id]) byId[id] = { main: null, all: [] };
-    byId[id].all.push(row);
-    if (row.getAttribute('data-child-line-index') === '-1') byId[id].main = row;
-  }
-  return byId;
-}
-function resolveMainProjectRowFromEventTarget(target) {
-  if (!target || !target.closest) return null;
-  var row = target.closest('.projects-table-row[data-id]');
-  if (!row) return null;
-  if (row.getAttribute('data-child-line-index') === '-1') return row;
-  var id = row.getAttribute('data-id');
-  if (!id) return null;
-  if (_dragRowDomById && _dragRowDomById[id] && _dragRowDomById[id].main) return _dragRowDomById[id].main;
-  var table = row.closest('.projects-table');
-  if (!table) return null;
-  return table.querySelector('.projects-table-row[data-id="' + id + '"][data-child-line-index="-1"]');
-}
-function bindProjectsTableRowDrag() {
-  var table = document.querySelector('.projects-table');
-  if (!table || table._projRowDragBound) return;
-  table._projRowDragBound = true;
-  table.addEventListener('dragover', function(e) {
-    if (!_dragProjectId) return;
-    var row = resolveMainProjectRowFromEventTarget(e.target);
-    if (!row) return;
-    var pid = row.getAttribute('data-id');
-    if (!pid || pid === _dragProjectId) return;
-    handleProjectRowDragOver(e, row, pid);
-  });
-  table.addEventListener('dragleave', function(e) {
-    if (!_dragProjectId) return;
-    var row = resolveMainProjectRowFromEventTarget(e.target);
-    if (row) handleProjectRowDragLeave(e, row);
-  });
-  table.addEventListener('drop', function(e) {
-    if (!_dragProjectId) return;
-    var row = resolveMainProjectRowFromEventTarget(e.target);
-    if (!row) return;
-    var pid = row.getAttribute('data-id');
-    if (!pid || pid === _dragProjectId) return;
-    handleProjectRowDrop(e, pid, row);
-  });
 }
 function createProjectRowDragGhost(row) {
   if (!row) return null;
@@ -2015,10 +1930,6 @@ function startProjectRowDrag(e, projectId) {
     }
   }
   if (row) row.classList.add('dragging');
-  var table = row && row.closest ? row.closest('.projects-table') : document.querySelector('.projects-table');
-  _dragRowDomById = buildDragRowDomCache(table);
-  var tbl = table || document.querySelector('.projects-table');
-  if (tbl) tbl.classList.add('projects-table-dragging');
 }
 function handleProjectRowDragOver(e, row, targetProjectId) {
   if (!_dragProjectId || _dragProjectId === targetProjectId) return;
@@ -2067,48 +1978,41 @@ function handleProjectRowDragLeave(e, row) {
 }
 function reorderProjectsWithinZone(sourceId, targetId, placeAfter) {
   var data = loadProjectsData();
-  var projects = data.projects || [];
-  var src = null;
-  var tgt = null;
-  for (var i = 0; i < projects.length; i++) {
-    if (projects[i].id === sourceId) src = projects[i];
-    else if (projects[i].id === targetId) tgt = projects[i];
-    if (src && tgt) break;
-  }
+  var src = data.projects.find(function(p){ return p.id === sourceId; });
+  var tgt = data.projects.find(function(p){ return p.id === targetId; });
   if (!src || !tgt) return false;
   if ((src.zone || 'active') !== (tgt.zone || 'active')) return false;
   var zone = src.zone || 'active';
-  var zoneList = [];
-  for (var j = 0; j < projects.length; j++) {
-    if ((projects[j].zone || 'active') === zone) zoneList.push(projects[j]);
-  }
-  zoneList.sort(function(a,b){ return (a.sortOrder||0) - (b.sortOrder||0); });
+  var zoneList = data.projects
+    .filter(function(p){ return (p.zone || 'active') === zone; })
+    .sort(function(a,b){ return (a.sortOrder||0) - (b.sortOrder||0); });
   var ids = zoneList.map(function(p){ return p.id; });
   var fromIdx = ids.indexOf(sourceId);
-  if (fromIdx < 0 || ids.indexOf(targetId) < 0) return false;
+  var targetIdx = ids.indexOf(targetId);
+  if (fromIdx < 0 || targetIdx < 0) return false;
   var moving = ids.splice(fromIdx, 1)[0];
   var insertIdx = ids.indexOf(targetId) + (placeAfter ? 1 : 0);
   ids.splice(insertIdx, 0, moving);
-  var byId = {};
-  for (var k = 0; k < projects.length; k++) byId[projects[k].id] = projects[k];
-  for (var n = 0; n < ids.length; n++) {
-    var pr = byId[ids[n]];
-    if (pr) pr.sortOrder = n;
-  }
-  var canDomMove = !_projectsTasksSortOn && !_projectsTypeSortPriority &&
-    !_projectsFilterLaunch && !_projectsFilterAutoload && !_projectsFilterMustLaunch;
+  ids.forEach(function(id, idx) {
+    var p = data.projects.find(function(x){ return x.id === id; });
+    if (p) p.sortOrder = idx;
+  });
+  saveProjectsData(data);
+  /** Производительность: ре-рендер всей таблицы (60 колонок × N строк × калькуляции
+   *  событий) даёт «фриз» на drop. Делаем точечный DOM-move строки(и) проекта в
+   *  пределах своей зоны — визуально мгновенно, данные уже сохранены выше.
+   *  Полный ре-рендер всё равно происходит при смене вкладок/фильтров/зум-изменении. */
   var domMoved = false;
-  if (canDomMove) {
-    try { domMoved = moveProjectRowsInDom(sourceId, targetId, !!placeAfter); } catch (eDom) { domMoved = false; }
-  }
+  try {
+    if (!_projectsTasksSortOn && !_projectsTypeSortPriority &&
+        !_projectsFilterLaunch && !_projectsFilterAutoload && !_projectsFilterMustLaunch) {
+      domMoved = moveProjectRowsInDom(sourceId, targetId, !!placeAfter);
+    }
+  } catch (eDom) { domMoved = false; }
   if (!domMoved) {
-    saveProjectsData(data);
-    rerenderProjectsImmediate();
-    setTimeout(function() { syncProjectToActiveSheet(sourceId, 'row_reorder'); }, 0);
-    return true;
+    rerenderProjectsPreserveScroll();
   }
-  saveProjectsData(data, { deferStorage: true });
-  setTimeout(function() { syncProjectToActiveSheet(sourceId, 'row_reorder'); }, 0);
+  syncProjectToActiveSheet(sourceId, 'row_reorder');
   return true;
 }
 /** Переставляет в DOM все строки проекта (главная + дочерние позиции),
@@ -2118,27 +2022,28 @@ function moveProjectRowsInDom(sourceId, targetId, placeAfter) {
   if (!sourceId || !targetId || sourceId === targetId) return false;
   var table = document.querySelector('.projects-table');
   if (!table) return false;
-  var srcPack = _dragRowDomById && _dragRowDomById[sourceId];
-  var tgtPack = _dragRowDomById && _dragRowDomById[targetId];
-  var srcRows = srcPack ? srcPack.all.slice() : Array.prototype.slice.call(table.querySelectorAll('.projects-table-row[data-id="' + sourceId + '"]'));
-  var tgtRows = tgtPack ? tgtPack.all.slice() : Array.prototype.slice.call(table.querySelectorAll('.projects-table-row[data-id="' + targetId + '"]'));
+  var srcRows = table.querySelectorAll('.projects-table-row[data-id="' + sourceId + '"]');
+  var tgtRows = table.querySelectorAll('.projects-table-row[data-id="' + targetId + '"]');
   if (!srcRows.length || !tgtRows.length) return false;
+  /** Якорь вставки: «before» = первая строка таргета, «after» = nextSibling после
+   *  последней строки таргета (или null = в самый конец). */
   var anchor = placeAfter ? (tgtRows[tgtRows.length - 1].nextSibling || null) : tgtRows[0];
+  /** Если якорь оказался внутри блока источника — fallback. */
   for (var i = 0; i < srcRows.length; i++) {
-    if (anchor && anchor === srcRows[i]) return false;
+    if (anchor && (anchor === srcRows[i] || (anchor.compareDocumentPosition && (anchor.compareDocumentPosition(srcRows[i]) & Node.DOCUMENT_POSITION_CONTAINS)))) {
+      return false;
+    }
   }
-  var frag = document.createDocumentFragment();
-  for (var j = 0; j < srcRows.length; j++) frag.appendChild(srcRows[j]);
-  table.insertBefore(frag, anchor);
-  if (_dragRowDomById) {
-    _dragRowDomById[sourceId] = { main: srcPack && srcPack.main ? srcPack.main : srcRows[0], all: srcRows };
+  for (var j = 0; j < srcRows.length; j++) {
+    var row = srcRows[j];
+    if (row === anchor) continue;
+    table.insertBefore(row, anchor);
   }
   return true;
 }
-function handleProjectRowDrop(e, targetProjectId, rowEl) {
+function handleProjectRowDrop(e, targetProjectId) {
   e.preventDefault();
-  e.stopPropagation();
-  var row = rowEl || e.currentTarget;
+  var row = e.currentTarget;
   var placeAfter = row && row.classList.contains('drop-after');
   clearProjectDropMarks();
   if (!_dragProjectId || _dragProjectId === targetProjectId) return;
@@ -2146,10 +2051,7 @@ function handleProjectRowDrop(e, targetProjectId, rowEl) {
 }
 function endProjectRowDrag(e) {
   if (e.currentTarget) e.currentTarget.classList.remove('dragging');
-  var tbl = document.querySelector('.projects-table');
-  if (tbl) tbl.classList.remove('projects-table-dragging');
   _dragProjectId = null;
-  _dragRowDomById = null;
   clearProjectDropMarks();
 }
 
@@ -3471,7 +3373,7 @@ function renderProjectsScreen(opts) {
     }
     var mainEvents = getEventsForProjectRow(p, -1);
     var eventsForMainRow = (hasChildLines && !showPositionRows) ? getAggregatedAutoloadEventsForCollapsed(p) : mainEvents;
-    var rowHtml = '<div class="projects-table-row' + selectedClass + groupedClass + newFromGoalsClass + '" data-id="' + p.id + '" data-child-line-index="-1" draggable="true" onclick="selectProjectRow(\'' + p.id + '\')" ondragstart="startProjectRowDrag(event,\'' + p.id + '\')" ondragend="endProjectRowDrag(event)"><div class="projects-sticky">' + stickyHtml + '</div><div class="projects-scroll">' + renderRowCells(eventsForMainRow, -1, hasChildLines && !showPositionRows) + '</div></div>';
+    var rowHtml = '<div class="projects-table-row' + selectedClass + groupedClass + newFromGoalsClass + '" data-id="' + p.id + '" data-child-line-index="-1" draggable="true" onclick="selectProjectRow(\'' + p.id + '\')" ondragstart="startProjectRowDrag(event,\'' + p.id + '\')" ondragover="handleProjectRowDragOver(event,this,\'' + p.id + '\')" ondragleave="handleProjectRowDragLeave(event,this)" ondrop="handleProjectRowDrop(event,\'' + p.id + '\')" ondragend="endProjectRowDrag(event)"><div class="projects-sticky">' + stickyHtml + '</div><div class="projects-scroll">' + renderRowCells(eventsForMainRow, -1, hasChildLines && !showPositionRows) + '</div></div>';
     html += rowHtml;
     var childLines = getProjectChildLines(p);
     if (hasChildLines) {
@@ -3543,7 +3445,6 @@ function renderProjectsScreen(opts) {
   }
   bindProjectsCalendarInteractions();
   bindProjectsClickSparks();
-  bindProjectsTableRowDrag();
   if (typeof renderTaskPanel === 'function') renderTaskPanel();
   } finally {
     _renderProjectsInProgress = false;
