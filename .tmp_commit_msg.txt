@@ -1,0 +1,7 @@
+fix(projects): pointer-drag reorder — full-width drop line, instant drop
+
+- Replace HTML5 drag-and-drop with pointer events (no stuck ghost/lag)
+- Green insertion line spans entire row (names + calendar)
+- Floating label follows cursor; Y-fallback finds row between projects
+- Drag from sticky/name area; readonly title input allowed
+- Backup: backups/projects_before_drag_drop_fix_20260518.js
