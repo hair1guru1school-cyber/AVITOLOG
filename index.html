@@ -1848,7 +1848,15 @@ body.projects-row-ptr-dragging .projects-table-row[data-id] .projects-sticky{cur
 .cal-deadline.cal-deadline-with-days .cal-deadline-icon{font-size:15px;letter-spacing:0}
 .cal-deadline .cal-deadline-icon{font-size:20px;font-weight:800;line-height:1;letter-spacing:1px;color:#2d2003;text-shadow:0 0 10px rgba(255,248,180,0.95),0 0 16px rgba(255,222,100,0.85);animation:cyber-deadline-pulse 1.5s ease-in-out infinite}
 .cal-deadline .cal-deadline-days{font-size:12px;font-weight:900;line-height:1;color:#2d2003;font-variant-numeric:tabular-nums;text-shadow:0 0 6px rgba(255,248,180,0.85);padding:0 1px}
+.cal-deadline.cal-deadline-tier-amber{color:#3a2a00;background:linear-gradient(180deg,rgba(225,175,45,0.92),rgba(185,130,18,0.88));border-color:rgba(190,140,25,0.75);box-shadow:0 0 14px rgba(200,150,35,0.45),0 0 22px rgba(170,120,20,0.3),inset 0 0 12px rgba(255,220,120,0.15)}
+.cal-deadline.cal-deadline-tier-amber .cal-deadline-icon,.cal-deadline.cal-deadline-tier-amber .cal-deadline-days{color:#3a2a00;text-shadow:0 0 8px rgba(255,220,100,0.75)}
+.cal-deadline.cal-deadline-tier-red{color:#fff;background:linear-gradient(180deg,rgba(235,55,55,0.96),rgba(175,22,22,0.96));border-color:rgba(255,130,130,0.65);box-shadow:0 0 16px rgba(255,70,70,0.5),0 0 24px rgba(200,30,30,0.35),inset 0 0 10px rgba(255,180,180,0.12)}
+.cal-deadline.cal-deadline-tier-red .cal-deadline-icon,.cal-deadline.cal-deadline-tier-red .cal-deadline-days{color:#fff;text-shadow:0 0 8px rgba(255,220,220,0.65);animation:cyber-deadline-pulse-red 1.5s ease-in-out infinite}
+.cal-deadline.cal-deadline-tier-critical{color:#fff;background:linear-gradient(180deg,rgba(28,26,10,0.98),rgba(12,11,6,0.99));border-color:rgba(220,185,55,0.55);box-shadow:0 0 14px rgba(220,180,50,0.4),0 0 22px rgba(180,140,30,0.25),inset 0 0 12px rgba(255,210,80,0.08)}
+.cal-deadline.cal-deadline-tier-critical .cal-deadline-icon,.cal-deadline.cal-deadline-tier-critical .cal-deadline-days{color:#fff;text-shadow:0 0 10px rgba(255,230,140,0.55);animation:cyber-deadline-pulse-critical 1.5s ease-in-out infinite}
 @keyframes cyber-deadline-pulse{0%,100%{text-shadow:0 0 10px rgba(255,248,180,0.95),0 0 16px rgba(255,222,100,0.85)}50%{text-shadow:0 0 14px rgba(255,255,220,1),0 0 22px rgba(255,235,150,0.95)}}
+@keyframes cyber-deadline-pulse-red{0%,100%{text-shadow:0 0 8px rgba(255,220,220,0.65)}50%{text-shadow:0 0 12px rgba(255,255,255,0.9),0 0 18px rgba(255,180,180,0.75)}}
+@keyframes cyber-deadline-pulse-critical{0%,100%{text-shadow:0 0 10px rgba(255,230,140,0.55)}50%{text-shadow:0 0 14px rgba(255,248,200,0.85),0 0 20px rgba(220,180,60,0.65)}}
 .cal-cards{position:relative;font-size:13px;font-weight:700;color:#e8f6ff;background:linear-gradient(180deg,rgba(20,65,110,0.88),rgba(14,38,72,0.9));border:1px solid rgba(100,180,255,0.4);border-radius:6px;box-sizing:border-box;box-shadow:0 0 12px rgba(114,214,255,0.3),inset 0 0 10px rgba(150,220,255,0.15);cursor:grab;padding:2px 5px;min-height:22px;min-width:0;overflow:hidden;display:flex;align-items:center;justify-content:center}
 .cal-cards .cal-cards-num{font-size:16px;font-weight:600;font-variant-numeric:tabular-nums;letter-spacing:-0.1px;text-shadow:0 0 8px rgba(200,240,255,0.45);line-height:1.2;min-width:0;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .cal-cards.cal-cards-tone-1{background:linear-gradient(180deg,rgba(20,70,118,0.9),rgba(13,40,77,0.92));border-color:rgba(118,198,255,0.44)}
@@ -2821,7 +2829,7 @@ if (!window.AVITOLOG_GOALS) {
 <script src="https://unpkg.com/mammoth@1.6.0/mammoth.min.js"></script>
 <script src="js/hero-asset.js?v=20260404-1"></script>
 <script src="js/core.js?v=20260411-1"></script>
-<script src="js/projects.js?v=20260518-3"></script>
+<script src="js/projects.js?v=20260518-4"></script>
 <script src="js/ai-import.js?v=20260501-2"></script>
 <script src="js/contract-generator.js?v=20260404-1"></script>
 <script src="js/ads.js?v=20260404-1"></script>

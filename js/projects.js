@@ -100,6 +100,14 @@ function computeMustLaunchWaitDays(setSinceIso, todayIso) {
     return diff > 0 ? diff : 0;
   } catch (e) { return 0; }
 }
+/** Цвет !! по дням ожидания: 1–3 как сейчас; 4–6 темнее жёлтый; 7–14 красный+белый; 15+ чёрный+жёлтый+белый. */
+function getMustLaunchWaitTierClass(waitDays) {
+  var d = Number(waitDays) || 0;
+  if (d <= 3) return '';
+  if (d < 7) return ' cal-deadline-tier-amber';
+  if (d <= 14) return ' cal-deadline-tier-red';
+  return ' cal-deadline-tier-critical';
+}
 function toIsoDateLocal(d) {
   var y = d.getFullYear();
   var m = String(d.getMonth() + 1).padStart(2, '0');
@@ -3460,7 +3468,7 @@ function renderProjectsScreen(opts) {
           var mlSince = String(p.mustLaunchSetSince || p.mustLaunchDate || todayStr);
           var mlWaitDays = (typeof computeMustLaunchWaitDays === 'function') ? computeMustLaunchWaitDays(mlSince, todayStr) : 0;
           var mlDaysHtml = (mlWaitDays > 0) ? '<span class="cal-deadline-days" title="Проект ждёт ' + mlWaitDays + ' дн. с ' + escAttr(mlSince) + '">' + mlWaitDays + '</span>' : '';
-          var mlExtraCls = mlWaitDays > 0 ? ' cal-deadline-with-days' : '';
+          var mlExtraCls = (mlWaitDays > 0 ? ' cal-deadline-with-days' : '') + getMustLaunchWaitTierClass(mlWaitDays);
           cellHtml = '<div class="cal-deadline' + mlExtraCls + '"><span class="cal-deadline-del">×</span><span class="cal-deadline-icon">!!</span>' + mlDaysHtml + '</div>';
         }
         else if (rocket) { cellHtml = '<div class="cal-launch-tip cal-launch-rocket">🚀</div>'; dayCls += ' day-launch-end'; }
