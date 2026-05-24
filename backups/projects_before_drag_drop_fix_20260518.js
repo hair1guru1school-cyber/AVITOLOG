@@ -22,14 +22,14 @@ var PROJECTS_ROW_HEIGHT_KEY = (typeof window.AVITOLOG_KEY === 'function') ? wind
 var PROJECTS_DAY_PX_KEY = (typeof window.AVITOLOG_KEY === 'function') ? window.AVITOLOG_KEY('avitolog_projects_day_px') : 'avitolog_projects_day_px';
 var PROJECTS_ZOOM_KEY = (typeof window.AVITOLOG_KEY === 'function') ? window.AVITOLOG_KEY('avitolog_projects_zoom') : 'avitolog_projects_zoom';
 var _dragProjectId = null;
-/** Кэш drop-маркера между строками. */
+/** Кэш drop-маркера (избавляет dragover от querySelectorAll на каждый mousemove). */
 var _lastDropMarkedRow = null;
 var _lastDropMarkedPlace = null; // 'before' | 'after' | null
+var _dragOverRafScheduled = false;
+var _dragOverPendingRow = null;
+var _dragOverPendingPlace = null;
 /** Кэш DOM-строк проектов на время drag (без querySelectorAll на drop). */
 var _dragRowDomById = null;
-/** Pointer-drag строки проекта (вместо HTML5 DnD — без залипшего ghost и задержки). */
-var _ptrRowDrag = null;
-var _projectsRowSuppressClickUntil = 0;
 /** In-memory кэш projects data — без JSON.parse на каждый drop/reorder. */
 var _projectsDataMem = null;
 var _projectsDataMemKey = null;
@@ -1217,7 +1217,6 @@ function showClientQuestionState(project) {
   }
 }
 function selectProjectRow(projectId) {
-  if (_projectsRowSuppressClickUntil && Date.now() < _projectsRowSuppressClickUntil) return;
   if (typeof loadProjectsData === 'function') {
     var data = loadProjectsData();
     var p = (data.projects || []).find(function(x){ return x.id === projectId; });
@@ -1934,149 +1933,8 @@ function clearProjectDropMarks() {
     _lastDropMarkedRow = null;
     _lastDropMarkedPlace = null;
   }
-}
-function applyProjectDropMark(row, placeAfter) {
-  if (!row) return;
-  var place = placeAfter ? 'after' : 'before';
-  if (_lastDropMarkedRow === row && _lastDropMarkedPlace === place) return;
-  clearProjectDropMarks();
-  try { row.classList.add(placeAfter ? 'drop-after' : 'drop-before'); } catch(_e) {}
-  _lastDropMarkedRow = row;
-  _lastDropMarkedPlace = place;
-}
-function findProjectRowUnderPointer(clientX, clientY, excludeId) {
-  var els = (typeof document.elementsFromPoint === 'function')
-    ? document.elementsFromPoint(clientX, clientY)
-    : [document.elementFromPoint(clientX, clientY)];
-  if (els) {
-    for (var i = 0; i < els.length; i++) {
-      var el = els[i];
-      if (!el || !el.closest) continue;
-      var row = el.closest('.projects-table-row[data-child-line-index="-1"]');
-      if (!row) continue;
-      var id = row.getAttribute('data-id');
-      if (id && id !== excludeId) return row;
-    }
-  }
-  /** Фолбэк по Y: между названиями/календарём, когда hit-test не попал в строку. */
-  var table = document.querySelector('.projects-table');
-  if (!table) return null;
-  var rows = table.querySelectorAll('.projects-table-row[data-child-line-index="-1"]');
-  for (var j = 0; j < rows.length; j++) {
-    var r = rows[j];
-    var rid = r.getAttribute('data-id');
-    if (!rid || rid === excludeId) continue;
-    var rect = r.getBoundingClientRect();
-    if (clientY >= rect.top && clientY <= rect.bottom) return r;
-  }
-  return null;
-}
-function getProjectRowTitleForDrag(row) {
-  if (!row) return 'Проект';
-  var inp = row.querySelector('.proj-cell-editable input');
-  var title = inp ? String(inp.value || '').trim() : '';
-  return title || 'Проект';
-}
-function showPtrDragFloater(text, clientX, clientY) {
-  var el = document.getElementById('projPtrDragFloater');
-  if (!el) {
-    el = document.createElement('div');
-    el.id = 'projPtrDragFloater';
-    el.className = 'projects-ptr-drag-floater';
-    document.body.appendChild(el);
-  }
-  el.textContent = text.length > 40 ? (text.slice(0, 40) + '…') : text;
-  el.style.display = 'block';
-  el.style.left = (clientX + 14) + 'px';
-  el.style.top = (clientY + 12) + 'px';
-}
-function hidePtrDragFloater() {
-  var el = document.getElementById('projPtrDragFloater');
-  if (el) el.style.display = 'none';
-}
-function isProjectRowDragBlockedTarget(target) {
-  if (!target || !target.closest) return true;
-  if (target.closest('.projects-cal-day[data-project-id]')) return true;
-  if (target.closest('button, a, textarea, select, .proj-path-btn, .proj-emoji-btn, .field-expand-btn, .proj-hover-pop, .crm-bind-btn, .proj-drive-btn, .projects-sticky-resize-grip, .cal-cell-width-slider')) return true;
-  if (target.closest('input') && !target.closest('input[readonly]')) return true;
-  return false;
-}
-function onProjectRowPtrMove(e) {
-  if (!_ptrRowDrag) return;
-  var pd = _ptrRowDrag;
-  if (!pd.moved) {
-    if (Math.abs(e.clientY - pd.startY) < 5 && Math.abs(e.clientX - pd.startX) < 5) return;
-    pd.moved = true;
-    _dragProjectId = pd.id;
-    var table = pd.row.closest('.projects-table');
-    _dragRowDomById = buildDragRowDomCache(table);
-    if (table) table.classList.add('projects-table-dragging');
-    pd.row.classList.add('dragging');
-    document.body.classList.add('projects-row-ptr-dragging');
-    try { document.body.style.userSelect = 'none'; } catch(_e) {}
-    showPtrDragFloater(getProjectRowTitleForDrag(pd.row), e.clientX, e.clientY);
-  }
-  e.preventDefault();
-  showPtrDragFloater(getProjectRowTitleForDrag(pd.row), e.clientX, e.clientY);
-  var targetRow = findProjectRowUnderPointer(e.clientX, e.clientY, pd.id);
-  if (!targetRow) {
-    clearProjectDropMarks();
-    pd.targetId = null;
-    return;
-  }
-  var rect = targetRow.getBoundingClientRect();
-  var placeAfter = (e.clientY - rect.top) > (rect.height / 2);
-  applyProjectDropMark(targetRow, placeAfter);
-  pd.targetId = targetRow.getAttribute('data-id');
-  pd.placeAfter = placeAfter;
-}
-function onProjectRowPtrUp(e) {
-  if (!_ptrRowDrag) return;
-  var pd = _ptrRowDrag;
-  document.removeEventListener('pointermove', onProjectRowPtrMove);
-  document.removeEventListener('pointerup', onProjectRowPtrUp);
-  document.removeEventListener('pointercancel', onProjectRowPtrUp);
-  hidePtrDragFloater();
-  var committed = false;
-  if (pd.moved && pd.targetId && pd.targetId !== pd.id) {
-    clearProjectDropMarks();
-    pd.row.classList.remove('dragging');
-    reorderProjectsWithinZone(pd.id, pd.targetId, !!pd.placeAfter);
-    committed = true;
-    _projectsRowSuppressClickUntil = Date.now() + 400;
-  }
-  pd.row.classList.remove('dragging');
-  var tbl = pd.row.closest('.projects-table');
-  if (tbl) tbl.classList.remove('projects-table-dragging');
-  document.body.classList.remove('projects-row-ptr-dragging');
-  try { document.body.style.userSelect = ''; } catch(_e2) {}
-  if (!committed) clearProjectDropMarks();
-  _ptrRowDrag = null;
-  _dragProjectId = null;
-  _dragRowDomById = null;
-}
-function onProjectRowPtrDown(e) {
-  if (e.button !== 0) return;
-  if (_calendarPaintMode === 'launch') return;
-  if (isProjectRowDragBlockedTarget(e.target)) return;
-  var row = e.target.closest('.projects-table-row[data-child-line-index="-1"]');
-  if (!row) return;
-  var table = row.closest('.projects-table');
-  if (!table) return;
-  var id = row.getAttribute('data-id');
-  if (!id) return;
-  _ptrRowDrag = {
-    id: id,
-    row: row,
-    startX: e.clientX,
-    startY: e.clientY,
-    moved: false,
-    targetId: null,
-    placeAfter: false
-  };
-  document.addEventListener('pointermove', onProjectRowPtrMove);
-  document.addEventListener('pointerup', onProjectRowPtrUp);
-  document.addEventListener('pointercancel', onProjectRowPtrUp);
+  _dragOverPendingRow = null;
+  _dragOverPendingPlace = null;
 }
 function buildDragRowDomCache(table) {
   var byId = {};
@@ -2106,9 +1964,106 @@ function resolveMainProjectRowFromEventTarget(target) {
 }
 function bindProjectsTableRowDrag() {
   var table = document.querySelector('.projects-table');
-  if (!table || table._projRowPtrBound) return;
-  table._projRowPtrBound = true;
-  table.addEventListener('pointerdown', onProjectRowPtrDown);
+  if (!table || table._projRowDragBound) return;
+  table._projRowDragBound = true;
+  table.addEventListener('dragover', function(e) {
+    if (!_dragProjectId) return;
+    var row = resolveMainProjectRowFromEventTarget(e.target);
+    if (!row) return;
+    var pid = row.getAttribute('data-id');
+    if (!pid || pid === _dragProjectId) return;
+    handleProjectRowDragOver(e, row, pid);
+  });
+  table.addEventListener('dragleave', function(e) {
+    if (!_dragProjectId) return;
+    var row = resolveMainProjectRowFromEventTarget(e.target);
+    if (row) handleProjectRowDragLeave(e, row);
+  });
+  table.addEventListener('drop', function(e) {
+    if (!_dragProjectId) return;
+    var row = resolveMainProjectRowFromEventTarget(e.target);
+    if (!row) return;
+    var pid = row.getAttribute('data-id');
+    if (!pid || pid === _dragProjectId) return;
+    handleProjectRowDrop(e, pid, row);
+  });
+}
+function createProjectRowDragGhost(row) {
+  if (!row) return null;
+  var titleEl = row.querySelector('.proj-cell-editable input');
+  var title = titleEl ? String(titleEl.value || '').trim() : '';
+  if (!title) title = 'Проект';
+  var ghost = document.createElement('div');
+  ghost.className = 'projects-drag-ghost projects-drag-ghost-lite';
+  ghost.textContent = title.length > 36 ? (title.slice(0, 36) + '…') : title;
+  document.body.appendChild(ghost);
+  return ghost;
+}
+function startProjectRowDrag(e, projectId) {
+  if (_calendarPaintMode === 'launch') { e.preventDefault(); return; }
+  if (e.target && e.target.closest && e.target.closest('.projects-cal-day[data-project-id]')) { e.preventDefault(); return; }
+  // Allow dragging by the entire project row (except calendar cells).
+  _dragProjectId = projectId;
+  var row = e.currentTarget;
+  if (e.dataTransfer) {
+    e.dataTransfer.effectAllowed = 'move';
+    try { e.dataTransfer.setData('text/plain', projectId); } catch(err) {}
+    var ghost = createProjectRowDragGhost(row);
+    if (ghost && typeof e.dataTransfer.setDragImage === 'function') {
+      e.dataTransfer.setDragImage(ghost, 12, 12);
+      setTimeout(function(){ try { ghost.remove(); } catch(_e) {} }, 0);
+    }
+  }
+  if (row) row.classList.add('dragging');
+  var table = row && row.closest ? row.closest('.projects-table') : document.querySelector('.projects-table');
+  _dragRowDomById = buildDragRowDomCache(table);
+  var tbl = table || document.querySelector('.projects-table');
+  if (tbl) tbl.classList.add('projects-table-dragging');
+}
+function handleProjectRowDragOver(e, row, targetProjectId) {
+  if (!_dragProjectId || _dragProjectId === targetProjectId) return;
+  e.preventDefault();
+  if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
+  /** Cтоимость: один getBoundingClientRect на событие (browser native, дёшево),
+   *  всё остальное (querySelector/classList) — только при смене позиции. */
+  var rect = row.getBoundingClientRect();
+  var placeAfter = (e.clientY - rect.top) > rect.height / 2;
+  var place = placeAfter ? 'after' : 'before';
+  /** Идемпотентно: если уже подсвечено в нужном месте — ничего не делаем. */
+  if (_lastDropMarkedRow === row && _lastDropMarkedPlace === place) return;
+  _dragOverPendingRow = row;
+  _dragOverPendingPlace = place;
+  if (_dragOverRafScheduled) return;
+  _dragOverRafScheduled = true;
+  /** rAF гасит шквал dragover-событий до 1 апдейта DOM за кадр. */
+  var raf = window.requestAnimationFrame || function(fn){ return setTimeout(fn, 16); };
+  raf(function() {
+    _dragOverRafScheduled = false;
+    var nextRow = _dragOverPendingRow;
+    var nextPlace = _dragOverPendingPlace;
+    if (!nextRow || !nextPlace) return;
+    if (_lastDropMarkedRow === nextRow && _lastDropMarkedPlace === nextPlace) return;
+    if (_lastDropMarkedRow && _lastDropMarkedRow !== nextRow) {
+      try { _lastDropMarkedRow.classList.remove('drop-before', 'drop-after'); } catch(_e) {}
+    } else if (_lastDropMarkedRow === nextRow) {
+      try { _lastDropMarkedRow.classList.remove('drop-before', 'drop-after'); } catch(_e) {}
+    }
+    try { nextRow.classList.add(nextPlace === 'after' ? 'drop-after' : 'drop-before'); } catch(_e2) {}
+    _lastDropMarkedRow = nextRow;
+    _lastDropMarkedPlace = nextPlace;
+  });
+}
+function handleProjectRowDragLeave(e, row) {
+  if (!row) return;
+  /** Только если уходим именно с подсвеченной строки — снимаем кэш.
+   *  Иначе во время быстрого перетаскивания leave чужой строки гасил бы метку. */
+  if (_lastDropMarkedRow === row) {
+    try { row.classList.remove('drop-before', 'drop-after'); } catch(_e) {}
+    _lastDropMarkedRow = null;
+    _lastDropMarkedPlace = null;
+  } else {
+    try { row.classList.remove('drop-before', 'drop-after'); } catch(_e) {}
+  }
 }
 function reorderProjectsWithinZone(sourceId, targetId, placeAfter) {
   var data = loadProjectsData();
@@ -2152,7 +2107,7 @@ function reorderProjectsWithinZone(sourceId, targetId, placeAfter) {
     setTimeout(function() { syncProjectToActiveSheet(sourceId, 'row_reorder'); }, 0);
     return true;
   }
-  saveProjectsData(data);
+  saveProjectsData(data, { deferStorage: true });
   setTimeout(function() { syncProjectToActiveSheet(sourceId, 'row_reorder'); }, 0);
   return true;
 }
@@ -2180,6 +2135,24 @@ function moveProjectRowsInDom(sourceId, targetId, placeAfter) {
   }
   return true;
 }
+function handleProjectRowDrop(e, targetProjectId, rowEl) {
+  e.preventDefault();
+  e.stopPropagation();
+  var row = rowEl || e.currentTarget;
+  var placeAfter = row && row.classList.contains('drop-after');
+  clearProjectDropMarks();
+  if (!_dragProjectId || _dragProjectId === targetProjectId) return;
+  reorderProjectsWithinZone(_dragProjectId, targetProjectId, !!placeAfter);
+}
+function endProjectRowDrag(e) {
+  if (e.currentTarget) e.currentTarget.classList.remove('dragging');
+  var tbl = document.querySelector('.projects-table');
+  if (tbl) tbl.classList.remove('projects-table-dragging');
+  _dragProjectId = null;
+  _dragRowDomById = null;
+  clearProjectDropMarks();
+}
+
 function getDefaultProjectsData() {
   var today = new Date();
   var d = function(offset) { var x=new Date(today); x.setDate(x.getDate()+offset); return toIsoDateLocal(x); };
@@ -3498,7 +3471,7 @@ function renderProjectsScreen(opts) {
     }
     var mainEvents = getEventsForProjectRow(p, -1);
     var eventsForMainRow = (hasChildLines && !showPositionRows) ? getAggregatedAutoloadEventsForCollapsed(p) : mainEvents;
-    var rowHtml = '<div class="projects-table-row' + selectedClass + groupedClass + newFromGoalsClass + '" data-id="' + p.id + '" data-child-line-index="-1" onclick="selectProjectRow(\'' + p.id + '\')"><div class="projects-sticky">' + stickyHtml + '</div><div class="projects-scroll">' + renderRowCells(eventsForMainRow, -1, hasChildLines && !showPositionRows) + '</div></div>';
+    var rowHtml = '<div class="projects-table-row' + selectedClass + groupedClass + newFromGoalsClass + '" data-id="' + p.id + '" data-child-line-index="-1" draggable="true" onclick="selectProjectRow(\'' + p.id + '\')" ondragstart="startProjectRowDrag(event,\'' + p.id + '\')" ondragend="endProjectRowDrag(event)"><div class="projects-sticky">' + stickyHtml + '</div><div class="projects-scroll">' + renderRowCells(eventsForMainRow, -1, hasChildLines && !showPositionRows) + '</div></div>';
     html += rowHtml;
     var childLines = getProjectChildLines(p);
     if (hasChildLines) {

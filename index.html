@@ -1673,11 +1673,19 @@ body.day-mode .task-design-account-chain-btn:hover,body.day-mode .task-design-ac
 .projects-table-row[data-id].selected .projects-sticky{background:#111a1a;box-shadow:inset 0 0 0 1px rgba(0,217,126,0.32),2px 0 10px rgba(0,0,0,0.35)}
 .projects-table-row[data-id].group-match .projects-sticky{background:#12222b}
 .projects-table-row[data-id].group-match .projects-scroll{background:rgba(49,125,159,0.09)}
-.projects-table-row[data-id].dragging{opacity:0.88}
-.projects-table-row[data-id].dragging .projects-sticky{cursor:grabbing;outline:1px solid rgba(124,106,247,0.55)}
+.projects-table-row[data-id][data-child-line-index="-1"]{position:relative}
+.projects-table-row[data-id].dragging{opacity:0.32;pointer-events:none}
+.projects-table-row[data-id].dragging .projects-sticky{outline:2px dashed rgba(124,106,247,0.65)}
 .projects-table.projects-table-dragging .projects-cal-day{pointer-events:none}
-.projects-table-row[data-id].drop-before{box-shadow:inset 0 2px 0 var(--accent)}
-.projects-table-row[data-id].drop-after{box-shadow:inset 0 -2px 0 var(--accent)}
+.projects-table-row[data-id].drop-before::before,
+.projects-table-row[data-id].drop-after::after{content:'';position:absolute;left:0;right:0;height:3px;background:var(--accent,#00d97e);z-index:30;pointer-events:none;box-shadow:0 0 12px rgba(0,217,126,0.85)}
+.projects-table-row[data-id].drop-before::before{top:0;transform:translateY(-50%)}
+.projects-table-row[data-id].drop-after::after{bottom:0;transform:translateY(50%)}
+.projects-table-row[data-id].drop-before,
+.projects-table-row[data-id].drop-after{background:rgba(0,217,126,0.05)}
+body.projects-row-ptr-dragging,
+body.projects-row-ptr-dragging .projects-table-row[data-id] .projects-sticky{cursor:grabbing!important}
+.projects-ptr-drag-floater{position:fixed;z-index:10050;pointer-events:none;padding:5px 10px;border-radius:8px;border:1px solid rgba(0,217,126,0.55);background:rgba(12,28,22,0.94);color:#b8ffd8;font-size:12px;font-weight:700;white-space:nowrap;max-width:280px;overflow:hidden;text-overflow:ellipsis;box-shadow:0 4px 16px rgba(0,0,0,0.35);display:none}
 .projects-table-row .projects-sticky{display:flex;align-items:center}
 .projects-table-header .projects-sticky{flex-direction:column;align-items:stretch}
 .projects-table-header .projects-sticky .projects-sticky-head{width:100%;flex:0 0 auto;min-width:0;overflow:visible}
@@ -2813,7 +2821,7 @@ if (!window.AVITOLOG_GOALS) {
 <script src="https://unpkg.com/mammoth@1.6.0/mammoth.min.js"></script>
 <script src="js/hero-asset.js?v=20260404-1"></script>
 <script src="js/core.js?v=20260411-1"></script>
-<script src="js/projects.js?v=20260518-2"></script>
+<script src="js/projects.js?v=20260518-3"></script>
 <script src="js/ai-import.js?v=20260501-2"></script>
 <script src="js/contract-generator.js?v=20260404-1"></script>
 <script src="js/ads.js?v=20260404-1"></script>
