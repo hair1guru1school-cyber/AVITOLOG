@@ -7,3 +7,5 @@ __pycache__/
 node_modules/
 backend/node_modules/
 backend/.env
+.tmp.driveupload/
+.tmp_commit_msg.txt
