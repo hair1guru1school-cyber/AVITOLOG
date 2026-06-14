@@ -1,0 +1,659 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AVITOBO$$ · Мониторинг</title>
+  <style>
+    :root {
+      --bg: #070b12;
+      --panel: #101621;
+      --panel2: #151c28;
+      --line: rgba(114, 255, 209, 0.18);
+      --line2: rgba(255, 255, 255, 0.1);
+      --text: #edf5ff;
+      --muted: #788397;
+      --accent: #00d97e;
+      --cyan: #5cecff;
+      --violet: #a98cff;
+      --warn: #ffb36b;
+      --bad: #ff5578;
+      --shadow: 0 24px 90px rgba(0, 0, 0, 0.5);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background:
+        linear-gradient(180deg, rgba(9, 20, 34, 0.96), rgba(5, 8, 13, 0.98)),
+        radial-gradient(circle at 20% 10%, rgba(0, 217, 126, 0.14), transparent 28%),
+        #05080d;
+      color: var(--text);
+      letter-spacing: 0;
+    }
+
+    button, input, select, textarea { font: inherit; }
+    button { cursor: pointer; }
+
+    .topbar {
+      height: 54px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 0 18px;
+      background: #111116;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-width: 0;
+    }
+
+    .brand-mark {
+      width: 28px;
+      height: 28px;
+      display: grid;
+      place-items: center;
+      border-radius: 6px;
+      background: #f3f5ff;
+      color: #10131b;
+      box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.12);
+    }
+
+    .brand-name {
+      color: var(--accent);
+      font-weight: 900;
+      font-size: 24px;
+      letter-spacing: 5px;
+      white-space: nowrap;
+    }
+
+    .pill {
+      border: 1px solid var(--line);
+      background: rgba(0, 217, 126, 0.08);
+      color: var(--accent);
+      border-radius: 8px;
+      padding: 8px 12px;
+      font-weight: 900;
+      font-size: 13px;
+      white-space: nowrap;
+    }
+
+    .shell {
+      display: grid;
+      grid-template-columns: 360px 1fr;
+      gap: 18px;
+      padding: 18px;
+      max-width: 1600px;
+      margin: 0 auto;
+    }
+
+    .panel {
+      background: linear-gradient(180deg, rgba(16, 22, 33, 0.96), rgba(10, 15, 24, 0.96));
+      border: 1px solid var(--line2);
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+      min-width: 0;
+    }
+
+    .panel-head {
+      padding: 16px 16px 12px;
+      border-bottom: 1px solid var(--line2);
+    }
+
+    h1, h2, h3, p { margin: 0; }
+    h1 {
+      font-size: 28px;
+      color: var(--cyan);
+      font-weight: 900;
+      text-transform: uppercase;
+    }
+
+    h2 {
+      font-size: 15px;
+      color: var(--accent);
+      font-weight: 900;
+      text-transform: uppercase;
+    }
+
+    .sub {
+      margin-top: 8px;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .form {
+      display: grid;
+      gap: 12px;
+      padding: 16px;
+    }
+
+    label {
+      display: grid;
+      gap: 6px;
+      color: #b8c4d8;
+      font-size: 12px;
+      font-weight: 800;
+      text-transform: uppercase;
+    }
+
+    input, select, textarea {
+      width: 100%;
+      border: 1px solid rgba(124, 245, 255, 0.18);
+      background: #0a1019;
+      color: var(--text);
+      border-radius: 8px;
+      padding: 10px 11px;
+      outline: none;
+    }
+
+    textarea {
+      min-height: 110px;
+      resize: vertical;
+      font-family: "Cascadia Mono", Consolas, monospace;
+      font-size: 12px;
+    }
+
+    input:focus, select:focus, textarea:focus {
+      border-color: rgba(0, 217, 126, 0.8);
+      box-shadow: 0 0 0 3px rgba(0, 217, 126, 0.12);
+    }
+
+    .btn-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .btn {
+      height: 42px;
+      border: 1px solid rgba(0, 217, 126, 0.55);
+      background: rgba(0, 217, 126, 0.1);
+      color: var(--accent);
+      border-radius: 8px;
+      font-weight: 900;
+      text-transform: uppercase;
+    }
+
+    .btn.secondary {
+      border-color: rgba(124, 245, 255, 0.28);
+      background: rgba(124, 245, 255, 0.07);
+      color: var(--cyan);
+    }
+
+    .btn.warn {
+      border-color: rgba(255, 179, 107, 0.36);
+      background: rgba(255, 179, 107, 0.08);
+      color: var(--warn);
+    }
+
+    .btn:disabled {
+      opacity: 0.45;
+      cursor: wait;
+    }
+
+    .status {
+      padding: 12px 14px;
+      border-radius: 8px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      background: rgba(255, 255, 255, 0.04);
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.4;
+    }
+
+    .status.ok { border-color: rgba(0, 217, 126, 0.4); color: var(--accent); }
+    .status.bad { border-color: rgba(255, 85, 120, 0.45); color: var(--bad); }
+    .status.warn { border-color: rgba(255, 179, 107, 0.38); color: var(--warn); }
+
+    .main {
+      display: grid;
+      gap: 18px;
+      min-width: 0;
+    }
+
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(120px, 1fr));
+      gap: 12px;
+    }
+
+    .card {
+      min-height: 92px;
+      padding: 16px;
+      border-radius: 8px;
+      border: 1px solid var(--line2);
+      background: linear-gradient(180deg, rgba(0, 217, 126, 0.08), rgba(13, 19, 30, 0.95));
+    }
+
+    .card.cyan { background: linear-gradient(180deg, rgba(92, 236, 255, 0.1), rgba(13, 19, 30, 0.95)); }
+    .card.violet { background: linear-gradient(180deg, rgba(169, 140, 255, 0.1), rgba(13, 19, 30, 0.95)); }
+    .card.warn { background: linear-gradient(180deg, rgba(255, 179, 107, 0.1), rgba(13, 19, 30, 0.95)); }
+    .card.bad { background: linear-gradient(180deg, rgba(255, 85, 120, 0.1), rgba(13, 19, 30, 0.95)); }
+
+    .num {
+      font-size: 30px;
+      line-height: 1;
+      font-weight: 950;
+      color: var(--accent);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .card.cyan .num { color: var(--cyan); }
+    .card.violet .num { color: var(--violet); }
+    .card.warn .num { color: var(--warn); }
+    .card.bad .num { color: var(--bad); }
+
+    .cap {
+      margin-top: 9px;
+      color: #aeb8c8;
+      font-size: 12px;
+      font-weight: 900;
+      text-transform: uppercase;
+    }
+
+    .grid2 {
+      display: grid;
+      grid-template-columns: 1.1fr 0.9fr;
+      gap: 18px;
+      min-width: 0;
+    }
+
+    .table-wrap {
+      overflow: auto;
+      max-height: 520px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 0;
+      font-size: 13px;
+      min-width: 740px;
+    }
+
+    th, td {
+      padding: 10px 11px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      position: sticky;
+      top: 0;
+      z-index: 1;
+      background: #111926;
+      color: #9fb0c6;
+      font-size: 11px;
+      text-transform: uppercase;
+    }
+
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      min-height: 24px;
+      padding: 4px 8px;
+      border-radius: 999px;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      background: rgba(255, 255, 255, 0.05);
+      color: #c7d2e3;
+      font-size: 11px;
+      font-weight: 900;
+      white-space: nowrap;
+    }
+
+    .tag.ok { border-color: rgba(0, 217, 126, 0.4); color: var(--accent); }
+    .tag.bad { border-color: rgba(255, 85, 120, 0.4); color: var(--bad); }
+    .tag.warn { border-color: rgba(255, 179, 107, 0.4); color: var(--warn); }
+
+    pre {
+      margin: 0;
+      padding: 14px;
+      max-height: 520px;
+      overflow: auto;
+      white-space: pre-wrap;
+      word-break: break-word;
+      font-family: "Cascadia Mono", Consolas, monospace;
+      color: #bcd4ff;
+      font-size: 12px;
+      line-height: 1.45;
+    }
+
+    .hint {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.45;
+      padding: 0 16px 16px;
+    }
+
+    @media (max-width: 1100px) {
+      .shell { grid-template-columns: 1fr; }
+      .cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .grid2 { grid-template-columns: 1fr; }
+    }
+
+    @media (max-width: 620px) {
+      .topbar { padding: 0 12px; }
+      .brand-name { font-size: 18px; letter-spacing: 3px; }
+      .shell { padding: 12px; }
+      .cards { grid-template-columns: 1fr; }
+      .btn-row { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <div class="brand-mark">📊</div>
+      <div class="brand-name">AVITOBO$$</div>
+    </div>
+    <div class="pill">Мониторинг · Avito API Lab</div>
+  </header>
+
+  <main class="shell">
+    <aside class="panel">
+      <div class="panel-head">
+        <h1>Мониторинг</h1>
+        <p class="sub">Тестовая страница для проверки, какие данные кабинет Авито отдаёт через API. Ключи вводятся только в браузере и не записываются в код страницы.</p>
+      </div>
+
+      <section class="form">
+        <label>
+          Backend URL
+          <input id="apiBase" value="http://localhost:8787/api" autocomplete="off">
+        </label>
+
+        <label>
+          Client ID
+          <input id="clientId" placeholder="Вставь client_id" autocomplete="off">
+        </label>
+
+        <label>
+          Client Secret
+          <input id="clientSecret" type="password" placeholder="Вставь client_secret" autocomplete="off">
+        </label>
+
+        <label>
+          Тестовый API path
+          <select id="presetPath">
+            <option value="/core/v1/accounts/self">Аккаунт: /core/v1/accounts/self</option>
+            <option value="/core/v1/items">Объявления: /core/v1/items</option>
+            <option value="/core/v1/items?status=active">Активные объявления</option>
+            <option value="/core/v1/items?status=blocked">Заблокированные объявления</option>
+          </select>
+        </label>
+
+        <label>
+          Ручной path
+          <input id="manualPath" placeholder="/core/v1/accounts/self" autocomplete="off">
+        </label>
+
+        <div class="btn-row">
+          <button class="btn" id="checkBtn" type="button">Проверить</button>
+          <button class="btn secondary" id="itemsBtn" type="button">Объявления</button>
+        </div>
+        <button class="btn warn" id="clearBtn" type="button">Очистить экран</button>
+
+        <div class="status" id="statusBox">Готов к тесту. Сначала запусти backend, если страница открыта с GitHub Pages.</div>
+      </section>
+
+      <p class="hint">Для GitHub Pages нужен доступный backend. Локально обычно подходит <b>http://localhost:8787/api</b>. Если backend будет на сервере, вставим его адрес сюда.</p>
+    </aside>
+
+    <section class="main">
+      <section class="cards">
+        <div class="card">
+          <div class="num" id="statTotal">—</div>
+          <div class="cap">Всего найдено</div>
+        </div>
+        <div class="card cyan">
+          <div class="num" id="statActive">—</div>
+          <div class="cap">Активные</div>
+        </div>
+        <div class="card bad">
+          <div class="num" id="statBlocked">—</div>
+          <div class="cap">Блок / отклонены</div>
+        </div>
+        <div class="card warn">
+          <div class="num" id="statOther">—</div>
+          <div class="cap">Другие статусы</div>
+        </div>
+        <div class="card violet">
+          <div class="num" id="statViews">—</div>
+          <div class="cap">Просмотры, если есть</div>
+        </div>
+      </section>
+
+      <section class="grid2">
+        <div class="panel">
+          <div class="panel-head">
+            <h2>Объявления / сущности</h2>
+            <p class="sub">Таблица заполняется автоматически, если API вернул массив объявлений или похожих объектов.</p>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Название</th>
+                  <th>Статус</th>
+                  <th>Цена</th>
+                  <th>Город / регион</th>
+                  <th>Просмотры</th>
+                </tr>
+              </thead>
+              <tbody id="itemsBody">
+                <tr><td colspan="6" style="color:#788397">Пока данных нет.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head">
+            <h2>Raw JSON</h2>
+            <p class="sub">Здесь видно полный ответ. По нему поймём, какие поля можно красиво встроить в SaaS.</p>
+          </div>
+          <pre id="rawBox">{}</pre>
+        </div>
+      </section>
+    </section>
+  </main>
+
+  <script>
+    const el = (id) => document.getElementById(id);
+    const state = {
+      lastJson: null,
+      loading: false
+    };
+
+    const savedBase = localStorage.getItem('av_monitor_api_base');
+    if (savedBase) el('apiBase').value = savedBase;
+
+    function setStatus(text, kind) {
+      const box = el('statusBox');
+      box.className = 'status' + (kind ? ' ' + kind : '');
+      box.textContent = text;
+    }
+
+    function setLoading(on) {
+      state.loading = on;
+      el('checkBtn').disabled = on;
+      el('itemsBtn').disabled = on;
+    }
+
+    function cleanBase() {
+      const base = String(el('apiBase').value || '').trim().replace(/\/+$/, '');
+      localStorage.setItem('av_monitor_api_base', base);
+      return base;
+    }
+
+    function pathFromInputs(fallback) {
+      const manual = String(el('manualPath').value || '').trim();
+      const preset = String(el('presetPath').value || '').trim();
+      let path = manual || fallback || preset || '/core/v1/accounts/self';
+      if (!path.startsWith('/')) path = '/' + path;
+      const parts = path.split('?');
+      const cleanPath = parts[0];
+      const query = {};
+      if (parts[1]) {
+        new URLSearchParams(parts[1]).forEach((value, key) => { query[key] = value; });
+      }
+      return { path: cleanPath, query };
+    }
+
+    async function proxyRequest(path, query) {
+      const base = cleanBase();
+      const clientId = String(el('clientId').value || '').trim();
+      const clientSecret = String(el('clientSecret').value || '').trim();
+      if (!base) throw new Error('Укажи Backend URL');
+      if (!clientId || !clientSecret) throw new Error('Вставь client_id и client_secret');
+
+      const resp = await fetch(base + '/avito/proxy', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          clientId,
+          clientSecret,
+          method: 'GET',
+          path,
+          query
+        })
+      });
+
+      const text = await resp.text();
+      let json = null;
+      try { json = JSON.parse(text); } catch (e) { json = { raw: text }; }
+      if (!resp.ok) {
+        const msg = json && (json.error || json.message || json.details) ? (json.error || json.message || json.details) : text;
+        throw new Error(String(msg || 'Backend error ' + resp.status));
+      }
+      return json;
+    }
+
+    function findArrayDeep(obj, depth = 0) {
+      if (!obj || depth > 4) return [];
+      if (Array.isArray(obj)) return obj;
+      const keys = ['items', 'resources', 'result', 'results', 'data', 'list', 'ads', 'avitos'];
+      for (const key of keys) {
+        if (Array.isArray(obj[key])) return obj[key];
+      }
+      for (const key of Object.keys(obj)) {
+        const found = findArrayDeep(obj[key], depth + 1);
+        if (found.length) return found;
+      }
+      return [];
+    }
+
+    function val(obj, keys) {
+      for (const key of keys) {
+        if (obj && obj[key] !== undefined && obj[key] !== null && obj[key] !== '') return obj[key];
+      }
+      return '';
+    }
+
+    function normalizeStatus(item) {
+      return String(val(item, ['status', 'state', 'status_name', 'publication_status', 'moderation_status']) || '').toLowerCase();
+    }
+
+    function statusTag(status) {
+      const s = String(status || 'unknown');
+      let cls = '';
+      if (/active|published|актив|опублик/.test(s)) cls = ' ok';
+      else if (/block|reject|ban|заблок|отклон|ошиб/.test(s)) cls = ' bad';
+      else if (/moder|pending|wait|review|провер|ожид/.test(s)) cls = ' warn';
+      return '<span class="tag' + cls + '">' + esc(s || '—') + '</span>';
+    }
+
+    function esc(s) {
+      return String(s ?? '').replace(/[&<>"']/g, (ch) => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+      }[ch]));
+    }
+
+    function render(json) {
+      state.lastJson = json;
+      el('rawBox').textContent = JSON.stringify(json, null, 2);
+
+      const arr = findArrayDeep(json);
+      let active = 0;
+      let blocked = 0;
+      let other = 0;
+      let views = 0;
+      let hasViews = false;
+
+      const rows = arr.slice(0, 200).map((item) => {
+        const status = normalizeStatus(item);
+        if (/active|published|актив|опублик/.test(status)) active++;
+        else if (/block|reject|ban|заблок|отклон|ошиб/.test(status)) blocked++;
+        else other++;
+
+        const viewValue = Number(val(item, ['views', 'view_count', 'views_count', 'uniq_views', 'total_views']) || 0);
+        if (Number.isFinite(viewValue) && viewValue > 0) {
+          views += viewValue;
+          hasViews = true;
+        }
+
+        const id = val(item, ['id', 'item_id', 'avito_id']);
+        const title = val(item, ['title', 'name', 'subject']);
+        const price = val(item, ['price', 'value', 'amount']);
+        const location = val(item, ['address', 'city', 'region', 'location']);
+        return '<tr>' +
+          '<td>' + esc(id || '—') + '</td>' +
+          '<td>' + esc(title || '—') + '</td>' +
+          '<td>' + statusTag(status) + '</td>' +
+          '<td>' + esc(price || '—') + '</td>' +
+          '<td>' + esc(typeof location === 'object' ? JSON.stringify(location) : (location || '—')) + '</td>' +
+          '<td>' + esc(viewValue || '—') + '</td>' +
+        '</tr>';
+      });
+
+      el('statTotal').textContent = arr.length ? String(arr.length) : '—';
+      el('statActive').textContent = arr.length ? String(active) : '—';
+      el('statBlocked').textContent = arr.length ? String(blocked) : '—';
+      el('statOther').textContent = arr.length ? String(other) : '—';
+      el('statViews').textContent = hasViews ? String(views) : '—';
+      el('itemsBody').innerHTML = rows.length ? rows.join('') : '<tr><td colspan="6" style="color:#788397">В ответе не найден массив для таблицы. Смотри Raw JSON.</td></tr>';
+    }
+
+    async function run(fallbackPath) {
+      if (state.loading) return;
+      setLoading(true);
+      setStatus('Запрашиваю Avito API через backend...', 'warn');
+      try {
+        const { path, query } = pathFromInputs(fallbackPath);
+        const json = await proxyRequest(path, query);
+        render(json);
+        setStatus('Ответ получен: ' + path, 'ok');
+      } catch (err) {
+        setStatus(err && err.message ? err.message : String(err), 'bad');
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    el('presetPath').addEventListener('change', () => {
+      el('manualPath').value = el('presetPath').value;
+    });
+    el('checkBtn').addEventListener('click', () => run('/core/v1/accounts/self'));
+    el('itemsBtn').addEventListener('click', () => run('/core/v1/items'));
+    el('clearBtn').addEventListener('click', () => {
+      render({});
+      setStatus('Экран очищен. Ключи остались только в полях браузера.', '');
+    });
+
+    render({});
+  </script>
+</body>
+</html>
