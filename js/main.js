@@ -3385,12 +3385,9 @@ function callAPI(prompt, maxTokens) {
   var candidates = buildEndpointCandidates();
   var corePromise = (tryBackendFirst ? tryBackendModels(0).catch(function(err) {
       var msg = String((err && err.message) || err || '');
-      // If local backend was explicitly configured by user, never fallback.
-      if (backendIsLocal && backendExplicit) throw err;
-      // Default localhost backend not running — silently fallback to CORS proxies.
-      if (backendIsLocal && !backendExplicit && candidates.length) {
-        return tryEndpointChain(candidates, 0);
-      }
+      // GitHub Pages must use the local backend for Anthropic calls.
+      // Public CORS proxies are unreliable and hide the real backend error.
+      if (backendIsLocal) throw err;
       if (msg.indexOf('Backend не ответил вовремя') >= 0) {
         throw err;
       }
@@ -3399,6 +3396,9 @@ function callAPI(prompt, maxTokens) {
     .catch(function(err) {
       var known = String((err && err.message) || err || '');
       if (known.indexOf('Backend не ответил вовремя') >= 0) {
+        throw err;
+      }
+      if (backendIsLocal) {
         throw err;
       }
       var extra = '';
