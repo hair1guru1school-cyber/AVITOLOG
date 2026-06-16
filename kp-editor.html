@@ -1,0 +1,540 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AVITOBO$$ - редактор КП</title>
+  <link rel="icon" href="favicon.png">
+  <style>
+    :root{
+      --bg:#070b12;
+      --panel:#101722;
+      --panel2:#151f2d;
+      --line:rgba(124,245,255,.18);
+      --text:#eef6ff;
+      --muted:#8fa4b8;
+      --cyan:#57e8ff;
+      --green:#00d97e;
+      --gold:#ffca55;
+      --red:#ff5c8a;
+      --orange:#ff9b45;
+      --shadow:0 18px 48px rgba(0,0,0,.45);
+      --r:8px;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;background:radial-gradient(circle at 20% 0,rgba(87,232,255,.13),transparent 30%),linear-gradient(180deg,#08111e,#03060b 72%);color:var(--text);font-family:Inter,Arial,Helvetica,sans-serif;font-size:14px;min-height:100vh}
+    button,input,textarea,select{font:inherit}
+    button{border:0;cursor:pointer}
+    .top{height:58px;background:#121214;border-bottom:1px solid rgba(255,255,255,.08);display:flex;align-items:center;gap:14px;padding:0 18px;position:sticky;top:0;z-index:5}
+    .logo{display:flex;align-items:center;gap:10px;font-weight:900;letter-spacing:7px;color:#00ff9a;font-size:22px}
+    .logo-badge{width:30px;height:30px;border-radius:6px;background:#eef6ff;display:grid;place-items:center;letter-spacing:0;font-size:18px}
+    .top-title{margin-left:auto;border:1px solid rgba(0,217,126,.45);background:rgba(0,217,126,.08);color:#8affc7;border-radius:8px;padding:9px 13px;font-size:12px;font-weight:900}
+    .wrap{display:grid;grid-template-columns:minmax(360px,480px) minmax(520px,1fr);gap:18px;padding:18px;align-items:start}
+    .panel{background:linear-gradient(180deg,rgba(16,23,34,.96),rgba(8,13,22,.98));border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow);overflow:hidden}
+    .panel-head{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:14px 16px;border-bottom:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.02)}
+    h1,h2,h3{margin:0}
+    h1{font-size:20px;color:var(--cyan);text-transform:uppercase;letter-spacing:.5px}
+    h2{font-size:13px;color:#d6e6ff;text-transform:uppercase;letter-spacing:.8px}
+    .hint{color:var(--muted);font-size:12px;line-height:1.45}
+    .content{padding:14px 16px;display:flex;flex-direction:column;gap:14px}
+    .grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    label{display:flex;flex-direction:column;gap:6px;color:#b8c7d8;font-size:11px;font-weight:900;text-transform:uppercase;letter-spacing:.35px}
+    input,textarea,select{width:100%;border:1px solid rgba(124,245,255,.2);background:#07111c;color:#fff;border-radius:8px;padding:10px 11px;outline:none}
+    textarea{min-height:92px;resize:vertical;line-height:1.38}
+    input:focus,textarea:focus,select:focus{border-color:rgba(87,232,255,.65);box-shadow:0 0 0 3px rgba(87,232,255,.08)}
+    .btns{display:flex;gap:8px;flex-wrap:wrap}
+    .btn{height:38px;padding:0 13px;border-radius:8px;background:#152235;color:#dcecff;border:1px solid rgba(124,245,255,.18);font-weight:900;font-size:12px}
+    .btn:hover{border-color:rgba(87,232,255,.55);background:#19304a}
+    .btn.primary{background:linear-gradient(135deg,#00d97e,#57e8ff);color:#03100d;border:0}
+    .btn.gold{background:linear-gradient(135deg,#ffca55,#ff9b45);color:#170b00;border:0}
+    .btn.danger{background:rgba(255,92,138,.1);color:#ff9db9;border-color:rgba(255,92,138,.35)}
+    .section{border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.025);border-radius:8px;overflow:hidden}
+    .section summary{list-style:none;padding:12px 13px;font-weight:900;color:#cfeaff;border-bottom:1px solid rgba(255,255,255,.07);cursor:pointer}
+    .section summary::-webkit-details-marker{display:none}
+    .section-body{padding:12px;display:flex;flex-direction:column;gap:10px}
+    .pkg{border:1px solid rgba(124,245,255,.17);border-radius:8px;background:rgba(7,13,22,.72);padding:12px;display:flex;flex-direction:column;gap:10px}
+    .pkg-top{display:flex;align-items:center;gap:8px}
+    .pkg-top strong{font-size:13px;color:#fff}
+    .switch{display:inline-flex;align-items:center;gap:7px;text-transform:none;letter-spacing:0;font-size:12px;font-weight:800;color:#d4e7ff}
+    .switch input{width:16px;height:16px;padding:0}
+    .pkg-actions{margin-left:auto;display:flex;gap:6px}
+    .mini{width:28px;height:28px;border-radius:7px;background:#1a2635;color:#bfeaff;border:1px solid rgba(124,245,255,.2)}
+    .preview-panel{position:sticky;top:76px}
+    .preview-toolbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+    .canvas-shell{padding:14px;display:grid;place-items:center;background:radial-gradient(circle at 50% 0,rgba(87,232,255,.08),transparent 28%),#03070d}
+    canvas{width:min(100%,720px);height:auto;border-radius:8px;box-shadow:0 16px 50px rgba(0,0,0,.6);background:#05080d}
+    .prompt-box{font-family:Consolas,monospace;font-size:12px;color:#d8ecff;background:#06101c}
+    .pill-row{display:flex;gap:8px;flex-wrap:wrap}
+    .pill{border:1px solid rgba(124,245,255,.2);background:rgba(87,232,255,.07);border-radius:999px;color:#cfeaff;padding:7px 10px;font-size:12px;font-weight:800}
+    @media(max-width:1050px){.wrap{grid-template-columns:1fr}.preview-panel{position:static}.top{position:static}.logo{font-size:18px;letter-spacing:5px}}
+    @media(max-width:620px){.wrap{padding:10px}.grid{grid-template-columns:1fr}.top-title{display:none}}
+  </style>
+</head>
+<body>
+  <header class="top">
+    <div class="logo"><span class="logo-badge">📊</span><span>AVITOBO$$</span></div>
+    <div class="top-title">КП Lab - отдельная тестовая страница</div>
+  </header>
+
+  <main class="wrap">
+    <section class="panel">
+      <div class="panel-head">
+        <div>
+          <h1>Редактор КП</h1>
+          <div class="hint">Собираем коммерческое в отдельном листе. Основную систему не трогаем.</div>
+        </div>
+      </div>
+      <div class="content">
+        <details class="section" open>
+          <summary>1. Обложка и ниша</summary>
+          <div class="section-body">
+            <div class="grid">
+              <label>Ниша / проект
+                <input id="niche" value="Строительство домов">
+              </label>
+              <label>Подпись под заголовком
+                <input id="subtitle" value="АВИТОЛОГ">
+              </label>
+            </div>
+            <label>Заголовок на картинке
+              <input id="heroTitle" value="СТРАТЕГИИ ПРОДВИЖЕНИЯ">
+            </label>
+            <label>Слоган
+              <input id="tagline" value="ВЫГОДНО / БЫСТРО / НАДЕЖНО">
+            </label>
+            <div class="grid">
+              <label>Картинка URL
+                <input id="imageUrl" value="assets/kp-sample-houses.jpg">
+              </label>
+              <label>Загрузить картинку
+                <input id="imageFile" type="file" accept="image/*">
+              </label>
+            </div>
+            <label>Промпт для генерации фона/героя
+              <textarea id="imagePrompt" class="prompt-box"></textarea>
+            </label>
+            <div class="btns">
+              <button class="btn" id="buildPromptBtn">Собрать промпт</button>
+              <button class="btn" id="copyPromptBtn">Скопировать промпт</button>
+              <button class="btn" id="loadImageBtn">Обновить картинку</button>
+            </div>
+          </div>
+        </details>
+
+        <details class="section" open>
+          <summary>2. Пакеты продвижения</summary>
+          <div class="section-body">
+            <div class="pill-row">
+              <span class="pill">Можно 1-4 пакета</span>
+              <span class="pill">Цена работы - главный акцент</span>
+            </div>
+            <div id="packages"></div>
+            <div class="btns">
+              <button class="btn primary" id="addPackageBtn">+ пакет</button>
+              <button class="btn" id="templateBtn">Шаблон 4 пакета</button>
+            </div>
+          </div>
+        </details>
+
+        <details class="section" open>
+          <summary>3. Низ КП</summary>
+          <div class="section-body">
+            <div class="grid">
+              <label>Дедлайн
+                <input id="deadline" value="Дедлайн по запуску в течение 10-15 дней">
+              </label>
+              <label>Отзывы
+                <input id="reviews" value="Отзывы отдельно за 1000 ₽ / шт">
+              </label>
+            </div>
+            <label>Бонус
+              <input id="bonus" value="СГОРАЮЩИЙ БОНУС КП: при оплате пакетов СТАРТ в течение 24 часов бот автоответчик в подарок">
+            </label>
+            <label>Рассрочка / банк
+              <input id="bank" value="РАССРОЧКА БАНК от 3 до 6 месяцев без %">
+            </label>
+            <div class="btns">
+              <button class="btn primary" id="saveBtn">Сохранить</button>
+              <button class="btn" id="resetBtn">Сбросить</button>
+            </div>
+          </div>
+        </details>
+      </div>
+    </section>
+
+    <section class="panel preview-panel">
+      <div class="panel-head">
+        <div>
+          <h2>Предпросмотр</h2>
+          <div class="hint">Canvas 1080x1600. Экспортируется как PNG.</div>
+        </div>
+        <div class="preview-toolbar">
+          <button class="btn gold" id="downloadBtn">Скачать PNG</button>
+          <button class="btn" id="copyTextBtn">Текст КП</button>
+        </div>
+      </div>
+      <div class="canvas-shell">
+        <canvas id="kpCanvas" width="1080" height="1600"></canvas>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const LS_KEY = 'avitolog_kp_editor_v1';
+    const canvas = document.getElementById('kpCanvas');
+    const ctx = canvas.getContext('2d');
+    const packagesEl = document.getElementById('packages');
+    let heroImage = new Image();
+    heroImage.crossOrigin = 'anonymous';
+    let heroReady = false;
+
+    const defaults = {
+      niche: 'Строительство домов',
+      subtitle: 'АВИТОЛОГ',
+      heroTitle: 'СТРАТЕГИИ ПРОДВИЖЕНИЯ',
+      tagline: 'ВЫГОДНО / БЫСТРО / НАДЕЖНО',
+      imageUrl: 'assets/kp-sample-houses.jpg',
+      deadline: 'Дедлайн по запуску в течение 10-15 дней',
+      reviews: 'Отзывы отдельно за 1000 ₽ / шт',
+      bonus: 'СГОРАЮЩИЙ БОНУС КП: при оплате пакетов СТАРТ в течение 24 часов бот автоответчик в подарок',
+      bank: 'РАССРОЧКА БАНК от 3 до 6 месяцев без %',
+      packages: [
+        {on:true, icon:'©', limit:'До 150 объявлений', name:'СТАРТ', work:'35 000 ₽', badge:'#2134a8', items:['Создание файла автозагрузки / ручной постинг на 50 карточек на 30 дней','Создание TOP текстов: заголовков, офферов, призывов, SEO до 7000 символов','Создание дизайна: упаковки аккаунта, логотипа, инфографики в карточках','Запуск рекламы, модерирование в течение 1 месяца, общение с ТП','3 000 ₽ тариф Авито Бизнес + 19 000 ₽ аванс на просмотры = 23к','Полная инфографика на все карточки - до 3 картинок в карточке','Дизайн магазина для расширенного бизнес тарифа Авито: 1 ПК и 1 моб баннер']},
+        {on:true, icon:'M', limit:'До 350 объявлений', name:'МИДЛ', work:'47 000 ₽', badge:'#7b6420', items:['6 000 ₽ тариф Авито Бизнес + 19 000 ₽ аванс на просмотры = 25к','Дизайн магазина для MAX. бизнес тарифа Авито: 6 баннеров ПК+моб версии','Полная инфографика на все карточки до 5-й картинки в карточке','Подключение автоответа с воронкой в ваш ТГ-бот / канал','+18 дней ведения рекламы и актива в аккаунте']},
+        {on:true, icon:'⚭', limit:'До 700 объявлений', name:'ОПТИМА', work:'56 000 ₽', badge:'#302483', items:['6 000 ₽ тариф Авито Бизнес + 29 000 ₽ аванс на просмотры = 35к','Дизайн магазина для MAX. бизнес тарифа Авито: 6 баннеров ПК+моб версии','Полная инфографика на все карточки до 8-й картинки в карточке','Подключение автоответа с воронкой в ваш ТГ-бот / канал','+30 дней ведения рекламы и актива в аккаунте']},
+        {on:true, icon:'A', limit:'Без ограничений кол-во объявлений', name:'АЛЬФА', work:'75 000 ₽', badge:'#585858', items:['Дизайн магазина для MAX. бизнес тарифа: 3 баннера ПК и 3 баннера моб версии','Полная инфографика на все карточки с глубокой проработкой до 10 / 15','Скрипты продаж для вашей ниши + анализ аватаров ЦА и ресерч в PDF','Подключение автоответа с воронкой в ваш ТГ-бот / канал + бонус закреп в ТГ','+45 дней ведения рекламы и актива в аккаунте']}
+      ]
+    };
+
+    let state = loadState();
+
+    function $(id){ return document.getElementById(id); }
+    function loadState(){
+      try {
+        const saved = JSON.parse(localStorage.getItem(LS_KEY) || 'null');
+        return saved && saved.packages ? Object.assign({}, defaults, saved) : JSON.parse(JSON.stringify(defaults));
+      } catch(e) {
+        return JSON.parse(JSON.stringify(defaults));
+      }
+    }
+    function saveState(){ localStorage.setItem(LS_KEY, JSON.stringify(readStateFromForm())); }
+    function escapeHtml(s){ return String(s||'').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
+    function moneyText(s){ return String(s||'').trim(); }
+
+    function syncForm(){
+      ['niche','subtitle','heroTitle','tagline','imageUrl','deadline','reviews','bonus','bank'].forEach(id => { $(id).value = state[id] || ''; });
+      buildPrompt();
+      renderPackages();
+      loadHeroImage(state.imageUrl);
+    }
+
+    function readStateFromForm(){
+      return {
+        niche:$('niche').value.trim(),
+        subtitle:$('subtitle').value.trim(),
+        heroTitle:$('heroTitle').value.trim(),
+        tagline:$('tagline').value.trim(),
+        imageUrl:$('imageUrl').value.trim(),
+        deadline:$('deadline').value.trim(),
+        reviews:$('reviews').value.trim(),
+        bonus:$('bonus').value.trim(),
+        bank:$('bank').value.trim(),
+        packages: readPackages()
+      };
+    }
+
+    function readPackages(){
+      return Array.from(packagesEl.querySelectorAll('.pkg')).map(pkg => ({
+        on: pkg.querySelector('[data-f="on"]').checked,
+        icon: pkg.querySelector('[data-f="icon"]').value.trim(),
+        limit: pkg.querySelector('[data-f="limit"]').value.trim(),
+        name: pkg.querySelector('[data-f="name"]').value.trim(),
+        work: pkg.querySelector('[data-f="work"]').value.trim(),
+        badge: pkg.querySelector('[data-f="badge"]').value,
+        items: pkg.querySelector('[data-f="items"]').value.split('\n').map(x => x.trim()).filter(Boolean)
+      }));
+    }
+
+    function renderPackages(){
+      packagesEl.innerHTML = state.packages.map((p,i) => `
+        <div class="pkg" data-index="${i}">
+          <div class="pkg-top">
+            <label class="switch"><input type="checkbox" data-f="on" ${p.on ? 'checked' : ''}> показывать</label>
+            <strong>${i + 1}. ${escapeHtml(p.name || 'Пакет')}</strong>
+            <div class="pkg-actions">
+              <button class="mini" data-act="up" title="Выше">↑</button>
+              <button class="mini" data-act="down" title="Ниже">↓</button>
+              <button class="mini" data-act="remove" title="Удалить">×</button>
+            </div>
+          </div>
+          <div class="grid">
+            <label>Иконка<input data-f="icon" value="${escapeHtml(p.icon)}"></label>
+            <label>Цвет бейджа<input data-f="badge" type="color" value="${escapeHtml(p.badge || '#2134a8')}"></label>
+            <label>Лимит<input data-f="limit" value="${escapeHtml(p.limit)}"></label>
+            <label>Название<input data-f="name" value="${escapeHtml(p.name)}"></label>
+            <label>Цена работы<input data-f="work" value="${escapeHtml(p.work)}"></label>
+          </div>
+          <label>Пункты пакета<textarea data-f="items">${escapeHtml((p.items || []).join('\n'))}</textarea></label>
+        </div>
+      `).join('');
+    }
+
+    function loadHeroImage(src){
+      heroReady = false;
+      if (!src) { draw(); return; }
+      heroImage = new Image();
+      heroImage.crossOrigin = 'anonymous';
+      heroImage.onload = () => { heroReady = true; draw(); };
+      heroImage.onerror = () => { heroReady = false; draw(); };
+      heroImage.src = src;
+    }
+
+    function roundRect(x,y,w,h,r){
+      ctx.beginPath();
+      ctx.moveTo(x+r,y);
+      ctx.arcTo(x+w,y,x+w,y+h,r);
+      ctx.arcTo(x+w,y+h,x,y+h,r);
+      ctx.arcTo(x,y+h,x,y,r);
+      ctx.arcTo(x,y,x+w,y,r);
+      ctx.closePath();
+    }
+
+    function fillRound(x,y,w,h,r,fill,stroke){
+      roundRect(x,y,w,h,r);
+      ctx.fillStyle = fill;
+      ctx.fill();
+      if (stroke) { ctx.strokeStyle = stroke; ctx.lineWidth = 2; ctx.stroke(); }
+    }
+
+    function drawCoverImage(img,x,y,w,h){
+      if (!heroReady) {
+        const g = ctx.createLinearGradient(x,y,x+w,y+h);
+        g.addColorStop(0,'#15344a'); g.addColorStop(.5,'#805f2c'); g.addColorStop(1,'#08101c');
+        ctx.fillStyle = g; ctx.fillRect(x,y,w,h);
+        ctx.fillStyle = 'rgba(255,255,255,.12)';
+        for(let i=0;i<12;i++) ctx.fillRect(x + i*95, y + 220 + (i%3)*45, 58, 320);
+        return;
+      }
+      const ir = img.width / img.height;
+      const rr = w / h;
+      let sx=0, sy=0, sw=img.width, sh=img.height;
+      if (ir > rr) { sw = img.height * rr; sx = (img.width - sw) / 2; }
+      else {
+        sh = img.width / rr;
+        sy = 0;
+      }
+      ctx.drawImage(img, sx, sy, sw, sh, x, y, w, h);
+    }
+
+    function wrapText(text,x,y,maxWidth,lineHeight,maxLines){
+      const words = String(text||'').split(/\s+/).filter(Boolean);
+      let line = '', lines = [];
+      words.forEach(word => {
+        const test = line ? line + ' ' + word : word;
+        if (ctx.measureText(test).width > maxWidth && line) { lines.push(line); line = word; }
+        else line = test;
+      });
+      if (line) lines.push(line);
+      if (maxLines && lines.length > maxLines) {
+        lines = lines.slice(0,maxLines);
+        lines[lines.length-1] = lines[lines.length-1].replace(/[.,;:]?$/,'') + '...';
+      }
+      lines.forEach((l,i) => ctx.fillText(l,x,y+i*lineHeight));
+      return y + lines.length * lineHeight;
+    }
+
+    function draw(){
+      const data = readStateFromForm();
+      ctx.clearRect(0,0,1080,1600);
+      ctx.fillStyle = '#050912';
+      ctx.fillRect(0,0,1080,1600);
+
+      drawCoverImage(heroImage,36,24,1008,575);
+      fillRound(36,24,1008,575,22,'rgba(0,0,0,0)','rgba(255,255,255,.14)');
+
+      let shade = ctx.createLinearGradient(36,280,1044,600);
+      shade.addColorStop(0,'rgba(0,0,0,.05)');
+      shade.addColorStop(1,'rgba(0,0,0,.45)');
+      ctx.fillStyle = shade;
+      ctx.fillRect(36,300,1008,299);
+
+      ctx.textAlign = 'center';
+      ctx.font = '900 44px Arial';
+      const titleW = Math.min(720, Math.max(520, ctx.measureText(data.heroTitle).width + 58));
+      fillRound((1080-titleW)/2,320,titleW,62,28,'rgba(0,0,0,.58)');
+      ctx.fillStyle = '#fff';
+      ctx.fillText(data.heroTitle,540,365);
+      ctx.font = '800 24px Arial';
+      ctx.fillStyle = 'rgba(255,255,255,.82)';
+      ctx.fillText(data.subtitle,540,402);
+      ctx.font = '900 20px Arial';
+      fillRound(393,404,294,32,16,'rgba(0,0,0,.48)');
+      ctx.fillStyle = '#fff';
+      ctx.fillText(data.tagline,540,427);
+      ctx.textAlign = 'left';
+
+      const bg = ctx.createLinearGradient(0,600,0,1600);
+      bg.addColorStop(0,'rgba(6,21,34,.93)');
+      bg.addColorStop(.45,'rgba(3,6,11,.98)');
+      bg.addColorStop(1,'#020408');
+      ctx.fillStyle = bg;
+      ctx.fillRect(0,600,1080,1000);
+
+      ctx.globalAlpha = .16;
+      ctx.fillStyle = '#4dd7ff';
+      for(let i=0;i<16;i++){
+        const x = 45 + i*70;
+        const h = 180 + (i%5)*48;
+        ctx.fillRect(x, 1320-h, 36, h);
+      }
+      ctx.globalAlpha = 1;
+
+      let y = 640;
+      const active = data.packages.filter(p => p.on).slice(0,4);
+      active.forEach((p,idx) => {
+        const blockTop = y;
+        ctx.font = '900 27px Arial';
+        ctx.fillStyle = '#fff';
+        const head = `${p.limit} = "${p.name}"`;
+        const headW = Math.min(750, ctx.measureText(head).width + 120);
+        ctx.fillStyle = idx === 0 ? 'rgba(31,49,160,.62)' : 'rgba(255,255,255,.10)';
+        fillRound(44, y-31, headW, 42, 18, ctx.fillStyle);
+        ctx.fillStyle = '#fff';
+        fillRound(47,y-27,34,34,8,p.badge || '#334');
+        ctx.font = '900 22px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillStyle = '#fff';
+        ctx.fillText(p.icon || String(idx+1),64,y-3);
+        ctx.textAlign = 'left';
+        ctx.font = '900 27px Arial';
+        ctx.fillText(head,94,y);
+        y += 44;
+
+        ctx.font = '22px Arial';
+        ctx.fillStyle = '#eaf2ff';
+        if (moneyText(p.work)) {
+          ctx.fillStyle = '#64baff';
+          ctx.fillText('◆', 58, y);
+          ctx.fillStyle = '#fff';
+          ctx.fillText(`${p.work} = работа Авитолога`, 84, y);
+          y += 32;
+        }
+        (p.items || []).forEach((item, itemIdx) => {
+          const gift = itemIdx >= 2 || item.indexOf('инфограф') >= 0 || item.indexOf('Дизайн') >= 0 || item.indexOf('Подключение') >= 0;
+          ctx.fillStyle = gift ? '#ffca55' : '#64baff';
+          ctx.font = '22px Arial';
+          ctx.fillText(gift ? '🎁' : '◆', 58, y);
+          ctx.fillStyle = '#f2f6ff';
+          ctx.font = '22px Arial';
+          y = wrapText(item, 84, y, 920, 29, 2) + 3;
+        });
+        y += idx === active.length - 1 ? 22 : 30;
+        if (idx < active.length - 1) {
+          ctx.strokeStyle = 'rgba(255,255,255,.08)';
+          ctx.beginPath(); ctx.moveTo(48, y-13); ctx.lineTo(1010, y-13); ctx.stroke();
+        }
+        if (y - blockTop < 120) y = blockTop + 120;
+      });
+
+      const footerY = 1490;
+      fillRound(45,footerY,400,62,8,'rgba(255,202,85,.78)');
+      ctx.fillStyle = '#07111c';
+      ctx.font = '900 20px Arial';
+      ctx.fillText('◷ ' + data.deadline,70,footerY+25);
+      ctx.font = 'italic 18px Arial';
+      ctx.fillText('★ ' + data.reviews,70,footerY+50);
+
+      fillRound(468,footerY,350,62,8,'rgba(255,255,255,.94)');
+      ctx.fillStyle = '#1b1410';
+      ctx.font = '900 17px Arial';
+      wrapText('🔥 ' + data.bonus,488,footerY+23,310,20,2);
+
+      fillRound(845,footerY,190,62,8,'rgba(255,214,86,.96)');
+      ctx.fillStyle = '#ff4e9b';
+      ctx.font = '900 21px Arial';
+      wrapText(data.bank,863,footerY+24,155,22,2);
+    }
+
+    function buildPrompt(){
+      const niche = $('niche').value || 'бизнес клиента';
+      $('imagePrompt').value = [
+        'Сделай обложку для коммерческого предложения Avito продвижения.',
+        'Сцена: слева футуристичный персонаж/авитолог в черном технологичном костюме, справа предприниматель или специалист из ниши "' + niche + '", они пожимают руки.',
+        'Фон должен явно показывать нишу: ' + niche + '.',
+        'Стиль: реалистичная рекламная обложка, премиальный свет, широкая композиция 16:9, без текста, без логотипов, место по центру под заголовок.'
+      ].join('\n');
+    }
+
+    function exportText(){
+      const data = readStateFromForm();
+      const lines = [`КП: ${data.niche}`, `${data.heroTitle} / ${data.tagline}`, ''];
+      data.packages.filter(p=>p.on).forEach(p => {
+        lines.push(`${p.limit} = "${p.name}"`);
+        if (p.work) lines.push(`${p.work} = работа Авитолога`);
+        (p.items||[]).forEach(i => lines.push('- ' + i));
+        lines.push('');
+      });
+      lines.push(data.deadline, data.reviews, data.bonus, data.bank);
+      return lines.join('\n');
+    }
+
+    function bind(){
+      document.querySelectorAll('input,textarea,select').forEach(el => {
+        el.addEventListener('input', () => { state = readStateFromForm(); if (el.id === 'niche') buildPrompt(); draw(); });
+        el.addEventListener('change', () => { state = readStateFromForm(); draw(); });
+      });
+      packagesEl.addEventListener('input', () => { state = readStateFromForm(); draw(); });
+      packagesEl.addEventListener('change', () => { state = readStateFromForm(); draw(); });
+      packagesEl.addEventListener('click', e => {
+        const btn = e.target.closest('[data-act]');
+        if (!btn) return;
+        e.preventDefault();
+        state = readStateFromForm();
+        const pkg = btn.closest('.pkg');
+        const i = Number(pkg.dataset.index);
+        const act = btn.dataset.act;
+        if (act === 'remove') state.packages.splice(i,1);
+        if (act === 'up' && i > 0) [state.packages[i-1],state.packages[i]] = [state.packages[i],state.packages[i-1]];
+        if (act === 'down' && i < state.packages.length-1) [state.packages[i+1],state.packages[i]] = [state.packages[i],state.packages[i+1]];
+        renderPackages();
+        draw();
+      });
+      $('addPackageBtn').onclick = () => {
+        state = readStateFromForm();
+        if (state.packages.length >= 4) return;
+        state.packages.push({on:true,icon:'+',limit:'До 100 объявлений',name:'НОВЫЙ',work:'35 000 ₽',badge:'#00a8ff',items:['Настройка продвижения под нишу','Подготовка текстов и упаковки','Запуск и сопровождение']});
+        renderPackages(); draw();
+      };
+      $('templateBtn').onclick = () => { state.packages = JSON.parse(JSON.stringify(defaults.packages)); renderPackages(); draw(); };
+      $('buildPromptBtn').onclick = buildPrompt;
+      $('copyPromptBtn').onclick = async () => { await navigator.clipboard.writeText($('imagePrompt').value); };
+      $('copyTextBtn').onclick = async () => { await navigator.clipboard.writeText(exportText()); };
+      $('loadImageBtn').onclick = () => { state = readStateFromForm(); loadHeroImage(state.imageUrl); };
+      $('saveBtn').onclick = () => { saveState(); alert('КП сохранено в браузере.'); };
+      $('resetBtn').onclick = () => { if (!confirm('Сбросить редактор КП?')) return; localStorage.removeItem(LS_KEY); state = JSON.parse(JSON.stringify(defaults)); syncForm(); };
+      $('downloadBtn').onclick = () => {
+        draw();
+        const a = document.createElement('a');
+        const name = (readStateFromForm().niche || 'kp').replace(/[\\/:*?"<>|]+/g,' ').trim();
+        a.download = `KP-${name}.png`;
+        a.href = canvas.toDataURL('image/png');
+        a.click();
+      };
+      $('imageFile').addEventListener('change', e => {
+        const file = e.target.files && e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = () => {
+          $('imageUrl').value = reader.result;
+          state = readStateFromForm();
+          loadHeroImage(reader.result);
+        };
+        reader.readAsDataURL(file);
+      });
+    }
+
+    syncForm();
+    bind();
+  </script>
+</body>
+</html>
