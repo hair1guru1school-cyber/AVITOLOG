@@ -11,6 +11,11 @@ const ANTHROPIC_API_BASE = String(process.env.ANTHROPIC_API_BASE || 'https://api
 const LISTEN_HOST = String(process.env.HOST || '0.0.0.0').trim() || '0.0.0.0';
 const CORS_ORIGIN = String(process.env.CORS_ORIGIN || '').trim();
 
+app.use((req, res, next) => {
+  res.setHeader('Access-Control-Allow-Private-Network', 'true');
+  next();
+});
+
 if (CORS_ORIGIN) {
   var origins = CORS_ORIGIN.split(',').map(function (s) { return s.trim(); }).filter(Boolean);
   app.use(
