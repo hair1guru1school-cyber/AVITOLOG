@@ -169,7 +169,8 @@
       bgDark: "assets/kp-layers/kp-bg-dark.jpg",
       bgClean: "assets/kp-layers/kp-bg-clean.jpg",
       bgReference: "assets/kp-layers/kp-reference-hero.jpg",
-      hero: "assets/kp-layers/kp-hero-default.png"
+      hero: "assets/kp-layers/kp-hero-default.png",
+      footer: "assets/kp-layers/kp-footer-layer.jpg"
     };
     const TEMPLATE = {
       heroTitle: "СТРАТЕГИИ ПРОДВИЖЕНИЯ",
@@ -294,6 +295,7 @@
       images.bgClean = await loadImage(ASSETS.bgClean);
       images.bgReference = await loadImage(ASSETS.bgReference);
       images.hero = await loadImage(customHeroSrc || ASSETS.hero);
+      images.footer = await loadImage(ASSETS.footer);
       renderForm();
       draw();
     }
@@ -483,38 +485,9 @@
       ctx.restore();
     }
     function drawFooter(){
-      ctx.save();
-      const y = 1910;
-      const leftGrad = ctx.createLinearGradient(58, y, 560, y);
-      leftGrad.addColorStop(0, "#6e4d0b");
-      leftGrad.addColorStop(1, "#e0a913");
-      ctx.fillStyle = leftGrad;
-      roundRect(58, y, 525, 72, 8, true);
-      ctx.fillStyle = "#fff";
-      ctx.font = `900 25px ${FONT}`;
-      ctx.fillText(`◷ ${TEMPLATE.deadline}`, 75, y + 30);
-      ctx.font = `italic 400 22px ${FONT}`;
-      ctx.fillText(`★ ${TEMPLATE.reviews}`, 75, y + 58);
-
-      ctx.fillStyle = "#fff";
-      roundRect(615, y, 455, 72, 8, true);
-      ctx.fillStyle = "#111";
-      ctx.font = `900 20px ${FONT}`;
-      wrapText(`🔥 ${TEMPLATE.bonus} 🎁`, 633, y + 28, 420, 22, `900 20px ${FONT}`);
-
-      const bankGrad = ctx.createLinearGradient(1110, y, 1328, y);
-      bankGrad.addColorStop(0, "#fff3a1");
-      bankGrad.addColorStop(1, "#ffbf36");
-      ctx.fillStyle = bankGrad;
-      roundRect(1110, y, 220, 72, 10, true);
-      ctx.textAlign = "center";
-      ctx.fillStyle = "#e65786";
-      ctx.font = `900 24px ${FONT}`;
-      ctx.fillText("РАССРОЧКА", 1220, y + 29);
-      ctx.fillStyle = "#fff";
-      ctx.font = `900 31px ${FONT}`;
-      ctx.fillText("БАНК", 1220, y + 56);
-      ctx.restore();
+      if (!images.footer) return;
+      const footerY = 1884;
+      ctx.drawImage(images.footer, 0, footerY, W, H - footerY, 0, footerY, W, H - footerY);
     }
     function drawCover(img, x, y, w, h){
       const scale = Math.max(w / img.width, h / img.height);
