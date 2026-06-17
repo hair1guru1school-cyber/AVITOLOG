@@ -163,7 +163,7 @@
   <script>
     const W = 1414;
     const H = 2000;
-    const LS_KEY = "avitolog_kp_editor_v3";
+    const LS_KEY = "avitolog_kp_editor_v5";
     const FONT = '"Source Sans 3","Source Sans Pro",Arial,sans-serif';
     const ASSETS = {
       bgDark: "assets/kp-layers/kp-bg-dark.jpg",
@@ -186,6 +186,7 @@
     const hitZones = [];
     let selectedPackage = 0;
     let customHeroSrc = "";
+    let formReady = false;
 
     const defaults = {
       packages: [
@@ -263,7 +264,13 @@
     function loadState(){
       try {
         const saved = JSON.parse(localStorage.getItem(LS_KEY) || "null");
-        return saved && saved.packages ? Object.assign(clone(defaults), saved) : clone(defaults);
+        if (!saved || !saved.packages) return clone(defaults);
+        const next = Object.assign(clone(defaults), saved);
+        next.packages = defaults.packages.map((pkg, index) => {
+          const merged = Object.assign(clone(pkg), saved.packages[index] || {});
+          return merged.name && merged.limit ? merged : clone(pkg);
+        });
+        return next;
       } catch (e) {
         return clone(defaults);
       }
@@ -295,6 +302,7 @@
       renderTabs();
       renderPackageForm();
       renderZones();
+      formReady = true;
     }
     function renderTabs(){
       tabsEl.innerHTML = "";
@@ -357,7 +365,7 @@
     }
 
     function draw(){
-      readGlobalForm();
+      if (formReady) readGlobalForm();
       ctx.clearRect(0, 0, W, H);
       drawBackground();
       drawHero();
@@ -397,8 +405,8 @@
     }
     function packageY(){
       const visible = state.packages.filter((pkg) => pkg.on).length;
-      if (visible <= 3) return [866, 1238, 1532, 1745];
-      return [866, 1192, 1439, 1684];
+      if (visible <= 3) return [866, 1230, 1535, 1700];
+      return [846, 1168, 1416, 1664];
     }
     function drawPackages(){
       hitZones.length = 0;
@@ -413,13 +421,15 @@
     function drawPackage(pkg, index, y){
       const title = `${pkg.limit} = “${pkg.name}”`;
       ctx.save();
+      ctx.font = `400 31px ${FONT}`;
+      const titleWidth = measureTitle(title);
+      const barWidth = Math.min(1120, Math.max(360, titleWidth + 165));
       ctx.fillStyle = hexToRgba(pkg.color || "#27308f", 0.26);
-      roundRect(-28, y - 28, Math.min(720, 210 + measureTitle(title)), 43, 21, true);
+      roundRect(-28, y - 28, barWidth, 43, 21, true);
       drawIcon(pkg.icon, 70, y - 7, pkg.color, index);
       ctx.fillStyle = "#fff";
       ctx.shadowColor = "rgba(0,0,0,.9)";
       ctx.shadowBlur = 5;
-      ctx.font = `400 31px ${FONT}`;
       ctx.fillText(title, 101, y);
       ctx.shadowBlur = 0;
 
