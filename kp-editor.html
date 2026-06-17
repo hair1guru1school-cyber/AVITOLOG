@@ -31,7 +31,7 @@
     .logo{display:flex;align-items:center;gap:10px;color:#00ff9a;font-weight:900;letter-spacing:7px;font-size:22px}
     .logo-mark{width:30px;height:30px;border-radius:6px;background:#edf6ff;color:#0b1018;display:grid;place-items:center;letter-spacing:0;font-size:17px}
     .status{margin-left:auto;border:1px solid rgba(0,223,134,.42);background:rgba(0,223,134,.09);border-radius:8px;color:#8fffd0;padding:8px 12px;font-weight:900;font-size:12px}
-    .layout{display:grid;grid-template-columns:minmax(860px,1fr) 420px;gap:18px;padding:18px;align-items:start}
+    .layout{display:grid;grid-template-columns:var(--preview-width,minmax(860px,1fr)) 10px 420px;gap:8px;padding:18px;align-items:start}
     .panel{background:linear-gradient(180deg,rgba(16,23,34,.96),rgba(7,12,21,.98));border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden}
     .head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:13px 15px;border-bottom:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.025)}
     h1,h2,h3{margin:0}
@@ -46,6 +46,9 @@
     .btn.danger{background:rgba(255,92,138,.1);color:#ffadc5;border-color:rgba(255,92,138,.36)}
     .stage-wrap{height:calc(100vh - 126px);min-height:620px;padding:14px;background:radial-gradient(circle at 50% 0,rgba(89,235,255,.09),transparent 28%),#03070d;display:grid;place-items:start center;overflow:auto}
     .stage{position:relative;width:820px;min-width:820px}
+    .resize-handle{align-self:stretch;min-height:calc(100vh - 126px);border:1px solid rgba(89,235,255,.18);border-radius:8px;background:linear-gradient(180deg,rgba(89,235,255,.06),rgba(0,223,134,.06));cursor:col-resize;position:relative}
+    .resize-handle:before{content:"";position:absolute;left:50%;top:50%;width:2px;height:64px;transform:translate(-50%,-50%);border-radius:99px;background:rgba(89,235,255,.55);box-shadow:0 0 16px rgba(89,235,255,.35)}
+    .resize-handle:hover,.layout.resizing .resize-handle{border-color:rgba(255,212,95,.7);background:rgba(255,212,95,.08)}
     canvas{display:block;width:100%;height:auto;border-radius:8px;background:#05080d;box-shadow:0 20px 70px rgba(0,0,0,.68)}
     .click-zone{position:absolute;left:0;right:0;border:0;border-radius:8px;background:transparent!important;padding:0;appearance:none;-webkit-appearance:none;color:transparent}
     .click-zone:hover{outline:1px dashed rgba(89,235,255,.55);outline-offset:-2px;background:transparent!important}
@@ -63,7 +66,8 @@
     .niche-card img{width:70px;height:48px;object-fit:cover;border-radius:6px;background:#101722}
     .niche-name{font-size:12px;line-height:1.15;font-weight:900}
     .niche-path{font-size:10px;color:#91a5bb;margin-top:3px}
-    .editor{position:sticky;top:76px}
+    .editor{position:sticky;top:76px;transform-origin:top right}
+    .editor>.head,.editor>.body{zoom:var(--editor-zoom,1)}
     .body{padding:14px;display:flex;flex-direction:column;gap:12px}
     .tabs{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
     .tab{height:34px;border-radius:8px;border:1px solid rgba(93,229,255,.18);background:#111c2b;color:#bcd4ec;font-weight:900;font-size:12px}
@@ -85,7 +89,7 @@
     .file-row input{padding:7px}
     .mini-note{color:#91a5bb;font-size:12px;line-height:1.35}
     @media(max-width:1500px){.niche-panel{position:fixed;top:78px;max-height:calc(100vh - 100px)}.niche-panel.left{left:18px;right:auto}.niche-panel.right{right:18px;left:auto}}
-    @media(max-width:1320px){.layout{grid-template-columns:1fr}.editor{position:static}.stage-wrap{height:calc(100vh - 126px)}}
+    @media(max-width:1320px){.layout{min-width:1010px}.stage-wrap{height:calc(100vh - 126px)}}
     @media(max-width:920px){.stage{width:760px;min-width:760px}}
     @media(max-width:680px){.layout{padding:10px}.top{position:static}.status{display:none}.logo{font-size:18px;letter-spacing:5px}.grid2{grid-template-columns:1fr}}
   </style>
@@ -124,6 +128,8 @@
       </div>
     </section>
 
+    <div class="resize-handle" id="resizeHandle" title="Потяните, чтобы изменить ширину листа"></div>
+
     <aside class="panel editor">
       <div class="head">
         <div>
@@ -142,6 +148,7 @@
               <option value="simple">Белая PNG</option>
               <option value="color">Цветная плашка</option>
               <option value="gold">Золото / черный</option>
+              <option value="premium">Премиум рамка</option>
             </select>
           </label>
           <label>Размер надписи <span id="titleScaleValue" class="small-value">100%</span>
@@ -233,7 +240,8 @@
       footer: "assets/kp-layers/kp-footer-layer.jpg",
       titleSimple: "assets/kp-layers/kp-title-simple.png",
       titleColor: "assets/kp-layers/kp-title-color.png",
-      titleGold: "assets/kp-layers/kp-title-gold.png"
+      titleGold: "assets/kp-layers/kp-title-gold.png",
+      titlePremium: "assets/kp-layers/kp-title-premium.png"
     };
     const NICHE_FOLDER = "КАРТИНКИ КП";
     const NICHE_LIBRARY = {
@@ -274,6 +282,8 @@
     const ctx = canvas.getContext("2d");
     const stage = document.getElementById("stage");
     const tabsEl = document.getElementById("tabs");
+    const layoutEl = document.querySelector(".layout");
+    const editorEl = document.querySelector(".editor");
     const images = {};
     const hitZones = [];
     let selectedPackage = 0;
@@ -404,6 +414,7 @@
       images.titleSimple = await loadImage(ASSETS.titleSimple);
       images.titleColor = await loadImage(ASSETS.titleColor);
       images.titleGold = await loadImage(ASSETS.titleGold);
+      images.titlePremium = await loadImage(ASSETS.titlePremium);
       renderForm();
       draw();
     }
@@ -571,7 +582,8 @@
       const titleMap = {
         simple: { image: images.titleSimple, width: 650 },
         color: { image: images.titleColor, width: 1120 },
-        gold: { image: images.titleGold, width: 1160 }
+        gold: { image: images.titleGold, width: 1160 },
+        premium: { image: images.titlePremium, width: 1200 }
       };
       const item = titleMap[style] || titleMap.simple;
       if (!item.image) {
@@ -866,6 +878,40 @@
       localStorage.setItem(PRESET_KEY, JSON.stringify(saved));
       renderPresetSelect();
     }
+    function clamp(value, min, max){
+      return Math.min(max, Math.max(min, value));
+    }
+    function initResizableLayout(){
+      const savedWidth = Number(localStorage.getItem("avitolog_kp_preview_width") || 0);
+      if (savedWidth) layoutEl.style.setProperty("--preview-width", `${savedWidth}px`);
+      $("resizeHandle").addEventListener("pointerdown", (event) => {
+        event.preventDefault();
+        layoutEl.classList.add("resizing");
+        $("resizeHandle").setPointerCapture(event.pointerId);
+      });
+      $("resizeHandle").addEventListener("pointermove", (event) => {
+        if (!layoutEl.classList.contains("resizing")) return;
+        const rect = layoutEl.getBoundingClientRect();
+        const width = clamp(event.clientX - rect.left - 18, 560, Math.max(620, rect.width - 470));
+        layoutEl.style.setProperty("--preview-width", `${width}px`);
+        localStorage.setItem("avitolog_kp_preview_width", String(Math.round(width)));
+      });
+      ["pointerup","pointercancel","lostpointercapture"].forEach((name) => {
+        $("resizeHandle").addEventListener(name, () => layoutEl.classList.remove("resizing"));
+      });
+    }
+    function initEditorZoom(){
+      let zoom = Number(localStorage.getItem("avitolog_kp_editor_zoom") || 1);
+      editorEl.style.setProperty("--editor-zoom", zoom);
+      editorEl.addEventListener("wheel", (event) => {
+        if (!event.ctrlKey) return;
+        event.preventDefault();
+        zoom = clamp(zoom + (event.deltaY < 0 ? 0.05 : -0.05), 0.75, 1.35);
+        zoom = Math.round(zoom * 100) / 100;
+        editorEl.style.setProperty("--editor-zoom", zoom);
+        localStorage.setItem("avitolog_kp_editor_zoom", String(zoom));
+      }, { passive: false });
+    }
 
     ["pkgOn","pkgIcon","pkgName","pkgLimit","pkgWork","pkgColor","pkgItems"].forEach((id) => {
       $(id).addEventListener("input", () => {
@@ -923,6 +969,8 @@
       draw();
     });
 
+    initResizableLayout();
+    initEditorZoom();
     preload();
     if (document.fonts && document.fonts.ready) {
       document.fonts.ready.then(draw);
