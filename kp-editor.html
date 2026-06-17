@@ -47,9 +47,9 @@
     .stage-wrap{padding:14px;background:radial-gradient(circle at 50% 0,rgba(89,235,255,.09),transparent 28%),#03070d;display:grid;place-items:center}
     .stage{position:relative;width:min(100%,820px)}
     canvas{display:block;width:100%;height:auto;border-radius:8px;background:#05080d;box-shadow:0 20px 70px rgba(0,0,0,.68)}
-    .click-zone{position:absolute;left:0;right:0;border:1px dashed transparent;border-radius:8px}
-    .click-zone:hover{border-color:rgba(89,235,255,.65);background:rgba(89,235,255,.04)}
-    .click-zone.active{border-color:rgba(0,223,134,.85);box-shadow:0 0 0 2px rgba(0,223,134,.12) inset}
+    .click-zone{position:absolute;left:0;right:0;border:0;border-radius:8px;background:transparent!important;padding:0;appearance:none;-webkit-appearance:none;color:transparent}
+    .click-zone:hover{outline:1px dashed rgba(89,235,255,.65);outline-offset:-2px;background:transparent!important}
+    .click-zone.active{outline:2px dashed rgba(0,223,134,.85);outline-offset:-3px;box-shadow:none;background:transparent!important}
     .editor{position:sticky;top:76px}
     .body{padding:14px;display:flex;flex-direction:column;gap:12px}
     .tabs{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
@@ -432,9 +432,6 @@
       ctx.fillStyle = "rgba(0,0,0,.62)";
       roundRect(452, 420, 610, 62, 22, true);
       roundRect(540, 500, 345, 36, 18, true);
-      ctx.fillStyle = "rgba(255,255,255,.72)";
-      ctx.font = `800 29px ${FONT}`;
-      ctx.fillText("АВИТОЛОГ", 474, 408);
       ctx.fillStyle = "#fff";
       ctx.font = `900 43px ${FONT}`;
       ctx.fillText(state.heroTitle.toUpperCase(), 758, 464);
