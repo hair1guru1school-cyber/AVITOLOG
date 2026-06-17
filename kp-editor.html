@@ -81,6 +81,7 @@
     .switch{flex-direction:row;align-items:center;text-transform:none;letter-spacing:0;font-size:13px;color:#d6e7fa}
     .switch input{width:16px;height:16px;padding:0}
     .pill{display:inline-flex;align-items:center;height:27px;border-radius:999px;border:1px solid rgba(93,229,255,.18);background:rgba(89,235,255,.07);padding:0 9px;color:#cdeaff;font-weight:800;font-size:12px}
+    .small-value{float:right;color:var(--cyan);font-weight:900}
     .file-row input{padding:7px}
     .mini-note{color:#91a5bb;font-size:12px;line-height:1.35}
     @media(max-width:1500px){.niche-panel{position:fixed;top:78px;max-height:calc(100vh - 100px)}.niche-panel.left{left:18px;right:auto}.niche-panel.right{right:18px;left:auto}}
@@ -132,13 +133,19 @@
       </div>
       <div class="body">
         <div class="card">
-          <div class="row">
-            <span class="pill">A4 1414×2000</span>
-            <span class="pill">Source Sans Pro</span>
-            <span class="pill">Пакеты + картинка</span>
-          </div>
           <label>Картинка шапки
             <input id="heroFile" type="file" accept="image/*">
+          </label>
+          <label>Надпись на шапке
+            <select id="titleStyle">
+              <option value="classic">Классика</option>
+              <option value="simple">Белая PNG</option>
+              <option value="color">Цветная плашка</option>
+              <option value="gold">Золото / черный</option>
+            </select>
+          </label>
+          <label>Размер надписи <span id="titleScaleValue" class="small-value">100%</span>
+            <input id="titleScale" type="range" min="55" max="130" step="1" value="100">
           </label>
           <label>Фон
             <select id="bgChoice">
@@ -215,7 +222,7 @@
   <script>
     const W = 1414;
     const H = 2000;
-    const LS_KEY = "avitolog_kp_editor_v8";
+    const LS_KEY = "avitolog_kp_editor_v9";
     const FONT = '"Source Sans 3","Source Sans Pro",Arial,sans-serif';
     const ASSETS = {
       bgDark: "assets/kp-layers/kp-bg-dark.jpg",
@@ -223,7 +230,10 @@
       bgReference: "assets/kp-layers/kp-reference-hero.jpg",
       bgPurple: "assets/kp-layers/kp-bg-purple.jpg",
       hero: "assets/kp-layers/kp-hero-default.png",
-      footer: "assets/kp-layers/kp-footer-layer.jpg"
+      footer: "assets/kp-layers/kp-footer-layer.jpg",
+      titleSimple: "assets/kp-layers/kp-title-simple.png",
+      titleColor: "assets/kp-layers/kp-title-color.png",
+      titleGold: "assets/kp-layers/kp-title-gold.png"
     };
     const NICHE_FOLDER = "КАРТИНКИ КП";
     const NICHE_LIBRARY = {
@@ -272,6 +282,8 @@
 
     const defaults = {
       bgChoice: "dark",
+      titleStyle: "classic",
+      titleScale: 100,
       heroSrc: "",
       heroName: "Террасы МО - ВИП",
       packages: [
@@ -389,12 +401,18 @@
       images.bgPurple = await loadImage(ASSETS.bgPurple);
       images.hero = await loadImage(customHeroSrc || state.heroSrc || ASSETS.hero);
       images.footer = await loadImage(ASSETS.footer);
+      images.titleSimple = await loadImage(ASSETS.titleSimple);
+      images.titleColor = await loadImage(ASSETS.titleColor);
+      images.titleGold = await loadImage(ASSETS.titleGold);
       renderForm();
       draw();
     }
 
     function renderForm(){
       $("bgChoice").value = state.bgChoice || defaults.bgChoice;
+      $("titleStyle").value = state.titleStyle || defaults.titleStyle;
+      $("titleScale").value = state.titleScale || defaults.titleScale;
+      $("titleScaleValue").textContent = `${$("titleScale").value}%`;
       renderNicheLibrary();
       renderPresetSelect();
       renderTabs();
@@ -497,6 +515,9 @@
     }
     function readGlobalForm(){
       state.bgChoice = $("bgChoice").value;
+      state.titleStyle = $("titleStyle").value;
+      state.titleScale = Number($("titleScale").value) || defaults.titleScale;
+      $("titleScaleValue").textContent = `${state.titleScale}%`;
       readPackageForm();
     }
     function readPackageForm(){
@@ -542,6 +563,32 @@
       ctx.fill();
     }
     function drawHeroText(){
+      const style = state.titleStyle || defaults.titleStyle;
+      if (style === "classic") {
+        drawClassicHeroText();
+        return;
+      }
+      const titleMap = {
+        simple: { image: images.titleSimple, width: 650 },
+        color: { image: images.titleColor, width: 1120 },
+        gold: { image: images.titleGold, width: 1160 }
+      };
+      const item = titleMap[style] || titleMap.simple;
+      if (!item.image) {
+        drawClassicHeroText();
+        return;
+      }
+      const scale = (Number(state.titleScale) || defaults.titleScale) / 100;
+      const maxWidth = 1220;
+      const w = Math.min(maxWidth, item.width * scale);
+      const h = w * item.image.height / item.image.width;
+      const x = 60 + (1294 - w) / 2;
+      const y = 35 + (760 - h) / 2 + 18;
+      ctx.save();
+      ctx.drawImage(item.image, x, y, w, h);
+      ctx.restore();
+    }
+    function drawClassicHeroText(){
       ctx.save();
       ctx.textAlign = "center";
       ctx.fillStyle = "rgba(0,0,0,.62)";
@@ -830,6 +877,8 @@
       $(id).addEventListener("change", draw);
     });
     $("bgChoice").addEventListener("change", draw);
+    $("titleStyle").addEventListener("change", draw);
+    $("titleScale").addEventListener("input", draw);
     $("heroZone").addEventListener("click", () => toggleNichePanels());
     $("presetKind").addEventListener("change", renderPresetSelect);
     $("applyPresetBtn").addEventListener("click", applySelectedPreset);
