@@ -3197,7 +3197,13 @@ function callAPI(prompt, maxTokens) {
   var _backendRaw = '';
   try { _backendRaw = String(localStorage.getItem('crm_ads_avito_backend_base_v1') || '').trim(); } catch(e) {}
   var backendExplicit = !!_backendRaw;
-  var backendBase = (_backendRaw || 'http://localhost:8787/api').replace(/\/+$/, '');
+  function normalizeBackendBase(raw) {
+    var value = String(raw || '').trim() || 'http://localhost:8787/api';
+    value = value.replace(/\/+$/, '');
+    if (/^https?:\/\/[^\/]+$/i.test(value)) value += '/api';
+    return value;
+  }
+  var backendBase = normalizeBackendBase(_backendRaw);
   var tryBackendFirst = true;
   var backendIsLocal = (function() {
     var bb = String(backendBase || '').toLowerCase();
