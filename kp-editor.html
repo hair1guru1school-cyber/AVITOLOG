@@ -50,6 +50,19 @@
     .click-zone{position:absolute;left:0;right:0;border:0;border-radius:8px;background:transparent!important;padding:0;appearance:none;-webkit-appearance:none;color:transparent}
     .click-zone:hover{outline:1px dashed rgba(89,235,255,.55);outline-offset:-2px;background:transparent!important}
     .click-zone.active{outline:0;box-shadow:none;background:transparent!important}
+    .hero-zone{position:absolute;left:3.8%;top:1.75%;width:91.5%;height:38%;border:0;border-radius:18px;background:transparent!important;padding:0;appearance:none;-webkit-appearance:none;color:transparent}
+    .hero-zone:hover,.hero-zone.active{outline:2px dashed rgba(255,212,95,.82);outline-offset:-4px;background:rgba(255,212,95,.04)!important}
+    .niche-panel{position:absolute;top:38px;width:290px;max-height:620px;overflow:auto;border:1px solid rgba(93,229,255,.24);border-radius:8px;background:rgba(4,8,14,.96);box-shadow:0 24px 70px rgba(0,0,0,.55);padding:12px;display:none;gap:9px;z-index:4}
+    .niche-panel.open{display:flex;flex-direction:column}
+    .niche-panel.left{right:calc(100% + 18px)}
+    .niche-panel.right{left:calc(100% + 18px)}
+    .niche-title{font-size:28px;font-weight:700;color:#fff;margin:2px 0 8px}
+    .niche-grid{display:grid;grid-template-columns:1fr;gap:8px}
+    .niche-card{display:grid;grid-template-columns:70px 1fr;gap:9px;align-items:center;text-align:left;border:1px solid rgba(255,255,255,.09);border-radius:8px;background:rgba(255,255,255,.035);color:#edf6ff;padding:7px}
+    .niche-card:hover,.niche-card.active{border-color:rgba(255,212,95,.75);background:rgba(255,212,95,.1)}
+    .niche-card img{width:70px;height:48px;object-fit:cover;border-radius:6px;background:#101722}
+    .niche-name{font-size:12px;line-height:1.15;font-weight:900}
+    .niche-path{font-size:10px;color:#91a5bb;margin-top:3px}
     .editor{position:sticky;top:76px}
     .body{padding:14px;display:flex;flex-direction:column;gap:12px}
     .tabs{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
@@ -61,11 +74,16 @@
     input:focus,textarea:focus,select:focus{border-color:rgba(89,235,255,.72);box-shadow:0 0 0 3px rgba(89,235,255,.08)}
     .grid2{display:grid;grid-template-columns:1fr 1fr;gap:9px}
     .card{border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.025);border-radius:8px;padding:11px;display:flex;flex-direction:column;gap:10px}
+    .preset-card{background:linear-gradient(135deg,rgba(255,212,95,.96),rgba(255,246,196,.94));color:#160d00;border:0}
+    .preset-card label{color:#473000}
+    .preset-card select,.preset-card input{background:rgba(255,255,255,.86);color:#160d00;border-color:rgba(0,0,0,.12)}
+    .preset-title{font-size:15px;font-weight:900;letter-spacing:.7px;text-align:center}
     .switch{flex-direction:row;align-items:center;text-transform:none;letter-spacing:0;font-size:13px;color:#d6e7fa}
     .switch input{width:16px;height:16px;padding:0}
     .pill{display:inline-flex;align-items:center;height:27px;border-radius:999px;border:1px solid rgba(93,229,255,.18);background:rgba(89,235,255,.07);padding:0 9px;color:#cdeaff;font-weight:800;font-size:12px}
     .file-row input{padding:7px}
     .mini-note{color:#91a5bb;font-size:12px;line-height:1.35}
+    @media(max-width:1500px){.niche-panel{position:fixed;top:78px;max-height:calc(100vh - 100px)}.niche-panel.left{left:18px;right:auto}.niche-panel.right{right:18px;left:auto}}
     @media(max-width:1320px){.layout{grid-template-columns:1fr}.editor{position:static}.stage-wrap{height:calc(100vh - 126px)}}
     @media(max-width:920px){.stage{width:760px;min-width:760px}}
     @media(max-width:680px){.layout{padding:10px}.top{position:static}.status{display:none}.logo{font-size:18px;letter-spacing:5px}.grid2{grid-template-columns:1fr}}
@@ -92,6 +110,15 @@
       <div class="stage-wrap">
         <div class="stage" id="stage">
           <canvas id="kpCanvas" width="1414" height="2000"></canvas>
+          <button class="hero-zone" id="heroZone" type="button" aria-label="Выбрать картинку шапки"></button>
+          <div class="niche-panel left" id="goodsPanel">
+            <div class="niche-title">Товары</div>
+            <div class="niche-grid" id="goodsGrid"></div>
+          </div>
+          <div class="niche-panel right" id="servicesPanel">
+            <div class="niche-title">Услуги</div>
+            <div class="niche-grid" id="servicesGrid"></div>
+          </div>
         </div>
       </div>
     </section>
@@ -120,6 +147,25 @@
             </select>
           </label>
           <div class="mini-note">Заголовок, слоган и низ КП зафиксированы по шаблону. Меняем картинку, фон и пакеты.</div>
+        </div>
+
+        <div class="card preset-card">
+          <div class="preset-title">ГОТОВЫЕ ПАКЕТЫ</div>
+          <div class="grid2">
+            <label>Тип
+              <select id="presetKind">
+                <option value="services">Услуги</option>
+                <option value="goods">Товары</option>
+              </select>
+            </label>
+            <label>Пакет
+              <select id="presetSelect"></select>
+            </label>
+          </div>
+          <div class="toolbar">
+            <button class="btn primary" id="applyPresetBtn">Применить</button>
+            <button class="btn" id="savePresetBtn">Сохранить текущий</button>
+          </div>
         </div>
 
         <div class="tabs" id="tabs"></div>
@@ -179,6 +225,34 @@
       hero: "assets/kp-layers/kp-hero-default.png",
       footer: "assets/kp-layers/kp-footer-layer.jpg"
     };
+    const NICHE_FOLDER = "КАРТИНКИ КП";
+    const NICHE_LIBRARY = {
+      goods: [
+        "Бизнес с Китаем.png",
+        "Бытовки Зима.png",
+        "Винтовые Сваи.png",
+        "Кухни Корпусная Мебель.png",
+        "Кухни Крым.png",
+        "Кухонные Столы.png",
+        "Павильоны для Бизнеса.png",
+        "Памятники - Надгробия.png",
+        "Пиломатериалы 1.png",
+        "Сыпучие Иркутск.png"
+      ],
+      services: [
+        "Гидроизоляция Фундамента.png",
+        "Заборы Питер.png",
+        "Каркасы - Нижний Новгород.png",
+        "Омск Строительство.png",
+        "Строительство - Женщина.png",
+        "Строительство Городской.png",
+        "Строительство Питер.png",
+        "Террасы МО - ВИП.png",
+        "Фундаментные Работы.png",
+        "Электрик.png"
+      ]
+    };
+    const PRESET_KEY = "avitolog_kp_package_presets_v1";
     const TEMPLATE = {
       heroTitle: "СТРАТЕГИИ ПРОДВИЖЕНИЯ",
       tagline: "ВЫГОДНО / БЫСТРО / НАДЕЖНО",
@@ -198,6 +272,8 @@
 
     const defaults = {
       bgChoice: "dark",
+      heroSrc: "",
+      heroName: "Террасы МО - ВИП",
       packages: [
         {
           on: true,
@@ -265,6 +341,14 @@
         }
       ]
     };
+    const DEFAULT_PRESETS = {
+      services: [
+        { name: "Универсальный 4 пакета", packages: clone(defaults.packages) }
+      ],
+      goods: [
+        { name: "Товары 4 пакета", packages: clone(defaults.packages) }
+      ]
+    };
 
     let state = loadState();
 
@@ -303,7 +387,7 @@
       images.bgClean = await loadImage(ASSETS.bgClean);
       images.bgReference = await loadImage(ASSETS.bgReference);
       images.bgPurple = await loadImage(ASSETS.bgPurple);
-      images.hero = await loadImage(customHeroSrc || ASSETS.hero);
+      images.hero = await loadImage(customHeroSrc || state.heroSrc || ASSETS.hero);
       images.footer = await loadImage(ASSETS.footer);
       renderForm();
       draw();
@@ -311,10 +395,64 @@
 
     function renderForm(){
       $("bgChoice").value = state.bgChoice || defaults.bgChoice;
+      renderNicheLibrary();
+      renderPresetSelect();
       renderTabs();
       renderPackageForm();
       renderZones();
       formReady = true;
+    }
+    function nichePath(file){
+      return `assets/kp-niches/${encodeURIComponent(NICHE_FOLDER)}/${encodeURIComponent(file)}`;
+    }
+    function cleanNicheName(file){
+      return file.replace(/\.[^.]+$/, "");
+    }
+    function emojiForNiche(name){
+      const lower = name.toLowerCase();
+      if (lower.includes("кух")) return "🍽️";
+      if (lower.includes("стро")) return "🏗️";
+      if (lower.includes("забор")) return "🧱";
+      if (lower.includes("фундамент") || lower.includes("сва")) return "🏠";
+      if (lower.includes("элект")) return "⚡";
+      if (lower.includes("террас")) return "🌿";
+      if (lower.includes("мебел") || lower.includes("стол")) return "🪑";
+      if (lower.includes("памят")) return "🪦";
+      if (lower.includes("кита")) return "📦";
+      return "📌";
+    }
+    function renderNicheLibrary(){
+      renderNicheGroup("goodsGrid", "goods");
+      renderNicheGroup("servicesGrid", "services");
+    }
+    function renderNicheGroup(gridId, kind){
+      const grid = $(gridId);
+      grid.innerHTML = "";
+      NICHE_LIBRARY[kind].forEach((file) => {
+        const name = cleanNicheName(file);
+        const src = nichePath(file);
+        const card = document.createElement("button");
+        card.type = "button";
+        card.className = "niche-card" + (state.heroSrc === src ? " active" : "");
+        card.innerHTML = `<img src="${src}" alt=""><span><span class="niche-name">${emojiForNiche(name)} ${name}</span><span class="niche-path">${kind === "goods" ? "Товары" : "Услуги"}</span></span>`;
+        card.addEventListener("click", () => selectNicheImage(src, name));
+        grid.appendChild(card);
+      });
+    }
+    async function selectNicheImage(src, name){
+      customHeroSrc = "";
+      state.heroSrc = src;
+      state.heroName = name;
+      images.hero = await loadImage(src);
+      renderNicheLibrary();
+      saveState();
+      draw();
+    }
+    function toggleNichePanels(force){
+      const open = force === undefined ? !$("goodsPanel").classList.contains("open") : force;
+      $("goodsPanel").classList.toggle("open", open);
+      $("servicesPanel").classList.toggle("open", open);
+      $("heroZone").classList.toggle("active", open);
     }
     function renderTabs(){
       tabsEl.innerHTML = "";
@@ -634,6 +772,53 @@
       renderForm();
       draw();
     }
+    function getPackagePresets(){
+      let saved = { services: [], goods: [] };
+      try {
+        saved = Object.assign(saved, JSON.parse(localStorage.getItem(PRESET_KEY) || "{}"));
+      } catch (e) {}
+      return {
+        services: DEFAULT_PRESETS.services.concat(saved.services || []),
+        goods: DEFAULT_PRESETS.goods.concat(saved.goods || [])
+      };
+    }
+    function renderPresetSelect(){
+      const kind = $("presetKind").value || "services";
+      const select = $("presetSelect");
+      const presets = getPackagePresets()[kind] || [];
+      select.innerHTML = "";
+      presets.forEach((preset, index) => {
+        const option = document.createElement("option");
+        option.value = String(index);
+        option.textContent = preset.name;
+        select.appendChild(option);
+      });
+    }
+    function applySelectedPreset(){
+      const kind = $("presetKind").value || "services";
+      const presets = getPackagePresets()[kind] || [];
+      const preset = presets[Number($("presetSelect").value || 0)];
+      if (!preset) return;
+      state.packages = clone(preset.packages);
+      selectedPackage = 0;
+      renderForm();
+      saveState();
+    }
+    function saveCurrentPreset(){
+      readGlobalForm();
+      const kind = $("presetKind").value || "services";
+      const rawName = prompt("Название готового пакета", kind === "goods" ? "Товары - новый пакет" : "Услуги - новый пакет");
+      const name = rawName && rawName.trim();
+      if (!name) return;
+      let saved = { services: [], goods: [] };
+      try {
+        saved = Object.assign(saved, JSON.parse(localStorage.getItem(PRESET_KEY) || "{}"));
+      } catch (e) {}
+      saved[kind] = saved[kind] || [];
+      saved[kind].push({ name, packages: clone(state.packages) });
+      localStorage.setItem(PRESET_KEY, JSON.stringify(saved));
+      renderPresetSelect();
+    }
 
     ["pkgOn","pkgIcon","pkgName","pkgLimit","pkgWork","pkgColor","pkgItems"].forEach((id) => {
       $(id).addEventListener("input", () => {
@@ -645,11 +830,18 @@
       $(id).addEventListener("change", draw);
     });
     $("bgChoice").addEventListener("change", draw);
+    $("heroZone").addEventListener("click", () => toggleNichePanels());
+    $("presetKind").addEventListener("change", renderPresetSelect);
+    $("applyPresetBtn").addEventListener("click", applySelectedPreset);
+    $("savePresetBtn").addEventListener("click", saveCurrentPreset);
     $("heroFile").addEventListener("change", async (event) => {
       const file = event.target.files && event.target.files[0];
       if (!file) return;
       customHeroSrc = URL.createObjectURL(file);
+      state.heroSrc = "";
+      state.heroName = file.name.replace(/\.[^.]+$/, "");
       images.hero = await loadImage(customHeroSrc);
+      saveState();
       draw();
     });
     $("downloadBtn").addEventListener("click", downloadPng);
