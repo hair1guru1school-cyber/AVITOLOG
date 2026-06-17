@@ -1264,7 +1264,8 @@
       } catch (e1) {}
     }
 
-    var composerOpen = !!d.kpComposerOpen;
+    // The integrated KP tab is the editor itself; no intermediate create screen.
+    var composerOpen = true;
     var nicheSelected = String(d.block2.nicheId || '').trim();
     var showHero = composerOpen && nicheSelected;
 
@@ -1344,6 +1345,7 @@
       '.kp-canva-toggle{min-width:190px}',
       '.kp-canva-toggle-hint{font-size:11px;color:var(--muted);opacity:.85}',
       '.kp-canva-section .kp-tpl-zones{margin-top:12px}',
+      'body.kp-tab .kp-generator{width:calc(100% - 24px);max-width:1480px!important;padding-left:12px;padding-right:12px}',
       '.kp-editor-embed-section{padding:0!important;overflow:hidden;border-color:rgba(0,217,126,.28)!important}',
       '.kp-editor-embed-section .kp-gen-label{padding:12px 14px 0}',
       '.kp-editor-embed{display:block;width:100%;height:calc(100vh - 150px);min-height:760px;border:0;background:#05080d;border-radius:8px}',
