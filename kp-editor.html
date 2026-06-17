@@ -31,7 +31,7 @@
     .logo{display:flex;align-items:center;gap:10px;color:#00ff9a;font-weight:900;letter-spacing:7px;font-size:22px}
     .logo-mark{width:30px;height:30px;border-radius:6px;background:#edf6ff;color:#0b1018;display:grid;place-items:center;letter-spacing:0;font-size:17px}
     .status{margin-left:auto;border:1px solid rgba(0,223,134,.42);background:rgba(0,223,134,.09);border-radius:8px;color:#8fffd0;padding:8px 12px;font-weight:900;font-size:12px}
-    .layout{display:grid;grid-template-columns:minmax(560px,1fr) 420px;gap:18px;padding:18px;align-items:start}
+    .layout{display:grid;grid-template-columns:minmax(860px,1fr) 420px;gap:18px;padding:18px;align-items:start}
     .panel{background:linear-gradient(180deg,rgba(16,23,34,.96),rgba(7,12,21,.98));border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden}
     .head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:13px 15px;border-bottom:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.025)}
     h1,h2,h3{margin:0}
@@ -44,12 +44,12 @@
     .btn.primary{background:linear-gradient(135deg,#00df86,#59ebff);color:#02100b;border:0}
     .btn.gold{background:linear-gradient(135deg,#ffd45f,#ff9b3f);color:#180b00;border:0}
     .btn.danger{background:rgba(255,92,138,.1);color:#ffadc5;border-color:rgba(255,92,138,.36)}
-    .stage-wrap{padding:14px;background:radial-gradient(circle at 50% 0,rgba(89,235,255,.09),transparent 28%),#03070d;display:grid;place-items:center}
-    .stage{position:relative;width:min(100%,820px)}
+    .stage-wrap{height:calc(100vh - 126px);min-height:620px;padding:14px;background:radial-gradient(circle at 50% 0,rgba(89,235,255,.09),transparent 28%),#03070d;display:grid;place-items:start center;overflow:auto}
+    .stage{position:relative;width:820px;min-width:820px}
     canvas{display:block;width:100%;height:auto;border-radius:8px;background:#05080d;box-shadow:0 20px 70px rgba(0,0,0,.68)}
     .click-zone{position:absolute;left:0;right:0;border:0;border-radius:8px;background:transparent!important;padding:0;appearance:none;-webkit-appearance:none;color:transparent}
-    .click-zone:hover{outline:1px dashed rgba(89,235,255,.65);outline-offset:-2px;background:transparent!important}
-    .click-zone.active{outline:2px dashed rgba(0,223,134,.85);outline-offset:-3px;box-shadow:none;background:transparent!important}
+    .click-zone:hover{outline:1px dashed rgba(89,235,255,.55);outline-offset:-2px;background:transparent!important}
+    .click-zone.active{outline:0;box-shadow:none;background:transparent!important}
     .editor{position:sticky;top:76px}
     .body{padding:14px;display:flex;flex-direction:column;gap:12px}
     .tabs{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
@@ -66,7 +66,8 @@
     .pill{display:inline-flex;align-items:center;height:27px;border-radius:999px;border:1px solid rgba(93,229,255,.18);background:rgba(89,235,255,.07);padding:0 9px;color:#cdeaff;font-weight:800;font-size:12px}
     .file-row input{padding:7px}
     .mini-note{color:#91a5bb;font-size:12px;line-height:1.35}
-    @media(max-width:1120px){.layout{grid-template-columns:1fr}.editor{position:static}.stage{width:min(100%,760px)}}
+    @media(max-width:1320px){.layout{grid-template-columns:1fr}.editor{position:static}.stage-wrap{height:calc(100vh - 126px)}}
+    @media(max-width:920px){.stage{width:760px;min-width:760px}}
     @media(max-width:680px){.layout{padding:10px}.top{position:static}.status{display:none}.logo{font-size:18px;letter-spacing:5px}.grid2{grid-template-columns:1fr}}
   </style>
 </head>
@@ -105,28 +106,14 @@
       <div class="body">
         <div class="card">
           <div class="row">
-            <span class="pill">Шапка</span>
+            <span class="pill">A4 1414×2000</span>
             <span class="pill">Source Sans Pro</span>
-            <span class="pill">4 пакета</span>
+            <span class="pill">Пакеты + картинка</span>
           </div>
-          <label>Заголовок
-            <input id="heroTitle" value="">
+          <label>Картинка шапки
+            <input id="heroFile" type="file" accept="image/*">
           </label>
-          <label>Слоган
-            <input id="tagline" value="">
-          </label>
-          <div class="grid2 file-row">
-            <label>Картинка шапки
-              <input id="heroFile" type="file" accept="image/*">
-            </label>
-            <label>Фон
-              <select id="bgMode">
-                <option value="dark">Темный оригинал</option>
-                <option value="clean">Светлее</option>
-                <option value="reference">Референс с шапкой</option>
-              </select>
-            </label>
-          </div>
+          <div class="mini-note">Заголовок, слоган, фон и низ КП зафиксированы по шаблону. Меняем только картинку и пакеты.</div>
         </div>
 
         <div class="tabs" id="tabs"></div>
@@ -163,22 +150,6 @@
           <div class="mini-note">Каждая строка с новой строки. Если начать строку с 🎁, она будет выглядеть как бонус. Обычные строки рисуются с синим маркером.</div>
         </div>
 
-        <div class="card">
-          <span class="pill">Низ КП</span>
-          <label>Дедлайн
-            <input id="deadline">
-          </label>
-          <label>Отзывы
-            <input id="reviews">
-          </label>
-          <label>Горящий бонус
-            <input id="bonus">
-          </label>
-          <label>Рассрочка
-            <input id="bank">
-          </label>
-        </div>
-
         <div class="toolbar">
           <button class="btn primary" id="saveBtn">Сохранить</button>
           <button class="btn" id="resetBtn">Сбросить</button>
@@ -192,13 +163,20 @@
   <script>
     const W = 1414;
     const H = 2000;
-    const LS_KEY = "avitolog_kp_editor_v2";
+    const LS_KEY = "avitolog_kp_editor_v3";
     const FONT = '"Source Sans 3","Source Sans Pro",Arial,sans-serif';
     const ASSETS = {
       bgDark: "assets/kp-layers/kp-bg-dark.jpg",
       bgClean: "assets/kp-layers/kp-bg-clean.jpg",
       bgReference: "assets/kp-layers/kp-reference-hero.jpg",
       hero: "assets/kp-layers/kp-hero-default.png"
+    };
+    const TEMPLATE = {
+      heroTitle: "СТРАТЕГИИ ПРОДВИЖЕНИЯ",
+      tagline: "ВЫГОДНО / БЫСТРО / НАДЕЖНО",
+      deadline: "Дедлайн по запуску в течение 10-15 дней",
+      reviews: "Отзывы отдельно за 1000 ₽ / шт",
+      bonus: "СГОРАЮЩИЙ БОНУС КП: при оплате пакетов СТАРТ в течение 24 часов бот автоответчик в подарок"
     };
     const canvas = document.getElementById("kpCanvas");
     const ctx = canvas.getContext("2d");
@@ -210,13 +188,6 @@
     let customHeroSrc = "";
 
     const defaults = {
-      heroTitle: "СТРАТЕГИИ ПРОДВИЖЕНИЯ",
-      tagline: "ВЫГОДНО / БЫСТРО / НАДЕЖНО",
-      bgMode: "dark",
-      deadline: "Дедлайн по запуску в течение 10-15 дней",
-      reviews: "Отзывы отдельно за 1000 ₽ / шт",
-      bonus: "СГОРАЮЩИЙ БОНУС КП: при оплате пакетов СТАРТ в течение 24 часов бот автоответчик в подарок",
-      bank: "РАССРОЧКА БАНК от 3 до 6 месяцев без %",
       packages: [
         {
           on: true,
@@ -321,13 +292,6 @@
     }
 
     function renderForm(){
-      $("heroTitle").value = state.heroTitle;
-      $("tagline").value = state.tagline;
-      $("bgMode").value = state.bgMode;
-      $("deadline").value = state.deadline;
-      $("reviews").value = state.reviews;
-      $("bonus").value = state.bonus;
-      $("bank").value = state.bank;
       renderTabs();
       renderPackageForm();
       renderZones();
@@ -374,13 +338,6 @@
       draw();
     }
     function readGlobalForm(){
-      state.heroTitle = $("heroTitle").value;
-      state.tagline = $("tagline").value;
-      state.bgMode = $("bgMode").value;
-      state.deadline = $("deadline").value;
-      state.reviews = $("reviews").value;
-      state.bonus = $("bonus").value;
-      state.bank = $("bank").value;
       readPackageForm();
     }
     function readPackageForm(){
@@ -409,13 +366,12 @@
       drawFooter();
     }
     function drawBackground(){
-      const bg = state.bgMode === "clean" ? images.bgClean : state.bgMode === "reference" ? images.bgReference : images.bgDark;
+      const bg = images.bgDark;
       if (bg) drawCover(bg, 0, 0, W, H);
       ctx.fillStyle = "rgba(0,0,0,.06)";
       ctx.fillRect(0, 0, W, H);
     }
     function drawHero(){
-      if (state.bgMode === "reference") return;
       const hero = images.hero;
       if (!hero) return;
       drawRoundedCover(hero, 60, 35, 1294, 760, 30);
@@ -434,9 +390,9 @@
       roundRect(540, 500, 345, 36, 18, true);
       ctx.fillStyle = "#fff";
       ctx.font = `900 43px ${FONT}`;
-      ctx.fillText(state.heroTitle.toUpperCase(), 758, 464);
+      ctx.fillText(TEMPLATE.heroTitle, 758, 464);
       ctx.font = `900 23px ${FONT}`;
-      ctx.fillText(state.tagline.toUpperCase(), 712, 527);
+      ctx.fillText(TEMPLATE.tagline, 712, 527);
       ctx.restore();
     }
     function packageY(){
@@ -485,12 +441,6 @@
         }
         lineY += 27 * Math.max(1, getWrappedLines(text, maxWidth, `400 25px ${FONT}`).length);
       });
-      if (selectedPackage === index) {
-        ctx.strokeStyle = "rgba(0,223,134,.85)";
-        ctx.lineWidth = 2;
-        ctx.setLineDash([10, 7]);
-        roundRect(48, y - 43, 1280, Math.max(150, lineY - y + 22), 14, false, true);
-      }
       ctx.restore();
     }
     function drawIcon(icon, x, y, color, index){
@@ -532,15 +482,15 @@
       roundRect(58, y, 525, 72, 8, true);
       ctx.fillStyle = "#fff";
       ctx.font = `900 25px ${FONT}`;
-      ctx.fillText(`◷ ${state.deadline}`, 75, y + 30);
+      ctx.fillText(`◷ ${TEMPLATE.deadline}`, 75, y + 30);
       ctx.font = `italic 400 22px ${FONT}`;
-      ctx.fillText(`★ ${state.reviews}`, 75, y + 58);
+      ctx.fillText(`★ ${TEMPLATE.reviews}`, 75, y + 58);
 
       ctx.fillStyle = "#fff";
       roundRect(615, y, 455, 72, 8, true);
       ctx.fillStyle = "#111";
       ctx.font = `900 20px ${FONT}`;
-      wrapText(`🔥 ${state.bonus} 🎁`, 633, y + 28, 420, 22, `900 20px ${FONT}`);
+      wrapText(`🔥 ${TEMPLATE.bonus} 🎁`, 633, y + 28, 420, 22, `900 20px ${FONT}`);
 
       const bankGrad = ctx.createLinearGradient(1110, y, 1328, y);
       bankGrad.addColorStop(0, "#fff3a1");
@@ -656,10 +606,6 @@
       draw();
     }
 
-    ["heroTitle","tagline","bgMode","deadline","reviews","bonus","bank"].forEach((id) => {
-      $(id).addEventListener("input", draw);
-      $(id).addEventListener("change", draw);
-    });
     ["pkgOn","pkgIcon","pkgName","pkgLimit","pkgWork","pkgColor","pkgItems"].forEach((id) => {
       $(id).addEventListener("input", () => {
         readPackageForm();
