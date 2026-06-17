@@ -113,7 +113,13 @@
           <label>Картинка шапки
             <input id="heroFile" type="file" accept="image/*">
           </label>
-          <div class="mini-note">Заголовок, слоган, фон и низ КП зафиксированы по шаблону. Меняем только картинку и пакеты.</div>
+          <label>Фон
+            <select id="bgChoice">
+              <option value="dark">Фон 1 - город</option>
+              <option value="purple">Фон 2 - фиолетовый город</option>
+            </select>
+          </label>
+          <div class="mini-note">Заголовок, слоган и низ КП зафиксированы по шаблону. Меняем картинку, фон и пакеты.</div>
         </div>
 
         <div class="tabs" id="tabs"></div>
@@ -163,12 +169,13 @@
   <script>
     const W = 1414;
     const H = 2000;
-    const LS_KEY = "avitolog_kp_editor_v7";
+    const LS_KEY = "avitolog_kp_editor_v8";
     const FONT = '"Source Sans 3","Source Sans Pro",Arial,sans-serif';
     const ASSETS = {
       bgDark: "assets/kp-layers/kp-bg-dark.jpg",
       bgClean: "assets/kp-layers/kp-bg-clean.jpg",
       bgReference: "assets/kp-layers/kp-reference-hero.jpg",
+      bgPurple: "assets/kp-layers/kp-bg-purple.jpg",
       hero: "assets/kp-layers/kp-hero-default.png",
       footer: "assets/kp-layers/kp-footer-layer.jpg"
     };
@@ -190,6 +197,7 @@
     let formReady = false;
 
     const defaults = {
+      bgChoice: "dark",
       packages: [
         {
           on: true,
@@ -294,6 +302,7 @@
       images.bgDark = await loadImage(ASSETS.bgDark);
       images.bgClean = await loadImage(ASSETS.bgClean);
       images.bgReference = await loadImage(ASSETS.bgReference);
+      images.bgPurple = await loadImage(ASSETS.bgPurple);
       images.hero = await loadImage(customHeroSrc || ASSETS.hero);
       images.footer = await loadImage(ASSETS.footer);
       renderForm();
@@ -301,6 +310,7 @@
     }
 
     function renderForm(){
+      $("bgChoice").value = state.bgChoice || defaults.bgChoice;
       renderTabs();
       renderPackageForm();
       renderZones();
@@ -348,6 +358,7 @@
       draw();
     }
     function readGlobalForm(){
+      state.bgChoice = $("bgChoice").value;
       readPackageForm();
     }
     function readPackageForm(){
@@ -376,7 +387,7 @@
       drawFooter();
     }
     function drawBackground(){
-      const bg = images.bgDark;
+      const bg = state.bgChoice === "purple" ? images.bgPurple : images.bgDark;
       if (bg) drawCover(bg, 0, 0, W, H);
       ctx.fillStyle = "rgba(0,0,0,.06)";
       ctx.fillRect(0, 0, W, H);
@@ -459,7 +470,7 @@
           ctx.font = `400 26px ${FONT}`;
           ctx.fillStyle = "#fff";
           ctx.fillText("🎁", 66, lineY);
-          wrapText(text, 96, lineY, maxWidth, 27, `400 25px ${FONT}`);
+          wrapText(text, 112, lineY, maxWidth - 16, 27, `400 25px ${FONT}`);
         } else {
           ctx.fillStyle = "#4fb8ff";
           ctx.font = `900 20px ${FONT}`;
@@ -633,6 +644,7 @@
       });
       $(id).addEventListener("change", draw);
     });
+    $("bgChoice").addEventListener("change", draw);
     $("heroFile").addEventListener("change", async (event) => {
       const file = event.target.files && event.target.files[0];
       if (!file) return;
