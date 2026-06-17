@@ -642,6 +642,34 @@
     a.href = t.editUrl || '#';
   }
 
+  function openCanvaTemplateById(id) {
+    var t = templateForDraft(id);
+    var url = t && t.editUrl ? String(t.editUrl || '').trim() : '';
+    if (!url || url === '#') return;
+    try { window.open(url, '_blank', 'noopener'); } catch (e) { window.location.href = url; }
+  }
+
+  function buildCanvaToggleHtml(d) {
+    var open = !!d.canvaTemplatesOpen;
+    return (
+      '<div class="kp-canva-toggle-row">' +
+      '<button type="button" class="kp-btn kp-btn-secondary kp-canva-toggle" id="kpCanvaToggle">' +
+      'Шаблоны Canva ' + (open ? '▲' : '▼') +
+      '</button>' +
+      '<span class="kp-canva-toggle-hint">ЛКМ — открыть Canva, ПКМ — настройки кнопки</span>' +
+      '</div>' +
+      (open ? buildTemplateZonesHtml(d) : '')
+    );
+  }
+
+  function buildEmbeddedEditorHtml() {
+    return (
+      '<div class="kp-gen-section kp-editor-embed-section">' +
+      '<div class="kp-gen-label">Расчет КП</div>' +
+      '<iframe class="kp-editor-embed" src="kp-editor.html?embedded=1" title="Редактор КП"></iframe>' +
+      '</div>'
+    );
+  }
   /** Одна строка: уменьшаем шрифт, пока текст помещается в ширину карточки */
   function fitKpTplCardLabels(root) {
     if (!root || !root.querySelectorAll) return;
@@ -886,7 +914,9 @@
     cards.forEach(function (c) {
       c.onclick = function (ev) {
         if (ev.button !== 0) return;
-        setTemplate(c.getAttribute('data-id'));
+        var id = c.getAttribute('data-id');
+        setTemplate(id);
+        openCanvaTemplateById(id);
       };
       c.oncontextmenu = function (ev) {
         ev.preventDefault();
@@ -1035,6 +1065,15 @@
     }
 
     syncOpenButton(mc, d.templateId || getFirstTemplateId());
+    var canvaToggle = mc.querySelector('#kpCanvaToggle');
+    if (canvaToggle) {
+      canvaToggle.onclick = function () {
+        var dd = loadDraft();
+        dd.canvaTemplatesOpen = !dd.canvaTemplatesOpen;
+        saveDraft(dd);
+        window.__showKpGenerator(mc);
+      };
+    }
     var createKpBtn = mc.querySelector('#kpCreateKpBtn');
     if (createKpBtn) {
       createKpBtn.onclick = function () {
@@ -1266,7 +1305,7 @@
           '</div>'
         : '';
 
-    var block2Html = composerOpen ? buildBlock2SectionHtml(d) : '';
+    var block2Html = composerOpen ? buildEmbeddedEditorHtml() : '';
     var tSel = templateForDraft(d.templateId);
     var actionsHtml = composerOpen
       ? '<div class="kp-gen-actions">' +
@@ -1284,9 +1323,8 @@
       '<div class="kp-gen-head">' +
       '<div class="kp-gen-title">Коммерческое предложение</div>' +
       '</div>' +
-      '<div class="kp-gen-section">' +
-      '<div class="kp-gen-label">ШАБЛОН CANVA</div>' +
-      buildTemplateZonesHtml(d) +
+      '<div class="kp-gen-section kp-canva-section">' +
+      buildCanvaToggleHtml(d) +
       '</div>' +
       createKpBlock +
       heroSectionHtml +
@@ -1297,5 +1335,22 @@
     wire(mc);
     fitKpTplCardLabels(mc);
   };
+  function ensureKpIntegratedStyles() {
+    if (document.getElementById('kpIntegratedStyles')) return;
+    var st = document.createElement('style');
+    st.id = 'kpIntegratedStyles';
+    st.textContent = [
+      '.kp-canva-toggle-row{display:flex;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap;padding:8px 0}',
+      '.kp-canva-toggle{min-width:190px}',
+      '.kp-canva-toggle-hint{font-size:11px;color:var(--muted);opacity:.85}',
+      '.kp-canva-section .kp-tpl-zones{margin-top:12px}',
+      '.kp-editor-embed-section{padding:0!important;overflow:hidden;border-color:rgba(0,217,126,.28)!important}',
+      '.kp-editor-embed-section .kp-gen-label{padding:12px 14px 0}',
+      '.kp-editor-embed{display:block;width:100%;height:calc(100vh - 150px);min-height:760px;border:0;background:#05080d;border-radius:8px}',
+      '@media(max-width:900px){.kp-editor-embed{height:780px;min-height:780px}}'
+    ].join('\n');
+    document.head.appendChild(st);
+  }
   window.__fitKpTplCardLabels = fitKpTplCardLabels;
+  ensureKpIntegratedStyles();
 })();

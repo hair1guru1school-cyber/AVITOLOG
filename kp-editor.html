@@ -92,9 +92,17 @@
     @media(max-width:1320px){.layout{min-width:1010px}.stage-wrap{height:calc(100vh - 126px)}}
     @media(max-width:920px){.stage{width:760px;min-width:760px}}
     @media(max-width:680px){.layout{padding:10px}.top{position:static}.status{display:none}.logo{font-size:18px;letter-spacing:5px}.grid2{grid-template-columns:1fr}}
+    body.embedded{overflow:hidden;background:#05080d}
+    body.embedded .top{display:none}
+    body.embedded .layout{height:100vh;padding:8px;grid-template-columns:minmax(430px,1fr) 7px 285px;gap:7px;min-width:0;min-height:0}
+    body.embedded .panel{min-height:0}
+    body.embedded .stage-wrap{height:calc(100vh - 74px)}
+    body.embedded .editor .body{height:calc(100vh - 84px)}
+    body.embedded .head h1{font-size:18px}
+    body.embedded .hint{font-size:11px}
   </style>
 </head>
-<body>
+<body><script>if(new URLSearchParams(location.search).get("embedded")==="1")document.body.classList.add("embedded");</script>
   <header class="top">
     <div class="logo"><span class="logo-mark">📊</span><span>AVITOBO$$</span></div>
     <div class="status">КП Lab - отдельная тестовая страница</div>
