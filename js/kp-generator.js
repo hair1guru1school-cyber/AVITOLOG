@@ -1324,13 +1324,13 @@
       '<div class="kp-gen-head">' +
       '<div class="kp-gen-title">Коммерческое предложение</div>' +
       '</div>' +
-      '<div class="kp-gen-section kp-canva-section">' +
-      buildCanvaToggleHtml(d) +
-      '</div>' +
       createKpBlock +
       heroSectionHtml +
       block2Html +
       actionsHtml +
+      '<div class="kp-gen-section kp-canva-section">' +
+      buildCanvaToggleHtml(d) +
+      '</div>' +
       '</div>';
 
     wire(mc);
@@ -1345,11 +1345,15 @@
       '.kp-canva-toggle{min-width:190px}',
       '.kp-canva-toggle-hint{font-size:11px;color:var(--muted);opacity:.85}',
       '.kp-canva-section .kp-tpl-zones{margin-top:12px}',
-      'body.kp-tab .kp-generator{width:calc(100% - 24px);max-width:1480px!important;padding-left:12px;padding-right:12px}',
+      'body.kp-tab .layout{grid-template-columns:0 minmax(0,1fr)}',
+      'body.kp-tab .sidebar{min-width:0;width:0;padding:0;overflow:hidden;border-right:0}',
+      'body.kp-tab .content-wrap{min-width:0}',
+      'body.kp-tab .kp-generator{width:calc(100% - 12px);max-width:none!important;margin:0 6px;padding:10px 0 28px}',
       '.kp-editor-embed-section{padding:0!important;overflow:hidden;border-color:rgba(0,217,126,.28)!important}',
       '.kp-editor-embed-section .kp-gen-label{padding:12px 14px 0}',
-      '.kp-editor-embed{display:block;width:100%;height:calc(100vh - 150px);min-height:760px;border:0;background:#05080d;border-radius:8px}',
-      '@media(max-width:900px){.kp-editor-embed{height:780px;min-height:780px}}'
+      '.kp-editor-embed{display:block;width:100%;height:1380px;min-height:calc(100vh - 110px);border:0;background:#05080d;border-radius:8px}',
+      '.kp-canva-section{margin-top:14px;padding:10px 0 2px}',
+      '@media(max-width:900px){.kp-editor-embed{height:1240px;min-height:1240px}}'
     ].join('\n');
     document.head.appendChild(st);
   }
