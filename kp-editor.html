@@ -6,535 +6,713 @@
   <title>AVITOBO$$ - редактор КП</title>
   <link rel="icon" href="favicon.png">
   <style>
+    @import url("https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;600;700;800;900&display=swap");
     :root{
-      --bg:#070b12;
+      --bg:#050911;
       --panel:#101722;
       --panel2:#151f2d;
-      --line:rgba(124,245,255,.18);
-      --text:#eef6ff;
-      --muted:#8fa4b8;
-      --cyan:#57e8ff;
-      --green:#00d97e;
-      --gold:#ffca55;
+      --line:rgba(93,229,255,.2);
+      --text:#edf6ff;
+      --muted:#8ea1b5;
+      --cyan:#59ebff;
+      --green:#00df86;
+      --gold:#ffc84f;
+      --orange:#ff9b3f;
       --red:#ff5c8a;
-      --orange:#ff9b45;
-      --shadow:0 18px 48px rgba(0,0,0,.45);
-      --r:8px;
+      --radius:8px;
+      --shadow:0 22px 70px rgba(0,0,0,.48);
     }
     *{box-sizing:border-box}
-    body{margin:0;background:radial-gradient(circle at 20% 0,rgba(87,232,255,.13),transparent 30%),linear-gradient(180deg,#08111e,#03060b 72%);color:var(--text);font-family:Inter,Arial,Helvetica,sans-serif;font-size:14px;min-height:100vh}
+    html,body{margin:0;min-height:100%;background:radial-gradient(circle at 15% 0,rgba(89,235,255,.14),transparent 32%),linear-gradient(180deg,#0a101b,#03060b 70%);color:var(--text);font-family:"Source Sans 3","Source Sans Pro",Arial,sans-serif}
+    body{font-size:15px}
     button,input,textarea,select{font:inherit}
-    button{border:0;cursor:pointer}
-    .top{height:58px;background:#121214;border-bottom:1px solid rgba(255,255,255,.08);display:flex;align-items:center;gap:14px;padding:0 18px;position:sticky;top:0;z-index:5}
-    .logo{display:flex;align-items:center;gap:10px;font-weight:900;letter-spacing:7px;color:#00ff9a;font-size:22px}
-    .logo-badge{width:30px;height:30px;border-radius:6px;background:#eef6ff;display:grid;place-items:center;letter-spacing:0;font-size:18px}
-    .top-title{margin-left:auto;border:1px solid rgba(0,217,126,.45);background:rgba(0,217,126,.08);color:#8affc7;border-radius:8px;padding:9px 13px;font-size:12px;font-weight:900}
-    .wrap{display:grid;grid-template-columns:minmax(360px,480px) minmax(520px,1fr);gap:18px;padding:18px;align-items:start}
-    .panel{background:linear-gradient(180deg,rgba(16,23,34,.96),rgba(8,13,22,.98));border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow);overflow:hidden}
-    .panel-head{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:14px 16px;border-bottom:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.02)}
+    button{cursor:pointer;border:0}
+    .top{height:58px;background:#121214;border-bottom:1px solid rgba(255,255,255,.08);display:flex;align-items:center;gap:16px;padding:0 18px;position:sticky;top:0;z-index:10}
+    .logo{display:flex;align-items:center;gap:10px;color:#00ff9a;font-weight:900;letter-spacing:7px;font-size:22px}
+    .logo-mark{width:30px;height:30px;border-radius:6px;background:#edf6ff;color:#0b1018;display:grid;place-items:center;letter-spacing:0;font-size:17px}
+    .status{margin-left:auto;border:1px solid rgba(0,223,134,.42);background:rgba(0,223,134,.09);border-radius:8px;color:#8fffd0;padding:8px 12px;font-weight:900;font-size:12px}
+    .layout{display:grid;grid-template-columns:minmax(560px,1fr) 420px;gap:18px;padding:18px;align-items:start}
+    .panel{background:linear-gradient(180deg,rgba(16,23,34,.96),rgba(7,12,21,.98));border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden}
+    .head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:13px 15px;border-bottom:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.025)}
     h1,h2,h3{margin:0}
-    h1{font-size:20px;color:var(--cyan);text-transform:uppercase;letter-spacing:.5px}
-    h2{font-size:13px;color:#d6e6ff;text-transform:uppercase;letter-spacing:.8px}
-    .hint{color:var(--muted);font-size:12px;line-height:1.45}
-    .content{padding:14px 16px;display:flex;flex-direction:column;gap:14px}
-    .grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-    label{display:flex;flex-direction:column;gap:6px;color:#b8c7d8;font-size:11px;font-weight:900;text-transform:uppercase;letter-spacing:.35px}
-    input,textarea,select{width:100%;border:1px solid rgba(124,245,255,.2);background:#07111c;color:#fff;border-radius:8px;padding:10px 11px;outline:none}
-    textarea{min-height:92px;resize:vertical;line-height:1.38}
-    input:focus,textarea:focus,select:focus{border-color:rgba(87,232,255,.65);box-shadow:0 0 0 3px rgba(87,232,255,.08)}
-    .btns{display:flex;gap:8px;flex-wrap:wrap}
-    .btn{height:38px;padding:0 13px;border-radius:8px;background:#152235;color:#dcecff;border:1px solid rgba(124,245,255,.18);font-weight:900;font-size:12px}
-    .btn:hover{border-color:rgba(87,232,255,.55);background:#19304a}
-    .btn.primary{background:linear-gradient(135deg,#00d97e,#57e8ff);color:#03100d;border:0}
-    .btn.gold{background:linear-gradient(135deg,#ffca55,#ff9b45);color:#170b00;border:0}
-    .btn.danger{background:rgba(255,92,138,.1);color:#ff9db9;border-color:rgba(255,92,138,.35)}
-    .section{border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.025);border-radius:8px;overflow:hidden}
-    .section summary{list-style:none;padding:12px 13px;font-weight:900;color:#cfeaff;border-bottom:1px solid rgba(255,255,255,.07);cursor:pointer}
-    .section summary::-webkit-details-marker{display:none}
-    .section-body{padding:12px;display:flex;flex-direction:column;gap:10px}
-    .pkg{border:1px solid rgba(124,245,255,.17);border-radius:8px;background:rgba(7,13,22,.72);padding:12px;display:flex;flex-direction:column;gap:10px}
-    .pkg-top{display:flex;align-items:center;gap:8px}
-    .pkg-top strong{font-size:13px;color:#fff}
-    .switch{display:inline-flex;align-items:center;gap:7px;text-transform:none;letter-spacing:0;font-size:12px;font-weight:800;color:#d4e7ff}
+    h1{font-size:21px;line-height:1;color:var(--cyan);font-weight:900;text-transform:uppercase;letter-spacing:.4px}
+    h2{font-size:13px;color:#d7e9ff;text-transform:uppercase;letter-spacing:.8px}
+    .hint{color:var(--muted);font-size:12px;line-height:1.35;margin-top:5px}
+    .toolbar,.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+    .btn{height:36px;border-radius:8px;padding:0 12px;background:#172438;color:#dcecff;border:1px solid rgba(93,229,255,.2);font-weight:900;font-size:12px}
+    .btn:hover{background:#1b3049;border-color:rgba(89,235,255,.55)}
+    .btn.primary{background:linear-gradient(135deg,#00df86,#59ebff);color:#02100b;border:0}
+    .btn.gold{background:linear-gradient(135deg,#ffd45f,#ff9b3f);color:#180b00;border:0}
+    .btn.danger{background:rgba(255,92,138,.1);color:#ffadc5;border-color:rgba(255,92,138,.36)}
+    .stage-wrap{padding:14px;background:radial-gradient(circle at 50% 0,rgba(89,235,255,.09),transparent 28%),#03070d;display:grid;place-items:center}
+    .stage{position:relative;width:min(100%,820px)}
+    canvas{display:block;width:100%;height:auto;border-radius:8px;background:#05080d;box-shadow:0 20px 70px rgba(0,0,0,.68)}
+    .click-zone{position:absolute;left:0;right:0;border:1px dashed transparent;border-radius:8px}
+    .click-zone:hover{border-color:rgba(89,235,255,.65);background:rgba(89,235,255,.04)}
+    .click-zone.active{border-color:rgba(0,223,134,.85);box-shadow:0 0 0 2px rgba(0,223,134,.12) inset}
+    .editor{position:sticky;top:76px}
+    .body{padding:14px;display:flex;flex-direction:column;gap:12px}
+    .tabs{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+    .tab{height:34px;border-radius:8px;border:1px solid rgba(93,229,255,.18);background:#111c2b;color:#bcd4ec;font-weight:900;font-size:12px}
+    .tab.active{background:rgba(0,223,134,.13);border-color:rgba(0,223,134,.62);color:#9dffd2}
+    label{display:flex;flex-direction:column;gap:5px;color:#b9c8d8;font-size:11px;font-weight:900;text-transform:uppercase;letter-spacing:.35px}
+    input,textarea,select{width:100%;border:1px solid rgba(93,229,255,.22);background:#07111d;color:#fff;border-radius:8px;padding:9px 10px;outline:none}
+    textarea{min-height:118px;resize:vertical;line-height:1.35}
+    input:focus,textarea:focus,select:focus{border-color:rgba(89,235,255,.72);box-shadow:0 0 0 3px rgba(89,235,255,.08)}
+    .grid2{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+    .card{border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.025);border-radius:8px;padding:11px;display:flex;flex-direction:column;gap:10px}
+    .switch{flex-direction:row;align-items:center;text-transform:none;letter-spacing:0;font-size:13px;color:#d6e7fa}
     .switch input{width:16px;height:16px;padding:0}
-    .pkg-actions{margin-left:auto;display:flex;gap:6px}
-    .mini{width:28px;height:28px;border-radius:7px;background:#1a2635;color:#bfeaff;border:1px solid rgba(124,245,255,.2)}
-    .preview-panel{position:sticky;top:76px}
-    .preview-toolbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-    .canvas-shell{padding:14px;display:grid;place-items:center;background:radial-gradient(circle at 50% 0,rgba(87,232,255,.08),transparent 28%),#03070d}
-    canvas{width:min(100%,720px);height:auto;border-radius:8px;box-shadow:0 16px 50px rgba(0,0,0,.6);background:#05080d}
-    .prompt-box{font-family:Consolas,monospace;font-size:12px;color:#d8ecff;background:#06101c}
-    .pill-row{display:flex;gap:8px;flex-wrap:wrap}
-    .pill{border:1px solid rgba(124,245,255,.2);background:rgba(87,232,255,.07);border-radius:999px;color:#cfeaff;padding:7px 10px;font-size:12px;font-weight:800}
-    @media(max-width:1050px){.wrap{grid-template-columns:1fr}.preview-panel{position:static}.top{position:static}.logo{font-size:18px;letter-spacing:5px}}
-    @media(max-width:620px){.wrap{padding:10px}.grid{grid-template-columns:1fr}.top-title{display:none}}
+    .pill{display:inline-flex;align-items:center;height:27px;border-radius:999px;border:1px solid rgba(93,229,255,.18);background:rgba(89,235,255,.07);padding:0 9px;color:#cdeaff;font-weight:800;font-size:12px}
+    .file-row input{padding:7px}
+    .mini-note{color:#91a5bb;font-size:12px;line-height:1.35}
+    @media(max-width:1120px){.layout{grid-template-columns:1fr}.editor{position:static}.stage{width:min(100%,760px)}}
+    @media(max-width:680px){.layout{padding:10px}.top{position:static}.status{display:none}.logo{font-size:18px;letter-spacing:5px}.grid2{grid-template-columns:1fr}}
   </style>
 </head>
 <body>
   <header class="top">
-    <div class="logo"><span class="logo-badge">📊</span><span>AVITOBO$$</span></div>
-    <div class="top-title">КП Lab - отдельная тестовая страница</div>
+    <div class="logo"><span class="logo-mark">📊</span><span>AVITOBO$$</span></div>
+    <div class="status">КП Lab - отдельная тестовая страница</div>
   </header>
 
-  <main class="wrap">
+  <main class="layout">
     <section class="panel">
-      <div class="panel-head">
+      <div class="head">
         <div>
           <h1>Редактор КП</h1>
-          <div class="hint">Собираем коммерческое в отдельном листе. Основную систему не трогаем.</div>
+          <div class="hint">Формат 1414×2000. Клик по пакету на картине выбирает его для редактирования.</div>
         </div>
-      </div>
-      <div class="content">
-        <details class="section" open>
-          <summary>1. Обложка и ниша</summary>
-          <div class="section-body">
-            <div class="grid">
-              <label>Ниша / проект
-                <input id="niche" value="Строительство домов">
-              </label>
-              <label>Подпись под заголовком
-                <input id="subtitle" value="АВИТОЛОГ">
-              </label>
-            </div>
-            <label>Заголовок на картинке
-              <input id="heroTitle" value="СТРАТЕГИИ ПРОДВИЖЕНИЯ">
-            </label>
-            <label>Слоган
-              <input id="tagline" value="ВЫГОДНО / БЫСТРО / НАДЕЖНО">
-            </label>
-            <div class="grid">
-              <label>Картинка URL
-                <input id="imageUrl" value="assets/kp-sample-houses.jpg">
-              </label>
-              <label>Загрузить картинку
-                <input id="imageFile" type="file" accept="image/*">
-              </label>
-            </div>
-            <label>Промпт для генерации фона/героя
-              <textarea id="imagePrompt" class="prompt-box"></textarea>
-            </label>
-            <div class="btns">
-              <button class="btn" id="buildPromptBtn">Собрать промпт</button>
-              <button class="btn" id="copyPromptBtn">Скопировать промпт</button>
-              <button class="btn" id="loadImageBtn">Обновить картинку</button>
-            </div>
-          </div>
-        </details>
-
-        <details class="section" open>
-          <summary>2. Пакеты продвижения</summary>
-          <div class="section-body">
-            <div class="pill-row">
-              <span class="pill">Можно 1-4 пакета</span>
-              <span class="pill">Цена работы - главный акцент</span>
-            </div>
-            <div id="packages"></div>
-            <div class="btns">
-              <button class="btn primary" id="addPackageBtn">+ пакет</button>
-              <button class="btn" id="templateBtn">Шаблон 4 пакета</button>
-            </div>
-          </div>
-        </details>
-
-        <details class="section" open>
-          <summary>3. Низ КП</summary>
-          <div class="section-body">
-            <div class="grid">
-              <label>Дедлайн
-                <input id="deadline" value="Дедлайн по запуску в течение 10-15 дней">
-              </label>
-              <label>Отзывы
-                <input id="reviews" value="Отзывы отдельно за 1000 ₽ / шт">
-              </label>
-            </div>
-            <label>Бонус
-              <input id="bonus" value="СГОРАЮЩИЙ БОНУС КП: при оплате пакетов СТАРТ в течение 24 часов бот автоответчик в подарок">
-            </label>
-            <label>Рассрочка / банк
-              <input id="bank" value="РАССРОЧКА БАНК от 3 до 6 месяцев без %">
-            </label>
-            <div class="btns">
-              <button class="btn primary" id="saveBtn">Сохранить</button>
-              <button class="btn" id="resetBtn">Сбросить</button>
-            </div>
-          </div>
-        </details>
-      </div>
-    </section>
-
-    <section class="panel preview-panel">
-      <div class="panel-head">
-        <div>
-          <h2>Предпросмотр</h2>
-          <div class="hint">Canvas 1080x1600. Экспортируется как PNG.</div>
-        </div>
-        <div class="preview-toolbar">
+        <div class="toolbar">
           <button class="btn gold" id="downloadBtn">Скачать PNG</button>
           <button class="btn" id="copyTextBtn">Текст КП</button>
         </div>
       </div>
-      <div class="canvas-shell">
-        <canvas id="kpCanvas" width="1080" height="1600"></canvas>
+      <div class="stage-wrap">
+        <div class="stage" id="stage">
+          <canvas id="kpCanvas" width="1414" height="2000"></canvas>
+        </div>
       </div>
     </section>
+
+    <aside class="panel editor">
+      <div class="head">
+        <div>
+          <h2>Поля на КП</h2>
+          <div class="hint">Меняем только данные, сетка остается как в шаблоне.</div>
+        </div>
+      </div>
+      <div class="body">
+        <div class="card">
+          <div class="row">
+            <span class="pill">Шапка</span>
+            <span class="pill">Source Sans Pro</span>
+            <span class="pill">4 пакета</span>
+          </div>
+          <label>Заголовок
+            <input id="heroTitle" value="">
+          </label>
+          <label>Слоган
+            <input id="tagline" value="">
+          </label>
+          <div class="grid2 file-row">
+            <label>Картинка шапки
+              <input id="heroFile" type="file" accept="image/*">
+            </label>
+            <label>Фон
+              <select id="bgMode">
+                <option value="dark">Темный оригинал</option>
+                <option value="clean">Светлее</option>
+                <option value="reference">Референс с шапкой</option>
+              </select>
+            </label>
+          </div>
+        </div>
+
+        <div class="tabs" id="tabs"></div>
+
+        <div class="card" id="packageEditor">
+          <label class="switch"><input id="pkgOn" type="checkbox"> Показывать пакет</label>
+          <div class="grid2">
+            <label>Иконка
+              <input id="pkgIcon">
+            </label>
+            <label>Название
+              <input id="pkgName">
+            </label>
+          </div>
+          <label>Количество объявлений
+            <input id="pkgLimit">
+          </label>
+          <div class="grid2">
+            <label>Работа авитолога
+              <input id="pkgWork">
+            </label>
+            <label>Цвет плашки
+              <input id="pkgColor" type="color">
+            </label>
+          </div>
+          <label>Строки пакета
+            <textarea id="pkgItems"></textarea>
+          </label>
+          <div class="toolbar">
+            <button class="btn primary" id="addGiftBtn">+ бонус</button>
+            <button class="btn" id="addLineBtn">+ строка</button>
+            <button class="btn danger" id="clearLinesBtn">Очистить строки</button>
+          </div>
+          <div class="mini-note">Каждая строка с новой строки. Если начать строку с 🎁, она будет выглядеть как бонус. Обычные строки рисуются с синим маркером.</div>
+        </div>
+
+        <div class="card">
+          <span class="pill">Низ КП</span>
+          <label>Дедлайн
+            <input id="deadline">
+          </label>
+          <label>Отзывы
+            <input id="reviews">
+          </label>
+          <label>Горящий бонус
+            <input id="bonus">
+          </label>
+          <label>Рассрочка
+            <input id="bank">
+          </label>
+        </div>
+
+        <div class="toolbar">
+          <button class="btn primary" id="saveBtn">Сохранить</button>
+          <button class="btn" id="resetBtn">Сбросить</button>
+          <button class="btn" id="template3Btn">3 пакета</button>
+          <button class="btn" id="template4Btn">4 пакета</button>
+        </div>
+      </div>
+    </aside>
   </main>
 
   <script>
-    const LS_KEY = 'avitolog_kp_editor_v1';
-    const canvas = document.getElementById('kpCanvas');
-    const ctx = canvas.getContext('2d');
-    const packagesEl = document.getElementById('packages');
-    let heroImage = new Image();
-    heroImage.crossOrigin = 'anonymous';
-    let heroReady = false;
+    const W = 1414;
+    const H = 2000;
+    const LS_KEY = "avitolog_kp_editor_v2";
+    const FONT = '"Source Sans 3","Source Sans Pro",Arial,sans-serif';
+    const ASSETS = {
+      bgDark: "assets/kp-layers/kp-bg-dark.jpg",
+      bgClean: "assets/kp-layers/kp-bg-clean.jpg",
+      bgReference: "assets/kp-layers/kp-reference-hero.jpg",
+      hero: "assets/kp-layers/kp-hero-default.png"
+    };
+    const canvas = document.getElementById("kpCanvas");
+    const ctx = canvas.getContext("2d");
+    const stage = document.getElementById("stage");
+    const tabsEl = document.getElementById("tabs");
+    const images = {};
+    const hitZones = [];
+    let selectedPackage = 0;
+    let customHeroSrc = "";
 
     const defaults = {
-      niche: 'Строительство домов',
-      subtitle: 'АВИТОЛОГ',
-      heroTitle: 'СТРАТЕГИИ ПРОДВИЖЕНИЯ',
-      tagline: 'ВЫГОДНО / БЫСТРО / НАДЕЖНО',
-      imageUrl: 'assets/kp-sample-houses.jpg',
-      deadline: 'Дедлайн по запуску в течение 10-15 дней',
-      reviews: 'Отзывы отдельно за 1000 ₽ / шт',
-      bonus: 'СГОРАЮЩИЙ БОНУС КП: при оплате пакетов СТАРТ в течение 24 часов бот автоответчик в подарок',
-      bank: 'РАССРОЧКА БАНК от 3 до 6 месяцев без %',
+      heroTitle: "СТРАТЕГИИ ПРОДВИЖЕНИЯ",
+      tagline: "ВЫГОДНО / БЫСТРО / НАДЕЖНО",
+      bgMode: "dark",
+      deadline: "Дедлайн по запуску в течение 10-15 дней",
+      reviews: "Отзывы отдельно за 1000 ₽ / шт",
+      bonus: "СГОРАЮЩИЙ БОНУС КП: при оплате пакетов СТАРТ в течение 24 часов бот автоответчик в подарок",
+      bank: "РАССРОЧКА БАНК от 3 до 6 месяцев без %",
       packages: [
-        {on:true, icon:'©', limit:'До 150 объявлений', name:'СТАРТ', work:'35 000 ₽', badge:'#2134a8', items:['Создание файла автозагрузки / ручной постинг на 50 карточек на 30 дней','Создание TOP текстов: заголовков, офферов, призывов, SEO до 7000 символов','Создание дизайна: упаковки аккаунта, логотипа, инфографики в карточках','Запуск рекламы, модерирование в течение 1 месяца, общение с ТП','3 000 ₽ тариф Авито Бизнес + 19 000 ₽ аванс на просмотры = 23к','Полная инфографика на все карточки - до 3 картинок в карточке','Дизайн магазина для расширенного бизнес тарифа Авито: 1 ПК и 1 моб баннер']},
-        {on:true, icon:'M', limit:'До 350 объявлений', name:'МИДЛ', work:'47 000 ₽', badge:'#7b6420', items:['6 000 ₽ тариф Авито Бизнес + 19 000 ₽ аванс на просмотры = 25к','Дизайн магазина для MAX. бизнес тарифа Авито: 6 баннеров ПК+моб версии','Полная инфографика на все карточки до 5-й картинки в карточке','Подключение автоответа с воронкой в ваш ТГ-бот / канал','+18 дней ведения рекламы и актива в аккаунте']},
-        {on:true, icon:'⚭', limit:'До 700 объявлений', name:'ОПТИМА', work:'56 000 ₽', badge:'#302483', items:['6 000 ₽ тариф Авито Бизнес + 29 000 ₽ аванс на просмотры = 35к','Дизайн магазина для MAX. бизнес тарифа Авито: 6 баннеров ПК+моб версии','Полная инфографика на все карточки до 8-й картинки в карточке','Подключение автоответа с воронкой в ваш ТГ-бот / канал','+30 дней ведения рекламы и актива в аккаунте']},
-        {on:true, icon:'A', limit:'Без ограничений кол-во объявлений', name:'АЛЬФА', work:'75 000 ₽', badge:'#585858', items:['Дизайн магазина для MAX. бизнес тарифа: 3 баннера ПК и 3 баннера моб версии','Полная инфографика на все карточки с глубокой проработкой до 10 / 15','Скрипты продаж для вашей ниши + анализ аватаров ЦА и ресерч в PDF','Подключение автоответа с воронкой в ваш ТГ-бот / канал + бонус закреп в ТГ','+45 дней ведения рекламы и актива в аккаунте']}
+        {
+          on: true,
+          icon: "©",
+          limit: "До 250 объявлений",
+          name: "СТАРТ",
+          work: "35 000 ₽",
+          color: "#232a96",
+          items: [
+            "35 000 ₽ = работа Авитолога (оплачивается сразу)",
+            "Создание файла автозагрузки / ручной постинг на 250 карточек на 30 дней",
+            "Создание TOP текстов: заголовков, офферов, призывов, SEO, до 7000 символов (max)",
+            "Создание дизайна: упаковки аккаунты, логотипа, инфографики в карточках",
+            "Запуск рекламы, модерирование в теч 1 месяца, общение с ТП",
+            "Анализ данных и оптимизация дальнейшего продвижения",
+            "🎁 Полная инфографика на все карточки - до 3 картинки в карточке",
+            "🎁 Дизайн магазина для РАСШИР бизнес тарифа Авито: 1 ПК и 1 Моб баннеры"
+          ]
+        },
+        {
+          on: true,
+          icon: "M",
+          limit: "До 500 объявлений",
+          name: "МИДЛ",
+          work: "44 000 ₽",
+          color: "#6b5a19",
+          items: [
+            "44 000 ₽ = работа",
+            "🎁 Дизайн магазина для MAX. бизнес тарифа Авито: 6 баннеров ПК+Моб версии",
+            "🎁 Полная инфографика на все карточки до 5-й картинки в карточке",
+            "🎁 Подключение автоответа с воронкой в Ваш ТГ - БОТ / Канал",
+            "🎁 +18 дней ведения рекламы и актива в аккаунте"
+          ]
+        },
+        {
+          on: true,
+          icon: "⚭",
+          limit: "До 1500 объявлений",
+          name: "ОПТИМА",
+          work: "56 000 ₽",
+          color: "#2b247f",
+          items: [
+            "56 000 ₽ = работа",
+            "🎁 Дизайн магазина для MAX. бизнес тарифа Авито: 6 баннеров ПК+Моб версии",
+            "🎁 Полная инфографика на все карточки до 8-й картинки в карточке",
+            "🎁 Подключение автоответа с воронкой в Ваш ТГ - БОТ / Канал",
+            "🎁 +30 дней ведения рекламы и актива в аккаунте"
+          ]
+        },
+        {
+          on: true,
+          icon: "A",
+          limit: "Без ограничений кол-во объявлений",
+          name: "АЛЬФА",
+          work: "64 000 ₽",
+          color: "#595959",
+          items: [
+            "64 000 ₽ = работа Авитолога",
+            "🎁 Дизайн магазина для MAX. бизнес тарифа: 3 баннера ПК и 3 баннера Моб версии",
+            "🎁 Полная инфографика на все карточки с глубокой проработкой до 10 / 15",
+            "🎁 Скрипты продаж для вашей ниши + анализ аватаров ЦА и ресерч в PDF",
+            "🎁 Подключение автоответа с воронкой в Ваш ТГ - БОТ / Канал + бонус Закреп в ТГ",
+            "🎁 +45 дней ведения рекламы и актива в аккаунте"
+          ]
+        }
       ]
     };
 
     let state = loadState();
 
     function $(id){ return document.getElementById(id); }
+    function clone(value){ return JSON.parse(JSON.stringify(value)); }
     function loadState(){
       try {
-        const saved = JSON.parse(localStorage.getItem(LS_KEY) || 'null');
-        return saved && saved.packages ? Object.assign({}, defaults, saved) : JSON.parse(JSON.stringify(defaults));
-      } catch(e) {
-        return JSON.parse(JSON.stringify(defaults));
+        const saved = JSON.parse(localStorage.getItem(LS_KEY) || "null");
+        return saved && saved.packages ? Object.assign(clone(defaults), saved) : clone(defaults);
+      } catch (e) {
+        return clone(defaults);
       }
     }
-    function saveState(){ localStorage.setItem(LS_KEY, JSON.stringify(readStateFromForm())); }
-    function escapeHtml(s){ return String(s||'').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
-    function moneyText(s){ return String(s||'').trim(); }
-
-    function syncForm(){
-      ['niche','subtitle','heroTitle','tagline','imageUrl','deadline','reviews','bonus','bank'].forEach(id => { $(id).value = state[id] || ''; });
-      buildPrompt();
-      renderPackages();
-      loadHeroImage(state.imageUrl);
+    function saveState(){
+      readGlobalForm();
+      localStorage.setItem(LS_KEY, JSON.stringify(state));
+      draw();
     }
-
-    function readStateFromForm(){
-      return {
-        niche:$('niche').value.trim(),
-        subtitle:$('subtitle').value.trim(),
-        heroTitle:$('heroTitle').value.trim(),
-        tagline:$('tagline').value.trim(),
-        imageUrl:$('imageUrl').value.trim(),
-        deadline:$('deadline').value.trim(),
-        reviews:$('reviews').value.trim(),
-        bonus:$('bonus').value.trim(),
-        bank:$('bank').value.trim(),
-        packages: readPackages()
-      };
-    }
-
-    function readPackages(){
-      return Array.from(packagesEl.querySelectorAll('.pkg')).map(pkg => ({
-        on: pkg.querySelector('[data-f="on"]').checked,
-        icon: pkg.querySelector('[data-f="icon"]').value.trim(),
-        limit: pkg.querySelector('[data-f="limit"]').value.trim(),
-        name: pkg.querySelector('[data-f="name"]').value.trim(),
-        work: pkg.querySelector('[data-f="work"]').value.trim(),
-        badge: pkg.querySelector('[data-f="badge"]').value,
-        items: pkg.querySelector('[data-f="items"]').value.split('\n').map(x => x.trim()).filter(Boolean)
-      }));
-    }
-
-    function renderPackages(){
-      packagesEl.innerHTML = state.packages.map((p,i) => `
-        <div class="pkg" data-index="${i}">
-          <div class="pkg-top">
-            <label class="switch"><input type="checkbox" data-f="on" ${p.on ? 'checked' : ''}> показывать</label>
-            <strong>${i + 1}. ${escapeHtml(p.name || 'Пакет')}</strong>
-            <div class="pkg-actions">
-              <button class="mini" data-act="up" title="Выше">↑</button>
-              <button class="mini" data-act="down" title="Ниже">↓</button>
-              <button class="mini" data-act="remove" title="Удалить">×</button>
-            </div>
-          </div>
-          <div class="grid">
-            <label>Иконка<input data-f="icon" value="${escapeHtml(p.icon)}"></label>
-            <label>Цвет бейджа<input data-f="badge" type="color" value="${escapeHtml(p.badge || '#2134a8')}"></label>
-            <label>Лимит<input data-f="limit" value="${escapeHtml(p.limit)}"></label>
-            <label>Название<input data-f="name" value="${escapeHtml(p.name)}"></label>
-            <label>Цена работы<input data-f="work" value="${escapeHtml(p.work)}"></label>
-          </div>
-          <label>Пункты пакета<textarea data-f="items">${escapeHtml((p.items || []).join('\n'))}</textarea></label>
-        </div>
-      `).join('');
-    }
-
-    function loadHeroImage(src){
-      heroReady = false;
-      if (!src) { draw(); return; }
-      heroImage = new Image();
-      heroImage.crossOrigin = 'anonymous';
-      heroImage.onload = () => { heroReady = true; draw(); };
-      heroImage.onerror = () => { heroReady = false; draw(); };
-      heroImage.src = src;
-    }
-
-    function roundRect(x,y,w,h,r){
-      ctx.beginPath();
-      ctx.moveTo(x+r,y);
-      ctx.arcTo(x+w,y,x+w,y+h,r);
-      ctx.arcTo(x+w,y+h,x,y+h,r);
-      ctx.arcTo(x,y+h,x,y,r);
-      ctx.arcTo(x,y,x+w,y,r);
-      ctx.closePath();
-    }
-
-    function fillRound(x,y,w,h,r,fill,stroke){
-      roundRect(x,y,w,h,r);
-      ctx.fillStyle = fill;
-      ctx.fill();
-      if (stroke) { ctx.strokeStyle = stroke; ctx.lineWidth = 2; ctx.stroke(); }
-    }
-
-    function drawCoverImage(img,x,y,w,h){
-      if (!heroReady) {
-        const g = ctx.createLinearGradient(x,y,x+w,y+h);
-        g.addColorStop(0,'#15344a'); g.addColorStop(.5,'#805f2c'); g.addColorStop(1,'#08101c');
-        ctx.fillStyle = g; ctx.fillRect(x,y,w,h);
-        ctx.fillStyle = 'rgba(255,255,255,.12)';
-        for(let i=0;i<12;i++) ctx.fillRect(x + i*95, y + 220 + (i%3)*45, 58, 320);
-        return;
-      }
-      const ir = img.width / img.height;
-      const rr = w / h;
-      let sx=0, sy=0, sw=img.width, sh=img.height;
-      if (ir > rr) { sw = img.height * rr; sx = (img.width - sw) / 2; }
-      else {
-        sh = img.width / rr;
-        sy = 0;
-      }
-      ctx.drawImage(img, sx, sy, sw, sh, x, y, w, h);
-    }
-
-    function wrapText(text,x,y,maxWidth,lineHeight,maxLines){
-      const words = String(text||'').split(/\s+/).filter(Boolean);
-      let line = '', lines = [];
-      words.forEach(word => {
-        const test = line ? line + ' ' + word : word;
-        if (ctx.measureText(test).width > maxWidth && line) { lines.push(line); line = word; }
-        else line = test;
+    function loadImage(src){
+      return new Promise((resolve) => {
+        const img = new Image();
+        img.crossOrigin = "anonymous";
+        img.onload = () => resolve(img);
+        img.onerror = () => resolve(null);
+        img.src = src;
       });
-      if (line) lines.push(line);
-      if (maxLines && lines.length > maxLines) {
-        lines = lines.slice(0,maxLines);
-        lines[lines.length-1] = lines[lines.length-1].replace(/[.,;:]?$/,'') + '...';
-      }
-      lines.forEach((l,i) => ctx.fillText(l,x,y+i*lineHeight));
-      return y + lines.length * lineHeight;
+    }
+    async function preload(){
+      images.bgDark = await loadImage(ASSETS.bgDark);
+      images.bgClean = await loadImage(ASSETS.bgClean);
+      images.bgReference = await loadImage(ASSETS.bgReference);
+      images.hero = await loadImage(customHeroSrc || ASSETS.hero);
+      renderForm();
+      draw();
+    }
+
+    function renderForm(){
+      $("heroTitle").value = state.heroTitle;
+      $("tagline").value = state.tagline;
+      $("bgMode").value = state.bgMode;
+      $("deadline").value = state.deadline;
+      $("reviews").value = state.reviews;
+      $("bonus").value = state.bonus;
+      $("bank").value = state.bank;
+      renderTabs();
+      renderPackageForm();
+      renderZones();
+    }
+    function renderTabs(){
+      tabsEl.innerHTML = "";
+      state.packages.forEach((pkg, index) => {
+        const btn = document.createElement("button");
+        btn.className = "tab" + (index === selectedPackage ? " active" : "");
+        btn.textContent = `${index + 1}. ${pkg.name || "Пакет"}`;
+        btn.addEventListener("click", () => selectPackage(index));
+        tabsEl.appendChild(btn);
+      });
+    }
+    function renderPackageForm(){
+      const pkg = state.packages[selectedPackage];
+      $("pkgOn").checked = !!pkg.on;
+      $("pkgIcon").value = pkg.icon || "";
+      $("pkgName").value = pkg.name || "";
+      $("pkgLimit").value = pkg.limit || "";
+      $("pkgWork").value = pkg.work || "";
+      $("pkgColor").value = normalizeColor(pkg.color || "#24308f");
+      $("pkgItems").value = (pkg.items || []).join("\n");
+    }
+    function renderZones(){
+      stage.querySelectorAll(".click-zone").forEach((el) => el.remove());
+      packageY().forEach((y, index) => {
+        const zone = document.createElement("button");
+        zone.type = "button";
+        zone.className = "click-zone" + (index === selectedPackage ? " active" : "");
+        zone.style.top = `${(y - 20) / H * 100}%`;
+        zone.style.height = `${220 / H * 100}%`;
+        zone.setAttribute("aria-label", `Пакет ${index + 1}`);
+        zone.addEventListener("click", () => selectPackage(index));
+        stage.appendChild(zone);
+      });
+    }
+    function selectPackage(index){
+      readPackageForm();
+      selectedPackage = index;
+      renderTabs();
+      renderPackageForm();
+      renderZones();
+      draw();
+    }
+    function readGlobalForm(){
+      state.heroTitle = $("heroTitle").value;
+      state.tagline = $("tagline").value;
+      state.bgMode = $("bgMode").value;
+      state.deadline = $("deadline").value;
+      state.reviews = $("reviews").value;
+      state.bonus = $("bonus").value;
+      state.bank = $("bank").value;
+      readPackageForm();
+    }
+    function readPackageForm(){
+      const pkg = state.packages[selectedPackage];
+      if (!pkg) return;
+      pkg.on = $("pkgOn").checked;
+      pkg.icon = $("pkgIcon").value;
+      pkg.name = $("pkgName").value;
+      pkg.limit = $("pkgLimit").value;
+      pkg.work = $("pkgWork").value;
+      pkg.color = $("pkgColor").value;
+      pkg.items = $("pkgItems").value.split("\n").map((line) => line.trim()).filter(Boolean);
+    }
+    function normalizeColor(color){
+      if (/^#[0-9a-f]{6}$/i.test(color)) return color;
+      return "#24308f";
     }
 
     function draw(){
-      const data = readStateFromForm();
-      ctx.clearRect(0,0,1080,1600);
-      ctx.fillStyle = '#050912';
-      ctx.fillRect(0,0,1080,1600);
+      readGlobalForm();
+      ctx.clearRect(0, 0, W, H);
+      drawBackground();
+      drawHero();
+      drawHeroText();
+      drawPackages();
+      drawFooter();
+    }
+    function drawBackground(){
+      const bg = state.bgMode === "clean" ? images.bgClean : state.bgMode === "reference" ? images.bgReference : images.bgDark;
+      if (bg) drawCover(bg, 0, 0, W, H);
+      ctx.fillStyle = "rgba(0,0,0,.06)";
+      ctx.fillRect(0, 0, W, H);
+    }
+    function drawHero(){
+      if (state.bgMode === "reference") return;
+      const hero = images.hero;
+      if (!hero) return;
+      drawRoundedCover(hero, 60, 35, 1294, 760, 30);
+      const grad = ctx.createLinearGradient(0, 540, 0, 815);
+      grad.addColorStop(0, "rgba(0,0,0,0)");
+      grad.addColorStop(1, "rgba(0,0,0,.28)");
+      ctx.fillStyle = grad;
+      roundedPath(60, 35, 1294, 760, 30);
+      ctx.fill();
+    }
+    function drawHeroText(){
+      ctx.save();
+      ctx.textAlign = "center";
+      ctx.fillStyle = "rgba(0,0,0,.62)";
+      roundRect(452, 420, 610, 62, 22, true);
+      roundRect(540, 500, 345, 36, 18, true);
+      ctx.fillStyle = "rgba(255,255,255,.72)";
+      ctx.font = `800 29px ${FONT}`;
+      ctx.fillText("АВИТОЛОГ", 474, 408);
+      ctx.fillStyle = "#fff";
+      ctx.font = `900 43px ${FONT}`;
+      ctx.fillText(state.heroTitle.toUpperCase(), 758, 464);
+      ctx.font = `900 23px ${FONT}`;
+      ctx.fillText(state.tagline.toUpperCase(), 712, 527);
+      ctx.restore();
+    }
+    function packageY(){
+      const visible = state.packages.filter((pkg) => pkg.on).length;
+      if (visible <= 3) return [866, 1238, 1532, 1745];
+      return [866, 1192, 1439, 1684];
+    }
+    function drawPackages(){
+      hitZones.length = 0;
+      const ys = packageY();
+      state.packages.forEach((pkg, index) => {
+        if (!pkg.on) return;
+        const y = ys[index] || (866 + index * 260);
+        hitZones.push({index, y});
+        drawPackage(pkg, index, y);
+      });
+    }
+    function drawPackage(pkg, index, y){
+      const title = `${pkg.limit} = “${pkg.name}”`;
+      ctx.save();
+      ctx.fillStyle = hexToRgba(pkg.color || "#27308f", 0.26);
+      roundRect(-28, y - 28, Math.min(720, 210 + measureTitle(title)), 43, 21, true);
+      drawIcon(pkg.icon, 70, y - 7, pkg.color, index);
+      ctx.fillStyle = "#fff";
+      ctx.shadowColor = "rgba(0,0,0,.9)";
+      ctx.shadowBlur = 5;
+      ctx.font = `400 31px ${FONT}`;
+      ctx.fillText(title, 101, y);
+      ctx.shadowBlur = 0;
 
-      drawCoverImage(heroImage,36,24,1008,575);
-      fillRound(36,24,1008,575,22,'rgba(0,0,0,0)','rgba(255,255,255,.14)');
-
-      let shade = ctx.createLinearGradient(36,280,1044,600);
-      shade.addColorStop(0,'rgba(0,0,0,.05)');
-      shade.addColorStop(1,'rgba(0,0,0,.45)');
-      ctx.fillStyle = shade;
-      ctx.fillRect(36,300,1008,299);
-
-      ctx.textAlign = 'center';
-      ctx.font = '900 44px Arial';
-      const titleW = Math.min(720, Math.max(520, ctx.measureText(data.heroTitle).width + 58));
-      fillRound((1080-titleW)/2,320,titleW,62,28,'rgba(0,0,0,.58)');
-      ctx.fillStyle = '#fff';
-      ctx.fillText(data.heroTitle,540,365);
-      ctx.font = '800 24px Arial';
-      ctx.fillStyle = 'rgba(255,255,255,.82)';
-      ctx.fillText(data.subtitle,540,402);
-      ctx.font = '900 20px Arial';
-      fillRound(393,404,294,32,16,'rgba(0,0,0,.48)');
-      ctx.fillStyle = '#fff';
-      ctx.fillText(data.tagline,540,427);
-      ctx.textAlign = 'left';
-
-      const bg = ctx.createLinearGradient(0,600,0,1600);
-      bg.addColorStop(0,'rgba(6,21,34,.93)');
-      bg.addColorStop(.45,'rgba(3,6,11,.98)');
-      bg.addColorStop(1,'#020408');
-      ctx.fillStyle = bg;
-      ctx.fillRect(0,600,1080,1000);
-
-      ctx.globalAlpha = .16;
-      ctx.fillStyle = '#4dd7ff';
-      for(let i=0;i<16;i++){
-        const x = 45 + i*70;
-        const h = 180 + (i%5)*48;
-        ctx.fillRect(x, 1320-h, 36, h);
+      let lineY = y + 38;
+      const maxWidth = 1210;
+      (pkg.items || []).forEach((raw) => {
+        const isGift = raw.startsWith("🎁");
+        const text = isGift ? raw.replace(/^🎁\s*/, "") : raw;
+        if (isGift) {
+          ctx.font = `400 26px ${FONT}`;
+          ctx.fillStyle = "#fff";
+          ctx.fillText("🎁", 66, lineY);
+          wrapText(text, 96, lineY, maxWidth, 27, `400 25px ${FONT}`);
+        } else {
+          ctx.fillStyle = "#4fb8ff";
+          ctx.font = `900 20px ${FONT}`;
+          ctx.fillText("◆", 72, lineY - 2);
+          wrapText(text, 96, lineY, maxWidth, 27, `400 25px ${FONT}`);
+        }
+        lineY += 27 * Math.max(1, getWrappedLines(text, maxWidth, `400 25px ${FONT}`).length);
+      });
+      if (selectedPackage === index) {
+        ctx.strokeStyle = "rgba(0,223,134,.85)";
+        ctx.lineWidth = 2;
+        ctx.setLineDash([10, 7]);
+        roundRect(48, y - 43, 1280, Math.max(150, lineY - y + 22), 14, false, true);
       }
-      ctx.globalAlpha = 1;
+      ctx.restore();
+    }
+    function drawIcon(icon, x, y, color, index){
+      ctx.save();
+      if (icon === "M") {
+        const grd = ctx.createLinearGradient(x - 12, y - 18, x + 12, y + 12);
+        grd.addColorStop(0, "#7be5ff");
+        grd.addColorStop(1, "#1738c6");
+        ctx.fillStyle = grd;
+        ctx.beginPath();
+        ctx.arc(x, y - 2, 14, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = "#fff";
+        ctx.font = `900 20px ${FONT}`;
+        ctx.textAlign = "center";
+        ctx.fillText("M", x, y + 5);
+      } else if (icon === "A") {
+        ctx.fillStyle = "#f23b42";
+        roundRect(x - 15, y - 20, 30, 30, 4, true);
+        ctx.fillStyle = "#fff";
+        ctx.font = `900 23px ${FONT}`;
+        ctx.textAlign = "center";
+        ctx.fillText("A", x, y + 5);
+      } else {
+        ctx.fillStyle = index === 0 ? "rgba(255,255,255,.68)" : "#ffcf5f";
+        ctx.font = `800 28px ${FONT}`;
+        ctx.textAlign = "center";
+        ctx.fillText(icon || "•", x, y + 5);
+      }
+      ctx.restore();
+    }
+    function drawFooter(){
+      ctx.save();
+      const y = 1910;
+      const leftGrad = ctx.createLinearGradient(58, y, 560, y);
+      leftGrad.addColorStop(0, "#6e4d0b");
+      leftGrad.addColorStop(1, "#e0a913");
+      ctx.fillStyle = leftGrad;
+      roundRect(58, y, 525, 72, 8, true);
+      ctx.fillStyle = "#fff";
+      ctx.font = `900 25px ${FONT}`;
+      ctx.fillText(`◷ ${state.deadline}`, 75, y + 30);
+      ctx.font = `italic 400 22px ${FONT}`;
+      ctx.fillText(`★ ${state.reviews}`, 75, y + 58);
 
-      let y = 640;
-      const active = data.packages.filter(p => p.on).slice(0,4);
-      active.forEach((p,idx) => {
-        const blockTop = y;
-        ctx.font = '900 27px Arial';
-        ctx.fillStyle = '#fff';
-        const head = `${p.limit} = "${p.name}"`;
-        const headW = Math.min(750, ctx.measureText(head).width + 120);
-        ctx.fillStyle = idx === 0 ? 'rgba(31,49,160,.62)' : 'rgba(255,255,255,.10)';
-        fillRound(44, y-31, headW, 42, 18, ctx.fillStyle);
-        ctx.fillStyle = '#fff';
-        fillRound(47,y-27,34,34,8,p.badge || '#334');
-        ctx.font = '900 22px Arial';
-        ctx.textAlign = 'center';
-        ctx.fillStyle = '#fff';
-        ctx.fillText(p.icon || String(idx+1),64,y-3);
-        ctx.textAlign = 'left';
-        ctx.font = '900 27px Arial';
-        ctx.fillText(head,94,y);
-        y += 44;
+      ctx.fillStyle = "#fff";
+      roundRect(615, y, 455, 72, 8, true);
+      ctx.fillStyle = "#111";
+      ctx.font = `900 20px ${FONT}`;
+      wrapText(`🔥 ${state.bonus} 🎁`, 633, y + 28, 420, 22, `900 20px ${FONT}`);
 
-        ctx.font = '22px Arial';
-        ctx.fillStyle = '#eaf2ff';
-        if (moneyText(p.work)) {
-          ctx.fillStyle = '#64baff';
-          ctx.fillText('◆', 58, y);
-          ctx.fillStyle = '#fff';
-          ctx.fillText(`${p.work} = работа Авитолога`, 84, y);
-          y += 32;
+      const bankGrad = ctx.createLinearGradient(1110, y, 1328, y);
+      bankGrad.addColorStop(0, "#fff3a1");
+      bankGrad.addColorStop(1, "#ffbf36");
+      ctx.fillStyle = bankGrad;
+      roundRect(1110, y, 220, 72, 10, true);
+      ctx.textAlign = "center";
+      ctx.fillStyle = "#e65786";
+      ctx.font = `900 24px ${FONT}`;
+      ctx.fillText("РАССРОЧКА", 1220, y + 29);
+      ctx.fillStyle = "#fff";
+      ctx.font = `900 31px ${FONT}`;
+      ctx.fillText("БАНК", 1220, y + 56);
+      ctx.restore();
+    }
+    function drawCover(img, x, y, w, h){
+      const scale = Math.max(w / img.width, h / img.height);
+      const sw = w / scale;
+      const sh = h / scale;
+      const sx = (img.width - sw) / 2;
+      const sy = (img.height - sh) / 2;
+      ctx.drawImage(img, sx, sy, sw, sh, x, y, w, h);
+    }
+    function drawRoundedCover(img, x, y, w, h, r){
+      ctx.save();
+      roundedPath(x, y, w, h, r);
+      ctx.clip();
+      const scale = Math.max(w / img.width, h / img.height);
+      const sw = w / scale;
+      const sh = h / scale;
+      const sx = (img.width - sw) / 2;
+      const sy = Math.max(0, (img.height - sh) * 0.28);
+      ctx.drawImage(img, sx, sy, sw, sh, x, y, w, h);
+      ctx.restore();
+    }
+    function roundedPath(x, y, w, h, r){
+      ctx.beginPath();
+      ctx.moveTo(x + r, y);
+      ctx.arcTo(x + w, y, x + w, y + h, r);
+      ctx.arcTo(x + w, y + h, x, y + h, r);
+      ctx.arcTo(x, y + h, x, y, r);
+      ctx.arcTo(x, y, x + w, y, r);
+      ctx.closePath();
+    }
+    function roundRect(x, y, w, h, r, fill, stroke){
+      roundedPath(x, y, w, h, r);
+      if (fill) ctx.fill();
+      if (stroke) ctx.stroke();
+    }
+    function getWrappedLines(text, maxWidth, font){
+      ctx.save();
+      ctx.font = font;
+      const words = String(text).split(/\s+/);
+      const lines = [];
+      let line = "";
+      words.forEach((word) => {
+        const test = line ? `${line} ${word}` : word;
+        if (ctx.measureText(test).width > maxWidth && line) {
+          lines.push(line);
+          line = word;
+        } else {
+          line = test;
         }
-        (p.items || []).forEach((item, itemIdx) => {
-          const gift = itemIdx >= 2 || item.indexOf('инфограф') >= 0 || item.indexOf('Дизайн') >= 0 || item.indexOf('Подключение') >= 0;
-          ctx.fillStyle = gift ? '#ffca55' : '#64baff';
-          ctx.font = '22px Arial';
-          ctx.fillText(gift ? '🎁' : '◆', 58, y);
-          ctx.fillStyle = '#f2f6ff';
-          ctx.font = '22px Arial';
-          y = wrapText(item, 84, y, 920, 29, 2) + 3;
-        });
-        y += idx === active.length - 1 ? 22 : 30;
-        if (idx < active.length - 1) {
-          ctx.strokeStyle = 'rgba(255,255,255,.08)';
-          ctx.beginPath(); ctx.moveTo(48, y-13); ctx.lineTo(1010, y-13); ctx.stroke();
-        }
-        if (y - blockTop < 120) y = blockTop + 120;
       });
-
-      const footerY = 1490;
-      fillRound(45,footerY,400,62,8,'rgba(255,202,85,.78)');
-      ctx.fillStyle = '#07111c';
-      ctx.font = '900 20px Arial';
-      ctx.fillText('◷ ' + data.deadline,70,footerY+25);
-      ctx.font = 'italic 18px Arial';
-      ctx.fillText('★ ' + data.reviews,70,footerY+50);
-
-      fillRound(468,footerY,350,62,8,'rgba(255,255,255,.94)');
-      ctx.fillStyle = '#1b1410';
-      ctx.font = '900 17px Arial';
-      wrapText('🔥 ' + data.bonus,488,footerY+23,310,20,2);
-
-      fillRound(845,footerY,190,62,8,'rgba(255,214,86,.96)');
-      ctx.fillStyle = '#ff4e9b';
-      ctx.font = '900 21px Arial';
-      wrapText(data.bank,863,footerY+24,155,22,2);
+      if (line) lines.push(line);
+      ctx.restore();
+      return lines;
     }
-
-    function buildPrompt(){
-      const niche = $('niche').value || 'бизнес клиента';
-      $('imagePrompt').value = [
-        'Сделай обложку для коммерческого предложения Avito продвижения.',
-        'Сцена: слева футуристичный персонаж/авитолог в черном технологичном костюме, справа предприниматель или специалист из ниши "' + niche + '", они пожимают руки.',
-        'Фон должен явно показывать нишу: ' + niche + '.',
-        'Стиль: реалистичная рекламная обложка, премиальный свет, широкая композиция 16:9, без текста, без логотипов, место по центру под заголовок.'
-      ].join('\n');
+    function wrapText(text, x, y, maxWidth, lineHeight, font){
+      ctx.save();
+      ctx.font = font;
+      ctx.fillStyle = "#fff";
+      ctx.shadowColor = "rgba(0,0,0,.85)";
+      ctx.shadowBlur = 4;
+      getWrappedLines(text, maxWidth, font).forEach((line, index) => {
+        ctx.fillText(line, x, y + index * lineHeight);
+      });
+      ctx.restore();
     }
-
+    function measureTitle(title){
+      ctx.save();
+      ctx.font = `400 31px ${FONT}`;
+      const width = ctx.measureText(title).width;
+      ctx.restore();
+      return width;
+    }
+    function hexToRgba(hex, alpha){
+      const clean = normalizeColor(hex).slice(1);
+      const r = parseInt(clean.slice(0, 2), 16);
+      const g = parseInt(clean.slice(2, 4), 16);
+      const b = parseInt(clean.slice(4, 6), 16);
+      return `rgba(${r},${g},${b},${alpha})`;
+    }
     function exportText(){
-      const data = readStateFromForm();
-      const lines = [`КП: ${data.niche}`, `${data.heroTitle} / ${data.tagline}`, ''];
-      data.packages.filter(p=>p.on).forEach(p => {
-        lines.push(`${p.limit} = "${p.name}"`);
-        if (p.work) lines.push(`${p.work} = работа Авитолога`);
-        (p.items||[]).forEach(i => lines.push('- ' + i));
-        lines.push('');
+      readGlobalForm();
+      return state.packages.filter((pkg) => pkg.on).map((pkg) => {
+        return `${pkg.limit} = "${pkg.name}"\n${pkg.items.join("\n")}`;
+      }).join("\n\n");
+    }
+    function downloadPng(){
+      draw();
+      const link = document.createElement("a");
+      link.href = canvas.toDataURL("image/png");
+      link.download = `kp-avito-${Date.now()}.png`;
+      link.click();
+    }
+    function applyPackageTemplate(count){
+      state.packages.forEach((pkg, index) => {
+        pkg.on = index < count;
       });
-      lines.push(data.deadline, data.reviews, data.bonus, data.bank);
-      return lines.join('\n');
+      selectedPackage = Math.min(selectedPackage, count - 1);
+      renderForm();
+      draw();
     }
 
-    function bind(){
-      document.querySelectorAll('input,textarea,select').forEach(el => {
-        el.addEventListener('input', () => { state = readStateFromForm(); if (el.id === 'niche') buildPrompt(); draw(); });
-        el.addEventListener('change', () => { state = readStateFromForm(); draw(); });
-      });
-      packagesEl.addEventListener('input', () => { state = readStateFromForm(); draw(); });
-      packagesEl.addEventListener('change', () => { state = readStateFromForm(); draw(); });
-      packagesEl.addEventListener('click', e => {
-        const btn = e.target.closest('[data-act]');
-        if (!btn) return;
-        e.preventDefault();
-        state = readStateFromForm();
-        const pkg = btn.closest('.pkg');
-        const i = Number(pkg.dataset.index);
-        const act = btn.dataset.act;
-        if (act === 'remove') state.packages.splice(i,1);
-        if (act === 'up' && i > 0) [state.packages[i-1],state.packages[i]] = [state.packages[i],state.packages[i-1]];
-        if (act === 'down' && i < state.packages.length-1) [state.packages[i+1],state.packages[i]] = [state.packages[i],state.packages[i+1]];
-        renderPackages();
+    ["heroTitle","tagline","bgMode","deadline","reviews","bonus","bank"].forEach((id) => {
+      $(id).addEventListener("input", draw);
+      $(id).addEventListener("change", draw);
+    });
+    ["pkgOn","pkgIcon","pkgName","pkgLimit","pkgWork","pkgColor","pkgItems"].forEach((id) => {
+      $(id).addEventListener("input", () => {
+        readPackageForm();
+        renderTabs();
+        renderZones();
         draw();
       });
-      $('addPackageBtn').onclick = () => {
-        state = readStateFromForm();
-        if (state.packages.length >= 4) return;
-        state.packages.push({on:true,icon:'+',limit:'До 100 объявлений',name:'НОВЫЙ',work:'35 000 ₽',badge:'#00a8ff',items:['Настройка продвижения под нишу','Подготовка текстов и упаковки','Запуск и сопровождение']});
-        renderPackages(); draw();
-      };
-      $('templateBtn').onclick = () => { state.packages = JSON.parse(JSON.stringify(defaults.packages)); renderPackages(); draw(); };
-      $('buildPromptBtn').onclick = buildPrompt;
-      $('copyPromptBtn').onclick = async () => { await navigator.clipboard.writeText($('imagePrompt').value); };
-      $('copyTextBtn').onclick = async () => { await navigator.clipboard.writeText(exportText()); };
-      $('loadImageBtn').onclick = () => { state = readStateFromForm(); loadHeroImage(state.imageUrl); };
-      $('saveBtn').onclick = () => { saveState(); alert('КП сохранено в браузере.'); };
-      $('resetBtn').onclick = () => { if (!confirm('Сбросить редактор КП?')) return; localStorage.removeItem(LS_KEY); state = JSON.parse(JSON.stringify(defaults)); syncForm(); };
-      $('downloadBtn').onclick = () => {
-        draw();
-        const a = document.createElement('a');
-        const name = (readStateFromForm().niche || 'kp').replace(/[\\/:*?"<>|]+/g,' ').trim();
-        a.download = `KP-${name}.png`;
-        a.href = canvas.toDataURL('image/png');
-        a.click();
-      };
-      $('imageFile').addEventListener('change', e => {
-        const file = e.target.files && e.target.files[0];
-        if (!file) return;
-        const reader = new FileReader();
-        reader.onload = () => {
-          $('imageUrl').value = reader.result;
-          state = readStateFromForm();
-          loadHeroImage(reader.result);
-        };
-        reader.readAsDataURL(file);
-      });
-    }
+      $(id).addEventListener("change", draw);
+    });
+    $("heroFile").addEventListener("change", async (event) => {
+      const file = event.target.files && event.target.files[0];
+      if (!file) return;
+      customHeroSrc = URL.createObjectURL(file);
+      images.hero = await loadImage(customHeroSrc);
+      draw();
+    });
+    $("downloadBtn").addEventListener("click", downloadPng);
+    $("copyTextBtn").addEventListener("click", async () => {
+      await navigator.clipboard.writeText(exportText());
+    });
+    $("saveBtn").addEventListener("click", saveState);
+    $("resetBtn").addEventListener("click", () => {
+      localStorage.removeItem(LS_KEY);
+      customHeroSrc = "";
+      state = clone(defaults);
+      selectedPackage = 0;
+      preload();
+    });
+    $("template3Btn").addEventListener("click", () => applyPackageTemplate(3));
+    $("template4Btn").addEventListener("click", () => applyPackageTemplate(4));
+    $("addGiftBtn").addEventListener("click", () => {
+      $("pkgItems").value = `${$("pkgItems").value.trim()}\n🎁 Новый бонус`.trim();
+      readPackageForm();
+      draw();
+    });
+    $("addLineBtn").addEventListener("click", () => {
+      $("pkgItems").value = `${$("pkgItems").value.trim()}\nНовая строка`.trim();
+      readPackageForm();
+      draw();
+    });
+    $("clearLinesBtn").addEventListener("click", () => {
+      $("pkgItems").value = "";
+      readPackageForm();
+      draw();
+    });
 
-    syncForm();
-    bind();
+    preload();
+    if (document.fonts && document.fonts.ready) {
+      document.fonts.ready.then(draw);
+    }
   </script>
 </body>
 </html>
