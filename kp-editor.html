@@ -163,7 +163,7 @@
   <script>
     const W = 1414;
     const H = 2000;
-    const LS_KEY = "avitolog_kp_editor_v6";
+    const LS_KEY = "avitolog_kp_editor_v7";
     const FONT = '"Source Sans 3","Source Sans Pro",Arial,sans-serif';
     const ASSETS = {
       bgDark: "assets/kp-layers/kp-bg-dark.jpg",
@@ -328,14 +328,14 @@
     }
     function renderZones(){
       stage.querySelectorAll(".click-zone").forEach((el) => el.remove());
-      packageY().forEach((y, index) => {
+      packageLayout().forEach((item) => {
         const zone = document.createElement("button");
         zone.type = "button";
-        zone.className = "click-zone" + (index === selectedPackage ? " active" : "");
-        zone.style.top = `${(y - 20) / H * 100}%`;
-        zone.style.height = `${220 / H * 100}%`;
-        zone.setAttribute("aria-label", `Пакет ${index + 1}`);
-        zone.addEventListener("click", () => selectPackage(index));
+        zone.className = "click-zone" + (item.index === selectedPackage ? " active" : "");
+        zone.style.top = `${item.top / H * 100}%`;
+        zone.style.height = `${item.height / H * 100}%`;
+        zone.setAttribute("aria-label", `Пакет ${item.index + 1}`);
+        zone.addEventListener("click", () => selectPackage(item.index));
         stage.appendChild(zone);
       });
     }
@@ -405,19 +405,35 @@
       ctx.fillText(TEMPLATE.tagline, 712, 527);
       ctx.restore();
     }
-    function packageY(){
-      const visible = state.packages.filter((pkg) => pkg.on).length;
-      if (visible <= 3) return [866, 1230, 1535, 1700];
-      return [846, 1168, 1416, 1664];
+    function packageLayout(){
+      const visible = state.packages
+        .map((pkg, index) => ({ pkg, index }))
+        .filter((item) => item.pkg.on);
+      const heroBottom = 795;
+      const footerTop = 1884;
+      const heights = visible.map((item) => measurePackageHeight(item.pkg));
+      const totalHeights = heights.reduce((sum, height) => sum + height, 0);
+      const available = footerTop - heroBottom;
+      const preferredInnerGap = visible.length >= 4 ? 28 : 42;
+      const maxInnerGap = Math.max(16, Math.floor((available - totalHeights) / (visible.length + 1)) - 1);
+      const innerGap = Math.min(preferredInnerGap, maxInnerGap);
+      const totalGaps = Math.max(0, visible.length - 1) * innerGap;
+      const outerGap = Math.max(innerGap + 12, (available - totalHeights - totalGaps) / 2);
+      let top = heroBottom + outerGap;
+      return visible.map((item, order) => {
+        const y = top + 28;
+        const height = heights[order];
+        const layoutItem = { index: item.index, y, top, height };
+        top += height + innerGap;
+        return layoutItem;
+      });
     }
     function drawPackages(){
       hitZones.length = 0;
-      const ys = packageY();
-      state.packages.forEach((pkg, index) => {
-        if (!pkg.on) return;
-        const y = ys[index] || (866 + index * 260);
-        hitZones.push({index, y});
-        drawPackage(pkg, index, y);
+      packageLayout().forEach((item) => {
+        const pkg = state.packages[item.index];
+        hitZones.push({index: item.index, y: item.y});
+        drawPackage(pkg, item.index, item.y);
       });
     }
     function drawPackage(pkg, index, y){
@@ -558,6 +574,15 @@
       const width = ctx.measureText(title).width;
       ctx.restore();
       return width;
+    }
+    function measurePackageHeight(pkg){
+      const maxWidth = 1210;
+      const lineHeight = 27;
+      const lineCount = (pkg.items || []).reduce((sum, raw) => {
+        const text = raw.startsWith("🎁") ? raw.replace(/^🎁\s*/, "") : raw;
+        return sum + Math.max(1, getWrappedLines(text, maxWidth, `400 25px ${FONT}`).length);
+      }, 0);
+      return 66 + lineCount * lineHeight;
     }
     function fillHeaderGradient(x, y, w, h, r, color){
       ctx.save();
