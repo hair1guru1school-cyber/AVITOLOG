@@ -163,7 +163,7 @@
   <script>
     const W = 1414;
     const H = 2000;
-    const LS_KEY = "avitolog_kp_editor_v5";
+    const LS_KEY = "avitolog_kp_editor_v6";
     const FONT = '"Source Sans 3","Source Sans Pro",Arial,sans-serif';
     const ASSETS = {
       bgDark: "assets/kp-layers/kp-bg-dark.jpg",
@@ -197,7 +197,7 @@
           limit: "До 250 объявлений",
           name: "СТАРТ",
           work: "35 000 ₽",
-          color: "#232a96",
+          color: "#252aa6",
           items: [
             "35 000 ₽ = работа Авитолога (оплачивается сразу)",
             "Создание файла автозагрузки / ручной постинг на 250 карточек на 30 дней",
@@ -215,7 +215,7 @@
           limit: "До 500 объявлений",
           name: "МИДЛ",
           work: "44 000 ₽",
-          color: "#6b5a19",
+          color: "#a47800",
           items: [
             "44 000 ₽ = работа",
             "🎁 Дизайн магазина для MAX. бизнес тарифа Авито: 6 баннеров ПК+Моб версии",
@@ -230,7 +230,7 @@
           limit: "До 1500 объявлений",
           name: "ОПТИМА",
           work: "56 000 ₽",
-          color: "#2b247f",
+          color: "#25208c",
           items: [
             "56 000 ₽ = работа",
             "🎁 Дизайн магазина для MAX. бизнес тарифа Авито: 6 баннеров ПК+Моб версии",
@@ -426,8 +426,7 @@
       ctx.font = `400 31px ${FONT}`;
       const titleWidth = measureTitle(title);
       const barWidth = Math.min(1120, Math.max(360, titleWidth + 165));
-      ctx.fillStyle = hexToRgba(pkg.color || "#27308f", 0.26);
-      roundRect(-28, y - 28, barWidth, 43, 21, true);
+      fillHeaderGradient(-28, y - 28, barWidth, 43, 21, pkg.color || "#27308f");
       drawIcon(pkg.icon, 70, y - 7, pkg.color, index);
       ctx.fillStyle = "#fff";
       ctx.shadowColor = "rgba(0,0,0,.9)";
@@ -559,6 +558,17 @@
       const width = ctx.measureText(title).width;
       ctx.restore();
       return width;
+    }
+    function fillHeaderGradient(x, y, w, h, r, color){
+      ctx.save();
+      const grad = ctx.createLinearGradient(x, y, x + w, y);
+      grad.addColorStop(0, "rgba(0,0,0,1)");
+      grad.addColorStop(0.46, "rgba(0,0,0,1)");
+      grad.addColorStop(1, normalizeColor(color));
+      ctx.globalAlpha = 0.26;
+      ctx.fillStyle = grad;
+      roundRect(x, y, w, h, r, true);
+      ctx.restore();
     }
     function hexToRgba(hex, alpha){
       const clean = normalizeColor(hex).slice(1);
