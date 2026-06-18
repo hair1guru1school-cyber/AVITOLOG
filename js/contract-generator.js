@@ -236,34 +236,54 @@
     var extraManageDays = parseInt(String(data.extraManageDays || '').trim(), 10);
     if (!isFinite(extraManageDays) || extraManageDays < 0) extraManageDays = 0;
 
-    if (includePackaging) {
-      selected.push(
-        '<li><strong>Упаковка</strong><ul>' +
-          '<li>Дизайн магазина для MAX. бизнес тарифа: 3 баннера ПК и 3 баннера моб. версии.</li>' +
-          '<li>Дизайн магазина для Расширенного бизнес тарифа: 1 баннер ПК и 1 баннер моб. версии.</li>' +
-        '</ul></li>'
-      );
+    var startDate = shortRuDate(data.startDate);
+    var endDate = shortRuDate(data.endDate);
+    var soldCount = esc(data.soldCount || '');
+    var costNum = normalizeMoneyValue(data.cost);
+    var costFmt = String(costNum || 0).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+    var clientName = esc(data.fio || data.companyName || 'Заказчик');
+    var packageName = esc(data.packageName || '');
+    function row(icon, name, qty, price) {
+      return '<tr>' +
+        '<td class="app-icon">' + icon + '</td>' +
+        '<td colspan="2" class="app-name">' + name + '</td>' +
+        '<td>' + startDate + '</td><td>' + endDate + '</td>' +
+        '<td>' + (qty || '') + '</td><td>' + (price || '') + '</td>' +
+      '</tr>';
     }
-    if (infographicEnabled) {
-      selected.push('<li><strong>Инфографика</strong>' + (infographicPower ? ' — выбранный уровень: <strong>' + esc(infographicPower) + '</strong>.' : '.') + '</li>');
-    }
-    if (botEnabled) {
-      selected.push('<li><strong>Бот</strong> — подключение автоответа с воронкой в ваш Telegram-бот/канал + бонус: закреп в Telegram.</li>');
-    }
-    if (includeExtraManage) {
-      selected.push('<li><strong>Дополнительное время ведения аккаунта</strong>' + (extraManageDays > 0 ? ' — +' + extraManageDays + ' дн.' : '.') + '</li>');
-    }
-    if (scriptsEnabled) {
-      selected.push('<li><strong>Скрипты продаж</strong> для вашей ниши + анализ аватаров ЦА и ресерч в PDF.</li>');
-    }
-    if (!selected.length) return '';
+    selected.push(row('📈', 'Создание Excel-файлов с объявлениями<br><span>(фото, тексты, офферы, SEO-анализ, обход блоков)</span>', soldCount, costFmt));
+    selected.push(row('📊', 'Постинг объявлений и их продвижение с помощью платных услуг, гибкое изменение рекламы под рынок', soldCount, 'включено'));
+    if (infographicEnabled) selected.push(row('🖼', 'Инфографика на все карточки' + (packageName ? ' — тариф «' + packageName + '»' : '') + (infographicPower ? '<br><span>Уровень: ' + esc(infographicPower) + '</span>' : ''), '', '🎁'));
+    if (includePackaging) selected.push(row('🎨', 'Дизайн магазина для бизнес-тарифа: баннеры ПК и мобильной версии', '6', '🎁'));
+    if (botEnabled) selected.push(row('🤖', 'Автоответ с воронкой в Telegram-бот / канал и бонусный закреп', '1', '🎁'));
+    if (includeExtraManage && extraManageDays > 0) selected.push(row('⏱', 'Дополнительное ведение и активность в аккаунте', extraManageDays + ' дн.', '🎁'));
+    if (scriptsEnabled) selected.push(row('📘', 'Скрипты продаж, анализ целевой аудитории и ресерч в PDF', '1', '🎁'));
+    String(data.extraServices || '').split(/\r?\n/).map(function(v) { return v.trim(); }).filter(Boolean).forEach(function(service) {
+      selected.push(row('✦', esc(service.replace(/^🎁\s*/, '')), '', '🎁'));
+    });
 
     return '' +
-      '<div style="page-break-before:always"></div>' +
-      '<h3 style="font-size:12pt;line-height:1.25;margin:10px 0 8px;text-align:center">Приложение к договору</h3>' +
-      '<p style="font-size:9pt;line-height:1.25;margin:0 0 8px;text-align:center">Перечень дополнительных работ и материалов</p>' +
-      '<ol style="font-size:9pt;line-height:1.35;margin:0 0 10px 18px;padding:0">' + selected.join('') + '</ol>' +
-      '<p style="font-size:8.4pt;line-height:1.25;margin:8px 0 0">Приложение является неотъемлемой частью договора и действует в рамках согласованных условий.</p>';
+      '<div class="appendix-doc" style="font-family:Arial,sans-serif;color:#111">' +
+        '<div style="text-align:right;font-size:11pt;line-height:1.35;margin:0 0 24px">' +
+          '<div>Приложение № 1</div>' +
+          '<div>к договору с <strong>' + clientName + '</strong></div>' +
+          '<div>оказания услуг по размещению рекламы от <strong>' + esc(data.startDate || '') + '</strong></div>' +
+        '</div>' +
+        '<h2 style="font-family:Arial,sans-serif;text-align:center;font-size:18pt;margin:0 0 20px">Перечень услуг и сроки реализации</h2>' +
+        '<table class="appendix-services-table" style="width:100%;border-collapse:collapse;table-layout:fixed;font-family:Arial,sans-serif;font-size:8pt">' +
+          '<colgroup><col style="width:8%"><col style="width:13%"><col style="width:27%"><col style="width:12%"><col style="width:12%"><col style="width:10%"><col style="width:18%"></colgroup>' +
+          '<thead><tr><th>№ п/п</th><th colspan="2">Наименование услуги</th><th>Начало работ</th><th>Конец работ</th><th>Количество (шт.)</th><th>Стоимость услуги, руб.</th></tr></thead>' +
+          '<tbody>' + selected.join('') + '<tr class="app-total-row"><td></td><td colspan="5"></td><td><strong>' + costFmt + '</strong></td></tr></tbody>' +
+        '</table>' +
+        '<p style="font-size:13pt;font-weight:700;margin:18px 0 14px">Общая стоимость услуг, оказываемых по Договору: <span style="color:#165dff">' + costFmt + '</span> руб.</p>' +
+        '<div style="font-size:11pt;font-weight:700;line-height:1.6"><div>Исполнитель: ' + esc(EXECUTOR.name) + '</div><div>Заказчик: ' + clientName + '</div></div>' +
+      '</div>';
+  }
+
+  function shortRuDate(value) {
+    var parts = String(value || '').split('.');
+    if (parts.length === 3) return esc(parts[0] + '.' + parts[1] + '.' + parts[2].slice(-2));
+    return esc(value || '');
   }
 
   function esc(s) {
@@ -297,7 +317,7 @@
       '</div>';
     var contract = '<div class="contract-document">' + body + footerHtml + '</div>';
     var appendix = appendixHtml
-      ? '<div class="contract-document contract-appendix-document">' + headerHtml + '<div class="contract-doc-body">' + appendixHtml + '</div>' + footerHtml + '</div>'
+      ? '<div class="contract-document contract-appendix-document"><div class="contract-doc-body">' + appendixHtml + '</div>' + footerHtml + '</div>'
       : '';
     return { contract: contract, appendix: appendix };
   }
@@ -599,7 +619,7 @@
 
     function getFormData() {
       var d = {};
-      ['fio', 'inn', 'ogrn', 'account', 'bank', 'bik', 'corrAccount', 'passport', 'startDate', 'endDate', 'daysCreate', 'daysManage', 'cost', 'soldCount', 'extraServices', 'headerGender', 'appendixEnabled', 'packagingEnabled', 'infographicEnabled', 'infographicPower', 'botEnabled', 'extraManageEnabled', 'extraManageDays', 'scriptsEnabled'].forEach(function(k) {
+      ['fio', 'inn', 'ogrn', 'account', 'bank', 'bik', 'corrAccount', 'passport', 'startDate', 'endDate', 'daysCreate', 'daysManage', 'cost', 'soldCount', 'extraServices', 'packageName', 'headerGender', 'appendixEnabled', 'packagingEnabled', 'infographicEnabled', 'infographicPower', 'botEnabled', 'extraManageEnabled', 'extraManageDays', 'scriptsEnabled'].forEach(function(k) {
         var el = document.getElementById('contract-' + k);
         if (!el) { d[k] = ''; return; }
         if (el.type === 'checkbox') d[k] = el.checked ? '1' : '0';
@@ -775,6 +795,7 @@
       '<input type="hidden" id="contract-bik">' +
       '<input type="hidden" id="contract-corrAccount">' +
       '<input type="hidden" id="contract-passport">' +
+      '<input type="hidden" id="contract-packageName">' +
       '<div class="contract-parsed-wrap" id="contractParsedRequisites" style="display:none"></div>' +
       '</div>' +
       '<div class="contract-extra-panel">' +
@@ -832,6 +853,8 @@
     function applySavedKpPackage(pkg) {
       if (!pkg) return;
       var items = Array.isArray(pkg.items) ? pkg.items : [];
+      var packageNameEl = document.getElementById('contract-packageName');
+      if (packageNameEl) packageNameEl.value = pkg.name || '';
       var joined = items.join('\n').toLowerCase();
       if (costEl) costEl.value = String(packagePrice(pkg) || costEl.value || '');
       var soldEl = document.getElementById('contract-soldCount');
@@ -844,7 +867,10 @@
       if (extraManageEnabledEl) extraManageEnabledEl.checked = !!extraDays;
       if (extraManageDaysEl) extraManageDaysEl.value = extraDays ? extraDays[1] : '0';
       var extraEl = document.getElementById('contract-extraServices');
-      if (extraEl) extraEl.value = items.filter(function(line) { return /^\s*🎁/.test(String(line || '')); }).join('\n');
+      if (extraEl) extraEl.value = items.filter(function(line) {
+        var text = String(line || '');
+        return /^\s*🎁/.test(text) && !/(инфограф|дизайн магазина|автоответ|бот|дн(?:ей|я) ведения|скрипт|анализ.*ца|ресерч)/i.test(text);
+      }).join('\n');
       syncAppendixOptionsState();
     }
     function loadSavedKpPackages() {
