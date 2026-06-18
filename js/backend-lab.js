@@ -99,13 +99,18 @@
     var result = await response.json();
     if (!response.ok || !result.ok) throw new Error(result.error || ('HTTP ' + response.status));
     var preview = result.preview;
+    var duplicateLines = [];
+    (preview.duplicates.clients || []).forEach(function (group) {
+      duplicateLines.push('• ' + group.legacyKey + ': ' + group.records.map(function (record) { return record.label; }).join(' ↔ '));
+    });
     migrationPreview.textContent = [
       'DRY RUN: данные не записаны',
       'Источник: ' + preview.source,
-      'Клиенты: ' + preview.counts.clients,
-      'Проекты: ' + preview.counts.projects,
-      preview.warnings.length ? 'Предупреждения: ' + preview.warnings.join('; ') : 'Предупреждений нет'
-    ].join('\n');
+      'Клиенты: ' + preview.counts.clients + ' (уникальных ключей: ' + preview.uniqueCounts.clients + ')',
+      'Проекты: ' + preview.counts.projects + ' (уникальных ключей: ' + preview.uniqueCounts.projects + ')',
+      preview.warnings.length ? 'Предупреждения: ' + preview.warnings.join('; ') : 'Предупреждений нет',
+      duplicateLines.length ? 'Конфликты клиентов:\n' + duplicateLines.join('\n') : ''
+    ].filter(Boolean).join('\n');
   }
 
   function collectCurrentBackup() {

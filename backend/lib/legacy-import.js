@@ -42,6 +42,23 @@ function stableKey(kind, item, index) {
   return kind + ':sha256:' + crypto.createHash('sha256').update(fingerprint).digest('hex').slice(0, 24);
 }
 
+function itemLabel(item, index) {
+  return text(item.company || item.company_name || item.name || item.title || item.contact_name || item.contactName) || ('Запись #' + (index + 1));
+}
+
+function duplicateGroups(items, keys) {
+  const grouped = new Map();
+  keys.forEach((key, index) => {
+    const group = grouped.get(key) || [];
+    group.push({ index, label: itemLabel(object(items[index]), index) });
+    grouped.set(key, group);
+  });
+  return Array.from(grouped.entries())
+    .filter((entry) => entry[1].length > 1)
+    .slice(0, 20)
+    .map((entry) => ({ legacyKey: entry[0], records: entry[1] }));
+}
+
 function findClients(root) {
   const candidates = [root.clients, root.crmClients, root.clientData, object(root.data).clients];
   for (const candidate of candidates) if (Array.isArray(candidate)) return candidate;
@@ -73,6 +90,11 @@ function previewLegacyBackup(payload) {
     dryRun: true,
     source: text(root.source) || text(original.format) || 'avitolog-local-backup',
     counts: { clients: clients.length, projects: projects.length },
+    uniqueCounts: { clients: new Set(clientKeys).size, projects: new Set(projectKeys).size },
+    duplicates: {
+      clients: duplicateGroups(clients, clientKeys),
+      projects: duplicateGroups(projects, projectKeys)
+    },
     sampleKeys: { clients: clientKeys.slice(0, 3), projects: projectKeys.slice(0, 3) },
     warnings
   };

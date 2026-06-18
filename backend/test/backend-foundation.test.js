@@ -24,4 +24,15 @@ const automaticBackup = {
 const automaticPreview = previewLegacyBackup(automaticBackup);
 assert.deepStrictEqual(automaticPreview.counts, { clients: 1, projects: 1 });
 assert.strictEqual(automaticPreview.source, 'avitolog-fil-backup-v1');
+
+const duplicatesPreview = previewLegacyBackup({
+  clients: [
+    { company: 'First', folderId: 'same-folder' },
+    { company: 'Second', folderId: 'same-folder' }
+  ],
+  projects: []
+});
+assert.strictEqual(duplicatesPreview.uniqueCounts.clients, 1);
+assert.strictEqual(duplicatesPreview.duplicates.clients.length, 1);
+assert.deepStrictEqual(duplicatesPreview.duplicates.clients[0].records.map(x => x.label), ['First', 'Second']);
 console.log('backend foundation tests: ok');
