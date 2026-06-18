@@ -2,6 +2,8 @@ require('dotenv').config();
 
 const express = require('express');
 const cors = require('cors');
+const { getSupabaseStatus, pingSupabase } = require('./lib/supabase-rest');
+const { previewLegacyBackup } = require('./lib/legacy-import');
 
 const app = express();
 const PORT = Number(process.env.PORT || 8787);
@@ -35,8 +37,35 @@ app.get('/api/health', (req, res) => {
     service: 'avitolog-backend',
     avitoBase: AVITO_API_BASE,
     perplexityBase: PERPLEXITY_API_BASE,
-    anthropicBase: ANTHROPIC_API_BASE
+    anthropicBase: ANTHROPIC_API_BASE,
+    database: getSupabaseStatus()
   });
+});
+
+app.get('/api/backend/status', (req, res) => {
+  res.json({ ok: true, migrationMode: true, database: getSupabaseStatus() });
+});
+
+app.get('/api/backend/ping', async (req, res) => {
+  try {
+    res.json({ ok: true, database: await pingSupabase(req.headers.authorization || '') });
+  } catch (error) {
+    res.status(Number(error && error.status) || 503).json({
+      ok: false,
+      error: error && error.message ? error.message : 'Supabase connection failed'
+    });
+  }
+});
+
+app.post('/api/migration/preview', (req, res) => {
+  try {
+    res.json({ ok: true, preview: previewLegacyBackup(req.body) });
+  } catch (error) {
+    res.status(400).json({
+      ok: false,
+      error: error && error.message ? error.message : 'Invalid legacy backup'
+    });
+  }
 });
 
 async function getAvitoAccessToken(clientId, clientSecret) {
