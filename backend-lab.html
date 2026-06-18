@@ -39,13 +39,13 @@
           <input id="backupFile" type="file" accept="application/json,.json">
         </label>
         <div class="preview" id="migrationPreview"></div>
-        <button id="saveSnapshotBtn" type="button" hidden>Сохранить полный snapshot в Supabase staging</button>
+        <button id="saveSnapshotBtn" type="button" disabled>Сначала выполните автоматическую проверку</button>
       </div>
       <button id="logoutBtn" type="button">Выйти из тестовой сессии</button>
     </section>
     <div class="status" id="status">Supabase настроен. Введите пароль созданного пользователя.</div>
   </main>
-  <script src="js/supabase-config.js"></script>
-  <script src="js/backend-lab.js"></script>
+  <script src="js/supabase-config.js?v=20260619-snapshot2"></script>
+  <script src="js/backend-lab.js?v=20260619-snapshot2"></script>
 </body>
 </html>

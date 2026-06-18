@@ -102,7 +102,8 @@
     if (!response.ok || !result.ok) throw new Error(result.error || ('HTTP ' + response.status));
     var preview = result.preview;
     currentBackupPayload = payload;
-    saveSnapshotBtn.hidden = false;
+    saveSnapshotBtn.disabled = false;
+    saveSnapshotBtn.textContent = 'Сохранить полный snapshot в Supabase staging';
     var relations = preview.relations;
     var duplicateLines = [];
     (preview.duplicates.clients || []).forEach(function (group) {
@@ -146,7 +147,10 @@
   });
 
   saveSnapshotBtn.addEventListener('click', async function () {
-    if (!currentBackupPayload) return;
+    if (!currentBackupPayload) {
+      setStatus('Сначала выполните автоматическую проверку.', 'err');
+      return;
+    }
     if (!window.confirm('Сохранить полный исходный бэкап в защищённую staging-зону Supabase? Рабочие CRM-таблицы не изменятся.')) return;
     var session = readSession();
     if (!session || !session.access_token) {
