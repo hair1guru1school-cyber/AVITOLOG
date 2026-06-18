@@ -4,6 +4,7 @@ const assert = require('assert');
 const { previewLegacyBackup, stableKey, buildStagingPlan } = require('../lib/legacy-import');
 const { getSupabaseStatus } = require('../lib/supabase-rest');
 const { checksumBackup, backupSummary } = require('../lib/snapshot-import');
+const { buildProductionPreview } = require('../lib/production-preview');
 
 const sample = {
   clients: [{ company: 'Test', folderId: 'drive-1' }],
@@ -59,4 +60,11 @@ const stagingPlan = buildStagingPlan(relationsPreview.preview ? relationsPreview
 });
 assert.strictEqual(stagingPlan.records.length, 2);
 assert.strictEqual(stagingPlan.records[1].resolution_status, 'ready');
+const production = buildProductionPreview({
+  clients: [{ company: 'One', folderId: 'folder-one' }, { company: 'One richer', folderId: 'folder-one', phone: '+7' }],
+  projects: [{ name: 'Ready', folderId: 'folder-one' }, { name: 'Held' }]
+});
+assert.strictEqual(production.clientsToUpsert, 1);
+assert.strictEqual(production.projectsToUpsert, 1);
+assert.strictEqual(production.projectsHeld, 1);
 console.log('backend foundation tests: ok');

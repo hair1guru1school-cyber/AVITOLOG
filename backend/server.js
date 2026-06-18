@@ -6,6 +6,7 @@ const { getSupabaseStatus, pingSupabase } = require('./lib/supabase-rest');
 const { previewLegacyBackup } = require('./lib/legacy-import');
 const { saveRawSnapshot } = require('./lib/snapshot-import');
 const { prepareSnapshot } = require('./lib/prepare-staging');
+const { latestSnapshot, productionPreview } = require('./lib/production-preview');
 
 const app = express();
 const PORT = Number(process.env.PORT || 8787);
@@ -89,6 +90,16 @@ app.post('/api/migration/prepare', async (req, res) => {
   } catch (error) {
     res.status(Number(error && error.status) || 500).json({ ok: false, error: error && error.message ? error.message : 'Staging preparation failed' });
   }
+});
+
+app.get('/api/migration/latest', async (req, res) => {
+  try { res.json({ ok: true, snapshot: await latestSnapshot(req.headers.authorization || '') }); }
+  catch (error) { res.status(Number(error && error.status) || 500).json({ ok: false, error: error && error.message ? error.message : 'Latest snapshot lookup failed' }); }
+});
+
+app.post('/api/migration/import-preview', async (req, res) => {
+  try { res.json({ ok: true, preview: await productionPreview(req.body && req.body.checksum, req.headers.authorization || '') }); }
+  catch (error) { res.status(Number(error && error.status) || 500).json({ ok: false, error: error && error.message ? error.message : 'Import preview failed' }); }
 });
 
 async function getAvitoAccessToken(clientId, clientSecret) {

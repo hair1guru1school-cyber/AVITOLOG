@@ -16,6 +16,7 @@
   var currentBackupPayload = null;
   var prepareStagingBtn = document.getElementById('prepareStagingBtn');
   var savedSnapshotChecksum = '';
+  var productionPreviewBtn = document.getElementById('productionPreviewBtn');
 
   function setStatus(message, type) {
     statusEl.textContent = message;
@@ -59,6 +60,15 @@
     loginPanel.classList.add('off');
     sessionPanel.classList.add('on');
     setStatus('Успешно: Auth и RLS работают. Основной фронт ещё не переключён.', 'ok');
+    try {
+      var latestResponse = await fetch('http://127.0.0.1:8787/api/migration/latest', { headers: { Authorization: 'Bearer ' + session.access_token } });
+      var latestData = await latestResponse.json();
+      if (latestResponse.ok && latestData.ok && latestData.snapshot) {
+        savedSnapshotChecksum = latestData.snapshot.checksum;
+        prepareStagingBtn.disabled = false;
+        productionPreviewBtn.disabled = false;
+      }
+    } catch (e) {}
   }
 
   form.addEventListener('submit', async function (event) {
@@ -172,6 +182,7 @@
       var result = data.result;
       savedSnapshotChecksum = result.checksum;
       prepareStagingBtn.disabled = false;
+      productionPreviewBtn.disabled = false;
       setStatus((result.alreadyExists ? 'Snapshot уже был сохранён ранее.' : 'Полный snapshot сохранён.') +
         '\nКлючей: ' + result.summary.keyCount + '\nChecksum: ' + result.checksum, 'ok');
     } catch (error) {
@@ -179,6 +190,28 @@
     } finally {
       saveSnapshotBtn.disabled = false;
     }
+  });
+
+  productionPreviewBtn.addEventListener('click', async function () {
+    if (!savedSnapshotChecksum) return;
+    var session = readSession();
+    if (!session || !session.access_token) { setStatus('Тестовая сессия истекла. Войдите снова.', 'err'); return; }
+    productionPreviewBtn.disabled = true;
+    setStatus('Формирую финальный preview без записи...');
+    try {
+      var response = await fetch('http://127.0.0.1:8787/api/migration/import-preview', {
+        method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + session.access_token },
+        body: JSON.stringify({ checksum: savedSnapshotChecksum })
+      });
+      var data = await response.json();
+      if (!response.ok || !data.ok) throw new Error(data.error || ('HTTP ' + response.status));
+      var p = data.preview;
+      setStatus('FINAL PREVIEW: данные не записаны\nКлиентов к импорту: ' + p.clientsToUpsert +
+        '\nПроектов к импорту: ' + p.projectsToUpsert + '\nПроектов оставлено в staging: ' + p.projectsHeld +
+        '\nГрупп дублей объединяется: ' + p.duplicateGroupsMerged + '\nПокрытие полей: ' + JSON.stringify(p.coverage), 'ok');
+    } catch (error) {
+      setStatus('Ошибка финального preview: ' + error.message, 'err');
+    } finally { productionPreviewBtn.disabled = false; }
   });
 
   prepareStagingBtn.addEventListener('click', async function () {

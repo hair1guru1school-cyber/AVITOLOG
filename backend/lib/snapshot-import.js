@@ -4,7 +4,9 @@ const crypto = require('crypto');
 const { supabaseUserRequest } = require('./supabase-rest');
 
 function checksumBackup(backup) {
-  return crypto.createHash('sha256').update(JSON.stringify(backup)).digest('hex');
+  const stableBackup = Object.assign({}, backup || {});
+  delete stableBackup.createdAt;
+  return crypto.createHash('sha256').update(JSON.stringify(stableBackup)).digest('hex');
 }
 
 function backupSummary(backup) {
