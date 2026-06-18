@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>AVITOLOG Backend Lab</title>
+  <style>
+    :root{color-scheme:dark;font-family:Inter,Segoe UI,Arial,sans-serif;background:#080b10;color:#edf7ff}
+    *{box-sizing:border-box}body{margin:0;min-height:100vh;display:grid;place-items:center;background:radial-gradient(circle at 50% 0,#123044 0,transparent 42%),#080b10}
+    main{width:min(540px,calc(100% - 32px));padding:28px;border:1px solid #244257;border-radius:18px;background:rgba(10,17,25,.94);box-shadow:0 24px 80px #0009}
+    h1{margin:0 0 8px;font-size:24px;color:#7cf5ff}.hint{margin:0 0 22px;color:#8fa8b8;font-size:14px;line-height:1.5}
+    label{display:block;margin:14px 0 6px;color:#b8d1e0;font-size:13px;font-weight:700}input{width:100%;height:44px;padding:0 13px;border:1px solid #2d4b5d;border-radius:10px;background:#070d13;color:#fff;font:inherit;outline:none}input:focus{border-color:#35d0ff;box-shadow:0 0 0 3px #35d0ff20}
+    button{width:100%;height:44px;margin-top:18px;border:0;border-radius:10px;background:linear-gradient(135deg,#13bc86,#1c9ee8);color:#041015;font-weight:900;cursor:pointer}button:disabled{opacity:.55;cursor:wait}
+    #logoutBtn{background:#17232e;color:#d5e7f2;border:1px solid #2d4b5d}.status{margin-top:18px;padding:12px;border-radius:10px;background:#0b131b;color:#9db6c5;font-size:13px;white-space:pre-wrap}.status.ok{border:1px solid #1f9f72;color:#8ff1c9}.status.err{border:1px solid #9f3443;color:#ffabb6}
+    .session{display:none}.session.on{display:block}.login.off{display:none}.org{margin-top:14px;padding:14px;border:1px solid #28536b;border-radius:12px;background:#0a1822}.org b{color:#7cf5ff}
+  </style>
+</head>
+<body>
+  <main>
+    <h1>AVITOLOG Backend Lab</h1>
+    <p class="hint">Изолированная проверка Supabase Auth и RLS. Основной AVITOLOG пока продолжает работать на старом хранилище.</p>
+    <section class="login" id="loginPanel">
+      <form id="loginForm">
+        <label for="email">Email владельца</label>
+        <input id="email" type="email" autocomplete="username" value="hair1guru1school@gmail.com" required>
+        <label for="password">Пароль Supabase</label>
+        <input id="password" type="password" autocomplete="current-password" required>
+        <button id="loginBtn" type="submit">Войти и проверить RLS</button>
+      </form>
+    </section>
+    <section class="session" id="sessionPanel">
+      <div class="org" id="organizationCard"></div>
+      <button id="logoutBtn" type="button">Выйти из тестовой сессии</button>
+    </section>
+    <div class="status" id="status">Supabase настроен. Введите пароль созданного пользователя.</div>
+  </main>
+  <script src="js/supabase-config.js"></script>
+  <script src="js/backend-lab.js"></script>
+</body>
+</html>
