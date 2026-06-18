@@ -9,6 +9,8 @@
   var statusEl = document.getElementById('status');
   var organizationCard = document.getElementById('organizationCard');
   var loginBtn = document.getElementById('loginBtn');
+  var backupFile = document.getElementById('backupFile');
+  var migrationPreview = document.getElementById('migrationPreview');
 
   function setStatus(message, type) {
     statusEl.textContent = message;
@@ -83,6 +85,36 @@
     loginPanel.classList.remove('off');
     organizationCard.textContent = '';
     setStatus('Тестовая сессия удалена из этой вкладки.');
+  });
+
+  backupFile.addEventListener('change', async function () {
+    var file = backupFile.files && backupFile.files[0];
+    migrationPreview.classList.add('on');
+    if (!file) {
+      migrationPreview.textContent = 'Файл не выбран.';
+      return;
+    }
+    migrationPreview.textContent = 'Читаю и проверяю ' + file.name + '...';
+    try {
+      if (file.size > 5 * 1024 * 1024) throw new Error('Файл больше 5 МБ');
+      var payload = JSON.parse(await file.text());
+      var response = await fetch('http://127.0.0.1:8787/api/migration/preview', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      var result = await response.json();
+      if (!response.ok || !result.ok) throw new Error(result.error || ('HTTP ' + response.status));
+      var preview = result.preview;
+      migrationPreview.textContent = [
+        'DRY RUN: данные не записаны',
+        'Клиенты: ' + preview.counts.clients,
+        'Проекты: ' + preview.counts.projects,
+        preview.warnings.length ? 'Предупреждения: ' + preview.warnings.join('; ') : 'Предупреждений нет'
+      ].join('\n');
+    } catch (error) {
+      migrationPreview.textContent = 'Ошибка проверки: ' + error.message;
+    }
   });
 
   var session = readSession();

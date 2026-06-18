@@ -13,6 +13,7 @@
     button{width:100%;height:44px;margin-top:18px;border:0;border-radius:10px;background:linear-gradient(135deg,#13bc86,#1c9ee8);color:#041015;font-weight:900;cursor:pointer}button:disabled{opacity:.55;cursor:wait}
     #logoutBtn{background:#17232e;color:#d5e7f2;border:1px solid #2d4b5d}.status{margin-top:18px;padding:12px;border-radius:10px;background:#0b131b;color:#9db6c5;font-size:13px;white-space:pre-wrap}.status.ok{border:1px solid #1f9f72;color:#8ff1c9}.status.err{border:1px solid #9f3443;color:#ffabb6}
     .session{display:none}.session.on{display:block}.login.off{display:none}.org{margin-top:14px;padding:14px;border:1px solid #28536b;border-radius:12px;background:#0a1822}.org b{color:#7cf5ff}
+    .migration{margin-top:18px;padding-top:18px;border-top:1px solid #244257}.migration h2{margin:0 0 7px;font-size:17px;color:#c8f7ff}.migration p{margin:0 0 10px;color:#8fa8b8;font-size:13px;line-height:1.45}.file{display:block;padding:12px;border:1px dashed #365b70;border-radius:10px;background:#09131b}.file input{height:auto;padding:0;border:0;background:transparent}.preview{display:none;margin-top:12px;padding:12px;border-radius:10px;background:#071119;border:1px solid #28536b;font-size:13px;line-height:1.5}.preview.on{display:block}
   </style>
 </head>
 <body>
@@ -30,6 +31,14 @@
     </section>
     <section class="session" id="sessionPanel">
       <div class="org" id="organizationCard"></div>
+      <div class="migration">
+        <h2>Предпросмотр переезда</h2>
+        <p>Выберите JSON из кнопки «Скачать бэкап». Файл проверяется локально; запись в Supabase отключена.</p>
+        <label class="file" for="backupFile">JSON-бэкап AVITOLOG
+          <input id="backupFile" type="file" accept="application/json,.json">
+        </label>
+        <div class="preview" id="migrationPreview"></div>
+      </div>
       <button id="logoutBtn" type="button">Выйти из тестовой сессии</button>
     </section>
     <div class="status" id="status">Supabase настроен. Введите пароль созданного пользователя.</div>
