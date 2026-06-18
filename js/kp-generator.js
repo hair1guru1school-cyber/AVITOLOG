@@ -649,6 +649,43 @@
     try { window.open(url, '_blank', 'noopener'); } catch (e) { window.location.href = url; }
   }
 
+  function getKpActiveClient() {
+    try {
+      if (typeof window.__goalsGetActiveClient === 'function') return window.__goalsGetActiveClient() || null;
+      if (typeof getActiveClient === 'function') return getActiveClient() || null;
+    } catch (e) {}
+    return null;
+  }
+
+  function cleanKpFilePart(value) {
+    return String(value || 'Клиент')
+      .replace(/[\\/:*?"<>|]+/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .slice(0, 80) || 'Клиент';
+  }
+
+  window.__saveKpPngToActiveClient = async function (blob) {
+    var ac = getKpActiveClient();
+    if (!ac || !ac.folderId) throw new Error('Сначала выберите клиента с папкой Google Drive в левом меню.');
+    if (typeof driveUploadBlob !== 'function') throw new Error('Загрузка в Google Drive пока недоступна. Обновите страницу.');
+    var clientName = cleanKpFilePart(ac.company || ac.contact_name || ac.name || 'Клиент');
+    var now = new Date();
+    var stamp = [
+      now.getFullYear(),
+      String(now.getMonth() + 1).padStart(2, '0'),
+      String(now.getDate()).padStart(2, '0')
+    ].join('-') + ' ' + String(now.getHours()).padStart(2, '0') + '-' + String(now.getMinutes()).padStart(2, '0');
+    var fileName = 'КП - ' + clientName + ' - ' + stamp + '.png';
+    var result = await driveUploadBlob(fileName, blob, 'image/png', ac.folderId);
+    return {
+      name: fileName,
+      clientName: clientName,
+      folderLink: ac.folderLink || ('https://drive.google.com/drive/folders/' + ac.folderId),
+      fileLink: (result && result.webViewLink) || ''
+    };
+  };
+
   function buildCanvaToggleHtml(d) {
     var open = !!d.canvaTemplatesOpen;
     return (
@@ -666,7 +703,7 @@
     return (
       '<div class="kp-gen-section kp-editor-embed-section">' +
       '<div class="kp-gen-label">Расчет КП</div>' +
-      '<iframe class="kp-editor-embed" src="kp-editor.html?embedded=1" title="Редактор КП"></iframe>' +
+      '<iframe class="kp-editor-embed" src="kp-editor.html?embedded=1&amp;v=20260618-client-save-1" title="Редактор КП"></iframe>' +
       '</div>'
     );
   }
@@ -1319,10 +1356,16 @@
         '<p class="kp-gen-note">Автозапись макета в Canva без <a href="https://www.canva.com/developers/" target="_blank" rel="noopener">Canva Connect API</a> недоступна: дублируйте шаблон в Canva и подставьте поля вручную или через копирование текста выше.</p>'
       : '';
 
+    var activeClient = getKpActiveClient();
+    var activeClientName = activeClient && (activeClient.company || activeClient.contact_name || activeClient.name);
+    var clientTitleHtml = activeClientName
+      ? ' для <button type="button" class="kp-client-target" id="kpClientTarget" title="Открыть папку клиента"><span>👤</span><b>' + esc(activeClientName) + '</b><span>📁</span></button>'
+      : ' <span class="kp-client-empty">— выберите клиента</span>';
+
     mc.innerHTML =
       '<div class="kp-generator">' +
       '<div class="kp-gen-head">' +
-      '<div class="kp-gen-title">Коммерческое предложение</div>' +
+      '<div class="kp-gen-title">Коммерческое предложение' + clientTitleHtml + '</div>' +
       '</div>' +
       createKpBlock +
       heroSectionHtml +
@@ -1334,6 +1377,14 @@
       '</div>';
 
     wire(mc);
+    var clientTarget = mc.querySelector('#kpClientTarget');
+    if (clientTarget) {
+      clientTarget.onclick = function () {
+        var ac = getKpActiveClient();
+        var url = ac && (ac.folderLink || (ac.folderId ? 'https://drive.google.com/drive/folders/' + ac.folderId : ''));
+        if (url) window.open(url, '_blank', 'noopener');
+      };
+    }
     fitKpTplCardLabels(mc);
   };
   function ensureKpIntegratedStyles() {
@@ -1346,13 +1397,20 @@
       '.kp-canva-toggle-hint{font-size:11px;color:var(--muted);opacity:.85}',
       '.kp-canva-section .kp-tpl-zones{margin-top:12px}',
       'body.kp-tab .layout{grid-template-columns:0 minmax(0,1fr)}',
-      'body.kp-tab .sidebar{min-width:0;width:0;padding:0;overflow:hidden;border-right:0}',
-      'body.kp-tab .content-wrap{min-width:0}',
+      'body.kp-tab .sidebar{position:fixed;left:0;top:55px;bottom:0;z-index:460;display:flex;min-width:340px;width:340px;height:calc(100vh - 55px);padding:14px;overflow-y:auto;border-right:1px solid var(--border);transform:translateX(0);transition:transform .24s ease;box-shadow:12px 0 34px rgba(0,0,0,.38)}',
+      'body.kp-tab.sidebar-hidden .sidebar{min-width:340px;width:340px;padding:14px;overflow-y:auto;border-right:1px solid var(--border);transform:translateX(-100%)}',
+      'body.kp-tab .sidebar-toggle-peek{z-index:470}',
+      'body.kp-tab .content-wrap{grid-column:2;min-width:0}',
       'body.kp-tab .kp-generator{width:calc(100% - 12px);max-width:none!important;margin:0 6px;padding:10px 0 28px}',
       '.kp-editor-embed-section{padding:0!important;overflow:hidden;border-color:rgba(0,217,126,.28)!important}',
       '.kp-editor-embed-section .kp-gen-label{padding:12px 14px 0}',
       '.kp-editor-embed{display:block;width:100%;height:1380px;min-height:calc(100vh - 110px);border:0;background:#05080d;border-radius:8px}',
       '.kp-canva-section{margin-top:14px;padding:10px 0 2px}',
+      '.kp-gen-title{display:flex;align-items:center;justify-content:center;gap:7px;flex-wrap:wrap}',
+      '.kp-client-target{display:inline-flex;align-items:center;gap:6px;max-width:min(420px,70vw);padding:6px 10px;border:1px solid rgba(0,217,126,.55);border-radius:8px;background:rgba(0,217,126,.09);color:var(--accent);font:inherit;cursor:pointer}',
+      '.kp-client-target b{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}',
+      '.kp-client-target:hover{background:rgba(0,217,126,.17);box-shadow:0 0 16px rgba(0,217,126,.12)}',
+      '.kp-client-empty{font-size:12px;color:var(--muted);font-weight:600}',
       '@media(max-width:900px){.kp-editor-embed{height:1240px;min-height:1240px}}'
     ].join('\n');
     document.head.appendChild(st);

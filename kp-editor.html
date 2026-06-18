@@ -824,8 +824,31 @@
         return `${pkg.limit} = "${pkg.name}"\n${pkg.items.join("\n")}`;
       }).join("\n\n");
     }
-    function downloadPng(){
+    function canvasPngBlob(){
+      return new Promise((resolve, reject) => {
+        canvas.toBlob((blob) => blob ? resolve(blob) : reject(new Error("Не удалось собрать PNG")), "image/png");
+      });
+    }
+    async function downloadPng(){
       draw();
+      const embedded = document.body.classList.contains("embedded");
+      const button = $("downloadBtn");
+      if (embedded && window.parent && typeof window.parent.__saveKpPngToActiveClient === "function") {
+        const oldText = button.textContent;
+        button.disabled = true;
+        button.textContent = "Сохраняю...";
+        try {
+          const result = await window.parent.__saveKpPngToActiveClient(await canvasPngBlob());
+          button.textContent = "Сохранено ✓";
+          button.title = result && result.name ? result.name : "КП сохранено в папку клиента";
+          setTimeout(() => { button.textContent = "Сохранить КП"; button.disabled = false; }, 2200);
+        } catch (error) {
+          button.textContent = oldText;
+          button.disabled = false;
+          alert(error && error.message ? error.message : String(error));
+        }
+        return;
+      }
       const link = document.createElement("a");
       link.href = canvas.toDataURL("image/png");
       link.download = `kp-avito-${Date.now()}.png`;
@@ -947,6 +970,10 @@
       saveState();
       draw();
     });
+    if (document.body.classList.contains("embedded")) {
+      $("downloadBtn").textContent = "Сохранить КП";
+      $("downloadBtn").title = "Сохранить PNG в папку выбранного клиента";
+    }
     $("downloadBtn").addEventListener("click", downloadPng);
     $("copyTextBtn").addEventListener("click", async () => {
       await navigator.clipboard.writeText(exportText());
