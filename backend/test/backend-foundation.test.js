@@ -1,7 +1,7 @@
 'use strict';
 
 const assert = require('assert');
-const { previewLegacyBackup, stableKey } = require('../lib/legacy-import');
+const { previewLegacyBackup, stableKey, buildStagingPlan } = require('../lib/legacy-import');
 const { getSupabaseStatus } = require('../lib/supabase-rest');
 const { checksumBackup, backupSummary } = require('../lib/snapshot-import');
 
@@ -53,4 +53,10 @@ assert.strictEqual(checksumBackup(sample).length, 64);
 assert.deepStrictEqual(backupSummary(automaticBackup), {
   format: 'avitolog-fil-backup-v1', profile: 'unknown', keyCount: 2
 });
+const stagingPlan = buildStagingPlan(relationsPreview.preview ? relationsPreview.preview : {
+  clients: [{ company: 'One', folderId: 'folder-one' }],
+  projects: [{ name: 'Project', folderId: 'folder-one' }]
+});
+assert.strictEqual(stagingPlan.records.length, 2);
+assert.strictEqual(stagingPlan.records[1].resolution_status, 'ready');
 console.log('backend foundation tests: ok');

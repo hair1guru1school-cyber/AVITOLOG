@@ -165,4 +165,66 @@ function previewLegacyBackup(payload) {
   };
 }
 
-module.exports = { previewLegacyBackup, stableKey };
+function buildStagingPlan(payload) {
+  const original = object(payload);
+  const root = unwrapKeyBackup(original);
+  const source = text(root.source) || text(original.format) || 'avitolog-local-backup';
+  const clients = findClients(root).map(object);
+  const projects = findProjects(root).map(object);
+  const clientKeys = clients.map((item, index) => stableKey('client', item, index));
+  const projectKeys = projects.map((item, index) => stableKey('project', item, index));
+  const keyCounts = new Map();
+  clientKeys.forEach((key) => keyCounts.set(key, (keyCounts.get(key) || 0) + 1));
+
+  const refToKeys = new Map();
+  const nameToKeys = new Map();
+  clients.forEach((client, index) => {
+    entityRefs(client).forEach((ref) => {
+      const keys = refToKeys.get(ref) || new Set(); keys.add(clientKeys[index]); refToKeys.set(ref, keys);
+    });
+    const name = normalizedClientName(client);
+    if (name) { const keys = nameToKeys.get(name) || new Set(); keys.add(clientKeys[index]); nameToKeys.set(name, keys); }
+  });
+
+  const records = clients.map((client, index) => ({
+    entity_type: 'client', legacy_key: clientKeys[index], record_index: index, raw_data: client,
+    normalized_data: { label: itemLabel(client, index) },
+    resolution_status: keyCounts.get(clientKeys[index]) > 1 ? 'duplicate' : 'ready',
+    resolution_note: keyCounts.get(clientKeys[index]) > 1 ? 'Same stable client key appears more than once' : null
+  }));
+  const issues = duplicateGroups(clients, clientKeys).map((group) => ({
+    entity_type: 'client', record_index: group.records[0].index, issue_code: 'duplicate_client_key',
+    message: group.records.map((item) => item.label).join(' / '),
+    candidates: group.records
+  }));
+
+  projects.forEach((project, index) => {
+    const idMatches = new Set();
+    entityRefs(project).forEach((ref) => (refToKeys.get(ref) || []).forEach((key) => idMatches.add(key)));
+    const name = normalizedClientName(project);
+    const nameMatches = name ? (nameToKeys.get(name) || new Set()) : new Set();
+    const matches = idMatches.size ? idMatches : nameMatches;
+    const method = idMatches.size ? 'id_or_folder' : (nameMatches.size ? 'unique_name' : null);
+    const status = matches.size === 1 ? 'ready' : (matches.size > 1 ? 'ambiguous' : 'unlinked');
+    const matchedKeys = Array.from(matches);
+    records.push({
+      entity_type: 'project', legacy_key: projectKeys[index], record_index: index, raw_data: project,
+      normalized_data: {
+        label: itemLabel(project, index), relation_method: method,
+        client_legacy_key: matchedKeys.length === 1 ? matchedKeys[0] : null,
+        candidate_client_keys: matchedKeys
+      },
+      resolution_status: status,
+      resolution_note: status === 'ready' ? null : (status === 'ambiguous' ? 'Multiple client candidates' : 'No client candidate')
+    });
+    if (status !== 'ready') issues.push({
+      entity_type: 'project', record_index: index,
+      issue_code: status === 'ambiguous' ? 'ambiguous_project_client' : 'unlinked_project_client',
+      message: itemLabel(project, index), candidates: matchedKeys
+    });
+  });
+
+  return { source, preview: previewLegacyBackup(payload), records, issues };
+}
+
+module.exports = { previewLegacyBackup, stableKey, buildStagingPlan };

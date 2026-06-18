@@ -14,6 +14,8 @@
   var autoPreviewBtn = document.getElementById('autoPreviewBtn');
   var saveSnapshotBtn = document.getElementById('saveSnapshotBtn');
   var currentBackupPayload = null;
+  var prepareStagingBtn = document.getElementById('prepareStagingBtn');
+  var savedSnapshotChecksum = '';
 
   function setStatus(message, type) {
     statusEl.textContent = message;
@@ -168,12 +170,36 @@
       var data = await response.json();
       if (!response.ok || !data.ok) throw new Error(data.error || ('HTTP ' + response.status));
       var result = data.result;
+      savedSnapshotChecksum = result.checksum;
+      prepareStagingBtn.disabled = false;
       setStatus((result.alreadyExists ? 'Snapshot уже был сохранён ранее.' : 'Полный snapshot сохранён.') +
         '\nКлючей: ' + result.summary.keyCount + '\nChecksum: ' + result.checksum, 'ok');
     } catch (error) {
       setStatus('Ошибка сохранения snapshot: ' + error.message, 'err');
     } finally {
       saveSnapshotBtn.disabled = false;
+    }
+  });
+
+  prepareStagingBtn.addEventListener('click', async function () {
+    if (!savedSnapshotChecksum) return;
+    if (!window.confirm('Разобрать snapshot на промежуточные записи? Рабочие CRM-таблицы останутся без изменений.')) return;
+    var session = readSession();
+    if (!session || !session.access_token) { setStatus('Тестовая сессия истекла. Войдите снова.', 'err'); return; }
+    prepareStagingBtn.disabled = true;
+    setStatus('Разбираю snapshot в staging...');
+    try {
+      var response = await fetch('http://127.0.0.1:8787/api/migration/prepare', {
+        method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + session.access_token },
+        body: JSON.stringify({ checksum: savedSnapshotChecksum })
+      });
+      var data = await response.json();
+      if (!response.ok || !data.ok) throw new Error(data.error || ('HTTP ' + response.status));
+      var result = data.result;
+      setStatus('Snapshot разобран в staging.\nЗаписей: ' + result.records + '\nПроблем: ' + result.issues + '\nСтатусы: ' + JSON.stringify(result.statuses), 'ok');
+    } catch (error) {
+      setStatus('Ошибка подготовки staging: ' + error.message, 'err');
+      prepareStagingBtn.disabled = false;
     }
   });
 

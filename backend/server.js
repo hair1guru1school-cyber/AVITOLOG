@@ -5,6 +5,7 @@ const cors = require('cors');
 const { getSupabaseStatus, pingSupabase } = require('./lib/supabase-rest');
 const { previewLegacyBackup } = require('./lib/legacy-import');
 const { saveRawSnapshot } = require('./lib/snapshot-import');
+const { prepareSnapshot } = require('./lib/prepare-staging');
 
 const app = express();
 const PORT = Number(process.env.PORT || 8787);
@@ -78,6 +79,15 @@ app.post('/api/migration/snapshot', async (req, res) => {
       ok: false,
       error: error && error.message ? error.message : 'Snapshot upload failed'
     });
+  }
+});
+
+app.post('/api/migration/prepare', async (req, res) => {
+  try {
+    const result = await prepareSnapshot(req.body && req.body.checksum, req.headers.authorization || '');
+    res.json({ ok: true, result });
+  } catch (error) {
+    res.status(Number(error && error.status) || 500).json({ ok: false, error: error && error.message ? error.message : 'Staging preparation failed' });
   }
 });
 
