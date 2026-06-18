@@ -11,6 +11,7 @@
   var loginBtn = document.getElementById('loginBtn');
   var backupFile = document.getElementById('backupFile');
   var migrationPreview = document.getElementById('migrationPreview');
+  var autoPreviewBtn = document.getElementById('autoPreviewBtn');
 
   function setStatus(message, type) {
     statusEl.textContent = message;
@@ -87,6 +88,49 @@
     setStatus('Тестовая сессия удалена из этой вкладки.');
   });
 
+  async function runMigrationPreview(payload, label) {
+    migrationPreview.classList.add('on');
+    migrationPreview.textContent = 'Проверяю ' + label + '...';
+    var response = await fetch('http://127.0.0.1:8787/api/migration/preview', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    var result = await response.json();
+    if (!response.ok || !result.ok) throw new Error(result.error || ('HTTP ' + response.status));
+    var preview = result.preview;
+    migrationPreview.textContent = [
+      'DRY RUN: данные не записаны',
+      'Источник: ' + preview.source,
+      'Клиенты: ' + preview.counts.clients,
+      'Проекты: ' + preview.counts.projects,
+      preview.warnings.length ? 'Предупреждения: ' + preview.warnings.join('; ') : 'Предупреждений нет'
+    ].join('\n');
+  }
+
+  function collectCurrentBackup() {
+    var keys = {};
+    for (var i = 0; i < localStorage.length; i++) {
+      var key = localStorage.key(i);
+      if (!key || (key.indexOf('avitolog_') !== 0 && key.indexOf('crm_') !== 0)) continue;
+      if (key.indexOf('avitolog_drive_auth') === 0 || key.indexOf('avitolog_fil_backup_') === 0) continue;
+      keys[key] = localStorage.getItem(key);
+    }
+    return { format: 'avitolog-fil-backup-v1', createdAt: new Date().toISOString(), profile: 'fil', keys: keys };
+  }
+
+  autoPreviewBtn.addEventListener('click', async function () {
+    autoPreviewBtn.disabled = true;
+    try {
+      await runMigrationPreview(collectCurrentBackup(), 'текущие данные AVITOLOG');
+    } catch (error) {
+      migrationPreview.classList.add('on');
+      migrationPreview.textContent = 'Ошибка проверки: ' + error.message;
+    } finally {
+      autoPreviewBtn.disabled = false;
+    }
+  });
+
   backupFile.addEventListener('change', async function () {
     var file = backupFile.files && backupFile.files[0];
     migrationPreview.classList.add('on');
@@ -98,20 +142,7 @@
     try {
       if (file.size > 5 * 1024 * 1024) throw new Error('Файл больше 5 МБ');
       var payload = JSON.parse(await file.text());
-      var response = await fetch('http://127.0.0.1:8787/api/migration/preview', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-      var result = await response.json();
-      if (!response.ok || !result.ok) throw new Error(result.error || ('HTTP ' + response.status));
-      var preview = result.preview;
-      migrationPreview.textContent = [
-        'DRY RUN: данные не записаны',
-        'Клиенты: ' + preview.counts.clients,
-        'Проекты: ' + preview.counts.projects,
-        preview.warnings.length ? 'Предупреждения: ' + preview.warnings.join('; ') : 'Предупреждений нет'
-      ].join('\n');
+      await runMigrationPreview(payload, file.name);
     } catch (error) {
       migrationPreview.textContent = 'Ошибка проверки: ' + error.message;
     }

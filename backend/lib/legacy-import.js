@@ -14,6 +14,23 @@ function text(value) {
   return value == null ? '' : String(value).trim();
 }
 
+function parseJson(value) {
+  if (value && typeof value === 'object') return value;
+  try { return JSON.parse(String(value || '')); } catch (e) { return null; }
+}
+
+function unwrapKeyBackup(root) {
+  const keys = object(root.keys);
+  if (!Object.keys(keys).length) return root;
+  const clients = parseJson(keys.avitolog_clients);
+  const projects = parseJson(keys.avitolog_projects);
+  return {
+    source: root.format || root.source || 'avitolog-key-backup',
+    clients: Array.isArray(clients) ? clients : [],
+    projects: projects
+  };
+}
+
 function stableKey(kind, item, index) {
   const explicit = text(item.id || item.clientId || item.projectId || item.folderId || item.crmClientId);
   if (explicit) return kind + ':' + explicit;
@@ -32,13 +49,14 @@ function findClients(root) {
 }
 
 function findProjects(root) {
-  const candidates = [root.projects, object(root.projectData).projects, object(root.projectsData).projects, object(root.data).projects];
+  const candidates = [root.projects, object(root.projects).projects, object(root.projectData).projects, object(root.projectsData).projects, object(root.data).projects];
   for (const candidate of candidates) if (Array.isArray(candidate)) return candidate;
   return [];
 }
 
 function previewLegacyBackup(payload) {
-  const root = object(payload);
+  const original = object(payload);
+  const root = unwrapKeyBackup(original);
   if (!Object.keys(root).length) throw new Error('Backup must be a JSON object');
   const clients = findClients(root);
   const projects = findProjects(root);
@@ -53,7 +71,7 @@ function previewLegacyBackup(payload) {
   if (duplicateProjectKeys.length) warnings.push('Duplicate project legacy keys: ' + new Set(duplicateProjectKeys).size);
   return {
     dryRun: true,
-    source: text(root.source) || 'avitolog-local-backup',
+    source: text(root.source) || text(original.format) || 'avitolog-local-backup',
     counts: { clients: clients.length, projects: projects.length },
     sampleKeys: { clients: clientKeys.slice(0, 3), projects: projectKeys.slice(0, 3) },
     warnings
