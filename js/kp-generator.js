@@ -665,7 +665,29 @@
       .slice(0, 80) || 'Клиент';
   }
 
-  window.__saveKpPngToActiveClient = async function (blob) {
+  var KP_SAVED_CLIENT_PACKAGES_STORE = 'avito_kp_saved_client_packages_v1';
+
+  function rememberSavedKpPackageData(folderId, record) {
+    try {
+      var all = JSON.parse(localStorage.getItem(KP_SAVED_CLIENT_PACKAGES_STORE) || '{}');
+      if (!all || typeof all !== 'object' || Array.isArray(all)) all = {};
+      var list = Array.isArray(all[folderId]) ? all[folderId] : [];
+      list.unshift(record);
+      all[folderId] = list.slice(0, 20);
+      localStorage.setItem(KP_SAVED_CLIENT_PACKAGES_STORE, JSON.stringify(all));
+    } catch (e) {}
+  }
+
+  window.__getSavedKpPackagesForClient = function (folderId) {
+    try {
+      var all = JSON.parse(localStorage.getItem(KP_SAVED_CLIENT_PACKAGES_STORE) || '{}');
+      return Array.isArray(all && all[folderId]) ? all[folderId].slice() : [];
+    } catch (e) {
+      return [];
+    }
+  };
+
+  window.__saveKpPngToActiveClient = async function (blob, packageData) {
     var ac = getKpActiveClient();
     if (!ac || !ac.folderId) throw new Error('Сначала выберите клиента с папкой Google Drive в левом меню.');
     if (typeof driveUploadBlob !== 'function') throw new Error('Загрузка в Google Drive пока недоступна. Обновите страницу.');
@@ -678,11 +700,32 @@
     ].join('-') + ' ' + String(now.getHours()).padStart(2, '0') + '-' + String(now.getMinutes()).padStart(2, '0');
     var fileName = 'КП - ' + clientName + ' - ' + stamp + '.png';
     var result = await driveUploadBlob(fileName, blob, 'image/png', ac.folderId);
+    var record = {
+      version: 1,
+      savedAt: (packageData && packageData.savedAt) || now.toISOString(),
+      clientName: clientName,
+      folderId: String(ac.folderId),
+      imageName: fileName,
+      imageFileId: (result && result.id) || '',
+      imageFileLink: (result && result.webViewLink) || '',
+      heroName: (packageData && packageData.heroName) || '',
+      packages: packageData && Array.isArray(packageData.packages) ? packageData.packages : []
+    };
+    rememberSavedKpPackageData(String(ac.folderId), record);
+    if (typeof driveUploadText === 'function') {
+      var jsonName = fileName.replace(/\.png$/i, '.json');
+      try {
+        await driveUploadText(jsonName, JSON.stringify(record, null, 2), 'application/json', ac.folderId);
+      } catch (e) {
+        console.warn('KP package data upload failed', e);
+      }
+    }
     return {
       name: fileName,
       clientName: clientName,
       folderLink: ac.folderLink || ('https://drive.google.com/drive/folders/' + ac.folderId),
-      fileLink: (result && result.webViewLink) || ''
+      fileLink: (result && result.webViewLink) || '',
+      packageData: record
     };
   };
 

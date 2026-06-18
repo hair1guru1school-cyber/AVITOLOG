@@ -838,7 +838,16 @@
         button.disabled = true;
         button.textContent = "Сохраняю...";
         try {
-          const result = await window.parent.__saveKpPngToActiveClient(await canvasPngBlob());
+          readGlobalForm();
+          const result = await window.parent.__saveKpPngToActiveClient(
+            await canvasPngBlob(),
+            {
+              version: 1,
+              savedAt: new Date().toISOString(),
+              heroName: state.heroName || "",
+              packages: clone(state.packages).filter((pkg) => pkg.on)
+            }
+          );
           button.textContent = "Сохранено ✓";
           button.title = result && result.name ? result.name : "КП сохранено в папку клиента";
           setTimeout(() => { button.textContent = "Сохранить КП"; button.disabled = false; }, 2200);

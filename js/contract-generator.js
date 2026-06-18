@@ -270,7 +270,7 @@
     return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
   }
 
-  function generateContract(data) {
+  function generateContractDocuments(data) {
     if (!data) data = {};
     var today = new Date();
     var pad = function(n) { return (n < 10 ? '0' : '') + n; };
@@ -287,15 +287,24 @@
       '<div class="contract-doc-header" style="text-align:center;margin:0 auto 4px">' +
         '<img src="' + esc(headerImg) + '" width="621" alt="" onerror="if(!this.dataset.fallback){this.dataset.fallback=1;this.src=\'' + esc(headerFallbackImg) + '\';}else{this.style.display=\'none\';}" style="display:block;margin:0 auto;width:16.44cm;max-width:100%;height:auto">' +
       '</div>';
-    var appendixHtml = getServiceAppendixTemplate(data);
-    var body = headerHtml + '<div class="contract-doc-body">' + getContractMainTemplate(data) + (appendixHtml || '') + '</div>';
+    var appendixHtml = getServiceAppendixTemplate(data).replace('<div style="page-break-before:always"></div>', '');
+    var body = headerHtml + '<div class="contract-doc-body">' + getContractMainTemplate(data) + '</div>';
     var footerImg = 'assets/contract_footer.png';
     try { footerImg = new URL('assets/contract_footer.png', window.location.href).href; } catch (e) {}
     var footerHtml =
       '<div class="contract-doc-footer" style="text-align:center;margin:4px auto 0">' +
         '<img src="' + esc(footerImg) + '" width="621" height="285" alt="" onerror="this.style.display=\'none\'" style="display:block;margin:0 auto;width:16.44cm;height:7.54cm;max-width:100%;object-fit:contain">' +
       '</div>';
-    return '<div class="contract-document">' + body + footerHtml + '</div>';
+    var contract = '<div class="contract-document">' + body + footerHtml + '</div>';
+    var appendix = appendixHtml
+      ? '<div class="contract-document contract-appendix-document">' + headerHtml + '<div class="contract-doc-body">' + appendixHtml + '</div>' + footerHtml + '</div>'
+      : '';
+    return { contract: contract, appendix: appendix };
+  }
+
+  function generateContract(data) {
+    var docs = generateContractDocuments(data);
+    return docs.contract + (docs.appendix || '');
   }
 
   function detectClientType(data) {
@@ -750,7 +759,7 @@
       '</div>' +
       '<input type="hidden" id="contract-headerGender" value="m">' +
       '<button type="button" class="contract-toolbar-btn contract-btn-savew" id="contractSaveWBtn" style="display:none" onclick="window.__contractSaveW&&window.__contractSaveW()">🟦 Сохранить в W</button>' +
-      '<button type="button" class="contract-toolbar-btn contract-btn-pdf" id="contractSavePdfBtn" onclick="window.__contractSavePdf&&window.__contractSavePdf()">📕 Сохранить PDF</button>' +
+      '<button type="button" class="contract-toolbar-btn contract-btn-pdf" id="contractSavePdfBtn" onclick="window.__contractSavePdf&&window.__contractSavePdf()">📕 Сохранить 2 PDF</button>' +
       '<button type="button" class="contract-toolbar-btn contract-btn-pdf" id="contractDownloadPdfBtn" style="display:none" onclick="window.__contractDownloadPdf&&window.__contractDownloadPdf()">⬇ Скачать PDF</button>' +
       '<button type="button" class="contract-toolbar-btn contract-btn-clear" onclick="window.__contractClear&&window.__contractClear()">Очистить</button>' +
       '<span class="contract-save-status" id="contractSaveStatus"></span>' +
@@ -772,6 +781,7 @@
       '<h4 class="contract-form-title">Дополнительные параметры договора</h4>' +
       '<p class="contract-extra-hint">Стратегия продажи, скриншоты, кол-во объявлений и доп. услуги для приложения</p>' +
       '<div class="contract-form-grid">' +
+      '<div class="fg" style="grid-column:1/-1"><label>Пакет из сохраненного КП</label><select id="contract-kpPackage"><option value="">Не выбран</option></select></div>' +
       '<div class="fg"><label>Дата начала работ</label><input type="date" id="contract-startDate"></div>' +
       '<div class="fg"><label>Дата окончания работ</label><input type="date" id="contract-endDate"></div>' +
       '<div class="fg"><label>Дней на создание рекламы</label><input type="number" id="contract-daysCreate" placeholder="12" min="1"></div>' +
@@ -800,6 +810,72 @@
       '</div></div></div></div>';
 
     container.innerHTML = html;
+
+    var kpPackageSelect = document.getElementById('contract-kpPackage');
+    var savedKpRecords = [];
+    function activeClientFolderId() {
+      try {
+        var ac = typeof getActiveClient === 'function' ? getActiveClient() : null;
+        return ac && ac.folderId ? String(ac.folderId) : '';
+      } catch (e) {
+        return '';
+      }
+    }
+    function packagePrice(pkg) {
+      var values = String((pkg && pkg.work) || '').match(/\d[\d\s]*/g) || [];
+      return values.length ? normalizeMoneyValue(values[0]) : 0;
+    }
+    function packageLimit(pkg) {
+      var m = String((pkg && pkg.limit) || '').match(/\d[\d\s]*/);
+      return m ? normalizeMoneyValue(m[0]) : 0;
+    }
+    function applySavedKpPackage(pkg) {
+      if (!pkg) return;
+      var items = Array.isArray(pkg.items) ? pkg.items : [];
+      var joined = items.join('\n').toLowerCase();
+      if (costEl) costEl.value = String(packagePrice(pkg) || costEl.value || '');
+      var soldEl = document.getElementById('contract-soldCount');
+      if (soldEl) soldEl.value = String(packageLimit(pkg) || '');
+      if (packagingEnabledEl) packagingEnabledEl.checked = /(дизайн магазина|упаковк|баннер)/i.test(joined);
+      if (infographicEnabledEl) infographicEnabledEl.checked = /инфограф/i.test(joined);
+      if (botEnabledEl) botEnabledEl.checked = /(бот|автоответ|воронк)/i.test(joined);
+      if (scriptsEnabledEl) scriptsEnabledEl.checked = /(скрипт|анализ.*ца|ресерч)/i.test(joined);
+      var extraDays = joined.match(/\+(\d+)\s*дн/);
+      if (extraManageEnabledEl) extraManageEnabledEl.checked = !!extraDays;
+      if (extraManageDaysEl) extraManageDaysEl.value = extraDays ? extraDays[1] : '0';
+      var extraEl = document.getElementById('contract-extraServices');
+      if (extraEl) extraEl.value = items.filter(function(line) { return /^\s*🎁/.test(String(line || '')); }).join('\n');
+      syncAppendixOptionsState();
+    }
+    function loadSavedKpPackages() {
+      if (!kpPackageSelect) return;
+      var folderId = activeClientFolderId();
+      try {
+        savedKpRecords = typeof window.__getSavedKpPackagesForClient === 'function'
+          ? window.__getSavedKpPackagesForClient(folderId)
+          : [];
+      } catch (e) {
+        savedKpRecords = [];
+      }
+      var options = ['<option value="">Не выбран</option>'];
+      savedKpRecords.forEach(function(record, recordIndex) {
+        (record.packages || []).forEach(function(pkg, packageIndex) {
+          var label = (pkg.name || ('Пакет ' + (packageIndex + 1))) + ' · ' + (pkg.limit || '') + ' · ' + (pkg.work || '');
+          options.push('<option value="' + recordIndex + ':' + packageIndex + '">' + escHtml(label) + '</option>');
+        });
+      });
+      kpPackageSelect.innerHTML = options.join('');
+    }
+    if (kpPackageSelect) {
+      kpPackageSelect.addEventListener('change', function() {
+        var parts = String(kpPackageSelect.value || '').split(':');
+        if (parts.length !== 2) return;
+        var record = savedKpRecords[parseInt(parts[0], 10)];
+        var pkg = record && record.packages ? record.packages[parseInt(parts[1], 10)] : null;
+        applySavedKpPackage(pkg);
+      });
+    }
+    loadSavedKpPackages();
 
     var today = new Date();
     var pad2 = function(n) { return (n < 10 ? '0' : '') + n; };
@@ -1030,16 +1106,31 @@
       });
     }
 
+    var livePreviewTimer = null;
+    function scheduleLivePreview() {
+      clearTimeout(livePreviewTimer);
+      livePreviewTimer = setTimeout(function() {
+        if (typeof window.__contractGenerate === 'function') window.__contractGenerate();
+      }, 180);
+    }
+    container.addEventListener('input', scheduleLivePreview);
+    container.addEventListener('change', scheduleLivePreview);
+
     return { getFormData: getFormData, setFormData: setFormData };
   }
 
-  function renderContractPreview(container, html) {
-    var inner = html || '<div class="contract-preview-placeholder" style="padding:40px;text-align:center;color:var(--muted);font-size:13px">Договор появится здесь после нажатия «Сгенерировать договор»</div>';
-    container.innerHTML = '<div class="contract-preview-wrap"><div class="contract-preview-inner">' + inner + '</div></div>';
+  function renderContractPreview(container, docs) {
+    docs = docs || {};
+    var pages = [];
+    if (docs.contract) pages.push('<div class="contract-preview-page-label">Договор</div><div class="contract-preview-page"><div class="contract-preview-inner">' + docs.contract + '</div></div>');
+    if (docs.appendix) pages.push('<div class="contract-preview-page-label">Приложение</div><div class="contract-preview-page"><div class="contract-preview-inner">' + docs.appendix + '</div></div>');
+    if (!pages.length) pages.push('<div class="contract-preview-placeholder" style="padding:40px;text-align:center;color:var(--muted);font-size:13px">Заполните реквизиты и параметры, затем нажмите «Сгенерировать договор»</div>');
+    container.innerHTML = '<div class="contract-preview-wrap">' + pages.join('') + '</div>';
   }
 
   function renderContractGenerator(mainContentEl) {
     var lastGeneratedHtml = '';
+    var lastGeneratedDocs = null;
     var lastGeneratedData = null;
     var lastDrivePdfDoc = null;
 
@@ -1219,6 +1310,40 @@
       });
     }
 
+    function htmlToPdfBlob(htmlStr, fileName) {
+      return new Promise(function(resolve, reject) {
+        getHtml2Pdf(function(err, html2pdfFn) {
+          if (err || typeof html2pdfFn !== 'function') {
+            reject(err || new Error('Модуль PDF недоступен'));
+            return;
+          }
+          var host = document.createElement('div');
+          host.style.position = 'fixed';
+          host.style.left = '-12000px';
+          host.style.top = '0';
+          host.style.width = '210mm';
+          host.style.background = '#fff';
+          host.innerHTML = String(htmlStr || '');
+          document.body.appendChild(host);
+          var source = host.firstElementChild || host;
+          html2pdfFn().set({
+            margin: 0,
+            filename: fileName,
+            image: { type: 'jpeg', quality: 0.98 },
+            html2canvas: { scale: 2, useCORS: true, backgroundColor: '#ffffff' },
+            jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+            pagebreak: { mode: ['css', 'legacy'] }
+          }).from(source).outputPdf('blob').then(function(blob) {
+            if (host.parentNode) host.parentNode.removeChild(host);
+            resolve(blob);
+          }).catch(function(error) {
+            if (host.parentNode) host.parentNode.removeChild(host);
+            reject(error);
+          });
+        });
+      });
+    }
+
     var wrap = document.createElement('div');
     wrap.className = 'contract-generator';
     wrap.innerHTML = '<div class="contract-generator-preview" id="contractPreviewArea"></div><div class="contract-generator-form" id="contractFormArea"></div>';
@@ -1230,26 +1355,28 @@
 
     var formArea = document.getElementById('contractFormArea');
     var previewArea = document.getElementById('contractPreviewArea');
-    if (previewArea) previewArea.style.display = 'none';
+    if (previewArea) renderContractPreview(previewArea, null);
 
     renderContractForm(formArea, function(data) {
-      var html = generateContract(data);
-      lastGeneratedHtml = html;
+      var docs = generateContractDocuments(data);
+      lastGeneratedDocs = docs;
+      lastGeneratedHtml = docs.contract + (docs.appendix || '');
       lastGeneratedData = data || null;
       setPdfDownloadReady(null);
-      if (previewArea) previewArea.style.display = '';
-      renderContractPreview(previewArea, html);
+      renderContractPreview(previewArea, docs);
       updateSaveButtonState();
     }, function() {
       lastGeneratedHtml = '';
+      lastGeneratedDocs = null;
       lastGeneratedData = null;
       setPdfDownloadReady(null);
       if (previewArea) {
-        previewArea.innerHTML = '';
-        previewArea.style.display = 'none';
+        renderContractPreview(previewArea, null);
       }
       updateSaveButtonState();
     });
+
+    if (typeof window.__contractGenerate === 'function') window.__contractGenerate();
 
     window.__contractSaveW = async function() {
       var st = document.getElementById('contractSaveStatus');
@@ -1321,11 +1448,7 @@
         return;
       }
       var ctx = getTargetFolderCtx();
-      var createDocFn =
-        (typeof driveCreateGoogleDoc === 'function' && driveCreateGoogleDoc) ||
-        (typeof window !== 'undefined' && typeof window.driveCreateGoogleDoc === 'function' && window.driveCreateGoogleDoc) ||
-        null;
-      var canDrive = !!(ctx && ctx.folderId && createDocFn && typeof getDriveToken === 'function');
+      var canDrive = !!(ctx && ctx.folderId && typeof driveUploadBlob === 'function' && typeof getDriveToken === 'function');
       if (!canDrive) {
         if (st) st.textContent = 'Для PDF выберите проект с папкой Google Drive и подключите Drive.';
         return;
@@ -1334,26 +1457,26 @@
         if (btn) btn.disabled = true;
         if (st) st.textContent = 'Сохраняю в Google Drive...';
         var who = (lastGeneratedData && (lastGeneratedData.fio || lastGeneratedData.companyName)) || ctx.name || 'Клиент';
-        var htmlForPdf = await inlineExportImages(lastGeneratedHtml);
         await getDriveToken();
-        var docName = 'PDF - Договор - ' + String(who);
-        var res = await createDocFn(docName, wrapContractHtml(htmlForPdf), ctx.folderId);
-        var docId = res && res.id ? String(res.id) : '';
-        var directPdfUrl = docId ? ('https://docs.google.com/document/d/' + docId + '/export?format=pdf') : '';
-        setPdfDownloadReady(docId ? {
-          id: docId,
-          name: docName,
-          webViewLink: res && res.webViewLink ? String(res.webViewLink) : '',
-          downloadUrl: directPdfUrl
-        } : null);
+        var safeWho = String(who).replace(/[\\/:*?"<>|]+/g, ' ').replace(/\s+/g, ' ').trim() || 'Клиент';
+        var contractName = 'Договор - ' + safeWho + '.pdf';
+        var appendixName = 'Приложение - ' + safeWho + '.pdf';
+        var contractHtml = await inlineExportImages(lastGeneratedDocs && lastGeneratedDocs.contract ? lastGeneratedDocs.contract : lastGeneratedHtml);
+        var contractBlob = await htmlToPdfBlob(contractHtml, contractName);
+        var contractResult = await driveUploadBlob(contractName, contractBlob, 'application/pdf', ctx.folderId);
+        var appendixResult = null;
+        if (lastGeneratedDocs && lastGeneratedDocs.appendix) {
+          var appendixHtml = await inlineExportImages(lastGeneratedDocs.appendix);
+          var appendixBlob = await htmlToPdfBlob(appendixHtml, appendixName);
+          appendixResult = await driveUploadBlob(appendixName, appendixBlob, 'application/pdf', ctx.folderId);
+        }
+        setPdfDownloadReady(null);
         if (st) {
-          var openLink = res && res.webViewLink ? String(res.webViewLink) : '';
-          var dlLink = directPdfUrl
-            ? ' · <a href="' + directPdfUrl + '" target="_blank" rel="noopener" style="color:#7cf5ff;text-decoration:underline">Скачать</a>'
-            : '';
-          st.innerHTML = openLink
-            ? '✓ Сохранено в Drive · <a href="' + openLink + '" target="_blank" rel="noopener" style="color:#7cf5ff;text-decoration:underline">Открыть</a>' + dlLink + ' · кнопка «Скачать PDF» активна'
-            : '✓ Сохранено в Drive' + dlLink + ' · кнопка «Скачать PDF» активна';
+          var contractLink = contractResult && contractResult.webViewLink ? String(contractResult.webViewLink) : '';
+          var appendixLink = appendixResult && appendixResult.webViewLink ? String(appendixResult.webViewLink) : '';
+          st.innerHTML = '✓ PDF сохранены в папку клиента' +
+            (contractLink ? ' · <a href="' + contractLink + '" target="_blank" rel="noopener" style="color:#7cf5ff;text-decoration:underline">Договор</a>' : '') +
+            (appendixLink ? ' · <a href="' + appendixLink + '" target="_blank" rel="noopener" style="color:#7cf5ff;text-decoration:underline">Приложение</a>' : '');
         }
       } catch (e) {
         setPdfDownloadReady(null);
