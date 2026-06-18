@@ -59,6 +59,70 @@ function duplicateGroups(items, keys) {
     .map((entry) => ({ legacyKey: entry[0], records: entry[1] }));
 }
 
+function folderIdFromUrl(value) {
+  const match = text(value).match(/\/folders\/([a-zA-Z0-9_-]+)/);
+  return match ? match[1] : '';
+}
+
+function entityRefs(item) {
+  const crm = object(item.crmData);
+  return [
+    item.folderId, item.crmClientId, item.clientId, item.clientFolderId,
+    crm.folderId, crm.crmClientId,
+    folderIdFromUrl(item.folderLink), folderIdFromUrl(crm.folderLink)
+  ].map(text).filter(Boolean);
+}
+
+function normalizedClientName(item) {
+  const crm = object(item.crmData);
+  return text(item.company || item.company_name || item.clientName || item.client_name || crm.company || crm.name)
+    .toLocaleLowerCase('ru-RU').replace(/[^a-zа-яё0-9]+/gi, ' ').trim();
+}
+
+function analyzeRelations(clients, clientKeys, projects) {
+  const refToKeys = new Map();
+  const nameToKeys = new Map();
+  clients.forEach((client, index) => {
+    entityRefs(object(client)).forEach((ref) => {
+      const keys = refToKeys.get(ref) || new Set();
+      keys.add(clientKeys[index]); refToKeys.set(ref, keys);
+    });
+    const name = normalizedClientName(object(client));
+    if (name) {
+      const keys = nameToKeys.get(name) || new Set();
+      keys.add(clientKeys[index]); nameToKeys.set(name, keys);
+    }
+  });
+
+  const result = { linked: 0, linkedById: 0, linkedByName: 0, orphaned: 0, ambiguous: 0, orphanSamples: [], ambiguousSamples: [] };
+  projects.forEach((project, index) => {
+    const item = object(project);
+    const matches = new Set();
+    entityRefs(item).forEach((ref) => (refToKeys.get(ref) || []).forEach((key) => matches.add(key)));
+    if (matches.size === 1) {
+      result.linked++; result.linkedById++; return;
+    }
+    if (matches.size > 1) {
+      result.ambiguous++;
+      if (result.ambiguousSamples.length < 15) result.ambiguousSamples.push(itemLabel(item, index));
+      return;
+    }
+    const name = normalizedClientName(item);
+    const nameMatches = name ? (nameToKeys.get(name) || new Set()) : new Set();
+    if (nameMatches.size === 1) {
+      result.linked++; result.linkedByName++; return;
+    }
+    if (nameMatches.size > 1) {
+      result.ambiguous++;
+      if (result.ambiguousSamples.length < 15) result.ambiguousSamples.push(itemLabel(item, index));
+      return;
+    }
+    result.orphaned++;
+    if (result.orphanSamples.length < 15) result.orphanSamples.push(itemLabel(item, index));
+  });
+  return result;
+}
+
 function findClients(root) {
   const candidates = [root.clients, root.crmClients, root.clientData, object(root.data).clients];
   for (const candidate of candidates) if (Array.isArray(candidate)) return candidate;
@@ -95,6 +159,7 @@ function previewLegacyBackup(payload) {
       clients: duplicateGroups(clients, clientKeys),
       projects: duplicateGroups(projects, projectKeys)
     },
+    relations: analyzeRelations(clients, clientKeys, projects),
     sampleKeys: { clients: clientKeys.slice(0, 3), projects: projectKeys.slice(0, 3) },
     warnings
   };

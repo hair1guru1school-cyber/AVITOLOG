@@ -35,4 +35,16 @@ const duplicatesPreview = previewLegacyBackup({
 assert.strictEqual(duplicatesPreview.uniqueCounts.clients, 1);
 assert.strictEqual(duplicatesPreview.duplicates.clients.length, 1);
 assert.deepStrictEqual(duplicatesPreview.duplicates.clients[0].records.map(x => x.label), ['First', 'Second']);
+
+const relationsPreview = previewLegacyBackup({
+  clients: [{ company: 'Linked', folderId: 'folder-linked' }, { company: 'Named only' }],
+  projects: [
+    { name: 'By folder', folderId: 'folder-linked' },
+    { name: 'Project by client name', clientName: 'Named only' },
+    { name: 'Orphan project' }
+  ]
+});
+assert.strictEqual(relationsPreview.relations.linkedById, 1);
+assert.strictEqual(relationsPreview.relations.linkedByName, 1);
+assert.strictEqual(relationsPreview.relations.orphaned, 1);
 console.log('backend foundation tests: ok');

@@ -99,6 +99,7 @@
     var result = await response.json();
     if (!response.ok || !result.ok) throw new Error(result.error || ('HTTP ' + response.status));
     var preview = result.preview;
+    var relations = preview.relations;
     var duplicateLines = [];
     (preview.duplicates.clients || []).forEach(function (group) {
       duplicateLines.push('• ' + group.legacyKey + ': ' + group.records.map(function (record) { return record.label; }).join(' ↔ '));
@@ -108,6 +109,10 @@
       'Источник: ' + preview.source,
       'Клиенты: ' + preview.counts.clients + ' (уникальных ключей: ' + preview.uniqueCounts.clients + ')',
       'Проекты: ' + preview.counts.projects + ' (уникальных ключей: ' + preview.uniqueCounts.projects + ')',
+      'Связи: ' + relations.linked + ' привязано, ' + relations.orphaned + ' без клиента, ' + relations.ambiguous + ' неоднозначных',
+      'По ID/папке: ' + relations.linkedById + '; по уникальному имени: ' + relations.linkedByName,
+      relations.orphanSamples.length ? 'Без клиента: ' + relations.orphanSamples.join(', ') : '',
+      relations.ambiguousSamples.length ? 'Неоднозначные: ' + relations.ambiguousSamples.join(', ') : '',
       preview.warnings.length ? 'Предупреждения: ' + preview.warnings.join('; ') : 'Предупреждений нет',
       duplicateLines.length ? 'Конфликты клиентов:\n' + duplicateLines.join('\n') : ''
     ].filter(Boolean).join('\n');
