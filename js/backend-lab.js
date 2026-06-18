@@ -12,6 +12,8 @@
   var backupFile = document.getElementById('backupFile');
   var migrationPreview = document.getElementById('migrationPreview');
   var autoPreviewBtn = document.getElementById('autoPreviewBtn');
+  var saveSnapshotBtn = document.getElementById('saveSnapshotBtn');
+  var currentBackupPayload = null;
 
   function setStatus(message, type) {
     statusEl.textContent = message;
@@ -99,6 +101,8 @@
     var result = await response.json();
     if (!response.ok || !result.ok) throw new Error(result.error || ('HTTP ' + response.status));
     var preview = result.preview;
+    currentBackupPayload = payload;
+    saveSnapshotBtn.hidden = false;
     var relations = preview.relations;
     var duplicateLines = [];
     (preview.duplicates.clients || []).forEach(function (group) {
@@ -138,6 +142,34 @@
       migrationPreview.textContent = 'Ошибка проверки: ' + error.message;
     } finally {
       autoPreviewBtn.disabled = false;
+    }
+  });
+
+  saveSnapshotBtn.addEventListener('click', async function () {
+    if (!currentBackupPayload) return;
+    if (!window.confirm('Сохранить полный исходный бэкап в защищённую staging-зону Supabase? Рабочие CRM-таблицы не изменятся.')) return;
+    var session = readSession();
+    if (!session || !session.access_token) {
+      setStatus('Тестовая сессия истекла. Войдите снова.', 'err');
+      return;
+    }
+    saveSnapshotBtn.disabled = true;
+    setStatus('Сохраняю полный snapshot в staging...');
+    try {
+      var response = await fetch('http://127.0.0.1:8787/api/migration/snapshot', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + session.access_token },
+        body: JSON.stringify({ backup: currentBackupPayload })
+      });
+      var data = await response.json();
+      if (!response.ok || !data.ok) throw new Error(data.error || ('HTTP ' + response.status));
+      var result = data.result;
+      setStatus((result.alreadyExists ? 'Snapshot уже был сохранён ранее.' : 'Полный snapshot сохранён.') +
+        '\nКлючей: ' + result.summary.keyCount + '\nChecksum: ' + result.checksum, 'ok');
+    } catch (error) {
+      setStatus('Ошибка сохранения snapshot: ' + error.message, 'err');
+    } finally {
+      saveSnapshotBtn.disabled = false;
     }
   });
 

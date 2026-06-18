@@ -3,6 +3,7 @@
 const assert = require('assert');
 const { previewLegacyBackup, stableKey } = require('../lib/legacy-import');
 const { getSupabaseStatus } = require('../lib/supabase-rest');
+const { checksumBackup, backupSummary } = require('../lib/snapshot-import');
 
 const sample = {
   clients: [{ company: 'Test', folderId: 'drive-1' }],
@@ -47,4 +48,9 @@ const relationsPreview = previewLegacyBackup({
 assert.strictEqual(relationsPreview.relations.linkedById, 1);
 assert.strictEqual(relationsPreview.relations.linkedByName, 1);
 assert.strictEqual(relationsPreview.relations.orphaned, 1);
+assert.strictEqual(checksumBackup(sample), checksumBackup(sample));
+assert.strictEqual(checksumBackup(sample).length, 64);
+assert.deepStrictEqual(backupSummary(automaticBackup), {
+  format: 'avitolog-fil-backup-v1', profile: 'unknown', keyCount: 2
+});
 console.log('backend foundation tests: ok');

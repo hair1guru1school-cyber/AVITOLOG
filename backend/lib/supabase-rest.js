@@ -42,4 +42,36 @@ async function pingSupabase(authorization) {
   return { provider: 'supabase', configured: true, reachable: true, authenticated: Boolean(bearer) };
 }
 
-module.exports = { getSupabaseStatus, pingSupabase };
+async function supabaseUserRequest(path, authorization, options) {
+  const cfg = config();
+  const bearer = String(authorization || '').trim();
+  if (!cfg.url || !cfg.anonKey) {
+    const error = new Error('Supabase is not configured yet');
+    error.status = 503;
+    throw error;
+  }
+  if (!/^Bearer\s+\S+/i.test(bearer)) {
+    const error = new Error('Authenticated Supabase session is required');
+    error.status = 401;
+    throw error;
+  }
+  const requestOptions = Object.assign({}, options || {});
+  requestOptions.headers = Object.assign({
+    apikey: cfg.anonKey,
+    Authorization: bearer,
+    Accept: 'application/json'
+  }, requestOptions.headers || {});
+  const response = await fetch(cfg.url + '/rest/v1/' + String(path || '').replace(/^\/+/, ''), requestOptions);
+  const responseText = await response.text();
+  let data = null;
+  try { data = responseText ? JSON.parse(responseText) : null; } catch (e) { data = responseText; }
+  if (!response.ok) {
+    const message = data && (data.message || data.hint || data.details) ? (data.message || data.hint || data.details) : responseText;
+    const error = new Error('Supabase REST ' + response.status + (message ? ': ' + String(message).slice(0, 300) : ''));
+    error.status = response.status;
+    throw error;
+  }
+  return data;
+}
+
+module.exports = { getSupabaseStatus, pingSupabase, supabaseUserRequest };
