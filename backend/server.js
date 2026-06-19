@@ -6,7 +6,16 @@ const { getSupabaseStatus, pingSupabase } = require('./lib/supabase-rest');
 const { previewLegacyBackup } = require('./lib/legacy-import');
 const { saveRawSnapshot } = require('./lib/snapshot-import');
 const { prepareSnapshot } = require('./lib/prepare-staging');
-const { latestSnapshot, productionPreview } = require('./lib/production-preview');
+const { latestSnapshot, productionPreview, executeProductionImport, getPreviewSnapshot } = require('./lib/production-preview');
+const { analyzeBackupInventory } = require('./lib/data-inventory');
+const { analyzeCashPreview, buildCashImportPlan } = require('./lib/cash-preview');
+const { executeCashImport, cashImportStatus } = require('./lib/cash-import');
+const { analyzeWorkPreview, buildWorkImportPlan } = require('./lib/work-preview');
+const { executeWorkImport, workStatus } = require('./lib/work-import');
+const { analyzeContentPreview } = require('./lib/content-preview');
+const contentImport = require('./lib/content-import');
+const { loadBackendApp } = require('./lib/app-bootstrap');
+const { finalAudit } = require('./lib/final-audit');
 
 const app = express();
 const PORT = Number(process.env.PORT || 8787);
@@ -100,6 +109,67 @@ app.get('/api/migration/latest', async (req, res) => {
 app.post('/api/migration/import-preview', async (req, res) => {
   try { res.json({ ok: true, preview: await productionPreview(req.body && req.body.checksum, req.headers.authorization || '') }); }
   catch (error) { res.status(Number(error && error.status) || 500).json({ ok: false, error: error && error.message ? error.message : 'Import preview failed' }); }
+});
+
+app.get('/api/migration/preview-snapshot', async (req, res) => {
+  try { res.json({ ok: true, result: await getPreviewSnapshot(req.query && req.query.checksum, req.headers.authorization || '') }); }
+  catch (error) { res.status(Number(error && error.status) || 500).json({ ok: false, error: error && error.message ? error.message : 'Preview snapshot failed' }); }
+});
+
+app.get('/api/migration/data-inventory', async (req, res) => {
+  try {
+    const snapshot = await getPreviewSnapshot(req.query && req.query.checksum, req.headers.authorization || '');
+    res.json({ ok: true, snapshot: { checksum: snapshot.checksum, migrationRunId: snapshot.migrationRunId }, inventory: analyzeBackupInventory(snapshot.backup) });
+  } catch (error) { res.status(Number(error && error.status) || 500).json({ ok: false, error: error && error.message ? error.message : 'Data inventory failed' }); }
+});
+
+app.get('/api/migration/cash-preview', async (req, res) => {
+  try {
+    const snapshot = await getPreviewSnapshot(req.query && req.query.checksum, req.headers.authorization || '');
+    res.json({ ok: true, snapshot: { checksum: snapshot.checksum, migrationRunId: snapshot.migrationRunId }, preview: analyzeCashPreview(snapshot.backup) });
+  } catch (error) { res.status(Number(error && error.status) || 500).json({ ok: false, error: error && error.message ? error.message : 'Cash preview failed' }); }
+});
+
+app.get('/api/migration/cash-import-preview', async (req, res) => {
+  try {
+    const snapshot = await getPreviewSnapshot(req.query && req.query.checksum, req.headers.authorization || '');
+    const plan = buildCashImportPlan(snapshot.backup);
+    res.json({ ok: true, snapshot: { checksum: snapshot.checksum, migrationRunId: snapshot.migrationRunId }, preview: plan.summary });
+  } catch (error) { res.status(Number(error && error.status) || 500).json({ ok: false, error: error && error.message ? error.message : 'Cash import preview failed' }); }
+});
+
+app.post('/api/migration/import-cash', async (req, res) => {
+  try { res.json({ ok: true, result: await executeCashImport(req.body && req.body.checksum, req.body && req.body.confirmation, req.headers.authorization || '') }); }
+  catch (error) { res.status(Number(error && error.status) || 500).json({ ok: false, error: error && error.message ? error.message : 'Cash import failed' }); }
+});
+
+app.get('/api/migration/cash-import-status', async (req, res) => {
+  try { res.json({ ok: true, status: await cashImportStatus(req.headers.authorization || '') }); }
+  catch (error) { res.status(Number(error && error.status) || 500).json({ ok: false, error: error && error.message ? error.message : 'Cash import status failed' }); }
+});
+
+app.get('/api/migration/work-preview', async (req, res) => {
+  try {
+    const snapshot = await getPreviewSnapshot(req.query && req.query.checksum, req.headers.authorization || '');
+    res.json({ ok: true, snapshot: { checksum: snapshot.checksum, migrationRunId: snapshot.migrationRunId }, preview: analyzeWorkPreview(snapshot.backup) });
+  } catch (error) { res.status(Number(error && error.status) || 500).json({ ok: false, error: error && error.message ? error.message : 'Work preview failed' }); }
+});
+
+app.get('/api/migration/work-import-preview', async (req, res) => {
+  try { const snapshot=await getPreviewSnapshot(req.query&&req.query.checksum,req.headers.authorization||'');const plan=buildWorkImportPlan(snapshot.backup);res.json({ok:true,snapshot:{checksum:snapshot.checksum,migrationRunId:snapshot.migrationRunId},preview:plan.summary}); }
+  catch(error){res.status(Number(error&&error.status)||500).json({ok:false,error:error&&error.message?error.message:'Work import preview failed'});}
+});
+app.post('/api/migration/import-work',async(req,res)=>{try{res.json({ok:true,result:await executeWorkImport(req.body&&req.body.checksum,req.body&&req.body.confirmation,req.headers.authorization||'')});}catch(error){res.status(Number(error&&error.status)||500).json({ok:false,error:error.message||'Work import failed'});}});
+app.get('/api/migration/work-status',async(req,res)=>{try{res.json({ok:true,status:await workStatus(req.headers.authorization||'')});}catch(error){res.status(Number(error&&error.status)||500).json({ok:false,error:error.message||'Work status failed'});}});
+app.get('/api/migration/content-preview',async(req,res)=>{try{const s=await getPreviewSnapshot(req.query&&req.query.checksum,req.headers.authorization||'');res.json({ok:true,snapshot:{checksum:s.checksum},preview:analyzeContentPreview(s.backup)});}catch(error){res.status(Number(error&&error.status)||500).json({ok:false,error:error.message||'Content preview failed'});}});
+app.post('/api/migration/import-content',async(req,res)=>{try{res.json({ok:true,result:await contentImport.execute(req.body&&req.body.checksum,req.body&&req.body.confirmation,req.headers.authorization||'')});}catch(e){res.status(Number(e&&e.status)||500).json({ok:false,error:e.message});}});
+app.get('/api/migration/content-status',async(req,res)=>{try{res.json({ok:true,status:await contentImport.status(req.headers.authorization||'')});}catch(e){res.status(Number(e&&e.status)||500).json({ok:false,error:e.message});}});
+app.get('/api/app/bootstrap',async(req,res)=>{try{res.json({ok:true,data:await loadBackendApp(req.headers.authorization||'')});}catch(e){res.status(Number(e&&e.status)||500).json({ok:false,error:e.message||'Backend app load failed'});}});
+app.get('/api/app/audit',async(req,res)=>{try{res.json({ok:true,audit:await finalAudit(req.headers.authorization||'')});}catch(e){res.status(Number(e&&e.status)||500).json({ok:false,error:e.message||'Audit failed'});}});
+
+app.post('/api/migration/import-clients-projects', async (req, res) => {
+  try { res.json({ ok: true, result: await executeProductionImport(req.body && req.body.checksum, req.body && req.body.confirmation, req.headers.authorization || '') }); }
+  catch (error) { res.status(Number(error && error.status) || 500).json({ ok: false, error: error && error.message ? error.message : 'Production import failed' }); }
 });
 
 async function getAvitoAccessToken(clientId, clientSecret) {

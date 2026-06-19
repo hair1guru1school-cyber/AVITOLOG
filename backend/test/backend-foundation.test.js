@@ -4,7 +4,7 @@ const assert = require('assert');
 const { previewLegacyBackup, stableKey, buildStagingPlan } = require('../lib/legacy-import');
 const { getSupabaseStatus } = require('../lib/supabase-rest');
 const { checksumBackup, backupSummary } = require('../lib/snapshot-import');
-const { buildProductionPreview } = require('../lib/production-preview');
+const { buildProductionPreview, buildProductionImportPlan } = require('../lib/production-preview');
 
 const sample = {
   clients: [{ company: 'Test', folderId: 'drive-1' }],
@@ -67,4 +67,12 @@ const production = buildProductionPreview({
 assert.strictEqual(production.clientsToUpsert, 1);
 assert.strictEqual(production.projectsToUpsert, 1);
 assert.strictEqual(production.projectsHeld, 1);
+const importPlan = buildProductionImportPlan({
+  clients: [{ company: 'One', folderId: 'folder-one' }, { company: 'One richer', folderId: 'folder-one', phone: '+7' }],
+  projects: [{ name: 'Ready', folderId: 'folder-one' }, { name: 'Held' }]
+});
+assert.strictEqual(importPlan.clients.length, 1);
+assert.strictEqual(importPlan.projects.length, 1);
+assert.strictEqual(importPlan.projects[0].client_legacy_key, 'client:folder-one');
+assert.strictEqual(importPlan.projects[0].details.migration_relation_method, 'id_or_folder');
 console.log('backend foundation tests: ok');

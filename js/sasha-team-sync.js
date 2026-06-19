@@ -6,6 +6,7 @@
  */
 (function() {
   'use strict';
+  if (window.AVITOLOG_BACKEND_PREVIEW) return;
 
   var FORMAT = 'avitolog-sasha-team-v1';
   var SYNC_FOLDER = 'AVITOLOG_SASHA_TEAM';

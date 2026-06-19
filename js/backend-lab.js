@@ -17,6 +17,7 @@
   var prepareStagingBtn = document.getElementById('prepareStagingBtn');
   var savedSnapshotChecksum = '';
   var productionPreviewBtn = document.getElementById('productionPreviewBtn');
+  var productionImportBtn = document.getElementById('productionImportBtn');
 
   function setStatus(message, type) {
     statusEl.textContent = message;
@@ -139,7 +140,8 @@
     var keys = {};
     for (var i = 0; i < localStorage.length; i++) {
       var key = localStorage.key(i);
-      if (!key || (key.indexOf('avitolog_') !== 0 && key.indexOf('crm_') !== 0)) continue;
+      var extraKpKey = key === 'avito_kp_saved_client_packages_v1' || key === 'avito_kp_custom';
+      if (!key || (key.indexOf('avitolog_') !== 0 && key.indexOf('crm_') !== 0 && !extraKpKey)) continue;
       if (key.indexOf('avitolog_drive_auth') === 0 || key.indexOf('avitolog_fil_backup_') === 0) continue;
       keys[key] = localStorage.getItem(key);
     }
@@ -209,9 +211,36 @@
       setStatus('FINAL PREVIEW: данные не записаны\nКлиентов к импорту: ' + p.clientsToUpsert +
         '\nПроектов к импорту: ' + p.projectsToUpsert + '\nПроектов оставлено в staging: ' + p.projectsHeld +
         '\nГрупп дублей объединяется: ' + p.duplicateGroupsMerged + '\nПокрытие полей: ' + JSON.stringify(p.coverage), 'ok');
+      productionImportBtn.disabled = p.clientsToUpsert !== 91 || p.projectsToUpsert !== 48 || p.projectsHeld !== 23;
     } catch (error) {
       setStatus('Ошибка финального preview: ' + error.message, 'err');
     } finally { productionPreviewBtn.disabled = false; }
+  });
+
+  productionImportBtn.addEventListener('click', async function () {
+    if (!savedSnapshotChecksum) return;
+    var session = readSession();
+    if (!session || !session.access_token) { setStatus('Тестовая сессия истекла. Войдите снова.', 'err'); return; }
+    productionImportBtn.disabled = true;
+    setStatus('Выполняю атомарный импорт 91 клиента и 48 проектов...');
+    try {
+      var response = await fetch('http://127.0.0.1:8787/api/migration/import-clients-projects', {
+        method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + session.access_token },
+        body: JSON.stringify({
+          checksum: savedSnapshotChecksum,
+          confirmation: 'IMPORT_91_CLIENTS_48_PROJECTS'
+        })
+      });
+      var data = await response.json();
+      if (!response.ok || !data.ok) throw new Error(data.error || ('HTTP ' + response.status));
+      var result = data.result || {};
+      setStatus('ИМПОРТ ЗАВЕРШЁН\nКлиентов: ' + result.clients + '\nПроектов: ' + result.projects +
+        '\nОставлено в staging: ' + result.held_projects + '\nMigration run: ' + result.migration_run_id, 'ok');
+      productionImportBtn.textContent = 'Клиенты и проекты импортированы';
+    } catch (error) {
+      setStatus('Ошибка импорта: ' + error.message + '\nТранзакция отменена, частичной записи нет.', 'err');
+      productionImportBtn.disabled = false;
+    }
   });
 
   prepareStagingBtn.addEventListener('click', async function () {

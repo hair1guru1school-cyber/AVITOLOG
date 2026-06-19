@@ -7,6 +7,7 @@
  */
 (function () {
   'use strict';
+  if (window.AVITOLOG_BACKEND_PREVIEW) return;
 
   var FORMAT = 'avitolog-sasha-backup-v1';
   var BACKUP_FOLDER_NAME = 'AVITOLOG_SASHA_BACKUP';

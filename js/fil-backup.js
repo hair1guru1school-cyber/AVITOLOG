@@ -7,6 +7,7 @@
  */
 (function () {
   'use strict';
+  if (window.AVITOLOG_BACKEND_PREVIEW) return;
 
   var FORMAT = 'avitolog-fil-backup-v1';
   var BACKUP_FOLDER_NAME = 'AVITOLOG_FIL_BACKUP';
@@ -45,7 +46,7 @@
         if (k.indexOf('avitolog_fil_backup_') === 0) continue;
         if (k.indexOf('avitolog_sasha_') === 0) continue;
         // Берём всё avitolog_ и crm_ — включая _month_ снапшоты!
-        if (k.indexOf('avitolog_') === 0 || k.indexOf('crm_') === 0) {
+        if (k.indexOf('avitolog_') === 0 || k.indexOf('crm_') === 0 || k === 'avito_kp_saved_client_packages_v1' || k === 'avito_kp_custom') {
           result[k] = localStorage.getItem(k);
         }
       }
