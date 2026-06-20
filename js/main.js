@@ -2467,20 +2467,11 @@ function startAuth(evt) {
     if (!relogin) { setDriveConnectedUiState(); return; }
     disconnectDriveAuth(true);
     _authPromptForce = true;
-    if (typeof google !== 'undefined' && google.accounts && google.accounts.oauth2) startAuthGIS();
-    else startAuthRedirect();
-    return;
-  }
-  if (window.location.origin === 'https://hair1guru1school-cyber.github.io') {
-    startAuthRedirect();
+    startAuthGIS();
     return;
   }
   // GIS работает и локально, и на GitHub; это стабильнее, чем редирект между origin
-  if (typeof google !== 'undefined' && google.accounts && google.accounts.oauth2) {
-    startAuthGIS();
-  } else {
-    startAuthRedirect();
-  }
+  startAuthGIS();
 }
 function startAuthRedirect() {
   try { localStorage.removeItem('avitolog_drive_bypass'); } catch(e1) {}
@@ -2543,7 +2534,6 @@ function startAuthGIS() {
             error_callback: function(e) {
               if (e && e.type === 'popup_closed') return;
               _authPromptForce = true;
-              continueWithoutDrive();
               if (promptMode === 'none') {
                 var btn = document.querySelector('#driveSplash .splash-btn');
                 if (btn) { btn.textContent = '🔑 Нажми для входа'; btn.onclick = function(){ _authPromptForce = true; startAuth(); }; }
@@ -2559,7 +2549,14 @@ function startAuthGIS() {
       alert('Google Sign-In не загрузился. Подожди пару секунд и нажми снова.');
     }
   }
-  if (typeof google !== 'undefined') run(); else setTimeout(run, 1200);
+  var attempts = 0;
+  function waitAndRun() {
+    if (typeof google !== 'undefined' && google.accounts && google.accounts.oauth2) { run(); return; }
+    attempts += 1;
+    if (attempts < 20) { setTimeout(waitAndRun, 500); return; }
+    alert('Google Sign-In не загрузился. Обнови страницу и нажми Drive ещё раз.');
+  }
+  waitAndRun();
 }
 function testAuthUrl() { window.open(buildAuthUrl(), '_blank', 'noopener'); }
 window.continueWithoutDrive = continueWithoutDrive;
