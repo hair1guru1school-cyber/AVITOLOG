@@ -77,5 +77,17 @@
     } catch (error) { setStatus('Ошибка загрузки preview: ' + error.message); button.disabled = false; }
   });
 
+  document.getElementById('activatePrimaryBtn').addEventListener('click', async function () {
+    var current = await activeSession();
+    if (!current || !current.access_token) {
+      setStatus('Сессия истекла. Войдите снова.');
+      loginCard.classList.remove('off'); loadCard.classList.add('off'); return;
+    }
+    if (!window.confirm('Включить Supabase как основную базу на этом браузере? Google Drive продолжит работать, а возврат останется доступен внизу экрана.')) return;
+    localStorage.setItem('avitolog_backend_primary', '1');
+    setStatus('Supabase включён как основная база. Открываю рабочий AVITOLOG...');
+    window.location.href = 'index.html?backendSource=supabase';
+  });
+
   if (session() && session().access_token) showReady();
 })();

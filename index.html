@@ -2557,41 +2557,76 @@ body.day-mode .assets-col-sasha-hint{color:var(--accent)}
 (function () {
   try {
     var params = new URLSearchParams(window.location.search);
-    if (params.get('backendPreview') !== '1') return;
-    window.AVITOLOG_BACKEND_PREVIEW = true;
-    var storageFrame = document.createElement('iframe');
-    storageFrame.style.display = 'none';
-    storageFrame.setAttribute('aria-hidden', 'true');
-    document.documentElement.appendChild(storageFrame);
-    var storageTarget = storageFrame.contentWindow.localStorage;
-    var storagePrefix = 'sb_backend::';
+    var previewMode = params.get('backendPreview') === '1';
+    var primaryMode = !previewMode && localStorage.getItem('avitolog_backend_primary') === '1';
+    if (!previewMode && !primaryMode) return;
+    window.AVITOLOG_BACKEND_MODE = true;
+    window.AVITOLOG_BACKEND_PREVIEW = previewMode;
+    var storageTarget;
+    var storagePrefix;
+    if (previewMode) {
+      var storageFrame = document.createElement('iframe');
+      storageFrame.style.display = 'none';
+      storageFrame.setAttribute('aria-hidden', 'true');
+      document.documentElement.appendChild(storageFrame);
+      storageTarget = storageFrame.contentWindow.localStorage;
+      storagePrefix = 'sb_backend::';
+    } else {
+      storageTarget = window.localStorage;
+      storagePrefix = '';
+    }
     window.AVITOLOG_BACKEND_STORAGE_TARGET = storageTarget;
     window.AVITOLOG_BACKEND_STORAGE_PREFIX = storagePrefix;
+    var storageSetOverride = null;
+    var storageRemoveOverride = null;
+    function backendStorageSet(key, value) {
+      var result = storageTarget.setItem(storagePrefix + key, value);
+      try { document.dispatchEvent(new CustomEvent('avitolog:storage-write', { detail: { key: String(key), value: String(value) } })); } catch (e) {}
+      return result;
+    }
+    function backendStorageRemove(key) { return storageTarget.removeItem(storagePrefix + key); }
     var prefixedStorage = new Proxy(storageTarget, {
       get: function(target, prop) {
         if (prop === 'length') { var count=0; for(var i=0;i<target.length;i++){if((target.key(i)||'').indexOf(storagePrefix)===0)count++;} return count; }
         if (prop === 'key') return function(index){var keys=[];for(var i=0;i<target.length;i++){var k=target.key(i)||'';if(k.indexOf(storagePrefix)===0)keys.push(k.slice(storagePrefix.length));}return keys[index]||null;};
         if (prop === 'getItem') return function(key){return target.getItem(storagePrefix+key);};
-        if (prop === 'setItem') return function(key,value){var result=target.setItem(storagePrefix+key,value);try{document.dispatchEvent(new CustomEvent('avitolog:storage-write',{detail:{key:String(key),value:String(value)}}));}catch(e){}return result;};
-        if (prop === 'removeItem') return function(key){return target.removeItem(storagePrefix+key);};
+        if (prop === 'setItem') return storageSetOverride || backendStorageSet;
+        if (prop === 'removeItem') return storageRemoveOverride || backendStorageRemove;
         if (prop === 'clear') return function(){var keys=[];for(var i=0;i<target.length;i++){var k=target.key(i)||'';if(k.indexOf(storagePrefix)===0)keys.push(k);}keys.forEach(function(k){target.removeItem(k);});};
         var value=target[prop];return typeof value==='function'?value.bind(target):value;
+      },
+      set: function(target, prop, value) {
+        if (prop === 'setItem') { storageSetOverride = value; return true; }
+        if (prop === 'removeItem') { storageRemoveOverride = value; return true; }
+        target[prop] = value; return true;
       }
     });
     try { Object.defineProperty(window,'localStorage',{value:prefixedStorage,configurable:true}); } catch (storageError) {}
-    localStorage.setItem('avitolog_drive_bypass', '1');
-    localStorage.setItem('avitolog_current_user', 'fil');
+    if (previewMode) {
+      localStorage.setItem('avitolog_drive_bypass', '1');
+      localStorage.setItem('avitolog_current_user', 'fil');
+    }
     document.addEventListener('DOMContentLoaded', function () {
       var banner = document.createElement('div');
-      banner.style.cssText = 'position:fixed;z-index:2147483647;left:0;right:0;bottom:0;padding:6px 14px;background:#ffb020;color:#16100a;text-align:center;font:900 12px/1.3 Segoe UI,Arial,sans-serif;box-shadow:0 -2px 12px #0008';
-      banner.innerHTML = 'BACKEND PREVIEW · копия данных из Supabase · Google Drive и рабочая версия не изменяются · <a href="backend-preview.html" style="color:#16100a;text-decoration:underline">обновить копию</a>';
+      banner.style.cssText = 'position:fixed;z-index:2147483647;left:0;right:0;bottom:0;padding:6px 14px;background:' + (previewMode ? '#ffb020' : '#13b981') + ';color:#16100a;text-align:center;font:900 12px/1.3 Segoe UI,Arial,sans-serif;box-shadow:0 -2px 12px #0008';
+      if (previewMode) {
+        banner.innerHTML = 'BACKEND PREVIEW · копия данных из Supabase · Google Drive и рабочая версия не изменяются · <a href="backend-preview.html" style="color:#16100a;text-decoration:underline">обновить копию</a>';
+      } else {
+        banner.innerHTML = 'SUPABASE — ОСНОВНАЯ БАЗА · Google Drive включён · <button type="button" id="backendRollbackBtn" style="border:0;background:transparent;color:#16100a;text-decoration:underline;font:inherit;cursor:pointer">вернуться на прежний режим</button>';
+      }
       document.body.appendChild(banner);
+      var rollback = document.getElementById('backendRollbackBtn');
+      if (rollback) rollback.onclick = function () {
+        if (!window.confirm('Отключить Supabase как основную базу только в этом браузере? Текущие данные в Supabase не удалятся.')) return;
+        Storage.prototype.removeItem.call(storageTarget, 'avitolog_backend_primary');
+        window.location.href = 'index.html';
+      };
     });
   } catch (error) {}
 })();
 </script>
 <script src="js/supabase-config.js?v=20260619-write1"></script>
-<script src="js/backend-sync.js?v=20260620-session-refresh-1"></script>
+<script src="js/backend-sync.js?v=20260620-primary-gate-1"></script>
 <script src="js/user-config.js?v=20260414-3"></script>
 <script src="js/goals.js?v=20260518-1"></script>
 <script>

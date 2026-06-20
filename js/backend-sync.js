@@ -1,6 +1,6 @@
 (function () {
   'use strict';
-  if (!window.AVITOLOG_BACKEND_PREVIEW) return;
+  if (!window.AVITOLOG_BACKEND_MODE) return;
 
   var cfg = window.AVITOLOG_SUPABASE || {};
   var coreKeys = { avitolog_clients: true, avitolog_projects: true };
