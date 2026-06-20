@@ -42,6 +42,7 @@
         // Исключаем Сашины ключи и служебные
         if (/_sasha/.test(k)) continue;
         if (k.indexOf('avitolog_drive_auth') === 0) continue;
+        if (k.indexOf('avitolog_backend_session') === 0) continue;
         if (k === 'avitolog_current_user' || k === 'avitolog_profile_bookmark') continue;
         if (k.indexOf('avitolog_fil_backup_') === 0) continue;
         if (k.indexOf('avitolog_sasha_') === 0) continue;

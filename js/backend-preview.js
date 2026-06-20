@@ -1,6 +1,7 @@
 (function () {
   'use strict';
   var SESSION_KEY = 'avitolog_backend_preview_session';
+  var PERSISTENT_SESSION_KEY = 'avitolog_backend_session_v1';
   var cfg = window.AVITOLOG_SUPABASE || {};
   var status = document.getElementById('previewStatus');
   var loginCard = document.getElementById('loginCard');
@@ -12,7 +13,7 @@
   function setStatus(text) { status.textContent = text; }
   function session() {
     try {
-      return JSON.parse(sessionStorage.getItem(SESSION_KEY) || sessionStorage.getItem('avitolog_backend_app_session') || 'null');
+      return JSON.parse(sessionStorage.getItem(SESSION_KEY) || sessionStorage.getItem('avitolog_backend_app_session') || localStorage.getItem(PERSISTENT_SESSION_KEY) || 'null');
     } catch (e) { return null; }
   }
   function saveSession(data) {
@@ -26,6 +27,7 @@
       email: String((data.user && data.user.email) || data.email || previous.email || '').toLowerCase()
     };
     sessionStorage.setItem(SESSION_KEY, JSON.stringify(value));
+    localStorage.setItem(PERSISTENT_SESSION_KEY, JSON.stringify(value));
     return value;
   }
   async function activeSession() {

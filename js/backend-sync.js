@@ -12,6 +12,7 @@
   var contentEnabled = false;
   var timers = {};
   var statusEl;
+  var persistentSessionKey = 'avitolog_backend_session_v1';
 
   function ensureStatus() {
     if (statusEl) return statusEl;
@@ -33,7 +34,10 @@
   function isAllowed(key) { return Boolean(coreKeys[key] || isFinanceKey(key) || isContentKey(key)); }
   function sessionData() {
     try {
-      return JSON.parse(sessionStorage.getItem('avitolog_backend_preview_session') || sessionStorage.getItem('avitolog_backend_app_session') || 'null');
+      var temporary = sessionStorage.getItem('avitolog_backend_preview_session') || sessionStorage.getItem('avitolog_backend_app_session');
+      var raw = temporary || localStorage.getItem(persistentSessionKey) || 'null';
+      if (temporary && !localStorage.getItem(persistentSessionKey)) localStorage.setItem(persistentSessionKey, temporary);
+      return JSON.parse(raw);
     } catch (e) { return null; }
   }
   function saveSession(data) {
@@ -42,6 +46,7 @@
     if (!expiresAt && data.expires_in) expiresAt = Math.floor(Date.now() / 1000) + Number(data.expires_in);
     var value = { access_token: data.access_token, refresh_token: data.refresh_token || '', expires_at: expiresAt };
     sessionStorage.setItem(key, JSON.stringify(value));
+    localStorage.setItem(persistentSessionKey, JSON.stringify(value));
     return value;
   }
   async function token() {
