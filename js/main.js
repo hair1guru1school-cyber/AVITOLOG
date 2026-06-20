@@ -2322,12 +2322,12 @@ function applyOAuthHash(hash) {
     }
     var authKey = normalizedEmail ? buildDriveAuthStorageKeyByEmail(normalizedEmail) : 'avitolog_drive_auth_v1';
     persistDriveToken(token, expiresIn, authKey);
-    history.replaceState(null, '', location.pathname);
+    history.replaceState(null, '', location.pathname + (location.search || ''));
     location.reload();
   }).catch(function() {
     try { localStorage.removeItem('avitolog_drive_email'); } catch(e) {}
     persistDriveToken(token, expiresIn, 'avitolog_drive_auth_v1');
-    history.replaceState(null, '', location.pathname);
+    history.replaceState(null, '', location.pathname + (location.search || ''));
     location.reload();
   });
   return true;
@@ -2495,7 +2495,7 @@ function startAuthGIS() {
                   }
                   var authKey = normalizedEmail ? buildDriveAuthStorageKeyByEmail(normalizedEmail) : 'avitolog_drive_auth_v1';
                   persistDriveToken(token, expiresIn, authKey);
-                  history.replaceState(null, '', location.pathname);
+                  history.replaceState(null, '', location.pathname + (location.search || ''));
                   location.reload();
                   return;
                 }).catch(function() {
