@@ -5,6 +5,7 @@
   var status = document.getElementById('previewStatus');
   var loginCard = document.getElementById('loginCard');
   var loadCard = document.getElementById('loadCard');
+  var deactivatePrimaryBtn = document.getElementById('deactivatePrimaryBtn');
 
   function setStatus(text) { status.textContent = text; }
   function session() {
@@ -88,6 +89,15 @@
     setStatus('Supabase включён как основная база. Открываю рабочий AVITOLOG...');
     window.location.href = 'index.html?backendSource=supabase';
   });
+
+  deactivatePrimaryBtn.addEventListener('click', function () {
+    if (!window.confirm('Вернуться на прежнее локальное хранение в этом браузере? Данные в Supabase не удалятся.')) return;
+    localStorage.removeItem('avitolog_backend_primary');
+    deactivatePrimaryBtn.classList.add('off');
+    setStatus('Основной Supabase-режим отключён только в этом браузере. Данные в Supabase сохранены.');
+  });
+
+  if (localStorage.getItem('avitolog_backend_primary') === '1') deactivatePrimaryBtn.classList.remove('off');
 
   if (session() && session().access_token) showReady();
 })();

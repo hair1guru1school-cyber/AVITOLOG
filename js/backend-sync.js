@@ -10,6 +10,14 @@
   var timers = {};
   var statusEl;
 
+  function ensureStatus() {
+    if (statusEl) return statusEl;
+    statusEl = document.createElement('div');
+    statusEl.style.cssText = 'position:fixed;z-index:2147483647;right:12px;bottom:12px;padding:7px 10px;border-radius:8px;background:#584713;color:#fff;font:700 11px Segoe UI,Arial,sans-serif;box-shadow:0 2px 12px #0008';
+    document.body.appendChild(statusEl);
+    return statusEl;
+  }
+
   function isFinanceKey(key) {
     return /^avitolog_goals_v1(?:_sasha)?(?:_month_\d{4}-\d{2})?$/.test(key) ||
       /^avitolog_goal_achievements_v1(?:_sasha)?$/.test(key) ||
@@ -52,7 +60,8 @@
     return Object.assign({ apikey: cfg.publishableKey, Authorization: 'Bearer ' + accessToken }, extra || {});
   }
   function setStatus(text, error) {
-    if (!statusEl) return;
+    if (!statusEl && !error && !window.AVITOLOG_BACKEND_PREVIEW) return;
+    ensureStatus();
     statusEl.textContent = text;
     statusEl.style.background = error ? '#701b2b' : '#073f35';
   }
@@ -81,6 +90,7 @@
     return response.json();
   }
   function button(label, action) {
+    ensureStatus();
     var el = document.createElement('button');
     el.type = 'button'; el.textContent = label;
     el.style.cssText = 'display:block;margin-top:6px;border:0;border-radius:6px;padding:5px 8px;background:#20d6a0;color:#07130f;font:800 11px Segoe UI,Arial,sans-serif;cursor:pointer';
@@ -131,9 +141,10 @@
   });
   document.addEventListener('DOMContentLoaded', async function () {
     var phase = 'start';
-    statusEl = document.createElement('div');
-    statusEl.style.cssText = 'position:fixed;z-index:2147483647;right:12px;bottom:38px;padding:7px 10px;border-radius:8px;background:#584713;color:#fff;font:700 11px Segoe UI,Arial,sans-serif;box-shadow:0 2px 12px #0008';
-    statusEl.textContent = 'Supabase: проверка записи...'; document.body.appendChild(statusEl);
+    if (window.AVITOLOG_BACKEND_PREVIEW) {
+      ensureStatus();
+      statusEl.textContent = 'Supabase: проверка записи...';
+    }
     if (!sessionData()) { setStatus('Нет активной Supabase-сессии', true); return; }
     try {
       phase = 'read'; var rows = await readRemote(); var remoteKeys = {};
