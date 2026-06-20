@@ -110,7 +110,7 @@
   document.addEventListener('DOMContentLoaded', async function () {
     var phase = 'start';
     statusEl = document.createElement('div');
-    statusEl.style.cssText = 'position:fixed;z-index:2147483647;right:12px;top:42px;padding:7px 10px;border-radius:8px;background:#584713;color:#fff;font:700 11px Segoe UI,Arial,sans-serif;box-shadow:0 2px 12px #0008';
+    statusEl.style.cssText = 'position:fixed;z-index:2147483647;right:12px;bottom:38px;padding:7px 10px;border-radius:8px;background:#584713;color:#fff;font:700 11px Segoe UI,Arial,sans-serif;box-shadow:0 2px 12px #0008';
     statusEl.textContent = 'Supabase: проверка записи...'; document.body.appendChild(statusEl);
     if (!token()) { setStatus('Нет активной Supabase-сессии', true); return; }
     try {
