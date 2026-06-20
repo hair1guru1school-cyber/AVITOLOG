@@ -20,14 +20,36 @@
       /^crm_ads_(?:expenses_v1|expenses_month_\d{4}-\d{2}|posts_plan_v1|posts_source_v1|links_v1|posts_sync_queue_v1)$/.test(key);
   }
   function isAllowed(key) { return Boolean(coreKeys[key] || isFinanceKey(key) || isContentKey(key)); }
-  function token() {
+  function sessionData() {
     try {
-      var data = JSON.parse(sessionStorage.getItem('avitolog_backend_preview_session') || sessionStorage.getItem('avitolog_backend_app_session') || 'null');
-      return data && data.access_token;
+      return JSON.parse(sessionStorage.getItem('avitolog_backend_preview_session') || sessionStorage.getItem('avitolog_backend_app_session') || 'null');
     } catch (e) { return null; }
   }
-  function headers(extra) {
-    return Object.assign({ apikey: cfg.publishableKey, Authorization: 'Bearer ' + token() }, extra || {});
+  function saveSession(data) {
+    var key = sessionStorage.getItem('avitolog_backend_preview_session') ? 'avitolog_backend_preview_session' : 'avitolog_backend_app_session';
+    var expiresAt = Number(data.expires_at || 0);
+    if (!expiresAt && data.expires_in) expiresAt = Math.floor(Date.now() / 1000) + Number(data.expires_in);
+    var value = { access_token: data.access_token, refresh_token: data.refresh_token || '', expires_at: expiresAt };
+    sessionStorage.setItem(key, JSON.stringify(value));
+    return value;
+  }
+  async function token() {
+    var data = sessionData();
+    if (!data || !data.access_token) return null;
+    if (!data.expires_at || Number(data.expires_at) > Math.floor(Date.now() / 1000) + 60) return data.access_token;
+    if (!data.refresh_token) return null;
+    var response = await fetch(cfg.url + '/auth/v1/token?grant_type=refresh_token', {
+      method: 'POST', headers: { apikey: cfg.publishableKey, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ refresh_token: data.refresh_token })
+    });
+    var refreshed = await response.json();
+    if (!response.ok || !refreshed.access_token) return null;
+    return saveSession(refreshed).access_token;
+  }
+  async function headers(extra) {
+    var accessToken = await token();
+    if (!accessToken) throw new Error('Supabase session expired');
+    return Object.assign({ apikey: cfg.publishableKey, Authorization: 'Bearer ' + accessToken }, extra || {});
   }
   function setStatus(text, error) {
     if (!statusEl) return;
@@ -36,7 +58,7 @@
   }
   async function writeKey(key, value) {
     var response = await fetch(cfg.url + '/rest/v1/rpc/upsert_frontend_state', {
-      method: 'POST', headers: headers({ 'Content-Type': 'application/json' }),
+      method: 'POST', headers: await headers({ 'Content-Type': 'application/json' }),
       body: JSON.stringify({ p_key: key, p_value: String(value == null ? '' : value) })
     });
     if (!response.ok) throw new Error((await response.text()) || 'Supabase write failed');
@@ -54,7 +76,7 @@
     }, 700);
   }
   async function readRemote() {
-    var response = await fetch(cfg.url + '/rest/v1/frontend_state_records?select=storage_key,value_text,revision,updated_at&order=storage_key', { headers: headers() });
+    var response = await fetch(cfg.url + '/rest/v1/frontend_state_records?select=storage_key,value_text,revision,updated_at&order=storage_key', { headers: await headers() });
     if (!response.ok) throw new Error((await response.text()) || 'frontend_state_records read failed');
     return response.json();
   }
@@ -112,7 +134,7 @@
     statusEl = document.createElement('div');
     statusEl.style.cssText = 'position:fixed;z-index:2147483647;right:12px;bottom:38px;padding:7px 10px;border-radius:8px;background:#584713;color:#fff;font:700 11px Segoe UI,Arial,sans-serif;box-shadow:0 2px 12px #0008';
     statusEl.textContent = 'Supabase: проверка записи...'; document.body.appendChild(statusEl);
-    if (!token()) { setStatus('Нет активной Supabase-сессии', true); return; }
+    if (!sessionData()) { setStatus('Нет активной Supabase-сессии', true); return; }
     try {
       phase = 'read'; var rows = await readRemote(); var remoteKeys = {};
       phase = 'apply'; rows.forEach(function (row) {

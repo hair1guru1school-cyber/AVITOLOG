@@ -12,6 +12,31 @@
       return JSON.parse(sessionStorage.getItem(SESSION_KEY) || sessionStorage.getItem('avitolog_backend_app_session') || 'null');
     } catch (e) { return null; }
   }
+  function saveSession(data) {
+    var expiresAt = Number(data.expires_at || 0);
+    if (!expiresAt && data.expires_in) expiresAt = Math.floor(Date.now() / 1000) + Number(data.expires_in);
+    var value = {
+      access_token: data.access_token,
+      refresh_token: data.refresh_token || '',
+      expires_at: expiresAt
+    };
+    sessionStorage.setItem(SESSION_KEY, JSON.stringify(value));
+    return value;
+  }
+  async function activeSession() {
+    var current = session();
+    if (!current || !current.access_token) return null;
+    if (!current.expires_at || Number(current.expires_at) > Math.floor(Date.now() / 1000) + 60) return current;
+    if (!current.refresh_token) return null;
+    var response = await fetch(cfg.url + '/auth/v1/token?grant_type=refresh_token', {
+      method: 'POST',
+      headers: { apikey: cfg.publishableKey, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ refresh_token: current.refresh_token })
+    });
+    var data = await response.json();
+    if (!response.ok || !data.access_token) return null;
+    return saveSession(data);
+  }
   function showReady() { loginCard.classList.add('off'); loadCard.classList.remove('off'); }
 
   document.getElementById('previewLoginBtn').addEventListener('click', async function () {
@@ -24,14 +49,14 @@
       var data = await response.json();
       if (!response.ok || !data.access_token) throw new Error(data.error_description || data.msg || 'Ошибка входа');
       document.getElementById('previewPassword').value = '';
-      sessionStorage.setItem(SESSION_KEY, JSON.stringify({ access_token: data.access_token, expires_at: data.expires_at }));
+      saveSession(data);
       showReady(); setStatus('Вход выполнен. Можно загрузить изолированную копию.');
     } catch (error) { setStatus('Ошибка: ' + error.message); }
     finally { button.disabled = false; }
   });
 
   document.getElementById('loadSnapshotBtn').addEventListener('click', async function () {
-    var current = session();
+    var current = await activeSession();
     if (!current || !current.access_token) { setStatus('Сессия истекла. Войдите снова.'); loginCard.classList.remove('off'); loadCard.classList.add('off'); return; }
     var button = this; button.disabled = true; setStatus('Загружаю проверенный snapshot из Supabase...');
     try {
