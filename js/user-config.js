@@ -113,6 +113,7 @@
    *  если *_sasha пусты. Иначе у него всё жило в avitolog_goals_v1 / avitolog_clients, а профиль «Саша» и ☁️ читали только *_sasha — «пусто». У Фила (другой email) не выполняется. */
   (function migrateSashaNamespaceFromLegacyIfOwnAccount() {
     try {
+      if (window.AVITOLOG_BACKEND_MODE) return;
       var em = String(localStorage.getItem('avitolog_drive_email') || '').trim().toLowerCase();
       if (!em || em !== sashaEmail) return;
       if (suffix !== '_sasha') return;

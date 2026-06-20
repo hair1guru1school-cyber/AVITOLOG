@@ -41,10 +41,16 @@
     } catch (e) { return null; }
   }
   function saveSession(data) {
+    var previous = sessionData() || {};
     var key = sessionStorage.getItem('avitolog_backend_preview_session') ? 'avitolog_backend_preview_session' : 'avitolog_backend_app_session';
     var expiresAt = Number(data.expires_at || 0);
     if (!expiresAt && data.expires_in) expiresAt = Math.floor(Date.now() / 1000) + Number(data.expires_in);
-    var value = { access_token: data.access_token, refresh_token: data.refresh_token || '', expires_at: expiresAt };
+    var value = {
+      access_token: data.access_token,
+      refresh_token: data.refresh_token || '',
+      expires_at: expiresAt,
+      email: String((data.user && data.user.email) || data.email || previous.email || '').toLowerCase()
+    };
     sessionStorage.setItem(key, JSON.stringify(value));
     localStorage.setItem(persistentSessionKey, JSON.stringify(value));
     return value;

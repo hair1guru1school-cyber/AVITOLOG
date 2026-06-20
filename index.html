@@ -2562,6 +2562,30 @@ body.day-mode .assets-col-sasha-hint{color:var(--accent)}
     if (!previewMode && !primaryMode) return;
     window.AVITOLOG_BACKEND_MODE = true;
     window.AVITOLOG_BACKEND_PREVIEW = previewMode;
+    var backendSessionRaw = sessionStorage.getItem('avitolog_backend_preview_session') || sessionStorage.getItem('avitolog_backend_app_session') || localStorage.getItem('avitolog_backend_session_v1') || '';
+    if (primaryMode && !backendSessionRaw) {
+      window.location.replace('backend-preview.html?return=app');
+      return;
+    }
+    if (primaryMode && backendSessionRaw) {
+      try {
+        var backendSession = JSON.parse(backendSessionRaw);
+        var backendEmail = String((backendSession && backendSession.email) || '').toLowerCase();
+        if (backendEmail === 'cyplakovaleksandr153@gmail.com') {
+          localStorage.setItem('avitolog_current_user', 'sasha');
+          localStorage.setItem('avitolog_profile_bookmark', 'sasha');
+          if (localStorage.getItem('avitolog_sasha_backend_initialized_v1') !== '1') {
+            var removeSashaKeys = [];
+            for (var si = 0; si < localStorage.length; si++) {
+              var sk = localStorage.key(si) || '';
+              if (/^(avitolog_(clients|projects|goals_v1|goal_achievements_v1|assets_(my|sasha|base)_v2)|crm_tasks_v1)_sasha(?:_|$)/.test(sk)) removeSashaKeys.push(sk);
+            }
+            removeSashaKeys.forEach(function(key) { localStorage.removeItem(key); });
+            localStorage.setItem('avitolog_sasha_backend_initialized_v1', '1');
+          }
+        }
+      } catch (sessionError) {}
+    }
     var storageTarget;
     var storagePrefix;
     if (previewMode) {
@@ -2626,8 +2650,8 @@ body.day-mode .assets-col-sasha-hint{color:var(--accent)}
 })();
 </script>
 <script src="js/supabase-config.js?v=20260619-write1"></script>
-<script src="js/backend-sync.js?v=20260620-persistent-session-1"></script>
-<script src="js/user-config.js?v=20260414-3"></script>
+<script src="js/backend-sync.js?v=20260620-sasha-profile-1"></script>
+<script src="js/user-config.js?v=20260620-backend-profile-1"></script>
 <script src="js/goals.js?v=20260518-1"></script>
 <script>
 if (!window.AVITOLOG_GOALS) {
