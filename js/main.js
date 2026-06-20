@@ -2342,6 +2342,9 @@ function applyOAuthHash(hash) {
   var token = m[1];
   var ex = hash.match(/expires_in=([^&]+)/);
   var expiresIn = ex ? parseInt(ex[1], 10) : 3600;
+  _driveToken = token;
+  persistDriveToken(token, expiresIn, 'avitolog_drive_auth_v1');
+  history.replaceState(null, '', location.pathname + (location.search || ''));
   fetchDriveUserEmail(token).then(function(email) {
     var normalizedEmail = String(email || '').toLowerCase();
     if (normalizedEmail) {
@@ -2352,13 +2355,8 @@ function applyOAuthHash(hash) {
     }
     var authKey = normalizedEmail ? buildDriveAuthStorageKeyByEmail(normalizedEmail) : 'avitolog_drive_auth_v1';
     persistDriveToken(token, expiresIn, authKey);
-    history.replaceState(null, '', location.pathname + (location.search || ''));
-    location.reload();
   }).catch(function() {
-    try { localStorage.removeItem('avitolog_drive_email'); } catch(e) {}
-    persistDriveToken(token, expiresIn, 'avitolog_drive_auth_v1');
-    history.replaceState(null, '', location.pathname + (location.search || ''));
-    location.reload();
+    // Drive is already connected; email is optional metadata.
   });
   return true;
 }
@@ -2410,7 +2408,7 @@ function updateDriveUI() {
   var splash = document.getElementById('driveSplash');
   var mainApp = document.getElementById('mainApp');
   var bypass = false;
-  try { bypass = localStorage.getItem('avitolog_drive_bypass') === '1'; } catch(e0) {}
+  try { bypass = !!window.AVITOLOG_BACKEND_MODE || localStorage.getItem('avitolog_drive_bypass') === '1'; } catch(e0) {}
   if (_driveToken) {
     if (splash) splash.style.display = 'none';
     if (mainApp) mainApp.style.display = 'block';
@@ -2468,6 +2466,10 @@ function startAuth(evt) {
     disconnectDriveAuth(true);
     _authPromptForce = true;
     startAuthGIS();
+    return;
+  }
+  if (window.location.origin === 'https://hair1guru1school-cyber.github.io') {
+    startAuthRedirect();
     return;
   }
   // GIS работает и локально, и на GitHub; это стабильнее, чем редирект между origin
