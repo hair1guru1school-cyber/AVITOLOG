@@ -3209,6 +3209,8 @@ function callAPI(prompt, maxTokens) {
     var bb = String(backendBase || '').toLowerCase();
     return bb.indexOf('localhost') >= 0 || bb.indexOf('127.0.0.1') >= 0;
   })();
+  var isGithubPages = /github\.io$/i.test(window.location.hostname || '');
+  tryBackendFirst = !isGithubPages || (backendExplicit && !backendIsLocal);
   var headers = {
     'Content-Type': 'application/json',
     'x-api-key': userKey,
@@ -3244,6 +3246,10 @@ function callAPI(prompt, maxTokens) {
         localStorage.setItem('avito_api_endpoint', custom);
       }
     } catch (eSet) {}
+    if (isGithubPages) {
+      add(API);
+      return out;
+    }
     if (custom && custom !== API) add(custom);
     add(API);
     (API_CORS_FALLBACKS || []).forEach(function(item) {
