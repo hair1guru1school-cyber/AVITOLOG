@@ -3,7 +3,10 @@
   if (!window.AVITOLOG_BACKEND_MODE) return;
 
   var cfg = window.AVITOLOG_SUPABASE || {};
-  var coreKeys = { avitolog_clients: true, avitolog_projects: true };
+  var coreKeys = {
+    avitolog_clients: true, avitolog_projects: true, crm_tasks_v1: true,
+    avitolog_clients_sasha: true, avitolog_projects_sasha: true, crm_tasks_v1_sasha: true
+  };
   var coreEnabled = false;
   var financeEnabled = false;
   var contentEnabled = false;
@@ -89,6 +92,30 @@
     if (!response.ok) throw new Error((await response.text()) || 'frontend_state_records read failed');
     return response.json();
   }
+  function hasProfileData(key, value) {
+    if (!value) return false;
+    try {
+      var parsed = JSON.parse(value);
+      if (key.indexOf('clients') >= 0 || key.indexOf('tasks') >= 0) return Array.isArray(parsed) && parsed.length > 0;
+      if (key.indexOf('projects') >= 0) return parsed && Array.isArray(parsed.projects) && parsed.projects.length > 0;
+    } catch (e) {}
+    return false;
+  }
+  async function seedCurrentProfile(remoteKeys) {
+    if (window.AVITOLOG_BACKEND_PREVIEW) return false;
+    var suffix = window.AVITOLOG_KEY_SUFFIX === '_sasha' ? '_sasha' : '';
+    var keys = ['avitolog_clients' + suffix, 'avitolog_projects' + suffix, 'crm_tasks_v1' + suffix];
+    var seeded = false;
+    for (var i = 0; i < keys.length; i++) {
+      var key = keys[i];
+      var value = localStorage.getItem(key) || '';
+      if (!remoteKeys[key] && hasProfileData(key, value)) {
+        await writeKey(key, value);
+        seeded = true;
+      }
+    }
+    return seeded;
+  }
   function button(label, action) {
     ensureStatus();
     var el = document.createElement('button');
@@ -152,19 +179,31 @@
         if (!isAllowed(row.storage_key)) return;
         remoteKeys[row.storage_key] = true;
         var target = window.AVITOLOG_BACKEND_STORAGE_TARGET;
-        var prefix = window.AVITOLOG_BACKEND_STORAGE_PREFIX || 'sb_backend::';
+        var prefix = typeof window.AVITOLOG_BACKEND_STORAGE_PREFIX === 'string' ? window.AVITOLOG_BACKEND_STORAGE_PREFIX : 'sb_backend::';
         if (target) Storage.prototype.setItem.call(target, prefix + row.storage_key, row.value_text);
         else localStorage.setItem(row.storage_key, row.value_text);
       });
-      coreEnabled = Boolean(remoteKeys.avitolog_clients && remoteKeys.avitolog_projects);
-      financeEnabled = Object.keys(remoteKeys).some(isFinanceKey);
-      contentEnabled = Object.keys(remoteKeys).some(isContentKey);
+      phase = 'seed';
+      if (await seedCurrentProfile(remoteKeys)) {
+        sessionStorage.removeItem('avitolog_backend_revision_signature');
+        window.location.reload();
+        return;
+      }
+      var sashaProfile = window.AVITOLOG_KEY_SUFFIX === '_sasha';
+      var clientsKey = sashaProfile ? 'avitolog_clients_sasha' : 'avitolog_clients';
+      var projectsKey = sashaProfile ? 'avitolog_projects_sasha' : 'avitolog_projects';
+      coreEnabled = window.AVITOLOG_BACKEND_PREVIEW ? Boolean(remoteKeys[clientsKey] && remoteKeys[projectsKey]) : true;
+      financeEnabled = window.AVITOLOG_BACKEND_PREVIEW ? Object.keys(remoteKeys).some(isFinanceKey) : true;
+      contentEnabled = window.AVITOLOG_BACKEND_PREVIEW ? Object.keys(remoteKeys).some(isContentKey) : true;
       setStatus('Supabase: CRM/Проекты ' + (coreEnabled ? 'ВКЛ' : 'ВЫКЛ') + ' · Касса/Цели ' + (financeEnabled ? 'ВКЛ' : 'ВЫКЛ') + ' · КП/ADS ' + (contentEnabled ? 'ВКЛ' : 'ВЫКЛ'));
       if (!coreEnabled) button('Включить запись CRM/проектов', enableCore);
       else if (!financeEnabled) button('Включить запись кассы и целей', enableFinance);
       else if (!contentEnabled) button('Включить запись КП и ADS', enableContent);
-      if (rows.length && sessionStorage.getItem('avitolog_backend_state_loaded') !== '1') {
-        sessionStorage.setItem('avitolog_backend_state_loaded', '1'); window.location.reload();
+      var revisionSignature = rows.filter(function(row) { return isAllowed(row.storage_key); })
+        .map(function(row) { return row.storage_key + ':' + row.revision; }).join('|');
+      if (rows.length && sessionStorage.getItem('avitolog_backend_revision_signature') !== revisionSignature) {
+        sessionStorage.setItem('avitolog_backend_revision_signature', revisionSignature);
+        window.location.reload();
       }
     } catch (error) { setStatus('Ошибка Supabase (' + phase + '): ' + error.message, true); }
   });

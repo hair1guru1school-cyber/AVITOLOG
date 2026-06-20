@@ -14,12 +14,14 @@
     } catch (e) { return null; }
   }
   function saveSession(data) {
+    var previous = session() || {};
     var expiresAt = Number(data.expires_at || 0);
     if (!expiresAt && data.expires_in) expiresAt = Math.floor(Date.now() / 1000) + Number(data.expires_in);
     var value = {
       access_token: data.access_token,
       refresh_token: data.refresh_token || '',
-      expires_at: expiresAt
+      expires_at: expiresAt,
+      email: String((data.user && data.user.email) || data.email || previous.email || '').toLowerCase()
     };
     sessionStorage.setItem(SESSION_KEY, JSON.stringify(value));
     return value;
@@ -86,8 +88,33 @@
     }
     if (!window.confirm('Включить Supabase как основную базу на этом браузере? Google Drive продолжит работать, а возврат останется доступен внизу экрана.')) return;
     localStorage.setItem('avitolog_backend_primary', '1');
+    if (String(current.email || '').toLowerCase() === 'cyplakovaleksandr153@gmail.com') {
+      localStorage.setItem('avitolog_current_user', 'sasha');
+      localStorage.setItem('avitolog_profile_bookmark', 'sasha');
+    }
     setStatus('Supabase включён как основная база. Открываю рабочий AVITOLOG...');
     window.location.href = 'index.html?backendSource=supabase';
+  });
+
+  document.getElementById('addSashaMemberBtn').addEventListener('click', async function () {
+    var current = await activeSession();
+    if (!current || !current.access_token) { setStatus('Сессия истекла. Войдите снова.'); return; }
+    var button = this;
+    button.disabled = true;
+    try {
+      var response = await fetch(cfg.url + '/rest/v1/rpc/add_team_member_by_email', {
+        method: 'POST',
+        headers: { apikey: cfg.publishableKey, Authorization: 'Bearer ' + current.access_token, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ p_email: 'cyplakovaleksandr153@gmail.com' })
+      });
+      var data = await response.json();
+      if (!response.ok) throw new Error(data.message || ('HTTP ' + response.status));
+      setStatus('Саша подключён к организации как manager. Теперь он может войти и работать в своём профиле.');
+      button.textContent = 'Саша подключён';
+    } catch (error) {
+      setStatus('Не удалось подключить Сашу: ' + error.message);
+      button.disabled = false;
+    }
   });
 
   deactivatePrimaryBtn.addEventListener('click', function () {
