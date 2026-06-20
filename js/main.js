@@ -1117,7 +1117,22 @@ function wireAnalyticsRecentControls() {
   document.querySelectorAll('.recent-project-item').forEach(function(row) {
     row.onclick = function() {
       _analyticsRecentSelectedProjectId = row.getAttribute('data-project-id') || '';
-      if (_analyticsRecentSelectedProjectId) _analyticsOpenedFolderByProject[_analyticsRecentSelectedProjectId] = true;
+      if (_analyticsRecentSelectedProjectId) {
+        _analyticsOpenedFolderByProject[_analyticsRecentSelectedProjectId] = true;
+        var selected = getSelectedAnalyticsRecentProject();
+        if (selected) {
+          var clients = (typeof getCrmClients === 'function') ? getCrmClients() : [];
+          var selectedFolder = String(selected.folderId || selected.projectId || '');
+          var selectedName = String(selected.company || selected.title || selected.projectTitle || '').trim().toLowerCase();
+          var matched = clients.find(function(client) {
+            return (selectedFolder && String(client.folderId || '') === selectedFolder) ||
+              (selectedName && String(client.company || '').trim().toLowerCase() === selectedName);
+          });
+          var active = matched || Object.assign({}, selected, { folderId: selectedFolder });
+          if (typeof fillClientForm === 'function') fillClientForm(active);
+          setActiveClient(active);
+        }
+      }
       refreshClientContents(true);
     };
   });
@@ -2443,11 +2458,6 @@ function startAuth(evt) {
   // GIS работает и локально, и на GitHub; это стабильнее, чем редирект между origin
   if (typeof google !== 'undefined' && google.accounts && google.accounts.oauth2) {
     startAuthGIS();
-    setTimeout(function() {
-      if (_driveToken) return;
-      continueWithoutDrive();
-      try { alert('Google вход не завершился. Открыл приложение без Drive.'); } catch(e1) {}
-    }, 7000);
   } else {
     startAuthRedirect();
   }
