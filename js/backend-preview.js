@@ -5,7 +5,9 @@
   var status = document.getElementById('previewStatus');
   var loginCard = document.getElementById('loginCard');
   var loadCard = document.getElementById('loadCard');
+  var inviteCard = document.getElementById('inviteCard');
   var deactivatePrimaryBtn = document.getElementById('deactivatePrimaryBtn');
+  var inviteTokens = null;
 
   function setStatus(text) { status.textContent = text; }
   function session() {
@@ -56,6 +58,39 @@
       showReady(); setStatus('Вход выполнен. Можно загрузить изолированную копию.');
     } catch (error) { setStatus('Ошибка: ' + error.message); }
     finally { button.disabled = false; }
+  });
+
+  document.getElementById('invitePasswordBtn').addEventListener('click', async function () {
+    var password = document.getElementById('invitePassword').value;
+    var confirmation = document.getElementById('invitePasswordConfirm').value;
+    if (password.length < 8) { setStatus('Пароль должен содержать минимум 8 символов.'); return; }
+    if (password !== confirmation) { setStatus('Пароли не совпадают.'); return; }
+    if (!inviteTokens || !inviteTokens.access_token) { setStatus('Ссылка приглашения недействительна. Отправьте приглашение повторно.'); return; }
+    var button = this;
+    button.disabled = true;
+    try {
+      var response = await fetch(cfg.url + '/auth/v1/user', {
+        method: 'PUT',
+        headers: { apikey: cfg.publishableKey, Authorization: 'Bearer ' + inviteTokens.access_token, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: password })
+      });
+      var user = await response.json();
+      if (!response.ok) throw new Error(user.msg || user.message || ('HTTP ' + response.status));
+      saveSession({
+        access_token: inviteTokens.access_token,
+        refresh_token: inviteTokens.refresh_token,
+        expires_in: inviteTokens.expires_in,
+        user: user
+      });
+      document.getElementById('invitePassword').value = '';
+      document.getElementById('invitePasswordConfirm').value = '';
+      inviteCard.classList.add('off');
+      showReady();
+      setStatus('Пароль сохранён. Теперь включите Supabase как основную базу на этом браузере.');
+    } catch (error) {
+      setStatus('Не удалось сохранить пароль: ' + error.message);
+      button.disabled = false;
+    }
   });
 
   document.getElementById('loadSnapshotBtn').addEventListener('click', async function () {
@@ -126,5 +161,22 @@
 
   if (localStorage.getItem('avitolog_backend_primary') === '1') deactivatePrimaryBtn.classList.remove('off');
 
-  if (session() && session().access_token) showReady();
+  (function readInviteLink() {
+    var hash = new URLSearchParams(String(window.location.hash || '').replace(/^#/, ''));
+    var accessToken = hash.get('access_token');
+    var type = hash.get('type');
+    if (!accessToken || (type !== 'invite' && type !== 'recovery' && type !== 'signup')) return;
+    inviteTokens = {
+      access_token: accessToken,
+      refresh_token: hash.get('refresh_token') || '',
+      expires_in: Number(hash.get('expires_in') || 3600)
+    };
+    history.replaceState(null, '', window.location.pathname + window.location.search);
+    loginCard.classList.add('off');
+    loadCard.classList.add('off');
+    inviteCard.classList.remove('off');
+    setStatus('Приглашение подтверждено. Придумайте личный пароль Саши.');
+  })();
+
+  if (!inviteTokens && session() && session().access_token) showReady();
 })();
