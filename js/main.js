@@ -2281,6 +2281,21 @@ function getStoredDriveAuth() {
   });
   return best;
 }
+function migratePreviewDriveAuth() {
+  if (window.AVITOLOG_BACKEND_PREVIEW) return;
+  var previewPrefix = 'sb_backend::';
+  try {
+    var keys = [];
+    for (var i = 0; i < localStorage.length; i++) keys.push(localStorage.key(i));
+    keys.forEach(function(key) {
+      if (!key || key.indexOf(previewPrefix + 'avitolog_drive_auth_v1') !== 0) return;
+      var targetKey = key.slice(previewPrefix.length);
+      if (!localStorage.getItem(targetKey)) localStorage.setItem(targetKey, localStorage.getItem(key));
+    });
+    var previewEmail = localStorage.getItem(previewPrefix + 'avitolog_drive_email');
+    if (previewEmail && !localStorage.getItem('avitolog_drive_email')) localStorage.setItem('avitolog_drive_email', previewEmail);
+  } catch (e) {}
+}
 function clearStoredDriveAuth() {
   try { getAllDriveAuthKeys().forEach(function(k){ localStorage.removeItem(k); }); } catch(e) {}
 }
@@ -2362,6 +2377,7 @@ function buildAuthUrl() {
 
 // При загрузке — ловим токен из hash (редирект от Google)
 (function() {
+  migratePreviewDriveAuth();
   restoreDriveTokenFromStorage();
   var hash = window.location.hash;
   if (applyOAuthHash(hash)) {
@@ -2455,6 +2471,10 @@ function startAuth(evt) {
     else startAuthRedirect();
     return;
   }
+  if (window.location.origin === 'https://hair1guru1school-cyber.github.io') {
+    startAuthRedirect();
+    return;
+  }
   // GIS работает и локально, и на GitHub; это стабильнее, чем редирект между origin
   if (typeof google !== 'undefined' && google.accounts && google.accounts.oauth2) {
     startAuthGIS();
@@ -2470,6 +2490,10 @@ function startAuthRedirect() {
       continueWithoutDrive();
       return;
     }
+  }
+  if (window.location.origin === 'https://hair1guru1school-cyber.github.io') {
+    window.location.assign(u);
+    return;
   }
   try { window.open(u, '_blank', 'noopener'); } catch(e2) {}
   continueWithoutDrive();
