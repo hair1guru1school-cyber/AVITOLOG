@@ -1346,37 +1346,6 @@
 
     // The integrated KP tab is the editor itself; no intermediate create screen.
     var composerOpen = true;
-    var nicheSelected = String(d.block2.nicheId || '').trim();
-    var showHero = composerOpen && nicheSelected;
-
-    var heroSectionHtml = '';
-    if (showHero) {
-      var heroInner;
-      if (d.heroDataUrl) {
-        heroInner = '<img src="' + esc(d.heroDataUrl) + '" alt="" class="kp-hero-preview-img">';
-      } else if (d.heroUrl) {
-        heroInner =
-          '<img src="' +
-          esc(d.heroUrl) +
-          '" alt="" class="kp-hero-preview-img" onerror="this.parentNode.innerHTML=\'&lt;div class=\\\'kp-hero-placeholder\\\'&gt;Не удалось загрузить&lt;/div&gt;\'">';
-      } else {
-        heroInner = '<div class="kp-hero-placeholder">Превью</div>';
-      }
-      heroSectionHtml =
-        '<div class="kp-gen-section kp-hero-section">' +
-        '<div class="kp-gen-label kp-gen-label--sub">Превью обложки</div>' +
-        '<div class="kp-hero-row">' +
-        '<div class="kp-hero-preview" id="kpHeroPreview">' +
-        heroInner +
-        '</div>' +
-        '<div class="kp-hero-actions">' +
-        '<label class="kp-btn kp-btn-secondary">Загрузить файл<input type="file" id="kpHeroFile" accept="image/*" style="display:none"></label>' +
-        '<input type="url" id="kpHeroUrl" class="kp-inp" placeholder="Или URL картинки (https://…)" value="' +
-        esc(d.heroUrl || '') +
-        '">' +
-        '<button type="button" class="kp-btn kp-btn-ghost" id="kpHeroClear">Сбросить</button>' +
-        '</div></div></div>';
-    }
 
     var createKpBlock =
       !composerOpen
@@ -1411,7 +1380,6 @@
       '<div class="kp-gen-title">Коммерческое предложение' + clientTitleHtml + '</div>' +
       '</div>' +
       createKpBlock +
-      heroSectionHtml +
       block2Html +
       actionsHtml +
       '<div class="kp-gen-section kp-canva-section">' +
