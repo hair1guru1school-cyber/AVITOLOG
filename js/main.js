@@ -1672,7 +1672,7 @@ function generate() {
     } else {
       showAnalyticsReadyToast('Генерация зависла по времени. Повтори запуск.');
     }
-  }, 150000);
+  }, 210000);
   if (!projectsMode) {
     setContent('<div class="loading"><div class="spinner"></div><p>AI анализирует нишу...</p></div>');
     hideChat();
@@ -3292,11 +3292,6 @@ function callAPI(prompt, maxTokens) {
   function doRequest(url, model) {
     var payload = JSON.stringify({ model: model || API_MODELS[0], max_tokens: maxTokens, messages: [{role:'user', content: prompt}] });
     var opts = { method: 'POST', headers: headers, body: payload };
-    if (typeof AbortController !== 'undefined') {
-      var ctl = new AbortController();
-      opts.signal = ctl.signal;
-      setTimeout(function(){ ctl.abort(); }, 60000);
-    }
     return fetch(url, opts).then(function(r) {
       if (!r.ok) {
         return r.text().then(function(t){
@@ -3447,7 +3442,7 @@ function callAPI(prompt, maxTokens) {
       if (candidates && candidates.length) extra = '\n\nПроверенные endpoint:\n• ' + candidates.join('\n• ');
       throw new Error('Сеть/CORS: не удалось выполнить генерацию через доступные маршруты.' + extra + '\n\nЕсли прокси не работают, запусти локальный backend:\ncd backend\nnpm install\nnpm run dev');
     });
-  return withGlobalTimeout(corePromise, 120000, 'Генерация зависла по таймауту (120 сек). Проверь сеть/прокси и нажми «Повторить».');
+  return withGlobalTimeout(corePromise, 180000, 'Генерация зависла по таймауту (180 сек). Проверь сеть/прокси и нажми «Повторить».');
 }
 
 // ── FIX JSON ──
