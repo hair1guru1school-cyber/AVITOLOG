@@ -7,7 +7,11 @@
   var loadCard = document.getElementById('loadCard');
 
   function setStatus(text) { status.textContent = text; }
-  function session() { try { return JSON.parse(sessionStorage.getItem(SESSION_KEY) || 'null'); } catch (e) { return null; } }
+  function session() {
+    try {
+      return JSON.parse(sessionStorage.getItem(SESSION_KEY) || sessionStorage.getItem('avitolog_backend_app_session') || 'null');
+    } catch (e) { return null; }
+  }
   function showReady() { loginCard.classList.add('off'); loadCard.classList.remove('off'); }
 
   document.getElementById('previewLoginBtn').addEventListener('click', async function () {
@@ -31,19 +35,20 @@
     if (!current || !current.access_token) { setStatus('Сессия истекла. Войдите снова.'); loginCard.classList.remove('off'); loadCard.classList.add('off'); return; }
     var button = this; button.disabled = true; setStatus('Загружаю проверенный snapshot из Supabase...');
     try {
-      var response = await fetch('http://127.0.0.1:8787/api/migration/preview-snapshot', { headers: { Authorization: 'Bearer ' + current.access_token } });
-      var data = await response.json();
-      if (!response.ok || !data.ok) throw new Error(data.error || ('HTTP ' + response.status));
-      var backup = data.result.backup;
-      var remove = [];
-      for (var i = 0; i < localStorage.length; i++) { var key = localStorage.key(i); if (key && (key.indexOf('avitolog_') === 0 || key.indexOf('crm_') === 0)) remove.push(key); }
+      var response = await fetch(cfg.url + '/rest/v1/migration_source_snapshots?select=checksum,raw_backup,created_at&order=created_at.desc&limit=20', { headers: { apikey: cfg.publishableKey, Authorization: 'Bearer ' + current.access_token } });
+      var rows = await response.json();
+      if (!response.ok) throw new Error((rows && rows.message) || ('HTTP ' + response.status));
+      var found = (rows || []).find(function (row) { try { var c = JSON.parse(row.raw_backup.keys.avitolog_clients || '[]'); return c.length >= 90; } catch (e) { return false; } });
+      if (!found) throw new Error('Проверенный snapshot не найден');
+      var backup = found.raw_backup, prefix = 'sb_backend::', remove = [];
+      for (var i = 0; i < localStorage.length; i++) { var key = localStorage.key(i); if (key && key.indexOf(prefix) === 0) remove.push(key); }
       remove.forEach(function (key) { localStorage.removeItem(key); });
-      Object.keys(backup.keys).forEach(function (key) { localStorage.setItem(key, backup.keys[key]); });
-      localStorage.setItem('avitolog_current_user', 'fil');
-      localStorage.setItem('avitolog_drive_bypass', '1');
-      sessionStorage.setItem('avitolog_backend_preview_summary', JSON.stringify({ checksum: data.result.checksum, originalKeyCount: backup.originalKeyCount, previewKeyCount: backup.previewKeyCount, omittedKeys: backup.omittedKeys }));
-      setStatus('Готово: ' + backup.previewKeyCount + ' безопасных ключей из ' + backup.originalKeyCount + '. Открываю preview...');
-      window.location.href = 'index.html?backendPreview=1';
+      Object.keys(backup.keys || {}).forEach(function (key) { if (!/(auth|token|secret|password|api[_-]?key)/i.test(key)) localStorage.setItem(prefix + key, backup.keys[key]); });
+      localStorage.setItem(prefix + 'avitolog_current_user', 'fil');
+      localStorage.setItem(prefix + 'avitolog_drive_bypass', '1');
+      sessionStorage.setItem('avitolog_backend_preview_summary', JSON.stringify({ checksum: found.checksum, keyCount: Object.keys(backup.keys || {}).length }));
+      setStatus('Готово: ' + Object.keys(backup.keys || {}).length + ' ключей. Открываю привычный AVITOLOG...');
+      window.location.href = 'index.html?backendPreview=1&backendSource=supabase';
     } catch (error) { setStatus('Ошибка загрузки preview: ' + error.message); button.disabled = false; }
   });
 

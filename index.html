@@ -2559,6 +2559,26 @@ body.day-mode .assets-col-sasha-hint{color:var(--accent)}
     var params = new URLSearchParams(window.location.search);
     if (params.get('backendPreview') !== '1') return;
     window.AVITOLOG_BACKEND_PREVIEW = true;
+    var storageFrame = document.createElement('iframe');
+    storageFrame.style.display = 'none';
+    storageFrame.setAttribute('aria-hidden', 'true');
+    document.documentElement.appendChild(storageFrame);
+    var storageTarget = storageFrame.contentWindow.localStorage;
+    var storagePrefix = 'sb_backend::';
+    window.AVITOLOG_BACKEND_STORAGE_TARGET = storageTarget;
+    window.AVITOLOG_BACKEND_STORAGE_PREFIX = storagePrefix;
+    var prefixedStorage = new Proxy(storageTarget, {
+      get: function(target, prop) {
+        if (prop === 'length') { var count=0; for(var i=0;i<target.length;i++){if((target.key(i)||'').indexOf(storagePrefix)===0)count++;} return count; }
+        if (prop === 'key') return function(index){var keys=[];for(var i=0;i<target.length;i++){var k=target.key(i)||'';if(k.indexOf(storagePrefix)===0)keys.push(k.slice(storagePrefix.length));}return keys[index]||null;};
+        if (prop === 'getItem') return function(key){return target.getItem(storagePrefix+key);};
+        if (prop === 'setItem') return function(key,value){var result=target.setItem(storagePrefix+key,value);try{document.dispatchEvent(new CustomEvent('avitolog:storage-write',{detail:{key:String(key),value:String(value)}}));}catch(e){}return result;};
+        if (prop === 'removeItem') return function(key){return target.removeItem(storagePrefix+key);};
+        if (prop === 'clear') return function(){var keys=[];for(var i=0;i<target.length;i++){var k=target.key(i)||'';if(k.indexOf(storagePrefix)===0)keys.push(k);}keys.forEach(function(k){target.removeItem(k);});};
+        var value=target[prop];return typeof value==='function'?value.bind(target):value;
+      }
+    });
+    try { Object.defineProperty(window,'localStorage',{value:prefixedStorage,configurable:true}); } catch (storageError) {}
     localStorage.setItem('avitolog_drive_bypass', '1');
     localStorage.setItem('avitolog_current_user', 'fil');
     document.addEventListener('DOMContentLoaded', function () {
@@ -2570,6 +2590,8 @@ body.day-mode .assets-col-sasha-hint{color:var(--accent)}
   } catch (error) {}
 })();
 </script>
+<script src="js/supabase-config.js?v=20260619-write1"></script>
+<script src="js/backend-sync.js?v=20260620-write9"></script>
 <script src="js/user-config.js?v=20260414-3"></script>
 <script src="js/goals.js?v=20260518-1"></script>
 <script>
