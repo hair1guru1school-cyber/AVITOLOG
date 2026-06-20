@@ -2510,6 +2510,9 @@ function startAuthGIS() {
               if (r && r.access_token) {
                 var token = r.access_token;
                 var expiresIn = r.expires_in ? parseInt(r.expires_in, 10) : 3600;
+                _driveToken = token;
+                persistDriveToken(token, expiresIn, 'avitolog_drive_auth_v1');
+                setDriveConnectedUiState();
                 fetchDriveUserEmail(token).then(function(email) {
                   var normalizedEmail = String(email || '').toLowerCase();
                   if (normalizedEmail) {
@@ -2520,14 +2523,8 @@ function startAuthGIS() {
                   }
                   var authKey = normalizedEmail ? buildDriveAuthStorageKeyByEmail(normalizedEmail) : 'avitolog_drive_auth_v1';
                   persistDriveToken(token, expiresIn, authKey);
-                  history.replaceState(null, '', location.pathname + (location.search || ''));
-                  location.reload();
-                  return;
                 }).catch(function() {
-                  try { localStorage.removeItem('avitolog_drive_email'); } catch(e) {}
-                  persistDriveToken(token, expiresIn, 'avitolog_drive_auth_v1');
-                  _driveToken = token;
-                  setDriveConnectedUiState();
+                  // Drive is already connected; email is optional metadata.
                 });
               } else { alert('Ошибка: ' + (r && r.error ? r.error : 'нет токена')); }
             },

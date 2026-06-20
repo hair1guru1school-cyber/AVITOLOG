@@ -2577,31 +2577,40 @@ body.day-mode .assets-col-sasha-hint{color:var(--accent)}
     }
     window.AVITOLOG_BACKEND_STORAGE_TARGET = storageTarget;
     window.AVITOLOG_BACKEND_STORAGE_PREFIX = storagePrefix;
-    var storageSetOverride = null;
-    var storageRemoveOverride = null;
-    function backendStorageSet(key, value) {
-      var result = storageTarget.setItem(storagePrefix + key, value);
-      try { document.dispatchEvent(new CustomEvent('avitolog:storage-write', { detail: { key: String(key), value: String(value) } })); } catch (e) {}
-      return result;
-    }
-    function backendStorageRemove(key) { return storageTarget.removeItem(storagePrefix + key); }
-    var prefixedStorage = new Proxy(storageTarget, {
-      get: function(target, prop) {
-        if (prop === 'length') { var count=0; for(var i=0;i<target.length;i++){if((target.key(i)||'').indexOf(storagePrefix)===0)count++;} return count; }
-        if (prop === 'key') return function(index){var keys=[];for(var i=0;i<target.length;i++){var k=target.key(i)||'';if(k.indexOf(storagePrefix)===0)keys.push(k.slice(storagePrefix.length));}return keys[index]||null;};
-        if (prop === 'getItem') return function(key){return target.getItem(storagePrefix+key);};
-        if (prop === 'setItem') return storageSetOverride || backendStorageSet;
-        if (prop === 'removeItem') return storageRemoveOverride || backendStorageRemove;
-        if (prop === 'clear') return function(){var keys=[];for(var i=0;i<target.length;i++){var k=target.key(i)||'';if(k.indexOf(storagePrefix)===0)keys.push(k);}keys.forEach(function(k){target.removeItem(k);});};
-        var value=target[prop];return typeof value==='function'?value.bind(target):value;
-      },
-      set: function(target, prop, value) {
-        if (prop === 'setItem') { storageSetOverride = value; return true; }
-        if (prop === 'removeItem') { storageRemoveOverride = value; return true; }
-        target[prop] = value; return true;
+    if (previewMode) {
+      var storageSetOverride = null;
+      var storageRemoveOverride = null;
+      function backendStorageSet(key, value) {
+        var result = storageTarget.setItem(storagePrefix + key, value);
+        try { document.dispatchEvent(new CustomEvent('avitolog:storage-write', { detail: { key: String(key), value: String(value) } })); } catch (e) {}
+        return result;
       }
-    });
-    try { Object.defineProperty(window,'localStorage',{value:prefixedStorage,configurable:true}); } catch (storageError) {}
+      function backendStorageRemove(key) { return storageTarget.removeItem(storagePrefix + key); }
+      var prefixedStorage = new Proxy(storageTarget, {
+        get: function(target, prop) {
+          if (prop === 'length') { var count=0; for(var i=0;i<target.length;i++){if((target.key(i)||'').indexOf(storagePrefix)===0)count++;} return count; }
+          if (prop === 'key') return function(index){var keys=[];for(var i=0;i<target.length;i++){var k=target.key(i)||'';if(k.indexOf(storagePrefix)===0)keys.push(k.slice(storagePrefix.length));}return keys[index]||null;};
+          if (prop === 'getItem') return function(key){return target.getItem(storagePrefix+key);};
+          if (prop === 'setItem') return storageSetOverride || backendStorageSet;
+          if (prop === 'removeItem') return storageRemoveOverride || backendStorageRemove;
+          if (prop === 'clear') return function(){var keys=[];for(var i=0;i<target.length;i++){var k=target.key(i)||'';if(k.indexOf(storagePrefix)===0)keys.push(k);}keys.forEach(function(k){target.removeItem(k);});};
+          var value=target[prop];return typeof value==='function'?value.bind(target):value;
+        },
+        set: function(target, prop, value) {
+          if (prop === 'setItem') { storageSetOverride = value; return true; }
+          if (prop === 'removeItem') { storageRemoveOverride = value; return true; }
+          target[prop] = value; return true;
+        }
+      });
+      try { Object.defineProperty(window,'localStorage',{value:prefixedStorage,configurable:true}); } catch (storageError) {}
+    } else {
+      var nativeSetItem = storageTarget.setItem.bind(storageTarget);
+      storageTarget.setItem = function(key, value) {
+        var result = nativeSetItem(key, value);
+        try { document.dispatchEvent(new CustomEvent('avitolog:storage-write', { detail: { key: String(key), value: String(value) } })); } catch (e) {}
+        return result;
+      };
+    }
     if (previewMode) {
       localStorage.setItem('avitolog_drive_bypass', '1');
       localStorage.setItem('avitolog_current_user', 'fil');
@@ -2922,7 +2931,7 @@ if (!window.AVITOLOG_GOALS) {
 <script src="js/ads.js?v=20260404-1"></script>
 <script charset="UTF-8" src="js/kp-generator.js?v=20260620-kp-layout-1"></script>
 <script src="js/scripts-panel.js?v=20260426-1"></script>
-<script src="js/main.js?v=20260620-drive-auth-2"></script>
+<script src="js/main.js?v=20260620-drive-auth-3"></script>
 <script src="js/sasha-team-sync.js?v=20260414-5"></script>
 <script src="js/fil-backup.js?v=20260419-1"></script>
 <script src="js/sasha-backup.js?v=20260419-1"></script>
