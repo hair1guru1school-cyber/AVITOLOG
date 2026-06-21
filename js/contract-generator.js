@@ -108,6 +108,13 @@
       clientRow('Тел.', clientPhone);
     if (rightRows.endsWith('<br>')) rightRows = rightRows.slice(0, -4);
     var rightBullets = '<div style="font-size:8.7pt;line-height:1.24">' + rightRows + '</div>';
+    var clientLegalRows =
+      clientRow('ИНН', clientInn) +
+      clientRow('ОГРН', clientOgrn) +
+      clientRow('Р/С', clientAccount) +
+      clientRow('Банк', clientBank) +
+      clientRow('БИК', clientBik) +
+      clientRow('К/С', clientCorr);
 
     return '' +
       '<h2 style="text-align:center;font-size:15.2pt;line-height:1.14;margin:2px 0 4px;letter-spacing:.15px;font-weight:800">Договор Возмездного<br>Оказания Услуг от ' + contractDate + '</h2>' +
@@ -167,12 +174,7 @@
           '<td style="width:50%;vertical-align:top;padding:0 8px 0 0">' +
             '<div style="font-weight:700;margin:0 0 4px">Заказчик:</div>' +
             '<div>' + clientName + '</div>' +
-            '<div>ИНН ' + (clientInn || '—') + '</div>' +
-            '<div>ОГРН ' + (clientOgrn || '—') + '</div>' +
-            '<div>Р/С ' + (clientAccount || '—') + '</div>' +
-            '<div>Банк ' + (clientBank || '—') + '</div>' +
-            '<div>БИК ' + (clientBik || '—') + '</div>' +
-            '<div>К/С ' + (clientCorr || '—') + '</div>' +
+            clientLegalRows.replace(/◆\s*/g, '<div>').replace(/<br>/g, '</div>') +
           '</td>' +
           '<td style="width:50%;vertical-align:top;padding:0 0 0 8px">' +
             '<div style="font-weight:700;margin:0 0 4px">Исполнитель:</div>' +
@@ -646,12 +648,17 @@
         if (el.type === 'checkbox') el.checked = String(d[k]) === '1' || d[k] === true;
         else el.value = d[k];
       });
+      var manualFioEl = document.getElementById('contract-manual-fio');
+      var hiddenFioEl = document.getElementById('contract-fio');
+      if (manualFioEl && hiddenFioEl) manualFioEl.value = hiddenFioEl.value || '';
     }
 
     function applyParsed(parsed) {
       var fioEl = document.getElementById('contract-fio');
+      var manualFioEl = document.getElementById('contract-manual-fio');
       var fioVal = parsed.fio || parsed.shortName || parsed.fullName || '';
       if (fioEl && fioVal) fioEl.value = fioVal;
+      if (manualFioEl && fioVal) manualFioEl.value = fioVal;
       if (parsed.inn) document.getElementById('contract-inn').value = parsed.inn;
       if (parsed.ogrn) document.getElementById('contract-ogrn').value = parsed.ogrn;
       if (parsed.account) document.getElementById('contract-account').value = parsed.account;
@@ -767,10 +774,8 @@
       '<div class="contract-ai-line">' +
       '<button type="button" class="contract-toolbar-btn contract-ai-upload-btn" onclick="document.getElementById(\'contract-file-inp\').click()">📄 Загрузить реквизиты</button>' +
       '<input type="file" id="contract-file-inp" accept=".txt,.docx,.pdf" style="display:none">' +
-      '<textarea id="contract-ai-text" class="contract-ai-input" rows="2" placeholder="ИИ-строка: вставьте реквизиты текстом и нажмите Отправить (Ctrl+Enter)"></textarea>' +
-      '<button type="button" class="contract-toolbar-btn contract-ai-send-btn" id="contractAiSendBtn">✦ Отправить</button>' +
+      '<input type="text" id="contract-manual-fio" class="contract-ai-input contract-manual-fio" autocomplete="name" placeholder="ФИО заказчика">' +
       '</div>' +
-      '<div class="contract-client-caption" id="contractClientCaption">ФИО: —</div>' +
       '<div class="contract-toolbar-row contract-toolbar-row-secondary" id="contractToolbarSecondary" style="display:none">' +
       '<button type="button" class="btn-gen contract-toolbar-btn" style="width:auto;min-width:0;flex:0 0 auto;display:inline-flex;padding:6px 12px;margin:0;border-radius:8px" onclick="window.__contractGenerate&&window.__contractGenerate()"><span>&#9889;</span> Сгенерировать договор</button>' +
       '<div class="contract-gender-switch" id="contractGenderSwitch" title="Выбор картинки в шапке">' +
@@ -964,14 +969,12 @@
     syncAppendixOptionsState();
     var secondaryToolbar = document.getElementById('contractToolbarSecondary');
     var fioEl = document.getElementById('contract-fio');
-    var captionEl = document.getElementById('contractClientCaption');
+    var manualFioEl = document.getElementById('contract-manual-fio');
     function setSecondaryVisible(v) {
       if (secondaryToolbar) secondaryToolbar.style.display = v ? 'flex' : 'none';
     }
     function refreshClientCaption() {
-      if (!captionEl) return;
       var fio = fioEl ? String(fioEl.value || '').trim() : '';
-      captionEl.textContent = 'ФИО: ' + (fio || '—');
       if (fio) setSecondaryVisible(true);
     }
     if (fioEl) fioEl.addEventListener('input', refreshClientCaption);
@@ -1014,6 +1017,7 @@
         var el = document.getElementById('contract-' + k);
         if (el) el.value = '';
       });
+      if (manualFioEl) manualFioEl.value = '';
       setHeaderGender('m');
       if (daysCreateEl) daysCreateEl.value = '12';
       if (daysManageEl) daysManageEl.value = '30';
@@ -1061,8 +1065,25 @@
     }
 
     var fileInp = document.getElementById('contract-file-inp');
-    var aiInp = document.getElementById('contract-ai-text');
-    var aiSendBtn = document.getElementById('contractAiSendBtn');
+    function clearClientRequisitesForManualName() {
+      ['inn', 'ogrn', 'account', 'bank', 'bik', 'corrAccount', 'passport'].forEach(function(k) {
+        var el = document.getElementById('contract-' + k);
+        if (el) el.value = '';
+      });
+      var parsedBox = document.getElementById('contractParsedRequisites');
+      if (parsedBox) {
+        parsedBox.innerHTML = '';
+        parsedBox.style.display = 'none';
+      }
+    }
+    if (manualFioEl) {
+      manualFioEl.addEventListener('input', function() {
+        if (fioEl) fioEl.value = manualFioEl.value.trim();
+        clearClientRequisitesForManualName();
+        refreshClientCaption();
+        if (!manualFioEl.value.trim()) setSecondaryVisible(false);
+      });
+    }
 
     function processRequisitesText(text, sourceLabel) {
       var raw = String(text || '').trim();
@@ -1099,17 +1120,6 @@
       handleFile(f);
       fileInp.value = '';
     });
-    if (aiSendBtn) aiSendBtn.addEventListener('click', function() {
-      processRequisitesText(aiInp && aiInp.value, 'ИИ-строки');
-    });
-    if (aiInp) {
-      aiInp.addEventListener('keydown', function(e) {
-        if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
-          e.preventDefault();
-          processRequisitesText(aiInp.value, 'ИИ-строки');
-        }
-      });
-    }
 
     var screenshotsDrop = document.getElementById('contract-screenshots-drop');
     var screenshotsInp = document.getElementById('contract-screenshots-inp');
