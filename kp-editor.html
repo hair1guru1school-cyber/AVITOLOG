@@ -94,12 +94,17 @@
     @media(max-width:680px){.layout{padding:10px}.top{position:static}.status{display:none}.logo{font-size:18px;letter-spacing:5px}.grid2{grid-template-columns:1fr}}
     body.embedded{overflow:hidden;background:#05080d}
     body.embedded .top{display:none}
-    body.embedded .layout{height:100vh;padding:8px;grid-template-columns:minmax(430px,1fr) 7px 285px;gap:7px;min-width:0;min-height:0}
+    body.embedded .layout{height:100vh;padding:8px;grid-template-columns:minmax(430px,1fr) 7px 380px;gap:7px;min-width:0;min-height:0}
     body.embedded .panel{min-height:0}
     body.embedded .stage-wrap{height:calc(100vh - 74px)}
     body.embedded .editor .body{height:calc(100vh - 84px)}
-    body.embedded .head h1{font-size:18px}
-    body.embedded .hint{font-size:11px}
+    body.embedded .editor>.head,body.embedded .editor>.body{zoom:1}
+    body.embedded .head h1{font-size:20px}
+    body.embedded .hint{font-size:12px}
+    body.embedded .editor label{font-size:13px}
+    body.embedded .editor input,body.embedded .editor textarea,body.embedded .editor select{font-size:14px;padding:10px 11px}
+    body.embedded .editor .btn,body.embedded .editor .tab{font-size:13px}
+    body.embedded .editor .mini-note{font-size:13px}
   </style>
 </head>
 <body><script>if(new URLSearchParams(location.search).get("embedded")==="1")document.body.classList.add("embedded");</script>
@@ -203,7 +208,7 @@
             </label>
           </div>
           <label>Количество объявлений
-            <input id="pkgLimit">
+            <input id="pkgLimit" type="number" min="1" step="1" inputmode="numeric" placeholder="250">
           </label>
           <div class="grid2">
             <label>Работа авитолога
@@ -238,6 +243,8 @@
     const W = 1414;
     const H = 2000;
     const LS_KEY = "avitolog_kp_editor_v9";
+    const HERO_DB_NAME = "avitolog-kp-hero-library";
+    const HERO_DB_STORE = "images";
     const FONT = '"Source Sans 3","Source Sans Pro",Arial,sans-serif';
     const ASSETS = {
       bgDark: "assets/kp-layers/kp-bg-dark.jpg",
@@ -296,6 +303,7 @@
     const hitZones = [];
     let selectedPackage = 0;
     let customHeroSrc = "";
+    let customNicheImages = [];
     let formReady = false;
 
     const defaults = {
@@ -303,6 +311,7 @@
       titleStyle: "classic",
       titleScale: 100,
       heroSrc: "",
+      heroCustomId: "",
       heroName: "Террасы МО - ВИП",
       packages: [
         {
@@ -384,6 +393,45 @@
 
     function $(id){ return document.getElementById(id); }
     function clone(value){ return JSON.parse(JSON.stringify(value)); }
+    function escapeHtml(value){
+      return String(value).replace(/[&<>"']/g, (char) => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[char]);
+    }
+    function packageQuantity(pkg){
+      const source = pkg && (pkg.quantity || pkg.limit || "");
+      const match = String(source).replace(/\s/g, "").match(/\d+/);
+      return match ? match[0] : "";
+    }
+    function packageLimitLabel(pkg){
+      const quantity = packageQuantity(pkg);
+      return quantity ? `${quantity} объявлений` : (pkg.limit || "Объявления");
+    }
+    function formatMoney(value){
+      const digits = String(value || "").replace(/\D/g, "");
+      if (!digits) return String(value || "").trim();
+      return `${digits.replace(/\B(?=(\d{3})+(?!\d))/g, " ")} ₽`;
+    }
+    function syncPackageDerivedLines(pkg){
+      pkg.quantity = packageQuantity(pkg);
+      const work = formatMoney(pkg.work);
+      const quantity = pkg.quantity;
+      let hasWorkLine = false;
+      pkg.items = (pkg.items || []).map((line) => {
+        if (/=\s*работа\b/i.test(line) || /работа\s+авитолога/i.test(line)) {
+          hasWorkLine = true;
+          return work ? `${work} = работа Авитолога (оплачивается сразу)` : line;
+        }
+        if (quantity && /автозагруз/i.test(line) && /постинг/i.test(line)) {
+          return `Создание файла автозагрузки / ручной постинг на ${quantity} карточек на 30 дней`;
+        }
+        return line;
+      });
+      if (work && !hasWorkLine) pkg.items.unshift(`${work} = работа Авитолога (оплачивается сразу)`);
+    }
+    function normalizePackage(pkg){
+      pkg.quantity = packageQuantity(pkg);
+      syncPackageDerivedLines(pkg);
+      return pkg;
+    }
     function loadState(){
       try {
         const saved = JSON.parse(localStorage.getItem(LS_KEY) || "null");
@@ -391,7 +439,7 @@
         const next = Object.assign(clone(defaults), saved);
         next.packages = defaults.packages.map((pkg, index) => {
           const merged = Object.assign(clone(pkg), saved.packages[index] || {});
-          return merged.name && merged.limit ? merged : clone(pkg);
+          return merged.name ? normalizePackage(merged) : normalizePackage(clone(pkg));
         });
         return next;
       } catch (e) {
@@ -412,12 +460,61 @@
         img.src = src;
       });
     }
+    function openHeroDb(){
+      return new Promise((resolve, reject) => {
+        const request = indexedDB.open(HERO_DB_NAME, 1);
+        request.onupgradeneeded = () => {
+          if (!request.result.objectStoreNames.contains(HERO_DB_STORE)) {
+            request.result.createObjectStore(HERO_DB_STORE, { keyPath: "id" });
+          }
+        };
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error);
+      });
+    }
+    async function heroDbRequest(mode, action){
+      const db = await openHeroDb();
+      try {
+        return await new Promise((resolve, reject) => {
+          const tx = db.transaction(HERO_DB_STORE, mode);
+          const request = action(tx.objectStore(HERO_DB_STORE));
+          request.onsuccess = () => resolve(request.result);
+          request.onerror = () => reject(request.error);
+        });
+      } finally {
+        db.close();
+      }
+    }
+    function listCustomHeroImages(){ return heroDbRequest("readonly", (store) => store.getAll()); }
+    function getCustomHeroImage(id){ return heroDbRequest("readonly", (store) => store.get(id)); }
+    function putCustomHeroImage(record){ return heroDbRequest("readwrite", (store) => store.put(record)); }
+    async function imageFileToDataUrl(file){
+      const source = URL.createObjectURL(file);
+      try {
+        const img = await loadImage(source);
+        if (!img) throw new Error("Не удалось прочитать изображение");
+        const maxSide = 1800;
+        const scale = Math.min(1, maxSide / Math.max(img.naturalWidth || img.width, img.naturalHeight || img.height));
+        const buffer = document.createElement("canvas");
+        buffer.width = Math.max(1, Math.round((img.naturalWidth || img.width) * scale));
+        buffer.height = Math.max(1, Math.round((img.naturalHeight || img.height) * scale));
+        buffer.getContext("2d").drawImage(img, 0, 0, buffer.width, buffer.height);
+        return buffer.toDataURL("image/jpeg", 0.9);
+      } finally {
+        URL.revokeObjectURL(source);
+      }
+    }
     async function preload(){
       images.bgDark = await loadImage(ASSETS.bgDark);
       images.bgClean = await loadImage(ASSETS.bgClean);
       images.bgReference = await loadImage(ASSETS.bgReference);
       images.bgPurple = await loadImage(ASSETS.bgPurple);
-      images.hero = await loadImage(customHeroSrc || state.heroSrc || ASSETS.hero);
+      try { customNicheImages = await listCustomHeroImages(); } catch (e) { customNicheImages = []; }
+      let customRecord = null;
+      if (state.heroCustomId) {
+        try { customRecord = await getCustomHeroImage(state.heroCustomId); } catch (e) {}
+      }
+      images.hero = await loadImage((customRecord && customRecord.dataUrl) || customHeroSrc || state.heroSrc || ASSETS.hero);
       images.footer = await loadImage(ASSETS.footer);
       images.titleSimple = await loadImage(ASSETS.titleSimple);
       images.titleColor = await loadImage(ASSETS.titleColor);
@@ -475,12 +572,31 @@
         card.addEventListener("click", () => selectNicheImage(src, name));
         grid.appendChild(card);
       });
+      customNicheImages.filter((record) => record.kind === kind).forEach((record) => {
+        const card = document.createElement("button");
+        card.type = "button";
+        card.className = "niche-card" + (state.heroCustomId === record.id ? " active" : "");
+        card.innerHTML = `<img src="${record.dataUrl}" alt=""><span><span class="niche-name">📌 ${escapeHtml(record.name)}</span><span class="niche-path">${kind === "goods" ? "Товары" : "Услуги"} · загружено</span></span>`;
+        card.addEventListener("click", () => selectCustomNicheImage(record));
+        grid.appendChild(card);
+      });
     }
     async function selectNicheImage(src, name){
       customHeroSrc = "";
+      state.heroCustomId = "";
       state.heroSrc = src;
       state.heroName = name;
       images.hero = await loadImage(src);
+      renderNicheLibrary();
+      saveState();
+      draw();
+    }
+    async function selectCustomNicheImage(record){
+      customHeroSrc = "";
+      state.heroCustomId = record.id;
+      state.heroSrc = "";
+      state.heroName = record.name;
+      images.hero = await loadImage(record.dataUrl);
       renderNicheLibrary();
       saveState();
       draw();
@@ -506,7 +622,7 @@
       $("pkgOn").checked = !!pkg.on;
       $("pkgIcon").value = pkg.icon || "";
       $("pkgName").value = pkg.name || "";
-      $("pkgLimit").value = pkg.limit || "";
+      $("pkgLimit").value = packageQuantity(pkg);
       $("pkgWork").value = pkg.work || "";
       $("pkgColor").value = normalizeColor(pkg.color || "#24308f");
       $("pkgItems").value = (pkg.items || []).join("\n");
@@ -545,10 +661,14 @@
       pkg.on = $("pkgOn").checked;
       pkg.icon = $("pkgIcon").value;
       pkg.name = $("pkgName").value;
-      pkg.limit = $("pkgLimit").value;
+      pkg.quantity = $("pkgLimit").value.replace(/\D/g, "");
+      if (pkg.quantity) pkg.limit = `${pkg.quantity} объявлений`;
       pkg.work = $("pkgWork").value;
       pkg.color = $("pkgColor").value;
       pkg.items = $("pkgItems").value.split("\n").map((line) => line.trim()).filter(Boolean);
+      syncPackageDerivedLines(pkg);
+      const syncedItems = pkg.items.join("\n");
+      if ($("pkgItems").value !== syncedItems) $("pkgItems").value = syncedItems;
     }
     function normalizeColor(color){
       if (/^#[0-9a-f]{6}$/i.test(color)) return color;
@@ -653,7 +773,7 @@
       });
     }
     function drawPackage(pkg, index, y){
-      const title = `${pkg.limit} = “${pkg.name}”`;
+      const title = `${packageLimitLabel(pkg)} = “${pkg.name}”`;
       ctx.save();
       ctx.font = `400 31px ${FONT}`;
       const titleWidth = measureTitle(title);
@@ -821,7 +941,7 @@
     function exportText(){
       readGlobalForm();
       return state.packages.filter((pkg) => pkg.on).map((pkg) => {
-        return `${pkg.limit} = "${pkg.name}"\n${pkg.items.join("\n")}`;
+        return `${packageLimitLabel(pkg)} = "${pkg.name}"\n${pkg.items.join("\n")}`;
       }).join("\n\n");
     }
     function canvasPngBlob(){
@@ -972,12 +1092,38 @@
     $("heroFile").addEventListener("change", async (event) => {
       const file = event.target.files && event.target.files[0];
       if (!file) return;
-      customHeroSrc = URL.createObjectURL(file);
-      state.heroSrc = "";
-      state.heroName = file.name.replace(/\.[^.]+$/, "");
-      images.hero = await loadImage(customHeroSrc);
-      saveState();
-      draw();
+      const defaultKind = $("presetKind").value === "goods" ? "товары" : "услуги";
+      const kindAnswer = prompt("Куда сохранить картинку: товары или услуги?", defaultKind);
+      if (kindAnswer === null) { event.target.value = ""; return; }
+      const normalizedKind = kindAnswer.trim().toLowerCase();
+      const kind = normalizedKind.startsWith("тов") || normalizedKind === "goods" ? "goods"
+        : normalizedKind.startsWith("усл") || normalizedKind === "services" ? "services" : "";
+      if (!kind) {
+        alert("Напишите «товары» или «услуги».");
+        event.target.value = "";
+        return;
+      }
+      const defaultName = file.name.replace(/\.[^.]+$/, "");
+      const nameAnswer = prompt("Как назвать картинку?", defaultName);
+      const name = nameAnswer && nameAnswer.trim();
+      if (!name) { event.target.value = ""; return; }
+      try {
+        const record = {
+          id: crypto.randomUUID ? crypto.randomUUID() : `hero-${Date.now()}`,
+          kind,
+          name,
+          dataUrl: await imageFileToDataUrl(file),
+          createdAt: new Date().toISOString()
+        };
+        await putCustomHeroImage(record);
+        customNicheImages = [record].concat(customNicheImages.filter((item) => item.id !== record.id));
+        await selectCustomNicheImage(record);
+        toggleNichePanels(true);
+      } catch (error) {
+        alert(error && error.message ? error.message : "Не удалось сохранить изображение");
+      } finally {
+        event.target.value = "";
+      }
     });
     if (document.body.classList.contains("embedded")) {
       $("downloadBtn").textContent = "Сохранить КП";
