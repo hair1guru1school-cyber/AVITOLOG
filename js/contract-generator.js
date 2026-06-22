@@ -1176,9 +1176,9 @@
     }
     function getTargetFolderCtx() {
       var selected = (typeof getSelectedAnalyticsRecentProject === 'function') ? getSelectedAnalyticsRecentProject() : null;
-      if (selected && (selected.folderId || selected.folderLink)) {
+      if (selected) {
         var selectedFid = String(selected.folderId || folderIdFromLink(selected.folderLink) || '').trim();
-        if (selectedFid) return {
+        return {
           folderId: selectedFid,
           name: selected.company || selected.title || selected.projectTitle || 'Клиент',
           source: 'selected'
@@ -1187,9 +1187,9 @@
       var ac = null;
       if (typeof getActiveClient === 'function') ac = getActiveClient();
       if (!ac && typeof window.__goalsGetActiveClient === 'function') ac = window.__goalsGetActiveClient();
-      if (ac && (ac.folderId || ac.folderLink)) {
+      if (ac) {
         var fid = String(ac.folderId || folderIdFromLink(ac.folderLink) || '').trim();
-        if (fid) return { folderId: fid, name: ac.company || ac.contact_name || 'Клиент', source: 'active' };
+        return { folderId: fid, name: ac.company || ac.contact_name || 'Клиент', source: 'active' };
       }
       return null;
     }
@@ -1440,7 +1440,11 @@
       }
       try {
         if (btn) btn.disabled = true;
-        var who = (lastGeneratedData && (lastGeneratedData.fio || lastGeneratedData.companyName)) || ctx.name || 'Клиент';
+        var who = (lastGeneratedData && (lastGeneratedData.fio || lastGeneratedData.companyName)) || (ctx && ctx.name) || 'Клиент';
+        if (typeof window.resolveWritableDriveFolder === 'function') {
+          var resolvedFolderId = await window.resolveWritableDriveFolder(ctx && ctx.folderId, who);
+          if (resolvedFolderId) ctx = { folderId: resolvedFolderId, name: who, source: (ctx && ctx.source) || 'personal' };
+        }
         var docName = '📜 Договор — ' + String(who);
         var htmlForExport = await inlineExportImages(lastGeneratedHtml);
         var canDrive = !!(ctx && ctx.folderId && typeof driveCreateGoogleDoc === 'function' && typeof getDriveToken === 'function');
@@ -1484,15 +1488,21 @@
         return;
       }
       var ctx = getTargetFolderCtx();
-      var canDrive = !!(ctx && ctx.folderId && typeof driveUploadBlob === 'function' && typeof getDriveToken === 'function');
+      var canDrive = !!(typeof driveUploadBlob === 'function' && typeof getDriveToken === 'function');
       if (!canDrive) {
-        if (st) st.textContent = 'Для PDF выберите проект с папкой Google Drive и подключите Drive.';
+        if (st) st.textContent = 'Подключите Google Drive и повторите.';
         return;
       }
       try {
         if (btn) btn.disabled = true;
         if (st) st.textContent = 'Сохраняю в Google Drive...';
-        var who = (lastGeneratedData && (lastGeneratedData.fio || lastGeneratedData.companyName)) || ctx.name || 'Клиент';
+        var who = (lastGeneratedData && (lastGeneratedData.fio || lastGeneratedData.companyName)) || (ctx && ctx.name) || 'Клиент';
+        if (typeof window.resolveWritableDriveFolder === 'function') {
+          var resolvedPdfFolderId = await window.resolveWritableDriveFolder(ctx && ctx.folderId, who);
+          if (resolvedPdfFolderId) ctx = { folderId: resolvedPdfFolderId, name: who, source: (ctx && ctx.source) || 'personal' };
+        }
+        canDrive = !!(ctx && ctx.folderId && typeof driveUploadBlob === 'function' && typeof getDriveToken === 'function');
+        if (!canDrive) throw new Error('Не удалось выбрать доступную папку Google Drive.');
         await getDriveToken();
         var safeWho = String(who).replace(/[\\/:*?"<>|]+/g, ' ').replace(/\s+/g, ' ').trim() || 'Клиент';
         var contractName = 'Договор - ' + safeWho + '.pdf';

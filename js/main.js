@@ -2582,6 +2582,92 @@ function getDriveToken() {
   return Promise.reject(new Error('Нажмите 🔑 Drive'));
 }
 
+function drivePersonalFolderMapStorageKey() {
+  var email = '';
+  try { email = String(localStorage.getItem('avitolog_drive_email') || '').trim().toLowerCase(); } catch(e) {}
+  var clean = email.replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '') || 'current';
+  return 'avitolog_drive_personal_client_folders_v1__' + clean;
+}
+function loadDrivePersonalFolderMap() {
+  try {
+    var value = JSON.parse(localStorage.getItem(drivePersonalFolderMapStorageKey()) || '{}');
+    return value && typeof value === 'object' ? value : {};
+  } catch(e) { return {}; }
+}
+function saveDrivePersonalFolderMap(value) {
+  try { localStorage.setItem(drivePersonalFolderMapStorageKey(), JSON.stringify(value || {})); } catch(e) {}
+}
+function driveFolderMapEntryKey(folderId, name) {
+  var id = String(folderId || '').trim();
+  if (id) return 'folder:' + id;
+  return 'name:' + String(name || 'Клиент').trim().toLowerCase().replace(/\s+/g, ' ').slice(0, 160);
+}
+function driveQueryEscape(value) {
+  return String(value || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+}
+async function driveCanWriteFolder(folderId) {
+  var id = String(folderId || '').trim();
+  if (!id) return false;
+  var token = await getDriveToken();
+  var resp = await fetch('https://www.googleapis.com/drive/v3/files/' + encodeURIComponent(id) + '?fields=id,mimeType,capabilities(canAddChildren)&supportsAllDrives=true', {
+    headers: {'Authorization': 'Bearer ' + token}
+  });
+  if (resp.status === 401) {
+    _driveToken = null;
+    clearStoredDriveAuth();
+    updateDriveUI();
+    throw new Error('Сессия Drive истекла. Нажмите 🔑 Drive и войдите снова.');
+  }
+  if (!resp.ok) return false;
+  var data = await resp.json().catch(function(){ return {}; });
+  return data.mimeType === 'application/vnd.google-apps.folder' && (!data.capabilities || data.capabilities.canAddChildren !== false);
+}
+async function driveEnsureNamedFolder(name, parentId) {
+  var token = await getDriveToken();
+  var parent = String(parentId || 'root').trim() || 'root';
+  var folderName = String(name || 'Клиент').trim() || 'Клиент';
+  var q = "name='" + driveQueryEscape(folderName) + "' and '" + driveQueryEscape(parent) + "' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false";
+  var listResp = await fetch('https://www.googleapis.com/drive/v3/files?q=' + encodeURIComponent(q) + '&fields=files(id,name)&pageSize=10', {
+    headers: {'Authorization': 'Bearer ' + token}
+  });
+  var listData = await listResp.json().catch(function(){ return {}; });
+  if (listResp.status === 401) {
+    _driveToken = null;
+    clearStoredDriveAuth();
+    updateDriveUI();
+    throw new Error('Сессия Drive истекла. Нажмите 🔑 Drive и войдите снова.');
+  }
+  if (listResp.ok && listData.files && listData.files.length) return listData.files[0].id;
+  var createResp = await fetch('https://www.googleapis.com/drive/v3/files?fields=id,name', {
+    method: 'POST',
+    headers: {'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json'},
+    body: JSON.stringify({name: folderName, mimeType: 'application/vnd.google-apps.folder', parents: [parent]})
+  });
+  var created = await createResp.json().catch(function(){ return {}; });
+  if (!createResp.ok || !created.id) {
+    var message = created && created.error && created.error.message ? created.error.message : ('HTTP ' + createResp.status);
+    throw new Error('Не удалось создать личную папку Drive: ' + message);
+  }
+  return created.id;
+}
+async function resolveWritableDriveFolder(folderId, clientName) {
+  var originalId = String(folderId || '').trim();
+  if (originalId && await driveCanWriteFolder(originalId)) return originalId;
+  var name = String(clientName || 'Клиент').trim() || 'Клиент';
+  var map = loadDrivePersonalFolderMap();
+  var entryKey = driveFolderMapEntryKey(originalId, name);
+  var mappedId = String(map[entryKey] || '').trim();
+  if (mappedId && await driveCanWriteFolder(mappedId)) return mappedId;
+  var rootId = await driveEnsureNamedFolder('AVITOLOG', 'root');
+  var clientsId = await driveEnsureNamedFolder('Клиенты', rootId);
+  var personalId = await driveEnsureNamedFolder(name, clientsId);
+  map[entryKey] = personalId;
+  map[driveFolderMapEntryKey('', name)] = personalId;
+  saveDrivePersonalFolderMap(map);
+  return personalId;
+}
+window.resolveWritableDriveFolder = resolveWritableDriveFolder;
+
 async function driveCreateClientFolder(name, parentId) {
   // Создаём папку клиента внутри уже существующей папки категории
   var token = await getDriveToken();
@@ -3044,11 +3130,16 @@ async function saveToDrive(html, contactsTxt, docHtml) {
     var ac = _activeClient || getActiveClient();
     var clientId;
     if (ac && ac.folderId) {
-      clientId = ac.folderId;
-      console.log('Используем папку активного клиента:', clientId);
+      clientId = await resolveWritableDriveFolder(ac.folderId, clientName);
+      console.log('Используем доступную папку активного клиента:', clientId);
     } else {
-      clientId = await driveCreateClientFolder(folderName, cat.id);
-      console.log('Создана новая папка:', clientId);
+      try {
+        clientId = await driveCreateClientFolder(folderName, cat.id);
+        console.log('Создана новая папка:', clientId);
+      } catch (legacyFolderError) {
+        console.warn('Категория недоступна для текущего Drive, использую личную папку:', legacyFolderError);
+        clientId = await resolveWritableDriveFolder('', clientName);
+      }
     }
 
     // contacts.txt — только при первой генерации (проверяем есть ли уже)
