@@ -6,7 +6,11 @@
  */
 (function() {
   'use strict';
-  if (window.AVITOLOG_BACKEND_MODE) return;
+  if (window.AVITOLOG_BACKEND_MODE) {
+    var obsoleteSyncButton = document.getElementById('sashaTeamSyncBtn');
+    if (obsoleteSyncButton) obsoleteSyncButton.style.display = 'none';
+    return;
+  }
 
   var FORMAT = 'avitolog-sasha-team-v1';
   var SYNC_FOLDER = 'AVITOLOG_SASHA_TEAM';

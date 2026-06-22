@@ -1552,7 +1552,7 @@
       '<span class="assets-month-nav-label">' + esc(monthTitle) + '</span>' +
       '<button type="button" class="assets-month-nav-btn" onclick="window.__assetsMonthNext()" title="Следующий месяц">▶</button>' +
       ctrlBtns +
-      (isSashaView ? '<button type="button" class="assets-sasha-sync-top" onclick="window.__assetsSyncSashaFromKassa && window.__assetsSyncSashaFromKassa()" title="Синхронизировать: в «Оплатил» только сумма «Агенту» (твоя доля)">🔄 Синхронизировать</button>' : '') +
+      (isSashaView && !window.AVITOLOG_BACKEND_MODE ? '<button type="button" class="assets-sasha-sync-top" onclick="window.__assetsSyncSashaFromKassa && window.__assetsSyncSashaFromKassa()" title="Синхронизировать: в «Оплатил» только сумма «Агенту» (твоя доля)">🔄 Синхронизировать</button>' : '') +
       '</div>';
     var archiveBanner = isAssetsArchive ? '<div class="assets-archive-banner">📁 Архив: ' + esc(monthTitle) + '</div>' : '';
     mc.innerHTML = '<div class="assets-page-wrap">' +
@@ -1564,7 +1564,7 @@
           '<button type="button" class="assets-filter-btn' + (filterPaid ? ' on' : '') + '" onclick="window.__assetsToggleFilterPaid && window.__assetsToggleFilterPaid()">💰 оплатили</button>' +
           '<div class="assets-col-list">' + colHeaderMe + myRows + '</div>' +
           '<div class="assets-col-add-row"><button type="button" class="assets-col-add assets-col-add-new" onclick="window.__assetsAddProject(\'me\')">Добавить NEW</button><button type="button" class="assets-col-add assets-col-add-base" onclick="window.__assetsShowBasePicker(this)" title="Выбрать из базы">+ из базы</button>' +
-          (isSashaView ? '<button type="button" class="assets-col-add assets-col-add-sync" onclick="window.__assetsSyncSashaFromKassa && window.__assetsSyncSashaFromKassa()" title="Подтянуть из колонки Фила «Клиенты Саши»: в «Оплатил» попадёт только сумма «Агенту» (твой %)">🔄 Синхронизировать</button>' : '') +
+          (isSashaView && !window.AVITOLOG_BACKEND_MODE ? '<button type="button" class="assets-col-add assets-col-add-sync" onclick="window.__assetsSyncSashaFromKassa && window.__assetsSyncSashaFromKassa()" title="Подтянуть из колонки Фила «Клиенты Саши»: в «Оплатил» попадёт только сумма «Агенту» (твой %)">🔄 Синхронизировать</button>' : '') +
           '</div>' +
         '</div>' +
         sashaColHtml +
