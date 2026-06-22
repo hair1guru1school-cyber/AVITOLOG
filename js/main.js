@@ -2468,11 +2468,7 @@ function startAuth(evt) {
     startAuthGIS();
     return;
   }
-  if (window.location.origin === 'https://hair1guru1school-cyber.github.io') {
-    startAuthRedirect();
-    return;
-  }
-  // GIS работает и локально, и на GitHub; это стабильнее, чем редирект между origin
+  // GIS token model работает на GitHub Pages без устаревшего redirect flow.
   startAuthGIS();
 }
 function startAuthRedirect() {
