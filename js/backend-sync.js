@@ -13,6 +13,9 @@
   var timers = {};
   var statusEl;
   var persistentSessionKey = 'avitolog_backend_session_v1';
+  function revisionSignatureStorageKey() {
+    return 'avitolog_backend_revision_signature_' + (window.AVITOLOG_KEY_SUFFIX === '_sasha' ? 'sasha' : 'fil');
+  }
 
   function ensureStatus() {
     if (statusEl) return statusEl;
@@ -196,7 +199,7 @@
       });
       phase = 'seed';
       if (await seedCurrentProfile(remoteKeys)) {
-        sessionStorage.removeItem('avitolog_backend_revision_signature');
+        sessionStorage.removeItem(revisionSignatureStorageKey());
         window.location.reload();
         return;
       }
@@ -212,8 +215,9 @@
       else if (!contentEnabled) button('Включить запись КП и ADS', enableContent);
       var revisionSignature = rows.filter(function(row) { return isAllowed(row.storage_key); })
         .map(function(row) { return row.storage_key + ':' + row.revision; }).join('|');
-      if (rows.length && sessionStorage.getItem('avitolog_backend_revision_signature') !== revisionSignature) {
-        sessionStorage.setItem('avitolog_backend_revision_signature', revisionSignature);
+      var revisionKey = revisionSignatureStorageKey();
+      if (rows.length && sessionStorage.getItem(revisionKey) !== revisionSignature) {
+        sessionStorage.setItem(revisionKey, revisionSignature);
         window.location.reload();
       }
     } catch (error) { setStatus('Ошибка Supabase (' + phase + '): ' + error.message, true); }
