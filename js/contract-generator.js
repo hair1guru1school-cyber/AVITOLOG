@@ -783,6 +783,7 @@
       '<button type="button" class="contract-gender-btn" data-gender="f">👩 Ж</button>' +
       '</div>' +
       '<input type="hidden" id="contract-headerGender" value="m">' +
+      '<button type="button" class="contract-toolbar-btn contract-btn-savew" id="contractDownloadLocalBtn" onclick="window.__contractDownloadLocal&&window.__contractDownloadLocal()">⬇ Скачать договор + приложение</button>' +
       '<button type="button" class="contract-toolbar-btn contract-btn-savew" id="contractSaveWBtn" style="display:none" onclick="window.__contractSaveW&&window.__contractSaveW()">🟦 Сохранить в W</button>' +
       '<button type="button" class="contract-toolbar-btn contract-btn-pdf" id="contractSavePdfBtn" onclick="window.__contractSavePdf&&window.__contractSavePdf()">📕 Сохранить 2 PDF</button>' +
       '<button type="button" class="contract-toolbar-btn contract-btn-pdf" id="contractDownloadPdfBtn" style="display:none" onclick="window.__contractDownloadPdf&&window.__contractDownloadPdf()">⬇ Скачать PDF</button>' +
@@ -1413,6 +1414,32 @@
     });
 
     if (typeof window.__contractGenerate === 'function') window.__contractGenerate();
+
+    window.__contractDownloadLocal = async function() {
+      var st = document.getElementById('contractSaveStatus');
+      var btn = document.getElementById('contractDownloadLocalBtn');
+      if (!lastGeneratedHtml && typeof window.__contractGenerate === 'function') window.__contractGenerate();
+      if (!lastGeneratedHtml) {
+        if (st) st.textContent = 'Сначала сгенерируйте договор';
+        return;
+      }
+      var oldText = btn ? btn.textContent : '';
+      try {
+        if (btn) { btn.disabled = true; btn.textContent = 'Готовлю файл...'; }
+        var who = (lastGeneratedData && (lastGeneratedData.fio || lastGeneratedData.companyName)) || 'Клиент';
+        var safeWho = String(who).replace(/[\\/:*?"<>|]+/g, ' ').replace(/\s+/g, ' ').trim() || 'Клиент';
+        var hasAppendix = !!(lastGeneratedDocs && lastGeneratedDocs.appendix);
+        var fileName = (hasAppendix ? 'Договор и приложение - ' : 'Договор - ') + safeWho + '.doc';
+        var htmlForExport = await inlineExportImages(lastGeneratedHtml);
+        var mhtml = buildWordMhtml(htmlForExport);
+        triggerBlobDownload(new Blob([mhtml], { type: 'application/msword;charset=utf-8' }), fileName);
+        if (st) st.textContent = '✓ Скачан файл: ' + fileName;
+      } catch (error) {
+        if (st) st.textContent = 'Ошибка скачивания: ' + String((error && error.message) || error);
+      } finally {
+        if (btn) { btn.disabled = false; btn.textContent = oldText || '⬇ Скачать договор + приложение'; }
+      }
+    };
 
     window.__contractSaveW = async function() {
       var st = document.getElementById('contractSaveStatus');
