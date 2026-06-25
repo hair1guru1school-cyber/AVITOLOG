@@ -403,6 +403,8 @@ footer{background:var(--bg);border-top:1px solid var(--border);padding:40px 80px
 /* Niches on image - overlay layout */
 .niches-on-image{position:relative;overflow:hidden;padding:0}
 .niches-bg-wrap{position:relative;width:100vw;margin-left:50%;transform:translateX(-50%);min-height:720px;display:flex;flex-direction:column;background:#080b12}
+.niches-bg-wrap::before{content:'';position:absolute;left:0;right:0;top:0;height:clamp(50px,7vw,100px);z-index:3;pointer-events:none;background:linear-gradient(180deg,#070b14 0%,transparent 100%)}
+.niches-bg-wrap::after{content:'';position:absolute;left:0;right:0;bottom:0;height:clamp(50px,7vw,100px);z-index:3;pointer-events:none;background:linear-gradient(0deg,var(--bg2) 0%,transparent 100%)}
 
 .niches-overlay{position:relative;z-index:2;padding:48px 24px 56px;max-width:1200px;margin:0 auto}
 #niches .nc{background:rgba(232,0,29,.08);backdrop-filter:blur(10px);border:1px solid var(--border-r);border-left:3px solid var(--red);box-shadow:0 4px 20px rgba(0,0,0,.3)}
@@ -458,7 +460,7 @@ footer{background:var(--bg);border-top:1px solid var(--border);padding:40px 80px
 /* TURNKEY BANNER - Premium SaaS style */
 .turnkey-banner{position:relative;background:#070b14;padding:80px 24px 100px;overflow:hidden}
 .turnkey-banner::before{content:"";position:absolute;inset:0;background:linear-gradient(90deg,#070b14 0%,transparent 12%,transparent 88%,#070b14 100%);pointer-events:none;z-index:2}
-.turnkey-banner::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,#070b14 0%,transparent 8%,transparent 92%,#070b14 100%);pointer-events:none;z-index:2}
+.turnkey-banner::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,var(--bg) 0%,#070b14 5%,transparent 11%,transparent 92%,#070b14 100%);pointer-events:none;z-index:2}
 .tk-bg-grid{position:absolute;inset:0;background-image:linear-gradient(rgba(255,255,255,.02) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.02) 1px,transparent 1px);background-size:48px 48px;pointer-events:none}
 .tk-wrap{position:relative;z-index:1;max-width:1200px;margin:0 auto}
 .tk-title{font-family:'Oswald',sans-serif;font-size:clamp(32px,5vw,52px);font-weight:700;text-align:center;line-height:1.15;letter-spacing:-.5px;color:#fff;margin-bottom:16px}
