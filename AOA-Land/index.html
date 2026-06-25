@@ -149,7 +149,7 @@ nav::after{content:'';position:absolute;bottom:0;left:0;right:0;height:1px;backg
 .process-visual-wrap .p-steps-row::before{content:'';position:absolute;left:8%;right:8%;top:clamp(18px,3.2vw,30px);height:2px;z-index:0;pointer-events:none;background:linear-gradient(90deg,transparent,rgba(232,0,29,.25) 6%,rgba(232,0,29,.75) 50%,rgba(232,0,29,.25) 94%,transparent);box-shadow:0 0 12px rgba(232,0,29,.25)}
 .process-visual-wrap .p-steps-row .pstep{position:relative;z-index:1;min-width:0}
 .process-visual-wrap .p-step-card{pointer-events:auto;height:100%;display:flex;flex-direction:column;align-items:stretch;justify-content:flex-start;gap:6px;padding:clamp(8px,1.2vw,12px) clamp(6px,1vw,10px) clamp(8px,1.2vw,12px);border-radius:10px;border:1px solid rgba(232,0,29,.5);background:rgba(4,6,10,.82);box-shadow:0 6px 28px rgba(0,0,0,.55);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
-.process-visual-wrap .p-num{align-self:flex-start;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;width:clamp(38px,5.5vw,58px);min-height:clamp(48px,7vw,76px);padding:5px 4px 6px;margin:0;background:rgba(6,10,18,.92);border:1px solid rgba(0,207,255,.42);clip-path:polygon(8px 0,100% 0,100% calc(100% - 8px),calc(100% - 8px) 100%,0 100%,0 8px);flex-shrink:0;position:relative;z-index:2;box-shadow:0 0 14px rgba(0,160,255,.12),inset 0 0 0 1px rgba(255,255,255,.04)}.process-visual-wrap .p-num-ico{display:flex;align-items:center;justify-content:center;width:clamp(30px,4.5vw,48px);height:clamp(30px,4.5vw,48px);flex-shrink:0}.process-visual-wrap .p-num-ico img{width:100%;height:100%;object-fit:contain;object-position:center;display:block;filter:drop-shadow(0 0 5px rgba(0,93,160,.55)) drop-shadow(0 0 2px rgba(243,112,33,.4))}.process-visual-wrap .p-num-txt{font-family:'Oswald',sans-serif;font-size:clamp(8px,1vw,10px);font-weight:700;color:rgba(235,242,255,.92);line-height:1;letter-spacing:.3px}
+.process-visual-wrap .p-num{align-self:flex-start;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;width:clamp(38px,5.5vw,58px);min-height:clamp(48px,7vw,76px);padding:5px 4px 6px;margin:0;background:rgba(6,10,18,.92);border:1px solid rgba(0,207,255,.42);clip-path:polygon(8px 0,100% 0,100% calc(100% - 8px),calc(100% - 8px) 100%,0 100%,0 8px);flex-shrink:0;position:relative;z-index:2;box-shadow:0 0 14px rgba(0,160,255,.12),inset 0 0 0 1px rgba(255,255,255,.04)}.process-visual-wrap .p-num-ico{display:flex;align-items:center;justify-content:center;width:clamp(30px,4.5vw,48px);height:clamp(30px,4.5vw,48px);flex-shrink:0;position:relative}.process-visual-wrap .p-num-ico::before{content:'';width:10px;height:10px;background:linear-gradient(135deg,#f0c34d,#caa133);transform:rotate(45deg);box-shadow:0 0 8px rgba(240,195,77,.6)}.process-visual-wrap .p-num-txt{font-family:'Oswald',sans-serif;font-size:clamp(8px,1vw,10px);font-weight:700;color:rgba(235,242,255,.92);line-height:1;letter-spacing:.3px}
 .process-visual-wrap .p-step-body{flex:1;min-height:0;display:flex;flex-direction:column;gap:4px}
 .process-visual-wrap .p-title{font-size:clamp(8px,0.95vw,12px);font-weight:600;color:#fff;line-height:1.2;margin:0}
 .process-visual-wrap .p-desc{font-size:clamp(7px,0.82vw,10px);color:rgba(230,236,248,.95);line-height:1.35;margin:0}
@@ -559,13 +559,13 @@ footer{background:var(--bg);border-top:1px solid var(--border);padding:40px 80px
     <div class="p-steps">
       <div class="p-steps-grid">
         <div class="p-steps-row p-steps-row-top">
-          <div class="pstep"><div class="p-step-card"><div class="p-num" data-step="1"><span class="p-num-ico" aria-hidden="true"><img src="process-step-icon-01.png?v=20260329-s5" width="204" height="682" alt="" loading="lazy" decoding="async" /></span><span class="p-num-txt">01</span></div><div class="p-step-body"><div class="p-title">Консультация и аудит</div><div class="p-desc">Разбираем нишу, анализируем конкурентов, считаем потенциал. КП и анализ рынка — бесплатно.</div></div></div></div>
-          <div class="pstep"><div class="p-step-card"><div class="p-num" data-step="2"><span class="p-num-ico" aria-hidden="true"><img src="process-step-icon-02.png?v=20260329-s5" width="204" height="682" alt="" loading="lazy" decoding="async" /></span><span class="p-num-txt">02</span></div><div class="p-step-body"><div class="p-title">Стратегия и договор</div><div class="p-desc">Прописываем план, фиксируем KPI в договоре с ИП. Никаких устных договорённостей.</div></div></div></div>
-          <div class="pstep"><div class="p-step-card"><div class="p-num" data-step="3"><span class="p-num-ico" aria-hidden="true"><img src="process-step-icon-03.png?v=20260329-s5" width="204" height="682" alt="" loading="lazy" decoding="async" /></span><span class="p-num-txt">03</span></div><div class="p-step-body"><div class="p-title">Упаковка магазина</div><div class="p-desc">Дизайн, тексты, фото, инфографика — магазин, которому доверяют покупатели.</div></div></div></div>
+          <div class="pstep"><div class="p-step-card"><div class="p-num" data-step="1"><span class="p-num-ico" aria-hidden="true"></span><span class="p-num-txt">01</span></div><div class="p-step-body"><div class="p-title">Консультация и аудит</div><div class="p-desc">Разбираем нишу, анализируем конкурентов, считаем потенциал. КП и анализ рынка — бесплатно.</div></div></div></div>
+          <div class="pstep"><div class="p-step-card"><div class="p-num" data-step="2"><span class="p-num-ico" aria-hidden="true"></span><span class="p-num-txt">02</span></div><div class="p-step-body"><div class="p-title">Стратегия и договор</div><div class="p-desc">Прописываем план, фиксируем KPI в договоре с ИП. Никаких устных договорённостей.</div></div></div></div>
+          <div class="pstep"><div class="p-step-card"><div class="p-num" data-step="3"><span class="p-num-ico" aria-hidden="true"></span><span class="p-num-txt">03</span></div><div class="p-step-body"><div class="p-title">Упаковка магазина</div><div class="p-desc">Дизайн, тексты, фото, инфографика — магазин, которому доверяют покупатели.</div></div></div></div>
         </div>
         <div class="p-steps-row p-steps-row-bottom">
-          <div class="pstep"><div class="p-step-card"><div class="p-num" data-step="4"><span class="p-num-ico" aria-hidden="true"><img src="process-step-icon-04.png?v=20260329-s5" width="204" height="682" alt="" loading="lazy" decoding="async" /></span><span class="p-num-txt">04</span></div><div class="p-step-body"><div class="p-title">Запуск и масштаб</div><div class="p-desc">Автозагрузка, бот, реклама — первые заявки в течение 7 дней с гарантией.</div></div></div></div>
-          <div class="pstep"><div class="p-step-card"><div class="p-num" data-step="5"><span class="p-num-ico" aria-hidden="true"><img src="process-step-icon-05.png?v=20260329-s5" width="204" height="682" alt="" loading="lazy" decoding="async" /></span><span class="p-num-txt">05</span></div><div class="p-step-body"><div class="p-title">Рост и отчётность</div><div class="p-desc">24/7 мониторинг, еженедельные отчёты, постоянная оптимизация — заявки только растут.</div></div></div></div>
+          <div class="pstep"><div class="p-step-card"><div class="p-num" data-step="4"><span class="p-num-ico" aria-hidden="true"></span><span class="p-num-txt">04</span></div><div class="p-step-body"><div class="p-title">Запуск и масштаб</div><div class="p-desc">Автозагрузка, бот, реклама — первые заявки в течение 7 дней с гарантией.</div></div></div></div>
+          <div class="pstep"><div class="p-step-card"><div class="p-num" data-step="5"><span class="p-num-ico" aria-hidden="true"></span><span class="p-num-txt">05</span></div><div class="p-step-body"><div class="p-title">Рост и отчётность</div><div class="p-desc">24/7 мониторинг, еженедельные отчёты, постоянная оптимизация — заявки только растут.</div></div></div></div>
         </div>
       </div>
     </div>
@@ -681,19 +681,19 @@ footer{background:var(--bg);border-top:1px solid var(--border);padding:40px 80px
   <div class="grow-wrap">
     <button type="button" class="grow-nav prev" aria-label="Назад">‹</button>
     <div class="grow-track" id="growTrack">
-    <div class="grow-slide"><img src="Кейсы -статитик/11.png" alt="Кейс 11" loading="lazy"></div>
-    <div class="grow-slide"><img src="Кейсы -статитик/13.png" alt="Кейс 13" loading="lazy"></div>
-    <div class="grow-slide"><img src="Кейсы -статитик/14.png" alt="Кейс 14" loading="lazy"></div>
-    <div class="grow-slide"><img src="Кейсы -статитик/15.png" alt="Кейс 15" loading="lazy"></div>
-    <div class="grow-slide"><img src="Кейсы -статитик/16.png" alt="Кейс 16" loading="lazy"></div>
-    <div class="grow-slide"><img src="Кейсы -статитик/17.png" alt="Кейс 17" loading="lazy"></div>
-    <div class="grow-slide"><img src="Кейсы -статитик/18.png" alt="Кейс 18" loading="lazy"></div>
-    <div class="grow-slide"><img src="Кейсы -статитик/19.png" alt="Кейс 19" loading="lazy"></div>
-    <div class="grow-slide"><img src="Кейсы -статитик/20.png" alt="Кейс 20" loading="lazy"></div>
-    <div class="grow-slide"><img src="Кейсы -статитик/21.png" alt="Кейс 21" loading="lazy"></div>
-    <div class="grow-slide"><img src="Кейсы -статитик/23.png" alt="Кейс 23" loading="lazy"></div>
-    <div class="grow-slide"><img src="Кейсы -статитик/25.png" alt="Кейс 25" loading="lazy"></div>
-    <div class="grow-slide"><img src="Кейсы -статитик/26.png" alt="Кейс 26" loading="lazy"></div>
+    <div class="grow-slide"><img src="Кейсы -статитик/ChatGPT Image 10 июн. 2026 г., 13_12_31.png" alt="Кейс: выкуп авто — результаты продвижения на Авито" loading="lazy"></div>
+    <div class="grow-slide"><img src="Кейсы -статитик/ChatGPT Image 10 июн. 2026 г., 13_21_26.png" alt="Кейс: 100 заявок за 5 дней — строительные услуги, Екатеринбург" loading="lazy"></div>
+    <div class="grow-slide"><img src="Кейсы -статитик/ChatGPT Image 10 июн. 2026 г., 13_32_48.png" alt="Кейс: кровельные работы и строительство" loading="lazy"></div>
+    <div class="grow-slide"><img src="Кейсы -статитик/e6bfa11d-f4e2-4b72-8690-28424d90cac2.png" alt="Кейс: тротуарная плитка — упаковка магазина" loading="lazy"></div>
+    <div class="grow-slide"><img src="Кейсы -статитик/1efc02a4-5c27-45b2-a36d-8b7adf6ae79c.png" alt="Кейс: мягкая мебель Capitone" loading="lazy"></div>
+    <div class="grow-slide"><img src="Кейсы -статитик/91cf595b-c344-42e5-b93b-a0ddda20c09f.png" alt="Кейс: ворота — упаковка и продвижение" loading="lazy"></div>
+    <div class="grow-slide"><img src="Кейсы -статитик/2bff9883-e197-433e-9c0d-aa7200dfab9e.png" alt="Кейс: металлопрокат — упаковка магазина" loading="lazy"></div>
+    <div class="grow-slide"><img src="Кейсы -статитик/2d112515-3864-4ccd-a8d1-c67a8cb01256.png" alt="Кейс: услуги по мягкой кровле" loading="lazy"></div>
+    <div class="grow-slide"><img src="Кейсы -статитик/8.png" alt="Кейс: ООО Мелан — гидроизоляция и утепление" loading="lazy"></div>
+    <div class="grow-slide"><img src="Кейсы -статитик/9.png" alt="Кейс: завод ЖБИ №7" loading="lazy"></div>
+    <div class="grow-slide"><img src="Кейсы -статитик/73fe1819-4ed9-4e59-ac1a-6ebc87e015f9.png" alt="Кейс: завод ЖБИ — от производителя" loading="lazy"></div>
+    <div class="grow-slide"><img src="Кейсы -статитик/10.png" alt="Кейс: ИП Надёжный — сыпучие материалы" loading="lazy"></div>
+    <div class="grow-slide"><img src="Кейсы -статитик/ChatGPT Image 10 июн. 2026 г., 01_36_01.png" alt="Кейс: кровати и мягкая мебель" loading="lazy"></div>
     </div>
     <button type="button" class="grow-nav next" aria-label="Вперёд">›</button>
   </div>
