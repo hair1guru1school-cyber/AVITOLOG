@@ -92,6 +92,14 @@ nav::after{content:'';position:absolute;bottom:0;left:0;right:0;height:1px;backg
 .grow-dots{display:flex;justify-content:center;gap:10px;margin-top:clamp(20px,3vw,32px)}
 .grow-dot{width:10px;height:10px;border-radius:50%;border:2px solid var(--red);background:transparent;cursor:pointer;transition:all .25s}
 .grow-dot:hover,.grow-dot.active{background:var(--red);box-shadow:0 0 12px var(--red-glow)}
+.grow-filmstrip{display:flex;gap:10px;overflow-x:auto;margin:clamp(18px,2.6vw,30px) auto 0;max-width:min(1680px,98vw);padding:4px 2px 10px;scrollbar-width:thin;scrollbar-color:var(--gold) transparent}
+.grow-filmstrip::-webkit-scrollbar{height:6px}
+.grow-filmstrip::-webkit-scrollbar-thumb{background:rgba(240,195,77,.4);border-radius:4px}
+.gfs-thumb{flex:0 0 auto;width:96px;height:64px;border-radius:8px;overflow:hidden;cursor:pointer;border:2px solid transparent;opacity:.55;transition:all .25s;position:relative;background:#05070d}
+.gfs-thumb img{width:100%;height:100%;object-fit:cover;display:block}
+.gfs-thumb:hover{opacity:.85}
+.gfs-thumb.active{opacity:1;border-color:var(--gold);box-shadow:0 0 14px rgba(240,195,77,.45)}
+@media(max-width:640px){.gfs-thumb{width:72px;height:50px}}
 @media(max-width:900px){
 .grow-slide{flex:0 0 92%;min-width:min(92vw,520px);max-width:96vw}
 .grow-slide img{max-height:min(72vh,820px)}
@@ -149,7 +157,7 @@ nav::after{content:'';position:absolute;bottom:0;left:0;right:0;height:1px;backg
 .process-visual-wrap .p-steps-row::before{content:'';position:absolute;left:8%;right:8%;top:clamp(18px,3.2vw,30px);height:2px;z-index:0;pointer-events:none;background:linear-gradient(90deg,transparent,rgba(232,0,29,.25) 6%,rgba(232,0,29,.75) 50%,rgba(232,0,29,.25) 94%,transparent);box-shadow:0 0 12px rgba(232,0,29,.25)}
 .process-visual-wrap .p-steps-row .pstep{position:relative;z-index:1;min-width:0}
 .process-visual-wrap .p-step-card{pointer-events:auto;height:100%;display:flex;flex-direction:column;align-items:stretch;justify-content:flex-start;gap:6px;padding:clamp(8px,1.2vw,12px) clamp(6px,1vw,10px) clamp(8px,1.2vw,12px);border-radius:10px;border:1px solid rgba(232,0,29,.5);background:rgba(4,6,10,.82);box-shadow:0 6px 28px rgba(0,0,0,.55);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
-.process-visual-wrap .p-num{align-self:flex-start;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;width:clamp(38px,5.5vw,58px);min-height:clamp(48px,7vw,76px);padding:5px 4px 6px;margin:0;background:rgba(6,10,18,.92);border:1px solid rgba(0,207,255,.42);clip-path:polygon(8px 0,100% 0,100% calc(100% - 8px),calc(100% - 8px) 100%,0 100%,0 8px);flex-shrink:0;position:relative;z-index:2;box-shadow:0 0 14px rgba(0,160,255,.12),inset 0 0 0 1px rgba(255,255,255,.04)}.process-visual-wrap .p-num-ico{display:flex;align-items:center;justify-content:center;width:clamp(30px,4.5vw,48px);height:clamp(30px,4.5vw,48px);flex-shrink:0;position:relative}.process-visual-wrap .p-num-ico::before{content:'';width:10px;height:10px;background:linear-gradient(135deg,#f0c34d,#caa133);transform:rotate(45deg);box-shadow:0 0 8px rgba(240,195,77,.6)}.process-visual-wrap .p-num-txt{font-family:'Oswald',sans-serif;font-size:clamp(8px,1vw,10px);font-weight:700;color:rgba(235,242,255,.92);line-height:1;letter-spacing:.3px}
+.process-visual-wrap .p-num{align-self:flex-start;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;width:clamp(46px,6.5vw,68px);min-height:clamp(56px,8vw,86px);padding:6px 4px 7px;margin:0;background:rgba(6,10,18,.92);border:1px solid rgba(240,195,77,.42);clip-path:polygon(8px 0,100% 0,100% calc(100% - 8px),calc(100% - 8px) 100%,0 100%,0 8px);flex-shrink:0;position:relative;z-index:2;box-shadow:0 0 14px rgba(240,195,77,.14),inset 0 0 0 1px rgba(255,255,255,.04)}.process-visual-wrap .p-num-ico{display:flex;align-items:center;justify-content:center;width:clamp(36px,5.2vw,56px);height:clamp(36px,5.2vw,56px);flex-shrink:0;position:relative}.process-visual-wrap .p-num-ico img{width:100%;height:100%;object-fit:contain;display:block;filter:drop-shadow(0 0 7px rgba(240,195,77,.5))}.process-visual-wrap .p-num-txt{font-family:'Oswald',sans-serif;font-size:clamp(8px,1vw,10px);font-weight:700;color:rgba(235,242,255,.92);line-height:1;letter-spacing:.3px}
 .process-visual-wrap .p-step-body{flex:1;min-height:0;display:flex;flex-direction:column;gap:4px}
 .process-visual-wrap .p-title{font-size:clamp(8px,0.95vw,12px);font-weight:600;color:#fff;line-height:1.2;margin:0}
 .process-visual-wrap .p-desc{font-size:clamp(7px,0.82vw,10px);color:rgba(230,236,248,.95);line-height:1.35;margin:0}
@@ -240,11 +248,12 @@ nav::after{content:'';position:absolute;bottom:0;left:0;right:0;height:1px;backg
 .cc-emoji-fb{font-size:20px;line-height:1;opacity:.95;font-family:ui-emoji,"Segoe UI Emoji","Apple Color Emoji","Noto Color Emoji",sans-serif;}
 
 
-.vk-promo + .sec{margin-top:-1px;padding-top:calc(clamp(56px,7vw,96px) + 1px)}
+.vk-promo + .sec{position:relative;margin-top:-1px;padding-top:clamp(40px,5vw,64px)}
+.vk-promo + .sec::before{content:'';position:absolute;left:50%;top:0;width:min(220px,60%);height:2px;transform:translateX(-50%);background:linear-gradient(90deg,transparent,var(--gold),transparent);opacity:.55}
 /* VK block */
-.vk-promo{position:relative;overflow:hidden;border-top:none;border-bottom:none;box-sizing:border-box;background-color:#020307;background-image:linear-gradient(180deg,rgba(0,0,0,.82) 0%,rgba(0,0,0,.64) 38%,rgba(0,0,0,.80) 100%),url('vk-promo-art.png?v=20260329-vk14');background-position:center top;background-size:cover;background-repeat:no-repeat;scroll-margin-top:72px;min-height:min(74vh,900px)}
+.vk-promo{position:relative;overflow:hidden;border-top:none;border-bottom:none;box-sizing:border-box;background-color:#020307;background-image:linear-gradient(180deg,rgba(0,0,0,.82) 0%,rgba(0,0,0,.64) 38%,rgba(0,0,0,.80) 100%),url('vk-promo-art.png?v=20260329-vk14');background-position:center top;background-size:cover;background-repeat:no-repeat;scroll-margin-top:72px;min-height:min(62vh,760px)}
 .vk-promo::before{content:'';position:absolute;left:0;right:0;top:0;height:clamp(80px,14vw,220px);z-index:1;pointer-events:none;background:linear-gradient(180deg,var(--bg) 0%,rgba(3,4,10,.85) 48%,transparent 100%)}
-.vk-promo::after{content:'';position:absolute;left:0;right:0;bottom:0;height:min(55%,480px);z-index:1;pointer-events:none;background:linear-gradient(0deg,var(--bg2) 0%,rgba(2,3,8,.95) 12%,rgba(4,6,14,.80) 34%,rgba(6,10,18,.40) 60%,transparent 100%)}
+.vk-promo::after{content:'';position:absolute;left:0;right:0;bottom:0;height:min(42%,340px);z-index:1;pointer-events:none;background:linear-gradient(0deg,var(--bg2) 0%,rgba(2,3,8,.95) 18%,rgba(4,6,14,.75) 42%,rgba(6,10,18,.32) 70%,transparent 100%)}
 .vk-inner{position:relative;z-index:2;max-width:min(1180px,94vw);margin:0 auto;display:flex;align-items:center;justify-content:space-between;gap:clamp(32px,5vw,72px);padding:clamp(56px,7vw,100px) clamp(24px,4vw,56px) clamp(110px,15vw,180px)}
 .vk-col-text{flex:1 1 0;min-width:0;max-width:min(600px,62%)}
 .vk-col-text .sec-lbl{text-align:left}
@@ -559,13 +568,13 @@ footer{background:var(--bg);border-top:1px solid var(--border);padding:40px 80px
     <div class="p-steps">
       <div class="p-steps-grid">
         <div class="p-steps-row p-steps-row-top">
-          <div class="pstep"><div class="p-step-card"><div class="p-num" data-step="1"><span class="p-num-ico" aria-hidden="true"></span><span class="p-num-txt">01</span></div><div class="p-step-body"><div class="p-title">Консультация и аудит</div><div class="p-desc">Разбираем нишу, анализируем конкурентов, считаем потенциал. КП и анализ рынка — бесплатно.</div></div></div></div>
-          <div class="pstep"><div class="p-step-card"><div class="p-num" data-step="2"><span class="p-num-ico" aria-hidden="true"></span><span class="p-num-txt">02</span></div><div class="p-step-body"><div class="p-title">Стратегия и договор</div><div class="p-desc">Прописываем план, фиксируем KPI в договоре с ИП. Никаких устных договорённостей.</div></div></div></div>
-          <div class="pstep"><div class="p-step-card"><div class="p-num" data-step="3"><span class="p-num-ico" aria-hidden="true"></span><span class="p-num-txt">03</span></div><div class="p-step-body"><div class="p-title">Упаковка магазина</div><div class="p-desc">Дизайн, тексты, фото, инфографика — магазин, которому доверяют покупатели.</div></div></div></div>
+          <div class="pstep"><div class="p-step-card"><div class="p-num" data-step="1"><span class="p-num-ico" aria-hidden="true"><img src="icons-3d/step-01-audit.png" alt="" loading="lazy" decoding="async"></span><span class="p-num-txt">01</span></div><div class="p-step-body"><div class="p-title">Консультация и аудит</div><div class="p-desc">Разбираем нишу, анализируем конкурентов, считаем потенциал. КП и анализ рынка — бесплатно.</div></div></div></div>
+          <div class="pstep"><div class="p-step-card"><div class="p-num" data-step="2"><span class="p-num-ico" aria-hidden="true"><img src="icons-3d/step-02-contract.png" alt="" loading="lazy" decoding="async"></span><span class="p-num-txt">02</span></div><div class="p-step-body"><div class="p-title">Стратегия и договор</div><div class="p-desc">Прописываем план, фиксируем KPI в договоре с ИП. Никаких устных договорённостей.</div></div></div></div>
+          <div class="pstep"><div class="p-step-card"><div class="p-num" data-step="3"><span class="p-num-ico" aria-hidden="true"><img src="icons-3d/step-03-shop.png" alt="" loading="lazy" decoding="async"></span><span class="p-num-txt">03</span></div><div class="p-step-body"><div class="p-title">Упаковка магазина</div><div class="p-desc">Дизайн, тексты, фото, инфографика — магазин, которому доверяют покупатели.</div></div></div></div>
         </div>
         <div class="p-steps-row p-steps-row-bottom">
-          <div class="pstep"><div class="p-step-card"><div class="p-num" data-step="4"><span class="p-num-ico" aria-hidden="true"></span><span class="p-num-txt">04</span></div><div class="p-step-body"><div class="p-title">Запуск и масштаб</div><div class="p-desc">Автозагрузка, бот, реклама — первые заявки в течение 7 дней с гарантией.</div></div></div></div>
-          <div class="pstep"><div class="p-step-card"><div class="p-num" data-step="5"><span class="p-num-ico" aria-hidden="true"></span><span class="p-num-txt">05</span></div><div class="p-step-body"><div class="p-title">Рост и отчётность</div><div class="p-desc">24/7 мониторинг, еженедельные отчёты, постоянная оптимизация — заявки только растут.</div></div></div></div>
+          <div class="pstep"><div class="p-step-card"><div class="p-num" data-step="4"><span class="p-num-ico" aria-hidden="true"><img src="icons-3d/step-04-launch.png" alt="" loading="lazy" decoding="async"></span><span class="p-num-txt">04</span></div><div class="p-step-body"><div class="p-title">Запуск и масштаб</div><div class="p-desc">Автозагрузка, бот, реклама — первые заявки в течение 7 дней с гарантией.</div></div></div></div>
+          <div class="pstep"><div class="p-step-card"><div class="p-num" data-step="5"><span class="p-num-ico" aria-hidden="true"><img src="icons-3d/step-05-growth.png" alt="" loading="lazy" decoding="async"></span><span class="p-num-txt">05</span></div><div class="p-step-body"><div class="p-title">Рост и отчётность</div><div class="p-desc">24/7 мониторинг, еженедельные отчёты, постоянная оптимизация — заявки только растут.</div></div></div></div>
         </div>
       </div>
     </div>
@@ -681,23 +690,24 @@ footer{background:var(--bg);border-top:1px solid var(--border);padding:40px 80px
   <div class="grow-wrap">
     <button type="button" class="grow-nav prev" aria-label="Назад">‹</button>
     <div class="grow-track" id="growTrack">
+    <div class="grow-slide"><img src="Кейсы -статитик/8.png" alt="Кейс: ООО Мелан — гидроизоляция и утепление" loading="lazy"></div>
+    <div class="grow-slide"><img src="Кейсы -статитик/9.png" alt="Кейс: завод ЖБИ №7 — бетонный завод" loading="lazy"></div>
+    <div class="grow-slide"><img src="Кейсы -статитик/ChatGPT Image 10 июн. 2026 г., 13_32_48.png" alt="Кейс: кровельные работы и строительство" loading="lazy"></div>
+    <div class="grow-slide"><img src="Кейсы -статитик/91cf595b-c344-42e5-b93b-a0ddda20c09f.png" alt="Кейс: ворота — упаковка и продвижение" loading="lazy"></div>
+    <div class="grow-slide"><img src="Кейсы -статитик/73fe1819-4ed9-4e59-ac1a-6ebc87e015f9.png" alt="Кейс: завод ЖБИ — от производителя" loading="lazy"></div>
     <div class="grow-slide"><img src="Кейсы -статитик/ChatGPT Image 10 июн. 2026 г., 13_12_31.png" alt="Кейс: выкуп авто — результаты продвижения на Авито" loading="lazy"></div>
     <div class="grow-slide"><img src="Кейсы -статитик/ChatGPT Image 10 июн. 2026 г., 13_21_26.png" alt="Кейс: 100 заявок за 5 дней — строительные услуги, Екатеринбург" loading="lazy"></div>
-    <div class="grow-slide"><img src="Кейсы -статитик/ChatGPT Image 10 июн. 2026 г., 13_32_48.png" alt="Кейс: кровельные работы и строительство" loading="lazy"></div>
     <div class="grow-slide"><img src="Кейсы -статитик/e6bfa11d-f4e2-4b72-8690-28424d90cac2.png" alt="Кейс: тротуарная плитка — упаковка магазина" loading="lazy"></div>
     <div class="grow-slide"><img src="Кейсы -статитик/1efc02a4-5c27-45b2-a36d-8b7adf6ae79c.png" alt="Кейс: мягкая мебель Capitone" loading="lazy"></div>
-    <div class="grow-slide"><img src="Кейсы -статитик/91cf595b-c344-42e5-b93b-a0ddda20c09f.png" alt="Кейс: ворота — упаковка и продвижение" loading="lazy"></div>
     <div class="grow-slide"><img src="Кейсы -статитик/2bff9883-e197-433e-9c0d-aa7200dfab9e.png" alt="Кейс: металлопрокат — упаковка магазина" loading="lazy"></div>
     <div class="grow-slide"><img src="Кейсы -статитик/2d112515-3864-4ccd-a8d1-c67a8cb01256.png" alt="Кейс: услуги по мягкой кровле" loading="lazy"></div>
-    <div class="grow-slide"><img src="Кейсы -статитик/8.png" alt="Кейс: ООО Мелан — гидроизоляция и утепление" loading="lazy"></div>
-    <div class="grow-slide"><img src="Кейсы -статитик/9.png" alt="Кейс: завод ЖБИ №7" loading="lazy"></div>
-    <div class="grow-slide"><img src="Кейсы -статитик/73fe1819-4ed9-4e59-ac1a-6ebc87e015f9.png" alt="Кейс: завод ЖБИ — от производителя" loading="lazy"></div>
     <div class="grow-slide"><img src="Кейсы -статитик/10.png" alt="Кейс: ИП Надёжный — сыпучие материалы" loading="lazy"></div>
     <div class="grow-slide"><img src="Кейсы -статитик/ChatGPT Image 10 июн. 2026 г., 01_36_01.png" alt="Кейс: кровати и мягкая мебель" loading="lazy"></div>
     </div>
     <button type="button" class="grow-nav next" aria-label="Вперёд">›</button>
   </div>
   <div class="grow-dots" id="growDots"></div>
+  <div class="grow-filmstrip" id="growFilmstrip"></div>
 </section>
 
 <!-- AVITO WHY -->
@@ -911,14 +921,37 @@ document.querySelectorAll('.rev').forEach(el=>ro.observe(el));
 <!-- Carousel С НАМИ РАСТУТ -->
 <script>
 (function(){
-var t=document.getElementById("growTrack"), d=document.getElementById("growDots"), prev=document.querySelector(".grow-nav.prev"), next=document.querySelector(".grow-nav.next");
+var t=document.getElementById("growTrack"), d=document.getElementById("growDots"), prev=document.querySelector(".grow-nav.prev"), next=document.querySelector(".grow-nav.next"), fs=document.getElementById("growFilmstrip");
 if(!t||!d)return;
 var slides=t.querySelectorAll(".grow-slide"), n=slides.length, idx=0;
 for(var i=0;i<n;i++){var dot=document.createElement("button");dot.type="button";dot.className="grow-dot"+(i===0?" active":"");dot.setAttribute("aria-label","Слайд "+(i+1));dot.onclick=(function(j){return function(){goTo(j)}})(i);d.appendChild(dot)}
-function goTo(i){idx=Math.max(0,Math.min(i,n-1));t.scrollTo({left:slides[idx].offsetLeft-t.offsetLeft,behavior:"smooth"});d.querySelectorAll(".grow-dot").forEach(function(el,k){el.classList.toggle("active",k===idx)})}
+if(fs){
+  for(var j=0;j<n;j++){
+    var img=slides[j].querySelector("img");
+    var th=document.createElement("button");
+    th.type="button";
+    th.className="gfs-thumb"+(j===0?" active":"");
+    th.setAttribute("aria-label","Перейти к кейсу "+(j+1));
+    var thImg=document.createElement("img");
+    thImg.src=img.src;thImg.alt="";thImg.loading="lazy";
+    th.appendChild(thImg);
+    th.onclick=(function(k){return function(){goTo(k)}})(j);
+    fs.appendChild(th);
+  }
+}
+function setActive(i){
+  d.querySelectorAll(".grow-dot").forEach(function(el,k){el.classList.toggle("active",k===i)});
+  if(fs){
+    var thumbs=fs.querySelectorAll(".gfs-thumb");
+    thumbs.forEach(function(el,k){el.classList.toggle("active",k===i)});
+    var active=thumbs[i];
+    if(active)active.scrollIntoView({behavior:"smooth",block:"nearest",inline:"center"});
+  }
+}
+function goTo(i){idx=Math.max(0,Math.min(i,n-1));t.scrollTo({left:slides[idx].offsetLeft-t.offsetLeft,behavior:"smooth"});setActive(idx)}
 if(prev)prev.onclick=function(){goTo(idx-1)};
 if(next)next.onclick=function(){goTo(idx+1)};
-t.addEventListener("scroll",function(){var w=slides[0].offsetWidth+20;var i=Math.round(t.scrollLeft/w);if(i!==idx){idx=i;d.querySelectorAll(".grow-dot").forEach(function(el,k){el.classList.toggle("active",k===idx)})}},{passive:true});
+t.addEventListener("scroll",function(){var w=slides[0].offsetWidth+20;var i=Math.round(t.scrollLeft/w);if(i!==idx){idx=i;setActive(idx)}},{passive:true});
 })();
 </script>
 
