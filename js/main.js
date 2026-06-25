@@ -4164,13 +4164,24 @@ function isMobileViewport() {
       window.matchMedia('(max-height: 520px)').matches) return true;
   return false;
 }
+function isPhoneLandscapeDesktopMode() {
+  if (!window.matchMedia) return false;
+  return window.matchMedia('(orientation: landscape)').matches &&
+    window.matchMedia('(max-width: 980px)').matches &&
+    window.matchMedia('(max-height: 560px)').matches;
+}
+function getMobileWebviewDefaultScale() {
+  return isPhoneLandscapeDesktopMode() ? 0.62 : 0.72;
+}
 function getMobileWebviewScale() {
-  var raw = parseFloat(localStorage.getItem(MOBILE_WEBVIEW_SCALE_KEY) || '0.45');
-  if (!isFinite(raw)) raw = 0.45;
-  return Math.max(0.22, Math.min(1, raw));
+  var raw = parseFloat(localStorage.getItem(MOBILE_WEBVIEW_SCALE_KEY) || String(getMobileWebviewDefaultScale()));
+  if (!isFinite(raw)) raw = getMobileWebviewDefaultScale();
+  if (isPhoneLandscapeDesktopMode()) raw = Math.max(raw, 0.56);
+  return Math.max(0.3, Math.min(1, raw));
 }
 function setMobileWebviewScale(nextScale) {
-  var s = Math.max(0.22, Math.min(1, Number(nextScale) || 1));
+  var minScale = isPhoneLandscapeDesktopMode() ? 0.5 : 0.3;
+  var s = Math.max(minScale, Math.min(1, Number(nextScale) || 1));
   localStorage.setItem(MOBILE_WEBVIEW_SCALE_KEY, String(s));
   applyMobileWebviewMode();
 }
@@ -4178,7 +4189,8 @@ function applyMobileWebviewMode() {
   var enabled = false;
   try { enabled = localStorage.getItem(MOBILE_WEBVIEW_ON_KEY) === '1'; } catch(e) {}
   var mobile = isMobileViewport();
-  var on = enabled && mobile;
+  var autoLandscape = isPhoneLandscapeDesktopMode();
+  var on = mobile && (enabled || autoLandscape);
   var app = document.getElementById('mainApp');
   var controls = document.getElementById('mobileWebviewControls');
   var btn = document.getElementById('mobileWebviewToggleBtn');
@@ -4212,7 +4224,7 @@ function applyMobileWebviewMode() {
     controls.style.transformOrigin = 'left bottom';
     controls.style.transform = on ? ('scale(' + (1 / scale) + ')') : '';
   }
-  if (btn) btn.textContent = on ? 'WEB ON' : 'WEB';
+  if (btn) btn.textContent = on ? (autoLandscape ? 'WEB AUTO' : 'WEB ON') : 'WEB';
   if (scaleEl) scaleEl.textContent = Math.round(scale * 100) + '%';
 }
 function toggleMobileWebviewMode() {
@@ -4230,7 +4242,7 @@ function mobileWebviewZoomIn() {
 }
 function mobileWebviewZoomReset() {
   if (localStorage.getItem(MOBILE_WEBVIEW_ON_KEY) !== '1') localStorage.setItem(MOBILE_WEBVIEW_ON_KEY, '1');
-  setMobileWebviewScale(0.45);
+  setMobileWebviewScale(getMobileWebviewDefaultScale());
 }
 window.toggleMobileWebviewMode = toggleMobileWebviewMode;
 window.mobileWebviewZoomOut = mobileWebviewZoomOut;

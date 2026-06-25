@@ -115,6 +115,36 @@
     } catch (e) {}
     return false;
   }
+  function refreshOpenScreensAfterRemoteApply(changedKeys) {
+    try {
+      var keys = Array.isArray(changedKeys) ? changedKeys : [];
+      var hasProjects = keys.some(function(key) { return /^avitolog_projects(?:_sasha)?$/.test(key); });
+      var hasFinance = keys.some(function(key) { return isFinanceKey(key); });
+      var hasCore = keys.some(function(key) { return coreKeys[key]; });
+      setTimeout(function() {
+        try {
+          if (hasProjects && typeof window !== 'undefined') {
+            window._projectsDataMem = null;
+            window._projectsDataMemKey = null;
+            if (window.projectsMode && typeof window.renderProjectsScreen === 'function') {
+              window.renderProjectsScreen();
+            } else if (window.projectsMode && typeof window.rerenderProjectsPreserveScroll === 'function') {
+              window.rerenderProjectsPreserveScroll();
+            }
+          }
+          if (hasFinance && window.assetsMode && typeof window.__renderAssetsPage === 'function') {
+            window.__renderAssetsPage();
+          }
+          if ((hasFinance || hasProjects || hasCore) && window.goalsMode && window.AVITOLOG_GOALS && typeof window.AVITOLOG_GOALS.render === 'function') {
+            window.AVITOLOG_GOALS.render();
+          }
+          if (hasCore && !window.projectsMode && !window.assetsMode && typeof window.refreshClientContents === 'function') {
+            window.refreshClientContents(true);
+          }
+        } catch (renderError) {}
+      }, 0);
+    } catch (error) {}
+  }
   async function seedCurrentProfile(remoteKeys) {
     if (window.AVITOLOG_BACKEND_PREVIEW) return false;
     var suffix = window.AVITOLOG_KEY_SUFFIX === '_sasha' ? '_sasha' : '';
@@ -188,15 +218,17 @@
     }
     if (!sessionData()) { setStatus('Нет активной Supabase-сессии', true); return; }
     try {
-      phase = 'read'; var rows = await readRemote(); var remoteKeys = {};
+      phase = 'read'; var rows = await readRemote(); var remoteKeys = {}; var appliedKeys = [];
       phase = 'apply'; rows.forEach(function (row) {
         if (!isAllowed(row.storage_key)) return;
         remoteKeys[row.storage_key] = true;
+        appliedKeys.push(row.storage_key);
         var target = window.AVITOLOG_BACKEND_STORAGE_TARGET;
         var prefix = typeof window.AVITOLOG_BACKEND_STORAGE_PREFIX === 'string' ? window.AVITOLOG_BACKEND_STORAGE_PREFIX : 'sb_backend::';
         if (target) Storage.prototype.setItem.call(target, prefix + row.storage_key, row.value_text);
         else localStorage.setItem(row.storage_key, row.value_text);
       });
+      refreshOpenScreensAfterRemoteApply(appliedKeys);
       phase = 'seed';
       if (await seedCurrentProfile(remoteKeys)) {
         sessionStorage.removeItem(revisionSignatureStorageKey());

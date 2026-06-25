@@ -2551,6 +2551,65 @@ body.day-mode .assets-col-sasha-hint{color:var(--accent)}
 .assets-ai-row .ai-label{font-size:12px;font-weight:700;color:var(--muted);white-space:nowrap}
 .assets-ai-row .ai-input{flex:1;min-width:200px;padding:8px 12px;font-size:13px;border-radius:8px;border:1px solid var(--border);background:rgba(0,0,0,0.2);color:var(--text);resize:none;min-height:36px}
 .assets-ai-row .ai-btns{display:flex;gap:8px}
+@media (max-width:768px) and (orientation:portrait){
+  html,body{overflow-x:hidden}
+  header{height:50px;padding:0 10px;gap:6px;top:0}
+  .logo{font-size:17px;letter-spacing:1px;min-width:0;overflow:hidden;text-overflow:ellipsis}
+  .header-day-toggle{width:34px;height:34px;font-size:15px;flex-shrink:0}
+  .mobile-webview-controls{left:8px;bottom:74px;z-index:460}
+  .content{padding:10px 8px}
+  .analytics-top-row{position:sticky;top:50px;z-index:40;grid-template-columns:repeat(3,minmax(96px,1fr));overflow-x:auto;overscroll-behavior-x:contain;scrollbar-width:none}
+  .analytics-top-row::-webkit-scrollbar{display:none}
+  .analytics-top-row .btn-projects{height:42px;font-size:12px;border-radius:12px}
+  body.projects-mode .layout,body.assets-mode .layout,body.tasks-mode .layout,body.goals-mode .layout{height:calc(100dvh - 50px)}
+  body.projects-mode .content-wrap,body.assets-mode .content-wrap{padding-bottom:58px}
+  body.projects-mode .content{height:100%;padding:0;overflow:hidden}
+  body.projects-mode .content>*{min-height:0}
+  body.projects-mode .projects-board{height:100%;min-height:0;overflow:hidden}
+  body.projects-mode .projects-table-wrap{height:100%;min-height:0;overflow:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
+  body.projects-mode .projects-table{min-width:max-content}
+  body.projects-mode .projects-table .projects-sticky{min-width:min(76vw,var(--projects-sticky-width,360px));width:min(76vw,var(--projects-sticky-width,360px))}
+  body.projects-mode .projects-sticky-head{padding:5px 8px;gap:5px}
+  body.projects-mode .projects-zone-tabs{gap:5px}
+  body.projects-mode .projects-zone-tab.projects-zone-tab-zone{height:36px;min-height:36px;padding:0 8px;font-size:12px}
+  body.projects-mode .projects-zone-tab,body.projects-mode .projects-head-chip{height:32px;min-height:32px;padding:0 7px;font-size:11px;border-radius:9px}
+  body.projects-mode .projects-head-chip b{font-size:13px}
+  body.projects-mode .projects-scroll .projects-cal-day{min-height:38px}
+  body.projects-mode .proj-cell-name{font-size:11px}
+  body.assets-mode .content{padding:10px 8px;overflow:auto;-webkit-overflow-scrolling:touch}
+  .assets-page-wrap{max-width:100%;padding:10px 0 70px;gap:12px}
+  .assets-month-title{font-size:24px;letter-spacing:5px;margin-bottom:8px}
+  .assets-month-nav-wrap{gap:6px}
+  .assets-month-nav-btn{width:32px;height:32px}
+  .assets-month-nav-label{font-size:24px;letter-spacing:5px;min-width:112px}
+  .assets-summary-table{max-width:100%;border-radius:14px}
+  .assets-summary-row{padding:0 9px;gap:8px}
+  .assets-summary-row.assets-summary-main{min-height:48px;padding:9px 12px}
+  .assets-summary-row.assets-summary-main .assets-summary-val{font-size:28px;padding:9px 12px;margin:0}
+  .assets-two-cols{max-width:100%;gap:12px}
+  .assets-col{border-radius:14px;overflow:hidden}
+  .assets-col-list{overflow:auto;-webkit-overflow-scrolling:touch}
+  .assets-col-header,.assets-col-row{min-width:620px}
+  .assets-base-picker{left:8px!important;right:8px!important;top:72px!important;width:auto!important;min-width:0;max-width:none;max-height:calc(100dvh - 90px)}
+  .assets-base-picker-toolbar{flex-wrap:wrap}
+  .assets-base-add-row{flex:1 1 auto}
+}
+@media (orientation:landscape) and (max-width:980px) and (max-height:560px){
+  header{height:44px;padding:0 10px;top:0}
+  .logo{font-size:17px;letter-spacing:1px}
+  .mobile-webview-controls{left:8px;bottom:8px}
+  body.mobile-webview-on .layout{grid-template-columns:300px minmax(840px,1fr) 92px;min-height:calc((100dvh / var(--mw-scale,1)) - 44px)}
+  body.mobile-webview-on .content-wrap{min-width:840px}
+  body.mobile-webview-on .right-panel-wrap{display:flex;width:92px;min-width:92px;max-width:92px}
+  body.mobile-webview-on .right-tabs{padding:8px 6px}
+  body.mobile-webview-on .rtab{width:78px;min-height:54px;padding:6px 4px;font-size:9px}
+  body.mobile-webview-on .analytics-top-row{top:44px}
+  body.mobile-webview-on.projects-mode .layout,body.mobile-webview-on.assets-mode .layout{grid-template-columns:300px minmax(1040px,1fr) 0}
+  body.mobile-webview-on.projects-mode .content-wrap,body.mobile-webview-on.assets-mode .content-wrap{min-width:1040px}
+  body.mobile-webview-on.projects-mode .projects-table .projects-sticky{min-width:320px;width:320px}
+  body.mobile-webview-on.assets-mode .assets-page-wrap{max-width:900px}
+  body.mobile-webview-on.assets-mode .assets-two-cols{max-width:900px}
+}
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 <script src="https://accounts.google.com/gsi/client" async></script>
@@ -2651,9 +2710,9 @@ body.day-mode .assets-col-sasha-hint{color:var(--accent)}
 })();
 </script>
 <script src="js/supabase-config.js?v=20260619-write1"></script>
-<script src="js/backend-sync.js?v=20260622-profile-revision-1"></script>
+<script src="js/backend-sync.js?v=20260625-mobile-refresh-1"></script>
 <script src="js/user-config.js?v=20260620-backend-profile-1"></script>
-<script src="js/goals.js?v=20260518-1"></script>
+<script src="js/goals.js?v=20260625-mobile-refresh-1"></script>
 <script>
 if (!window.AVITOLOG_GOALS) {
   window.AVITOLOG_GOALS = window.__AVITOLOG_GOALS_LEGACY = { render: function() {
@@ -2941,13 +3000,13 @@ if (!window.AVITOLOG_GOALS) {
 <script src="https://unpkg.com/mammoth@1.6.0/mammoth.min.js"></script>
 <script src="js/hero-asset.js?v=20260404-1"></script>
 <script src="js/core.js?v=20260411-1"></script>
-<script src="js/projects.js?v=20260518-4"></script>
+<script src="js/projects.js?v=20260625-mobile-refresh-1"></script>
 <script src="js/ai-import.js?v=20260622-backend-auto-sync-1"></script>
 <script src="js/contract-generator.js?v=20260622-contract-local-download-1"></script>
 <script src="js/ads.js?v=20260404-1"></script>
 <script charset="UTF-8" src="js/kp-generator.js?v=20260621-package-sync-2"></script>
 <script src="js/scripts-panel.js?v=20260426-1"></script>
-<script src="js/main.js?v=20260622-google-gis-login-1"></script>
+<script src="js/main.js?v=20260625-mobile-refresh-1"></script>
 <script src="js/sasha-team-sync.js?v=20260622-backend-auto-sync-1"></script>
 <script src="js/fil-backup.js?v=20260620-session-exclude-1"></script>
 <script src="js/sasha-backup.js?v=20260419-1"></script>
