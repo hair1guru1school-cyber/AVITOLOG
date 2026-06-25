@@ -141,16 +141,19 @@ nav::after{content:'';position:absolute;bottom:0;left:0;right:0;height:1px;backg
 .guar-s{font-size:12px;color:rgba(255,255,255,.7);margin-top:3px}
 
 /* NICHES */
-.niches-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--border);border:1px solid var(--border)}
-.nc{background:var(--bg2);padding:26px 22px;display:flex;flex-direction:column;gap:10px;transition:all .28s;position:relative;overflow:hidden;cursor:default;border:1px solid transparent;box-shadow:0 2px 8px rgba(0,0,0,.2)}
-.nc::after{content:'';position:absolute;bottom:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--red),var(--gold));transform:scaleX(0);transform-origin:left;transition:transform .3s}
-.nc:hover{background:var(--s2);border-color:var(--border-r);box-shadow:0 8px 24px rgba(0,0,0,.35)}
-.nc:hover::after{transform:scaleX(1)}
-.nc-icon{font-size:30px}
-.nc-name{font-family:'Oswald',sans-serif;font-size:18px;font-weight:600;color:var(--text);letter-spacing:.5px}
+.niches-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:14px}
+.nc{background:var(--surface);border-radius:14px;padding:24px 20px 22px;display:flex;flex-direction:column;gap:10px;transition:all .3s;position:relative;overflow:hidden;cursor:default;border:1px solid var(--border);box-shadow:0 4px 18px rgba(0,0,0,.25)}
+.nc::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--gold),var(--red));transform:scaleX(0);transform-origin:left;transition:transform .35s}
+.nc:hover{background:var(--s2);border-color:rgba(240,195,77,.4);box-shadow:0 16px 36px rgba(0,0,0,.4);transform:translateY(-4px)}
+.nc:hover::before{transform:scaleX(1)}
+.nc-icon-wrap{width:54px;height:54px;display:flex;align-items:center;justify-content:center;margin-bottom:2px}
+.nc-icon-wrap img{width:100%;height:100%;object-fit:contain;display:block;filter:drop-shadow(0 4px 10px rgba(240,195,77,.4));transition:transform .3s}
+.nc:hover .nc-icon-wrap img{transform:scale(1.08)}
+.nc-name{font-family:'Oswald',sans-serif;font-size:17px;font-weight:600;color:var(--text);letter-spacing:.5px}
 .nc-tags{display:flex;flex-wrap:wrap;gap:5px}
-.ntag{font-size:9px;font-weight:700;color:var(--muted);background:rgba(255,255,255,.04);border:1px solid var(--border);padding:2px 9px;text-transform:uppercase;letter-spacing:.5px}
-.nc-stat{font-family:'Oswald',sans-serif;font-size:26px;font-weight:700;color:var(--red);text-shadow:0 0 16px var(--red-glow);margin-top:auto}
+.ntag{font-size:9px;font-weight:700;color:var(--muted);background:rgba(255,255,255,.04);border:1px solid var(--border);padding:2px 9px;text-transform:uppercase;letter-spacing:.5px;border-radius:4px}
+.nc-stat{font-family:'Oswald',sans-serif;font-size:24px;font-weight:700;color:var(--gold);text-shadow:0 0 16px rgba(240,195,77,.35);margin-top:auto}
+@media(max-width:1100px){.niches-grid{grid-template-columns:repeat(3,1fr)}}
 .nc-stat-lbl{font-size:10px;color:var(--muted)}
 
 /* PROCESS */
@@ -562,14 +565,16 @@ footer{background:var(--bg);border-top:1px solid var(--border);padding:40px 80px
       <h2 class="sec-title">УСПЕХИ ВО ВСЕХ<br><span>ПРИБЫЛЬНЫХ НИШАХ</span></h2>
       <p class="sec-desc">Реальные кейсы в каждом направлении — смотрите портфолио ниже</p>
       <div class="niches-grid">
-    <div class="nc rev"><div class="nc-icon">🧱</div><div class="nc-name">Стройматериалы</div><div class="nc-tags"><span class="ntag">Доска</span><span class="ntag">Блоки</span><span class="ntag">Кровля</span></div><div class="nc-stat">17₽<div class="nc-stat-lbl">мин. цена заявки</div></div></div>
-    <div class="nc rev"><div class="nc-icon">🏠</div><div class="nc-name">Готовые дома</div><div class="nc-tags"><span class="ntag">Каркасные</span><span class="ntag">Модульные</span></div><div class="nc-stat">820+<div class="nc-stat-lbl">заявок на проект</div></div></div>
-    <div class="nc rev"><div class="nc-icon">🔌</div><div class="nc-name">Оборудование</div><div class="nc-tags"><span class="ntag">Майнеры</span><span class="ntag">Станки</span></div><div class="nc-stat">32/сут<div class="nc-stat-lbl">заявок с майнеров</div></div></div>
-    <div class="nc rev"><div class="nc-icon">🛋</div><div class="nc-name">Мебель</div><div class="nc-tags"><span class="ntag">Корпусная</span><span class="ntag">Кровати</span></div><div class="nc-stat">3 года<div class="nc-stat-lbl">стабильный рост</div></div></div>
-    <div class="nc rev"><div class="nc-icon">🚗</div><div class="nc-name">Авто</div><div class="nc-tags"><span class="ntag">Чехлы</span><span class="ntag">Выкуп</span><span class="ntag">Мото</span></div><div class="nc-stat">4+ года<div class="nc-stat-lbl">2 магазина клиента</div></div></div>
-    <div class="nc rev"><div class="nc-icon">👷</div><div class="nc-name">Услуги стройки</div><div class="nc-tags"><span class="ntag">Фундамент</span><span class="ntag">Кровля</span></div><div class="nc-stat">1092<div class="nc-stat-lbl">заявок — рекорд</div></div></div>
-    <div class="nc rev"><div class="nc-icon">👤</div><div class="nc-name">Вакансии</div><div class="nc-tags"><span class="ntag">Аутсорсинг</span><span class="ntag">Подбор</span></div><div class="nc-stat">100<div class="nc-stat-lbl">контактов за 5 дней</div></div></div>
-    <div class="nc rev"><div class="nc-icon">🪵</div><div class="nc-name">Пиломатериалы</div><div class="nc-tags"><span class="ntag">Доска</span><span class="ntag">Брус</span><span class="ntag">Пеллеты</span></div><div class="nc-stat">5 лет<div class="nc-stat-lbl">самый долгий клиент</div></div></div>
+    <div class="nc rev"><div class="nc-icon-wrap"><img src="icons-3d/niche-stroymaterialy.png" alt="" loading="lazy" decoding="async"></div><div class="nc-name">Стройматериалы</div><div class="nc-tags"><span class="ntag">Доска</span><span class="ntag">Блоки</span><span class="ntag">Кровля</span><span class="ntag">Кирпич</span><span class="ntag">Цемент</span><span class="ntag">Утеплитель</span><span class="ntag">Гипсокартон</span></div><div class="nc-stat">17₽<div class="nc-stat-lbl">мин. цена заявки</div></div></div>
+    <div class="nc rev"><div class="nc-icon-wrap"><img src="icons-3d/niche-doma.png" alt="" loading="lazy" decoding="async"></div><div class="nc-name">Готовые дома</div><div class="nc-tags"><span class="ntag">Каркасные</span><span class="ntag">Модульные</span><span class="ntag">Из бруса</span><span class="ntag">Бытовки</span><span class="ntag">Бани</span><span class="ntag">Хозблоки</span></div><div class="nc-stat">820+<div class="nc-stat-lbl">заявок на проект</div></div></div>
+    <div class="nc rev"><div class="nc-icon-wrap"><img src="icons-3d/niche-oborudovanie.png" alt="" loading="lazy" decoding="async"></div><div class="nc-name">Оборудование</div><div class="nc-tags"><span class="ntag">Майнеры</span><span class="ntag">Станки</span><span class="ntag">Генераторы</span><span class="ntag">Сварочное</span><span class="ntag">Компрессоры</span><span class="ntag">Насосы</span></div><div class="nc-stat">32/сут<div class="nc-stat-lbl">заявок с майнеров</div></div></div>
+    <div class="nc rev"><div class="nc-icon-wrap"><img src="icons-3d/niche-mebel.png" alt="" loading="lazy" decoding="async"></div><div class="nc-name">Мебель</div><div class="nc-tags"><span class="ntag">Корпусная</span><span class="ntag">Кровати</span><span class="ntag">Диваны</span><span class="ntag">Кухни</span><span class="ntag">Шкафы</span><span class="ntag">Матрасы</span></div><div class="nc-stat">3 года<div class="nc-stat-lbl">стабильный рост</div></div></div>
+    <div class="nc rev"><div class="nc-icon-wrap"><img src="icons-3d/niche-avto.png" alt="" loading="lazy" decoding="async"></div><div class="nc-name">Авто</div><div class="nc-tags"><span class="ntag">Чехлы</span><span class="ntag">Выкуп</span><span class="ntag">Мото</span><span class="ntag">Запчасти</span><span class="ntag">Шины</span><span class="ntag">Тюнинг</span></div><div class="nc-stat">4+ года<div class="nc-stat-lbl">2 магазина клиента</div></div></div>
+    <div class="nc rev"><div class="nc-icon-wrap"><img src="icons-3d/niche-uslugi-stroyki.png" alt="" loading="lazy" decoding="async"></div><div class="nc-name">Услуги стройки</div><div class="nc-tags"><span class="ntag">Фундамент</span><span class="ntag">Кровля</span><span class="ntag">Отделка</span><span class="ntag">Электрика</span><span class="ntag">Сантехника</span><span class="ntag">Демонтаж</span></div><div class="nc-stat">1092<div class="nc-stat-lbl">заявок — рекорд</div></div></div>
+    <div class="nc rev"><div class="nc-icon-wrap"><img src="icons-3d/niche-vakansii.png" alt="" loading="lazy" decoding="async"></div><div class="nc-name">Вакансии</div><div class="nc-tags"><span class="ntag">Аутсорсинг</span><span class="ntag">Подбор</span><span class="ntag">Вахта</span><span class="ntag">Разнорабочие</span><span class="ntag">Грузчики</span><span class="ntag">Сборщики</span></div><div class="nc-stat">100<div class="nc-stat-lbl">контактов за 5 дней</div></div></div>
+    <div class="nc rev"><div class="nc-icon-wrap"><img src="icons-3d/niche-pilomaterialy.png" alt="" loading="lazy" decoding="async"></div><div class="nc-name">Пиломатериалы</div><div class="nc-tags"><span class="ntag">Доска</span><span class="ntag">Брус</span><span class="ntag">Пеллеты</span><span class="ntag">Вагонка</span><span class="ntag">Опилки</span><span class="ntag">Дрова</span></div><div class="nc-stat">5 лет<div class="nc-stat-lbl">самый долгий клиент</div></div></div>
+    <div class="nc rev"><div class="nc-icon-wrap"><img src="icons-3d/niche-biznes.png" alt="" loading="lazy" decoding="async"></div><div class="nc-name">Готовый бизнес</div><div class="nc-tags"><span class="ntag">Производство</span><span class="ntag">Магазины</span><span class="ntag">Франшизы</span><span class="ntag">Цеха</span><span class="ntag">Автомойки</span><span class="ntag">Склады</span></div><div class="nc-stat">240+<div class="nc-stat-lbl">заявок на продажу бизнеса</div></div></div>
+    <div class="nc rev"><div class="nc-icon-wrap"><img src="icons-3d/niche-uslugi.png" alt="" loading="lazy" decoding="async"></div><div class="nc-name">Разные услуги</div><div class="nc-tags"><span class="ntag">Клининг</span><span class="ntag">Репетиторы</span><span class="ntag">Ремонт техники</span><span class="ntag">Юристы</span><span class="ntag">Доставка</span><span class="ntag">Дизайн</span></div><div class="nc-stat">15+<div class="nc-stat-lbl">направлений услуг под управлением</div></div></div>
   </div>
     </div>
   </div>
