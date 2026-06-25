@@ -547,9 +547,35 @@
     if (pm < 1) { pm = 12; py--; }
     return py + '-' + String(pm).padStart(2, '0');
   }
+  function assetsParseDateOnly(value) {
+    var s = String(value || '').trim();
+    if (!s) return null;
+    var m = s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (!m) m = s.match(/^(\d{2})\.(\d{2})\.(\d{4})$/);
+    if (!m) return null;
+    var y = m[1].length === 4 ? parseInt(m[1], 10) : parseInt(m[3], 10);
+    var mo = parseInt(m[2], 10);
+    var d = m[1].length === 4 ? parseInt(m[3], 10) : parseInt(m[1], 10);
+    var dt = new Date(y, mo - 1, d);
+    return isNaN(dt.getTime()) ? null : dt;
+  }
+  function assetsStampDaysSincePayment(copy, source) {
+    if (!copy || !source) return copy;
+    var srcDate = String(source.paymentDate || source.startDate || '').trim();
+    var dt = assetsParseDateOnly(srcDate);
+    if (!dt) return copy;
+    var now = new Date();
+    var today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    var days = Math.max(0, Math.floor((today.getTime() - dt.getTime()) / 86400000));
+    copy.daysSincePaymentAtMonthSwitch = days;
+    copy.daysSincePaymentAtMonthSwitchDate = today.getFullYear() + '-' + pad2(today.getMonth() + 1) + '-' + pad2(today.getDate());
+    copy.daysSincePaymentSourceDate = srcDate;
+    return copy;
+  }
   function assetsClearForNewMonth(myData, sashaData) {
     var newMy = myData.map(function(p) {
       var copy = JSON.parse(JSON.stringify(p));
+      assetsStampDaysSincePayment(copy, p);
       var paidVal = String(copy.paid || '').replace(/\s/g, '');
       if (paidVal && paidVal !== '0') copy.expected = copy.paid;
       copy.paid = '';
@@ -558,6 +584,7 @@
     saveAssetsMy(newMy);
     var newSasha = sashaData.map(function(p) {
       var copy = JSON.parse(JSON.stringify(p));
+      assetsStampDaysSincePayment(copy, p);
       copy.soldFor = '';
       copy.toAgent = '';
       copy.aoaPercent = '';
@@ -659,6 +686,7 @@
     // Перенос: paid → expected, paid = ''
     var newMy = getAssetsMy().map(function(p) {
       var copy = JSON.parse(JSON.stringify(p));
+      assetsStampDaysSincePayment(copy, p);
       var paidVal = parseInt(String(copy.paid || '').replace(/\s/g, ''), 10) || 0;
       if (paidVal > 0) { copy.expected = copy.paid; }
       copy.paid = '';
@@ -707,6 +735,7 @@
   function assetsClearAllSumsForNewMonth() {
     var newMy = getAssetsMy().map(function(p) {
       var copy = JSON.parse(JSON.stringify(p));
+      assetsStampDaysSincePayment(copy, p);
       copy.paid = '';
       copy.expected = '';
       copy.paymentDate = '';
@@ -716,6 +745,7 @@
     saveAssetsMy(newMy);
     var newSasha = getAssetsSasha().map(function(p) {
       var copy = JSON.parse(JSON.stringify(p));
+      assetsStampDaysSincePayment(copy, p);
       copy.paid = '';
       copy.expected = '';
       copy.soldFor = '';
@@ -1507,6 +1537,9 @@
         ? '<span class="assets-row-folder-inline"><a href="' + esc(folderLink) + '" target="_blank" rel="noopener" class="assets-row-folder-link" onclick="event.stopPropagation()" title="Открыть папку">📁</a></span>'
         : '';
       var payDays = formatDaysUntilPayment(payDate);
+      if (!payDays && p.daysSincePaymentAtMonthSwitch !== undefined && p.daysSincePaymentAtMonthSwitch !== '') {
+        payDays = String(p.daysSincePaymentAtMonthSwitch) + ' дн.';
+      }
       var base = '<div class="' + rowCls + '" data-owner="' + owner + '" data-idx="' + idx + '" data-has-folder="' + (hasFolder ? '1' : '0') + '" onclick="window.__assetsRowClicked(event,\'' + owner + '\',' + idx + ')" title="Клик — выбрать для привязки папки из меню слева">' +
         '<button type="button" class="assets-col-emoji" onclick="window.__assetsShowEmojiPicker(this,\'' + owner + '\',' + idx + ')" title="Выбрать эмодзи">' + (p.emoji || '📦') + '</button>' +
         '<span class="assets-col-name">' +

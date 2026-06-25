@@ -252,6 +252,7 @@ function loadProjectsData(forceReload) {
       sanitized = true;
     });
     if (sanitized) saveProjectsData(data);
+    if (applyProjectsAutoStatuses(data)) saveProjectsData(data);
     // Правило: Актив карточек и !! каждый день в 00:00 МСК переносятся на следующий день.
     // При загрузке: все карточки с прошлой даты (< сегодня МСК), пустой даты или ошибочной будущей даты — переносим на сегодня МСК.
     var todayStr = getTodayISOmsk();
@@ -566,6 +567,7 @@ function projectHasLaunch(p) {
   return false;
 }
 function projectHasAutoload(p) {
+  if (p && p.clientPath && p.clientPath.autoload) return true;
   var ev = (p.events || []).some(function(e){ return e && e.type === 'active_range'; });
   if (ev) return true;
   var cl = p.childLineEvents || {};
@@ -573,6 +575,66 @@ function projectHasAutoload(p) {
   return false;
 }
 function projectHasMustLaunch(p) { return !!(p && p.mustLaunchRequired); }
+var PROJECT_NEGATIVE_STATES = {
+  ask: {emoji:'🙏', label:'Просит'},
+  whine: {emoji:'😢', label:'Ноет'},
+  angry: {emoji:'👿', label:'Злой'},
+  edge: {emoji:'🔥', label:'На грани'}
+};
+function getProjectAutoStatus(p) {
+  if (!p) return '';
+  if (projectHasAutoload(p)) return 'В работе';
+  if (projectHasMustLaunch(p) || projectHasLaunch(p)) return 'Ожидают';
+  return '';
+}
+function applyProjectAutoStatus(p) {
+  if (!p || p.statusManual) return false;
+  var st = getProjectAutoStatus(p);
+  if (st && p.status !== st) {
+    p.status = st;
+    return true;
+  }
+  return false;
+}
+function applyProjectsAutoStatuses(data) {
+  var changed = false;
+  ((data && data.projects) || []).forEach(function(p){ if (applyProjectAutoStatus(p)) changed = true; });
+  return changed;
+}
+function getProjectNegativeState(p) {
+  var key = String((p && p.negativeMood) || '').trim();
+  return PROJECT_NEGATIVE_STATES[key] ? key : '';
+}
+function getProjectNegativeRowClass(p) {
+  var key = getProjectNegativeState(p);
+  return key ? ' project-negative-' + key : '';
+}
+function renderProjectNegativeButton(p) {
+  var key = getProjectNegativeState(p);
+  var st = key ? PROJECT_NEGATIVE_STATES[key] : null;
+  var label = st ? st.emoji : 'N';
+  var title = st ? ('Негатив: ' + st.label) : 'Отметить негатив клиента';
+  return '<button type="button" class="proj-negative-btn' + (key ? ' on mood-' + key : '') + '" title="' + escAttr(title) + '" onclick="event.stopPropagation();showProjectNegativePicker(this,\'' + p.id + '\')">' + label + '</button>';
+}
+function getProjectTouchAgeClass(p, todayStr) {
+  var ds = String((p && p.lastTouchDate) || '').trim();
+  if (!ds) return 'empty';
+  var today = new Date((todayStr || getTodayISOmsk()) + 'T00:00:00');
+  var dt = new Date(ds + 'T00:00:00');
+  if (isNaN(today.getTime()) || isNaN(dt.getTime())) return 'old';
+  var days = Math.floor((today.getTime() - dt.getTime()) / 86400000);
+  if (days <= 1) return 'day';
+  if (days <= 3) return 'three';
+  if (days <= 7) return 'week';
+  return 'old';
+}
+function renderProjectTouchButton(p, todayStr) {
+  var ds = String((p && p.lastTouchDate) || '').trim();
+  var cls = getProjectTouchAgeClass(p, todayStr);
+  var label = ds ? ds.slice(5).replace('-', '.') : '•';
+  var title = ds ? ('Крайнее касание: ' + ds) : 'Зафиксировать касание клиента сегодня';
+  return '<button type="button" class="proj-touch-btn touch-' + cls + '" title="' + escAttr(title) + '" onclick="event.stopPropagation();markProjectTouched(\'' + p.id + '\')">' + escAttr(label) + '</button>';
+}
 function setProjectsZoneTab(zone) {
   var z = (zone === 'active' || zone === 'second_chance' || zone === 'archive') ? zone : 'active';
   _projectsZoneTab = z;
@@ -732,7 +794,10 @@ function createNewProjectInActive() {
     childLines: [],
     optionalField: '',
     cardsActive: '',
-    mustLaunchRequired: false
+    mustLaunchRequired: false,
+    statusManual: false,
+    negativeMood: '',
+    lastTouchDate: ''
   };
   data.projects.push(np);
   saveProjectsData(data);
@@ -1560,6 +1625,7 @@ function applyProjectLaunchRange(projectId, startDate, endDate, childLineIndex) 
       p.mustLaunchAutoDismissedAt = '';
     }
   }
+  applyProjectAutoStatus(p);
   saveProjectsData(data);
   rerenderProjectsPreserveScroll();
   syncProjectToActiveSheet(projectId, 'launch_range_set');
@@ -1582,6 +1648,7 @@ function clearProjectLaunch(projectId, childLineIndex) {
       return ev.type !== 'launch_range' && ev.type !== 'not_launched_project_marker';
     });
   }
+  applyProjectAutoStatus(p);
   saveProjectsData(data);
   rerenderProjectsPreserveScroll();
   syncProjectToActiveSheet(projectId, 'launch_range_clear');
@@ -1625,6 +1692,7 @@ function clearProjectLaunchRange(projectId, startDate, endDate, childLineIndex) 
   } else {
     p.events = targetEvents;
   }
+  applyProjectAutoStatus(p);
   saveProjectsData(data);
   rerenderProjectsPreserveScroll();
   syncProjectToActiveSheet(projectId, 'launch_range_partial_clear');
@@ -1656,6 +1724,7 @@ function applyProjectAutoloadRangeForRow(projectId, childLineIdx, startDate, end
       _projectMustLaunchDetachArmedId = null;
     }
   }
+  applyProjectAutoStatus(p);
   saveProjectsData(data);
   rerenderProjectsPreserveScroll();
   syncProjectToActiveSheet(projectId, 'autoload_range_set');
@@ -1674,6 +1743,7 @@ function clearProjectAutoloadForRow(projectId, childLineIdx) {
   } else {
     p.events = (p.events || []).filter(function(ev) { return ev.type !== 'active_range'; });
   }
+  applyProjectAutoStatus(p);
   saveProjectsData(data);
   rerenderProjectsPreserveScroll();
   syncProjectToActiveSheet(projectId, 'autoload_range_clear');
@@ -1701,6 +1771,7 @@ function clearProjectAutoloadRangeForRow(projectId, childLineIdx, startDate, end
   nextRanges.forEach(function(rg){ targetEvents.push(rg); });
   if (clIdx >= 0) { ensureChildLineEvents(p); p.childLineEvents[clIdx] = targetEvents; }
   else p.events = targetEvents;
+  applyProjectAutoStatus(p);
   saveProjectsData(data);
   rerenderProjectsPreserveScroll();
   syncProjectToActiveSheet(projectId, 'autoload_range_partial_clear');
@@ -3433,14 +3504,17 @@ function renderProjectsScreen(opts) {
     var moveBtn = '<button type="button" class="proj-move-btn" title="Переместить проект" onclick="event.stopPropagation();showProjectZoneMenu(this,\'' + p.id + '\')">&#8594;</button>';
     var taskCount = (typeof getTasksForProject === 'function' ? getTasksForProject(p.id) : []).length;
     var taskIndicatorsHtml = '<div class="proj-task-badge"><span class="proj-task-count">' + taskCount + '</span></div>';
+    var negativeBtnHtml = renderProjectNegativeButton(p);
+    var touchBtnHtml = renderProjectTouchButton(p, todayStr);
     var dragHandle = '<span class="proj-row-drag-handle" title="Тяните для перетаскивания строки">&#9776;</span>';
     if (hasChildLines && _expandedProjectIds[p.id] === undefined) _expandedProjectIds[p.id] = false;
     var showPositionRows = hasChildLines && _expandedProjectIds[p.id];
     var extraLinesHtml = typeof renderProjectChildLinesHtml === 'function' ? renderProjectChildLinesHtml(p) : '';
-    var stickyHtml = '<div class="proj-col-expand">' + dragHandle + '<span class="proj-col-expand-arrow"' + (expandArrowOnclick || '') + '>' + expandContent + '</span></div><div class="proj-col-type" onclick="event.stopPropagation();cycleProjectClientType(\'' + p.id + '\')" title="Старые/новички/2-й раз">' + typeHtml + '</div><button type="button" class="' + driveClass + '" title="' + driveTitle + '" onclick="event.stopPropagation();openProjectDriveFolder(\'' + p.id + '\')">💿</button><div class="proj-cell-editable' + expandedClass + '" data-id="' + p.id + '" onclick="editProjectCell(this)">' + hoverPop + '<div class="proj-main-line"><button type="button" class="proj-emoji-btn" onclick="event.stopPropagation();showProjEmojiPicker(this,\'' + p.id + '\')">' + emHtml + '</button><input type="text" value="' + (p.title||'').replace(/"/g,'&quot;') + '" readonly style="pointer-events:none">' + expandBtnName + '<span class="project-path">' + pathHtml + '</span><button type="button" class="proj-status-btn project-status" onclick="event.stopPropagation();showProjectStatusPicker(this,\'' + p.id + '\')" style="background:' + (PROJECT_STATUS_COLORS[p.status]||'#666') + '22;color:' + (PROJECT_STATUS_COLORS[p.status]||'#999') + '">' + (p.status||'В работе') + '</button>' + moveBtn + '</div>' + (hasChildLines ? '' : '<div class="proj-optional-row">' + (typeof renderProjectChildLinesHtml === 'function' ? renderProjectChildLinesHtml(p) : '') + '</div>') + taskIndicatorsHtml + '</div>';
+    var stickyHtml = '<div class="proj-col-expand">' + dragHandle + '<span class="proj-col-expand-arrow"' + (expandArrowOnclick || '') + '>' + expandContent + '</span></div><div class="proj-col-type" onclick="event.stopPropagation();cycleProjectClientType(\'' + p.id + '\')" title="Старые/новички/2-й раз">' + typeHtml + '</div><button type="button" class="' + driveClass + '" title="' + driveTitle + '" onclick="event.stopPropagation();openProjectDriveFolder(\'' + p.id + '\')">💿</button><div class="proj-cell-editable' + expandedClass + '" data-id="' + p.id + '" onclick="editProjectCell(this)">' + hoverPop + '<div class="proj-main-line"><button type="button" class="proj-emoji-btn" onclick="event.stopPropagation();showProjEmojiPicker(this,\'' + p.id + '\')">' + emHtml + '</button><input type="text" value="' + (p.title||'').replace(/"/g,'&quot;') + '" readonly style="pointer-events:none">' + expandBtnName + '<span class="project-path">' + pathHtml + '</span><button type="button" class="proj-status-btn project-status" onclick="event.stopPropagation();showProjectStatusPicker(this,\'' + p.id + '\')" style="background:' + (PROJECT_STATUS_COLORS[p.status]||'#666') + '22;color:' + (PROJECT_STATUS_COLORS[p.status]||'#999') + '">' + (p.status||'В работе') + '</button>' + negativeBtnHtml + touchBtnHtml + moveBtn + '</div>' + (hasChildLines ? '' : '<div class="proj-optional-row">' + (typeof renderProjectChildLinesHtml === 'function' ? renderProjectChildLinesHtml(p) : '') + '</div>') + taskIndicatorsHtml + '</div>';
     var selectedClass = (_selectedProjectId === p.id) ? ' selected' : '';
     var groupedClass = (_projectsTypeSortPriority && normalizeProjectClientType(p.clientType) === _projectsTypeSortPriority) || (_projectsFilterLaunch && projectHasLaunch(p)) || (_projectsFilterAutoload && projectHasAutoload(p)) || (_projectsFilterMustLaunch && projectHasMustLaunch(p)) ? ' group-match' : '';
     var newFromGoalsClass = p._newFromGoals ? ' project-row-new-from-goals' : '';
+    var negativeClass = getProjectNegativeRowClass(p);
     function renderRowCells(events, childLineIdx, isCollapsedLayers) {
       var out = '';
       dates.forEach(function(d) {
@@ -3506,7 +3580,7 @@ function renderProjectsScreen(opts) {
     }
     var mainEvents = getEventsForProjectRow(p, -1);
     var eventsForMainRow = (hasChildLines && !showPositionRows) ? getAggregatedAutoloadEventsForCollapsed(p) : mainEvents;
-    var rowHtml = '<div class="projects-table-row' + selectedClass + groupedClass + newFromGoalsClass + '" data-id="' + p.id + '" data-child-line-index="-1" onclick="selectProjectRow(\'' + p.id + '\')"><div class="projects-sticky">' + stickyHtml + '</div><div class="projects-scroll">' + renderRowCells(eventsForMainRow, -1, hasChildLines && !showPositionRows) + '</div></div>';
+    var rowHtml = '<div class="projects-table-row' + selectedClass + groupedClass + newFromGoalsClass + negativeClass + '" data-id="' + p.id + '" data-child-line-index="-1" onclick="selectProjectRow(\'' + p.id + '\')"><div class="projects-sticky">' + stickyHtml + '</div><div class="projects-scroll">' + renderRowCells(eventsForMainRow, -1, hasChildLines && !showPositionRows) + '</div></div>';
     html += rowHtml;
     var childLines = getProjectChildLines(p);
     if (hasChildLines) {
@@ -3669,6 +3743,65 @@ function showProjEmojiPicker(btn, projectId) {
     });
   }, 0);
 }
+function showProjectNegativePicker(btn, projectId) {
+  var existing = document.getElementById('projNegativePicker');
+  if (existing) existing.remove();
+  var picker = document.createElement('div');
+  picker.id = 'projNegativePicker';
+  picker.className = 'proj-negative-picker';
+  picker.style.position = 'fixed';
+  var clear = document.createElement('span');
+  clear.className = 'clear';
+  clear.textContent = 'N Снять';
+  clear.onclick = function() {
+    var data = loadProjectsData();
+    var p = data.projects.find(function(x){ return x.id===projectId; });
+    if (p) {
+      p.negativeMood = '';
+      saveProjectsData(data);
+      rerenderProjectsPreserveScroll();
+      syncProjectToActiveSheet(projectId, 'negative_clear');
+    }
+    picker.remove();
+  };
+  picker.appendChild(clear);
+  Object.keys(PROJECT_NEGATIVE_STATES).forEach(function(key) {
+    var st = PROJECT_NEGATIVE_STATES[key];
+    var s = document.createElement('span');
+    s.className = 'mood-' + key;
+    s.textContent = st.emoji + ' ' + st.label;
+    s.onclick = function() {
+      var data = loadProjectsData();
+      var p = data.projects.find(function(x){ return x.id===projectId; });
+      if (p) {
+        p.negativeMood = key;
+        saveProjectsData(data);
+        rerenderProjectsPreserveScroll();
+        syncProjectToActiveSheet(projectId, 'negative_' + key);
+      }
+      picker.remove();
+    };
+    picker.appendChild(s);
+  });
+  document.body.appendChild(picker);
+  var r = btn.getBoundingClientRect();
+  picker.style.left = Math.max(6, r.left) + 'px';
+  picker.style.top = (r.bottom + 4) + 'px';
+  setTimeout(function() {
+    document.addEventListener('click', function close(e) {
+      if (!picker.contains(e.target) && e.target !== btn) { picker.remove(); document.removeEventListener('click', close); }
+    });
+  }, 0);
+}
+function markProjectTouched(projectId) {
+  var data = loadProjectsData();
+  var p = data.projects.find(function(x){ return x.id===projectId; });
+  if (!p) return;
+  p.lastTouchDate = getTodayISOmsk();
+  saveProjectsData(data);
+  rerenderProjectsPreserveScroll();
+  syncProjectToActiveSheet(projectId, 'last_touch_set');
+}
 function showProjectStatusPicker(btn, projectId) {
   var existing = document.getElementById('projStatusPicker');
   if (existing) existing.remove();
@@ -3686,6 +3819,7 @@ function showProjectStatusPicker(btn, projectId) {
       var p = data.projects.find(function(x){ return x.id===projectId; });
       if (p) {
         p.status = st;
+        p.statusManual = true;
         saveProjectsData(data);
         rerenderProjectsPreserveScroll();
         syncProjectToActiveSheet(projectId, 'status_change');
@@ -3957,6 +4091,7 @@ function setProjectMustLaunchWithDate(projectId, enabled, date) {
     p.mustLaunchAutoFromLaunch = false;
   }
   _projectMustLaunchDetachArmedId = null;
+  applyProjectAutoStatus(p);
   saveProjectsData(data);
   rerenderProjectsPreserveScroll();
   syncProjectToActiveSheet(projectId, enabled ? 'must_launch_set' : 'must_launch_clear');
@@ -4059,6 +4194,7 @@ function toggleProjectPath(projectId, key) {
     p.clientPath = {autoload:false,analytics:false,texts:false,packaging:false,portfolio:false};
   }
   p.clientPath[key] = !p.clientPath[key];
+  applyProjectAutoStatus(p);
   saveProjectsData(data);
   rerenderProjectsPreserveScroll();
   syncProjectToActiveSheet(projectId, 'path_toggle_' + key);

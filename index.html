@@ -1770,6 +1770,27 @@ body.projects-row-ptr-dragging .projects-table-row[data-id] .projects-sticky{cur
 .projects-table .projects-sticky{min-width:var(--projects-sticky-width,360px);width:var(--projects-sticky-width,360px)}
 .proj-status-btn{cursor:pointer;height:18px;padding:0 6px;border-radius:4px;font-size:11px;font-weight:800;font-family:inherit;border:1px solid transparent;transition:all 0.15s;white-space:nowrap;flex-shrink:0;display:inline-flex;align-items:center;justify-content:center;vertical-align:middle}
 .proj-status-btn:hover{border-color:var(--accent)}
+.proj-negative-btn,.proj-touch-btn{height:18px;min-width:22px;padding:0 5px;border-radius:999px;border:1px solid rgba(255,255,255,0.12);background:rgba(255,255,255,0.04);color:#ffccd2;font-size:11px;font-weight:900;font-family:inherit;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;transition:all .15s ease}
+.proj-negative-btn:hover,.proj-touch-btn:hover{transform:translateY(-1px);border-color:rgba(255,255,255,0.32)}
+.proj-negative-btn.on{background:rgba(255,67,93,0.16);border-color:rgba(255,99,125,0.5)}
+.proj-negative-btn.mood-ask{color:#ffd8dc;background:rgba(255,67,93,0.10)}
+.proj-negative-btn.mood-whine{color:#ffc0c8;background:rgba(255,67,93,0.16)}
+.proj-negative-btn.mood-angry{color:#ff9ba9;background:rgba(255,48,84,0.22)}
+.proj-negative-btn.mood-edge{color:#fff0f2;background:linear-gradient(135deg,rgba(255,35,72,0.34),rgba(255,114,42,0.22));box-shadow:0 0 10px rgba(255,55,75,0.35)}
+.proj-touch-btn{font-size:10px;color:#b7c8dc;background:rgba(255,255,255,0.03);min-width:36px}
+.proj-touch-btn.touch-day{color:#3cffbc;border-color:rgba(60,255,188,.45);background:rgba(60,255,188,.10)}
+.proj-touch-btn.touch-three{color:#f4df75;border-color:rgba(244,223,117,.45);background:rgba(244,223,117,.10)}
+.proj-touch-btn.touch-week{color:#ff9f53;border-color:rgba(255,159,83,.5);background:rgba(255,159,83,.11)}
+.proj-touch-btn.touch-old{color:#ff6b7f;border-color:rgba(255,107,127,.55);background:rgba(255,71,98,.14)}
+.proj-negative-picker{position:absolute;background:var(--surface2);border:1px solid rgba(255,85,105,.45);border-radius:10px;padding:6px;display:flex;flex-direction:column;gap:3px;z-index:1300;box-shadow:0 10px 26px rgba(0,0,0,.48),0 0 18px rgba(255,53,82,.12)}
+.proj-negative-picker span{cursor:pointer;font-size:12px;font-weight:800;padding:5px 9px;border-radius:7px;color:#fff;white-space:nowrap}
+.proj-negative-picker span:hover{background:rgba(255,80,105,.14)}
+.proj-negative-picker .clear{color:#b9c5d7;background:rgba(255,255,255,.04)}
+.projects-table-row.project-negative-ask .projects-sticky,.projects-table-row.project-negative-ask .projects-scroll{background:rgba(255,51,84,.045)}
+.projects-table-row.project-negative-whine .projects-sticky,.projects-table-row.project-negative-whine .projects-scroll{background:rgba(255,51,84,.075)}
+.projects-table-row.project-negative-angry .projects-sticky,.projects-table-row.project-negative-angry .projects-scroll{background:rgba(255,45,76,.12)}
+.projects-table-row.project-negative-edge .projects-sticky,.projects-table-row.project-negative-edge .projects-scroll{background:linear-gradient(90deg,rgba(255,35,72,.18),rgba(255,117,42,.08));animation:projectNegativeEdgeGlow 2.2s ease-in-out infinite}
+@keyframes projectNegativeEdgeGlow{0%,100%{box-shadow:inset 0 0 0 1px rgba(255,80,100,.10)}50%{box-shadow:inset 0 0 0 1px rgba(255,80,100,.28),0 0 14px rgba(255,54,74,.13)}}
 .proj-status-picker{position:absolute;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:6px;display:flex;flex-direction:column;gap:2px;z-index:100;box-shadow:0 8px 24px rgba(0,0,0,0.4);max-height:200px;overflow-y:auto;scrollbar-width:thin;scrollbar-color:#000 transparent}
 .proj-status-picker::-webkit-scrollbar{width:4px}
 .proj-status-picker::-webkit-scrollbar-track{background:transparent}
@@ -3004,8 +3025,8 @@ if (!window.AVITOLOG_GOALS) {
 <script src="https://unpkg.com/mammoth@1.6.0/mammoth.min.js"></script>
 <script src="js/hero-asset.js?v=20260404-1"></script>
 <script src="js/core.js?v=20260411-1"></script>
-<script src="js/projects.js?v=20260625-mobile-refresh-1"></script>
-<script src="js/ai-import.js?v=20260622-backend-auto-sync-1"></script>
+<script src="js/projects.js?v=20260625-project-moods-1"></script>
+<script src="js/ai-import.js?v=20260625-project-moods-1"></script>
 <script src="js/contract-generator.js?v=20260622-contract-local-download-1"></script>
 <script src="js/ads.js?v=20260404-1"></script>
 <script charset="UTF-8" src="js/kp-generator.js?v=20260621-package-sync-2"></script>
