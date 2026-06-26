@@ -481,8 +481,9 @@ footer{background:var(--bg);border-top:1px solid var(--border);padding:40px 80px
 .tk-stat-val{display:block;font-family:'Oswald',sans-serif;font-size:clamp(28px,4vw,42px);font-weight:700;color:var(--red);line-height:1}
 .tk-stat-lbl{display:block;font-size:11px;color:rgba(240,244,255,.6);text-transform:uppercase;letter-spacing:1px;margin-top:8px}
 .tk-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:20px}
-.tk-card{position:relative;aspect-ratio:3/4;border-radius:16px;overflow:hidden;border:1px solid rgba(255,255,255,.08);background:#0a0e1a;box-shadow:0 8px 26px rgba(0,0,0,.4);opacity:0;transform:translateY(46px);transition:opacity .7s cubic-bezier(.22,1,.36,1),transform .7s cubic-bezier(.22,1,.36,1),border-color .35s,box-shadow .35s;cursor:default}
-.tk-grid.in-view .tk-card{opacity:1;transform:translateY(0)}
+.tk-card{position:relative;aspect-ratio:3/4;border-radius:16px;overflow:hidden;border:1px solid rgba(255,255,255,.08);background:#0a0e1a;box-shadow:0 8px 26px rgba(0,0,0,.4);opacity:1;transform:none;transition:opacity .7s cubic-bezier(.22,1,.36,1),transform .7s cubic-bezier(.22,1,.36,1),border-color .35s,box-shadow .35s;cursor:default}
+.tk-grid.tk-anim-ready .tk-card{opacity:0;transform:translateY(46px)}
+.tk-grid.tk-anim-ready.in-view .tk-card{opacity:1;transform:translateY(0)}
 .tk-grid .tk-card:nth-child(1){transition-delay:0s}
 .tk-grid .tk-card:nth-child(2){transition-delay:.08s}
 .tk-grid .tk-card:nth-child(3){transition-delay:.16s}
@@ -1037,15 +1038,18 @@ go(0);
 (function(){
 var grid=document.getElementById('featuresGrid');
 if(!grid)return;
-if(!('IntersectionObserver' in window)){grid.classList.add('in-view');return}
+if(!('IntersectionObserver' in window)){return}
+grid.classList.add('tk-anim-ready');
+var failSafe=setTimeout(function(){grid.classList.add('in-view')},4000);
 var io=new IntersectionObserver(function(entries){
   entries.forEach(function(entry){
     if(entry.isIntersecting){
+      clearTimeout(failSafe);
       grid.classList.add('in-view');
       io.disconnect();
     }
   });
-},{threshold:0.15,rootMargin:'0px 0px -60px 0px'});
+},{threshold:0.1,rootMargin:'0px 0px -10% 0px'});
 io.observe(grid);
 })();
 </script>
