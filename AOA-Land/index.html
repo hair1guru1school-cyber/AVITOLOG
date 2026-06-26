@@ -474,14 +474,28 @@ footer{background:var(--bg);border-top:1px solid var(--border);padding:40px 80px
 .tk-stat-val{display:block;font-family:'Oswald',sans-serif;font-size:clamp(28px,4vw,42px);font-weight:700;color:var(--red);line-height:1}
 .tk-stat-lbl{display:block;font-size:11px;color:rgba(240,244,255,.6);text-transform:uppercase;letter-spacing:1px;margin-top:8px}
 .tk-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:20px}
-.tk-card{background:#0c1323;border:1px solid rgba(255,255,255,.06);border-radius:14px;padding:28px 24px;transition:all .3s ease}
-.tk-card:hover{transform:translateY(-4px);box-shadow:0 10px 40px rgba(232,0,29,.15);border-color:rgba(232,0,29,.25)}
-.tk-card-ico{width:48px;height:48px;display:flex;align-items:center;justify-content:center;font-size:24px;background:rgba(232,0,29,.12);border:1px solid rgba(232,0,29,.2);border-radius:10px;margin-bottom:16px;box-shadow:0 0 20px rgba(232,0,29,.1)}
-.tk-card-title{font-family:'Oswald',sans-serif;font-size:17px;font-weight:600;color:#fff;margin-bottom:10px;letter-spacing:.3px}
-.tk-card-desc{font-size:14px;color:rgba(240,244,255,.65);line-height:1.6}
+.tk-card{position:relative;aspect-ratio:3/4;border-radius:16px;overflow:hidden;border:1px solid rgba(255,255,255,.08);background:#0a0e1a;box-shadow:0 8px 26px rgba(0,0,0,.4);opacity:0;transform:translateY(46px);transition:opacity .7s cubic-bezier(.22,1,.36,1),transform .7s cubic-bezier(.22,1,.36,1),border-color .35s,box-shadow .35s;cursor:default}
+.tk-grid.in-view .tk-card{opacity:1;transform:translateY(0)}
+.tk-grid .tk-card:nth-child(1){transition-delay:0s}
+.tk-grid .tk-card:nth-child(2){transition-delay:.08s}
+.tk-grid .tk-card:nth-child(3){transition-delay:.16s}
+.tk-grid .tk-card:nth-child(4){transition-delay:.24s}
+.tk-grid .tk-card:nth-child(5){transition-delay:.32s}
+.tk-grid .tk-card:nth-child(6){transition-delay:.40s}
+.tk-grid .tk-card:nth-child(7){transition-delay:.48s}
+.tk-grid .tk-card:nth-child(8){transition-delay:.56s}
+.tk-card:hover{border-color:rgba(232,0,29,.6);box-shadow:0 18px 48px rgba(232,0,29,.25),0 0 0 1px rgba(232,0,29,.3) inset}
+.tk-card-img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center 18%;display:block;transition:transform .55s cubic-bezier(.22,1,.36,1);will-change:transform}
+.tk-card:hover .tk-card-img{transform:scale(1.06)}
+.tk-card::after{content:'';position:absolute;inset:0;z-index:1;pointer-events:none;background:linear-gradient(180deg,rgba(7,11,20,0) 0%,rgba(7,11,20,.08) 38%,rgba(7,11,20,.62) 62%,rgba(7,11,20,.95) 82%,rgba(7,11,20,.99) 100%)}
+.tk-card-num{position:absolute;top:14px;left:16px;z-index:2;font-family:'Oswald',sans-serif;font-size:11px;font-weight:700;color:var(--gold);letter-spacing:2.5px;text-shadow:0 2px 8px rgba(0,0,0,.85)}
+.tk-card-body{position:absolute;left:0;right:0;bottom:0;z-index:2;padding:16px 16px 18px}
+.tk-card-title{font-family:'Oswald',sans-serif;font-size:15.5px;font-weight:600;color:#fff;margin-bottom:7px;letter-spacing:.3px;line-height:1.25}
+.tk-card-desc{font-size:12px;color:rgba(220,228,245,.72);line-height:1.5}
 .tk-cta-line{text-align:center;font-family:'Oswald',sans-serif;font-size:clamp(18px,2.5vw,24px);font-weight:600;color:var(--red);letter-spacing:3px;margin-top:48px}
 @media(max-width:900px){.tk-grid{grid-template-columns:repeat(2,1fr)}.tk-metrics{gap:20px}.tk-stat{min-width:160px}}
-@media(max-width:600px){.tk-grid{grid-template-columns:1fr}.tk-metrics{flex-direction:column;align-items:center;gap:16px}.tk-stat{min-width:auto;width:100%;max-width:280px}}
+@media(max-width:600px){.tk-grid{grid-template-columns:1fr}.tk-card{aspect-ratio:4/3}.tk-card-img{object-position:center 12%}.tk-metrics{flex-direction:column;align-items:center;gap:16px}.tk-stat{min-width:auto;width:100%;max-width:280px}}
+@media(prefers-reduced-motion:reduce){.tk-card{opacity:1;transform:none;transition:border-color .2s}.tk-card-img{transition:none}.tk-card:hover .tk-card-img{transform:none}}
 </style>
 </head>
 <body>
@@ -542,15 +556,15 @@ footer{background:var(--bg);border-top:1px solid var(--border);padding:40px 80px
       <div class="tk-stat"><span class="tk-stat-val">24/7</span><span class="tk-stat-lbl">контроль аккаунта и позиций</span></div>
       <div class="tk-stat"><span class="tk-stat-val">27</span><span class="tk-stat-lbl">собственных IT решений</span></div>
     </div>
-    <div class="tk-grid">
-      <div class="tk-card"><div class="tk-card-ico">🔎</div><h3 class="tk-card-title">Анализ рынка и конкурентов</h3><p class="tk-card-desc">Глубоко анализируем спрос, конкурентов и поведение клиентов. Формируем стратегию, которая выводит объявления в поток заявок.</p></div>
-      <div class="tk-card"><div class="tk-card-ico">✍️</div><h3 class="tk-card-title">Продающие тексты</h3><p class="tk-card-desc">SEO-описания объявлений, которые повышают кликабельность и превращают просмотры в заявки.</p></div>
-      <div class="tk-card"><div class="tk-card-ico">📸</div><h3 class="tk-card-title">Подбор и обработка фото</h3><p class="tk-card-desc">Профессиональный визуал карточек. Сильное первое впечатление повышает конверсию объявлений.</p></div>
-      <div class="tk-card"><div class="tk-card-ico">🎨</div><h3 class="tk-card-title">Дизайн и инфографика</h3><p class="tk-card-desc">Инфографика, баннеры и карточки с выгодами — повышаем доверие и конверсию на 30–50%.</p></div>
-      <div class="tk-card"><div class="tk-card-ico">🤖</div><h3 class="tk-card-title">Бот и автоответчик</h3><p class="tk-card-desc">Каждый входящий запрос обрабатывается мгновенно — ни одна заявка не теряется.</p></div>
-      <div class="tk-card"><div class="tk-card-ico">⚡</div><h3 class="tk-card-title">Масштабирование объявлений</h3><p class="tk-card-desc">XML-автозагрузка и массовое управление объявлениями. Рост охвата без ручной работы.</p></div>
-      <div class="tk-card"><div class="tk-card-ico">📊</div><h3 class="tk-card-title">Мониторинг 24/7</h3><p class="tk-card-desc">Отслеживаем позиции, просмотры и контакты. Реагируем до того, как падают заявки.</p></div>
-      <div class="tk-card"><div class="tk-card-ico">📈</div><h3 class="tk-card-title">Отчетность и прозрачность</h3><p class="tk-card-desc">Еженедельная аналитика: заявки, позиции, динамика и точки роста.</p></div>
+    <div class="tk-grid" id="featuresGrid">
+      <div class="tk-card"><img class="tk-card-img" src="features/01.png" alt="Анализ рынка и конкурентов" loading="lazy" decoding="async" width="600" height="800"><span class="tk-card-num">01</span><div class="tk-card-body"><h3 class="tk-card-title">Анализ рынка и конкурентов</h3><p class="tk-card-desc">Глубоко анализируем спрос, конкурентов и поведение клиентов. Формируем стратегию, которая выводит объявления в поток заявок.</p></div></div>
+      <div class="tk-card"><img class="tk-card-img" src="features/02.png" alt="Продающие тексты" loading="lazy" decoding="async" width="600" height="800"><span class="tk-card-num">02</span><div class="tk-card-body"><h3 class="tk-card-title">Продающие тексты</h3><p class="tk-card-desc">SEO-описания объявлений, которые повышают кликабельность и превращают просмотры в заявки.</p></div></div>
+      <div class="tk-card"><img class="tk-card-img" src="features/03.png" alt="Подбор и обработка фото" loading="lazy" decoding="async" width="600" height="800"><span class="tk-card-num">03</span><div class="tk-card-body"><h3 class="tk-card-title">Подбор и обработка фото</h3><p class="tk-card-desc">Профессиональный визуал карточек. Сильное первое впечатление повышает конверсию объявлений.</p></div></div>
+      <div class="tk-card"><img class="tk-card-img" src="features/04.png" alt="Дизайн и инфографика" loading="lazy" decoding="async" width="600" height="800"><span class="tk-card-num">04</span><div class="tk-card-body"><h3 class="tk-card-title">Дизайн и инфографика</h3><p class="tk-card-desc">Инфографика, баннеры и карточки с выгодами — повышаем доверие и конверсию на 30–50%.</p></div></div>
+      <div class="tk-card"><img class="tk-card-img" src="features/05.png" alt="Бот и автоответчик" loading="lazy" decoding="async" width="600" height="800"><span class="tk-card-num">05</span><div class="tk-card-body"><h3 class="tk-card-title">Бот и автоответчик</h3><p class="tk-card-desc">Каждый входящий запрос обрабатывается мгновенно — ни одна заявка не теряется.</p></div></div>
+      <div class="tk-card"><img class="tk-card-img" src="features/06.png" alt="Масштабирование объявлений" loading="lazy" decoding="async" width="600" height="800"><span class="tk-card-num">06</span><div class="tk-card-body"><h3 class="tk-card-title">Масштабирование объявлений</h3><p class="tk-card-desc">XML-автозагрузка и массовое управление объявлениями. Рост охвата без ручной работы.</p></div></div>
+      <div class="tk-card"><img class="tk-card-img" src="features/07.png" alt="Мониторинг 24/7" loading="lazy" decoding="async" width="600" height="800"><span class="tk-card-num">07</span><div class="tk-card-body"><h3 class="tk-card-title">Мониторинг 24/7</h3><p class="tk-card-desc">Отслеживаем позиции, просмотры и контакты. Реагируем до того, как падают заявки.</p></div></div>
+      <div class="tk-card"><img class="tk-card-img" src="features/08.png" alt="Отчётность и прозрачность" loading="lazy" decoding="async" width="600" height="800"><span class="tk-card-num">08</span><div class="tk-card-body"><h3 class="tk-card-title">Отчётность и прозрачность</h3><p class="tk-card-desc">Еженедельная аналитика: заявки, позиции, динамика и точки роста.</p></div></div>
     </div>
   </div>
 </section>
@@ -1008,6 +1022,24 @@ next.addEventListener('click',function(){go(idx+1)});
 window.addEventListener('resize',function(){track.style.transition='none';go(idx);requestAnimationFrame(function(){track.style.transition=''})});
 window.addEventListener('load',function(){go(idx)});
 go(0);
+})();
+</script>
+
+<!-- Features grid scroll-reveal -->
+<script>
+(function(){
+var grid=document.getElementById('featuresGrid');
+if(!grid)return;
+if(!('IntersectionObserver' in window)){grid.classList.add('in-view');return}
+var io=new IntersectionObserver(function(entries){
+  entries.forEach(function(entry){
+    if(entry.isIntersecting){
+      grid.classList.add('in-view');
+      io.disconnect();
+    }
+  });
+},{threshold:0.15,rootMargin:'0px 0px -60px 0px'});
+io.observe(grid);
 })();
 </script>
 
