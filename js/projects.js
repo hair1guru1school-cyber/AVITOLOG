@@ -641,12 +641,37 @@ function normalizeAoaxText(v) {
   return String(v || '').trim().toLowerCase().replace(/\s+/g, ' ');
 }
 function normalizeAoaxDate(v) {
+  if (typeof v === 'number' && isFinite(v)) {
+    var ms = Math.round((v - 25569) * 86400 * 1000);
+    var d = new Date(ms);
+    if (!isNaN(d.getTime())) return d.toISOString().slice(0, 10);
+  }
   var s = String(v || '').trim();
   if (!s) return '';
   var m = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
   if (m) return m[1] + '-' + m[2] + '-' + m[3];
-  m = s.match(/^(\d{2})\.(\d{2})\.(\d{4})$/);
-  if (m) return m[3] + '-' + m[2] + '-' + m[1];
+  m = s.match(/^(\d{4})[./](\d{2})[./](\d{2})/);
+  if (m) return m[1] + '-' + m[2] + '-' + m[3];
+  m = s.match(/^(\d{1,2})[./-](\d{1,2})[./-](\d{4})/);
+  if (m) return m[3] + '-' + String(m[2]).padStart(2, '0') + '-' + String(m[1]).padStart(2, '0');
+  return '';
+}
+function getAoaxField(obj, aliases) {
+  if (!obj || typeof obj !== 'object') return '';
+  var normAliases = aliases.map(function(a){ return normalizeAoaxText(a).replace(/[^a-zа-я0-9]/g, ''); });
+  var keys = Object.keys(obj);
+  for (var i = 0; i < keys.length; i++) {
+    var nk = normalizeAoaxText(keys[i]).replace(/[^a-zа-я0-9]/g, '');
+    if (normAliases.indexOf(nk) >= 0) return obj[keys[i]];
+  }
+  var nestedKeys = ['data','meta','fields','columns','row','sample','firstRow','lastRow','values'];
+  for (var j = 0; j < nestedKeys.length; j++) {
+    var nested = obj[nestedKeys[j]];
+    if (nested && typeof nested === 'object' && !Array.isArray(nested)) {
+      var v = getAoaxField(nested, aliases);
+      if (v !== '' && v != null) return v;
+    }
+  }
   return '';
 }
 function readAoaxAutoloadState() {
@@ -692,8 +717,12 @@ function normalizeAoaxSheets(pack) {
   return arr.map(function(s, idx){
     if (typeof s === 'string') s = {name:s};
     s = s || {};
-    var begin = normalizeAoaxDate(s.dateBegin || s.DateBegin || s.startDate || s.begin);
-    var end = normalizeAoaxDate(s.dateEnd || s.DateEnd || s.endDate || s.end);
+    var begin = normalizeAoaxDate(getAoaxField(s, ['dateBegin','DateBegin','date_begin','startDate','start_date','begin','Дата начала','Дата старт','Дата Бегин']));
+    var end = normalizeAoaxDate(getAoaxField(s, ['dateEnd','DateEnd','date_end','endDate','end_date','finishDate','finish_date','end','Дата конца','Дата окончания','Дата до','Дата енд','Дата End']));
+    if (!end && begin && begin > getTodayISOmsk()) {
+      end = begin;
+      begin = getTodayISOmsk();
+    }
     return {
       name: String(s.name || s.sheetName || s.title || ('Лист ' + (idx + 1))).trim(),
       dateBegin: begin,
@@ -784,8 +813,8 @@ function applyAoaxAutoloadState(data) {
     var sheets = normalizeAoaxSheets(pack);
     var file = pack.activeFile || pack.file || {};
     if (typeof file === 'string') file = {name:file};
-    var fallbackEnd = normalizeAoaxDate(pack.dateEnd || pack.DateEnd || pack.endDate);
-    var fallbackStart = normalizeAoaxDate(pack.dateBegin || pack.DateBegin || pack.startDate);
+    var fallbackEnd = normalizeAoaxDate(getAoaxField(pack, ['dateEnd','DateEnd','date_end','endDate','end_date','finishDate','finish_date','end','Дата конца','Дата окончания','Дата до','Дата енд','Дата End']));
+    var fallbackStart = normalizeAoaxDate(getAoaxField(pack, ['dateBegin','DateBegin','date_begin','startDate','start_date','begin','Дата начала','Дата старт','Дата Бегин']));
     var exported = isAoaxPackExported(pack);
     var sig = JSON.stringify({
       fileId: file.id || file.driveFileId || pack.fileId || pack.driveFileId || '',
@@ -794,7 +823,8 @@ function applyAoaxAutoloadState(data) {
       sheets: sheets,
       dateEnd: fallbackEnd,
       updatedAt: pack.updatedAt || '',
-      exported: exported
+      exported: exported,
+      parserVersion: 'aoax-date-v2'
     });
     if (p.aoaxAutoloadSignature === sig) return;
     p.aoaxAutoloadSignature = sig;
@@ -828,7 +858,18 @@ function applyAoaxAutoloadState(data) {
         p.aoaxManagedChildLines = true;
         p.childLineEvents = sheets.map(function(s){ return [makeAoaxActiveEvent(s, fallbackStart, fallbackEnd)]; });
       } else {
-        sheets.forEach(function(s){ p.events.push(makeAoaxActiveEvent(s, fallbackStart, fallbackEnd)); });
+        ensureChildLineEvents(p);
+        sheets.forEach(function(s){
+          var sheetKey = normalizeAoaxText(s.name);
+          var idx = (p.childLines || []).findIndex(function(line){ return normalizeAoaxText(line) === sheetKey; });
+          if (idx >= 0) {
+            var arr = ((p.childLineEvents || [])[idx] || []).filter(function(ev){ return !(ev && ev.source === 'aoax'); });
+            arr.push(makeAoaxActiveEvent(s, fallbackStart, fallbackEnd));
+            p.childLineEvents[idx] = arr;
+            return;
+          }
+          p.events.push(makeAoaxActiveEvent(s, fallbackStart, fallbackEnd));
+        });
       }
     } else if (fallbackEnd) {
       p.events.push(makeAoaxActiveEvent({name:'AoA-X', dateBegin:fallbackStart, dateEnd:fallbackEnd}, fallbackStart, fallbackEnd));
