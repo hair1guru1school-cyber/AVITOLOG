@@ -275,7 +275,7 @@ nav::after{content:'';position:absolute;bottom:0;left:0;right:0;height:1px;backg
 .vk-promo + .sec::before{content:'';position:absolute;left:50%;top:0;width:min(220px,60%);height:2px;transform:translateX(-50%);background:linear-gradient(90deg,transparent,var(--gold),transparent);opacity:.55}
 /* VK block */
 .vk-promo{position:relative;overflow:hidden;border-top:none;border-bottom:none;box-sizing:border-box;background-color:#020307;background-image:linear-gradient(180deg,rgba(0,0,0,.82) 0%,rgba(0,0,0,.64) 38%,rgba(0,0,0,.80) 100%),url('vk-promo-art.png?v=20260329-vk14');background-position:center top;background-size:cover;background-repeat:no-repeat;scroll-margin-top:72px;min-height:min(62vh,760px)}
-.vk-promo::before{content:'';position:absolute;left:0;right:0;top:0;height:clamp(130px,20vw,320px);z-index:1;pointer-events:none;background:linear-gradient(180deg,var(--bg) 0%,rgba(3,4,10,.94) 28%,rgba(3,4,10,.68) 55%,rgba(3,4,10,.28) 78%,transparent 100%)}
+.vk-promo::before{content:'';position:absolute;left:0;right:0;top:0;height:clamp(130px,20vw,320px);z-index:1;pointer-events:none;background:linear-gradient(180deg,#020307 0%,rgba(3,4,10,.94) 28%,rgba(3,4,10,.68) 55%,rgba(3,4,10,.28) 78%,transparent 100%)}
 .avwhy-divider{position:relative;z-index:5;width:min(220px,60%);height:2px;margin:0 auto;background:linear-gradient(90deg,transparent,var(--gold),transparent);opacity:.55;background-color:transparent}
 .avwhy-divider::before{content:'';position:absolute;left:50%;top:50%;width:6px;height:6px;border-radius:50%;background:var(--gold);box-shadow:0 0 10px rgba(240,195,77,.7);transform:translate(-50%,-50%)}
 .vk-promo::after{content:'';position:absolute;left:0;right:0;bottom:0;height:min(42%,340px);z-index:1;pointer-events:none;background:linear-gradient(0deg,var(--bg2) 0%,rgba(2,3,8,.95) 18%,rgba(4,6,14,.75) 42%,rgba(6,10,18,.32) 70%,transparent 100%)}
@@ -304,13 +304,13 @@ nav::after{content:'';position:absolute;bottom:0;left:0;right:0;height:1px;backg
 @media(max-width:640px){.vk-promo{min-height:min(80vh,720px)}.vk-inner{padding-left:18px;padding-right:18px}}
 
 /* AVITO WHY */
-.avwhy{position:relative;overflow:hidden;isolation:isolate;background:var(--bg);padding-top:clamp(56px,7.5vw,100px);padding-bottom:clamp(56px,7.5vw,100px)}
+.avwhy{position:relative;overflow:hidden;isolation:isolate;background:#020307;padding-top:clamp(56px,7.5vw,100px);padding-bottom:clamp(56px,7.5vw,100px)}
 .avwhy-bg{position:absolute;inset:0;z-index:0}
-.avwhy-bg img{width:100%;height:100%;object-fit:cover;object-position:center 20%;display:block}
+.avwhy-bg img{width:100%;height:100%;object-fit:cover;object-position:center 20%;display:block;opacity:.8}
 .avwhy-bg::after{content:'';position:absolute;inset:0;background:
-    linear-gradient(180deg,var(--bg2) 0%,transparent 9%,transparent 84%,rgba(3,4,9,.8) 95%,rgba(3,4,9,.97) 100%),
-    linear-gradient(90deg,var(--bg) 0%,rgba(5,7,13,.93) 27%,rgba(5,7,13,.52) 50%,rgba(5,7,13,.16) 68%,rgba(5,7,13,.42) 100%)}
-.why-c{position:relative;z-index:10;max-width:58%}
+    linear-gradient(180deg,var(--bg2) 0%,rgba(2,3,7,.88) 9%,rgba(2,3,7,.76) 38%,rgba(2,3,7,.8) 64%,rgba(2,3,7,.92) 88%,rgba(2,3,7,.98) 100%),
+    linear-gradient(90deg,rgba(2,3,7,.5) 0%,rgba(2,3,7,.3) 35%,rgba(2,3,7,.3) 65%,rgba(2,3,7,.5) 100%)}
+.why-c{position:relative;z-index:10;max-width:min(620px,58%)}
 .why-list{display:flex;flex-direction:column;gap:14px;margin-top:32px;margin-bottom:clamp(8px,2vw,20px);position:relative;padding-left:20px}
 .why-list::before{content:'';position:absolute;left:0;top:8px;bottom:8px;width:2px;border-radius:2px;background:rgba(255,255,255,.1)}
 .why-list::after{content:'';position:absolute;left:0;top:8px;bottom:8px;width:2px;border-radius:2px;transform-origin:top center;transform:scaleY(var(--list-progress,0));transition:transform .65s cubic-bezier(.22,1,.36,1);background:linear-gradient(180deg,var(--red),var(--gold));box-shadow:0 0 10px rgba(232,0,29,.65)}
@@ -431,8 +431,7 @@ footer{background:var(--bg);border-top:1px solid var(--border);padding:40px 80px
   .p-steps{grid-template-columns:1fr 1fr;gap:24px}
   .p-steps::before{display:none}
   .avwhy-bg::after{background:
-    linear-gradient(180deg,var(--bg2) 0%,transparent 9%,transparent 70%,rgba(3,4,9,.88) 92%,rgba(3,4,9,.97) 100%),
-    linear-gradient(180deg,rgba(5,7,13,.55) 0%,rgba(5,7,13,.78) 100%)}
+    linear-gradient(180deg,var(--bg2) 0%,rgba(2,3,7,.9) 9%,rgba(2,3,7,.82) 40%,rgba(2,3,7,.86) 64%,rgba(2,3,7,.94) 88%,rgba(2,3,7,.98) 100%)}
   .why-c{max-width:100%}
   .now-grid{grid-template-columns:1fr}
   .split-block{grid-column:span 1;grid-template-columns:1fr}
@@ -783,7 +782,7 @@ footer{background:var(--bg);border-top:1px solid var(--border);padding:40px 80px
   </div>
 </section>
 
-<div class="avwhy-divider"></div>
+<div class="avwhy-divider" style="background-color:#020307"></div>
 
 <!-- VK COMMUNITY -->
 <section class="sec vk-promo" id="vk">
