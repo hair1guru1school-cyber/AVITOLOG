@@ -306,11 +306,11 @@ nav::after{content:'';position:absolute;bottom:0;left:0;right:0;height:1px;backg
 /* AVITO WHY */
 .avwhy{position:relative;overflow:hidden;isolation:isolate;background:#020307;padding-top:clamp(56px,7.5vw,100px);padding-bottom:clamp(56px,7.5vw,100px)}
 .avwhy-bg{position:absolute;inset:0;z-index:0}
-.avwhy-bg img{width:100%;height:100%;object-fit:cover;object-position:center 20%;display:block;opacity:.8}
+.avwhy-bg img{width:100%;height:100%;object-fit:cover;object-position:12% 22%;transform:scale(1.7);transform-origin:12% 22%;display:block;opacity:.8}
 .avwhy-bg::after{content:'';position:absolute;inset:0;background:
     linear-gradient(180deg,var(--bg2) 0%,rgba(2,3,7,.88) 9%,rgba(2,3,7,.76) 38%,rgba(2,3,7,.8) 64%,rgba(2,3,7,.92) 88%,rgba(2,3,7,.98) 100%),
     linear-gradient(90deg,rgba(2,3,7,.5) 0%,rgba(2,3,7,.3) 35%,rgba(2,3,7,.3) 65%,rgba(2,3,7,.5) 100%)}
-.why-c{position:relative;z-index:10;max-width:min(620px,58%)}
+.why-c{position:relative;z-index:10;max-width:min(480px,50%)}
 .why-list{display:flex;flex-direction:column;gap:14px;margin-top:32px;margin-bottom:clamp(8px,2vw,20px);position:relative;padding-left:20px}
 .why-list::before{content:'';position:absolute;left:0;top:8px;bottom:8px;width:2px;border-radius:2px;background:rgba(255,255,255,.1)}
 .why-list::after{content:'';position:absolute;left:0;top:8px;bottom:8px;width:2px;border-radius:2px;transform-origin:top center;transform:scaleY(var(--list-progress,0));transition:transform .65s cubic-bezier(.22,1,.36,1);background:linear-gradient(180deg,var(--red),var(--gold));box-shadow:0 0 10px rgba(232,0,29,.65)}
