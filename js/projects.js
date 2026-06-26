@@ -708,24 +708,93 @@ function makeAoaxActiveEvent(sheet, fallbackStart, fallbackEnd) {
   if (end < start) start = end;
   return {type:'active_range', startDate:start, endDate:end, source:'aoax', sheetName:sheet.name || ''};
 }
+function isAoaxPackDisabled(pack) {
+  if (!pack) return true;
+  return pack.disabled === true || pack.active === false || pack.connected === false || pack.fileDetached === true || pack.detached === true;
+}
+function isAoaxPackExported(pack) {
+  if (!pack || isAoaxPackDisabled(pack)) return false;
+  var status = normalizeAoaxText(pack.status || pack.state || pack.mode);
+  return pack.autoloadExported === true || pack.exportAutoload === true || pack.exported === true ||
+    !!(pack.exportedAt || pack.exported_at || pack.lastExportAt || pack.last_export_at) ||
+    status === 'exported' || status === 'autoload_exported';
+}
+function cloneAoaxValue(v) {
+  try { return JSON.parse(JSON.stringify(v)); } catch(e) { return v; }
+}
+function snapshotProjectBeforeAoax(p) {
+  if (!p || p.aoaxAutoloadBackup) return;
+  p.aoaxAutoloadBackup = {
+    events: cloneAoaxValue(p.events || []),
+    childLines: cloneAoaxValue(p.childLines || []),
+    childLineEvents: cloneAoaxValue(p.childLineEvents || []),
+    clientPathAutoload: !!(p.clientPath && p.clientPath.autoload),
+    status: p.status || '',
+    statusManual: !!p.statusManual,
+    aoaxManagedChildLines: !!p.aoaxManagedChildLines
+  };
+}
+function restoreProjectBeforeAoax(p) {
+  if (!p || !p.aoaxAutoloadBackup) return false;
+  var b = p.aoaxAutoloadBackup;
+  p.events = cloneAoaxValue(b.events || []);
+  p.childLines = cloneAoaxValue(b.childLines || []);
+  p.childLineEvents = cloneAoaxValue(b.childLineEvents || []);
+  if (!p.clientPath || typeof p.clientPath !== 'object') p.clientPath = {autoload:false,analytics:false,texts:false,packaging:false,portfolio:false};
+  p.clientPath.autoload = !!b.clientPathAutoload;
+  p.status = b.status || p.status || 'В работе';
+  p.statusManual = !!b.statusManual;
+  p.aoaxManagedChildLines = !!b.aoaxManagedChildLines;
+  delete p.aoaxAutoloadBackup;
+  ensureChildLineEvents(p);
+  return true;
+}
+function clearAoaxGeneratedEvents(p) {
+  if (!p) return false;
+  var changed = false;
+  var nextEvents = (p.events || []).filter(function(ev){ return !(ev && ev.source === 'aoax'); });
+  if (nextEvents.length !== (p.events || []).length) { p.events = nextEvents; changed = true; }
+  if (Array.isArray(p.childLineEvents)) {
+    p.childLineEvents = p.childLineEvents.map(function(arr){
+      var oldLen = Array.isArray(arr) ? arr.length : 0;
+      var next = (arr || []).filter(function(ev){ return !(ev && ev.source === 'aoax'); });
+      if (next.length !== oldLen) changed = true;
+      return next;
+    });
+  }
+  return changed;
+}
 function applyAoaxAutoloadState(data) {
   var state = readAoaxAutoloadState();
   var changed = false;
   ((data && data.projects) || []).forEach(function(p){
     var pack = getAoaxPackForProject(p, state);
-    if (!pack) return;
+    if (!pack || isAoaxPackDisabled(pack)) {
+      var restored = restoreProjectBeforeAoax(p);
+      var cleared = clearAoaxGeneratedEvents(p);
+      if (p.aoaxAutoload || p.aoaxAutoloadSignature || p.aoaxManagedChildLines) {
+        delete p.aoaxAutoload;
+        delete p.aoaxAutoloadSignature;
+        delete p.aoaxManagedChildLines;
+        changed = true;
+      }
+      if (restored || cleared) changed = true;
+      return;
+    }
     var sheets = normalizeAoaxSheets(pack);
     var file = pack.activeFile || pack.file || {};
     if (typeof file === 'string') file = {name:file};
     var fallbackEnd = normalizeAoaxDate(pack.dateEnd || pack.DateEnd || pack.endDate);
     var fallbackStart = normalizeAoaxDate(pack.dateBegin || pack.DateBegin || pack.startDate);
+    var exported = isAoaxPackExported(pack);
     var sig = JSON.stringify({
       fileId: file.id || file.driveFileId || pack.fileId || pack.driveFileId || '',
       fileName: file.name || pack.fileName || '',
       fileUrl: file.url || file.webUrl || pack.fileUrl || '',
       sheets: sheets,
       dateEnd: fallbackEnd,
-      updatedAt: pack.updatedAt || ''
+      updatedAt: pack.updatedAt || '',
+      exported: exported
     });
     if (p.aoaxAutoloadSignature === sig) return;
     p.aoaxAutoloadSignature = sig;
@@ -737,8 +806,18 @@ function applyAoaxAutoloadState(data) {
       },
       sheets: sheets,
       dateEnd: fallbackEnd || (sheets.length ? sheets.map(function(s){ return s.dateEnd || ''; }).sort().pop() : ''),
-      updatedAt: pack.updatedAt || ''
+      updatedAt: pack.updatedAt || '',
+      exported: exported
     };
+    if (!exported) {
+      var restoredNoExport = restoreProjectBeforeAoax(p);
+      var clearedNoExport = clearAoaxGeneratedEvents(p);
+      p.aoaxAutoload.exported = false;
+      if (restoredNoExport || clearedNoExport) changed = true;
+      changed = true;
+      return;
+    }
+    snapshotProjectBeforeAoax(p);
     if (!p.clientPath || typeof p.clientPath !== 'object') p.clientPath = {autoload:false,analytics:false,texts:false,packaging:false,portfolio:false};
     p.clientPath.autoload = true;
     p.events = (p.events || []).filter(function(ev){ return !(ev && ev.source === 'aoax'); });
@@ -766,8 +845,9 @@ function renderProjectAoaxBadge(p) {
   var name = file.name || 'AoA-X';
   var end = info.dateEnd || '';
   var count = (info.sheets || []).length;
-  var label = '📗 ' + (end ? ('до ' + end.slice(5).replace('-', '.')) : 'AoA-X') + (count ? (' · ' + count) : '');
-  var title = name + (end ? (' · DateEnd ' + end) : '');
+  var exported = info.exported !== false;
+  var label = exported ? ('📗 ' + (end ? ('до ' + end.slice(5).replace('-', '.')) : 'AoA-X') + (count ? (' · ' + count) : '')) : ('📗 файл' + (count ? (' · ' + count) : ''));
+  var title = name + (end ? (' · DateEnd ' + end) : '') + (exported ? '' : ' · экспорт автозагрузки ещё не применён');
   if (file.url) return '<a class="proj-aoax-badge" href="' + escAttr(file.url) + '" target="_blank" rel="noopener" onclick="event.stopPropagation()" title="' + escAttr(title) + '">' + escAttr(label) + '</a>';
   return '<span class="proj-aoax-badge" title="' + escAttr(title) + '">' + escAttr(label) + '</span>';
 }
