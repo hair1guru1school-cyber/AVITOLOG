@@ -252,6 +252,7 @@ function loadProjectsData(forceReload) {
       sanitized = true;
     });
     if (sanitized) saveProjectsData(data);
+    if (applyAoaxAutoloadState(data)) saveProjectsData(data);
     if (applyProjectsAutoStatuses(data)) saveProjectsData(data);
     // Правило: Актив карточек и !! каждый день в 00:00 МСК переносятся на следующий день.
     // При загрузке: все карточки с прошлой даты (< сегодня МСК), пустой даты или ошибочной будущей даты — переносим на сегодня МСК.
@@ -635,6 +636,158 @@ function renderProjectTouchButton(p, todayStr) {
   var title = ds ? ('Крайнее касание: ' + ds) : 'Зафиксировать касание клиента сегодня';
   return '<button type="button" class="proj-touch-btn touch-' + cls + '" title="' + escAttr(title) + '" onclick="event.stopPropagation();markProjectTouched(\'' + p.id + '\')">' + escAttr(label) + '</button>';
 }
+var AOAX_AUTOLOADS_KEY = 'avitolog_aoax_autoloads_v1';
+function normalizeAoaxText(v) {
+  return String(v || '').trim().toLowerCase().replace(/\s+/g, ' ');
+}
+function normalizeAoaxDate(v) {
+  var s = String(v || '').trim();
+  if (!s) return '';
+  var m = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (m) return m[1] + '-' + m[2] + '-' + m[3];
+  m = s.match(/^(\d{2})\.(\d{2})\.(\d{4})$/);
+  if (m) return m[3] + '-' + m[2] + '-' + m[1];
+  return '';
+}
+function readAoaxAutoloadState() {
+  try {
+    var raw = localStorage.getItem(AOAX_AUTOLOADS_KEY) || '';
+    if (!raw) return {projects:{}};
+    var parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== 'object') return {projects:{}};
+    if (Array.isArray(parsed.projects)) {
+      var byId = {};
+      parsed.projects.forEach(function(item){
+        if (!item) return;
+        var key = item.projectId || item.project_id || item.id || item.projectName || item.projectTitle || item.title || '';
+        if (key) byId[String(key)] = item;
+      });
+      parsed.projects = byId;
+    }
+    if (!parsed.projects || typeof parsed.projects !== 'object') parsed.projects = {};
+    return parsed;
+  } catch(e) {
+    return {projects:{}};
+  }
+}
+function getAoaxPackForProject(p, state) {
+  var map = (state && state.projects) || {};
+  if (!p) return null;
+  var direct = map[p.id] || map[String(p.id || '')];
+  if (direct) return direct;
+  var title = normalizeAoaxText(p.title);
+  var folderId = normalizeAoaxText(p.folderId || p.crmClientId || p.categoryFolderId || '');
+  var keys = Object.keys(map);
+  for (var i = 0; i < keys.length; i++) {
+    var item = map[keys[i]];
+    if (!item) continue;
+    if (folderId && normalizeAoaxText(item.projectFolderId || item.folderId || item.driveFolderId || item.clientFolderId) === folderId) return item;
+    var nm = normalizeAoaxText(item.projectName || item.projectTitle || item.title || item.name);
+    if (title && nm && nm === title) return item;
+  }
+  return null;
+}
+function normalizeAoaxSheets(pack) {
+  var arr = Array.isArray(pack && pack.sheets) ? pack.sheets : [];
+  return arr.map(function(s, idx){
+    if (typeof s === 'string') s = {name:s};
+    s = s || {};
+    var begin = normalizeAoaxDate(s.dateBegin || s.DateBegin || s.startDate || s.begin);
+    var end = normalizeAoaxDate(s.dateEnd || s.DateEnd || s.endDate || s.end);
+    return {
+      name: String(s.name || s.sheetName || s.title || ('Лист ' + (idx + 1))).trim(),
+      dateBegin: begin,
+      dateEnd: end,
+      rowsCount: Number(s.rowsCount || s.rows || s.count || 0) || 0
+    };
+  }).filter(function(s){ return s.name || s.dateEnd; });
+}
+function makeAoaxActiveEvent(sheet, fallbackStart, fallbackEnd) {
+  var start = sheet.dateBegin || fallbackStart || getTodayISOmsk();
+  var end = sheet.dateEnd || fallbackEnd || start;
+  if (end < start) start = end;
+  return {type:'active_range', startDate:start, endDate:end, source:'aoax', sheetName:sheet.name || ''};
+}
+function applyAoaxAutoloadState(data) {
+  var state = readAoaxAutoloadState();
+  var changed = false;
+  ((data && data.projects) || []).forEach(function(p){
+    var pack = getAoaxPackForProject(p, state);
+    if (!pack) return;
+    var sheets = normalizeAoaxSheets(pack);
+    var file = pack.activeFile || pack.file || {};
+    if (typeof file === 'string') file = {name:file};
+    var fallbackEnd = normalizeAoaxDate(pack.dateEnd || pack.DateEnd || pack.endDate);
+    var fallbackStart = normalizeAoaxDate(pack.dateBegin || pack.DateBegin || pack.startDate);
+    var sig = JSON.stringify({
+      fileId: file.id || file.driveFileId || pack.fileId || pack.driveFileId || '',
+      fileName: file.name || pack.fileName || '',
+      fileUrl: file.url || file.webUrl || pack.fileUrl || '',
+      sheets: sheets,
+      dateEnd: fallbackEnd,
+      updatedAt: pack.updatedAt || ''
+    });
+    if (p.aoaxAutoloadSignature === sig) return;
+    p.aoaxAutoloadSignature = sig;
+    p.aoaxAutoload = {
+      activeFile: {
+        id: file.id || file.driveFileId || pack.fileId || pack.driveFileId || '',
+        name: file.name || pack.fileName || '',
+        url: file.url || file.webUrl || pack.fileUrl || ''
+      },
+      sheets: sheets,
+      dateEnd: fallbackEnd || (sheets.length ? sheets.map(function(s){ return s.dateEnd || ''; }).sort().pop() : ''),
+      updatedAt: pack.updatedAt || ''
+    };
+    if (!p.clientPath || typeof p.clientPath !== 'object') p.clientPath = {autoload:false,analytics:false,texts:false,packaging:false,portfolio:false};
+    p.clientPath.autoload = true;
+    p.events = (p.events || []).filter(function(ev){ return !(ev && ev.source === 'aoax'); });
+    if (sheets.length) {
+      var hasUserLines = (p.childLines || []).some(function(v){ return String(v || '').trim() !== ''; });
+      if (!hasUserLines || p.aoaxManagedChildLines) {
+        p.childLines = sheets.map(function(s){ return s.name || 'Лист'; });
+        p.aoaxManagedChildLines = true;
+        p.childLineEvents = sheets.map(function(s){ return [makeAoaxActiveEvent(s, fallbackStart, fallbackEnd)]; });
+      } else {
+        sheets.forEach(function(s){ p.events.push(makeAoaxActiveEvent(s, fallbackStart, fallbackEnd)); });
+      }
+    } else if (fallbackEnd) {
+      p.events.push(makeAoaxActiveEvent({name:'AoA-X', dateBegin:fallbackStart, dateEnd:fallbackEnd}, fallbackStart, fallbackEnd));
+    }
+    applyProjectAutoStatus(p);
+    changed = true;
+  });
+  return changed;
+}
+function renderProjectAoaxBadge(p) {
+  var info = p && p.aoaxAutoload;
+  if (!info) return '';
+  var file = info.activeFile || {};
+  var name = file.name || 'AoA-X';
+  var end = info.dateEnd || '';
+  var count = (info.sheets || []).length;
+  var label = '📗 ' + (end ? ('до ' + end.slice(5).replace('-', '.')) : 'AoA-X') + (count ? (' · ' + count) : '');
+  var title = name + (end ? (' · DateEnd ' + end) : '');
+  if (file.url) return '<a class="proj-aoax-badge" href="' + escAttr(file.url) + '" target="_blank" rel="noopener" onclick="event.stopPropagation()" title="' + escAttr(title) + '">' + escAttr(label) + '</a>';
+  return '<span class="proj-aoax-badge" title="' + escAttr(title) + '">' + escAttr(label) + '</span>';
+}
+window.__AVITOLOG_AOAX_UPSERT = function(payload) {
+  var state = readAoaxAutoloadState();
+  var p = payload || {};
+  var key = String(p.projectId || p.project_id || p.id || p.projectName || p.projectTitle || p.title || '').trim();
+  if (!key) throw new Error('AoA-X payload needs projectId or projectName');
+  state.projects[key] = Object.assign({}, state.projects[key] || {}, p, {updatedAt: new Date().toISOString()});
+  localStorage.setItem(AOAX_AUTOLOADS_KEY, JSON.stringify(state));
+  try {
+    document.dispatchEvent(new CustomEvent('avitolog:storage-write', {
+      detail: {key: AOAX_AUTOLOADS_KEY, value: JSON.stringify(state)}
+    }));
+  } catch(e) {}
+  var data = loadProjectsData(true);
+  if (applyAoaxAutoloadState(data)) saveProjectsData(data);
+  if (typeof rerenderProjectsPreserveScroll === 'function') rerenderProjectsPreserveScroll();
+  return state.projects[key];
+};
 function setProjectsZoneTab(zone) {
   var z = (zone === 'active' || zone === 'second_chance' || zone === 'archive') ? zone : 'active';
   _projectsZoneTab = z;
@@ -3506,11 +3659,12 @@ function renderProjectsScreen(opts) {
     var taskIndicatorsHtml = '<div class="proj-task-badge"><span class="proj-task-count">' + taskCount + '</span></div>';
     var negativeBtnHtml = renderProjectNegativeButton(p);
     var touchBtnHtml = renderProjectTouchButton(p, todayStr);
+    var aoaxBadgeHtml = renderProjectAoaxBadge(p);
     var dragHandle = '<span class="proj-row-drag-handle" title="Тяните для перетаскивания строки">&#9776;</span>';
     if (hasChildLines && _expandedProjectIds[p.id] === undefined) _expandedProjectIds[p.id] = false;
     var showPositionRows = hasChildLines && _expandedProjectIds[p.id];
     var extraLinesHtml = typeof renderProjectChildLinesHtml === 'function' ? renderProjectChildLinesHtml(p) : '';
-    var stickyHtml = '<div class="proj-col-expand">' + dragHandle + '<span class="proj-col-expand-arrow"' + (expandArrowOnclick || '') + '>' + expandContent + '</span></div><div class="proj-col-type" onclick="event.stopPropagation();cycleProjectClientType(\'' + p.id + '\')" title="Старые/новички/2-й раз">' + typeHtml + '</div><button type="button" class="' + driveClass + '" title="' + driveTitle + '" onclick="event.stopPropagation();openProjectDriveFolder(\'' + p.id + '\')">💿</button><div class="proj-cell-editable' + expandedClass + '" data-id="' + p.id + '" onclick="editProjectCell(this)">' + hoverPop + '<div class="proj-main-line"><button type="button" class="proj-emoji-btn" onclick="event.stopPropagation();showProjEmojiPicker(this,\'' + p.id + '\')">' + emHtml + '</button><input type="text" value="' + (p.title||'').replace(/"/g,'&quot;') + '" readonly style="pointer-events:none">' + expandBtnName + '<span class="project-path">' + pathHtml + '</span><button type="button" class="proj-status-btn project-status" onclick="event.stopPropagation();showProjectStatusPicker(this,\'' + p.id + '\')" style="background:' + (PROJECT_STATUS_COLORS[p.status]||'#666') + '22;color:' + (PROJECT_STATUS_COLORS[p.status]||'#999') + '">' + (p.status||'В работе') + '</button>' + negativeBtnHtml + touchBtnHtml + moveBtn + '</div>' + (hasChildLines ? '' : '<div class="proj-optional-row">' + (typeof renderProjectChildLinesHtml === 'function' ? renderProjectChildLinesHtml(p) : '') + '</div>') + taskIndicatorsHtml + '</div>';
+    var stickyHtml = '<div class="proj-col-expand">' + dragHandle + '<span class="proj-col-expand-arrow"' + (expandArrowOnclick || '') + '>' + expandContent + '</span></div><div class="proj-col-type" onclick="event.stopPropagation();cycleProjectClientType(\'' + p.id + '\')" title="Старые/новички/2-й раз">' + typeHtml + '</div><button type="button" class="' + driveClass + '" title="' + driveTitle + '" onclick="event.stopPropagation();openProjectDriveFolder(\'' + p.id + '\')">💿</button><div class="proj-cell-editable' + expandedClass + '" data-id="' + p.id + '" onclick="editProjectCell(this)">' + hoverPop + '<div class="proj-main-line"><button type="button" class="proj-emoji-btn" onclick="event.stopPropagation();showProjEmojiPicker(this,\'' + p.id + '\')">' + emHtml + '</button><input type="text" value="' + (p.title||'').replace(/"/g,'&quot;') + '" readonly style="pointer-events:none">' + expandBtnName + '<span class="project-path">' + pathHtml + '</span>' + aoaxBadgeHtml + '<button type="button" class="proj-status-btn project-status" onclick="event.stopPropagation();showProjectStatusPicker(this,\'' + p.id + '\')" style="background:' + (PROJECT_STATUS_COLORS[p.status]||'#666') + '22;color:' + (PROJECT_STATUS_COLORS[p.status]||'#999') + '">' + (p.status||'В работе') + '</button>' + negativeBtnHtml + touchBtnHtml + moveBtn + '</div>' + (hasChildLines ? '' : '<div class="proj-optional-row">' + (typeof renderProjectChildLinesHtml === 'function' ? renderProjectChildLinesHtml(p) : '') + '</div>') + taskIndicatorsHtml + '</div>';
     var selectedClass = (_selectedProjectId === p.id) ? ' selected' : '';
     var groupedClass = (_projectsTypeSortPriority && normalizeProjectClientType(p.clientType) === _projectsTypeSortPriority) || (_projectsFilterLaunch && projectHasLaunch(p)) || (_projectsFilterAutoload && projectHasAutoload(p)) || (_projectsFilterMustLaunch && projectHasMustLaunch(p)) ? ' group-match' : '';
     var newFromGoalsClass = p._newFromGoals ? ' project-row-new-from-goals' : '';

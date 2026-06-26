@@ -32,6 +32,7 @@
   }
   function isContentKey(key) {
     return /^avitolog_kp_/.test(key) || key === 'avito_kp_saved_client_packages_v1' || key === 'avito_kp_custom' ||
+      key === 'avitolog_aoax_autoloads_v1' ||
       /^crm_ads_(?:expenses_v1|expenses_month_\d{4}-\d{2}|posts_plan_v1|posts_source_v1|links_v1|posts_sync_queue_v1)$/.test(key);
   }
   function isAllowed(key) { return Boolean(coreKeys[key] || isFinanceKey(key) || isContentKey(key)); }
