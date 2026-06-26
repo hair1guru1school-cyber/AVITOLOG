@@ -840,16 +840,16 @@ function applyAoaxAutoloadState(data) {
 }
 function renderProjectAoaxBadge(p) {
   var info = p && p.aoaxAutoload;
-  if (!info) return '';
+  if (!info) return '<span class="proj-aoax-slot" aria-hidden="true"></span>';
   var file = info.activeFile || {};
   var name = file.name || 'AoA-X';
   var end = info.dateEnd || '';
   var count = (info.sheets || []).length;
   var exported = info.exported !== false;
-  var label = exported ? ('📗 ' + (end ? ('до ' + end.slice(5).replace('-', '.')) : 'AoA-X') + (count ? (' · ' + count) : '')) : ('📗 файл' + (count ? (' · ' + count) : ''));
-  var title = name + (end ? (' · DateEnd ' + end) : '') + (exported ? '' : ' · экспорт автозагрузки ещё не применён');
-  if (file.url) return '<a class="proj-aoax-badge" href="' + escAttr(file.url) + '" target="_blank" rel="noopener" onclick="event.stopPropagation()" title="' + escAttr(title) + '">' + escAttr(label) + '</a>';
-  return '<span class="proj-aoax-badge" title="' + escAttr(title) + '">' + escAttr(label) + '</span>';
+  var title = name + (end ? (' · DateEnd ' + end) : '') + (count ? (' · листов: ' + count) : '') + (exported ? '' : ' · экспорт автозагрузки ещё не применён');
+  var attrs = ' title="' + escAttr(title) + '" data-file="' + escAttr(title) + '"';
+  if (file.url) return '<span class="proj-aoax-slot"><a class="proj-aoax-badge" href="' + escAttr(file.url) + '" target="_blank" rel="noopener" onclick="event.stopPropagation()"' + attrs + '>📗</a></span>';
+  return '<span class="proj-aoax-slot"><span class="proj-aoax-badge"' + attrs + '>📗</span></span>';
 }
 window.__AVITOLOG_AOAX_UPSERT = function(payload) {
   var state = readAoaxAutoloadState();
@@ -1308,7 +1308,7 @@ function getProjectsStickyWidthPx(projects) {
   if (!statusPx) statusPx = Math.max(66, longestStatus.length * 7 + 14);
   // Base controls width approximated from real CSS sizes:
   // left cols + emoji + expand + path buttons + status + move + paddings/gaps.
-  var fixedControlsPx = 340 + statusPx;
+  var fixedControlsPx = 390 + statusPx;
   var w = fixedControlsPx + titlePx;
   return Math.max(360, Math.min(2200, w));
 }
