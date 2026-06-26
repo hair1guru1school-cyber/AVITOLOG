@@ -271,11 +271,11 @@ nav::after{content:'';position:absolute;bottom:0;left:0;right:0;height:1px;backg
 .vk-promo + .sec{position:relative;margin-top:-1px;padding-top:clamp(40px,5vw,64px)}
 .vk-promo + .sec::before{content:'';position:absolute;left:50%;top:0;width:min(220px,60%);height:2px;transform:translateX(-50%);background:linear-gradient(90deg,transparent,var(--gold),transparent);opacity:.55}
 /* VK block */
-.vk-promo{position:relative;overflow:hidden;border-top:none;border-bottom:none;box-sizing:border-box;background-color:#020307;background-image:linear-gradient(180deg,rgba(0,0,0,.82) 0%,rgba(0,0,0,.64) 38%,rgba(0,0,0,.80) 100%),url('vk-promo-art.png?v=20260329-vk14');background-position:center top;background-size:cover;background-repeat:no-repeat;scroll-margin-top:72px;min-height:min(62vh,760px)}
-.vk-promo::before{content:'';position:absolute;left:0;right:0;top:0;height:clamp(130px,20vw,320px);z-index:1;pointer-events:none;background:linear-gradient(180deg,#020307 0%,rgba(3,4,10,.94) 28%,rgba(3,4,10,.68) 55%,rgba(3,4,10,.28) 78%,transparent 100%)}
+.vk-promo{position:relative;overflow:hidden;border-top:none;border-bottom:none;box-sizing:border-box;background-color:#020307;background-image:linear-gradient(180deg,rgba(0,0,0,.93) 0%,rgba(0,0,0,.86) 38%,rgba(0,0,0,.94) 100%),url('vk-promo-art.png?v=20260329-vk14');background-position:center top;background-size:cover;background-repeat:no-repeat;scroll-margin-top:72px;min-height:min(62vh,760px)}
+.vk-promo::before{content:'';position:absolute;left:0;right:0;top:0;height:clamp(130px,20vw,320px);z-index:1;pointer-events:none;background:linear-gradient(180deg,#020307 0%,rgba(3,4,10,.98) 28%,rgba(3,4,10,.88) 55%,rgba(3,4,10,.55) 78%,transparent 100%)}
 .avwhy-divider{position:relative;z-index:5;width:min(220px,60%);height:2px;margin:0 auto;background:linear-gradient(90deg,transparent,var(--gold),transparent);opacity:.55;background-color:transparent}
 .avwhy-divider::before{content:'';position:absolute;left:50%;top:50%;width:6px;height:6px;border-radius:50%;background:var(--gold);box-shadow:0 0 10px rgba(240,195,77,.7);transform:translate(-50%,-50%)}
-.vk-promo::after{content:'';position:absolute;left:0;right:0;bottom:0;height:min(42%,340px);z-index:1;pointer-events:none;background:linear-gradient(0deg,var(--bg2) 0%,rgba(2,3,8,.95) 18%,rgba(4,6,14,.75) 42%,rgba(6,10,18,.32) 70%,transparent 100%)}
+.vk-promo::after{content:'';position:absolute;left:0;right:0;bottom:0;height:min(48%,380px);z-index:1;pointer-events:none;background:linear-gradient(0deg,var(--bg2) 0%,rgba(2,3,8,.99) 18%,rgba(4,6,14,.92) 42%,rgba(6,10,18,.58) 70%,transparent 100%)}
 .vk-inner{position:relative;z-index:2;max-width:min(1180px,94vw);margin:0 auto;display:flex;align-items:center;justify-content:space-between;gap:clamp(32px,5vw,72px);padding:clamp(56px,7vw,100px) clamp(24px,4vw,56px) clamp(110px,15vw,180px)}
 .vk-col-text{flex:1 1 0;min-width:0;max-width:min(600px,62%)}
 .vk-col-text .sec-lbl{text-align:left}
@@ -289,8 +289,12 @@ nav::after{content:'';position:absolute;bottom:0;left:0;right:0;height:1px;backg
 .vk-gift-img{width:clamp(220px,34vw,380px);height:auto;display:block}
 .vk-inner .sec-lbl{color:rgba(0,207,255,.95);text-shadow:0 2px 16px rgba(0,0,0,.95)}
 .vk-inner .vk-title{color:#f2f6ff;text-shadow:0 3px 24px rgba(0,0,0,.95),0 1px 3px rgba(0,0,0,.85)}
-.vk-btn{background:linear-gradient(180deg,#2787f5,#0077ff)!important;border-color:rgba(0,119,255,.5)!important;box-shadow:0 4px 24px rgba(0,119,255,.25)}
-.vk-btn:hover{filter:brightness(1.1);box-shadow:0 6px 28px rgba(0,119,255,.40)}
+.vk-btn{position:relative;overflow:hidden;background:linear-gradient(180deg,#2f93ff,#0066e0)!important;border-color:rgba(0,150,255,.6)!important;box-shadow:0 6px 30px rgba(0,140,255,.45),0 0 0 1px rgba(255,255,255,.08) inset;font-size:13px!important;padding:16px 36px!important;letter-spacing:2.5px!important;animation:vkBtnPulse 2.6s ease-in-out infinite}
+.vk-btn::after{content:'';position:absolute;top:0;left:-60%;width:40%;height:100%;background:linear-gradient(115deg,transparent,rgba(255,255,255,.55),transparent);transform:skewX(-20deg);animation:vkBtnShine 2.6s ease-in-out infinite}
+.vk-btn:hover{filter:brightness(1.15);box-shadow:0 10px 38px rgba(0,160,255,.6),0 0 0 1px rgba(255,255,255,.12) inset;transform:translateY(-3px) scale(1.04);animation-play-state:paused}
+@keyframes vkBtnPulse{0%,100%{box-shadow:0 6px 30px rgba(0,140,255,.45),0 0 0 1px rgba(255,255,255,.08) inset}50%{box-shadow:0 6px 30px rgba(0,140,255,.45),0 0 0 1px rgba(255,255,255,.08) inset,0 0 0 9px rgba(0,150,255,.18)}}
+@keyframes vkBtnShine{0%{left:-60%}55%{left:130%}100%{left:130%}}
+@media(prefers-reduced-motion:reduce){.vk-btn{animation:none}.vk-btn::after{animation:none;display:none}}
 @media(max-width:900px){
 .vk-inner{flex-direction:column;align-items:center;text-align:center;gap:clamp(28px,5vw,44px)}
 .vk-col-text{max-width:min(520px,100%)}
@@ -813,7 +817,7 @@ footer{background:var(--bg);border-top:1px solid var(--border);padding:40px 80px
       <a href="https://vk.com/ai_avitolog" target="_blank" rel="noopener" class="vk-gift-link" aria-label="Забрать план в ВКонтакте">
         <img src="vk-gift-gold.png?v=20260329-gift6" width="520" height="390" alt="VK подарочный план" loading="lazy" decoding="async" class="vk-gift-img" />
       </a>
-      <a href="https://vk.com/ai_avitolog" target="_blank" rel="noopener" class="btn btn-red vk-btn">Забрать План</a>
+      <a href="https://vk.com/ai_avitolog" target="_blank" rel="noopener" class="btn btn-red vk-btn">Забрать план бесплатно <span style="margin-left:4px">→</span></a>
     </div>
   </div>
 </section>
