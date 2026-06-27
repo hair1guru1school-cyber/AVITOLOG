@@ -1247,7 +1247,8 @@
     var emoji = (project && project.emoji) || '📦';
     var paid = (project && (project.mainPrice || project.saleAmount || project.kp_count || '')) ? String(project.mainPrice || project.saleAmount || project.kp_count).replace(/\s/g, '') : '';
     var folderLink = project && (project.folderLink || (project.folderId ? 'https://drive.google.com/drive/folders/' + project.folderId : ''));
-    var item = { emoji: emoji, name: name, paid: paid, expected: '', paymentDate: '', startDate: '', clientType: 'new', folderLink: folderLink || '', crmClientId: (project && project.crmClientId) || (project && project.folderId) || '' };
+    var paymentDate = paid ? normalizeGoalPaidDateForKassa(project) : '';
+    var item = { emoji: emoji, name: name, paid: paid, expected: '', paymentDate: paymentDate, startDate: '', clientType: 'new', folderLink: folderLink || '', crmClientId: (project && project.crmClientId) || (project && project.folderId) || '' };
     if (owner === 'sasha') {
       item.soldFor = '';
       item.toAgent = '';
@@ -1260,7 +1261,7 @@
         var nm = String(name).trim().toLowerCase();
         var inBase = base.some(function(b) { return String(b.name || '').trim().toLowerCase() === nm; });
         if (!inBase) {
-          base.push({ emoji: emoji, name: name, paid: paid, expected: '', paymentDate: '', startDate: '', clientType: 'new', folderLink: folderLink || '' });
+          base.push({ emoji: emoji, name: name, paid: paid, expected: '', paymentDate: paymentDate, startDate: '', clientType: 'new', folderLink: folderLink || '' });
           saveAssetsBase(base);
         }
       } catch(e) {}
@@ -1303,6 +1304,25 @@
     }
     return '';
   }
+  function normalizeGoalPaidDateForKassa(p) {
+    if (!p) return '';
+    var statusDates = p.statusDates && typeof p.statusDates === 'object' ? p.statusDates : {};
+    var candidates = [
+      statusDates.paid,
+      statusDates.oplacheno,
+      p.paymentDate,
+      p.paidAt,
+      p.date
+    ];
+    for (var i = 0; i < candidates.length; i++) {
+      var s = String(candidates[i] || '').trim();
+      if (!s) continue;
+      if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0, 10);
+      var m = s.match(/^(\d{2})\.(\d{2})\.(\d{4})$/);
+      if (m) return m[3] + '-' + m[2] + '-' + m[1];
+    }
+    return getTodayStr();
+  }
   function goalProjectShouldSyncPaidToKassa(p) {
     if (!p) return false;
     if (goalHasPaidStatusForKassa(p)) return true;
@@ -1341,6 +1361,7 @@
     var arr = getAssetsMy();
     var idx = arr.findIndex(function(r) { return r && String(r.goalProjectId || '').trim() === String(p.id); });
     var paidClean = String(paidStr).replace(/\s/g, '');
+    var paidDate = normalizeGoalPaidDateForKassa(p);
     var isSasha = isSashaKassaProfile();
     /** У Саши в кассу не подставляем полную сумму сделки из CRM — только доля через «Синхронизировать» с Филом или вручную в «Оплатил». */
     if (isSasha) {
@@ -1352,7 +1373,7 @@
           name: name,
           paid: keepPaid,
           expected: '',
-          paymentDate: prevS.paymentDate || '',
+          paymentDate: prevS.paymentDate || paidDate,
           startDate: prevS.startDate || '',
           clientType: prevS.clientType || 'new',
           folderLink: folderLink || prevS.folderLink || '',
@@ -1366,7 +1387,7 @@
           name: name,
           paid: '',
           expected: '',
-          paymentDate: '',
+          paymentDate: paidDate,
           startDate: '',
           clientType: 'new',
           folderLink: folderLink,
@@ -1386,7 +1407,7 @@
         name: name,
         paid: paidClean,
         expected: '',
-        paymentDate: prev.paymentDate || '',
+        paymentDate: prev.paymentDate || paidDate,
         startDate: prev.startDate || '',
         clientType: prev.clientType || 'new',
         folderLink: folderLink || prev.folderLink || '',
@@ -1400,7 +1421,7 @@
         name: name,
         paid: paidClean,
         expected: '',
-        paymentDate: '',
+        paymentDate: paidDate,
         startDate: '',
         clientType: 'new',
         folderLink: folderLink,
@@ -1412,7 +1433,7 @@
         var nm = name.trim().toLowerCase();
         var inBase = base.some(function(b) { return String(b.name || '').trim().toLowerCase() === nm; });
         if (!inBase) {
-          base.push({ emoji: emoji, name: name, paid: paidClean, expected: '', paymentDate: '', startDate: '', clientType: 'new', folderLink: folderLink });
+          base.push({ emoji: emoji, name: name, paid: paidClean, expected: '', paymentDate: paidDate, startDate: '', clientType: 'new', folderLink: folderLink });
           saveAssetsBase(base);
         }
       } catch (e1) {}
@@ -2220,7 +2241,60 @@
     if (typeof window.__renderAssetsPage === 'function') window.__renderAssetsPage();
   }
 
+  function backfillAssetsPaymentDatesFromGoals() {
+    try {
+      var goalsKey = (typeof window.AVITOLOG_KEY === 'function') ? window.AVITOLOG_KEY('avitolog_goals_v1') : 'avitolog_goals_v1';
+      var goalsData = JSON.parse(localStorage.getItem(goalsKey) || '{"projects":[]}');
+      var goals = Array.isArray(goalsData.projects) ? goalsData.projects : [];
+      if (!goals.length) return 0;
+      var byId = {};
+      var byClient = {};
+      var byNameAmount = {};
+      goals.forEach(function(g) {
+        if (!g) return;
+        if (!goalProjectShouldSyncPaidToKassa(g)) return;
+        var date = normalizeGoalPaidDateForKassa(g);
+        if (!date) return;
+        var amount = parseGoalAmountForKassa(g);
+        var cleanAmount = String(amount || '').replace(/\s/g, '');
+        if (g.id) byId[String(g.id)] = date;
+        var clientKey = String(g.crmClientId || g.folderId || '').trim();
+        if (clientKey) byClient[clientKey] = date;
+        var nm = String(g.name || g.company || '').trim().toLowerCase();
+        if (nm && cleanAmount) byNameAmount[nm + '|' + cleanAmount] = date;
+      });
+      var changed = 0;
+      var arr = getAssetsMy();
+      arr.forEach(function(row) {
+        if (!row || String(row.paymentDate || '').trim()) return;
+        var date = '';
+        if (Array.isArray(row.paymentHistory) && row.paymentHistory.length) {
+          row.paymentHistory.forEach(function(e) {
+            var d = String((e && e.date) || '').trim();
+            if (d && (!date || d > date)) date = d;
+          });
+        }
+        if (!date && row.goalProjectId) date = byId[String(row.goalProjectId)] || '';
+        if (!date && row.crmClientId) date = byClient[String(row.crmClientId).trim()] || '';
+        if (!date) {
+          var nm = String(row.name || '').trim().toLowerCase();
+          var amt = String(row.paid || row.soldFor || '').replace(/\s/g, '').replace(/[^\d]/g, '');
+          if (nm && amt) date = byNameAmount[nm + '|' + amt] || '';
+        }
+        if (date) {
+          row.paymentDate = date;
+          changed += 1;
+        }
+      });
+      if (changed) saveAssetsMy(arr);
+      return changed;
+    } catch (e) {
+      return 0;
+    }
+  }
+
   window.__syncGoalPaidToAssetsFromCrm = syncGoalPaidToAssetsFromCrm;
+  window.__backfillAssetsPaymentDatesFromGoals = backfillAssetsPaymentDatesFromGoals;
   window.__removeKassaRowByGoalProjectId = removeAssetsRowByGoalProjectId;
 
   window.__aiImportParse = parseAndShow;
@@ -2297,5 +2371,6 @@
 
   /** Запускаем переход месяца сразу при загрузке скрипта — так даже без открытия страницы кассы
    *  апрель будет зафиксирован как архив, а live будет очищен под май. */
+  try { backfillAssetsPaymentDatesFromGoals(); } catch (eBackfillDates) {}
   try { assetsCheckMonthTransition(); } catch (eAutoMT) {}
 })();

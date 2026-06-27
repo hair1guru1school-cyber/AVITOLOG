@@ -239,6 +239,7 @@ function addGoalsProjectFromLeft(weekNum, beforeProjectId, targetStage) {
   if (targetStage === 'sold') {
     project.saleAmount = price || '';
     project.status = ['paid'];
+    project.statusDates = { paid: dateStr };
   }
   var data;
   try { data = JSON.parse(localStorage.getItem((typeof window.AVITOLOG_KEY === 'function' ? window.AVITOLOG_KEY('avitolog_goals_v1') : 'avitolog_goals_v1')) || '{"projects":[]}'); } catch (e) { data = { projects: [] }; }
@@ -260,6 +261,8 @@ function addGoalsProjectFromLeft(weekNum, beforeProjectId, targetStage) {
     if (targetStage === 'sold') {
       ex.saleAmount = ex.saleAmount || ex.mainPrice || price || '';
       ex.status = ['paid'];
+      ex.statusDates = Object.assign({}, ex.statusDates || {});
+      ex.statusDates.paid = ex.statusDates.paid || dateStr;
     }
     if (price && !ex.mainPrice) ex.mainPrice = price;
     localStorage.setItem((typeof window.AVITOLOG_KEY === 'function' ? window.AVITOLOG_KEY('avitolog_goals_v1') : 'avitolog_goals_v1'), JSON.stringify(data));
