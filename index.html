@@ -1711,10 +1711,6 @@ body.projects-row-ptr-dragging .projects-table-row[data-id] .projects-sticky{cur
 .proj-child-line-cell .proj-extra-line{padding-left:24px;margin-top:0}
 .proj-cell-editable{cursor:pointer;padding:2px 8px;border-radius:6px;min-height:var(--projects-row-height,14px);display:flex;flex-wrap:nowrap;align-items:center;gap:4px;transition:background 0.15s;white-space:nowrap;overflow:visible}
 .proj-cell-editable{position:relative}
-.proj-hover-pop{position:absolute;right:6px;top:-22px;opacity:0;pointer-events:none;transform:translateY(3px);transition:all 0.12s;z-index:30}
-.projects-table-row[data-id]:hover .proj-hover-pop{opacity:1;pointer-events:auto;transform:translateY(0)}
-.proj-hover-pop .crm-bind-btn{border:1px solid var(--accent3);background:rgba(124,106,247,0.16);color:#d7ccff;border-radius:6px;padding:2px 8px;font-size:10px;font-weight:700;cursor:pointer;font-family:inherit}
-.proj-hover-pop .crm-bind-btn:hover{background:rgba(124,106,247,0.24);border-color:#a597ff}
 .proj-cell-editable .project-path{display:inline-flex;align-items:center;gap:4px;flex-shrink:0;margin-left:auto;padding-left:8px}
 .proj-cell-editable:hover{background:rgba(0,217,126,0.08)}
 .proj-cell-editable.editing{background:var(--surface2);outline:1px solid var(--accent)}
@@ -3028,7 +3024,7 @@ if (!window.AVITOLOG_GOALS) {
 <script src="https://unpkg.com/mammoth@1.6.0/mammoth.min.js"></script>
 <script src="js/hero-asset.js?v=20260404-1"></script>
 <script src="js/core.js?v=20260411-1"></script>
-<script src="js/projects.js?v=20260627-aoax-dates-1"></script>
+<script src="js/projects.js?v=20260627-no-crm-hover-1"></script>
 <script src="js/ai-import.js?v=20260625-project-moods-1"></script>
 <script src="js/contract-generator.js?v=20260622-contract-local-download-1"></script>
 <script src="js/ads.js?v=20260404-1"></script>

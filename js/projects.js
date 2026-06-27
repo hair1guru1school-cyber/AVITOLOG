@@ -3774,7 +3774,7 @@ function renderProjectsScreen(opts) {
     var catName = getCategoryNameById(p.categoryFolderId);
     var driveTitle = (p.folderLink && catName) ? ('Папка: ' + escAttr(catName)) : 'Папка клиента в Google Drive';
     var expandedClass = _expandedProjectIds[p.id] ? ' expanded' : '';
-    var hoverPop = '<div class="proj-hover-pop"><button type="button" class="crm-bind-btn" onclick="startProjectFolderBind(\'' + p.id + '\', event)">CRM</button></div>';
+    var hoverPop = '';
     var moveBtn = '<button type="button" class="proj-move-btn" title="Переместить проект" onclick="event.stopPropagation();showProjectZoneMenu(this,\'' + p.id + '\')">&#8594;</button>';
     var taskCount = (typeof getTasksForProject === 'function' ? getTasksForProject(p.id) : []).length;
     var taskIndicatorsHtml = '<div class="proj-task-badge"><span class="proj-task-count">' + taskCount + '</span></div>';
