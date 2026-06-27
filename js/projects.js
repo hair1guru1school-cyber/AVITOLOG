@@ -123,6 +123,24 @@ function normalizeIsoDateStr(s) {
   return m[1] + '-' + String(parseInt(m[2], 10)).padStart(2, '0') + '-' + String(parseInt(m[3], 10)).padStart(2, '0');
 }
 
+function applyKnownProjectFolderFixes(data) {
+  if (!data || !Array.isArray(data.projects)) return false;
+  var changed = false;
+  var kugaFolderId = '1kz-oNFgh8U4r7dH0zsVrxgDGYiHEgpXJ';
+  var kugaFolderLink = 'https://drive.google.com/drive/folders/' + kugaFolderId + '?usp=drive_link';
+  data.projects.forEach(function(p) {
+    var title = String((p && (p.title || p.name)) || '').trim().toLowerCase();
+    if (!p || title.indexOf('kuga') < 0 || title.indexOf('термопан') < 0) return;
+    if ((p.folderId || '') !== kugaFolderId) { p.folderId = kugaFolderId; changed = true; }
+    if ((p.folderLink || '') !== kugaFolderLink) { p.folderLink = kugaFolderLink; changed = true; }
+    if (p.crmData && typeof p.crmData === 'object') {
+      if ((p.crmData.folderId || '') !== kugaFolderId) { p.crmData.folderId = kugaFolderId; changed = true; }
+      if ((p.crmData.folderLink || '') !== kugaFolderLink) { p.crmData.folderLink = kugaFolderLink; changed = true; }
+    }
+  });
+  return changed;
+}
+
 function stopProjectsSheetPullTimer() {
   if (_projectsSheetPullTimer) {
     clearInterval(_projectsSheetPullTimer);
@@ -223,6 +241,7 @@ function loadProjectsData(forceReload) {
     if (data.projects.length < 10 && !isSasha) {
       return getDefaultProjectsData();
     }
+    if (applyKnownProjectFolderFixes(data)) saveProjectsData(data);
     // Migration: once switch default path buttons to OFF for existing local data.
     if (!localStorage.getItem('avitolog_projects_path_defaults_off_v1')) {
       data.projects.forEach(function(p) {
@@ -328,6 +347,7 @@ function loadProjectsData(forceReload) {
   }
 }
 function saveProjectsData(data, opts) {
+  applyKnownProjectFolderFixes(data);
   var key = projectsDataKey();
   _projectsDataMem = data;
   _projectsDataMemKey = key;
