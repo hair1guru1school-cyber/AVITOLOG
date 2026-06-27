@@ -5,15 +5,51 @@
 (function() {
   'use strict';
 
-  // Исполнитель (фиксированные реквизиты)
-  var EXECUTOR = {
-    name: 'ИП Шинков Филипп Аркадьевич',
-    inn: '500915387195',
-    ogrn: '322508100110311',
-    account: '40802810400003078140',
-    bank: 'АО Т-БАНК',
-    phone: '+7 985 332 55 41'
+  // Исполнители для договора
+  var EXECUTORS = {
+    filipp: {
+      key: 'filipp',
+      name: 'ИП Шинков Филипп Аркадьевич',
+      fullName: 'ИНДИВИДУАЛЬНЫЙ ПРЕДПРИНИМАТЕЛЬ ШИНКОВ ФИЛИПП АРКАДЬЕВИЧ',
+      legalAddress: '142000, РОССИЯ, МОСКОВСКАЯ ОБЛ, Г ДОМОДЕДОВО, МКР ЗАПАДНЫЙ, УЛ СЕМЕНОВСКАЯ, Д 23/13',
+      inn: '500915387195',
+      ogrn: '322508100110311',
+      account: '40802810400003078140',
+      bank: 'АО «ТБанк»',
+      bankInn: '7710140679',
+      bik: '044525974',
+      corrAccount: '30101810145250000974',
+      bankAddress: '127287, г. Москва, ул. Хуторская 2-я, д. 38А, стр. 26',
+      phone: '+7 985 332 55 41'
+    },
+    regina: {
+      key: 'regina',
+      name: 'ИП Константинова Регина Владимировна',
+      fullName: 'ИНДИВИДУАЛЬНЫЙ ПРЕДПРИНИМАТЕЛЬ КОНСТАНТИНОВА РЕГИНА ВЛАДИМИРОВНА',
+      legalAddress: '665714, РОССИЯ, ИРКУТСКАЯ ОБЛ, Г БРАТСК, ЖИЛРАЙОН ГИДРОСТРОИТЕЛЬ, УЛ СОСНОВАЯ, Д 5А, КВ 33',
+      inn: '380583881830',
+      ogrn: '325385000091613',
+      account: '40802810600008615971',
+      bank: 'АО «ТБанк»',
+      bankInn: '7710140679',
+      bik: '044525974',
+      corrAccount: '30101810145250000974',
+      bankAddress: '127287, г. Москва, ул. Хуторская 2-я, д. 38А, стр. 26',
+      phone: ''
+    }
   };
+  var EXECUTOR = EXECUTORS.filipp;
+
+  function getExecutor(data) {
+    var key = data && data.executorKey ? String(data.executorKey) : 'filipp';
+    return EXECUTORS[key] || EXECUTORS.filipp;
+  }
+
+  function executorLine(label, value, br) {
+    var v = String(value == null ? '' : value).trim();
+    if (!v) return '';
+    return (br === false ? '' : '<br>') + (label ? label + ' ' : '') + v;
+  }
 
   function numberToWordsRu(num) {
     var n = Math.max(0, parseInt(num, 10) || 0);
@@ -63,12 +99,24 @@
 
   // Шаблоны договора (на основе документов пользователя)
   function getContractMainTemplate(data) {
+    var executor = getExecutor(data);
     var clientName = data.companyName || data.fio || 'Заказчик';
     var contractDate = data.contractDate || data.startDate || '—';
     var startDate = data.startDate || '—';
     var endDate = data.endDate || '—';
     var daysCreate = data.daysCreate || '—';
     var daysManage = data.daysManage || '—';
+    var includeExtraManage = String(data.extraManageEnabled || '').toLowerCase() === '1';
+    var extraManageDays = parseInt(String(data.extraManageDays || '').trim(), 10);
+    if (!isFinite(extraManageDays) || extraManageDays < 0) extraManageDays = 0;
+    var manageOrderText = daysManage + ' дней ведения аккаунта';
+    if (includeExtraManage && extraManageDays > 0) {
+      var baseManageDays = parseInt(String(daysManage).replace(/[^\d]/g, ''), 10);
+      var totalManageText = isFinite(baseManageDays) && baseManageDays > 0
+        ? ' (итого ' + (baseManageDays + extraManageDays) + ' дней ведения)'
+        : '';
+      manageOrderText += ' + ' + extraManageDays + ' дней дополнительного ведения аккаунта' + totalManageText;
+    }
     var costNum = normalizeMoneyValue(data.cost);
     var costFmt = String(costNum || 0).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
     var costWords = numberToWordsRu(costNum);
@@ -90,12 +138,14 @@
     }
     var leftBullets =
       '<div style="font-size:8.7pt;line-height:1.24">' +
-      '◆ ' + EXECUTOR.name + '<br>' +
-      '◆ ИНН ' + EXECUTOR.inn + '<br>' +
-      '◆ ОГРН ' + EXECUTOR.ogrn + '<br>' +
-      '◆ Р/С ' + EXECUTOR.account + '<br>' +
-      '◆ ' + EXECUTOR.bank + '<br>' +
-      '◆ Тел. ' + EXECUTOR.phone +
+      '◆ ' + executor.name + '<br>' +
+      '◆ ИНН ' + executor.inn + '<br>' +
+      '◆ ОГРНИП ' + executor.ogrn + '<br>' +
+      '◆ Р/С ' + executor.account + '<br>' +
+      '◆ ' + executor.bank + '<br>' +
+      '◆ БИК ' + executor.bik + '<br>' +
+      '◆ К/С ' + executor.corrAccount +
+      executorLine('◆ Тел.', executor.phone) +
       '</div>';
     var rightRows =
       '◆ ' + clientName + '<br>' +
@@ -119,7 +169,7 @@
     return '' +
       '<h2 style="text-align:center;font-size:15.2pt;line-height:1.14;margin:2px 0 4px;letter-spacing:.15px;font-weight:800">Договор Возмездного<br>Оказания Услуг от ' + contractDate + '</h2>' +
       '<div style="text-align:center;font-size:10pt;line-height:1.28;margin:0 0 6px">' +
-        '<div style="white-space:nowrap"><strong>' + EXECUTOR.name + '</strong> именуемый в дальнейшем "Исполнитель", с одной стороны, и</div>' +
+        '<div style="white-space:nowrap"><strong>' + executor.name + '</strong> именуемый в дальнейшем "Исполнитель", с одной стороны, и</div>' +
         '<div style="white-space:nowrap"><strong>' + clientName + '</strong> именуемый в дальнейшем "Заказчик"</div>' +
       '</div>' +
       '<table style="width:100%;border-collapse:collapse;margin:3px 0 6px;border:1px solid #2d2d2d">' +
@@ -134,7 +184,7 @@
       '<p style="font-size:8.35pt;line-height:1.18;margin:0 0 1px">1.2. Сроки оказания услуг:</p>' +
       '<p style="font-size:8.35pt;line-height:1.18;margin:0 0 1px">1.2.1. Начало оказания услуг: ' + startDate + '</p>' +
       '<p style="font-size:8.35pt;line-height:1.18;margin:0 0 1px">1.2.2. Окончание оказания услуг: ' + endDate + '</p>' +
-      '<p style="font-size:8.35pt;line-height:1.18;margin:0 0 4px">1.2.3. Порядок услуг: ' + daysCreate + ' дней создание рекламы + ' + daysManage + ' дней ведения аккаунта</p>' +
+      '<p style="font-size:8.35pt;line-height:1.18;margin:0 0 4px">1.2.3. Порядок услуг: ' + daysCreate + ' дней создание рекламы + ' + manageOrderText + '</p>' +
 
       '<p style="font-size:9.2pt;line-height:1.2;margin:4px 0 3px"><strong>2. ПРАВА И ОБЯЗАННОСТИ СТОРОН</strong></p>' +
       '<p style="font-size:8.35pt;line-height:1.18;margin:0 0 3px">2.1. Исполнитель обязуется: 2.1.1. Оказать услуги, предусмотренные п. 1.1 настоящего Договора, лично. 2.1.2. Оказать услуги в сроки, установленные п. 1.2 настоящего Договора. 2.1.3. Исполнять указания Заказчика относительно порядка оказания услуг, при условии, что они не противоречат настоящему Договору и законодательству.</p>' +
@@ -178,19 +228,23 @@
           '</td>' +
           '<td style="width:50%;vertical-align:top;padding:0 0 0 8px">' +
             '<div style="font-weight:700;margin:0 0 4px">Исполнитель:</div>' +
-            '<div>' + EXECUTOR.name + '</div>' +
-            '<div>ИНН ' + EXECUTOR.inn + '</div>' +
-            '<div>ОГРН ' + EXECUTOR.ogrn + '</div>' +
-            '<div>Р/С ' + EXECUTOR.account + '</div>' +
-            '<div>Банк ' + EXECUTOR.bank + '</div>' +
-            '<div>БИК —</div>' +
-            '<div>К/С —</div>' +
+            '<div>' + executor.fullName + '</div>' +
+            '<div>Юр. адрес: ' + executor.legalAddress + '</div>' +
+            '<div>ИНН ' + executor.inn + '</div>' +
+            '<div>ОГРНИП ' + executor.ogrn + '</div>' +
+            '<div>Р/С ' + executor.account + '</div>' +
+            '<div>Банк ' + executor.bank + '</div>' +
+            '<div>ИНН банка ' + executor.bankInn + '</div>' +
+            '<div>БИК ' + executor.bik + '</div>' +
+            '<div>К/С ' + executor.corrAccount + '</div>' +
+            '<div>Адрес банка: ' + executor.bankAddress + '</div>' +
           '</td>' +
         '</tr>' +
       '</table>';
   }
 
   function getAppendix1Template(data) {
+    var executor = getExecutor(data);
     var costFmt = String(data.cost || '0').replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
     var clientName = data.fio || data.companyName || 'Заказчик';
     var startDate = data.startDate || '—';
@@ -204,16 +258,17 @@
       '<tr><td style="border:1px solid #ddd;padding:8px">2</td><td style="border:1px solid #ddd;padding:8px">Постинг и продвижение объявлений</td><td style="border:1px solid #ddd;padding:8px">' + startDate + '</td><td style="border:1px solid #ddd;padding:8px">' + endDate + '</td><td style="border:1px solid #ddd;padding:8px">' + (data.daysManage || '') + '</td><td style="border:1px solid #ddd;padding:8px">часть суммы</td></tr>' +
       '</table>' +
       '<p style="font-size:11pt;font-weight:700;margin:16px 0">Общая стоимость услуг по договору: ' + costFmt + ' руб.</p>' +
-      '<p style="font-size:10pt;margin-top:12px">Исполнитель: ИП Шинков Филипп Аркадьевич</p>' +
+      '<p style="font-size:10pt;margin-top:12px">Исполнитель: ' + executor.name + '</p>' +
       '<p style="font-size:10pt">Заказчик: ' + clientName + '</p>';
   }
 
   function getAppendix2Template(data) {
+    var executor = getExecutor(data);
     var clientName = data.fio || data.companyName || 'Заказчик';
     return '<h3 style="font-size:12pt;margin:24px 0 12px">ПРИЛОЖЕНИЕ № 2 к Договору возмездного оказания услуг</h3>' +
       '<p style="font-size:10pt;margin-bottom:12px">от ' + (data.startDate || '') + '</p>' +
       '<p style="font-size:11pt;font-weight:700;margin-bottom:12px">Техническое задание и описание оказываемых услуг</p>' +
-      '<p style="font-size:10pt;margin-bottom:8px">Исполнитель: ИП Шинков Филипп Аркадьевич</p>' +
+      '<p style="font-size:10pt;margin-bottom:8px">Исполнитель: ' + executor.name + '</p>' +
       '<p style="font-size:10pt;margin-bottom:16px">Заказчик: ' + clientName + '</p>' +
       '<p style="font-size:11pt;line-height:1.6;margin-bottom:8px"><strong>Содержание:</strong></p>' +
       '<ol style="font-size:10pt;line-height:1.6;margin:0 0 16px 20px">' +
@@ -226,6 +281,7 @@
       '</ol>';
   }
   function getServiceAppendixTemplate(data) {
+    var executor = getExecutor(data);
     var appendixEnabled = String(data.appendixEnabled || '').toLowerCase() === '1';
     if (!appendixEnabled) return '';
     var selected = [];
@@ -278,7 +334,7 @@
           '<tbody>' + selected.join('') + '<tr class="app-total-row"><td></td><td colspan="5"></td><td><strong>' + costFmt + '</strong></td></tr></tbody>' +
         '</table>' +
         '<p style="font-size:13pt;font-weight:700;margin:18px 0 14px">Общая стоимость услуг, оказываемых по Договору: <span style="color:#165dff">' + costFmt + '</span> руб.</p>' +
-        '<div style="font-size:11pt;font-weight:700;line-height:1.6"><div>Исполнитель: ' + esc(EXECUTOR.name) + '</div><div>Заказчик: ' + clientName + '</div></div>' +
+        '<div style="font-size:11pt;font-weight:700;line-height:1.6"><div>Исполнитель: ' + esc(executor.name) + '</div><div>Заказчик: ' + clientName + '</div></div>' +
       '</div>';
   }
 
@@ -614,6 +670,7 @@
       daysCreate: '',
       daysManage: '',
       cost: '',
+      executorKey: 'filipp',
       headerGender: 'm'
     };
 
@@ -621,13 +678,14 @@
 
     function getFormData() {
       var d = {};
-      ['fio', 'inn', 'ogrn', 'account', 'bank', 'bik', 'corrAccount', 'passport', 'startDate', 'endDate', 'daysCreate', 'daysManage', 'cost', 'soldCount', 'extraServices', 'packageName', 'headerGender', 'appendixEnabled', 'packagingEnabled', 'infographicEnabled', 'infographicPower', 'botEnabled', 'extraManageEnabled', 'extraManageDays', 'scriptsEnabled'].forEach(function(k) {
+      ['fio', 'inn', 'ogrn', 'account', 'bank', 'bik', 'corrAccount', 'passport', 'startDate', 'endDate', 'daysCreate', 'daysManage', 'cost', 'soldCount', 'extraServices', 'packageName', 'executorKey', 'headerGender', 'appendixEnabled', 'packagingEnabled', 'infographicEnabled', 'infographicPower', 'botEnabled', 'extraManageEnabled', 'extraManageDays', 'scriptsEnabled'].forEach(function(k) {
         var el = document.getElementById('contract-' + k);
         if (!el) { d[k] = ''; return; }
         if (el.type === 'checkbox') d[k] = el.checked ? '1' : '0';
         else d[k] = (el.value || '').trim();
       });
       if (!d.headerGender) d.headerGender = 'm';
+      if (!d.executorKey) d.executorKey = 'filipp';
       d.cost = String(normalizeMoneyValue(d.cost || '50000') || 0);
       d.companyName = d.fio;
       d.clientType = detectClientType(d);
@@ -808,6 +866,7 @@
       '<h4 class="contract-form-title">Дополнительные параметры договора</h4>' +
       '<p class="contract-extra-hint">Стратегия продажи, скриншоты, кол-во объявлений и доп. услуги для приложения</p>' +
       '<div class="contract-form-grid">' +
+      '<div class="fg" style="grid-column:1/-1"><label>Исполнитель по договору</label><select id="contract-executorKey"><option value="filipp" selected>ИП Шинков Филипп</option><option value="regina">ИП Константинова Регина</option></select></div>' +
       '<div class="fg" style="grid-column:1/-1"><label>Пакет из сохраненного КП</label><select id="contract-kpPackage"><option value="">Не выбран</option></select></div>' +
       '<div class="fg"><label>Дата начала работ</label><input type="date" id="contract-startDate"></div>' +
       '<div class="fg"><label>Дата окончания работ</label><input type="date" id="contract-endDate"></div>' +
@@ -1023,6 +1082,8 @@
       if (daysCreateEl) daysCreateEl.value = '12';
       if (daysManageEl) daysManageEl.value = '30';
       if (costEl) costEl.value = '50000';
+      var executorKeyEl = document.getElementById('contract-executorKey');
+      if (executorKeyEl) executorKeyEl.value = 'filipp';
       refreshClientCaption();
       setSecondaryVisible(false);
       _contractScreenshots = [];
