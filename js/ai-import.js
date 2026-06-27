@@ -1616,7 +1616,7 @@
       }
       var grid = '';
       [7, 14, 21, 28].forEach(function(d) {
-        if (d <= chartDays) grid += '<line x1="' + x(d).toFixed(1) + '" y1="' + padT + '" x2="' + x(d).toFixed(1) + '" y2="' + (H - padB) + '" class="assets-chart-week"/><text x="' + x(d).toFixed(1) + '" y="' + (H - 8) + '" class="assets-chart-week-label">' + d + '</text>';
+        if (d <= chartDays) grid += '<line x1="' + x(d).toFixed(1) + '" y1="' + padT + '" x2="' + x(d).toFixed(1) + '" y2="' + (H - padB) + '" class="assets-chart-week"/>';
       });
       var baseLine = '<line x1="' + padL + '" y1="' + (H - padB) + '" x2="' + (W - padR) + '" y2="' + (H - padB) + '" class="assets-chart-axis"/>';
       var series = mode === 'bars' ? bars() : visibleKeys.map(poly).join('');
