@@ -2449,6 +2449,26 @@ body.day-mode.goals-mode .goal-block-archive .goal-row-alt{border-bottom-color:r
 .assets-summary-row:nth-child(5) .assets-summary-label,.assets-summary-row:nth-child(5) .assets-summary-val,
 .assets-summary-row:nth-child(7) .assets-summary-label,.assets-summary-row:nth-child(7) .assets-summary-val{background:rgba(255,255,255,0.03)}
 .assets-summary-row:nth-child(6) .assets-summary-label,.assets-summary-row:nth-child(6) .assets-summary-val{background:rgba(0,200,220,0.08)}
+.assets-chart-toggle{margin-left:8px;background:rgba(53,208,255,0.12);border-color:rgba(53,208,255,0.45);color:#7cf5ff}
+.assets-chart-toggle:hover{background:rgba(53,208,255,0.22);border-color:#35d0ff;color:#fff}
+.assets-chart-panel{width:min(980px,calc(100vw - 90px));border:1px solid rgba(53,208,255,0.28);border-radius:18px;background:linear-gradient(180deg,rgba(8,22,34,0.96),rgba(9,13,22,0.98));box-shadow:0 14px 45px rgba(0,0,0,0.35),inset 0 0 34px rgba(53,208,255,0.06);padding:14px 16px 12px;overflow:hidden}
+.assets-chart-head{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;margin-bottom:8px}
+.assets-chart-head b{display:block;font-size:15px;color:#7cf5ff;margin-bottom:3px}
+.assets-chart-head span{font-size:11px;color:rgba(255,255,255,0.68);font-weight:700}
+.assets-chart-modes{display:flex;gap:6px;flex-shrink:0}
+.assets-chart-modes button{height:28px;padding:0 10px;border-radius:8px;border:1px solid rgba(255,255,255,0.12);background:rgba(255,255,255,0.05);color:rgba(255,255,255,0.7);font-family:inherit;font-size:11px;font-weight:800;cursor:pointer}
+.assets-chart-modes button.on{background:rgba(0,217,126,0.18);border-color:rgba(0,217,126,0.5);color:#00d97e}
+.assets-chart-svg{width:100%;height:260px;display:block;background:linear-gradient(180deg,rgba(255,255,255,0.025),rgba(255,255,255,0.01));border-radius:12px}
+.assets-chart-axis{stroke:rgba(255,255,255,0.18);stroke-width:1}
+.assets-chart-week{stroke:rgba(255,255,255,0.12);stroke-width:1;stroke-dasharray:5 7}
+.assets-chart-week-label{fill:rgba(255,255,255,0.38);font-size:10px;font-weight:800}
+.assets-chart-legend{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:9px;font-size:11px;color:rgba(255,255,255,0.72)}
+.assets-chart-legend-item{display:inline-flex;align-items:center;gap:5px}
+.assets-chart-legend-item i{width:10px;height:10px;border-radius:50%;box-shadow:0 0 12px currentColor}
+.assets-chart-legend-item b{color:#fff}
+.assets-chart-weeks{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,0.08);font-size:11px;color:rgba(255,255,255,0.62)}
+.assets-chart-weeks span{padding:4px 8px;border-radius:8px;background:rgba(255,255,255,0.045)}
+.assets-chart-weeks b{color:#00d97e;font-variant-numeric:tabular-nums}
 .assets-two-cols{display:flex;flex-direction:column;gap:20px;margin-top:8px;align-self:center;width:100%;max-width:680px}
 .assets-col{flex:0 0 auto;width:100%;min-width:0;border:1px solid var(--border);border-radius:18px;overflow:hidden;background:var(--surface2);box-shadow:0 2px 16px rgba(0,0,0,0.15);display:flex;flex-direction:column;transition:box-shadow .2s, border-color .2s}
 .assets-col.assets-col-drop-over{border-color:rgba(0,217,126,0.5);box-shadow:0 0 20px rgba(0,217,126,0.2)}
@@ -2603,6 +2623,9 @@ body.day-mode .assets-col-sasha-hint{color:var(--accent)}
   .assets-month-nav-btn{width:32px;height:32px}
   .assets-month-nav-label{font-size:24px;letter-spacing:5px;min-width:112px}
   .assets-summary-table{max-width:100%;border-radius:14px}
+  .assets-chart-panel{width:100%;padding:10px;border-radius:14px}
+  .assets-chart-head{flex-direction:column;gap:8px}
+  .assets-chart-svg{height:220px}
   .assets-summary-row{padding:0 9px;gap:8px}
   .assets-summary-row.assets-summary-main{min-height:48px;padding:9px 12px}
   .assets-summary-row.assets-summary-main .assets-summary-val{font-size:28px;padding:9px 12px;margin:0}
@@ -3025,7 +3048,7 @@ if (!window.AVITOLOG_GOALS) {
 <script src="js/hero-asset.js?v=20260404-1"></script>
 <script src="js/core.js?v=20260627-paid-date-1"></script>
 <script src="js/projects.js?v=20260627-kuga-folder-fix-1"></script>
-<script src="js/ai-import.js?v=20260627-paid-date-1"></script>
+<script src="js/ai-import.js?v=20260627-assets-chart-1"></script>
 <script src="js/contract-generator.js?v=20260627-contract-executor-days-1"></script>
 <script src="js/ads.js?v=20260404-1"></script>
 <script charset="UTF-8" src="js/kp-generator.js?v=20260621-package-sync-2"></script>
