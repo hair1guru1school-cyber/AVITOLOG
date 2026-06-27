@@ -2532,6 +2532,25 @@ body.day-mode .assets-col-sasha-hint{color:var(--accent)}
 .assets-col-payment .assets-payment-wrap:hover .assets-payment-display{text-decoration:underline}
 .assets-col-payment .assets-date-inp{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
 .assets-col-payment .assets-payment-display{font-size:11px;font-weight:600;color:#35d0ff;pointer-events:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.assets-split-pay-btn{width:20px;height:20px;min-width:20px;border-radius:6px;border:1px solid rgba(53,208,255,.45);background:rgba(53,208,255,.1);color:#7cf5ff;font-size:11px;font-weight:900;line-height:1;cursor:pointer;padding:0;display:flex;align-items:center;justify-content:center}
+.assets-split-pay-btn:hover{background:rgba(53,208,255,.22);border-color:#35d0ff;color:#fff}
+.assets-split-modal{position:fixed;inset:0;z-index:12000;display:flex;align-items:center;justify-content:center;padding:18px;background:rgba(0,0,0,.62);backdrop-filter:blur(5px)}
+.assets-split-card{width:min(420px,100%);border:1px solid rgba(53,208,255,.36);border-radius:18px;background:linear-gradient(180deg,rgba(10,25,38,.98),rgba(8,12,22,.98));box-shadow:0 20px 70px rgba(0,0,0,.55);padding:16px;color:var(--text)}
+.assets-split-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:8px}
+.assets-split-head b{font-size:16px;color:#7cf5ff}
+.assets-split-close{width:28px;height:28px;border-radius:8px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.05);color:var(--muted);font-size:18px;cursor:pointer}
+.assets-split-close:hover{border-color:#ff7070;color:#ff8f8f;background:rgba(255,80,80,.12)}
+.assets-split-project{font-size:13px;font-weight:800;margin-bottom:12px;color:#fff}
+.assets-split-card label{display:flex;flex-direction:column;gap:6px;margin:10px 0;font-size:12px;font-weight:800;color:var(--muted)}
+.assets-split-card label span{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.assets-split-card input{min-width:0;padding:9px 10px;border-radius:9px;border:1px solid var(--border);background:rgba(0,0,0,.22);color:var(--text);font:inherit;font-size:13px;outline:none}
+.assets-split-card input:focus{border-color:#35d0ff;box-shadow:0 0 0 2px rgba(53,208,255,.14)}
+.assets-split-hint{margin-top:10px;color:var(--muted);font-size:11px;line-height:1.45}
+.assets-split-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:14px}
+.assets-split-actions button{border-radius:10px;padding:9px 12px;font-family:inherit;font-size:12px;font-weight:800;cursor:pointer}
+.assets-split-secondary{border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.05);color:var(--muted)}
+.assets-split-primary{border:1px solid rgba(0,217,126,.48);background:rgba(0,217,126,.18);color:#00d97e}
+.assets-split-primary:hover{background:rgba(0,217,126,.28);color:#fff}
 .assets-col-paid input,.assets-col-expected input{width:48px;padding:2px 4px;font-size:12px;text-align:right;background:rgba(0,0,0,0.2);border:1px solid var(--border);border-radius:6px;color:var(--text)}
 .assets-col-paid{min-width:58px;text-align:right;font-weight:700;color:#00d97e}
 .assets-col-expected{min-width:58px;text-align:right;font-weight:700;color:#35d0ff}
@@ -3048,7 +3067,7 @@ if (!window.AVITOLOG_GOALS) {
 <script src="js/hero-asset.js?v=20260404-1"></script>
 <script src="js/core.js?v=20260627-paid-date-1"></script>
 <script src="js/projects.js?v=20260627-kuga-folder-fix-1"></script>
-<script src="js/ai-import.js?v=20260627-assets-chart-1"></script>
+<script src="js/ai-import.js?v=20260627-assets-split-pay-1"></script>
 <script src="js/contract-generator.js?v=20260627-contract-executor-days-1"></script>
 <script src="js/ads.js?v=20260404-1"></script>
 <script charset="UTF-8" src="js/kp-generator.js?v=20260621-package-sync-2"></script>

@@ -1661,7 +1661,7 @@
             '<button type="button" class="assets-status-badge ' + statusCls + '" onclick="window.__assetsCycleClientType(\'' + owner + '\',' + idx + ')" title="Старый/новичок/2-й раз">' + esc(statusBadge) + '</button>' +
           '</span>' +
         '</span>' +
-        '<span class="assets-col-payment" title="Дата платежа — клик для выбора"><span class="assets-payment-cell"><span class="assets-progress-bar" title="След. платёж"><span class="assets-progress-fill" style="width:' + barPct + '%"></span></span><span class="assets-payment-wrap"><input type="date" value="' + esc(payDate) + '" data-field="paymentDate" onchange="window.__assetsSaveColRow(this);if(window.__renderAssetsPage)window.__renderAssetsPage()" class="assets-date-inp"><span class="assets-payment-display">' + esc(payDays) + '</span></span></span></span>';
+        '<span class="assets-col-payment" title="Дата платежа — клик для выбора"><span class="assets-payment-cell"><span class="assets-progress-bar" title="След. платёж"><span class="assets-progress-fill" style="width:' + barPct + '%"></span></span><span class="assets-payment-wrap"><input type="date" value="' + esc(payDate) + '" data-field="paymentDate" onchange="window.__assetsSaveColRow(this);if(window.__renderAssetsPage)window.__renderAssetsPage()" class="assets-date-inp"><span class="assets-payment-display">' + esc(payDays) + '</span></span><button type="button" class="assets-split-pay-btn" onclick="window.__assetsOpenSplitPayment && window.__assetsOpenSplitPayment(\'' + owner + '\',' + idx + ')" title="Дробная оплата: 1 часть и 2 часть">½</button></span></span>';
       if (owner === 'sasha') {
         base += '<span class="assets-col-extra"><input type="text" value="' + esc(soldForFmt) + '" placeholder="0" data-field="soldFor" onblur="window.__assetsSaveColRow(this)" title="Продано за"></span>' +
           '<span class="assets-col-extra"><input type="text" value="' + esc(toAgentFmt) + '" placeholder="0" data-field="toAgent" onblur="window.__assetsSaveColRow(this)" title="Агенту"></span>' +
@@ -2219,6 +2219,85 @@
     updateAssetsDetailPanel(owner, idx);
   }
 
+  function getAssetsRowRef(owner, idx) {
+    if (owner === 'me') {
+      var arr = getAssetsMy();
+      return { list: arr, row: arr && arr[idx] ? arr[idx] : null, save: saveAssetsMy };
+    }
+    var arr2 = getAssetsSasha();
+    return { list: arr2, row: arr2 && arr2[idx] ? arr2[idx] : null, save: saveAssetsSasha };
+  }
+
+  function parseAssetsMoney(value) {
+    return parseInt(String(value || '').replace(/\s/g, '').replace(/[^\d]/g, ''), 10) || 0;
+  }
+
+  function saveSplitPayment(owner, idx, rows) {
+    var ref = getAssetsRowRef(owner, idx);
+    var p = ref.row;
+    if (!p) return;
+    var hist = [];
+    rows.forEach(function(r) {
+      var date = String((r && r.date) || '').trim();
+      var amount = parseAssetsMoney(r && r.amount);
+      if (date && /^\d{4}-\d{2}-\d{2}$/.test(date) && amount > 0) {
+        hist.push({ date: date, amount: amount });
+      }
+    });
+    if (!hist.length) return;
+    hist.sort(function(a, b) { return (a.date || '').localeCompare(b.date || ''); });
+    p.paymentHistory = hist;
+    recalcPaidFromHistory(p, owner);
+    if (ref.list && ref.list[idx]) ref.list[idx] = p;
+    ref.save(ref.list);
+    if (typeof window.__renderAssetsPage === 'function') window.__renderAssetsPage();
+    updateAssetsDetailPanel(owner, idx);
+  }
+
+  function openSplitPayment(owner, idx) {
+    var old = document.getElementById('assetsSplitPayModal');
+    if (old) old.remove();
+    var ref = getAssetsRowRef(owner, idx);
+    var p = ref.row;
+    if (!p) return;
+    var entries = getPaymentHistoryEntries(p, owner).slice().sort(function(a, b) { return (a.date || '').localeCompare(b.date || ''); });
+    var today = new Date();
+    var todayStr = today.getFullYear() + '-' + pad2(today.getMonth() + 1) + '-' + pad2(today.getDate());
+    var totalAmount = owner === 'me' ? parseAssetsMoney(p.paid) : parseAssetsMoney(p.soldFor || p.paid);
+    var first = entries[0] || { date: (p.paymentDate || todayStr), amount: totalAmount || '' };
+    var second = entries[1] || { date: '', amount: '' };
+    var modal = document.createElement('div');
+    modal.id = 'assetsSplitPayModal';
+    modal.className = 'assets-split-modal';
+    modal.innerHTML =
+      '<div class="assets-split-card">' +
+        '<div class="assets-split-head"><b>Дробная оплата</b><button type="button" class="assets-split-close" aria-label="Закрыть">×</button></div>' +
+        '<div class="assets-split-project">' + esc(p.emoji || '') + ' ' + esc(p.name || 'Проект') + '</div>' +
+        '<label>1 часть<span><input type="date" data-split-date="0" value="' + esc(first.date || todayStr) + '"><input type="text" data-split-amount="0" value="' + esc(first.amount || '') + '" placeholder="Сумма"></span></label>' +
+        '<label>2 часть<span><input type="date" data-split-date="1" value="' + esc(second.date || '') + '"><input type="text" data-split-amount="1" value="' + esc(second.amount || '') + '" placeholder="Сумма"></span></label>' +
+        '<div class="assets-split-hint">Можно оставить вторую часть пустой. В кассе и графике появятся две даты оплаты.</div>' +
+        '<div class="assets-split-actions"><button type="button" class="assets-split-secondary">Отмена</button><button type="button" class="assets-split-primary">Сохранить части</button></div>' +
+      '</div>';
+    document.body.appendChild(modal);
+    function close() { modal.remove(); }
+    modal.querySelector('.assets-split-close').onclick = close;
+    modal.querySelector('.assets-split-secondary').onclick = close;
+    modal.onclick = function(e) { if (e.target === modal) close(); };
+    modal.querySelector('.assets-split-primary').onclick = function() {
+      var rows = [0, 1].map(function(i) {
+        var d = modal.querySelector('[data-split-date="' + i + '"]');
+        var a = modal.querySelector('[data-split-amount="' + i + '"]');
+        return { date: d ? d.value : '', amount: a ? a.value : '' };
+      });
+      saveSplitPayment(owner, idx, rows);
+      close();
+    };
+    setTimeout(function() {
+      var inp = modal.querySelector('[data-split-amount="0"]');
+      if (inp) { inp.focus(); inp.select(); }
+    }, 0);
+  }
+
   function updateAssetsDetailPanel(owner, idx) {
     window._assetsSelectedProject = owner != null && idx != null && idx >= 0 ? { owner: owner, idx: idx } : null;
     var panel = document.getElementById('assetsDetailPanel');
@@ -2405,6 +2484,7 @@
     if (sel) addPaymentToHistory(sel.owner, sel.idx);
     else alert('Сначала выберите проект слева');
   };
+  window.__assetsOpenSplitPayment = openSplitPayment;
   window.__assetsShowBasePicker = showAssetsBasePicker;
   window.__assetsSyncSashaFromKassa = syncSashaFromKassaColumn;
   window.__wireAssetsDragTargets = wireAssetsDragTargets;
