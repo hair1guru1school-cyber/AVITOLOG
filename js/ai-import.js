@@ -1525,9 +1525,9 @@
       var W = 980, H = 300, padL = 38, padR = 22, padT = 34, padB = 48;
       var cats = {
         total: { label: 'Общий', color: '#00d97e', values: Array(chartDays + 1).fill(0), total: 0 },
-        fresh: { label: 'Новые', color: '#35d0ff', values: Array(chartDays + 1).fill(0), total: 0 },
+        fresh: { label: 'Новые', color: '#00b7ff', values: Array(chartDays + 1).fill(0), total: 0 },
         diamond: { label: 'Бриллианты', color: '#ffd66b', values: Array(chartDays + 1).fill(0), total: 0 },
-        sasha: { label: 'Клиенты Саши', color: '#c7a8ff', values: Array(chartDays + 1).fill(0), total: 0 }
+        sasha: { label: 'Клиенты Саши', color: '#ff66d8', values: Array(chartDays + 1).fill(0), total: 0 }
       };
       var dayItems = Array(chartDays + 1).fill(null).map(function() { return []; });
       function dayFromDate(dateStr) {
