@@ -824,7 +824,7 @@ function applyAoaxAutoloadState(data) {
       dateEnd: fallbackEnd,
       updatedAt: pack.updatedAt || '',
       exported: exported,
-      parserVersion: 'aoax-date-v2'
+      parserVersion: 'aoax-date-v3-datebegin'
     });
     if (p.aoaxAutoloadSignature === sig) return;
     p.aoaxAutoloadSignature = sig;
@@ -888,9 +888,9 @@ function renderProjectAoaxBadge(p) {
   var end = info.dateEnd || '';
   var count = (info.sheets || []).length;
   var exported = info.exported !== false;
-  var title = name + (end ? (' · DateEnd ' + end) : '') + (count ? (' · листов: ' + count) : '') + (exported ? '' : ' · экспорт автозагрузки ещё не применён');
+  var title = name + (end ? (' · DateBegin до ' + end) : '') + (count ? (' · листов: ' + count) : '') + (exported ? '' : ' · экспорт автозагрузки ещё не применён');
   var attrs = ' title="' + escAttr(title) + '" data-file="' + escAttr(title) + '"';
-  var href = file.url || info.folderLink || p.folderLink || p.driveFolderUrl || p.folderUrl || '';
+  var href = p.folderLink || p.driveFolderUrl || p.folderUrl || info.folderLink || '';
   if (href) return '<span class="proj-aoax-slot"><a class="proj-aoax-badge" href="' + escAttr(href) + '" target="_blank" rel="noopener" onclick="event.stopPropagation()"' + attrs + '>📗</a></span>';
   return '<span class="proj-aoax-slot"><span class="proj-aoax-badge"' + attrs + '>📗</span></span>';
 }
