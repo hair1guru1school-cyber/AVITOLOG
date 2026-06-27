@@ -834,6 +834,7 @@ function applyAoaxAutoloadState(data) {
         name: file.name || pack.fileName || '',
         url: file.url || file.webUrl || pack.fileUrl || ''
       },
+      folderLink: pack.folderLink || pack.folderUrl || pack.projectFolderUrl || '',
       sheets: sheets,
       dateEnd: fallbackEnd || (sheets.length ? sheets.map(function(s){ return s.dateEnd || ''; }).sort().pop() : ''),
       updatedAt: pack.updatedAt || '',
@@ -889,7 +890,8 @@ function renderProjectAoaxBadge(p) {
   var exported = info.exported !== false;
   var title = name + (end ? (' · DateEnd ' + end) : '') + (count ? (' · листов: ' + count) : '') + (exported ? '' : ' · экспорт автозагрузки ещё не применён');
   var attrs = ' title="' + escAttr(title) + '" data-file="' + escAttr(title) + '"';
-  if (file.url) return '<span class="proj-aoax-slot"><a class="proj-aoax-badge" href="' + escAttr(file.url) + '" target="_blank" rel="noopener" onclick="event.stopPropagation()"' + attrs + '>📗</a></span>';
+  var href = file.url || info.folderLink || p.folderLink || p.driveFolderUrl || p.folderUrl || '';
+  if (href) return '<span class="proj-aoax-slot"><a class="proj-aoax-badge" href="' + escAttr(href) + '" target="_blank" rel="noopener" onclick="event.stopPropagation()"' + attrs + '>📗</a></span>';
   return '<span class="proj-aoax-slot"><span class="proj-aoax-badge"' + attrs + '>📗</span></span>';
 }
 window.__AVITOLOG_AOAX_UPSERT = function(payload) {
