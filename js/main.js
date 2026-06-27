@@ -3058,6 +3058,89 @@ async function driveUploadBlob(name, blob, mimeType, parentId) {
   if (!result.id) throw new Error('PDF не загружен: ' + JSON.stringify(result));
   return result;
 }
+function aoaxDriveQueryEscape(value) {
+  return String(value || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+}
+
+function aoaxBase64ToBlob(base64, mimeType) {
+  var bin = atob(String(base64 || ''));
+  var len = bin.length;
+  var bytes = new Uint8Array(len);
+  for (var i = 0; i < len; i++) bytes[i] = bin.charCodeAt(i);
+  return new Blob([bytes], {type: mimeType || 'application/octet-stream'});
+}
+
+async function aoaxDriveFindFile(name, parentId, mimeType) {
+  var token = await getDriveToken();
+  var q = "name='" + aoaxDriveQueryEscape(name) + "' and '" + aoaxDriveQueryEscape(parentId) + "' in parents and trashed=false";
+  if (mimeType) q += " and mimeType='" + aoaxDriveQueryEscape(mimeType) + "'";
+  var url = 'https://www.googleapis.com/drive/v3/files?q=' + encodeURIComponent(q) + '&fields=files(id,name,webViewLink,mimeType)&supportsAllDrives=true&includeItemsFromAllDrives=true&pageSize=1';
+  var resp = await fetch(url, {headers: {'Authorization': 'Bearer ' + token}});
+  if (!resp.ok) throw new Error('Drive find failed: ' + resp.status + ' ' + await resp.text().catch(function(){ return ''; }));
+  var data = await resp.json();
+  return (data.files || [])[0] || null;
+}
+
+async function aoaxDriveGetOrCreateFolder(name, parentId) {
+  var folderMime = 'application/vnd.google-apps.folder';
+  var existing = await aoaxDriveFindFile(name, parentId, folderMime);
+  if (existing) return existing;
+  var token = await getDriveToken();
+  var resp = await fetch('https://www.googleapis.com/drive/v3/files?supportsAllDrives=true&fields=id,name,webViewLink', {
+    method: 'POST',
+    headers: {'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json'},
+    body: JSON.stringify({name: name, mimeType: folderMime, parents: [parentId]})
+  });
+  if (!resp.ok) throw new Error('Drive create autoloads failed: ' + resp.status + ' ' + await resp.text().catch(function(){ return ''; }));
+  return resp.json();
+}
+
+async function aoaxDriveUpdateFile(fileId, blob, mimeType) {
+  var token = await getDriveToken();
+  var resp = await fetch('https://www.googleapis.com/upload/drive/v3/files/' + encodeURIComponent(fileId) + '?uploadType=media&supportsAllDrives=true&fields=id,name,webViewLink', {
+    method: 'PATCH',
+    headers: {'Authorization': 'Bearer ' + token, 'Content-Type': mimeType},
+    body: blob
+  });
+  if (!resp.ok) throw new Error('Drive update failed: ' + resp.status + ' ' + await resp.text().catch(function(){ return ''; }));
+  return resp.json();
+}
+
+async function aoaxDriveUploadAutoload(payload) {
+  var parentId = String(payload && payload.folderId || '').trim();
+  if (!parentId) throw new Error('AOA-X: no AVITOLOG folderId');
+  var fileName = String(payload.fileName || 'autoload.xlsx').trim() || 'autoload.xlsx';
+  var mime = /\.xlsm$/i.test(fileName) ? 'application/vnd.ms-excel.sheet.macroEnabled.12' : 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+  var folder = await aoaxDriveGetOrCreateFolder('autoloads', parentId);
+  var blob = aoaxBase64ToBlob(payload.fileBase64 || '', mime);
+  var existing = await aoaxDriveFindFile(fileName, folder.id, '');
+  var file = existing ? await aoaxDriveUpdateFile(existing.id, blob, mime) : await driveUploadBlob(fileName, blob, mime, folder.id);
+  return {
+    ok: true,
+    driveFolderId: folder.id,
+    driveFolderUrl: 'https://drive.google.com/drive/folders/' + folder.id,
+    driveFileId: file.id,
+    driveFileUrl: file.webViewLink || ('https://drive.google.com/file/d/' + file.id + '/view')
+  };
+}
+
+(function installAoaxAutoloadUploadBridge() {
+  if (window.__aoaxAutoloadUploadBridgeInstalled) return;
+  window.__aoaxAutoloadUploadBridgeInstalled = true;
+  window.addEventListener('message', function(event) {
+    if (!/^https?:\/\/(localhost|127\.0\.0\.1):3008$/.test(String(event.origin || ''))) return;
+    var msg = event.data || {};
+    if (!msg || msg.type !== 'AOAX_UPLOAD_AUTOLOAD') return;
+    Promise.resolve()
+      .then(function(){ return aoaxDriveUploadAutoload(msg.payload || {}); })
+      .then(function(result) {
+        event.source && event.source.postMessage({type:'AOAX_UPLOAD_AUTOLOAD_RESULT', requestId: msg.requestId || '', ok:true, result: result}, event.origin);
+      })
+      .catch(function(err) {
+        event.source && event.source.postMessage({type:'AOAX_UPLOAD_AUTOLOAD_RESULT', requestId: msg.requestId || '', ok:false, error: err && err.message ? err.message : String(err)}, event.origin);
+      });
+  });
+})();
 async function driveUploadAvatarToClientFolder(file, parentFolderId) {
   var ext = (file.name || '').split('.').pop() || 'jpg';
   var name = 'avatar.' + (ext.toLowerCase() === 'png' || ext.toLowerCase() === 'jpeg' || ext.toLowerCase() === 'jpg' ? ext.toLowerCase() : 'jpg');
