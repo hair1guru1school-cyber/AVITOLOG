@@ -2532,10 +2532,23 @@ body.day-mode .assets-col-sasha-hint{color:var(--accent)}
 .assets-col-payment .assets-progress-bar{flex:0 0 20px;min-width:18px;height:4px;border-radius:2px;overflow:hidden;background:rgba(255,255,255,0.1)}
 .assets-col-payment .assets-payment-wrap{position:relative;min-width:30px;height:22px;display:flex;align-items:center;cursor:pointer;padding:0 1px;flex:1;min-width:0}
 .assets-col-payment .assets-payment-wrap:hover .assets-payment-display{text-decoration:underline}
-.assets-col-payment .assets-date-inp{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
 .assets-col-payment .assets-payment-display{font-size:11px;font-weight:600;color:#35d0ff;pointer-events:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.assets-split-pay-btn{width:20px;height:20px;min-width:20px;border-radius:6px;border:1px solid rgba(53,208,255,.45);background:rgba(53,208,255,.1);color:#7cf5ff;font-size:11px;font-weight:900;line-height:1;cursor:pointer;padding:0;display:flex;align-items:center;justify-content:center}
-.assets-split-pay-btn:hover{background:rgba(53,208,255,.22);border-color:#35d0ff;color:#fff}
+.assets-paycal{position:fixed;z-index:11950;width:230px;border:1px solid rgba(53,208,255,.32);border-radius:14px;background:#f8fbff;color:#111827;box-shadow:0 18px 55px rgba(0,0,0,.38);padding:10px;font-family:Arial,Helvetica,sans-serif}
+.assets-paycal-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px}
+.assets-paycal-head b{font-size:13px;font-weight:700;text-transform:capitalize}
+.assets-paycal-head button{width:28px;height:28px;border:0;border-radius:8px;background:transparent;color:#374151;font-size:20px;line-height:1;cursor:pointer}
+.assets-paycal-head button:hover{background:#e8eef7}
+.assets-paycal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px}
+.assets-paycal-dow{height:24px;display:flex;align-items:center;justify-content:center;font-size:11px;color:#4b5563;font-weight:700}
+.assets-paycal-day{height:28px;border:0;border-radius:6px;background:transparent;color:#111827;font-size:12px;cursor:pointer}
+.assets-paycal-day:hover{background:#dbeafe}
+.assets-paycal-day.muted{color:#9ca3af}
+.assets-paycal-day.today{outline:1px solid #60a5fa}
+.assets-paycal-day.selected{background:#1677ff;color:#fff;font-weight:800}
+.assets-paycal-foot{display:flex;align-items:center;justify-content:space-between;gap:6px;margin-top:8px;padding-top:8px;border-top:1px solid #e5e7eb}
+.assets-paycal-foot button{border:0;background:transparent;color:#1677ff;font-size:12px;font-weight:700;cursor:pointer;padding:5px 6px;border-radius:7px}
+.assets-paycal-foot button:hover{background:#e8f1ff}
+.assets-paycal-foot button.split{min-width:34px;background:#1677ff;color:#fff;font-weight:900}
 .assets-split-modal{position:fixed;inset:0;z-index:12000;display:flex;align-items:center;justify-content:center;padding:18px;background:rgba(0,0,0,.62);backdrop-filter:blur(5px)}
 .assets-split-card{width:min(420px,100%);border:1px solid rgba(53,208,255,.36);border-radius:18px;background:linear-gradient(180deg,rgba(10,25,38,.98),rgba(8,12,22,.98));box-shadow:0 20px 70px rgba(0,0,0,.55);padding:16px;color:var(--text)}
 .assets-split-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:8px}
@@ -3069,7 +3082,7 @@ if (!window.AVITOLOG_GOALS) {
 <script src="js/hero-asset.js?v=20260404-1"></script>
 <script src="js/core.js?v=20260627-paid-date-1"></script>
 <script src="js/projects.js?v=20260627-kuga-folder-fix-1"></script>
-<script src="js/ai-import.js?v=20260627-assets-chart-bars-1"></script>
+<script src="js/ai-import.js?v=20260627-assets-pay-calendar-1"></script>
 <script src="js/contract-generator.js?v=20260627-contract-executor-days-1"></script>
 <script src="js/ads.js?v=20260404-1"></script>
 <script charset="UTF-8" src="js/kp-generator.js?v=20260621-package-sync-2"></script>

@@ -1704,7 +1704,7 @@
             '<button type="button" class="assets-status-badge ' + statusCls + '" onclick="window.__assetsCycleClientType(\'' + owner + '\',' + idx + ')" title="Старый/новичок/2-й раз">' + esc(statusBadge) + '</button>' +
           '</span>' +
         '</span>' +
-        '<span class="assets-col-payment" title="Дата платежа — клик для выбора"><span class="assets-payment-cell"><span class="assets-progress-bar" title="След. платёж"><span class="assets-progress-fill" style="width:' + barPct + '%"></span></span><span class="assets-payment-wrap"><input type="date" value="' + esc(payDate) + '" data-field="paymentDate" onchange="window.__assetsSaveColRow(this);if(window.__renderAssetsPage)window.__renderAssetsPage()" class="assets-date-inp"><span class="assets-payment-display">' + esc(payDays) + '</span></span><button type="button" class="assets-split-pay-btn" onclick="window.__assetsOpenSplitPayment && window.__assetsOpenSplitPayment(\'' + owner + '\',' + idx + ')" title="Дробная оплата: 1 часть и 2 часть">½</button></span></span>';
+        '<span class="assets-col-payment" title="Дата платежа — клик для выбора"><span class="assets-payment-cell"><span class="assets-progress-bar" title="След. платёж"><span class="assets-progress-fill" style="width:' + barPct + '%"></span></span><span class="assets-payment-wrap" onclick="event.stopPropagation();window.__assetsOpenPaymentCalendar&&window.__assetsOpenPaymentCalendar(this,\'' + owner + '\',' + idx + ')"><span class="assets-payment-display">' + esc(payDays) + '</span></span></span></span>';
       if (owner === 'sasha') {
         base += '<span class="assets-col-extra"><input type="text" value="' + esc(soldForFmt) + '" placeholder="0" data-field="soldFor" onblur="window.__assetsSaveColRow(this)" title="Продано за"></span>' +
           '<span class="assets-col-extra"><input type="text" value="' + esc(toAgentFmt) + '" placeholder="0" data-field="toAgent" onblur="window.__assetsSaveColRow(this)" title="Агенту"></span>' +
@@ -2297,6 +2297,102 @@
     updateAssetsDetailPanel(owner, idx);
   }
 
+  function savePaymentDateFromCalendar(owner, idx, dateStr) {
+    var ref = getAssetsRowRef(owner, idx);
+    var p = ref.row;
+    if (!p) return;
+    p.paymentDate = dateStr || '';
+    if (Array.isArray(p.paymentHistory) && p.paymentHistory.length === 1) {
+      p.paymentHistory[0].date = p.paymentDate;
+    } else if (!Array.isArray(p.paymentHistory) || p.paymentHistory.length === 0) {
+      var amount = owner === 'me' ? parseAssetsMoney(p.paid) : parseAssetsMoney(p.soldFor || p.paid);
+      if (amount > 0 && p.paymentDate) p.paymentHistory = [{ date: p.paymentDate, amount: amount }];
+    }
+    if (ref.list && ref.list[idx]) ref.list[idx] = p;
+    ref.save(ref.list);
+    if (typeof window.__renderAssetsPage === 'function') window.__renderAssetsPage();
+    updateAssetsDetailPanel(owner, idx);
+  }
+
+  function openPaymentCalendar(anchor, owner, idx) {
+    var old = document.getElementById('assetsPaymentCalendar');
+    if (old) old.remove();
+    var ref = getAssetsRowRef(owner, idx);
+    var p = ref.row;
+    if (!p) return;
+    var base = parseDateOnly((p.paymentDate || '').trim()) || new Date();
+    var viewYear = base.getFullYear();
+    var viewMonth = base.getMonth();
+    function dateStr(dt) {
+      return dt.getFullYear() + '-' + pad2(dt.getMonth() + 1) + '-' + pad2(dt.getDate());
+    }
+    function monthName(y, m) {
+      try { return new Intl.DateTimeFormat('ru-RU', { month: 'long', year: 'numeric' }).format(new Date(y, m, 1)); }
+      catch(e) { return (m + 1) + '.' + y; }
+    }
+    function parseDateOnly(s) {
+      if (!s || !/^\d{4}-\d{2}-\d{2}$/.test(s)) return null;
+      var parts = s.split('-');
+      return new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+    }
+    var picker = document.createElement('div');
+    picker.id = 'assetsPaymentCalendar';
+    picker.className = 'assets-paycal';
+    document.body.appendChild(picker);
+    function close() { picker.remove(); document.removeEventListener('mousedown', outside, true); }
+    function outside(e) { if (!picker.contains(e.target) && e.target !== anchor && !(anchor && anchor.contains && anchor.contains(e.target))) close(); }
+    function render() {
+      var selected = (p.paymentDate || '').trim();
+      var today = dateStr(new Date());
+      var first = new Date(viewYear, viewMonth, 1);
+      var firstDow = (first.getDay() + 6) % 7;
+      var start = new Date(viewYear, viewMonth, 1 - firstDow);
+      var cells = '';
+      var dow = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
+      dow.forEach(function(d) { cells += '<div class="assets-paycal-dow">' + d + '</div>'; });
+      for (var i = 0; i < 42; i++) {
+        var dt = new Date(start.getFullYear(), start.getMonth(), start.getDate() + i);
+        var ds = dateStr(dt);
+        var cls = 'assets-paycal-day' + (dt.getMonth() !== viewMonth ? ' muted' : '') + (ds === selected ? ' selected' : '') + (ds === today ? ' today' : '');
+        cells += '<button type="button" class="' + cls + '" data-date="' + ds + '">' + dt.getDate() + '</button>';
+      }
+      picker.innerHTML =
+        '<div class="assets-paycal-head"><button type="button" data-nav="-1">‹</button><b>' + esc(monthName(viewYear, viewMonth)) + '</b><button type="button" data-nav="1">›</button></div>' +
+        '<div class="assets-paycal-grid">' + cells + '</div>' +
+        '<div class="assets-paycal-foot"><button type="button" data-act="clear">Удалить</button><button type="button" data-act="today">Сегодня</button><button type="button" data-act="split" class="split">½</button></div>';
+    }
+    picker.onclick = function(e) {
+      e.stopPropagation();
+      var nav = e.target.closest('[data-nav]');
+      if (nav) {
+        viewMonth += parseInt(nav.getAttribute('data-nav'), 10) || 0;
+        if (viewMonth < 0) { viewMonth = 11; viewYear--; }
+        if (viewMonth > 11) { viewMonth = 0; viewYear++; }
+        render();
+        return;
+      }
+      var day = e.target.closest('[data-date]');
+      if (day) {
+        savePaymentDateFromCalendar(owner, idx, day.getAttribute('data-date'));
+        close();
+        return;
+      }
+      var act = e.target.closest('[data-act]');
+      if (!act) return;
+      var kind = act.getAttribute('data-act');
+      if (kind === 'clear') { savePaymentDateFromCalendar(owner, idx, ''); close(); return; }
+      if (kind === 'today') { savePaymentDateFromCalendar(owner, idx, dateStr(new Date())); close(); return; }
+      if (kind === 'split') { close(); openSplitPayment(owner, idx); }
+    };
+    render();
+    var r = anchor && anchor.getBoundingClientRect ? anchor.getBoundingClientRect() : { left: 40, bottom: 80 };
+    var left = Math.min(window.innerWidth - 238, Math.max(8, r.left));
+    var top = Math.min(window.innerHeight - 288, Math.max(8, r.bottom + 6));
+    picker.style.left = left + 'px';
+    picker.style.top = top + 'px';
+    setTimeout(function() { document.addEventListener('mousedown', outside, true); }, 0);
+  }
+
   function openSplitPayment(owner, idx) {
     var old = document.getElementById('assetsSplitPayModal');
     if (old) old.remove();
@@ -2528,6 +2624,7 @@
     else alert('Сначала выберите проект слева');
   };
   window.__assetsOpenSplitPayment = openSplitPayment;
+  window.__assetsOpenPaymentCalendar = openPaymentCalendar;
   window.__assetsShowBasePicker = showAssetsBasePicker;
   window.__assetsSyncSashaFromKassa = syncSashaFromKassaColumn;
   window.__wireAssetsDragTargets = wireAssetsDragTargets;
