@@ -1516,26 +1516,27 @@
     function buildAssetsPaymentChartHtml() {
       var chartOn = localStorage.getItem('avitolog_assets_chart_open_v1') === '1';
       if (!chartOn) return '';
-      var mode = localStorage.getItem('avitolog_assets_chart_mode_v1') || 'total';
+      var mode = localStorage.getItem('avitolog_assets_chart_mode_v1') || 'bars';
       var parts = String(assetsViewYM || '').split('-');
       var y = parseInt(parts[0], 10) || now.getFullYear();
       var m = parseInt(parts[1], 10) || (now.getMonth() + 1);
       var days = new Date(y, m, 0).getDate();
       var chartDays = Math.max(30, days);
-      var W = 980, H = 260, padL = 38, padR = 22, padT = 20, padB = 34;
+      var W = 980, H = 300, padL = 38, padR = 22, padT = 34, padB = 48;
       var cats = {
         total: { label: 'Общий', color: '#00d97e', values: Array(chartDays + 1).fill(0), total: 0 },
         fresh: { label: 'Новые', color: '#35d0ff', values: Array(chartDays + 1).fill(0), total: 0 },
         diamond: { label: 'Бриллианты', color: '#ffd66b', values: Array(chartDays + 1).fill(0), total: 0 },
         sasha: { label: 'Клиенты Саши', color: '#c7a8ff', values: Array(chartDays + 1).fill(0), total: 0 }
       };
+      var dayItems = Array(chartDays + 1).fill(null).map(function() { return []; });
       function dayFromDate(dateStr) {
         var s = String(dateStr || '').trim();
         if (!s || s.slice(0, 7) !== assetsViewYM) return 0;
         var d = parseInt(s.slice(8, 10), 10);
         return d >= 1 && d <= chartDays ? d : 0;
       }
-      function addPoint(cat, dateStr, amount) {
+      function addPoint(cat, dateStr, amount, name) {
         var d = dayFromDate(dateStr);
         var v = parseInt(String(amount || '').replace(/\s/g, '').replace(/[^\d]/g, ''), 10) || 0;
         if (!d || v <= 0 || !cats[cat]) return;
@@ -1543,6 +1544,7 @@
         cats[cat].total += v;
         cats.total.values[d] += v;
         cats.total.total += v;
+        dayItems[d].push({ cat: cat, name: String(name || 'Клиент').trim() || 'Клиент', amount: v });
       }
       function addRow(row, owner) {
         if (!row) return;
@@ -1552,36 +1554,72 @@
           : (isSashaView ? assetsSashaMyProfitRub(row) : (parseInt(String(row.paid || '').replace(/\s/g, '').replace(/[^\d]/g, ''), 10) || 0));
         var hist = getPaymentHistoryEntries(row, owner === 'sasha' ? 'sasha' : 'me');
         if (Array.isArray(hist) && hist.length) {
-          hist.forEach(function(e) { addPoint(cat, e && e.date, e && e.amount); });
+          hist.forEach(function(e) { addPoint(cat, e && e.date, e && e.amount, row.name); });
         } else {
-          addPoint(cat, row.paymentDate || row.startDate, amount);
+          addPoint(cat, row.paymentDate || row.startDate, amount, row.name);
         }
       }
       myList.forEach(function(p) { addRow(p, 'me'); });
       if (!isSashaView) sashaList.forEach(function(p) { addRow(p, 'sasha'); });
       var visibleKeys = mode === 'split' ? ['fresh', 'diamond', 'sasha'] : ['total'];
+      var barKeys = ['fresh', 'diamond', 'sasha'];
       var maxVal = visibleKeys.reduce(function(max, key) {
         return Math.max(max, cats[key].values.reduce(function(a, v) { return Math.max(a, v); }, 0));
       }, 0);
+      if (mode === 'bars') {
+        maxVal = cats.total.values.reduce(function(a, v) { return Math.max(a, v); }, 0);
+      }
       if (maxVal <= 0) maxVal = 1;
       function x(day) { return padL + ((day - 1) / Math.max(1, chartDays - 1)) * (W - padL - padR); }
       function yPos(v) { return padT + (1 - (v / maxVal)) * (H - padT - padB); }
+      function dayTitle(day) {
+        var items = dayItems[day] || [];
+        if (!items.length) return day + ' число: оплат нет';
+        var lines = [day + ' число: ' + fmt(cats.total.values[day]) + ' ₽'];
+        items.forEach(function(it) { lines.push(it.name + ': ' + fmt(it.amount) + ' ₽'); });
+        return lines.join('\n');
+      }
       function poly(key) {
         var c = cats[key];
         var pts = [];
         for (var d = 1; d <= chartDays; d++) pts.push(x(d).toFixed(1) + ',' + yPos(c.values[d]).toFixed(1));
         var dots = '';
         for (var i = 1; i <= chartDays; i++) {
-          if (c.values[i] > 0) dots += '<circle cx="' + x(i).toFixed(1) + '" cy="' + yPos(c.values[i]).toFixed(1) + '" r="4.4" fill="' + c.color + '"><title>' + i + ' число: ' + fmt(c.values[i]) + ' ₽</title></circle>';
+          if (c.values[i] > 0) {
+            var lx = x(i).toFixed(1);
+            var ly = yPos(c.values[i]).toFixed(1);
+            dots += '<g><circle cx="' + lx + '" cy="' + ly + '" r="4.4" fill="' + c.color + '"><title>' + esc(dayTitle(i)) + '</title></circle><text x="' + lx + '" y="' + (yPos(c.values[i]) - 8).toFixed(1) + '" class="assets-chart-point-label" text-anchor="middle">' + fmt(c.values[i]) + '</text></g>';
+          }
         }
         return '<polyline points="' + pts.join(' ') + '" fill="none" stroke="' + c.color + '" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>' + dots;
+      }
+      function bars() {
+        var out = '';
+        var slot = (W - padL - padR) / chartDays;
+        var bw = Math.max(8, Math.min(22, slot * 0.62));
+        for (var d = 1; d <= chartDays; d++) {
+          var total = cats.total.values[d] || 0;
+          var cx = x(d);
+          out += '<text x="' + cx.toFixed(1) + '" y="' + (H - 10) + '" class="assets-chart-day-label" text-anchor="middle">' + d + '</text>';
+          if (total <= 0) continue;
+          var bottom = H - padB;
+          barKeys.forEach(function(key) {
+            var v = cats[key].values[d] || 0;
+            if (v <= 0) return;
+            var h = Math.max(3, ((H - padT - padB) * v / maxVal));
+            bottom -= h;
+            out += '<rect x="' + (cx - bw / 2).toFixed(1) + '" y="' + bottom.toFixed(1) + '" width="' + bw.toFixed(1) + '" height="' + h.toFixed(1) + '" rx="4" fill="' + cats[key].color + '" opacity="0.86"><title>' + esc(dayTitle(d)) + '</title></rect>';
+          });
+          out += '<text x="' + cx.toFixed(1) + '" y="' + (bottom - 7).toFixed(1) + '" class="assets-chart-bar-label" text-anchor="middle">' + fmt(total) + '</text>';
+        }
+        return out;
       }
       var grid = '';
       [7, 14, 21, 28].forEach(function(d) {
         if (d <= chartDays) grid += '<line x1="' + x(d).toFixed(1) + '" y1="' + padT + '" x2="' + x(d).toFixed(1) + '" y2="' + (H - padB) + '" class="assets-chart-week"/><text x="' + x(d).toFixed(1) + '" y="' + (H - 8) + '" class="assets-chart-week-label">' + d + '</text>';
       });
       var baseLine = '<line x1="' + padL + '" y1="' + (H - padB) + '" x2="' + (W - padR) + '" y2="' + (H - padB) + '" class="assets-chart-axis"/>';
-      var series = visibleKeys.map(poly).join('');
+      var series = mode === 'bars' ? bars() : visibleKeys.map(poly).join('');
       var nonZero = [];
       for (var dd = 1; dd <= chartDays; dd++) {
         var vSum = visibleKeys.reduce(function(a, key) { return a + cats[key].values[dd]; }, 0);
@@ -1594,10 +1632,15 @@
       var legend = visibleKeys.map(function(key) {
         return '<span class="assets-chart-legend-item"><i style="background:' + cats[key].color + '"></i>' + esc(cats[key].label) + ': <b>' + fmt(cats[key].total) + ' ₽</b></span>';
       }).join('');
+      if (mode === 'bars') {
+        legend = barKeys.map(function(key) {
+          return '<span class="assets-chart-legend-item"><i style="background:' + cats[key].color + '"></i>' + esc(cats[key].label) + ': <b>' + fmt(cats[key].total) + ' ₽</b></span>';
+        }).join('');
+      }
       var weekHtml = weeks.map(function(v, i) { return '<span>Н' + (i + 1) + ' <b>' + fmt(v) + ' ₽</b></span>'; }).join('');
       return '<div class="assets-chart-panel">' +
         '<div class="assets-chart-head"><div><b>📊 Динамика оплат за месяц</b><span>Всего: ' + fmt(cats.total.total) + ' ₽' + (peak ? ' · пик ' + peak.day + ' числа: ' + fmt(peak.value) + ' ₽' : '') + (min ? ' · минимум ' + min.day + ' числа: ' + fmt(min.value) + ' ₽' : '') + '</span></div>' +
-        '<div class="assets-chart-modes"><button type="button" class="' + (mode === 'total' ? 'on' : '') + '" onclick="localStorage.setItem(\'avitolog_assets_chart_mode_v1\',\'total\');window.__renderAssetsPage&&window.__renderAssetsPage()">Общий</button><button type="button" class="' + (mode === 'split' ? 'on' : '') + '" onclick="localStorage.setItem(\'avitolog_assets_chart_mode_v1\',\'split\');window.__renderAssetsPage&&window.__renderAssetsPage()">Цвета</button></div></div>' +
+        '<div class="assets-chart-modes"><button type="button" class="' + (mode === 'bars' ? 'on' : '') + '" onclick="localStorage.setItem(\'avitolog_assets_chart_mode_v1\',\'bars\');window.__renderAssetsPage&&window.__renderAssetsPage()">Свечи</button><button type="button" class="' + (mode === 'total' ? 'on' : '') + '" onclick="localStorage.setItem(\'avitolog_assets_chart_mode_v1\',\'total\');window.__renderAssetsPage&&window.__renderAssetsPage()">Линия</button><button type="button" class="' + (mode === 'split' ? 'on' : '') + '" onclick="localStorage.setItem(\'avitolog_assets_chart_mode_v1\',\'split\');window.__renderAssetsPage&&window.__renderAssetsPage()">Цвета</button></div></div>' +
         '<svg class="assets-chart-svg" viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none">' + baseLine + grid + series + '</svg>' +
         '<div class="assets-chart-legend">' + legend + '</div>' +
         '<div class="assets-chart-weeks">' + weekHtml + '</div>' +

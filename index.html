@@ -2458,10 +2458,12 @@ body.day-mode.goals-mode .goal-block-archive .goal-row-alt{border-bottom-color:r
 .assets-chart-modes{display:flex;gap:6px;flex-shrink:0}
 .assets-chart-modes button{height:28px;padding:0 10px;border-radius:8px;border:1px solid rgba(255,255,255,0.12);background:rgba(255,255,255,0.05);color:rgba(255,255,255,0.7);font-family:inherit;font-size:11px;font-weight:800;cursor:pointer}
 .assets-chart-modes button.on{background:rgba(0,217,126,0.18);border-color:rgba(0,217,126,0.5);color:#00d97e}
-.assets-chart-svg{width:100%;height:260px;display:block;background:linear-gradient(180deg,rgba(255,255,255,0.025),rgba(255,255,255,0.01));border-radius:12px}
+.assets-chart-svg{width:100%;height:300px;display:block;background:linear-gradient(180deg,rgba(255,255,255,0.025),rgba(255,255,255,0.01));border-radius:12px}
 .assets-chart-axis{stroke:rgba(255,255,255,0.18);stroke-width:1}
 .assets-chart-week{stroke:rgba(255,255,255,0.12);stroke-width:1;stroke-dasharray:5 7}
 .assets-chart-week-label{fill:rgba(255,255,255,0.38);font-size:10px;font-weight:800}
+.assets-chart-day-label{fill:rgba(255,255,255,.38);font-size:8px;font-weight:800}
+.assets-chart-bar-label,.assets-chart-point-label{fill:#fff;font-size:9px;font-weight:900;paint-order:stroke;stroke:rgba(4,9,15,.92);stroke-width:3px;stroke-linejoin:round}
 .assets-chart-legend{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:9px;font-size:11px;color:rgba(255,255,255,0.72)}
 .assets-chart-legend-item{display:inline-flex;align-items:center;gap:5px}
 .assets-chart-legend-item i{width:10px;height:10px;border-radius:50%;box-shadow:0 0 12px currentColor}
@@ -2644,7 +2646,7 @@ body.day-mode .assets-col-sasha-hint{color:var(--accent)}
   .assets-summary-table{max-width:100%;border-radius:14px}
   .assets-chart-panel{width:100%;padding:10px;border-radius:14px}
   .assets-chart-head{flex-direction:column;gap:8px}
-  .assets-chart-svg{height:220px}
+  .assets-chart-svg{height:260px}
   .assets-summary-row{padding:0 9px;gap:8px}
   .assets-summary-row.assets-summary-main{min-height:48px;padding:9px 12px}
   .assets-summary-row.assets-summary-main .assets-summary-val{font-size:28px;padding:9px 12px;margin:0}
@@ -3067,7 +3069,7 @@ if (!window.AVITOLOG_GOALS) {
 <script src="js/hero-asset.js?v=20260404-1"></script>
 <script src="js/core.js?v=20260627-paid-date-1"></script>
 <script src="js/projects.js?v=20260627-kuga-folder-fix-1"></script>
-<script src="js/ai-import.js?v=20260627-assets-split-pay-1"></script>
+<script src="js/ai-import.js?v=20260627-assets-chart-bars-1"></script>
 <script src="js/contract-generator.js?v=20260627-contract-executor-days-1"></script>
 <script src="js/ads.js?v=20260404-1"></script>
 <script charset="UTF-8" src="js/kp-generator.js?v=20260621-package-sync-2"></script>
