@@ -1743,78 +1743,79 @@
       return String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
     }
     function buildMonthCandleChartHtml() {
-      var weekLists = [week1, week2, week3, week4];
-      var buckets = [1, 2, 3, 4].map(function(w) {
-        return {
-          week: w,
-          lead: { count: 0, sum: 0, names: [] },
+      var daysInMonth = new Date(y, m + 1, 0).getDate();
+      var days = [];
+      for (var di = 1; di <= daysInMonth; di++) {
+        days.push({
+          day: di,
+          week: Math.min(4, Math.max(1, getWeekIndex(di))),
           kp: { count: 0, sum: 0, names: [] },
           sold: { count: 0, sum: 0, names: [] },
           drain: { count: 0, sum: 0, names: [] }
-        };
-      });
-      function bucketForProject(p) {
-        var d = p && p.date ? parseInt(String(p.date).split('-')[2], 10) : 0;
-        var wi = (typeof p.weekIndex === 'number' && p.weekIndex >= 1 && p.weekIndex <= 4) ? p.weekIndex : getWeekIndex(d || 1);
-        return buckets[Math.max(0, Math.min(3, wi - 1))];
+        });
+      }
+      function dayFromProject(p) {
+        var raw = p && p.date ? String(p.date) : '';
+        var dd = raw ? parseInt(raw.split('-')[2], 10) : 0;
+        if (!dd && typeof p.weekIndex === 'number') dd = ((Math.max(1, Math.min(4, p.weekIndex)) - 1) * 7) + 1;
+        return Math.max(1, Math.min(daysInMonth, dd || 1));
+      }
+      function dayBucket(p) {
+        return days[dayFromProject(p) - 1];
       }
       function hasDrainTag(p) {
         var st = (p && p.status) || [];
         return st.some(function(x) { return normalizeStatusId(x) === 'drain'; }) || !!(p && p.crmArchived);
       }
-      function addToBucket(b, type, p) {
+      function addToDay(day, type, p) {
         var v = getProjectSum(p);
-        b[type].count += 1;
-        b[type].sum += v;
-        b[type].names.push((p.name || 'Проект') + (v ? ' · ' + fmtNum(v) + ' ₽' : ''));
+        day[type].count += 1;
+        day[type].sum += v;
+        day[type].names.push((p.name || 'Проект') + (v ? ' · ' + fmtNum(v) + ' ₽' : ''));
       }
-      weekLists.forEach(function(list) {
+      [week1, week2, week3, week4].forEach(function(list) {
         (list || []).forEach(function(p) {
-          var b = bucketForProject(p);
-          if (hasDrainTag(p)) addToBucket(b, 'drain', p);
-          else if (hasKpTag(p)) addToBucket(b, 'kp', p);
-          else addToBucket(b, 'lead', p);
+          if (hasDrainTag(p)) addToDay(dayBucket(p), 'drain', p);
+          else if (hasKpTag(p)) addToDay(dayBucket(p), 'kp', p);
         });
       });
-      sold.forEach(function(p) { addToBucket(bucketForProject(p), 'sold', p); });
+      sold.forEach(function(p) { addToDay(dayBucket(p), 'sold', p); });
       archive.forEach(function(p) {
         var pym = getProjectYM(p);
         if (pym && pym !== viewYM) return;
-        addToBucket(bucketForProject(p), 'drain', p);
+        addToDay(dayBucket(p), 'drain', p);
       });
-      var maxSum = buckets.reduce(function(mx, b) {
-        return Math.max(mx, b.lead.sum, b.kp.sum, b.sold.sum, b.drain.sum);
+      var maxSum = days.reduce(function(mx, d) {
+        return Math.max(mx, d.kp.sum, d.sold.sum, d.drain.sum);
       }, 0) || 1;
-      function candle(type, data) {
-        var h = Math.max(data.sum > 0 ? 12 : 4, Math.round((data.sum / maxSum) * 124));
-        var title = data.names.length ? data.names.join('\n') : 'Нет записей';
-        return '<div class="goal-month-candle goal-month-candle-' + type + '" title="' + esc(title) + '">' +
-          '<span class="goal-month-candle-val">' + (data.sum ? fmtNum(data.sum) + ' ₽' : '') + '</span>' +
+      function col(d) {
+        var type = d.sold.count ? 'sold' : (d.kp.count ? 'kp' : (d.drain.count ? 'drain' : 'empty'));
+        var data = d[type] || { count: 0, sum: 0, names: [] };
+        var hasData = type !== 'empty';
+        var h = hasData ? Math.max(18, Math.round((data.sum / maxSum) * 96)) : 0;
+        var title = hasData ? data.names.join('\n') : 'Нет КП / оплаты / слива';
+        return '<div class="goal-month-day-col goal-month-day-' + type + '" title="' + esc(title) + '">' +
+          '<span class="goal-month-day-sum">' + (data.sum ? fmtNum(data.sum) + ' ₽' : '') + '</span>' +
           '<i style="height:' + h + 'px"></i>' +
-          '<span class="goal-month-candle-count">' + data.count + '</span>' +
+          '<span class="goal-month-day-num">' + d.day + '</span>' +
         '</div>';
       }
-      var weeksHtml = buckets.map(function(b) {
-        var total = b.lead.sum + b.kp.sum + b.sold.sum + b.drain.sum;
-        var totalCount = b.lead.count + b.kp.count + b.sold.count + b.drain.count;
+      var weeksHtml = [1, 2, 3, 4].map(function(w) {
+        var weekDays = days.filter(function(d) { return d.week === w; });
+        var total = weekDays.reduce(function(s, d) { return s + d.kp.sum + d.sold.sum + d.drain.sum; }, 0);
+        var totalCount = weekDays.reduce(function(s, d) { return s + d.kp.count + d.sold.count + d.drain.count; }, 0);
         return '<div class="goal-month-week-card">' +
-          '<div class="goal-month-week-head"><b>' + b.week + ' неделя</b><span>' + totalCount + ' заявок · ' + fmtNum(total) + ' ₽</span></div>' +
-          '<div class="goal-month-candles">' +
-            candle('lead', b.lead) +
-            candle('kp', b.kp) +
-            candle('sold', b.sold) +
-            candle('drain', b.drain) +
-          '</div>' +
-          '<div class="goal-month-week-legend"><span class="lead">Заявки ' + b.lead.count + '</span><span class="kp">КП ' + b.kp.count + '</span><span class="sold">Оплаты ' + b.sold.count + '</span><span class="drain">Слились ' + b.drain.count + '</span></div>' +
+          '<div class="goal-month-week-head"><b>' + w + ' НЕДЕЛЯ</b><span>' + totalCount + ' событий · ' + fmtNum(total) + ' ₽</span></div>' +
+          '<div class="goals-month-days">' + weekDays.map(col).join('') + '</div>' +
         '</div>';
       }).join('');
       return '<div class="goals-month-chart-wrap">' +
-        '<div class="goals-month-chart-head"><div><b>📊 Месяц по неделям</b><span>Свечи: заявки, КП, оплаты и сливы · высота = сумма</span></div><button type="button" class="goals-smart-open-btn" id="goalsSmartOpenBtn" title="Открыть умную строку ИИ">🤖</button></div>' +
+        '<div class="goals-month-chart-head"><div><b>📊 CRM месяц по дням</b><span>Каждый день — отдельный столбец. Нет КП/продажи/слива — столбца нет. Высота = сумма.</span></div><button type="button" class="goals-smart-open-btn" id="goalsSmartOpenBtn" title="Открыть умную строку ИИ">🤖</button></div>' +
+        '<div class="goals-month-chart-legend"><span class="kp">КП</span><span class="sold">Продан</span><span class="drain">Слился</span></div>' +
         '<div class="goals-month-chart-grid">' + weeksHtml + '</div>' +
         '<div class="goals-smart-modal" id="goalsSmartModal" hidden><div class="goals-smart-modal-card"><div class="goals-smart-modal-head"><b>🤖 Умная строка ИИ</b><button type="button" id="goalsSmartCloseBtn">×</button></div><label class="goals-smart-input-label">Введи команду или данные, ИИ распределит</label><div class="goals-smart-input-row"><textarea class="goals-smart-input" id="goalsSmartInput" rows="1" placeholder="Проект 1, Проект 2 35000 | добавь метрику: конверсия 12% | Иван 45000 в неделю 2" title="Enter — выполнить"></textarea><button type="button" class="goals-smart-input-btn" id="goalsSmartInputBtn">Добавить</button></div></div></div>' +
       '</div>';
-    }
-    var monthName = MONTH_NAMES_RU[m] || '';
+    }    var monthName = MONTH_NAMES_RU[m] || '';
     var viewMonthLabel = formatViewMonthLabel(viewYM);
     var currentWeekNum = isArchiveView ? 4 : getWeekIndex(now.getDate());
     var soldFromCurrentWeek = sold.filter(function(p) {
