@@ -1791,22 +1791,27 @@
       function col(d) {
         var hasKp = d.kp.count > 0;
         var hasSold = d.sold.count > 0;
-        var type = hasSold && hasKp ? 'combo' : (hasSold ? 'sold' : (hasKp ? 'kp' : (d.drain.count ? 'drain' : 'empty')));
-        var data = type === 'combo'
-          ? { count: d.kp.count + d.sold.count, sum: d.kp.sum + d.sold.sum, names: d.kp.names.concat(d.sold.names) }
-          : (d[type] || { count: 0, sum: 0, names: [] });
-        var hasData = type !== 'empty';
-        var h = hasData ? Math.max(type === 'kp' ? 14 : 18, Math.round((data.sum / maxSum) * (type === 'kp' ? 78 : 96))) : 0;
+        var hasDrain = d.drain.count > 0;
         var titleParts = [];
         if (d.kp.count) titleParts.push('КП:\n' + d.kp.names.join('\n'));
         if (d.sold.count) titleParts.push((d.kp.count ? 'Продажа:' : 'Продажа без КП:') + '\n' + d.sold.names.join('\n'));
         if (d.drain.count) titleParts.push('Слился:\n' + d.drain.names.join('\n'));
         var title = titleParts.length ? titleParts.join('\n\n') : 'Нет КП / оплаты / слива';
-        var icon = type === 'combo' ? '🧾💰' : (type === 'sold' ? '💰' : (type === 'kp' ? '🧾' : (type === 'drain' ? '🔥' : '')));
-        return '<div class="goal-month-day-col goal-month-day-' + type + '" title="' + esc(title) + '">' +
-          '<span class="goal-month-day-icon">' + icon + '</span>' +
-          '<span class="goal-month-day-sum">' + (data.sum ? fmtNum(data.sum) + ' ₽' : '') + '</span>' +
-          '<i style="height:' + h + 'px"></i>' +
+        function eventBar(type, data, label) {
+          var has = data.count > 0;
+          var h = has ? Math.max(type === 'kp' ? 12 : 18, Math.round((data.sum / maxSum) * (type === 'kp' ? 72 : 96))) : 0;
+          return '<div class="goal-month-event goal-month-event-' + type + (has ? '' : ' goal-month-event-empty') + '">' +
+            '<span class="goal-month-event-icon">' + (has ? label : '') + '</span>' +
+            '<span class="goal-month-event-sum">' + (has && data.sum ? fmtNum(data.sum) + ' ₽' : '') + '</span>' +
+            '<i style="height:' + h + 'px"></i>' +
+          '</div>';
+        }
+        return '<div class="goal-month-day-col' + (hasDrain ? ' goal-month-day-has-drain' : '') + '" title="' + esc(title) + '">' +
+          '<div class="goal-month-events">' +
+            eventBar('kp', d.kp, '🧾') +
+            eventBar('sold', d.sold, '₽') +
+          '</div>' +
+          (hasDrain ? '<span class="goal-month-drain-mark">🔥</span>' : '') +
           '<span class="goal-month-day-num">' + d.day + '</span>' +
         '</div>';
       }
@@ -1816,7 +1821,7 @@
         var totalCount = weekDays.reduce(function(s, d) { return s + d.kp.count + d.sold.count + d.drain.count; }, 0);
         return '<div class="goal-month-week-card">' +
           '<div class="goal-month-week-head"><b>' + w + ' НЕДЕЛЯ</b><span>' + totalCount + ' событий · ' + fmtNum(total) + ' ₽</span></div>' +
-          '<div class="goals-month-days" style="grid-template-columns:repeat(' + weekDays.length + ',minmax(18px,1fr))">' + weekDays.map(col).join('') + '</div>' +
+          '<div class="goals-month-days" style="grid-template-columns:repeat(' + weekDays.length + ',minmax(34px,1fr))">' + weekDays.map(col).join('') + '</div>' +
         '</div>';
       }).join('');
       return '<div class="goals-month-chart-wrap">' +
