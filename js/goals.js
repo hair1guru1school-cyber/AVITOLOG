@@ -1742,6 +1742,78 @@
     function fmtNum(n) {
       return String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
     }
+    function buildMonthCandleChartHtml() {
+      var weekLists = [week1, week2, week3, week4];
+      var buckets = [1, 2, 3, 4].map(function(w) {
+        return {
+          week: w,
+          lead: { count: 0, sum: 0, names: [] },
+          kp: { count: 0, sum: 0, names: [] },
+          sold: { count: 0, sum: 0, names: [] },
+          drain: { count: 0, sum: 0, names: [] }
+        };
+      });
+      function bucketForProject(p) {
+        var d = p && p.date ? parseInt(String(p.date).split('-')[2], 10) : 0;
+        var wi = (typeof p.weekIndex === 'number' && p.weekIndex >= 1 && p.weekIndex <= 4) ? p.weekIndex : getWeekIndex(d || 1);
+        return buckets[Math.max(0, Math.min(3, wi - 1))];
+      }
+      function hasDrainTag(p) {
+        var st = (p && p.status) || [];
+        return st.some(function(x) { return normalizeStatusId(x) === 'drain'; }) || !!(p && p.crmArchived);
+      }
+      function addToBucket(b, type, p) {
+        var v = getProjectSum(p);
+        b[type].count += 1;
+        b[type].sum += v;
+        b[type].names.push((p.name || 'Проект') + (v ? ' · ' + fmtNum(v) + ' ₽' : ''));
+      }
+      weekLists.forEach(function(list) {
+        (list || []).forEach(function(p) {
+          var b = bucketForProject(p);
+          if (hasDrainTag(p)) addToBucket(b, 'drain', p);
+          else if (hasKpTag(p)) addToBucket(b, 'kp', p);
+          else addToBucket(b, 'lead', p);
+        });
+      });
+      sold.forEach(function(p) { addToBucket(bucketForProject(p), 'sold', p); });
+      archive.forEach(function(p) {
+        var pym = getProjectYM(p);
+        if (pym && pym !== viewYM) return;
+        addToBucket(bucketForProject(p), 'drain', p);
+      });
+      var maxSum = buckets.reduce(function(mx, b) {
+        return Math.max(mx, b.lead.sum, b.kp.sum, b.sold.sum, b.drain.sum);
+      }, 0) || 1;
+      function candle(type, data) {
+        var h = Math.max(data.sum > 0 ? 12 : 4, Math.round((data.sum / maxSum) * 124));
+        var title = data.names.length ? data.names.join('\n') : 'Нет записей';
+        return '<div class="goal-month-candle goal-month-candle-' + type + '" title="' + esc(title) + '">' +
+          '<span class="goal-month-candle-val">' + (data.sum ? fmtNum(data.sum) + ' ₽' : '') + '</span>' +
+          '<i style="height:' + h + 'px"></i>' +
+          '<span class="goal-month-candle-count">' + data.count + '</span>' +
+        '</div>';
+      }
+      var weeksHtml = buckets.map(function(b) {
+        var total = b.lead.sum + b.kp.sum + b.sold.sum + b.drain.sum;
+        var totalCount = b.lead.count + b.kp.count + b.sold.count + b.drain.count;
+        return '<div class="goal-month-week-card">' +
+          '<div class="goal-month-week-head"><b>' + b.week + ' неделя</b><span>' + totalCount + ' заявок · ' + fmtNum(total) + ' ₽</span></div>' +
+          '<div class="goal-month-candles">' +
+            candle('lead', b.lead) +
+            candle('kp', b.kp) +
+            candle('sold', b.sold) +
+            candle('drain', b.drain) +
+          '</div>' +
+          '<div class="goal-month-week-legend"><span class="lead">Заявки ' + b.lead.count + '</span><span class="kp">КП ' + b.kp.count + '</span><span class="sold">Оплаты ' + b.sold.count + '</span><span class="drain">Слились ' + b.drain.count + '</span></div>' +
+        '</div>';
+      }).join('');
+      return '<div class="goals-month-chart-wrap">' +
+        '<div class="goals-month-chart-head"><div><b>📊 Месяц по неделям</b><span>Свечи: заявки, КП, оплаты и сливы · высота = сумма</span></div><button type="button" class="goals-smart-open-btn" id="goalsSmartOpenBtn" title="Открыть умную строку ИИ">🤖</button></div>' +
+        '<div class="goals-month-chart-grid">' + weeksHtml + '</div>' +
+        '<div class="goals-smart-modal" id="goalsSmartModal" hidden><div class="goals-smart-modal-card"><div class="goals-smart-modal-head"><b>🤖 Умная строка ИИ</b><button type="button" id="goalsSmartCloseBtn">×</button></div><label class="goals-smart-input-label">Введи команду или данные, ИИ распределит</label><div class="goals-smart-input-row"><textarea class="goals-smart-input" id="goalsSmartInput" rows="1" placeholder="Проект 1, Проект 2 35000 | добавь метрику: конверсия 12% | Иван 45000 в неделю 2" title="Enter — выполнить"></textarea><button type="button" class="goals-smart-input-btn" id="goalsSmartInputBtn">Добавить</button></div></div></div>' +
+      '</div>';
+    }
     var monthName = MONTH_NAMES_RU[m] || '';
     var viewMonthLabel = formatViewMonthLabel(viewYM);
     var currentWeekNum = isArchiveView ? 4 : getWeekIndex(now.getDate());
@@ -1761,6 +1833,7 @@
     var kpCountSh = kpCount;
     var convPct = (kpCountSh > 0 && soldCount > 0) ? Math.round((soldCount / kpCountSh) * 100) : 0;
     var activeClient = (typeof window.__goalsGetActiveClient === 'function' && window.__goalsGetActiveClient()) || null;
+    var monthChartHtml = buildMonthCandleChartHtml();
     var html = '<div class="goals-layout-with-achievements"><div class="goals-page">' +
       '<div class="goals-kpi-tablo">' +
         '<div class="goal-kpi-card goal-kpi-sold goal-kpi-tablo-big"><span class="goal-kpi-num-wrap"><span class="goal-kpi-num">' + fmtNum(totalRevenue) + '</span><span class="goal-kpi-ruble">₽</span></span><span class="goal-kpi-sub-line">' + soldCount + ' шт · ' + monthName + ' · нед.' + currentWeekNum + ': ' + fmtNum(revenueThisWeek) + ' ₽</span><span class="goal-kpi-label">ПРОДАНО СУММА</span></div>' +
@@ -1771,11 +1844,7 @@
         '<div class="goal-kpi-card goal-kpi-small-card goal-kpi-conv"><span class="goal-kpi-num">' + convPct + '%</span><span class="goal-kpi-label">Конверсия КП в продажу</span></div>' +
         '<div class="goal-kpi-card goal-kpi-small-card"><span class="goal-kpi-num">' + workingCount + '</span><span class="goal-kpi-label">В РАБОТЕ</span></div>' +
       '</div>' +
-      '<div class="goals-smart-input-wrap">' +
-        '<label class="goals-smart-input-label">🤖 Умная строка ИИ — введи команду или данные, ИИ распределит</label>' +
-        '<div class="goals-smart-input-row"><textarea class="goals-smart-input" id="goalsSmartInput" rows="1" placeholder="Проект 1, Проект 2 35000 | добавь метрику: конверсия 12% | Иван 45000 в неделю 2" title="Enter — выполнить"></textarea>' +
-        '<button type="button" class="goals-smart-input-btn" id="goalsSmartInputBtn">Добавить</button></div>' +
-      '</div>' +
+      monthChartHtml +
       '<div class="goals-metrics-row">' +
         '<div class="goals-metrics-board" id="goalsMetricsBoard"></div>' +
         '<button type="button" class="goal-metrics-add-btn" id="goalsMetricsAddBtn" onclick="window.__goalsShowMetricsMenu&&window.__goalsShowMetricsMenu(event)" title="Добавить метрику">+</button>' +
@@ -1859,6 +1928,23 @@
       }
       if (smartBtn && smartInp) {
         smartBtn.onclick = function() { processSmartInputWithAI(smartInp); };
+      }
+      var smartOpenBtn = main.querySelector('#goalsSmartOpenBtn');
+      var smartModal = main.querySelector('#goalsSmartModal');
+      var smartCloseBtn = main.querySelector('#goalsSmartCloseBtn');
+      if (smartOpenBtn && smartModal) {
+        smartOpenBtn.onclick = function() {
+          smartModal.hidden = false;
+          setTimeout(function() { if (smartInp) smartInp.focus(); }, 0);
+        };
+      }
+      if (smartCloseBtn && smartModal) {
+        smartCloseBtn.onclick = function() { smartModal.hidden = true; };
+      }
+      if (smartModal) {
+        smartModal.onclick = function(e) {
+          if (e.target === smartModal) smartModal.hidden = true;
+        };
       }
       var addBtn = main.querySelector('#goalsMetricsAddBtn');
       if (addBtn) {
