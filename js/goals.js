@@ -1789,12 +1789,22 @@
         return Math.max(mx, d.kp.sum, d.sold.sum, d.drain.sum);
       }, 0) || 1;
       function col(d) {
-        var type = d.sold.count ? 'sold' : (d.kp.count ? 'kp' : (d.drain.count ? 'drain' : 'empty'));
-        var data = d[type] || { count: 0, sum: 0, names: [] };
+        var hasKp = d.kp.count > 0;
+        var hasSold = d.sold.count > 0;
+        var type = hasSold && hasKp ? 'combo' : (hasSold ? 'sold' : (hasKp ? 'kp' : (d.drain.count ? 'drain' : 'empty')));
+        var data = type === 'combo'
+          ? { count: d.kp.count + d.sold.count, sum: d.kp.sum + d.sold.sum, names: d.kp.names.concat(d.sold.names) }
+          : (d[type] || { count: 0, sum: 0, names: [] });
         var hasData = type !== 'empty';
-        var h = hasData ? Math.max(18, Math.round((data.sum / maxSum) * 96)) : 0;
-        var title = hasData ? data.names.join('\n') : 'Нет КП / оплаты / слива';
+        var h = hasData ? Math.max(type === 'kp' ? 14 : 18, Math.round((data.sum / maxSum) * (type === 'kp' ? 78 : 96))) : 0;
+        var titleParts = [];
+        if (d.kp.count) titleParts.push('КП:\n' + d.kp.names.join('\n'));
+        if (d.sold.count) titleParts.push((d.kp.count ? 'Продажа:' : 'Продажа без КП:') + '\n' + d.sold.names.join('\n'));
+        if (d.drain.count) titleParts.push('Слился:\n' + d.drain.names.join('\n'));
+        var title = titleParts.length ? titleParts.join('\n\n') : 'Нет КП / оплаты / слива';
+        var icon = type === 'combo' ? '🧾💰' : (type === 'sold' ? '💰' : (type === 'kp' ? '🧾' : (type === 'drain' ? '🔥' : '')));
         return '<div class="goal-month-day-col goal-month-day-' + type + '" title="' + esc(title) + '">' +
+          '<span class="goal-month-day-icon">' + icon + '</span>' +
           '<span class="goal-month-day-sum">' + (data.sum ? fmtNum(data.sum) + ' ₽' : '') + '</span>' +
           '<i style="height:' + h + 'px"></i>' +
           '<span class="goal-month-day-num">' + d.day + '</span>' +
