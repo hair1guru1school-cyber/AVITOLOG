@@ -1806,7 +1806,7 @@
         var totalCount = weekDays.reduce(function(s, d) { return s + d.kp.count + d.sold.count + d.drain.count; }, 0);
         return '<div class="goal-month-week-card">' +
           '<div class="goal-month-week-head"><b>' + w + ' НЕДЕЛЯ</b><span>' + totalCount + ' событий · ' + fmtNum(total) + ' ₽</span></div>' +
-          '<div class="goals-month-days">' + weekDays.map(col).join('') + '</div>' +
+          '<div class="goals-month-days" style="grid-template-columns:repeat(' + weekDays.length + ',minmax(18px,1fr))">' + weekDays.map(col).join('') + '</div>' +
         '</div>';
       }).join('');
       return '<div class="goals-month-chart-wrap">' +
