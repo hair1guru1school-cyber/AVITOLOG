@@ -354,16 +354,15 @@
     var pad = function(n) { return (n < 10 ? '0' : '') + n; };
     if (!data.contractDate) data.contractDate = pad(today.getDate()) + '.' + pad(today.getMonth() + 1) + '.' + today.getFullYear();
     var gender = String(data.headerGender || 'm').toLowerCase() === 'f' ? 'f' : 'm';
-    var headerImg = gender === 'f' ? 'assets/contract_header_f.png' : 'assets/contract_header_m.png';
-    var headerFallbackImg = 'assets/contract_header.png';
+    var headerImg = gender === 'f' ? 'assets/contract_header_women.png' : 'assets/contract_header_m.png';
+    var headerFallbackImg = 'assets/contract_header_m.png';
     try {
-      headerImg = new URL('assets/contract_header.png', window.location.href).href;
-      headerImg = new URL(gender === 'f' ? 'assets/contract_header_f.png' : 'assets/contract_header_m.png', window.location.href).href;
-      headerFallbackImg = new URL('assets/contract_header.png', window.location.href).href;
+      headerImg = new URL(gender === 'f' ? 'assets/contract_header_women.png' : 'assets/contract_header_m.png', window.location.href).href;
+      headerFallbackImg = new URL('assets/contract_header_m.png', window.location.href).href;
     } catch (e) {}
     var headerHtml =
       '<div class="contract-doc-header" style="text-align:center;margin:0 auto 4px">' +
-        '<img src="' + esc(headerImg) + '" width="621" alt="" onerror="if(!this.dataset.fallback){this.dataset.fallback=1;this.src=\'' + esc(headerFallbackImg) + '\';}else{this.style.display=\'none\';}" style="display:block;margin:0 auto;width:16.44cm;max-width:100%;height:auto">' +
+        '<img src="' + esc(headerImg) + '" width="621" height="398" alt="" onerror="if(!this.dataset.fallback){this.dataset.fallback=1;this.src=\'' + esc(headerFallbackImg) + '\';}else{this.style.display=\'none\';}" style="display:block;margin:0 auto;width:16.44cm;height:10.54cm;max-width:100%;object-fit:cover;object-position:center 42%">' +
       '</div>';
     var appendixHtml = getServiceAppendixTemplate(data).replace('<div style="page-break-before:always"></div>', '');
     var body = headerHtml + '<div class="contract-doc-body">' + getContractMainTemplate(data) + '</div>';
