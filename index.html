@@ -1100,13 +1100,23 @@ body.day-mode .kp-pkg-line-inp::placeholder{color:var(--muted2)}
 body.day-mode .kp-tpl-card.kp-tpl-on{border-color:rgba(200,140,0,0.45);background:rgba(255,200,0,0.12)}
 .contract-generator{display:grid;grid-template-columns:minmax(620px,1fr) minmax(470px,533px);align-items:start;gap:16px;min-height:100%;padding:14px 16px 36px;max-width:none;margin:0 auto}
 .contract-generator-form{grid-column:2;grid-row:1;position:sticky;top:10px;max-height:calc(100vh - 88px);overflow:auto;min-width:0}
-.contract-generator-preview{grid-column:1;grid-row:1;min-width:0;min-height:calc(100vh - 100px);overflow:visible}
+.contract-generator-preview{grid-column:1;grid-row:1;min-width:0;min-height:calc(100vh - 100px);overflow:auto;-webkit-overflow-scrolling:touch}
 .contract-toolbar{display:flex;flex-direction:column;gap:10px;align-items:stretch;justify-content:flex-start;margin-bottom:16px;padding:12px 14px;background:linear-gradient(180deg,rgba(16,28,44,0.88),rgba(8,16,30,0.82));border-radius:12px;border:1px solid rgba(124,245,255,0.2);box-shadow:0 8px 24px rgba(0,0,0,0.25),inset 0 1px 0 rgba(255,255,255,0.06)}
 .contract-toolbar-row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:center}
 .contract-toolbar-row-secondary{padding-top:2px}
 .contract-toolbar-btn{padding:6px 12px;font-size:12px;font-weight:700;border-radius:9px;cursor:pointer;transition:all .15s;font-family:inherit;border:1px solid var(--border);background:rgba(255,255,255,0.05);color:var(--text);flex-shrink:0;white-space:nowrap}
 .contract-toolbar .btn-gen{width:auto;min-width:0;margin:0;padding:6px 12px;font-size:12px;font-weight:700;border-radius:8px;letter-spacing:0}
 .contract-toolbar-btn:hover{border-color:var(--accent);color:var(--accent)}
+.contract-mobile-tools{display:inline-flex;align-items:center;gap:4px;padding:3px;border:1px solid rgba(124,245,255,.22);border-radius:10px;background:rgba(53,208,255,.07)}
+.contract-mobile-tool-btn{height:28px;min-width:30px;padding:0 8px;border:1px solid transparent;border-radius:8px;background:transparent;color:#9deeff;font-size:13px;font-weight:900;cursor:pointer;font-family:inherit;line-height:1}
+.contract-mobile-tool-btn:hover,.contract-mobile-tool-btn.on{border-color:rgba(124,245,255,.5);background:rgba(53,208,255,.18);color:#e4fbff}
+.contract-mobile-zoom-label{min-width:48px;color:#d9f8ff;font-size:11px}
+.contract-touch-lens{position:fixed;z-index:2147483000;width:146px;height:146px;border-radius:50%;display:none;align-items:center;justify-content:center;flex-direction:column;gap:6px;padding:16px;box-sizing:border-box;background:radial-gradient(circle at 50% 44%,rgba(8,20,32,.96),rgba(6,10,18,.94));border:2px solid rgba(124,245,255,.75);box-shadow:0 18px 45px rgba(0,0,0,.55),0 0 0 9999px rgba(0,0,0,.08),inset 0 0 28px rgba(53,208,255,.16);color:#e9fbff;pointer-events:none;text-align:center}
+.contract-touch-lens.on{display:flex}
+.contract-touch-lens:before,.contract-touch-lens:after{content:'';position:absolute;background:rgba(124,245,255,.72);border-radius:2px}
+.contract-touch-lens:before{width:42px;height:1px;left:52px;top:72px}.contract-touch-lens:after{width:1px;height:42px;left:72px;top:52px}
+.contract-touch-lens-cross{width:28px;height:28px;border-radius:50%;border:1px solid rgba(124,245,255,.45);display:flex;align-items:center;justify-content:center;color:#7cf5ff;font-size:18px;font-weight:900;line-height:1}
+.contract-touch-lens-text{max-width:112px;font-size:13px;font-weight:900;line-height:1.15;text-shadow:0 1px 3px rgba(0,0,0,.8);overflow:hidden;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical}
 .contract-btn-load-main{width:100%;max-width:460px;min-width:280px;min-height:48px;padding:10px 16px;display:inline-flex;align-items:center;justify-content:center;line-height:1.2;font-size:14px;font-weight:800;letter-spacing:.2px;white-space:nowrap;text-align:center}
 .contract-client-caption{font-size:12px;color:#9dc6ff;text-align:center;padding:0 4px}
 .contract-ai-line{display:flex;align-items:center;gap:8px;padding:8px;border:1px solid rgba(124,245,255,0.2);background:rgba(53,208,255,0.06);border-radius:10px}
@@ -3118,7 +3128,7 @@ if (!window.AVITOLOG_GOALS) {
 <script src="js/core.js?v=20260627-paid-date-1"></script>
 <script src="js/projects.js?v=20260627-kuga-folder-fix-1"></script>
 <script src="js/ai-import.js?v=20260627-assets-chart-week-labels-1"></script>
-<script src="js/contract-generator.js?v=20260630-contract-pdf-a4-1"></script>
+<script src="js/contract-generator.js?v=20260701-contract-mobile-tools-1"></script>
 <script src="js/ads.js?v=20260404-1"></script>
 <script charset="UTF-8" src="js/kp-generator.js?v=20260621-package-sync-2"></script>
 <script src="js/scripts-panel.js?v=20260426-1"></script>

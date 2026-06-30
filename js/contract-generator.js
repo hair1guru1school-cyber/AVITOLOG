@@ -835,6 +835,12 @@
       '</div>' +
       '<div class="contract-toolbar-row contract-toolbar-row-secondary" id="contractToolbarSecondary" style="display:none">' +
       '<button type="button" class="btn-gen contract-toolbar-btn" style="width:auto;min-width:0;flex:0 0 auto;display:inline-flex;padding:6px 12px;margin:0;border-radius:8px" onclick="window.__contractGenerate&&window.__contractGenerate()"><span>&#9889;</span> Сгенерировать договор</button>' +
+      '<div class="contract-mobile-tools" title="Мобильный зум и точное касание">' +
+      '<button type="button" class="contract-mobile-tool-btn" onclick="window.__contractPreviewZoom&&window.__contractPreviewZoom(-0.1)">−</button>' +
+      '<button type="button" class="contract-mobile-tool-btn contract-mobile-zoom-label" onclick="window.__contractPreviewZoom&&window.__contractPreviewZoom(0,true)" id="contractPreviewZoomLabel">100%</button>' +
+      '<button type="button" class="contract-mobile-tool-btn" onclick="window.__contractPreviewZoom&&window.__contractPreviewZoom(0.1)">+</button>' +
+      '<button type="button" class="contract-mobile-tool-btn" onclick="window.__contractToggleTouchLens&&window.__contractToggleTouchLens()" id="contractTouchLensBtn">🎯</button>' +
+      '</div>' +
       '<div class="contract-gender-switch" id="contractGenderSwitch" title="Выбор картинки в шапке">' +
       '<button type="button" class="contract-gender-btn on" data-gender="m">👨 M</button>' +
       '<button type="button" class="contract-gender-btn" data-gender="f">👩 Ж</button>' +
@@ -1477,6 +1483,83 @@
     var formArea = document.getElementById('contractFormArea');
     var previewArea = document.getElementById('contractPreviewArea');
     if (previewArea) renderContractPreview(previewArea, null);
+    var contractPreviewScale = 1;
+    try {
+      contractPreviewScale = Math.max(0.55, Math.min(1.35, parseFloat(localStorage.getItem('avitolog_contract_preview_scale') || '1') || 1));
+    } catch (e) {}
+    var contractTouchLensEnabled = false;
+    var contractTouchLensEl = null;
+
+    function applyContractPreviewScale() {
+      var wrapPreview = previewArea && previewArea.querySelector('.contract-preview-wrap');
+      var label = document.getElementById('contractPreviewZoomLabel');
+      if (label) label.textContent = Math.round(contractPreviewScale * 100) + '%';
+      if (!wrapPreview) return;
+      wrapPreview.style.transform = 'scale(' + contractPreviewScale + ')';
+      wrapPreview.style.transformOrigin = 'top center';
+      wrapPreview.classList.toggle('contract-preview-zoomed', contractPreviewScale !== 1);
+    }
+
+    window.__contractPreviewZoom = function(delta, reset) {
+      contractPreviewScale = reset ? 1 : Math.max(0.55, Math.min(1.35, Math.round((contractPreviewScale + Number(delta || 0)) * 100) / 100));
+      try { localStorage.setItem('avitolog_contract_preview_scale', String(contractPreviewScale)); } catch (e) {}
+      applyContractPreviewScale();
+    };
+
+    function ensureContractTouchLens() {
+      if (contractTouchLensEl) return contractTouchLensEl;
+      contractTouchLensEl = document.createElement('div');
+      contractTouchLensEl.className = 'contract-touch-lens';
+      contractTouchLensEl.innerHTML = '<div class="contract-touch-lens-cross">+</div><div class="contract-touch-lens-text">Точное касание</div>';
+      document.body.appendChild(contractTouchLensEl);
+      return contractTouchLensEl;
+    }
+    function describeContractTouchTarget(el) {
+      if (!el) return 'Пустая зона';
+      var hit = el.closest && el.closest('button,input,select,textarea,label,.contract-appendix-item,.contract-gender-switch');
+      if (!hit) return 'Прокрутка / предпросмотр';
+      if (hit.tagName === 'INPUT' || hit.tagName === 'TEXTAREA') return hit.value || hit.placeholder || 'Поле ввода';
+      if (hit.tagName === 'SELECT') return (hit.options && hit.options[hit.selectedIndex] ? hit.options[hit.selectedIndex].text : '') || 'Список';
+      return String(hit.textContent || hit.getAttribute('title') || 'Кнопка').replace(/\s+/g, ' ').trim().slice(0, 70);
+    }
+    function moveContractTouchLens(ev) {
+      if (!contractTouchLensEnabled || !ev) return;
+      var lens = ensureContractTouchLens();
+      var x = ev.clientX || 0;
+      var y = ev.clientY || 0;
+      lens.style.left = Math.max(10, Math.min(window.innerWidth - 156, x - 74)) + 'px';
+      lens.style.top = Math.max(10, y - 134) + 'px';
+      var label = lens.querySelector('.contract-touch-lens-text');
+      if (label) label.textContent = describeContractTouchTarget(document.elementFromPoint(x, y));
+      lens.classList.add('on');
+    }
+    function hideContractTouchLensSoon() {
+      if (!contractTouchLensEl) return;
+      setTimeout(function() {
+        if (contractTouchLensEl) contractTouchLensEl.classList.remove('on');
+      }, 420);
+    }
+    window.__contractToggleTouchLens = function() {
+      contractTouchLensEnabled = !contractTouchLensEnabled;
+      var btn = document.getElementById('contractTouchLensBtn');
+      if (btn) btn.classList.toggle('on', contractTouchLensEnabled);
+      if (!contractTouchLensEnabled && contractTouchLensEl) contractTouchLensEl.classList.remove('on');
+    };
+    if (wrap && !wrap.__contractTouchLensBound) {
+      wrap.__contractTouchLensBound = true;
+      wrap.addEventListener('pointerdown', function(ev) {
+        if (!contractTouchLensEnabled) return;
+        if (ev.target && ev.target.closest && ev.target.closest('.contract-mobile-tools')) return;
+        moveContractTouchLens(ev);
+      }, { passive: true });
+      wrap.addEventListener('pointermove', function(ev) {
+        if (!contractTouchLensEnabled) return;
+        moveContractTouchLens(ev);
+      }, { passive: true });
+      wrap.addEventListener('pointerup', hideContractTouchLensSoon, { passive: true });
+      wrap.addEventListener('pointercancel', hideContractTouchLensSoon, { passive: true });
+    }
+    applyContractPreviewScale();
 
     renderContractForm(formArea, function(data) {
       var docs = generateContractDocuments(data);
@@ -1485,6 +1568,7 @@
       lastGeneratedData = data || null;
       setPdfDownloadReady(null);
       renderContractPreview(previewArea, docs);
+      applyContractPreviewScale();
       updateSaveButtonState();
     }, function() {
       lastGeneratedHtml = '';
@@ -1493,6 +1577,7 @@
       setPdfDownloadReady(null);
       if (previewArea) {
         renderContractPreview(previewArea, null);
+        applyContractPreviewScale();
       }
       updateSaveButtonState();
     });
