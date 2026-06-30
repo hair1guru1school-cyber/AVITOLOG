@@ -14,8 +14,14 @@
     return s.length >= 2 ? s : '0' + s;
   }
 
+  var BUSINESS_DAY_START_HOUR = 5;
+
+  function getBusinessNow() {
+    return new Date(Date.now() - BUSINESS_DAY_START_HOUR * 60 * 60 * 1000);
+  }
+
   function getTodayStr() {
-    var d = new Date();
+    var d = getBusinessNow();
     return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate());
   }
 
@@ -464,7 +470,7 @@
   var _assetsViewMonth = null;
 
   function assetsCurrentMonthKey() {
-    var n = new Date();
+    var n = getBusinessNow();
     return n.getFullYear() + '-' + String(n.getMonth() + 1).padStart(2, '0');
   }
   function assetsMonthStorageKey(ym) { return ASSETS_MY_KEY + '_month_' + ym; }
@@ -564,7 +570,7 @@
     var srcDate = String(source.paymentDate || source.startDate || '').trim();
     var dt = assetsParseDateOnly(srcDate);
     if (!dt) return copy;
-    var now = new Date();
+    var now = getBusinessNow();
     var today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     var days = Math.max(0, Math.floor((today.getTime() - dt.getTime()) / 86400000));
     copy.daysSincePaymentAtMonthSwitch = days;
@@ -875,7 +881,7 @@
     if (!dateStr || !String(dateStr).trim()) return false;
     var parts = String(dateStr).trim().split(/[-/]/);
     if (parts.length < 2) return false;
-    var now = new Date();
+    var now = getBusinessNow();
     var year = parseInt(parts[0], 10) || now.getFullYear();
     var month = (parseInt(parts[1], 10) || 1) - 1;
     return year === now.getFullYear() && month === now.getMonth();
@@ -931,11 +937,11 @@
     if (!paymentDateStr || !String(paymentDateStr).trim()) return 0;
     var parts = String(paymentDateStr).trim().split(/[-/]/);
     if (parts.length < 3) return 0;
-    var year = parseInt(parts[0], 10) || new Date().getFullYear();
+    var year = parseInt(parts[0], 10) || getBusinessNow().getFullYear();
     var month = (parseInt(parts[1], 10) || 1) - 1;
     var day = parseInt(parts[2], 10) || 1;
     var payDate = new Date(year, month, day);
-    var today = new Date();
+    var today = getBusinessNow();
     today.setHours(0, 0, 0, 0);
     payDate.setHours(0, 0, 0, 0);
     var daysUntil = Math.ceil((payDate - today) / (24 * 60 * 60 * 1000));
@@ -957,11 +963,11 @@
     if (!dateStr || !String(dateStr).trim()) return '—';
     var parts = String(dateStr).trim().split(/[-/]/);
     if (parts.length < 3) return '—';
-    var year = parseInt(parts[0], 10) || new Date().getFullYear();
+    var year = parseInt(parts[0], 10) || getBusinessNow().getFullYear();
     var month = (parseInt(parts[1], 10) || 1) - 1;
     var day = parseInt(parts[2], 10) || 1;
     var payDate = new Date(year, month, day);
-    var today = new Date();
+    var today = getBusinessNow();
     today.setHours(0, 0, 0, 0);
     payDate.setHours(0, 0, 0, 0);
     var days = Math.ceil((payDate - today) / (24 * 60 * 60 * 1000));
@@ -1661,7 +1667,7 @@
       var valHtml = r.val ? (r.main ? '<span class="assets-summary-val">' + esc(r.val) + ' ₽<span class="assets-summary-usd">$' + fmt(r.valUsd) + '</span></span>' : '<span class="assets-summary-val">' + esc(r.val) + ' ₽</span>') : '<span class="assets-summary-val">—</span>';
       return '<div class="' + rowCls + '"><span class="assets-summary-label">' + r.icon + ' ' + esc(r.label) + '</span>' + valHtml + '</div>';
     }).join('');
-    var now = new Date();
+    var now = getBusinessNow();
     var monthTitle = assetsFormatMonthLabel(assetsViewYM);
     var filterPaid = !!localStorage.getItem(ASSETS_FILTER_PAID_KEY);
     function myRowHasPaidAmount(p) {
@@ -1796,14 +1802,14 @@
       var arr = getAssetsMy();
       if (arr[idx]) {
         arr[idx][field] = val;
-        if (field === 'paid') { var amt = parseInt(val.replace(/\s/g, ''), 10) || 0; var d = new Date(); arr[idx].paymentHistory = amt > 0 ? [{ date: (arr[idx].paymentDate || '').trim() || (d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate())), amount: amt }] : []; }
+        if (field === 'paid') { var amt = parseInt(val.replace(/\s/g, ''), 10) || 0; arr[idx].paymentHistory = amt > 0 ? [{ date: (arr[idx].paymentDate || '').trim() || getTodayStr(), amount: amt }] : []; }
         saveAssetsMy(arr);
       }
     } else {
       var arr2 = getAssetsSasha();
       if (arr2[idx]) {
         arr2[idx][field] = val;
-        if (field === 'soldFor') { var amt = parseInt(val.replace(/\s/g, ''), 10) || 0; var d = new Date(); arr2[idx].paymentHistory = amt > 0 ? [{ date: (arr2[idx].paymentDate || '').trim() || (d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate())), amount: amt }] : []; }
+        if (field === 'soldFor') { var amt = parseInt(val.replace(/\s/g, ''), 10) || 0; arr2[idx].paymentHistory = amt > 0 ? [{ date: (arr2[idx].paymentDate || '').trim() || getTodayStr(), amount: amt }] : []; }
         saveAssetsSasha(arr2);
       }
     }
@@ -2227,8 +2233,8 @@
       p = arr2 && arr2[idx] ? arr2[idx] : null;
     }
     if (!p) return;
-    var d = new Date();
-    var inp = prompt('Добавить оплату. Введите дату (ГГГГ-ММ-ДД) и сумму через пробел:\nНапример: 2026-01-15 17000', '2026-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate()) + ' ');
+    var todayStr = getTodayStr();
+    var inp = prompt('Добавить оплату. Введите дату (ГГГГ-ММ-ДД) и сумму через пробел:\nНапример: 2026-01-15 17000', todayStr + ' ');
     if (!inp || !inp.trim()) return;
     var parts = inp.trim().split(/\s+/);
     var dateStr = '';
@@ -2238,10 +2244,10 @@
       amount = parseInt(String(parts[1]).replace(/\s/g, ''), 10) || 0;
     } else if (parts.length === 1) {
       var num = parseInt(String(parts[0]).replace(/\s/g, ''), 10);
-      if (!isNaN(num)) { var dd = new Date(); amount = num; dateStr = dd.getFullYear() + '-' + pad2(dd.getMonth() + 1) + '-' + pad2(dd.getDate()); }
+      if (!isNaN(num)) { amount = num; dateStr = getTodayStr(); }
     }
     if (amount <= 0) return;
-    if (!dateStr || !/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) { var dd = new Date(); dateStr = dd.getFullYear() + '-' + pad2(dd.getMonth() + 1) + '-' + pad2(dd.getDate()); }
+    if (!dateStr || !/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) { dateStr = getTodayStr(); }
     if (!Array.isArray(p.paymentHistory)) p.paymentHistory = [];
     if (p.paymentHistory.length === 0) {
       var prev = getPaymentHistoryEntries(p, owner);
@@ -2320,7 +2326,7 @@
     var ref = getAssetsRowRef(owner, idx);
     var p = ref.row;
     if (!p) return;
-    var base = parseDateOnly((p.paymentDate || '').trim()) || new Date();
+    var base = parseDateOnly((p.paymentDate || '').trim()) || getBusinessNow();
     var viewYear = base.getFullYear();
     var viewMonth = base.getMonth();
     function dateStr(dt) {
@@ -2343,7 +2349,7 @@
     function outside(e) { if (!picker.contains(e.target) && e.target !== anchor && !(anchor && anchor.contains && anchor.contains(e.target))) close(); }
     function render() {
       var selected = (p.paymentDate || '').trim();
-      var today = dateStr(new Date());
+      var today = getTodayStr();
       var first = new Date(viewYear, viewMonth, 1);
       var firstDow = (first.getDay() + 6) % 7;
       var start = new Date(viewYear, viewMonth, 1 - firstDow);
@@ -2381,7 +2387,7 @@
       if (!act) return;
       var kind = act.getAttribute('data-act');
       if (kind === 'clear') { savePaymentDateFromCalendar(owner, idx, ''); close(); return; }
-      if (kind === 'today') { savePaymentDateFromCalendar(owner, idx, dateStr(new Date())); close(); return; }
+      if (kind === 'today') { savePaymentDateFromCalendar(owner, idx, getTodayStr()); close(); return; }
       if (kind === 'split') { close(); openSplitPayment(owner, idx); }
     };
     render();
@@ -2400,8 +2406,7 @@
     var p = ref.row;
     if (!p) return;
     var entries = getPaymentHistoryEntries(p, owner).slice().sort(function(a, b) { return (a.date || '').localeCompare(b.date || ''); });
-    var today = new Date();
-    var todayStr = today.getFullYear() + '-' + pad2(today.getMonth() + 1) + '-' + pad2(today.getDate());
+    var todayStr = getTodayStr();
     var totalAmount = owner === 'me' ? parseAssetsMoney(p.paid) : parseAssetsMoney(p.soldFor || p.paid);
     var first = entries[0] || { date: (p.paymentDate || todayStr), amount: totalAmount || '' };
     var second = entries[1] || { date: '', amount: '' };

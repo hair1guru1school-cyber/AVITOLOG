@@ -10,10 +10,15 @@
     return (typeof window.AVITOLOG_KEY === 'function') ? window.AVITOLOG_KEY('avitolog_goals_v1') : 'avitolog_goals_v1';
   }
   var MONTH_NAMES_RU = ['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'];
-  var _goalsViewMonth = null; // null = current month (live); "2026-03" = archived month
+  var _goalsViewMonth = null;
+  var BUSINESS_DAY_START_HOUR = 5;
+
+  function getBusinessNow() {
+    return new Date(Date.now() - BUSINESS_DAY_START_HOUR * 60 * 60 * 1000);
+  }
 
   function getCurrentMonthKey() {
-    var n = new Date();
+    var n = getBusinessNow();
     return n.getFullYear() + '-' + String(n.getMonth() + 1).padStart(2, '0');
   }
   function monthStorageKey(ym) {
@@ -587,7 +592,7 @@
     return dateStr;
   }
   function getTodayISO() {
-    var d = new Date();
+    var d = getBusinessNow();
     return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate());
   }
   function formatBadgeDateShort(dateStr) {
@@ -733,7 +738,7 @@
     if (!raw) return;
     var lines = raw.split(/[\r\n]+/).map(function(s) { return s.trim(); }).filter(Boolean);
     if (!lines.length) return;
-    var today = new Date();
+    var today = getBusinessNow();
     var todayStr = today.getFullYear() + '-' + pad2(today.getMonth() + 1) + '-' + pad2(today.getDate());
     var day = today.getDate();
     var weekIndex = getWeekIndex(day);
@@ -843,7 +848,7 @@
     var btn = document.getElementById('goalsSmartInputBtn');
     if (btn) { btn.disabled = true; btn.textContent = '...'; }
     var data = loadData();
-    var today = new Date();
+    var today = getBusinessNow();
     var day = today.getDate();
     var weekIndex = getWeekIndex(day);
     var todayStr = today.getFullYear() + '-' + pad2(today.getMonth() + 1) + '-' + pad2(today.getDate());
@@ -1286,6 +1291,37 @@
     return '';
   }
 
+  function mergeLiveMonthIntoArchiveData(archiveData, ym) {
+    if (!ym) return archiveData;
+    var out = normalizeLoadedData(archiveData || { projects: [] });
+    var live = loadLiveData();
+    var byId = {};
+    out.projects = Array.isArray(out.projects) ? out.projects : [];
+    out.projects.forEach(function(p, idx) {
+      if (p && p.id) byId[p.id] = idx;
+    });
+    (live.projects || []).forEach(function(p) {
+      if (!p || getProjectYM(p) !== ym) return;
+      var copy = JSON.parse(JSON.stringify(p));
+      if (p.id && byId[p.id] !== undefined) out.projects[byId[p.id]] = copy;
+      else out.projects.push(copy);
+    });
+    return out;
+  }
+
+  function showGoalsSmallToast(msg) {
+    try {
+      if (typeof window.__showToast === 'function') { window.__showToast(msg); return; }
+      if (typeof window.showAnalyticsReadyToast === 'function') { window.showAnalyticsReadyToast(msg); return; }
+    } catch (e) {}
+    var el = document.createElement('div');
+    el.textContent = msg;
+    el.style.cssText = 'position:fixed;right:18px;bottom:18px;z-index:100001;background:rgba(4,18,14,.96);border:1px solid rgba(0,217,126,.65);color:#d9fff0;padding:11px 14px;border-radius:12px;font:800 12px/1.25 sans-serif;box-shadow:0 14px 34px rgba(0,0,0,.45);max-width:320px';
+    document.body.appendChild(el);
+    setTimeout(function(){ el.style.opacity = '0'; el.style.transition = 'opacity .25s ease'; }, 2200);
+    setTimeout(function(){ if (el.parentNode) el.parentNode.removeChild(el); }, 2600);
+  }
+
   /** Успехи: накопительная сумма продаж за месяц (CRM). Пороги 50k … 500k; иконки — только файлы в assets/achievements/milestone-*.png */
   var MONTHLY_TOTAL_THRESHOLD_50K = 50000;
   var MONTHLY_TOTAL_THRESHOLD_100K = 100000;
@@ -1576,6 +1612,7 @@
     var data;
     if (isArchiveView) {
       data = loadMonthSnapshot(viewYM) || normalizeLoadedData({ projects: [], customMetrics: [], pinnedMetrics: [] });
+      data = mergeLiveMonthIntoArchiveData(data, viewYM);
     } else {
       data = liveData;
     }
@@ -1584,7 +1621,7 @@
     var viewParts = viewYM.split('-');
     var y = parseInt(viewParts[0], 10);
     var m = parseInt(viewParts[1], 10) - 1;
-    var now = new Date();
+    var now = getBusinessNow();
     var isCurrentMonth = !isArchiveView;
     var viewDay = isArchiveView ? new Date(y, m + 1, 0).getDate() : now.getDate();
     var week1 = [], week2 = [], week3 = [], week4 = [];
@@ -1793,9 +1830,9 @@
         var hasSold = d.sold.count > 0;
         var hasDrain = d.drain.count > 0;
         var titleParts = [];
-        if (d.kp.count) titleParts.push('КП:\n' + d.kp.names.join('\n'));
-        if (d.sold.count) titleParts.push((d.kp.count ? 'Продажа:' : 'Продажа без КП:') + '\n' + d.sold.names.join('\n'));
-        if (d.drain.count) titleParts.push('Слился:\n' + d.drain.names.join('\n'));
+        if (d.kp.count) titleParts.push('🧾 КП:\n' + d.kp.names.join('\n'));
+        if (d.sold.count) titleParts.push((d.kp.count ? '💰 Продажа:' : '💰 Продажа без КП:') + '\n' + d.sold.names.join('\n'));
+        if (d.drain.count) titleParts.push('🔥 Слился:\n' + d.drain.names.join('\n'));
         var title = titleParts.length ? titleParts.join('\n\n') : 'Нет КП / оплаты / слива';
         function eventBar(type, data, label) {
           var has = data.count > 0;
@@ -2037,6 +2074,7 @@
 
     window.__goalsDelete = deleteFromWeek;
     window.__goalsSendToWorking = sendToWorkingFromSold;
+    window.__goalsCreateActiveFromSold = createActiveProjectFromSoldAnyMonth;
     window.__goalsDeletePermanent = deletePermanent;
     window.__goalsSelectRow = selectGoalRow;
     window.__goalsShowPricePopup = showPricePopup;
@@ -2550,7 +2588,7 @@
     var p = (data.projects || []).find(function(x) { return x && x.id === projectId; });
     if (!p) return;
     if (p.stage !== 'working') return;
-    var nowD = new Date();
+    var nowD = getBusinessNow();
     var y = nowD.getFullYear();
     var m = nowD.getMonth();
     var today = nowD.getDate();
@@ -2593,7 +2631,7 @@
     if (!p || p.stage !== 'working') return;
     var existing = document.getElementById('goalSendToWeekPopup');
     if (existing) { existing.remove(); return; }
-    var nowD = new Date();
+    var nowD = getBusinessNow();
     var curWeek = getWeekIndex(nowD.getDate());
     var monthLabel = ['янв', 'фев', 'мар', 'апр', 'май', 'июн', 'июл', 'авг', 'сен', 'окт', 'ноя', 'дек'][nowD.getMonth()];
     var weeksHtml = '';
@@ -2883,7 +2921,7 @@
     var projects = data.projects || [];
     var p = projects.find(function(x) { return x.id === projectId; });
     if (!p) return;
-    var day = p.date ? parseInt(String(p.date).split('-')[2], 10) : new Date().getDate();
+    var day = p.date ? parseInt(String(p.date).split('-')[2], 10) : getBusinessNow().getDate();
     var wi = (typeof p.weekIndex === 'number' && p.weekIndex >= 1 && p.weekIndex <= 4) ? p.weekIndex : getWeekIndex(day);
     if (wi !== weekNum) return;
     removeKassaByGoalId(projectId);
@@ -2923,6 +2961,26 @@
       try { window.__onGoalsProjectSentToActive(copy); } catch (e) { console.warn('Goals→Active callback failed', e); }
     }
     render();
+  }
+
+  function createActiveProjectFromSoldAnyMonth(projectId) {
+    var data = loadData();
+    var p = (data.projects || []).find(function(x) { return x && x.id === projectId && x.stage === 'sold'; });
+    if (!p) {
+      var live = loadLiveData();
+      p = (live.projects || []).find(function(x) { return x && x.id === projectId && x.stage === 'sold'; });
+    }
+    if (!p) return;
+    var copy = JSON.parse(JSON.stringify(p));
+    try {
+      if (typeof window.__onGoalsProjectSentToActive === 'function') {
+        window.__onGoalsProjectSentToActive(copy, true);
+        showGoalsSmallToast('✓ Проект добавлен во вкладку ПРОЕКТЫ');
+      }
+    } catch (e) {
+      console.warn('Goals active project create failed', e);
+      showGoalsSmallToast('Не удалось добавить проект');
+    }
   }
 
   function saveSumFromInput(inputEl) {
@@ -2986,7 +3044,7 @@
     var modal = document.createElement('div');
     modal.id = 'goalModal';
     modal.className = 'goal-modal-overlay' + (isPopover ? ' goal-modal-popover' : '');
-    var today = new Date();
+    var today = getBusinessNow();
     var todayStr = today.getFullYear() + '-' + pad2(today.getMonth() + 1) + '-' + pad2(today.getDate());
     var modalStage = normalizeStage(forcedStage || 'weekly');
     var statusChecks = STATUS_OPTIONS.map(function(s) {
@@ -3174,7 +3232,7 @@
   function createGoalProjectFromClient(client, weekNum, targetStage) {
     var name = String(client.company || client.contact_name || client.name || 'Клиент').trim();
     if (!name) return null;
-    var now = new Date();
+    var now = getBusinessNow();
     var y = now.getFullYear(), m = now.getMonth();
     var day = now.getDate();
     var dateStr = y + '-' + pad2(m + 1) + '-' + pad2(day);
