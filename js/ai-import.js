@@ -635,14 +635,34 @@
       // но сохраняем список клиентов с нулями
       var clearedMy = liveParsed.map(function(p) {
         var c = JSON.parse(JSON.stringify(p));
-        c.paid = ''; c.expected = '';
+        var paidVal = parseInt(String(c.paid || '').replace(/\s/g, ''), 10) || 0;
+        if (paidVal > 0) c.expected = c.paid;
+        c.paid = '';
         return c;
       });
       localStorage.setItem(ASSETS_MY_KEY, JSON.stringify(clearedMy));
       localStorage.setItem(assetsMonthStorageKey(currentYM), JSON.stringify(clearedMy));
-      // Sasha: восстанавливаем из снимка если есть
-      var sashaSnapRaw = localStorage.getItem(assetsSashaMonthStorageKey(currentYM));
-      if (sashaSnapRaw) localStorage.setItem(ASSETS_SASHA_KEY, sashaSnapRaw);
+      var sashaRaw = localStorage.getItem(ASSETS_SASHA_KEY);
+      if (sashaRaw) {
+        var sashaParsed = JSON.parse(sashaRaw);
+        if (Array.isArray(sashaParsed)) {
+          var clearedSasha = sashaParsed.map(function(p) {
+            var c = JSON.parse(JSON.stringify(p));
+            var expectedVal = parseInt(String(c.expected || '').replace(/\s/g, ''), 10) || 0;
+            var soldVal = parseInt(String(c.soldFor || c.paid || '').replace(/\s/g, ''), 10) || 0;
+            var agencyVal = parseInt(String(c.aoaPercent || '').replace(/\s/g, ''), 10) || 0;
+            if (!expectedVal && soldVal > 0) c.expected = c.soldFor || c.paid || '';
+            else if (!expectedVal && agencyVal > 0) c.expected = c.aoaPercent || '';
+            c.paid = '';
+            c.soldFor = '';
+            c.toAgent = '';
+            c.aoaPercent = '';
+            return c;
+          });
+          localStorage.setItem(ASSETS_SASHA_KEY, JSON.stringify(clearedSasha));
+          localStorage.setItem(assetsSashaMonthStorageKey(currentYM), JSON.stringify(clearedSasha));
+        }
+      }
     } catch(e) {}
   }
 
@@ -736,29 +756,30 @@
     alert(msg);
   };
 
-  /** Полная очистка всех денежных полей: paid, expected, soldFor, toAgent, aoaPercent.
-   *  Используется при переходе месяца — новый месяц всегда «с нуля». */
+  /** Подготовка нового месяца: проекты остаются, оплаченные суммы становятся ожиданием,
+   *  а поля фактической оплаты обнуляются. Даты/история сохраняются как память о прошлом платеже. */
   function assetsClearAllSumsForNewMonth() {
     var newMy = getAssetsMy().map(function(p) {
       var copy = JSON.parse(JSON.stringify(p));
       assetsStampDaysSincePayment(copy, p);
+      var paidVal = parseInt(String(copy.paid || '').replace(/\s/g, ''), 10) || 0;
+      if (paidVal > 0) copy.expected = copy.paid;
       copy.paid = '';
-      copy.expected = '';
-      copy.paymentDate = '';
-      delete copy.paymentHistory;
       return copy;
     });
     saveAssetsMy(newMy);
     var newSasha = getAssetsSasha().map(function(p) {
       var copy = JSON.parse(JSON.stringify(p));
       assetsStampDaysSincePayment(copy, p);
+      var expectedVal = parseInt(String(copy.expected || '').replace(/\s/g, ''), 10) || 0;
+      var soldVal = parseInt(String(copy.soldFor || copy.paid || '').replace(/\s/g, ''), 10) || 0;
+      var agencyVal = parseInt(String(copy.aoaPercent || '').replace(/\s/g, ''), 10) || 0;
+      if (!expectedVal && soldVal > 0) copy.expected = copy.soldFor || copy.paid || '';
+      else if (!expectedVal && agencyVal > 0) copy.expected = copy.aoaPercent || '';
       copy.paid = '';
-      copy.expected = '';
       copy.soldFor = '';
       copy.toAgent = '';
       copy.aoaPercent = '';
-      copy.paymentDate = '';
-      delete copy.paymentHistory;
       return copy;
     });
     saveAssetsSasha(newSasha);
@@ -1470,6 +1491,7 @@
     if (!mc) return;
     /** Авто-переход месяца: апрель консервируем как архив, май = «всё с нуля» по суммам. */
     try { assetsCheckMonthTransition(); } catch(eMT) {}
+    try { assetsAutoRepairIfSnapshotBetter(); } catch(eRepairMonth) {}
     var fmt = function(n) { return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ' '); };
     function calcNameColWidth(list) {
       var longest = 'Проект';
