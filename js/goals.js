@@ -421,8 +421,8 @@
 
   function goalsManualJune2026FixMarkerKey() {
     return (typeof window.AVITOLOG_KEY === 'function')
-      ? window.AVITOLOG_KEY('avitolog_goals_manual_june2026_beton_ilmira_v1')
-      : 'avitolog_goals_manual_june2026_beton_ilmira_v1';
+      ? window.AVITOLOG_KEY('avitolog_goals_manual_june2026_beton_ilmira_v2')
+      : 'avitolog_goals_manual_june2026_beton_ilmira_v2';
   }
   function normalizeGoalNameForFix(s) {
     return String(s || '').toLowerCase().replace(/ё/g, 'е').replace(/\s+/g, ' ').trim();
@@ -1715,6 +1715,9 @@
     }
     var data;
     if (isArchiveView) {
+      if (viewYM === '2026-06') {
+        try { ensureJune2026ManualFix(false); } catch (eJuneManualRender) {}
+      }
       data = loadMonthSnapshot(viewYM) || normalizeLoadedData({ projects: [], customMetrics: [], pinnedMetrics: [] });
       data = mergeLiveMonthIntoArchiveData(data, viewYM);
     } else {
@@ -3512,7 +3515,7 @@
   // Historical snapshots are read-only; missing-sale repair is manual only.
   /** Ручной фикс по запросу: июнь 2026, Бетон Ильмира КП на 3-й неделе + продажа 30.06,
    *  а также Пиломатериалы 44к на 30.06 для верхнего CRM-графика. */
-  try { ensureJune2026ManualFix(false); } catch (eJuneManual) {}
+  // Runs inside render() when June 2026 archive is opened, after data is available.
   /** Запускаем переход месяца сразу при загрузке скрипта.
    *  31-го числа предыдущий месяц автоматически становится архивом,
    *  а в новом месяце «продано», «недели», «КП» и «новые проекты» начинаются с нуля.
