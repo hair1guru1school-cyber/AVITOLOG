@@ -322,21 +322,6 @@
     } catch(e) {}
 
     /** Снимок апреля. */
-    var aprKey = monthStorageKey('2026-04');
-    try {
-      var rawSnap = localStorage.getItem(aprKey);
-      if (rawSnap) {
-        var snap = JSON.parse(rawSnap);
-        if (snap && typeof snap === 'object') {
-          if (!Array.isArray(snap.projects)) snap.projects = [];
-          if (addMissingSoldToData(snap, APRIL_2026_MISSING_SOLD)) {
-            localStorage.setItem(aprKey, JSON.stringify(snap));
-            report.snapshot = 1;
-          }
-        }
-      }
-    } catch(e) {}
-
     APRIL_2026_MISSING_SOLD.forEach(function(s) { report.names.push(s.name); });
     try { localStorage.setItem(markerKey, 'v1'); } catch(e) {}
     if (typeof console !== 'undefined' && console.log) {
@@ -402,6 +387,7 @@
     return { kept: kept, removed: removed };
   }
   function goalsRepairCleanKey(storageKey, label, report) {
+    if (/_month_\d{4}-\d{2}$/.test(String(storageKey || ''))) return;
     var raw;
     try { raw = localStorage.getItem(storageKey); } catch(e) { return; }
     if (!raw) return;
@@ -425,18 +411,6 @@
     var liveKey = goalsStorageKey();
     goalsRepairCleanKey(liveKey, 'live', report);
     /** Все месячные снимки этого профиля. */
-    var snapPrefix = liveKey + '_month_';
-    var keysToClean = [];
-    try {
-      for (var i = 0; i < localStorage.length; i++) {
-        var k = localStorage.key(i);
-        if (k && k.indexOf(snapPrefix) === 0) keysToClean.push(k);
-      }
-    } catch(e) {}
-    keysToClean.forEach(function(k) {
-      var ym = k.substring(snapPrefix.length);
-      goalsRepairCleanKey(k, 'snapshot ' + ym, report);
-    });
     try { localStorage.setItem(markerKey, 'v1'); } catch(e) {}
     if (report.length && typeof console !== 'undefined' && console.log) {
       console.log('[goals] CRM очищен от ИИ-импортных и blacklist sold-записей:', report);
@@ -570,7 +544,7 @@
   function saveData(data) {
     try {
       if (_goalsViewMonth) {
-        localStorage.setItem(monthStorageKey(_goalsViewMonth), JSON.stringify(data));
+        console.warn('Goals archive is read-only:', _goalsViewMonth);
         return;
       }
       localStorage.setItem(goalsStorageKey(), JSON.stringify(data));
@@ -3408,10 +3382,10 @@
 
   /** Сначала разово вычищаем «нелегальные» sold-записи из CRM
    *  (последствия старого ИИ-импорта оплат, который писал в goals напрямую). */
-  try { repairCrmFromKassaImports(false); } catch (eRepair) {}
+  // Archive snapshots are immutable: no automatic CRM sanitation on load.
   /** Однократно добавляем пропущенный апрельский sold «Бетон Антон Камышин» (84 000),
    *  который был в кассе, но в CRM не попал. Идемпотентно по маркеру. */
-  try { ensureApril2026MissingSold(false); } catch (eMissApr) {}
+  // Historical snapshots are read-only; missing-sale repair is manual only.
   /** Запускаем переход месяца сразу при загрузке скрипта.
    *  31-го числа предыдущий месяц автоматически становится архивом,
    *  а в новом месяце «продано», «недели», «КП» и «новые проекты» начинаются с нуля.
