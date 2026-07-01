@@ -1296,15 +1296,27 @@
     var out = normalizeLoadedData(archiveData || { projects: [] });
     var live = loadLiveData();
     var byId = {};
+    var soldSig = {};
     out.projects = Array.isArray(out.projects) ? out.projects : [];
     out.projects.forEach(function(p, idx) {
       if (p && p.id) byId[p.id] = idx;
+      if (p && p.stage === 'sold') {
+        var sig = String(p.name || '').toLowerCase() + '|' + String(p.date || '') + '|' + String(p.saleAmount || p.mainPrice || '');
+        soldSig[sig] = true;
+      }
     });
     (live.projects || []).forEach(function(p) {
-      if (!p || getProjectYM(p) !== ym) return;
+      if (!p || getProjectYM(p) !== ym || p.stage !== 'sold') return;
       var copy = JSON.parse(JSON.stringify(p));
-      if (p.id && byId[p.id] !== undefined) out.projects[byId[p.id]] = copy;
-      else out.projects.push(copy);
+      if (p.id && byId[p.id] !== undefined) {
+        out.projects[byId[p.id]] = copy;
+      } else {
+        var sig = String(p.name || '').toLowerCase() + '|' + String(p.date || '') + '|' + String(p.saleAmount || p.mainPrice || '');
+        if (!soldSig[sig]) {
+          out.projects.push(copy);
+          soldSig[sig] = true;
+        }
+      }
     });
     return out;
   }
@@ -1645,6 +1657,18 @@
       seenInSold[key] = true;
       sold.push(p);
     }
+    function pushToHistoricalWeek(p) {
+      var d = p.date ? (function() {
+        var parts = String(p.date).split('-');
+        if (parts.length >= 3) return parseInt(parts[2], 10);
+        return viewDay;
+      }()) : viewDay;
+      var wi = p.weekIndex || getWeekIndex(d);
+      if (wi === 1) pushUniqueToWeek(week1, p);
+      else if (wi === 2) pushUniqueToWeek(week2, p);
+      else if (wi === 3) pushUniqueToWeek(week3, p);
+      else pushUniqueToWeek(week4, p);
+    }
     if (isArchiveView) {
       projects.forEach(function(p) {
         var pym = getProjectYM(p);
@@ -1652,21 +1676,13 @@
           if (pym && pym === viewYM) pushUniqueToSold(p);
           return;
         }
-        if (p.stage === 'working') { working.push(p); return; }
         if (p.stage === 'archive') { archive.push(p); return; }
+        if (pym && pym === viewYM) { pushToHistoricalWeek(p); return; }
+        if (p.stage === 'working') { working.push(p); return; }
         /** Недели — только проекты с датой строго в просматриваемом месяце.
          *  Если в снимке оказался мартовский weekly с weekIndex=2 — он НЕ должен попасть во вторую неделю апреля. */
         if (!pym || pym !== viewYM) return;
-        var d = p.date ? (function() {
-          var parts = String(p.date).split('-');
-          if (parts.length >= 3) return parseInt(parts[2], 10);
-          return viewDay;
-        }()) : viewDay;
-        var wi = p.weekIndex || getWeekIndex(d);
-        if (wi === 1) pushUniqueToWeek(week1, p);
-        else if (wi === 2) pushUniqueToWeek(week2, p);
-        else if (wi === 3) pushUniqueToWeek(week3, p);
-        else pushUniqueToWeek(week4, p);
+        pushToHistoricalWeek(p);
       });
     } else {
       var liveProjects = (liveData.projects || []).filter(function(p){ return p && typeof p === 'object'; });
@@ -2965,12 +2981,16 @@
 
   function createActiveProjectFromSoldAnyMonth(projectId) {
     var data = loadData();
+    if (_goalsViewMonth) data = mergeLiveMonthIntoArchiveData(data, _goalsViewMonth);
     var p = (data.projects || []).find(function(x) { return x && x.id === projectId && x.stage === 'sold'; });
     if (!p) {
       var live = loadLiveData();
       p = (live.projects || []).find(function(x) { return x && x.id === projectId && x.stage === 'sold'; });
     }
-    if (!p) return;
+    if (!p) {
+      showGoalsSmallToast('Sale not found in CRM archive');
+      return;
+    }
     var copy = JSON.parse(JSON.stringify(p));
     try {
       if (typeof window.__onGoalsProjectSentToActive === 'function') {
