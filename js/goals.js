@@ -419,6 +419,114 @@
   }
   window.__goalsRepairCrmFromKassaImports = function() { return repairCrmFromKassaImports(true); };
 
+  function goalsManualJune2026FixMarkerKey() {
+    return (typeof window.AVITOLOG_KEY === 'function')
+      ? window.AVITOLOG_KEY('avitolog_goals_manual_june2026_beton_ilmira_v1')
+      : 'avitolog_goals_manual_june2026_beton_ilmira_v1';
+  }
+  function normalizeGoalNameForFix(s) {
+    return String(s || '').toLowerCase().replace(/ё/g, 'е').replace(/\s+/g, ' ').trim();
+  }
+  function projectMatchesNameForFix(p, needle) {
+    return normalizeGoalNameForFix(p && p.name).indexOf(normalizeGoalNameForFix(needle)) >= 0;
+  }
+  function makeManualGoalProjectForFix(data, seed) {
+    return {
+      id: seed.id || generateId(),
+      name: seed.name,
+      mainPrice: seed.mainPrice || seed.saleAmount || '',
+      priceOptions: [seed.mainPrice || seed.saleAmount || ''].filter(Boolean),
+      saleAmount: seed.saleAmount || '',
+      stage: seed.stage || 'weekly',
+      status: seed.status || [],
+      statusDates: seed.statusDates || {},
+      touchMarkers: [],
+      tags: seed.tags || [],
+      note: '',
+      date: seed.date,
+      weekIndex: seed.weekIndex || getWeekIndex(parseInt(String(seed.date || '').split('-')[2], 10) || 1),
+      emoji: seed.emoji || '📦',
+      sourceNote: seed.sourceNote || 'Manual CRM archive fix 2026-06'
+    };
+  }
+  function ensureJune2026ManualFix(force) {
+    var markerKey = goalsManualJune2026FixMarkerKey();
+    if (!force) {
+      try { if (localStorage.getItem(markerKey) === 'v1') return null; } catch(e) {}
+    }
+    var key = monthStorageKey('2026-06');
+    var existingSnapshot = loadMonthSnapshot('2026-06');
+    if (!existingSnapshot && !force) return null;
+    var data = existingSnapshot || normalizeLoadedData({ projects: [] });
+    if (!Array.isArray(data.projects)) data.projects = [];
+    var changed = false;
+
+    var betonKp = data.projects.find(function(p) {
+      return p && p.stage !== 'sold' && projectMatchesNameForFix(p, 'Бетон Ильмира');
+    });
+    if (!betonKp) {
+      data.projects.push(makeManualGoalProjectForFix(data, {
+        id: 'g_manual_202606_beton_ilmira_kp',
+        name: 'Бетон Ильмира',
+        mainPrice: '35000',
+        stage: 'weekly',
+        status: ['kp'],
+        statusDates: { kp: '2026-06-15' },
+        date: '2026-06-15',
+        weekIndex: 3,
+        emoji: '🧱'
+      }));
+      changed = true;
+    } else {
+      if (betonKp.stage === 'working') { betonKp.stage = 'weekly'; changed = true; }
+      if (betonKp.date !== '2026-06-15') { betonKp.date = '2026-06-15'; changed = true; }
+      if (betonKp.weekIndex !== 3) { betonKp.weekIndex = 3; changed = true; }
+      betonKp.status = Array.isArray(betonKp.status) ? betonKp.status : [];
+      if (betonKp.status.indexOf('kp') < 0) { betonKp.status.push('kp'); changed = true; }
+      betonKp.statusDates = Object.assign({}, betonKp.statusDates || {}, { kp: betonKp.statusDates && betonKp.statusDates.kp || '2026-06-15' });
+      if (!betonKp.mainPrice) { betonKp.mainPrice = '35000'; changed = true; }
+      if (!betonKp.priceOptions || !betonKp.priceOptions.length) { betonKp.priceOptions = [betonKp.mainPrice || '35000']; changed = true; }
+    }
+
+    function upsertSold(name, amount, emoji) {
+      var sold = data.projects.find(function(p) {
+        return p && p.stage === 'sold' && projectMatchesNameForFix(p, name);
+      });
+      if (!sold) {
+        data.projects.push(makeManualGoalProjectForFix(data, {
+          id: 'g_manual_202606_sold_' + normalizeGoalNameForFix(name).replace(/[^a-zа-я0-9]+/g, '_'),
+          name: name,
+          mainPrice: amount,
+          saleAmount: amount,
+          stage: 'sold',
+          status: ['paid'],
+          statusDates: { paid: '2026-06-30' },
+          date: '2026-06-30',
+          weekIndex: 4,
+          emoji: emoji || '💰'
+        }));
+        changed = true;
+        return;
+      }
+      if (sold.date !== '2026-06-30') { sold.date = '2026-06-30'; changed = true; }
+      if (sold.weekIndex !== 4) { sold.weekIndex = 4; changed = true; }
+      if (String(sold.saleAmount || '') !== String(amount)) { sold.saleAmount = String(amount); changed = true; }
+      if (!sold.mainPrice) { sold.mainPrice = String(amount); changed = true; }
+      sold.status = Array.isArray(sold.status) ? sold.status : [];
+      if (sold.status.indexOf('paid') < 0) { sold.status.push('paid'); changed = true; }
+      sold.statusDates = Object.assign({}, sold.statusDates || {}, { paid: sold.statusDates && sold.statusDates.paid || '2026-06-30' });
+    }
+    upsertSold('Бетон Ильмира', '35000', '🧱');
+    upsertSold('Пиломатериалы', '44000', '🪵');
+
+    if (changed) {
+      try { localStorage.setItem(key, JSON.stringify(data)); } catch(e) {}
+    }
+    try { localStorage.setItem(markerKey, 'v1'); } catch(e) {}
+    return { changed: changed, month: '2026-06' };
+  }
+  window.__goalsEnsureJune2026ManualFix = function() { return ensureJune2026ManualFix(true); };
+
   var STATUS_LEGACY = { kp_sent:'kp', invoice_sent:'invoice', contract_sent:'contract', instruction_sent:'instruction', deal_discussion:'negotiations' };
   const STATUS_OPTIONS = [
     { id: 'kp', label: 'КП', color: '#35d0ff' },
@@ -544,7 +652,7 @@
   function saveData(data) {
     try {
       if (_goalsViewMonth) {
-        console.warn('Goals archive is read-only:', _goalsViewMonth);
+        localStorage.setItem(monthStorageKey(_goalsViewMonth), JSON.stringify(data));
         return;
       }
       localStorage.setItem(goalsStorageKey(), JSON.stringify(data));
@@ -568,6 +676,16 @@
   function getTodayISO() {
     var d = getBusinessNow();
     return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate());
+  }
+  function getDefaultSaleDateISO() {
+    if (_goalsViewMonth && /^\d{4}-\d{2}$/.test(_goalsViewMonth)) {
+      var p = _goalsViewMonth.split('-');
+      var y = parseInt(p[0], 10);
+      var m = parseInt(p[1], 10);
+      var last = new Date(y, m, 0).getDate();
+      return _goalsViewMonth + '-' + pad2(last);
+    }
+    return getTodayISO();
   }
   function formatBadgeDateShort(dateStr) {
     if (!dateStr) return '';
@@ -2438,15 +2556,16 @@
     var p = (data.projects || []).find(function(x) { return x.id === projectId; });
     if (!p) return;
     if (stage === 'sold') {
-      showSaleAmountPicker(projectId, p, function(saleAmount) {
+      showSaleAmountPicker(projectId, p, function(saleAmount, saleDate) {
         var data = loadData();
         var cur = (data.projects || []).find(function(x) { return x.id === projectId; });
         if (!cur) return;
+        saleDate = saleDate || getDefaultSaleDateISO();
         /** Из «В работе»: та же строка становится «Продано», дубликата в работе нет; касса + активный проект — как 🅰️ */
         if (cur.stage === 'working') {
           cur.stage = 'sold';
           cur.saleAmount = saleAmount || '';
-          cur.date = getTodayISO();
+          cur.date = saleDate;
           if (cur.workCopyOfWeekId) cur.soldFromId = cur.workCopyOfWeekId;
           delete cur.workCopyOfWeekId;
           data.workOrderWork = (data.workOrderWork || []).filter(function(id) { return id !== cur.id; });
@@ -2469,6 +2588,8 @@
         copy.id = generateId();
         copy.stage = 'sold';
         copy.saleAmount = saleAmount || '';
+        copy.date = saleDate;
+        copy.weekIndex = getWeekIndex(parseInt(String(saleDate).split('-')[2], 10) || 1);
         copy.soldFromId = projectId;
         delete copy.crmArchived;
         delete copy.emojiBeforeArchive;
@@ -2677,6 +2798,7 @@
     var existing = document.getElementById('goalSaleAmountModal');
     if (existing) existing.remove();
     var opts = (p.priceOptions || []).filter(Boolean);
+    var saleDateDefault = getDefaultSaleDateISO();
     var modal = document.createElement('div');
     modal.id = 'goalSaleAmountModal';
     modal.className = 'goal-modal-overlay';
@@ -2688,6 +2810,7 @@
       '<div class="goal-modal-body">' +
         optsHtml +
         '<div class="fg"><label>Или введите свою сумму</label><input type="number" id="goalSaleCustomInp" placeholder="Например 42000"></div>' +
+        '<div class="fg"><label>Дата продажи</label><input type="date" id="goalSaleDateInp" value="' + esc(saleDateDefault) + '"></div>' +
       '</div>' +
       '<div class="goal-modal-foot">' +
         '<button type="button" class="goal-modal-btn" onclick="document.getElementById(\'goalSaleAmountModal\').remove()">Отмена</button>' +
@@ -2703,7 +2826,8 @@
         var custom = (document.getElementById('goalSaleCustomInp') || {}).value || '';
         finalVal = custom.trim() ? String(custom).trim() : (opts.length ? String(opts[0]) : '');
       }
-      onConfirm(finalVal);
+      var saleDate = ((document.getElementById('goalSaleDateInp') || {}).value || '').trim() || saleDateDefault;
+      onConfirm(finalVal, saleDate);
       modal.remove();
     }
     modal.querySelectorAll('.goal-sale-opt-btn').forEach(function(btn) {
@@ -3386,6 +3510,9 @@
   /** Однократно добавляем пропущенный апрельский sold «Бетон Антон Камышин» (84 000),
    *  который был в кассе, но в CRM не попал. Идемпотентно по маркеру. */
   // Historical snapshots are read-only; missing-sale repair is manual only.
+  /** Ручной фикс по запросу: июнь 2026, Бетон Ильмира КП на 3-й неделе + продажа 30.06,
+   *  а также Пиломатериалы 44к на 30.06 для верхнего CRM-графика. */
+  try { ensureJune2026ManualFix(false); } catch (eJuneManual) {}
   /** Запускаем переход месяца сразу при загрузке скрипта.
    *  31-го числа предыдущий месяц автоматически становится архивом,
    *  а в новом месяце «продано», «недели», «КП» и «новые проекты» начинаются с нуля.
