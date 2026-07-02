@@ -123,6 +123,89 @@ function normalizeIsoDateStr(s) {
   return m[1] + '-' + String(parseInt(m[2], 10)).padStart(2, '0') + '-' + String(parseInt(m[3], 10)).padStart(2, '0');
 }
 
+function isGenericProjectTitle(title) {
+  var t = String(title || '').trim().toLowerCase();
+  return !t || t === 'новый проект' || t === 'new project';
+}
+
+function projectHasChildLineText(p, needle) {
+  var lines = Array.isArray(p && p.childLines) ? p.childLines : [];
+  var n = String(needle || '').toLowerCase();
+  return lines.some(function(line) {
+    var text = '';
+    if (line && typeof line === 'object') {
+      text = [
+        line.title,
+        line.name,
+        line.label,
+        line.text,
+        line.note,
+        line.value
+      ].filter(Boolean).join(' ');
+      if (!text) {
+        try { text = JSON.stringify(line); } catch (e) { text = ''; }
+      }
+    } else {
+      text = String(line || '');
+    }
+    return text.toLowerCase().indexOf(n) >= 0;
+  });
+}
+
+function rememberProjectTitleBackup(p) {
+  if (!p || typeof p !== 'object') return false;
+  var title = String(p.title || '').trim();
+  if (!isGenericProjectTitle(title) && p.titleBackup !== title) {
+    p.titleBackup = title;
+    return true;
+  }
+  return false;
+}
+
+function restoreProjectTitleFromBackup(p) {
+  if (!p || typeof p !== 'object') return false;
+  if (!isGenericProjectTitle(p.title)) return false;
+  var backup = String(p.titleBackup || '').trim();
+  if (!backup || isGenericProjectTitle(backup)) return false;
+  p.title = backup;
+  return true;
+}
+
+function protectKnownProjectTitles(data) {
+  if (!data || !Array.isArray(data.projects)) return false;
+  var changed = false;
+  data.projects.forEach(function(p) {
+    if (!p || typeof p !== 'object') return;
+    if (restoreProjectTitleFromBackup(p)) changed = true;
+    var generic = isGenericProjectTitle(p.title);
+    if (generic && projectHasChildLineText(p, 'Шкафы 05.04') && projectHasChildLineText(p, 'Кухня 24.04') && projectHasChildLineText(p, 'Прихожие')) {
+      p.title = 'Мебель Фан';
+      changed = true;
+    }
+    if (generic && projectHasChildLineText(p, 'Gold кровать') && projectHasChildLineText(p, 'Alfia кровать')) {
+      p.title = 'Кровати Кирилл';
+      changed = true;
+    }
+    if (generic && projectHasChildLineText(p, 'Доп. позиция')) {
+      p.title = 'МебельПро';
+      if ((p.zone || 'active') === 'active') p.zone = 'archive';
+      changed = true;
+    }
+    if (rememberProjectTitleBackup(p)) changed = true;
+  });
+  return changed;
+}
+
+function safeSheetProjectTitle(p, incomingTitle) {
+  var incoming = String(incomingTitle || '').trim();
+  if (!incoming) return p.title;
+  if (isGenericProjectTitle(incoming)) {
+    if (!isGenericProjectTitle(p && p.title)) return p.title;
+    if (p && !isGenericProjectTitle(p.titleBackup)) return p.titleBackup;
+  }
+  return incoming;
+}
+
 function applyKnownProjectFolderFixes(data) {
   if (!data || !Array.isArray(data.projects)) return false;
   var changed = false;
@@ -241,6 +324,7 @@ function loadProjectsData(forceReload) {
     if (data.projects.length < 10 && !isSasha) {
       return getDefaultProjectsData();
     }
+    if (protectKnownProjectTitles(data)) saveProjectsData(data);
     if (applyKnownProjectFolderFixes(data)) saveProjectsData(data);
     // Migration: once switch default path buttons to OFF for existing local data.
     if (!localStorage.getItem('avitolog_projects_path_defaults_off_v1')) {
@@ -347,6 +431,7 @@ function loadProjectsData(forceReload) {
   }
 }
 function saveProjectsData(data, opts) {
+  protectKnownProjectTitles(data);
   applyKnownProjectFolderFixes(data);
   var key = projectsDataKey();
   _projectsDataMem = data;
@@ -408,7 +493,7 @@ async function hydrateProjectsFromActiveSheet(forceMerge) {
     data.projects.forEach(function(p) {
       var r = latestById[p.id];
       if (!r) return;
-      var title = r[2] || p.title;
+      var title = safeSheetProjectTitle(p, r[2]);
       var status = r[3] || p.status;
       var folderLink = r[7] || p.folderLink || '';
       var folderId = r[8] || p.folderId || '';
