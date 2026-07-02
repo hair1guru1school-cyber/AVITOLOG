@@ -561,6 +561,16 @@
     'https://cdn.jsdelivr.net/npm/html2pdf.js@0.10.1/dist/html2pdf.bundle.min.js',
     'https://unpkg.com/html2pdf.js@0.10.1/dist/html2pdf.bundle.min.js'
   ];
+  var HTML2CANVAS_CDNS = [
+    'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js',
+    'https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js',
+    'https://unpkg.com/html2canvas@1.4.1/dist/html2canvas.min.js'
+  ];
+  var JSPDF_CDNS = [
+    'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js',
+    'https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js',
+    'https://unpkg.com/jspdf@2.5.1/dist/jspdf.umd.min.js'
+  ];
 
   function getMammoth(cb) {
     var m = (typeof window !== 'undefined' && window.mammoth) || (typeof mammoth !== 'undefined' ? mammoth : null);
@@ -651,6 +661,71 @@
       document.head.appendChild(s);
     }
     tryNext();
+  }
+  function loadScriptFromList(urls, isReady, errorText, cb) {
+    if (isReady()) {
+      cb(null);
+      return;
+    }
+    var idx = 0;
+    var done = false;
+    function finish(err) {
+      if (done) return;
+      done = true;
+      cb(err || null);
+    }
+    function tryNext() {
+      if (isReady()) {
+        finish(null);
+        return;
+      }
+      if (idx >= urls.length) {
+        finish(new Error(errorText));
+        return;
+      }
+      var src = urls[idx++];
+      var s = document.createElement('script');
+      s.src = src;
+      s.async = true;
+      s.onload = function() {
+        if (isReady()) finish(null);
+        else tryNext();
+      };
+      s.onerror = function() { tryNext(); };
+      document.head.appendChild(s);
+    }
+    tryNext();
+  }
+  function getPdfRenderDeps(cb) {
+    function html2canvasReady() {
+      return !!((typeof window !== 'undefined' && window.html2canvas) || (typeof html2canvas !== 'undefined' ? html2canvas : null));
+    }
+    function jsPdfReady() {
+      return !!((typeof window !== 'undefined' && window.jspdf && window.jspdf.jsPDF) ||
+        (typeof window !== 'undefined' && window.jsPDF) ||
+        (typeof jsPDF !== 'undefined' ? jsPDF : null));
+    }
+    function finish() {
+      var html2canvasFn = (typeof window !== 'undefined' && window.html2canvas) || (typeof html2canvas !== 'undefined' ? html2canvas : null);
+      var jsPdfCtor = (typeof window !== 'undefined' && window.jspdf && window.jspdf.jsPDF) ||
+        (typeof window !== 'undefined' && window.jsPDF) ||
+        (typeof jsPDF !== 'undefined' ? jsPDF : null);
+      if (typeof html2canvasFn === 'function' && typeof jsPdfCtor === 'function') cb(null, html2canvasFn, jsPdfCtor);
+      else cb(new Error('Модуль PDF недоступен'));
+    }
+    loadScriptFromList(HTML2CANVAS_CDNS, html2canvasReady, 'Не удалось загрузить html2canvas для PDF', function(errCanvas) {
+      if (errCanvas) {
+        cb(errCanvas);
+        return;
+      }
+      loadScriptFromList(JSPDF_CDNS, jsPdfReady, 'Не удалось загрузить jsPDF для PDF', function(errPdf) {
+        if (errPdf) {
+          cb(errPdf);
+          return;
+        }
+        finish();
+      });
+    });
   }
 
   function renderContractForm(container, onGenerate, onClear) {
@@ -1415,11 +1490,7 @@
 
     function htmlToPdfBlob(htmlStr, fileName) {
       return new Promise(function(resolve, reject) {
-        getHtml2Pdf(function(err) {
-          var html2canvasFn = (typeof window !== 'undefined' && window.html2canvas) || (typeof html2canvas !== 'undefined' ? html2canvas : null);
-          var jsPdfCtor = (typeof window !== 'undefined' && window.jspdf && window.jspdf.jsPDF) ||
-            (typeof window !== 'undefined' && window.jsPDF) ||
-            (typeof jsPDF !== 'undefined' ? jsPDF : null);
+        getPdfRenderDeps(function(err, html2canvasFn, jsPdfCtor) {
           if (err || typeof html2canvasFn !== 'function' || typeof jsPdfCtor !== 'function') {
             reject(err || new Error('Модуль PDF недоступен'));
             return;
