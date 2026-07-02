@@ -1421,9 +1421,12 @@
             return;
           }
           var host = document.createElement('div');
+          function cleanup() {
+            if (host.parentNode) host.parentNode.removeChild(host);
+          }
           host.className = 'contract-pdf-export-host';
-          host.style.position = 'fixed';
-          host.style.left = '-12000px';
+          host.style.position = 'absolute';
+          host.style.left = '0';
           host.style.top = '0';
           host.style.width = '210mm';
           host.style.minWidth = '210mm';
@@ -1432,39 +1435,54 @@
           host.style.overflow = 'visible';
           host.style.transform = 'none';
           host.style.zoom = '1';
+          host.style.opacity = '0';
+          host.style.pointerEvents = 'none';
+          host.style.zIndex = '-1';
           host.innerHTML =
             '<style>' +
             '.contract-pdf-export-host,.contract-pdf-export-host *{-webkit-text-size-adjust:100%!important;text-size-adjust:100%!important}' +
-            '.contract-pdf-export-host .contract-document{width:210mm!important;max-width:none!important;min-height:297mm!important;box-sizing:border-box!important;transform:none!important}' +
-            '.contract-pdf-export-host .contract-doc-header img{max-width:100%!important}' +
+            '.contract-pdf-export-host{contain:layout style!important}' +
+            '.contract-pdf-export-host .contract-document{width:210mm!important;min-width:210mm!important;max-width:210mm!important;min-height:297mm!important;margin:0!important;box-sizing:border-box!important;transform:none!important;zoom:1!important;background:#fff!important;overflow:visible!important}' +
+            '.contract-pdf-export-host .contract-doc-body{min-width:0!important}' +
+            '.contract-pdf-export-host .contract-doc-header img,.contract-pdf-export-host .contract-doc-footer img{max-width:100%!important}' +
+            '.contract-pdf-export-host table{break-inside:avoid!important;page-break-inside:avoid!important}' +
             '</style>' +
             String(htmlStr || '');
           document.body.appendChild(host);
           var source = host.querySelector('.contract-document') || host;
           source.style.width = '210mm';
+          source.style.minWidth = '210mm';
           source.style.maxWidth = 'none';
           source.style.minHeight = '297mm';
           source.style.boxSizing = 'border-box';
-          html2pdfFn().set({
-            margin: 0,
-            filename: fileName,
-            image: { type: 'jpeg', quality: 0.98 },
-            html2canvas: {
-              scale: 2,
-              useCORS: true,
-              backgroundColor: '#ffffff',
-              windowWidth: 1200,
-              windowHeight: 1700,
-              scrollX: 0,
-              scrollY: 0
-            },
-            jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
-            pagebreak: { mode: ['css', 'legacy'] }
-          }).from(source).outputPdf('blob').then(function(blob) {
-            if (host.parentNode) host.parentNode.removeChild(host);
-            resolve(blob);
+          waitForImagesLoaded(host).then(function() {
+            var rect = source.getBoundingClientRect();
+            var sourceWidth = Math.ceil(source.scrollWidth || rect.width || 794);
+            var sourceHeight = Math.ceil(source.scrollHeight || rect.height || 1123);
+            html2pdfFn().set({
+              margin: 0,
+              filename: fileName,
+              image: { type: 'jpeg', quality: 0.98 },
+              html2canvas: {
+                scale: 2,
+                useCORS: true,
+                backgroundColor: '#ffffff',
+                windowWidth: sourceWidth,
+                windowHeight: sourceHeight,
+                scrollX: 0,
+                scrollY: 0
+              },
+              jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+              pagebreak: { mode: ['css', 'legacy'] }
+            }).from(source).outputPdf('blob').then(function(blob) {
+              cleanup();
+              resolve(blob);
+            }).catch(function(error) {
+              cleanup();
+              reject(error);
+            });
           }).catch(function(error) {
-            if (host.parentNode) host.parentNode.removeChild(host);
+            cleanup();
             reject(error);
           });
         });
