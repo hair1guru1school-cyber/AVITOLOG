@@ -1495,9 +1495,17 @@
       var label = document.getElementById('contractPreviewZoomLabel');
       if (label) label.textContent = Math.round(contractPreviewScale * 100) + '%';
       if (!wrapPreview) return;
-      wrapPreview.style.transform = 'scale(' + contractPreviewScale + ')';
-      wrapPreview.style.transformOrigin = 'top center';
-      wrapPreview.classList.toggle('contract-preview-zoomed', contractPreviewScale !== 1);
+      var page = wrapPreview.querySelector('.contract-preview-page');
+      wrapPreview.style.zoom = '1';
+      wrapPreview.style.transform = 'none';
+      var pageWidth = page ? page.offsetWidth : 0;
+      var availableWidth = previewArea ? Math.max(240, previewArea.clientWidth - 8) : pageWidth;
+      var fitScale = pageWidth > 0 ? Math.min(1, availableWidth / (pageWidth + 36)) : 1;
+      var effectiveScale = Math.max(0.45, Math.min(1.35, fitScale * contractPreviewScale));
+      wrapPreview.style.zoom = String(effectiveScale);
+      wrapPreview.style.transformOrigin = 'top left';
+      wrapPreview.classList.toggle('contract-preview-zoomed', effectiveScale !== 1);
+      if (previewArea) previewArea.scrollLeft = 0;
     }
 
     window.__contractPreviewZoom = function(delta, reset) {
