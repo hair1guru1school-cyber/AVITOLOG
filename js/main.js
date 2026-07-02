@@ -2768,6 +2768,7 @@ var CRM_CATEGORY_OPTIONS = [
   {v:'1rh2Fq8wGsGVDCediTr9zN4tnzvth1CWK',n:'🛻 АВТО и МОТО'},
   {v:'1tevmc_P3MxW4xFLhcuAUMtp7PKNQ8678',n:'🏎 ТОВАРЫ Авто аксессуары'}
 ];
+var CRM_DEFAULT_CATEGORY_ID = '1-nKHmmLp-vY81EK3APxQSg7v8GSO5TJy';
 var CRM_CREATE_CATEGORY_IDS = [
   '174UazB2ErOG0wD9KplArQWO0JxfhDhfc',
   '12QkZZOOmrTqtVEgS89H45eeAJzm5tiI2',
@@ -2791,6 +2792,13 @@ function getCategoryNameById(catId) {
     if (String(sel.options[i].value || '') === String(catId)) return (sel.options[i].text || '').trim();
   }
   return '';
+}
+
+function getCrmDefaultCategory() {
+  return {
+    id: CRM_DEFAULT_CATEGORY_ID,
+    name: getCategoryNameById(CRM_DEFAULT_CATEGORY_ID) || 'БАЗА без оплаты'
+  };
 }
 
 async function driveGetOrCreateFolder(name, parentId) {
@@ -4207,6 +4215,7 @@ var _browseCurrentName = 'CRM';
 
 function toggleClientMenu() {
   var menu = document.getElementById('clientMenu');
+  if (!menu) return;
   // Всегда сбрасываем и открываем заново
   _browseStack = [];
   _browseLevel = 0;
@@ -4619,13 +4628,16 @@ async function saveClient() {
     };
     var clientName = [d.company, d.contact_name].filter(Boolean).join(' - ') || 'Клиент';
     var folderName = clientName + ' (' + d.createdAt + ')';
-    var catId = (document.getElementById('crmCategorySelect') || {}).value || '1-nKHmmLp-vY81EK3APxQSg7v8GSO5TJy';
-    var catName = (document.getElementById('crmCategorySelect') || {}).options[(document.getElementById('crmCategorySelect') || {}).selectedIndex];
-    var cat = { id: catId, name: catName ? catName.text : 'БАЗА' };
-    d.categoryFolderId = catId;
-    
     var ac = _activeClient || getActiveClient();
     var selectedProject = getSelectedProject();
+    var defaultCat = getCrmDefaultCategory();
+    var catId = (ac && ac.categoryFolderId) || (selectedProject && selectedProject.categoryFolderId) || '';
+    if (!catId && ac && ac.folderId) {
+      catId = await driveGetFolderParent(ac.folderId).catch(function(){ return ''; });
+    }
+    catId = catId || defaultCat.id;
+    var cat = { id: catId, name: getCategoryNameById(catId) || defaultCat.name };
+    d.categoryFolderId = catId;
     var folderId;
     if (ac && ac.folderId) {
       folderId = ac.folderId;
@@ -4946,6 +4958,13 @@ document.addEventListener('DOMContentLoaded', function() {
     var crmMenu = document.getElementById('clientMenu');
     if (crmMenu) {
       crmMenu.addEventListener('click', function(e) {
+        var catItem = e.target.closest('.client-item[data-category-id]');
+        if (catItem) {
+          e.preventDefault();
+          e.stopPropagation();
+          createBrowseFolderInCategory(catItem.getAttribute('data-category-id'));
+          return;
+        }
         var item = e.target.closest('.client-item[data-folder-id]');
         if (!item) return;
         e.preventDefault();
