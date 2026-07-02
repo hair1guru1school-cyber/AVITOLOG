@@ -1415,8 +1415,12 @@
 
     function htmlToPdfBlob(htmlStr, fileName) {
       return new Promise(function(resolve, reject) {
-        getHtml2Pdf(function(err, html2pdfFn) {
-          if (err || typeof html2pdfFn !== 'function') {
+        getHtml2Pdf(function(err) {
+          var html2canvasFn = (typeof window !== 'undefined' && window.html2canvas) || (typeof html2canvas !== 'undefined' ? html2canvas : null);
+          var jsPdfCtor = (typeof window !== 'undefined' && window.jspdf && window.jspdf.jsPDF) ||
+            (typeof window !== 'undefined' && window.jsPDF) ||
+            (typeof jsPDF !== 'undefined' ? jsPDF : null);
+          if (err || typeof html2canvasFn !== 'function' || typeof jsPdfCtor !== 'function') {
             reject(err || new Error('Модуль PDF недоступен'));
             return;
           }
@@ -1425,7 +1429,7 @@
             if (host.parentNode) host.parentNode.removeChild(host);
           }
           host.className = 'contract-pdf-export-host';
-          host.style.position = 'absolute';
+          host.style.position = 'fixed';
           host.style.left = '0';
           host.style.top = '0';
           host.style.width = '210mm';
@@ -1435,7 +1439,6 @@
           host.style.overflow = 'visible';
           host.style.transform = 'none';
           host.style.zoom = '1';
-          host.style.opacity = '0';
           host.style.pointerEvents = 'none';
           host.style.zIndex = '-1';
           host.innerHTML =
@@ -1459,24 +1462,41 @@
             var rect = source.getBoundingClientRect();
             var sourceWidth = Math.ceil(source.scrollWidth || rect.width || 794);
             var sourceHeight = Math.ceil(source.scrollHeight || rect.height || 1123);
-            html2pdfFn().set({
-              margin: 0,
-              filename: fileName,
-              image: { type: 'jpeg', quality: 0.98 },
-              html2canvas: {
-                scale: 2,
-                useCORS: true,
-                backgroundColor: '#ffffff',
-                windowWidth: sourceWidth,
-                windowHeight: sourceHeight,
-                scrollX: 0,
-                scrollY: 0
-              },
-              jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
-              pagebreak: { mode: ['css', 'legacy'] }
-            }).from(source).outputPdf('blob').then(function(blob) {
+            html2canvasFn(source, {
+              scale: 2,
+              useCORS: true,
+              backgroundColor: '#ffffff',
+              width: sourceWidth,
+              height: sourceHeight,
+              windowWidth: sourceWidth,
+              windowHeight: sourceHeight,
+              scrollX: 0,
+              scrollY: 0,
+              x: 0,
+              y: 0
+            }).then(function(canvas) {
+              var pdf = new jsPdfCtor({ unit: 'mm', format: 'a4', orientation: 'portrait', compress: true });
+              var pageWmm = 210;
+              var pageHmm = 297;
+              var pageHpx = Math.floor(canvas.width * pageHmm / pageWmm);
+              var y = 0;
+              var page = 0;
+              while (y < canvas.height) {
+                var sliceH = Math.min(pageHpx, canvas.height - y);
+                var pageCanvas = document.createElement('canvas');
+                pageCanvas.width = canvas.width;
+                pageCanvas.height = sliceH;
+                var ctx = pageCanvas.getContext('2d');
+                ctx.fillStyle = '#ffffff';
+                ctx.fillRect(0, 0, pageCanvas.width, pageCanvas.height);
+                ctx.drawImage(canvas, 0, y, canvas.width, sliceH, 0, 0, canvas.width, sliceH);
+                if (page > 0) pdf.addPage();
+                pdf.addImage(pageCanvas.toDataURL('image/jpeg', 0.98), 'JPEG', 0, 0, pageWmm, sliceH * pageWmm / canvas.width);
+                y += sliceH;
+                page++;
+              }
               cleanup();
-              resolve(blob);
+              resolve(pdf.output('blob'));
             }).catch(function(error) {
               cleanup();
               reject(error);
