@@ -7305,7 +7305,10 @@ function getCrmClients() {
   try { return JSON.parse(localStorage.getItem(_avitologStorageKey('avitolog_clients')) || '[]'); } catch(e) { return []; }
 }
 function saveCrmClients(list) {
-  localStorage.setItem(_avitologStorageKey('avitolog_clients'), JSON.stringify(list));
+  var key = _avitologStorageKey('avitolog_clients');
+  var value = JSON.stringify(list || []);
+  localStorage.setItem(key, value);
+  try { document.dispatchEvent(new CustomEvent('avitolog:storage-write', { detail: { key: key, value: value } })); } catch(e) {}
 }
 function getActiveClient() {
   try { return JSON.parse(localStorage.getItem(_avitologStorageKey('avitolog_active_client'))); } catch(e) { return null; }

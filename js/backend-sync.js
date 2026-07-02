@@ -116,6 +116,66 @@
     } catch (e) {}
     return false;
   }
+  function clientMergeKey(item) {
+    item = item || {};
+    var id = String(item.client_id || item.id || '').trim();
+    if (id) return 'id:' + id;
+    var folder = String(item.folderId || item.folder_id || item.drive_folder_id || item.folderLink || '').trim();
+    if (folder) return 'folder:' + folder;
+    var parts = [
+      item.company || item.company_name || '',
+      item.contact_name || item.contact || '',
+      item.phone || '',
+      item.telegram || item.tg || ''
+    ].map(function(x) { return String(x || '').trim().toLowerCase(); }).filter(Boolean);
+    return parts.length ? ('fields:' + parts.join('|')) : '';
+  }
+  function idMergeKey(item) {
+    item = item || {};
+    var id = String(item.id || item.projectId || item.task_id || item.client_id || '').trim();
+    return id ? ('id:' + id) : '';
+  }
+  function mergeArraysByKey(remoteArr, localArr, keyFn) {
+    var out = [];
+    var seen = {};
+    function add(item, preferExisting) {
+      var key = keyFn(item);
+      if (!key) key = 'anon:' + JSON.stringify(item || {});
+      if (seen[key] != null) {
+        if (!preferExisting) out[seen[key]] = item;
+        return;
+      }
+      seen[key] = out.length;
+      out.push(item);
+    }
+    (remoteArr || []).forEach(function(item) { add(item, true); });
+    (localArr || []).forEach(function(item) { add(item, true); });
+    return out;
+  }
+  function mergeRemoteWithLocalValue(key, remoteValue, localValue) {
+    if (!localValue || localValue === remoteValue) return { value: remoteValue, changed: false };
+    try {
+      var remote = JSON.parse(remoteValue || '');
+      var local = JSON.parse(localValue || '');
+      var merged = null;
+      if (key.indexOf('clients') >= 0 && Array.isArray(remote) && Array.isArray(local)) {
+        merged = mergeArraysByKey(remote, local, clientMergeKey);
+      } else if (key.indexOf('tasks') >= 0 && Array.isArray(remote) && Array.isArray(local)) {
+        merged = mergeArraysByKey(remote, local, idMergeKey);
+      } else if (key.indexOf('projects') >= 0 && remote && local && Array.isArray(remote.projects) && Array.isArray(local.projects)) {
+        merged = Object.assign({}, remote);
+        merged.projects = mergeArraysByKey(remote.projects, local.projects, idMergeKey);
+        merged.hiddenProjects = mergeArraysByKey(remote.hiddenProjects || [], local.hiddenProjects || [], idMergeKey);
+        merged.tasks = mergeArraysByKey(remote.tasks || [], local.tasks || [], idMergeKey);
+        merged.taskLog = mergeArraysByKey(remote.taskLog || [], local.taskLog || [], idMergeKey);
+      }
+      if (!merged) return { value: remoteValue, changed: false };
+      var text = JSON.stringify(merged);
+      return { value: text, changed: text !== remoteValue };
+    } catch (error) {
+      return { value: remoteValue, changed: false };
+    }
+  }
   function refreshOpenScreensAfterRemoteApply(changedKeys) {
     try {
       var keys = Array.isArray(changedKeys) ? changedKeys : [];
@@ -219,15 +279,20 @@
     }
     if (!sessionData()) { setStatus('Нет активной Supabase-сессии', true); return; }
     try {
-      phase = 'read'; var rows = await readRemote(); var remoteKeys = {}; var appliedKeys = [];
+      phase = 'read'; var rows = await readRemote(); var remoteKeys = {}; var appliedKeys = []; var mergedWrites = [];
       phase = 'apply'; rows.forEach(function (row) {
         if (!isAllowed(row.storage_key)) return;
         remoteKeys[row.storage_key] = true;
         appliedKeys.push(row.storage_key);
+        var localBeforeApply = '';
+        try { localBeforeApply = localStorage.getItem(row.storage_key) || ''; } catch (localReadError) {}
+        var mergedState = coreKeys[row.storage_key] ? mergeRemoteWithLocalValue(row.storage_key, row.value_text || '', localBeforeApply) : { value: row.value_text, changed: false };
+        var valueToApply = mergedState.value;
+        if (mergedState.changed) mergedWrites.push({ key: row.storage_key, value: valueToApply });
         var target = window.AVITOLOG_BACKEND_STORAGE_TARGET;
         var prefix = typeof window.AVITOLOG_BACKEND_STORAGE_PREFIX === 'string' ? window.AVITOLOG_BACKEND_STORAGE_PREFIX : 'sb_backend::';
-        if (target) Storage.prototype.setItem.call(target, prefix + row.storage_key, row.value_text);
-        else localStorage.setItem(row.storage_key, row.value_text);
+        if (target) Storage.prototype.setItem.call(target, prefix + row.storage_key, valueToApply);
+        else localStorage.setItem(row.storage_key, valueToApply);
       });
       refreshOpenScreensAfterRemoteApply(appliedKeys);
       phase = 'seed';
@@ -242,6 +307,12 @@
       coreEnabled = window.AVITOLOG_BACKEND_PREVIEW ? Boolean(remoteKeys[clientsKey] && remoteKeys[projectsKey]) : true;
       financeEnabled = window.AVITOLOG_BACKEND_PREVIEW ? Object.keys(remoteKeys).some(isFinanceKey) : true;
       contentEnabled = window.AVITOLOG_BACKEND_PREVIEW ? Object.keys(remoteKeys).some(isContentKey) : true;
+      if (mergedWrites.length) {
+        phase = 'merge-write';
+        for (var mw = 0; mw < mergedWrites.length; mw++) {
+          await writeKey(mergedWrites[mw].key, mergedWrites[mw].value);
+        }
+      }
       setStatus('Supabase: CRM/Проекты ' + (coreEnabled ? 'ВКЛ' : 'ВЫКЛ') + ' · Касса/Цели ' + (financeEnabled ? 'ВКЛ' : 'ВЫКЛ') + ' · КП/ADS ' + (contentEnabled ? 'ВКЛ' : 'ВЫКЛ'));
       if (!coreEnabled) button('Включить запись CRM/проектов', enableCore);
       else if (!financeEnabled) button('Включить запись кассы и целей', enableFinance);

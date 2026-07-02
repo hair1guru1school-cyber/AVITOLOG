@@ -4039,7 +4039,10 @@ function getCrmClients() {
   try { return JSON.parse(localStorage.getItem(_ck('avitolog_clients')) || '[]'); } catch(e) { return []; }
 }
 function saveCrmClients(list) {
-  localStorage.setItem(_ck('avitolog_clients'), JSON.stringify(list));
+  var key = _ck('avitolog_clients');
+  var value = JSON.stringify(list || []);
+  localStorage.setItem(key, value);
+  try { document.dispatchEvent(new CustomEvent('avitolog:storage-write', { detail: { key: key, value: value } })); } catch(e) {}
 }
 /** После ☁️ синка Саши: обновить списки CRM (данные уже в *_sasha). */
 window.__crmRefreshAfterSashaSync = function() {
