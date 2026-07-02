@@ -4368,13 +4368,13 @@ async function browseFolder(folderId, folderName) {
   var backBtn = _browseStack.length > 0 ? '<button type="button" onclick="browseBack()">← Назад</button>' : '';
   // Кнопка выбора только на уровне 2+ (внутри категории)
   var selectBtn = _browseLevel >= 2 ? '<button type="button" class="primary" onclick="selectBrowseFolder()">✓ Выбрать</button>' : '';
-  var newFolderBtn = '<button type="button" class="primary" onclick="createBrowseFolder()">+ Папка</button>';
+  var newFolderBtn = '<button type="button" class="primary" data-action="create-folder">+ Папка</button>';
   /** «+ Папка» всегда в .cm-tools; в подвале дублировать нельзя — при «Назад»+«Выбрать» три кнопки не помещались (flex + min-width). В корне — одна широкая кнопка внизу, как раньше. */
   var footInner = _browseStack.length === 0 ? newFolderBtn : (backBtn + selectBtn);
 
   menu.innerHTML = '<div class="cm-head"><span>📁 ' + folderName + '</span><span class="cm-close" onclick="closeClientMenu()">✕</span></div>' +
     '<div class="cm-path">' + pathStr + '</div>' +
-    '<div class="cm-tools"><input type="search" id="cmSearch" placeholder="Поиск папки..." oninput="filterBrowseFolders(this.value)"><button type="button" onclick="createBrowseFolder()">+ Папка</button></div>' +
+    '<div class="cm-tools"><input type="search" id="cmSearch" placeholder="Поиск папки..." oninput="filterBrowseFolders(this.value)"><button type="button" data-action="create-folder">+ Папка</button></div>' +
     '<div class="cm-list"><div style="padding:20px;text-align:center;color:var(--muted);font-size:11px">⏳</div></div>' +
     '<div class="cm-foot">' + footInner + '</div>';
 
@@ -4958,6 +4958,13 @@ document.addEventListener('DOMContentLoaded', function() {
     var crmMenu = document.getElementById('clientMenu');
     if (crmMenu) {
       crmMenu.addEventListener('click', function(e) {
+        var createBtn = e.target.closest('[data-action="create-folder"]');
+        if (createBtn) {
+          e.preventDefault();
+          e.stopPropagation();
+          showBrowseCreateCategoryPicker();
+          return;
+        }
         var catItem = e.target.closest('.client-item[data-category-id]');
         if (catItem) {
           e.preventDefault();
