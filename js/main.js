@@ -4357,6 +4357,21 @@ window.mobileWebviewZoomOut = mobileWebviewZoomOut;
 window.mobileWebviewZoomIn = mobileWebviewZoomIn;
 window.mobileWebviewZoomReset = mobileWebviewZoomReset;
 
+function bindBrowseCreateButtons(root) {
+  var box = root || document.getElementById('clientMenu');
+  if (!box) return;
+  box.querySelectorAll('[data-action="create-folder"]').forEach(function(btn) {
+    btn.onclick = function(e) {
+      if (e) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+      showBrowseCreateCategoryPicker();
+      return false;
+    };
+  });
+}
+
 async function browseFolder(folderId, folderName) {
   _browseCurrentId = folderId;
   _browseCurrentName = folderName || 'CRM';
@@ -4377,6 +4392,7 @@ async function browseFolder(folderId, folderName) {
     '<div class="cm-tools"><input type="search" id="cmSearch" placeholder="Поиск папки..." oninput="filterBrowseFolders(this.value)"><button type="button" data-action="create-folder">+ Папка</button></div>' +
     '<div class="cm-list"><div style="padding:20px;text-align:center;color:var(--muted);font-size:11px">⏳</div></div>' +
     '<div class="cm-foot">' + footInner + '</div>';
+  bindBrowseCreateButtons(menu);
 
   try {
     var token = _driveToken;
