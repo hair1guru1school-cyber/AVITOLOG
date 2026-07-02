@@ -6270,20 +6270,33 @@ function setCrmCategoryByFolderId(folderId, onParent) {
   }).catch(function(){});
 }
 var CRM_CATEGORY_OPTIONS = [
-  {v:'1-nKHmmLp-vY81EK3APxQSg7v8GSO5TJy',n:'🙇 БАЗА без оплаты'},
-  {v:'12QkZZOOmrTqtVEgS89H45eeAJzm5tiI2',n:'🪚 ТОВАРЫ СТРОИТЕЛЬСТВО'},
   {v:'174UazB2ErOG0wD9KplArQWO0JxfhDhfc',n:'👷 УСЛУГИ | СТРОИТЕЛИ'},
-  {v:'1j3bqO2-9O9OeENLS7uDxVCu4imgsF1tb',n:'⚙️ ОБОРУДОВАНИЕ'},
+  {v:'12QkZZOOmrTqtVEgS89H45eeAJzm5tiI2',n:'🪚 ТОВАРЫ СТРОИТЕЛЬСТВО'},
   {v:'1ODPfNieEXqs9HmL96udmw-qLwiXL3EAS',n:'🛋 ТОВАРЫ - мебель'},
-  {v:'12ajIWwl0fLs4jWB8NATNdvr6F2SmEeUU',n:'🏠 ДОМА | БЫТОВКИ | БАНИ'},
+  {v:'1j3bqO2-9O9OeENLS7uDxVCu4imgsF1tb',n:'⚙️ ОБОРУДОВАНИЕ'},
   {v:'1RwiDeVxf3HiCySEMC1fI_5hMDm-5Er9T',n:'🚙 Запчасти АВТО | ТОВАРЫ'},
-  {v:'1rh2Fq8wGsGVDCediTr9zN4tnzvth1CWK',n:'🛻 АВТО и МОТО'},
-  {v:'1tevmc_P3MxW4xFLhcuAUMtp7PKNQ8678',n:'🏎 ТОВАРЫ Авто аксессуары'},
-  {v:'1p8-ETlYZ4X88X87sMuqNSMF_f4w-td_C',n:'👕 ОДЕЖДА / Кроссовки'},
-  {v:'1aA1wATzVmPRavUrAh8oGsuEa6-xeIOdP',n:'🏭 ГОТОВЫЙ БИЗНЕС'},
-  {v:'1ci9RhkZPtvyuBSK4jOh7x02ooBqmpGxw',n:'👤 УСЛУГИ - Юр, Репетиторы, IT'},
   {v:'1UgnWOC7tBupL_FSYV0T9RU4Lg6GOEqNa',n:'✈️ ЛОГИСТИКА услуги'},
-  {v:'1Os8bLpRKDAeLlaUi_P5HFyE3zEL8AebL',n:'👤 ВАКАНСИИ'}
+  {v:'1ci9RhkZPtvyuBSK4jOh7x02ooBqmpGxw',n:'👤 УСЛУГИ - Юр, Репетиторы, IT'},
+  {v:'12ajIWwl0fLs4jWB8NATNdvr6F2SmEeUU',n:'🏠 ДОМА | БЫТОВКИ | БАНИ'},
+  {v:'1aA1wATzVmPRavUrAh8oGsuEa6-xeIOdP',n:'🏭 ГОТОВЫЙ БИЗНЕС'},
+  {v:'1p8-ETlYZ4X88X87sMuqNSMF_f4w-td_C',n:'👕 ОДЕЖДА / Кроссовки / Пошив'},
+  {v:'1Os8bLpRKDAeLlaUi_P5HFyE3zEL8AebL',n:'👤 ВАКАНСИИ'},
+  {v:'1-nKHmmLp-vY81EK3APxQSg7v8GSO5TJy',n:'🙇 БАЗА без оплаты'},
+  {v:'1rh2Fq8wGsGVDCediTr9zN4tnzvth1CWK',n:'🛻 АВТО и МОТО'},
+  {v:'1tevmc_P3MxW4xFLhcuAUMtp7PKNQ8678',n:'🏎 ТОВАРЫ Авто аксессуары'}
+];
+var CRM_CREATE_CATEGORY_IDS = [
+  '174UazB2ErOG0wD9KplArQWO0JxfhDhfc',
+  '12QkZZOOmrTqtVEgS89H45eeAJzm5tiI2',
+  '1ODPfNieEXqs9HmL96udmw-qLwiXL3EAS',
+  '1j3bqO2-9O9OeENLS7uDxVCu4imgsF1tb',
+  '1RwiDeVxf3HiCySEMC1fI_5hMDm-5Er9T',
+  '1UgnWOC7tBupL_FSYV0T9RU4Lg6GOEqNa',
+  '1ci9RhkZPtvyuBSK4jOh7x02ooBqmpGxw',
+  '12ajIWwl0fLs4jWB8NATNdvr6F2SmEeUU',
+  '1aA1wATzVmPRavUrAh8oGsuEa6-xeIOdP',
+  '1p8-ETlYZ4X88X87sMuqNSMF_f4w-td_C',
+  '1Os8bLpRKDAeLlaUi_P5HFyE3zEL8AebL'
 ];
 function getCategoryNameById(catId) {
   if (!catId) return '';
@@ -7535,16 +7548,49 @@ function filterBrowseFolders(query) {
   }
 }
 async function createBrowseFolder() {
-  if (!_browseCurrentId) return;
-  var name = prompt('Название новой папки:');
+  showBrowseCreateCategoryPicker();
+}
+function cmEscapeHtml(s) {
+  return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function getBrowseCreateCategories() {
+  return CRM_CREATE_CATEGORY_IDS.map(function(id) {
+    return CRM_CATEGORY_OPTIONS.find(function(o) { return String(o.v || '') === String(id); });
+  }).filter(Boolean);
+}
+function showBrowseCreateCategoryPicker() {
+  var menu = document.getElementById('clientMenu');
+  if (!menu) return;
+  var cats = getBrowseCreateCategories();
+  var list = menu.querySelector('.cm-list');
+  var foot = menu.querySelector('.cm-foot');
+  var tools = menu.querySelector('.cm-tools');
+  if (tools) tools.innerHTML = '<div style="font-size:11px;color:var(--muted);line-height:1.35">Выбери категорию, куда создать новую папку</div>';
+  if (list) {
+    list.innerHTML = cats.map(function(cat) {
+      return '<div class="client-item" data-category-id="' + cmEscapeHtml(cat.v) + '" onclick="createBrowseFolderInCategory(\'' + cmEscapeHtml(cat.v) + '\')">' +
+        '<div class="client-item-avatar-wrap">📁</div>' +
+        '<span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + cmEscapeHtml(cat.n) + '</span>' +
+        '<span class="chevron">›</span>' +
+      '</div>';
+    }).join('');
+  }
+  if (foot) foot.innerHTML = '<button type="button" onclick="browseFolder(_browseCurrentId,_browseCurrentName)">Отмена</button>';
+}
+async function createBrowseFolderInCategory(categoryId) {
+  var cat = CRM_CATEGORY_OPTIONS.find(function(o) { return String(o.v || '') === String(categoryId || ''); });
+  if (!cat) return;
+  var catName = String(cat.n || '').replace(/^[^\s]+\s*/, '').trim() || cat.n || 'категории';
+  var name = prompt('Название новой папки в категории "' + catName + '":');
   if (!name) return;
   var clean = String(name).trim();
   if (!clean) return;
   try {
-    await driveCreateClientFolder(clean, _browseCurrentId);
-    await browseFolder(_browseCurrentId, _browseCurrentName);
+    var folderId = await driveCreateClientFolder(clean, categoryId);
+    if (!folderId) throw new Error('Drive не вернул ID новой папки');
+    await selectBrowseFolderBy(folderId, clean, categoryId);
     var st = document.getElementById('crmSt');
-    if (st) { st.style.display = 'block'; st.className = 'crm-st ok'; st.textContent = 'Папка создана: ' + clean; }
+    if (st) { st.style.display = 'block'; st.className = 'crm-st ok'; st.textContent = 'Папка создана и выбрана: ' + clean; }
   } catch(e) {
     var st = document.getElementById('crmSt');
     if (st) { st.style.display = 'block'; st.className = 'crm-st err'; st.textContent = '✗ ' + (e.message || String(e)); }
@@ -7565,8 +7611,14 @@ function browseBack() {
 }
 
 function selectBrowseFolder() {
-  var folderId = _browseCurrentId;
-  var folderName = document.querySelector('.cm-head span:first-child').textContent.replace('📁 ', '');
+  var head = document.querySelector('.cm-head span:first-child');
+  return selectBrowseFolderBy(_browseCurrentId, head ? head.textContent.replace('📁 ', '') : _browseCurrentName);
+}
+
+function selectBrowseFolderBy(folderId, folderName, categoryFolderId) {
+  var head = document.querySelector('.cm-head span:first-child');
+  var currentFolderName = head ? head.textContent.replace('📁 ', '') : _browseCurrentName;
+  folderName = arguments.length > 1 ? (folderName || currentFolderName) : currentFolderName;
   var folderLink = 'https://drive.google.com/drive/folders/' + folderId;
   
   // Проверяем localStorage на этого клиента
@@ -7591,8 +7643,9 @@ function selectBrowseFolder() {
     });
     setActiveClient(found);
   } else {
-    if (typeof setCrmCategoryByFolderId === 'function') setCrmCategoryByFolderId(folderId);
-    setActiveClient({folderId: folderId, folderLink: folderLink, company: folderName});
+    if (categoryFolderId && typeof setCrmCategorySelectValue === 'function') setCrmCategorySelectValue(categoryFolderId);
+    else if (typeof setCrmCategoryByFolderId === 'function') setCrmCategoryByFolderId(folderId);
+    setActiveClient({folderId: folderId, folderLink: folderLink, company: folderName, categoryFolderId: categoryFolderId || ''});
   }
   if (_projectFolderBindTargetId) {
     var pd = loadProjectsData();
@@ -7604,8 +7657,13 @@ function selectBrowseFolder() {
       p.crmData = p.crmData || {};
       p.crmData.folderId = folderId;
       p.crmData.folderLink = folderLink;
-      setCrmCategoryByFolderId(folderId);
-      driveGetFolderParent(folderId).then(function(parentId) { if (parentId) { p.categoryFolderId = parentId; saveProjectsData(pd); } }).catch(function(){});
+      if (categoryFolderId) {
+        p.categoryFolderId = categoryFolderId;
+        if (typeof setCrmCategorySelectValue === 'function') setCrmCategorySelectValue(categoryFolderId);
+      } else {
+        setCrmCategoryByFolderId(folderId);
+        driveGetFolderParent(folderId).then(function(parentId) { if (parentId) { p.categoryFolderId = parentId; saveProjectsData(pd); } }).catch(function(){});
+      }
       if (found) {
         p.crmData.client_id = found.client_id || p.crmData.client_id || '';
         if (found.company) p.crmData.company = found.company;
