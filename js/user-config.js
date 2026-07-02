@@ -113,11 +113,10 @@
    *  если *_sasha пусты. Иначе у него всё жило в avitolog_goals_v1 / avitolog_clients, а профиль «Саша» и ☁️ читали только *_sasha — «пусто». У Фила (другой email) не выполняется. */
   (function migrateSashaNamespaceFromLegacyIfOwnAccount() {
     try {
-      if (window.AVITOLOG_BACKEND_MODE) return;
       var em = String(localStorage.getItem('avitolog_drive_email') || '').trim().toLowerCase();
       if (!em || em !== sashaEmail) return;
       if (suffix !== '_sasha') return;
-      var flag = 'avitolog_migrate_legacy_into_sasha_v1_done';
+      var flag = 'avitolog_migrate_legacy_into_sasha_v2_done';
       if (localStorage.getItem(flag) === '1') return;
       function projectLikeEmpty(sr) {
         if (!sr) return true;
@@ -132,6 +131,47 @@
           var o = JSON.parse(sr);
           return !Array.isArray(o) || o.length === 0;
         } catch (e) { return true; }
+      }
+      function mergeKey(item) {
+        item = item || {};
+        var id = String(item.client_id || item.id || item.projectId || item.task_id || '').trim();
+        if (id) return 'id:' + id;
+        var folder = String(item.folderId || item.folder_id || item.drive_folder_id || item.folderLink || '').trim();
+        if (folder) return 'folder:' + folder;
+        var parts = [item.company || item.company_name || item.title || item.name || '', item.contact_name || '', item.phone || '', item.telegram || item.tg || '']
+          .map(function(x) { return String(x || '').trim().toLowerCase(); })
+          .filter(Boolean);
+        return parts.length ? ('fields:' + parts.join('|')) : '';
+      }
+      function mergeArrays(a, b) {
+        var out = [];
+        var seen = {};
+        function add(x) {
+          var key = mergeKey(x) || ('anon:' + JSON.stringify(x || {}));
+          if (seen[key]) return;
+          seen[key] = true;
+          out.push(x);
+        }
+        (Array.isArray(a) ? a : []).forEach(add);
+        (Array.isArray(b) ? b : []).forEach(add);
+        return out;
+      }
+      function mergeProjectLike(baseObj, sashaObj) {
+        var merged = Object.assign({}, sashaObj || {});
+        ['projects', 'hiddenProjects', 'tasks', 'taskLog'].forEach(function(k) {
+          merged[k] = mergeArrays((sashaObj && sashaObj[k]) || [], (baseObj && baseObj[k]) || []);
+        });
+        return merged;
+      }
+      function mergeLegacyIntoSasha(baseKey, baseRaw, sashaRaw) {
+        var baseParsed = safeParse(baseRaw);
+        var sashaParsed = safeParse(sashaRaw);
+        if (!baseParsed) return sashaRaw;
+        if (Array.isArray(baseParsed)) return JSON.stringify(mergeArrays(Array.isArray(sashaParsed) ? sashaParsed : [], baseParsed));
+        if (baseKey === 'avitolog_projects' || baseKey === 'avitolog_goals_v1') {
+          return JSON.stringify(mergeProjectLike(baseParsed, sashaParsed && typeof sashaParsed === 'object' ? sashaParsed : {}));
+        }
+        return sashaRaw || baseRaw;
       }
       var pairs = [
         { base: 'avitolog_goals_v1', empty: projectLikeEmpty },
@@ -148,9 +188,9 @@
           var sk = p.base + '_sasha';
           var br = localStorage.getItem(p.base);
           var sr = localStorage.getItem(sk);
-          if (!br || !p.empty(sr)) return;
+          if (!br) return;
           if (p.empty(br)) return;
-          localStorage.setItem(sk, br);
+          localStorage.setItem(sk, mergeLegacyIntoSasha(p.base, br, sr));
         } catch (eP) {}
       });
       try {
