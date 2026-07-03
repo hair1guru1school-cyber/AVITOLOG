@@ -103,9 +103,35 @@
     }, 700);
   }
   async function readRemote() {
-    var response = await fetch(cfg.url + '/rest/v1/frontend_state_records?select=storage_key,value_text,revision,updated_at&order=storage_key', { headers: await headers() });
+    var sashaProfile = typeof window !== 'undefined' && window.AVITOLOG_KEY_SUFFIX === '_sasha';
+    var response = await fetch(cfg.url + '/rest/v1/rpc/read_frontend_state', {
+      method: 'POST',
+      headers: await headers({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify({ p_sasha: !!sashaProfile })
+    });
+    if (!response.ok && response.status === 404) {
+      response = await fetch(cfg.url + '/rest/v1/frontend_state_records?select=storage_key,value_text,revision,updated_at&order=storage_key', { headers: await headers() });
+    }
     if (!response.ok) throw new Error((await response.text()) || 'frontend_state_records read failed');
     return response.json();
+  }
+  async function ensureSashaTeamMember() {
+    if (window.AVITOLOG_BACKEND_PREVIEW) return;
+    var data = sessionData();
+    var email = String((data && data.email) || '').toLowerCase();
+    if (!email || email === 'cyplakovaleksandr153@gmail.com') return;
+    var flag = 'avitolog_backend_sasha_member_checked_v2';
+    try {
+      if (sessionStorage.getItem(flag) === '1') return;
+      sessionStorage.setItem(flag, '1');
+    } catch (eFlag) {}
+    try {
+      await fetch(cfg.url + '/rest/v1/rpc/add_team_member_by_email', {
+        method: 'POST',
+        headers: await headers({ 'Content-Type': 'application/json' }),
+        body: JSON.stringify({ p_email: 'cyplakovaleksandr153@gmail.com' })
+      });
+    } catch (e) {}
   }
   async function applyRemoteRows(rows) {
     var remoteKeys = {};
@@ -310,6 +336,7 @@
     }
     if (!sessionData()) { setStatus('Нет активной Supabase-сессии', true); return; }
     try {
+      phase = 'team'; await ensureSashaTeamMember();
       phase = 'read'; var rows = await readRemote();
       phase = 'apply'; var applied = await applyRemoteRows(rows); var remoteKeys = applied.remoteKeys; var appliedKeys = applied.appliedKeys;
       phase = 'seed';
