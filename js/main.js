@@ -5011,8 +5011,9 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   }
 
-  if (window.AVITOLOG_IS_SASHA && typeof window.__avitologSashaPullNow === 'function') {
-    window.__avitologSashaPullNow()
+  var sashaStartupPull = window.AVITOLOG_BACKEND_MODE ? window.__avitologBackendPullNow : window.__avitologSashaPullNow;
+  if (window.AVITOLOG_IS_SASHA && typeof sashaStartupPull === 'function') {
+    sashaStartupPull()
       .catch(function() { return null; })
       .then(function() { finishInitAfterSashaPull(); });
   } else {

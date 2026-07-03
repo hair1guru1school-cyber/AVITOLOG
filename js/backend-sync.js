@@ -107,6 +107,37 @@
     if (!response.ok) throw new Error((await response.text()) || 'frontend_state_records read failed');
     return response.json();
   }
+  async function applyRemoteRows(rows) {
+    var remoteKeys = {};
+    var appliedKeys = [];
+    var mergedWrites = [];
+    (rows || []).forEach(function (row) {
+      if (!isAllowed(row.storage_key)) return;
+      remoteKeys[row.storage_key] = true;
+      appliedKeys.push(row.storage_key);
+      var localBeforeApply = '';
+      try { localBeforeApply = localStorage.getItem(row.storage_key) || ''; } catch (localReadError) {}
+      var mergedState = coreKeys[row.storage_key] ? mergeRemoteWithLocalValue(row.storage_key, row.value_text || '', localBeforeApply) : { value: row.value_text, changed: false };
+      var valueToApply = mergedState.value;
+      if (mergedState.changed) mergedWrites.push({ key: row.storage_key, value: valueToApply });
+      var target = window.AVITOLOG_BACKEND_STORAGE_TARGET;
+      var prefix = typeof window.AVITOLOG_BACKEND_STORAGE_PREFIX === 'string' ? window.AVITOLOG_BACKEND_STORAGE_PREFIX : 'sb_backend::';
+      if (target) Storage.prototype.setItem.call(target, prefix + row.storage_key, valueToApply);
+      else localStorage.setItem(row.storage_key, valueToApply);
+    });
+    refreshOpenScreensAfterRemoteApply(appliedKeys);
+    if (mergedWrites.length) {
+      for (var mw = 0; mw < mergedWrites.length; mw++) {
+        await writeKey(mergedWrites[mw].key, mergedWrites[mw].value);
+      }
+    }
+    return { remoteKeys: remoteKeys, appliedKeys: appliedKeys, mergedWrites: mergedWrites };
+  }
+  window.__avitologBackendPullNow = async function () {
+    var rows = await readRemote();
+    var res = await applyRemoteRows(rows);
+    return { ok: true, applied: res.appliedKeys.length, keys: res.appliedKeys };
+  };
   function hasProfileData(key, value) {
     if (!value) return false;
     try {
@@ -279,22 +310,8 @@
     }
     if (!sessionData()) { setStatus('Нет активной Supabase-сессии', true); return; }
     try {
-      phase = 'read'; var rows = await readRemote(); var remoteKeys = {}; var appliedKeys = []; var mergedWrites = [];
-      phase = 'apply'; rows.forEach(function (row) {
-        if (!isAllowed(row.storage_key)) return;
-        remoteKeys[row.storage_key] = true;
-        appliedKeys.push(row.storage_key);
-        var localBeforeApply = '';
-        try { localBeforeApply = localStorage.getItem(row.storage_key) || ''; } catch (localReadError) {}
-        var mergedState = coreKeys[row.storage_key] ? mergeRemoteWithLocalValue(row.storage_key, row.value_text || '', localBeforeApply) : { value: row.value_text, changed: false };
-        var valueToApply = mergedState.value;
-        if (mergedState.changed) mergedWrites.push({ key: row.storage_key, value: valueToApply });
-        var target = window.AVITOLOG_BACKEND_STORAGE_TARGET;
-        var prefix = typeof window.AVITOLOG_BACKEND_STORAGE_PREFIX === 'string' ? window.AVITOLOG_BACKEND_STORAGE_PREFIX : 'sb_backend::';
-        if (target) Storage.prototype.setItem.call(target, prefix + row.storage_key, valueToApply);
-        else localStorage.setItem(row.storage_key, valueToApply);
-      });
-      refreshOpenScreensAfterRemoteApply(appliedKeys);
+      phase = 'read'; var rows = await readRemote();
+      phase = 'apply'; var applied = await applyRemoteRows(rows); var remoteKeys = applied.remoteKeys; var appliedKeys = applied.appliedKeys;
       phase = 'seed';
       if (await seedCurrentProfile(remoteKeys)) {
         sessionStorage.removeItem(revisionSignatureStorageKey());
@@ -307,12 +324,6 @@
       coreEnabled = window.AVITOLOG_BACKEND_PREVIEW ? Boolean(remoteKeys[clientsKey] && remoteKeys[projectsKey]) : true;
       financeEnabled = window.AVITOLOG_BACKEND_PREVIEW ? Object.keys(remoteKeys).some(isFinanceKey) : true;
       contentEnabled = window.AVITOLOG_BACKEND_PREVIEW ? Object.keys(remoteKeys).some(isContentKey) : true;
-      if (mergedWrites.length) {
-        phase = 'merge-write';
-        for (var mw = 0; mw < mergedWrites.length; mw++) {
-          await writeKey(mergedWrites[mw].key, mergedWrites[mw].value);
-        }
-      }
       setStatus('Supabase: CRM/Проекты ' + (coreEnabled ? 'ВКЛ' : 'ВЫКЛ') + ' · Касса/Цели ' + (financeEnabled ? 'ВКЛ' : 'ВЫКЛ') + ' · КП/ADS ' + (contentEnabled ? 'ВКЛ' : 'ВЫКЛ'));
       if (!coreEnabled) button('Включить запись CRM/проектов', enableCore);
       else if (!financeEnabled) button('Включить запись кассы и целей', enableFinance);
