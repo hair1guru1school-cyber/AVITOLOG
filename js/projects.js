@@ -1433,9 +1433,13 @@ function renderProjectChildLineHtml(p, idx) {
 function getProjectsStickyWidthPx(projects) {
   var longest = 'Проект';
   var longestStatus = 'В работе';
-  (projects || []).forEach(function(p) {
-    var t = (p && p.title ? String(p.title) : '').trim();
+  function rememberTitle(value) {
+    var t = (value ? String(value) : '').trim();
     if (t.length > longest.length) longest = t;
+  }
+  (projects || []).forEach(function(p) {
+    rememberTitle(p && p.title);
+    (p && p.childLines || []).forEach(rememberTitle);
     var s = (p && p.status ? String(p.status) : '').trim();
     if (s.length > longestStatus.length) longestStatus = s;
   });
@@ -1456,9 +1460,9 @@ function getProjectsStickyWidthPx(projects) {
   if (!statusPx) statusPx = Math.max(66, longestStatus.length * 7 + 14);
   // Base controls width approximated from real CSS sizes:
   // left cols + emoji + expand + path buttons + status + move + paddings/gaps.
-  var fixedControlsPx = 390 + statusPx;
+  var fixedControlsPx = 430 + statusPx;
   var w = fixedControlsPx + titlePx;
-  return Math.max(360, Math.min(2200, w));
+  return Math.max(420, Math.min(2200, w));
 }
 async function ensureActiveProjectsSheet() {
   var readUrl = 'https://sheets.googleapis.com/v4/spreadsheets/' + SHEETS_ID + '/values/' + encodeURIComponent(PROJECTS_ACTIVE_SHEET_NAME + '!A1:A1');
@@ -3892,7 +3896,7 @@ function renderProjectsScreen(opts) {
     if (hasChildLines && _expandedProjectIds[p.id] === undefined) _expandedProjectIds[p.id] = false;
     var showPositionRows = hasChildLines && _expandedProjectIds[p.id];
     var extraLinesHtml = typeof renderProjectChildLinesHtml === 'function' ? renderProjectChildLinesHtml(p) : '';
-    var stickyHtml = '<div class="proj-col-expand">' + dragHandle + '<span class="proj-col-expand-arrow"' + (expandArrowOnclick || '') + '>' + expandContent + '</span></div><div class="proj-col-type" onclick="event.stopPropagation();cycleProjectClientType(\'' + p.id + '\')" title="Старые/новички/2-й раз">' + typeHtml + '</div><button type="button" class="' + driveClass + '" title="' + driveTitle + '" onclick="event.stopPropagation();openProjectDriveFolder(\'' + p.id + '\')">💿</button><div class="proj-cell-editable' + expandedClass + '" data-id="' + p.id + '" onclick="editProjectCell(this)">' + hoverPop + '<div class="proj-main-line"><button type="button" class="proj-emoji-btn" onclick="event.stopPropagation();showProjEmojiPicker(this,\'' + p.id + '\')">' + emHtml + '</button><input type="text" value="' + (p.title||'').replace(/"/g,'&quot;') + '" readonly style="pointer-events:none">' + expandBtnName + '<span class="project-path">' + pathHtml + '</span>' + aoaxBadgeHtml + '<button type="button" class="proj-status-btn project-status" onclick="event.stopPropagation();showProjectStatusPicker(this,\'' + p.id + '\')" style="background:' + (PROJECT_STATUS_COLORS[p.status]||'#666') + '22;color:' + (PROJECT_STATUS_COLORS[p.status]||'#999') + '">' + (p.status||'В работе') + '</button>' + negativeBtnHtml + touchBtnHtml + moveBtn + '</div>' + (hasChildLines ? '' : '<div class="proj-optional-row">' + (typeof renderProjectChildLinesHtml === 'function' ? renderProjectChildLinesHtml(p) : '') + '</div>') + taskIndicatorsHtml + '</div>';
+    var stickyHtml = '<div class="proj-col-expand">' + dragHandle + '<span class="proj-col-expand-arrow"' + (expandArrowOnclick || '') + '>' + expandContent + '</span></div><div class="proj-col-type" onclick="event.stopPropagation();cycleProjectClientType(\'' + p.id + '\')" title="Старые/новички/2-й раз">' + typeHtml + '</div><button type="button" class="' + driveClass + '" title="' + driveTitle + '" onclick="event.stopPropagation();openProjectDriveFolder(\'' + p.id + '\')">💿</button><div class="proj-cell-editable' + expandedClass + '" data-id="' + p.id + '" onclick="editProjectCell(this)">' + hoverPop + '<div class="proj-main-line"><button type="button" class="proj-emoji-btn" onclick="event.stopPropagation();showProjEmojiPicker(this,\'' + p.id + '\')">' + emHtml + '</button><input type="text" value="' + (p.title||'').replace(/"/g,'&quot;') + '" size="' + Math.max(8, String(p.title || '').length + 2) + '" readonly style="pointer-events:none">' + expandBtnName + '<span class="project-path">' + pathHtml + '</span>' + aoaxBadgeHtml + '<button type="button" class="proj-status-btn project-status" onclick="event.stopPropagation();showProjectStatusPicker(this,\'' + p.id + '\')" style="background:' + (PROJECT_STATUS_COLORS[p.status]||'#666') + '22;color:' + (PROJECT_STATUS_COLORS[p.status]||'#999') + '">' + (p.status||'В работе') + '</button>' + negativeBtnHtml + touchBtnHtml + moveBtn + '</div>' + (hasChildLines ? '' : '<div class="proj-optional-row">' + (typeof renderProjectChildLinesHtml === 'function' ? renderProjectChildLinesHtml(p) : '') + '</div>') + taskIndicatorsHtml + '</div>';
     var selectedClass = (_selectedProjectId === p.id) ? ' selected' : '';
     var groupedClass = (_projectsTypeSortPriority && normalizeProjectClientType(p.clientType) === _projectsTypeSortPriority) || (_projectsFilterLaunch && projectHasLaunch(p)) || (_projectsFilterAutoload && projectHasAutoload(p)) || (_projectsFilterMustLaunch && projectHasMustLaunch(p)) ? ' group-match' : '';
     var newFromGoalsClass = p._newFromGoals ? ' project-row-new-from-goals' : '';
