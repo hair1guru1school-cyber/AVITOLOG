@@ -1687,7 +1687,10 @@ function selectProjectRow(projectId) {
   }
   _selectedProjectId = projectId;
   markProjectRowSelection(projectId);
-  if (projectsMode && typeof openTaskPanel === 'function') openTaskPanel(projectId);
+  if (_taskPanelProjectId && typeof renderTaskPanel === 'function') {
+    _taskPanelProjectId = projectId;
+    renderTaskPanel();
+  }
   var p = getSelectedProject();
   if (!p) return;
   var folderIdForCat = (p.folderId || (p.crmData && p.crmData.folderId) || '');
@@ -2237,14 +2240,17 @@ function bindProjectsCalendarInteractions() {
     var cell = getCalendarCellFromEventTarget(e.target);
     if (!cell) return;
     var pid = cell.getAttribute('data-project-id');
-    if (!e.target.closest('.cal-cards-del') && !e.target.closest('.cal-cards-num') && !e.target.closest('.cal-deadline-del') && !e.target.closest('.cal-task-item') && pid && typeof openTaskPanel === 'function' && typeof selectProjectRow === 'function') {
+    if (!e.target.closest('.cal-cards-del') && !e.target.closest('.cal-cards-num') && !e.target.closest('.cal-deadline-del') && !e.target.closest('.cal-task-item') && pid && typeof selectProjectRow === 'function') {
       var dt = cell.getAttribute('data-date');
       var clAttr = cell.getAttribute('data-child-line-index');
       var childLineIdx = (clAttr != null && clAttr !== '') ? parseInt(clAttr, 10) : null;
       _selectedCalCell = dt ? { projectId: pid, dateStr: dt, childLineIdx: childLineIdx } : null;
       _selectedProjectId = pid;
       markProjectRowSelection(pid);
-      openTaskPanel(pid);
+      if (_taskPanelProjectId && typeof renderTaskPanel === 'function') {
+        _taskPanelProjectId = pid;
+        renderTaskPanel();
+      }
       if (typeof rerenderProjectsPreserveScroll === 'function') rerenderProjectsPreserveScroll();
     }
     if (e.target && e.target.closest && e.target.closest('.cal-cards-del')) {
