@@ -1462,6 +1462,7 @@ function getProjectsStickyWidthPx(projects) {
   // left cols + emoji + expand + path buttons + status + move + paddings/gaps.
   var fixedControlsPx = 430 + statusPx;
   var w = fixedControlsPx + titlePx;
+  getProjectsStickyWidthPx.lastTitleWidth = Math.max(120, Math.ceil(titlePx + 12));
   return Math.max(420, Math.min(2200, w));
 }
 async function ensureActiveProjectsSheet() {
@@ -3827,12 +3828,13 @@ function renderProjectsScreen(opts) {
   var newCount = activeProjects.filter(function(p){ return normalizeProjectClientType(p.clientType) === 'new'; }).length;
   var returningCount = activeProjects.filter(function(p){ return normalizeProjectClientType(p.clientType) === 'returning'; }).length;
   var stickyAuto = getProjectsStickyWidthPx(allProjects);
+  var projectTitleW = getProjectsStickyWidthPx.lastTitleWidth || 180;
   var stickySaved = getSavedProjectsStickyWidth();
   var stickyW = stickySaved ? Math.max(stickySaved, stickyAuto) : stickyAuto;
   var rowH = getSavedProjectsRowHeight() || 14;
   var projectsZoom = getSavedProjectsZoom();
   var effectiveRowH = projectsZoom < 1 ? Math.max(6, Math.round(rowH * projectsZoom)) : rowH;
-  var tableStyle = '--projects-sticky-width:' + stickyW + 'px;--projects-row-height:' + effectiveRowH + 'px';
+  var tableStyle = '--projects-sticky-width:' + stickyW + 'px;--projects-title-width:' + projectTitleW + 'px;--projects-row-height:' + effectiveRowH + 'px';
   var fitRowsCls = projectsZoom < 1 ? ' projects-fit-rows' : '';
   var zoneCls = _projectsZoneTab === 'second_chance' ? ' projects-zone-zzz' : _projectsZoneTab === 'archive' ? ' projects-zone-archive' : '';
   var html = '<div class="projects-board' + fitRowsCls + zoneCls + '" style="transform:scale(' + projectsZoom + ');transform-origin:0 0"><div class="projects-table-wrap"><div class="projects-table" style="' + tableStyle + '">';

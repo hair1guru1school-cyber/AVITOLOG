@@ -1727,7 +1727,7 @@ body.projects-row-ptr-dragging .projects-table-row[data-id] .projects-sticky{cur
 .proj-cell-editable .project-path{display:inline-flex;align-items:center;gap:4px;flex-shrink:0;margin-left:auto;padding-left:8px}
 .proj-cell-editable:hover{background:rgba(0,217,126,0.08)}
 .proj-cell-editable.editing{background:var(--surface2);outline:1px solid var(--accent)}
-.proj-cell-editable input{flex:0 0 auto;min-width:70px;width:auto;background:transparent;border:none;color:var(--text);font-size:17px;font-weight:600;font-family:inherit;outline:none}
+.proj-cell-editable input{flex:0 0 var(--projects-title-width,180px);min-width:70px;width:var(--projects-title-width,180px);background:transparent;border:none;color:var(--text);font-size:17px;font-weight:600;font-family:inherit;outline:none}
 .proj-main-line{display:flex;align-items:center;gap:4px;width:100%;min-width:0}
 .field-expand-btn{width:18px;min-width:18px;height:18px;display:inline-flex;align-items:center;justify-content:center;border:1px solid rgba(255,255,255,0.35);border-radius:4px;background:var(--surface2);color:var(--muted);font-size:10px;line-height:1;cursor:pointer;transition:all 0.15s;padding:0;vertical-align:middle;box-shadow:0 0 0 1px rgba(255,255,255,0.08)}
 .proj-move-btn{width:18px;min-width:18px;height:18px;display:inline-flex;align-items:center;justify-content:center;border:none;background:transparent;color:rgba(53,208,255,0.85);font-size:14px;line-height:1;cursor:pointer;transition:color 0.15s;padding:0;vertical-align:middle}
@@ -3102,7 +3102,7 @@ if (!window.AVITOLOG_GOALS) {
 <script src="https://unpkg.com/mammoth@1.6.0/mammoth.min.js"></script>
 <script src="js/hero-asset.js?v=20260404-1"></script>
 <script src="js/core.js?v=20260627-paid-date-1"></script>
-<script src="js/projects.js?v=20260703-project-task-panel-manual-1"></script>
+<script src="js/projects.js?v=20260703-project-title-aligned-actions-1"></script>
 <script src="js/ai-import.js?v=20260701-assets-paid-to-expected-1"></script>
 <script src="js/contract-generator.js?v=20260702-contract-pdf-deps-1"></script>
 <script src="js/ads.js?v=20260404-1"></script>
