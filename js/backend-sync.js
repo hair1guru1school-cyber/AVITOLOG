@@ -205,7 +205,8 @@
     } catch (e) {}
     return String(value || '').length ? 1 : 0;
   }
-  async function pushCurrentProfileStateNow() {
+  async function pushCurrentProfileStateNow(options) {
+    options = options || {};
     var byKey = {};
     function addRecord(key, value) {
       if (!key || !isAllowed(key) || !isCurrentProfileWritableKey(key)) return;
@@ -230,7 +231,7 @@
       } catch (e) {}
     }
     collectFromStore(localStorage, '');
-    if (serverOnlyMode && !isServerOnlySashaViewer()) {
+    if (serverOnlyMode && !isServerOnlySashaViewer() && !options.skipNative) {
       var nativeStore = window.AVITOLOG_BACKEND_NATIVE_STORAGE;
       var prefix = typeof window.AVITOLOG_BACKEND_STORAGE_PREFIX === 'string' ? window.AVITOLOG_BACKEND_STORAGE_PREFIX : '';
       collectFromStore(nativeStore, '');
@@ -354,7 +355,7 @@
     } catch (error) {}
   }
   async function seedCurrentProfile(remoteKeys) {
-    if (window.AVITOLOG_BACKEND_PREVIEW) return false;
+    if (serverOnlyMode || window.AVITOLOG_BACKEND_PREVIEW) return false;
     var suffix = window.AVITOLOG_KEY_SUFFIX === '_sasha' ? '_sasha' : '';
     var keys = ['avitolog_clients' + suffix, 'avitolog_projects' + suffix, 'crm_tasks_v1' + suffix];
     try {
@@ -436,9 +437,11 @@
     if (!sessionData()) { setStatus('Нет активной Supabase-сессии', true); return; }
     try {
       phase = 'team'; await ensureSashaTeamMember();
-      if (serverOnlyMode && !isServerOnlySashaViewer()) {
-        phase = 'prepush';
-        try { await pushCurrentProfileStateNow(); } catch (prepushError) { setStatus('Ошибка server prepush: ' + prepushError.message, true); }
+      var forceLocalToServer = false;
+      try { forceLocalToServer = new URLSearchParams(window.location.search).get('forceLocalToServer') === '1'; } catch (forceParamError) {}
+      if (serverOnlyMode && forceLocalToServer && !isServerOnlySashaViewer()) {
+        phase = 'forcepush';
+        await pushCurrentProfileStateNow({ skipNative: true });
       }
       phase = 'read'; var rows = await readRemote();
       phase = 'apply'; var applied = await applyRemoteRows(rows); var remoteKeys = applied.remoteKeys; var appliedKeys = applied.appliedKeys;
@@ -469,8 +472,7 @@
       }
       if (serverOnlyMode && !pullTimer) {
         if (!isServerOnlySashaViewer()) {
-          try { await pushCurrentProfileStateNow(); } catch (pushError) { setStatus('Ошибка server push: ' + pushError.message, true); }
-          setStatus('Supabase SERVER: Саша пишет в сервер · авто-перезатирание выключено');
+          setStatus('Supabase SERVER: сервер главный · изменения пишутся сразу');
         } else {
           pullTimer = setInterval(function () {
             if (document.hidden) return;
