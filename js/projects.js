@@ -1860,13 +1860,12 @@ function showProjectsCalMenu(x, y, projectId, dateStr, childLineIndex) {
           return '<div class="menu-item" data-action="autoload-days" data-days="' + n + '">до + ' + n + ' дн.</div>';
         }).join('') +
         '<div class="menu-item" data-action="autoload-date">📅 Указать дату…</div>' +
-        '<div class="menu-item" data-action="autoload-clear">🗑 Очистить автозагрузку</div>' +
       '</div>' +
     '</div>' +
     '<div class="menu-item" data-action="must-launch">‼️ Должен быть запущен</div>' +
     '<div class="menu-item" data-action="cards-active">🃏 Актив карточек</div>' +
     '<div class="menu-item" data-action="launch-paint">✍️ Режим закраски запуска</div>' +
-    '<div class="menu-item" data-action="launch-clear">🗑 Очистить запуск</div>';
+    '<div class="menu-item" data-action="row-clear">🧹 Очистить</div>';
   document.body.appendChild(menu);
   var vw = window.innerWidth, vh = window.innerHeight;
   var r = menu.getBoundingClientRect();
@@ -2120,6 +2119,46 @@ function applyProjectAutoloadRangeForRow(projectId, childLineIdx, startDate, end
 }
 function clearProjectAutoload(projectId) {
   clearProjectAutoloadForRow(projectId, -1);
+}
+function clearProjectCalendarRow(projectId, childLineIdx) {
+  var data = loadProjectsData();
+  var p = data.projects.find(function(x){ return x.id === projectId; });
+  if (!p) return;
+  var clearTypes = {
+    launch_range: true,
+    not_launched_project_marker: true,
+    active_range: true,
+    cards_count_without_active_upload: true,
+    deadline: true
+  };
+  function keepEvent(ev) {
+    return ev && !clearTypes[ev.type];
+  }
+  if (childLineIdx >= 0) {
+    ensureChildLineEvents(p);
+    p.childLineEvents[childLineIdx] = (p.childLineEvents[childLineIdx] || []).filter(keepEvent);
+  } else {
+    p.events = (p.events || []).filter(keepEvent);
+    if (Array.isArray(p.childLineEvents)) {
+      p.childLineEvents = p.childLineEvents.map(function(arr) {
+        return Array.isArray(arr) ? arr.filter(keepEvent) : arr;
+      });
+    }
+    p.cardsActive = '';
+    p.cardsActiveDate = '';
+    p.mustLaunchRequired = false;
+    p.mustLaunchDate = '';
+    p.mustLaunchSetSince = '';
+    p.mustLaunchAutoFromLaunch = false;
+    p.mustLaunchAutoDismissedAt = '';
+    if (p.clientPath && typeof p.clientPath === 'object') p.clientPath.autoload = false;
+    _projectJokerDetachArmedId = null;
+    _projectMustLaunchDetachArmedId = null;
+  }
+  applyProjectAutoStatus(p);
+  saveProjectsData(data);
+  rerenderProjectsPreserveScroll();
+  syncProjectToActiveSheet(projectId, 'calendar_row_clear');
 }
 function clearProjectAutoloadForRow(projectId, childLineIdx) {
   var data = loadProjectsData();
