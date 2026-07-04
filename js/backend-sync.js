@@ -15,6 +15,7 @@
   var persistentSessionKey = 'avitolog_backend_session_v1';
   var serverOnlyMode = !!window.AVITOLOG_BACKEND_SERVER_ONLY;
   var pullTimer = null;
+  var lastLocalWriteAt = 0;
   function revisionSignatureStorageKey() {
     return 'avitolog_backend_revision_signature_' + (window.AVITOLOG_KEY_SUFFIX === '_sasha' ? 'sasha' : 'fil');
   }
@@ -49,7 +50,6 @@
     return serverOnlyMode && window.AVITOLOG_KEY_SUFFIX === '_sasha' && !isBackendSessionSasha();
   }
   function isCurrentProfileWritableKey(key) {
-    if (isServerOnlySashaViewer() && isSashaScopedKey(key)) return false;
     var sashaProfile = window.AVITOLOG_KEY_SUFFIX === '_sasha';
     if (isContentKey(key)) return !sashaProfile;
     return sashaProfile ? isSashaScopedKey(key) : !isSashaScopedKey(key);
@@ -111,6 +111,7 @@
   }
   function queueWrite(key, value) {
     if (!isCurrentProfileWritableKey(key)) return;
+    lastLocalWriteAt = Date.now();
     var enabled = coreKeys[key] ? coreEnabled : (isFinanceKey(key) ? financeEnabled : (isContentKey(key) && contentEnabled));
     if (!enabled && !serverOnlyMode) return;
     clearTimeout(timers[key]);
@@ -391,6 +392,10 @@
     if (!sessionData()) { setStatus('Нет активной Supabase-сессии', true); return; }
     try {
       phase = 'team'; await ensureSashaTeamMember();
+      if (serverOnlyMode && !isServerOnlySashaViewer()) {
+        phase = 'prepush';
+        try { await pushCurrentProfileStateNow(); } catch (prepushError) { setStatus('Ошибка server prepush: ' + prepushError.message, true); }
+      }
       phase = 'read'; var rows = await readRemote();
       phase = 'apply'; var applied = await applyRemoteRows(rows); var remoteKeys = applied.remoteKeys; var appliedKeys = applied.appliedKeys;
       phase = 'seed';
@@ -425,6 +430,7 @@
         } else {
           pullTimer = setInterval(function () {
             if (document.hidden) return;
+            if (Date.now() - lastLocalWriteAt < 3500) return;
             window.__avitologBackendPullNow().catch(function (pullError) { setStatus('Ошибка server pull: ' + pullError.message, true); });
           }, 5000);
         }
