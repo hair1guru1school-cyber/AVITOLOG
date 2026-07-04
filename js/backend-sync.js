@@ -16,6 +16,7 @@
   var serverOnlyMode = !!window.AVITOLOG_BACKEND_SERVER_ONLY;
   var pullTimer = null;
   var lastLocalWriteAt = 0;
+  var initialSyncReady = !serverOnlyMode;
   function revisionSignatureStorageKey() {
     return 'avitolog_backend_revision_signature_' + (window.AVITOLOG_KEY_SUFFIX === '_sasha' ? 'sasha' : 'fil');
   }
@@ -111,6 +112,7 @@
   }
   function queueWrite(key, value) {
     if (!isCurrentProfileWritableKey(key)) return;
+    if (serverOnlyMode && !initialSyncReady) return;
     lastLocalWriteAt = Date.now();
     var enabled = coreKeys[key] ? coreEnabled : (isFinanceKey(key) ? financeEnabled : (isContentKey(key) && contentEnabled));
     if (!enabled && !serverOnlyMode) return;
@@ -445,6 +447,7 @@
       }
       phase = 'read'; var rows = await readRemote();
       phase = 'apply'; var applied = await applyRemoteRows(rows); var remoteKeys = applied.remoteKeys; var appliedKeys = applied.appliedKeys;
+      initialSyncReady = true;
       phase = 'seed';
       if (await seedCurrentProfile(remoteKeys)) {
         sessionStorage.removeItem(revisionSignatureStorageKey());

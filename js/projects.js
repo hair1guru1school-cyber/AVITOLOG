@@ -3895,7 +3895,8 @@ function renderProjectsScreen(opts) {
   var tableStyle = '--projects-sticky-width:' + stickyW + 'px;--projects-title-width:' + projectTitleW + 'px;--projects-row-height:' + effectiveRowH + 'px';
   var fitRowsCls = projectsZoom < 1 ? ' projects-fit-rows' : '';
   var zoneCls = _projectsZoneTab === 'second_chance' ? ' projects-zone-zzz' : _projectsZoneTab === 'archive' ? ' projects-zone-archive' : '';
-  var html = '<div class="projects-board' + fitRowsCls + zoneCls + '" style="transform:scale(' + projectsZoom + ');transform-origin:0 0"><div class="projects-table-wrap"><div class="projects-table" style="' + tableStyle + '">';
+  var boardWidthPct = projectsZoom < 1 ? (100 / projectsZoom) : 100;
+  var html = '<div class="projects-board' + fitRowsCls + zoneCls + '" style="transform:scale(' + projectsZoom + ');transform-origin:0 0;width:' + boardWidthPct + '%"><div class="projects-table-wrap"><div class="projects-table" style="' + tableStyle + '">';
   var tasksCount = visibleProjects.reduce(function(sum,p){ return sum + (typeof getTasksForProject === 'function' ? getTasksForProject(p.id) : []).length; }, 0);
   var tasksLabel = '<button type="button" class="projects-zone-tab projects-tasks-tab' + (_projectsTasksSortOn ? ' on' : '') + '" data-zone="tasks" onclick="event.stopPropagation();toggleTasksSortFilter()" title="' + (_projectsTasksSortOn ? 'Сбросить сортировку по задачам' : 'Сортировать: больше задач — выше') + '"><span class="proj-tasks-count-badge">' + tasksCount + '</span></button>';
   var zoneLabels = { active:'&#9889; Актив', second_chance:'&#128164; Zzz', archive:'&#128230; Архив' };
