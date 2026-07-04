@@ -50,8 +50,8 @@
   }
   function isCurrentProfileWritableKey(key) {
     if (isServerOnlySashaViewer() && isSashaScopedKey(key)) return false;
-    if (isContentKey(key)) return true;
     var sashaProfile = window.AVITOLOG_KEY_SUFFIX === '_sasha';
+    if (isContentKey(key)) return !sashaProfile;
     return sashaProfile ? isSashaScopedKey(key) : !isSashaScopedKey(key);
   }
   function sessionData() {
@@ -193,7 +193,7 @@
       }
     } catch (e) {}
     for (var j = 0; j < records.length; j++) {
-      if (hasProfileData(records[j].key, records[j].value) || isContentKey(records[j].key)) await writeKey(records[j].key, records[j].value);
+      if (hasProfileData(records[j].key, records[j].value)) await writeKey(records[j].key, records[j].value);
     }
     return records.length;
   }
