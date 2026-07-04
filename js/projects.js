@@ -442,15 +442,24 @@ function saveProjectsData(data, opts) {
   }
   flushProjectsDataToStorage(data);
 }
+function notifyProjectsStorageWrite(key, value) {
+  try {
+    document.dispatchEvent(new CustomEvent('avitolog:storage-write', {
+      detail: { key: String(key), value: String(value) }
+    }));
+  } catch(e) {}
+}
 function flushProjectsDataToStorage(data) {
   if (_projectsStorageFlushTimer) {
     clearTimeout(_projectsStorageFlushTimer);
     _projectsStorageFlushTimer = null;
   }
   var key = projectsDataKey();
+  var value = JSON.stringify(data);
   _projectsDataMem = data;
   _projectsDataMemKey = key;
-  try { localStorage.setItem(key, JSON.stringify(data)); } catch(e) {}
+  try { localStorage.setItem(key, value); } catch(e) {}
+  notifyProjectsStorageWrite(key, value);
 }
 function scheduleProjectsStorageFlush(data) {
   _projectsDataMem = data;
@@ -458,7 +467,9 @@ function scheduleProjectsStorageFlush(data) {
   if (_projectsStorageFlushTimer) clearTimeout(_projectsStorageFlushTimer);
   _projectsStorageFlushTimer = setTimeout(function() {
     _projectsStorageFlushTimer = null;
-    try { localStorage.setItem(_projectsDataMemKey, JSON.stringify(_projectsDataMem)); } catch(e) {}
+    var value = JSON.stringify(_projectsDataMem);
+    try { localStorage.setItem(_projectsDataMemKey, value); } catch(e) {}
+    notifyProjectsStorageWrite(_projectsDataMemKey, value);
   }, 0);
 }
 async function hydrateProjectsFromActiveSheet(forceMerge) {
@@ -1883,11 +1894,19 @@ function showProjectsCalMenu(x, y, projectId, dateStr, childLineIndex) {
   menu.onclick = function(e) {
     var item = e.target.closest('.menu-item[data-action]');
     if (!item) return;
+    e.preventDefault();
+    e.stopPropagation();
     var action = item.getAttribute('data-action');
     var pid = _calendarCtx.projectId;
     var dt = _calendarCtx.date;
     var clIdx = (_calendarCtx.childLineIndex != null ? _calendarCtx.childLineIndex : -1);
-    if (!pid || !dt) return;
+    if (!pid) return;
+    if (action === 'row-clear') {
+      clearProjectCalendarRow(pid, -1);
+      hideProjectsCalMenu();
+      return;
+    }
+    if (!dt) return;
     if (action === 'launch-mode' || action === 'autoload-menu') {
       var host = item.classList.contains('has-sub') ? item : item.closest('.has-sub');
       if (host) {

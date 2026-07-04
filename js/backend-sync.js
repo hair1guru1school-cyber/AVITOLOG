@@ -185,14 +185,58 @@
     var res = await applyRemoteRows(rows);
     return { ok: true, applied: res.appliedKeys.length, keys: res.appliedKeys };
   };
-  async function pushCurrentProfileStateNow() {
-    var records = [];
+  function profileValueScore(key, value) {
+    if (!value) return 0;
     try {
-      for (var i = 0; i < localStorage.length; i++) {
-        var key = localStorage.key(i);
-        if (key && isAllowed(key) && isCurrentProfileWritableKey(key)) records.push({ key: key, value: localStorage.getItem(key) || '' });
+      var parsed = JSON.parse(value);
+      if (key.indexOf('projects') >= 0 && parsed && Array.isArray(parsed.projects)) {
+        var score = parsed.projects.length * 100;
+        parsed.projects.forEach(function(p) {
+          if (!p) return;
+          if (Array.isArray(p.events)) score += p.events.length * 3;
+          if (Array.isArray(p.childLineEvents)) {
+            p.childLineEvents.forEach(function(arr) { if (Array.isArray(arr)) score += arr.length * 3; });
+          }
+          if (p.name && String(p.name).trim() && String(p.name).trim() !== 'Новый проект') score += 5;
+        });
+        return score;
       }
+      if (Array.isArray(parsed)) return parsed.length;
     } catch (e) {}
+    return String(value || '').length ? 1 : 0;
+  }
+  async function pushCurrentProfileStateNow() {
+    var byKey = {};
+    function addRecord(key, value) {
+      if (!key || !isAllowed(key) || !isCurrentProfileWritableKey(key)) return;
+      value = value || '';
+      var score = profileValueScore(key, value);
+      var current = byKey[key];
+      if (!current || score > current.score) byKey[key] = { key: key, value: value, score: score };
+    }
+    function collectFromStore(store, stripPrefix) {
+      if (!store) return;
+      try {
+        for (var i = 0; i < store.length; i++) {
+          var rawKey = store.key(i);
+          if (!rawKey) continue;
+          var key = rawKey;
+          if (stripPrefix) {
+            if (rawKey.indexOf(stripPrefix) !== 0) continue;
+            key = rawKey.slice(stripPrefix.length);
+          }
+          addRecord(key, store.getItem(rawKey) || '');
+        }
+      } catch (e) {}
+    }
+    collectFromStore(localStorage, '');
+    if (serverOnlyMode && !isServerOnlySashaViewer()) {
+      var nativeStore = window.AVITOLOG_BACKEND_NATIVE_STORAGE;
+      var prefix = typeof window.AVITOLOG_BACKEND_STORAGE_PREFIX === 'string' ? window.AVITOLOG_BACKEND_STORAGE_PREFIX : '';
+      collectFromStore(nativeStore, '');
+      if (window.AVITOLOG_BACKEND_STORAGE_TARGET && prefix) collectFromStore(window.AVITOLOG_BACKEND_STORAGE_TARGET, prefix);
+    }
+    var records = Object.keys(byKey).map(function(key) { return byKey[key]; });
     for (var j = 0; j < records.length; j++) {
       if (hasProfileData(records[j].key, records[j].value)) await writeKey(records[j].key, records[j].value);
     }
