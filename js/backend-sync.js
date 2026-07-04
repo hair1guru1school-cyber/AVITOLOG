@@ -36,6 +36,14 @@
       /^crm_ads_(?:expenses_v1|expenses_month_\d{4}-\d{2}|posts_plan_v1|posts_source_v1|links_v1|posts_sync_queue_v1)$/.test(key);
   }
   function isAllowed(key) { return Boolean(coreKeys[key] || isFinanceKey(key) || isContentKey(key)); }
+  function isSashaScopedKey(key) {
+    return /_sasha(?:_month_\d{4}-\d{2})?$/.test(String(key || ''));
+  }
+  function isCurrentProfileWritableKey(key) {
+    if (isContentKey(key)) return true;
+    var sashaProfile = window.AVITOLOG_KEY_SUFFIX === '_sasha';
+    return sashaProfile ? isSashaScopedKey(key) : !isSashaScopedKey(key);
+  }
   function sessionData() {
     try {
       var temporary = sessionStorage.getItem('avitolog_backend_preview_session') || sessionStorage.getItem('avitolog_backend_app_session');
@@ -92,6 +100,7 @@
     return response.json();
   }
   function queueWrite(key, value) {
+    if (!isCurrentProfileWritableKey(key)) return;
     var enabled = coreKeys[key] ? coreEnabled : (isFinanceKey(key) ? financeEnabled : (isContentKey(key) && contentEnabled));
     if (!enabled) return;
     clearTimeout(timers[key]);
@@ -289,8 +298,11 @@
   async function enableCore(el) {
     el.disabled = true;
     try {
-      await writeKey('avitolog_clients', localStorage.getItem('avitolog_clients') || '[]');
-      await writeKey('avitolog_projects', localStorage.getItem('avitolog_projects') || '{}');
+      var sashaProfile = window.AVITOLOG_KEY_SUFFIX === '_sasha';
+      var clientsKey = sashaProfile ? 'avitolog_clients_sasha' : 'avitolog_clients';
+      var projectsKey = sashaProfile ? 'avitolog_projects_sasha' : 'avitolog_projects';
+      await writeKey(clientsKey, localStorage.getItem(clientsKey) || '[]');
+      await writeKey(projectsKey, localStorage.getItem(projectsKey) || '{}');
       coreEnabled = true; setStatus('Supabase: CRM/Проекты ВКЛ · Касса/Цели ВЫКЛ');
       button('Включить запись кассы и целей', enableFinance);
     } catch (error) { el.disabled = false; setStatus('Не удалось включить CRM/проекты: ' + error.message, true); }
@@ -301,7 +313,7 @@
       var records = [];
       for (var i = 0; i < localStorage.length; i++) {
         var key = localStorage.key(i);
-        if (key && isFinanceKey(key)) records.push({ key: key, value: localStorage.getItem(key) || '' });
+        if (key && isFinanceKey(key) && isCurrentProfileWritableKey(key)) records.push({ key: key, value: localStorage.getItem(key) || '' });
       }
       if (!records.length) throw new Error('Ключи кассы и целей не найдены');
       for (var j = 0; j < records.length; j++) await writeKey(records[j].key, records[j].value);

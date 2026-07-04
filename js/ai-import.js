@@ -1179,6 +1179,21 @@
   }
 
   function syncSashaFromKassaColumn() {
+    if (window.AVITOLOG_BACKEND_MODE) {
+      Promise.resolve()
+        .then(function() {
+          if (typeof window.__avitologBackendPullNow === 'function') return window.__avitologBackendPullNow();
+          return null;
+        })
+        .then(function() {
+          if (typeof renderAssetsPage === 'function') renderAssetsPage();
+          alert('✅ Данные Саши подтянуты из Supabase. Старое копирование из твоей колонки отключено, чтобы не перетирать его кассу.');
+        })
+        .catch(function(e) {
+          alert('Не удалось подтянуть Supabase: ' + ((e && e.message) ? e.message : e));
+        });
+      return;
+    }
     var isSashaUser = isSashaKassaProfile();
     /** Фил пишет в кассу Саши по фикс. ключу; сам Саша — в свой текущий ASSETS_MY_KEY (в т.ч. employee). */
     var targetKey = isSashaUser ? ASSETS_MY_KEY : ASSETS_MY_KEY_SASHA_PROFILE;
@@ -1756,7 +1771,7 @@
         '<div class="assets-col assets-col-sasha" id="assetsColSasha" data-owner="sasha" style="--assets-name-col-width:' + sashaNameColW + 'px">' +
           '<div class="assets-col-title">👤 Клиенты Саши <span class="assets-col-total">' + fmt(sashaSoldTotal) + ' ₽</span><span class="assets-col-breakdown">· Саше <span class="assets-col-sasha-agent">' + fmt(sashaList.reduce(function(a,p){return a+(parseInt(String(p.toAgent||'').replace(/\s/g,''),10)||0);},0)) + '</span> ₽ · Агентству <span class="assets-col-sasha-agency">' + fmt(sashaList.reduce(function(a,p){return a+(parseInt(String(p.aoaPercent||'').replace(/\s/g,''),10)||0);},0)) + '</span> ₽</span></div>' +
           '<div class="assets-col-list">' + colHeaderSasha + sashaRows + '</div>' +
-          '<div class="assets-col-add-row"><button type="button" class="assets-col-add" onclick="window.__assetsAddProject(\'sasha\')">+ Добавить</button><button type="button" class="assets-col-add assets-col-add-base" onclick="window.__assetsShowBasePicker(this)" title="Выбрать из базы">+ из базы</button><button type="button" class="assets-col-add assets-col-add-sync" onclick="window.__assetsSyncSashaFromKassa && window.__assetsSyncSashaFromKassa()" title="В профиль Саши: в «Оплатил» только сумма «Агенту» (его %). Остальные поля колонки не переносятся.">🔄 Синхронизировать</button></div>' +
+          '<div class="assets-col-add-row"><button type="button" class="assets-col-add" onclick="window.__assetsAddProject(\'sasha\')">+ Добавить</button><button type="button" class="assets-col-add assets-col-add-base" onclick="window.__assetsShowBasePicker(this)" title="Выбрать из базы">+ из базы</button>' + (!window.AVITOLOG_BACKEND_MODE ? '<button type="button" class="assets-col-add assets-col-add-sync" onclick="window.__assetsSyncSashaFromKassa && window.__assetsSyncSashaFromKassa()" title="В профиль Саши: в «Оплатил» только сумма «Агенту» (его %). Остальные поля колонки не переносятся.">🔄 Синхронизировать</button>' : '') + '</div>' +
         '</div>'
       );
     var ctrlBtns = '<button type="button" class="assets-month-nav-btn assets-chart-toggle" onclick="var k=\'avitolog_assets_chart_open_v1\';localStorage.setItem(k,localStorage.getItem(k)===\'1\'?\'0\':\'1\');window.__renderAssetsPage&&window.__renderAssetsPage()" title="Показать график оплат за месяц">📊</button>';
