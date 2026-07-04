@@ -152,7 +152,8 @@
       appliedKeys.push(row.storage_key);
       var localBeforeApply = '';
       try { localBeforeApply = localStorage.getItem(row.storage_key) || ''; } catch (localReadError) {}
-      var mergedState = coreKeys[row.storage_key] ? mergeRemoteWithLocalValue(row.storage_key, row.value_text || '', localBeforeApply) : { value: row.value_text, changed: false };
+      var shouldMerge = coreKeys[row.storage_key] || (isFinanceKey(row.storage_key) && isCurrentProfileWritableKey(row.storage_key));
+      var mergedState = shouldMerge ? mergeRemoteWithLocalValue(row.storage_key, row.value_text || '', localBeforeApply) : { value: row.value_text, changed: false };
       var valueToApply = mergedState.value;
       if (mergedState.changed) mergedWrites.push({ key: row.storage_key, value: valueToApply });
       var target = window.AVITOLOG_BACKEND_STORAGE_TARGET;
@@ -177,7 +178,7 @@
     if (!value) return false;
     try {
       var parsed = JSON.parse(value);
-      if (key.indexOf('clients') >= 0 || key.indexOf('tasks') >= 0) return Array.isArray(parsed) && parsed.length > 0;
+      if (key.indexOf('clients') >= 0 || key.indexOf('tasks') >= 0 || /^avitolog_assets_/.test(key) || /^avitolog_goal_achievements_v1/.test(key)) return Array.isArray(parsed) && parsed.length > 0;
       if (key.indexOf('projects') >= 0) return parsed && Array.isArray(parsed.projects) && parsed.projects.length > 0;
     } catch (e) {}
     return false;
@@ -200,6 +201,15 @@
     item = item || {};
     var id = String(item.id || item.projectId || item.task_id || item.client_id || '').trim();
     return id ? ('id:' + id) : '';
+  }
+  function assetMergeKey(item) {
+    item = item || {};
+    var id = String(item.id || item.paymentId || item.crmClientId || item.client_id || '').trim();
+    if (id) return 'id:' + id;
+    var name = String(item.name || item.client || item.project || '').trim().toLowerCase();
+    var date = String(item.paymentDate || item.date || item.startDate || '').trim();
+    var amount = String(item.paid || item.soldFor || item.toAgent || item.expected || '').replace(/\s+/g, '').trim();
+    return name ? ('asset:' + [name, date, amount].join('|')) : '';
   }
   function mergeArraysByKey(remoteArr, localArr, keyFn) {
     var out = [];
@@ -228,6 +238,8 @@
         merged = mergeArraysByKey(remote, local, clientMergeKey);
       } else if (key.indexOf('tasks') >= 0 && Array.isArray(remote) && Array.isArray(local)) {
         merged = mergeArraysByKey(remote, local, idMergeKey);
+      } else if (/^avitolog_assets_/.test(key) && Array.isArray(remote) && Array.isArray(local)) {
+        merged = mergeArraysByKey(remote, local, assetMergeKey);
       } else if (key.indexOf('projects') >= 0 && remote && local && Array.isArray(remote.projects) && Array.isArray(local.projects)) {
         merged = Object.assign({}, remote);
         merged.projects = mergeArraysByKey(remote.projects, local.projects, idMergeKey);
@@ -276,6 +288,12 @@
     if (window.AVITOLOG_BACKEND_PREVIEW) return false;
     var suffix = window.AVITOLOG_KEY_SUFFIX === '_sasha' ? '_sasha' : '';
     var keys = ['avitolog_clients' + suffix, 'avitolog_projects' + suffix, 'crm_tasks_v1' + suffix];
+    try {
+      for (var li = 0; li < localStorage.length; li++) {
+        var lk = localStorage.key(li);
+        if (lk && isFinanceKey(lk) && isCurrentProfileWritableKey(lk) && keys.indexOf(lk) < 0) keys.push(lk);
+      }
+    } catch (localKeysError) {}
     var seeded = false;
     for (var i = 0; i < keys.length; i++) {
       var key = keys[i];
