@@ -1691,7 +1691,7 @@
     }
     var chartHtml = buildAssetsPaymentChartHtml();
     var summaryRows = [
-      { icon: '💰', label: isSashaView ? 'Получено за все (только твоя доля)' : 'Получено за все', val: totalRub > 0 ? fmt(totalRub) : '', valUsd: totalUsd, main: true },
+      { icon: '💰', label: 'Получено за все', val: totalRub > 0 ? fmt(totalRub) : '', valUsd: totalUsd, main: true },
       { icon: '✅', label: isSashaView ? 'Оплаты (твоя доля)' : 'Оплаты клиентов', val: totalRub > 0 ? fmt(totalRub) : '', valUsd: null },
       { icon: '🌿', label: 'Ожидается еще', val: expectedVal },
       { icon: '📊', label: 'Ожидается за мес', val: expectedVal },

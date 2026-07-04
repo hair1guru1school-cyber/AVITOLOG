@@ -162,7 +162,7 @@
       appliedKeys.push(row.storage_key);
       var localBeforeApply = '';
       try { localBeforeApply = localStorage.getItem(row.storage_key) || ''; } catch (localReadError) {}
-      var shouldMerge = coreKeys[row.storage_key] || (isFinanceKey(row.storage_key) && isCurrentProfileWritableKey(row.storage_key));
+      var shouldMerge = false;
       var mergedState = shouldMerge ? mergeRemoteWithLocalValue(row.storage_key, row.value_text || '', localBeforeApply) : { value: row.value_text, changed: false };
       var valueToApply = mergedState.value;
       if (mergedState.changed) mergedWrites.push({ key: row.storage_key, value: valueToApply });
