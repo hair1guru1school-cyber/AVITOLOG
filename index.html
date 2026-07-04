@@ -2744,6 +2744,10 @@ body.day-mode .assets-col-sasha-hint{color:var(--accent)}
     var previewMode = params.get('backendPreview') === '1';
     var backendSessionRaw = sessionStorage.getItem('avitolog_backend_preview_session') || sessionStorage.getItem('avitolog_backend_app_session') || localStorage.getItem('avitolog_backend_session_v1') || '';
     var explicitBackendMode = params.get('backendSource') === 'supabase' || params.get('backend') === 'supabase';
+    var explicitServerOnly = params.get('serverOnly') === '1' || params.get('server') === '1';
+    if (explicitServerOnly) localStorage.setItem('avitolog_backend_server_only', '1');
+    if (params.get('serverOnly') === '0' || params.get('server') === '0') localStorage.removeItem('avitolog_backend_server_only');
+    window.AVITOLOG_BACKEND_SERVER_ONLY = explicitServerOnly || localStorage.getItem('avitolog_backend_server_only') === '1';
     var primaryMode = !previewMode && (explicitBackendMode || localStorage.getItem('avitolog_backend_primary') === '1' || !!backendSessionRaw);
     if (!previewMode && !primaryMode) return;
     window.AVITOLOG_BACKEND_MODE = true;
@@ -2838,7 +2842,7 @@ body.day-mode .assets-col-sasha-hint{color:var(--accent)}
 })();
 </script>
 <script src="js/supabase-config.js?v=20260619-write1"></script>
-<script src="js/backend-sync.js?v=20260704-sasha-finance-merge-seed-1"></script>
+<script src="js/backend-sync.js?v=20260704-sasha-server-only-1"></script>
 <script src="js/user-config.js?v=20260702-sasha-backend-legacy-merge-1"></script>
 <script src="js/goals.js?v=20260701-crm-june-beton-render-1"></script>
 <script>

@@ -13,6 +13,8 @@
   var timers = {};
   var statusEl;
   var persistentSessionKey = 'avitolog_backend_session_v1';
+  var serverOnlyMode = !!window.AVITOLOG_BACKEND_SERVER_ONLY;
+  var pullTimer = null;
   function revisionSignatureStorageKey() {
     return 'avitolog_backend_revision_signature_' + (window.AVITOLOG_KEY_SUFFIX === '_sasha' ? 'sasha' : 'fil');
   }
@@ -39,7 +41,15 @@
   function isSashaScopedKey(key) {
     return /_sasha(?:_month_\d{4}-\d{2})?$/.test(String(key || ''));
   }
+  function isBackendSessionSasha() {
+    var data = sessionData();
+    return String((data && data.email) || '').toLowerCase() === 'cyplakovaleksandr153@gmail.com';
+  }
+  function isServerOnlySashaViewer() {
+    return serverOnlyMode && window.AVITOLOG_KEY_SUFFIX === '_sasha' && !isBackendSessionSasha();
+  }
   function isCurrentProfileWritableKey(key) {
+    if (isServerOnlySashaViewer() && isSashaScopedKey(key)) return false;
     if (isContentKey(key)) return true;
     var sashaProfile = window.AVITOLOG_KEY_SUFFIX === '_sasha';
     return sashaProfile ? isSashaScopedKey(key) : !isSashaScopedKey(key);
@@ -102,7 +112,7 @@
   function queueWrite(key, value) {
     if (!isCurrentProfileWritableKey(key)) return;
     var enabled = coreKeys[key] ? coreEnabled : (isFinanceKey(key) ? financeEnabled : (isContentKey(key) && contentEnabled));
-    if (!enabled) return;
+    if (!enabled && !serverOnlyMode) return;
     clearTimeout(timers[key]);
     setStatus('Supabase: сохраняю ' + (coreKeys[key] ? 'CRM/проекты' : (isFinanceKey(key) ? 'кассу/цели' : 'КП/ADS')) + '...');
     timers[key] = setTimeout(function () {
@@ -174,6 +184,20 @@
     var res = await applyRemoteRows(rows);
     return { ok: true, applied: res.appliedKeys.length, keys: res.appliedKeys };
   };
+  async function pushCurrentProfileStateNow() {
+    var records = [];
+    try {
+      for (var i = 0; i < localStorage.length; i++) {
+        var key = localStorage.key(i);
+        if (key && isAllowed(key) && isCurrentProfileWritableKey(key)) records.push({ key: key, value: localStorage.getItem(key) || '' });
+      }
+    } catch (e) {}
+    for (var j = 0; j < records.length; j++) {
+      if (hasProfileData(records[j].key, records[j].value) || isContentKey(records[j].key)) await writeKey(records[j].key, records[j].value);
+    }
+    return records.length;
+  }
+  window.__avitologBackendPushCurrentProfileNow = pushCurrentProfileStateNow;
   function hasProfileData(key, value) {
     if (!value) return false;
     try {
@@ -372,8 +396,10 @@
       phase = 'seed';
       if (await seedCurrentProfile(remoteKeys)) {
         sessionStorage.removeItem(revisionSignatureStorageKey());
-        window.location.reload();
-        return;
+        if (!serverOnlyMode) {
+          window.location.reload();
+          return;
+        }
       }
       var sashaProfile = window.AVITOLOG_KEY_SUFFIX === '_sasha';
       var clientsKey = sashaProfile ? 'avitolog_clients_sasha' : 'avitolog_clients';
@@ -381,7 +407,7 @@
       coreEnabled = window.AVITOLOG_BACKEND_PREVIEW ? Boolean(remoteKeys[clientsKey] && remoteKeys[projectsKey]) : true;
       financeEnabled = window.AVITOLOG_BACKEND_PREVIEW ? Object.keys(remoteKeys).some(isFinanceKey) : true;
       contentEnabled = window.AVITOLOG_BACKEND_PREVIEW ? Object.keys(remoteKeys).some(isContentKey) : true;
-      setStatus('Supabase: CRM/Проекты ' + (coreEnabled ? 'ВКЛ' : 'ВЫКЛ') + ' · Касса/Цели ' + (financeEnabled ? 'ВКЛ' : 'ВЫКЛ') + ' · КП/ADS ' + (contentEnabled ? 'ВКЛ' : 'ВЫКЛ'));
+      setStatus((serverOnlyMode ? 'Supabase SERVER: ' : 'Supabase: ') + 'CRM/Проекты ' + (coreEnabled ? 'ВКЛ' : 'ВЫКЛ') + ' · Касса/Цели ' + (financeEnabled ? 'ВКЛ' : 'ВЫКЛ') + ' · КП/ADS ' + (contentEnabled ? 'ВКЛ' : 'ВЫКЛ'));
       if (!coreEnabled) button('Включить запись CRM/проектов', enableCore);
       else if (!financeEnabled) button('Включить запись кассы и целей', enableFinance);
       else if (!contentEnabled) button('Включить запись КП и ADS', enableContent);
@@ -390,7 +416,16 @@
       var revisionKey = revisionSignatureStorageKey();
       if (rows.length && sessionStorage.getItem(revisionKey) !== revisionSignature) {
         sessionStorage.setItem(revisionKey, revisionSignature);
-        window.location.reload();
+        if (!serverOnlyMode) window.location.reload();
+      }
+      if (serverOnlyMode && !pullTimer) {
+        if (!isServerOnlySashaViewer()) {
+          try { await pushCurrentProfileStateNow(); } catch (pushError) { setStatus('Ошибка server push: ' + pushError.message, true); }
+        }
+        pullTimer = setInterval(function () {
+          if (document.hidden) return;
+          window.__avitologBackendPullNow().catch(function (pullError) { setStatus('Ошибка server pull: ' + pullError.message, true); });
+        }, 5000);
       }
     } catch (error) { setStatus('Ошибка Supabase (' + phase + '): ' + error.message, true); }
   });
