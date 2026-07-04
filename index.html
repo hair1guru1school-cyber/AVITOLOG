@@ -168,10 +168,11 @@ textarea{resize:vertical;min-height:50px;line-height:1.5}
 .row3 .fg{margin-bottom:0}
 .row2 .fg{margin-bottom:0}
 .crm-row{display:flex;align-items:center;gap:7px;margin-bottom:8px;flex-wrap:nowrap}
-.crm-main-btn{height:34px;flex:1;min-width:0;display:flex;align-items:center;justify-content:center;border:1px solid rgba(0,217,126,.65);border-radius:8px;background:linear-gradient(135deg,rgba(0,217,126,.25),rgba(0,217,126,.12));color:var(--accent);font-size:14px;font-weight:900;letter-spacing:.5px;cursor:pointer;box-shadow:0 0 16px rgba(0,217,126,.16);transition:all .16s}
+.crm-main-btn{height:34px;flex:0 0 66px;min-width:66px;display:flex;align-items:center;justify-content:center;border:1px solid rgba(0,217,126,.65);border-radius:8px;background:linear-gradient(135deg,rgba(0,217,126,.25),rgba(0,217,126,.12));color:var(--accent);font-size:13px;font-weight:900;letter-spacing:.2px;line-height:1;white-space:nowrap;overflow:hidden;cursor:pointer;box-shadow:0 0 16px rgba(0,217,126,.16);transition:all .16s}
 .crm-main-btn:hover{background:linear-gradient(135deg,rgba(0,217,126,.36),rgba(0,217,126,.18));border-color:var(--accent);box-shadow:0 0 22px rgba(0,217,126,.24)}
 .badge{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:5px;font-size:10px;font-weight:700;cursor:pointer;border:1px solid var(--border);background:transparent;color:var(--muted);transition:all 0.2s}
 #clientBadge.badge.ok{padding:6px 12px;font-size:13px;max-width:100%;min-width:0}
+#clientBadge{flex:1 1 auto;min-width:0;max-width:100%;overflow:hidden}
 #clientBadge[draggable="true"]{cursor:grab}
 #clientBadge[draggable="true"]:active{cursor:grabbing}
 #clientBadgeName{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:200px}
@@ -2846,7 +2847,7 @@ body.day-mode .assets-col-sasha-hint{color:var(--accent)}
 })();
 </script>
 <script src="js/supabase-config.js?v=20260619-write1"></script>
-<script src="js/backend-sync.js?v=20260704-sasha-force-push-1"></script>
+<script src="js/backend-sync.js?v=20260704-sasha-force-push-2"></script>
 <script src="js/user-config.js?v=20260702-sasha-backend-legacy-merge-1"></script>
 <script src="js/goals.js?v=20260701-crm-june-beton-render-1"></script>
 <script>
