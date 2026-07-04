@@ -421,11 +421,13 @@
       if (serverOnlyMode && !pullTimer) {
         if (!isServerOnlySashaViewer()) {
           try { await pushCurrentProfileStateNow(); } catch (pushError) { setStatus('Ошибка server push: ' + pushError.message, true); }
+          setStatus('Supabase SERVER: Саша пишет в сервер · авто-перезатирание выключено');
+        } else {
+          pullTimer = setInterval(function () {
+            if (document.hidden) return;
+            window.__avitologBackendPullNow().catch(function (pullError) { setStatus('Ошибка server pull: ' + pullError.message, true); });
+          }, 5000);
         }
-        pullTimer = setInterval(function () {
-          if (document.hidden) return;
-          window.__avitologBackendPullNow().catch(function (pullError) { setStatus('Ошибка server pull: ' + pullError.message, true); });
-        }, 5000);
       }
     } catch (error) { setStatus('Ошибка Supabase (' + phase + '): ' + error.message, true); }
   });
