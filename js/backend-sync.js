@@ -124,20 +124,101 @@
     rememberRevision(key, result && result.revision);
     return result;
   }
-  function queueWrite(key, value) {
+  function isProjectsStorageKey(key) {
+    return /^avitolog_projects(?:_sasha)?$/.test(String(key || ''));
+  }
+  function parseJsonValue(value) {
+    try { return JSON.parse(value || ''); } catch (e) { return null; }
+  }
+  function stableJson(value) {
+    try { return JSON.stringify(value == null ? null : value); } catch (e) { return String(value); }
+  }
+  function backendItemId(item) {
+    item = item || {};
+    return String(item.id || item.projectId || item.task_id || item.client_id || item.uuid || '').trim();
+  }
+  function mergeArrayByChangedIds(remoteArr, previousArr, nextArr) {
+    remoteArr = Array.isArray(remoteArr) ? remoteArr : [];
+    previousArr = Array.isArray(previousArr) ? previousArr : [];
+    nextArr = Array.isArray(nextArr) ? nextArr : [];
+    if (!remoteArr.length && nextArr.length) return nextArr.slice();
+    var prevById = {};
+    var nextById = {};
+    var changedById = {};
+    var removedById = {};
+    previousArr.forEach(function (item) {
+      var id = backendItemId(item);
+      if (id) prevById[id] = item;
+    });
+    nextArr.forEach(function (item) {
+      var id = backendItemId(item);
+      if (id) nextById[id] = item;
+    });
+    Object.keys(nextById).forEach(function (id) {
+      if (!prevById[id] || stableJson(prevById[id]) !== stableJson(nextById[id])) changedById[id] = nextById[id];
+    });
+    Object.keys(prevById).forEach(function (id) {
+      if (!nextById[id]) removedById[id] = prevById[id];
+    });
+    var out = [];
+    var seen = {};
+    remoteArr.forEach(function (item) {
+      var id = backendItemId(item);
+      if (id && removedById[id] && stableJson(item) === stableJson(removedById[id])) return;
+      if (id && changedById[id]) {
+        out.push(changedById[id]);
+        seen[id] = true;
+        return;
+      }
+      out.push(item);
+      if (id) seen[id] = true;
+    });
+    Object.keys(changedById).forEach(function (id) {
+      if (!seen[id]) out.push(changedById[id]);
+    });
+    return out;
+  }
+  function mergeProjectsValue(remoteValue, previousValue, nextValue) {
+    var remote = parseJsonValue(remoteValue);
+    var previous = parseJsonValue(previousValue);
+    var next = parseJsonValue(nextValue);
+    if (!remote || !previous || !next || !Array.isArray(previous.projects) || !Array.isArray(next.projects)) return nextValue;
+    var out = Object.assign({}, remote);
+    ['projects', 'hiddenProjects', 'tasks', 'taskLog'].forEach(function (field) {
+      if (Array.isArray(next[field]) || Array.isArray(previous[field]) || Array.isArray(remote[field])) {
+        out[field] = mergeArrayByChangedIds(remote[field], previous[field], next[field]);
+      }
+    });
+    return JSON.stringify(out);
+  }
+  async function prepareValueForWrite(key, value, previousValue) {
+    if (!isProjectsStorageKey(key) || !previousValue) return value;
+    try {
+      var rows = await readRemote();
+      var row = (rows || []).find(function (item) { return item && item.storage_key === key; });
+      if (!row || !row.value_text) return value;
+      return mergeProjectsValue(row.value_text, previousValue, value);
+    } catch (e) {
+      return value;
+    }
+  }
+  function queueWrite(key, value, previousValue) {
     if (!isCurrentProfileWritableKey(key)) return;
     if (serverOnlyMode && !initialSyncReady) return;
     lastLocalWriteAt = Date.now();
     var enabled = coreKeys[key] ? coreEnabled : (isFinanceKey(key) ? financeEnabled : (isContentKey(key) && contentEnabled));
     if (!enabled && !serverOnlyMode) return;
     clearTimeout(timers[key]);
-    pendingWrites[key] = { value: String(value == null ? '' : value), ts: Date.now() };
+    pendingWrites[key] = { value: String(value == null ? '' : value), previousValue: String(previousValue == null ? '' : previousValue), ts: Date.now() };
     setStatus('Supabase: сохраняю ' + (coreKeys[key] ? 'CRM/проекты' : (isFinanceKey(key) ? 'кассу/цели' : 'КП/ADS')) + '...');
     var delay = key.indexOf('projects') >= 0 ? 0 : 700;
     timers[key] = setTimeout(function () {
-      var expected = pendingWrites[key] && pendingWrites[key].value;
-      writeKey(key, expected).then(function (result) {
-        if (pendingWrites[key] && pendingWrites[key].value === expected) delete pendingWrites[key];
+      var pending = pendingWrites[key] || {};
+      var expected = pending.value;
+      prepareValueForWrite(key, expected, pending.previousValue).then(function (prepared) {
+        return writeKey(key, prepared);
+      }).then(function (result) {
+        if (pendingWrites[key] === pending) delete pendingWrites[key];
         setStatus('Supabase: сохранено · версия ' + result.revision);
       }).catch(function (error) { setStatus('Ошибка записи: ' + error.message, true); });
     }, delay);
@@ -460,7 +541,7 @@
   }
 
   document.addEventListener('avitolog:storage-write', function (event) {
-    var detail = event.detail || {}; queueWrite(detail.key, detail.value);
+    var detail = event.detail || {}; queueWrite(detail.key, detail.value, detail.previousValue);
   });
   document.addEventListener('DOMContentLoaded', async function () {
     var phase = 'start';

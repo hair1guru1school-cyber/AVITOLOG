@@ -457,10 +457,14 @@ function saveProjectsData(data, opts) {
   }
   flushProjectsDataToStorage(data);
 }
-function notifyProjectsStorageWrite(key, value) {
+function notifyProjectsStorageWrite(key, value, previousValue) {
   try {
     document.dispatchEvent(new CustomEvent('avitolog:storage-write', {
-      detail: { key: String(key), value: String(value) }
+      detail: {
+        key: String(key),
+        value: String(value == null ? '' : value),
+        previousValue: String(previousValue == null ? '' : previousValue)
+      }
     }));
   } catch(e) {}
 }
@@ -471,10 +475,12 @@ function flushProjectsDataToStorage(data) {
   }
   var key = projectsDataKey();
   var value = JSON.stringify(data);
+  var previousValue = '';
+  try { previousValue = localStorage.getItem(key) || ''; } catch(e) {}
   _projectsDataMem = data;
   _projectsDataMemKey = key;
   try { localStorage.setItem(key, value); } catch(e) {}
-  notifyProjectsStorageWrite(key, value);
+  notifyProjectsStorageWrite(key, value, previousValue);
 }
 function scheduleProjectsStorageFlush(data) {
   _projectsDataMem = data;
@@ -483,8 +489,10 @@ function scheduleProjectsStorageFlush(data) {
   _projectsStorageFlushTimer = setTimeout(function() {
     _projectsStorageFlushTimer = null;
     var value = JSON.stringify(_projectsDataMem);
+    var previousValue = '';
+    try { previousValue = localStorage.getItem(_projectsDataMemKey) || ''; } catch(e) {}
     try { localStorage.setItem(_projectsDataMemKey, value); } catch(e) {}
-    notifyProjectsStorageWrite(_projectsDataMemKey, value);
+    notifyProjectsStorageWrite(_projectsDataMemKey, value, previousValue);
   }, 0);
 }
 async function hydrateProjectsFromActiveSheet(forceMerge) {
