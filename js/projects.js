@@ -276,8 +276,12 @@ function startProjectsDayShiftTimer() {
 }
 
 /** Профиль Саша: данные могли остаться в avitolog_projects без суффикса — копируем в ключ профиля при первой загрузке. */
+function isProjectsServerOnlyMode() {
+  try { return !!window.AVITOLOG_BACKEND_SERVER_ONLY; } catch (e) { return false; }
+}
+
 function tryPromoteLegacyProjectsIntoSashaProfile() {
-  if (typeof window === 'undefined' || !window.AVITOLOG_IS_SASHA) return false;
+  if (typeof window === 'undefined' || !window.AVITOLOG_IS_SASHA || isProjectsServerOnlyMode()) return false;
   try {
     var targetKey = projectsDataKey();
     if (targetKey === 'avitolog_projects') return false;
@@ -303,6 +307,7 @@ function loadProjectsData(forceReload) {
       try { window.__projectsMergeCardsFromStorageBackups(); } catch (eMerge) {}
     }
     var isSasha = typeof window !== 'undefined' && window.AVITOLOG_IS_SASHA;
+    var serverOnly = isProjectsServerOnlyMode();
     var s = localStorage.getItem(projectsDataKey());
     var data = null;
     try {
@@ -324,10 +329,18 @@ function loadProjectsData(forceReload) {
     if (data.projects.length < 10 && !isSasha) {
       return getDefaultProjectsData();
     }
-    if (protectKnownProjectTitles(data)) saveProjectsData(data);
-    if (applyKnownProjectFolderFixes(data)) saveProjectsData(data);
+    if (serverOnly) {
+      if (!Array.isArray(data.hiddenProjects)) data.hiddenProjects = [];
+      if (!Array.isArray(data.tasks)) data.tasks = [];
+      if (!Array.isArray(data.taskLog)) data.taskLog = [];
+      _projectsDataMem = data;
+      _projectsDataMemKey = storageKey;
+      return data;
+    }
+    if (!serverOnly && protectKnownProjectTitles(data)) saveProjectsData(data);
+    if (!serverOnly && applyKnownProjectFolderFixes(data)) saveProjectsData(data);
     // Migration: once switch default path buttons to OFF for existing local data.
-    if (!localStorage.getItem('avitolog_projects_path_defaults_off_v1')) {
+    if (!serverOnly && !localStorage.getItem('avitolog_projects_path_defaults_off_v1')) {
       data.projects.forEach(function(p) {
         p.clientPath = {autoload:false,analytics:false,texts:false,packaging:false,portfolio:false};
       });
@@ -431,8 +444,10 @@ function loadProjectsData(forceReload) {
   }
 }
 function saveProjectsData(data, opts) {
-  protectKnownProjectTitles(data);
-  applyKnownProjectFolderFixes(data);
+  if (!isProjectsServerOnlyMode()) {
+    protectKnownProjectTitles(data);
+    applyKnownProjectFolderFixes(data);
+  }
   var key = projectsDataKey();
   _projectsDataMem = data;
   _projectsDataMemKey = key;
