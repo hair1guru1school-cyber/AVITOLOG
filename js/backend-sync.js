@@ -11,6 +11,7 @@
   var financeEnabled = false;
   var contentEnabled = false;
   var timers = {};
+  var pendingWrites = {};
   var statusEl;
   var persistentSessionKey = 'avitolog_backend_session_v1';
   var serverOnlyMode = !!window.AVITOLOG_BACKEND_SERVER_ONLY;
@@ -117,12 +118,16 @@
     var enabled = coreKeys[key] ? coreEnabled : (isFinanceKey(key) ? financeEnabled : (isContentKey(key) && contentEnabled));
     if (!enabled && !serverOnlyMode) return;
     clearTimeout(timers[key]);
+    pendingWrites[key] = { value: String(value == null ? '' : value), ts: Date.now() };
     setStatus('Supabase: сохраняю ' + (coreKeys[key] ? 'CRM/проекты' : (isFinanceKey(key) ? 'кассу/цели' : 'КП/ADS')) + '...');
+    var delay = key.indexOf('projects') >= 0 ? 0 : 700;
     timers[key] = setTimeout(function () {
-      writeKey(key, value).then(function (result) {
+      var expected = pendingWrites[key] && pendingWrites[key].value;
+      writeKey(key, expected).then(function (result) {
+        if (pendingWrites[key] && pendingWrites[key].value === expected) delete pendingWrites[key];
         setStatus('Supabase: сохранено · версия ' + result.revision);
       }).catch(function (error) { setStatus('Ошибка записи: ' + error.message, true); });
-    }, 700);
+    }, delay);
   }
   async function readRemote() {
     var sashaProfile = typeof window !== 'undefined' && window.AVITOLOG_KEY_SUFFIX === '_sasha';
@@ -165,6 +170,11 @@
       appliedKeys.push(row.storage_key);
       var localBeforeApply = '';
       try { localBeforeApply = localStorage.getItem(row.storage_key) || ''; } catch (localReadError) {}
+      var pending = pendingWrites[row.storage_key];
+      if (pending && Date.now() - pending.ts < 15000) {
+        remoteKeys[row.storage_key] = true;
+        return;
+      }
       var shouldMerge = false;
       var mergedState = shouldMerge ? mergeRemoteWithLocalValue(row.storage_key, row.value_text || '', localBeforeApply) : { value: row.value_text, changed: false };
       var valueToApply = mergedState.value;
