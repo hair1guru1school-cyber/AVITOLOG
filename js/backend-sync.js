@@ -245,6 +245,18 @@
     }
     return records.length;
   }
+  async function forceSashaLegacyProjectsToServer() {
+    if (!serverOnlyMode || window.AVITOLOG_KEY_SUFFIX !== '_sasha' || !isBackendSessionSasha()) return false;
+    var raw = '';
+    try { raw = window.AVITOLOG_BACKEND_NATIVE_STORAGE && window.AVITOLOG_BACKEND_NATIVE_STORAGE.getItem('avitolog_projects') || ''; } catch (eNative) {}
+    if (!raw) { try { raw = localStorage.getItem('avitolog_projects') || ''; } catch (eLocal) {} }
+    if (!hasProfileData('avitolog_projects_sasha', raw)) throw new Error('Не нашёл старые локальные проекты Саши avitolog_projects');
+    await writeKey('avitolog_projects_sasha', raw);
+    try { localStorage.setItem('avitolog_projects_sasha', raw); } catch (eSet) {}
+    setStatus('Supabase: проекты Саши заменены локальной истиной');
+    return true;
+  }
+  window.__avitologBackendForceSashaLegacyProjectsToServer = forceSashaLegacyProjectsToServer;
   window.__avitologBackendPushCurrentProfileNow = pushCurrentProfileStateNow;
   function hasProfileData(key, value) {
     if (!value) return false;
@@ -440,8 +452,16 @@
     try {
       phase = 'team'; await ensureSashaTeamMember();
       var forceLocalToServer = false;
-      try { forceLocalToServer = new URLSearchParams(window.location.search).get('forceLocalToServer') === '1'; } catch (forceParamError) {}
-      if (serverOnlyMode && forceLocalToServer && !isServerOnlySashaViewer()) {
+      var forceSashaLegacyProjects = false;
+      try {
+        var forceParams = new URLSearchParams(window.location.search);
+        forceLocalToServer = forceParams.get('forceLocalToServer') === '1';
+        forceSashaLegacyProjects = forceParams.get('forceSashaLegacyProjects') === '1';
+      } catch (forceParamError) {}
+      if (serverOnlyMode && forceSashaLegacyProjects) {
+        phase = 'force-sasha-legacy-projects';
+        await forceSashaLegacyProjectsToServer();
+      } else if (serverOnlyMode && forceLocalToServer && !isServerOnlySashaViewer()) {
         phase = 'forcepush';
         await pushCurrentProfileStateNow({ skipNative: true });
       }
