@@ -4071,6 +4071,41 @@ window.__crmRefreshAfterSashaSync = function() {
 function getActiveClient() {
   try { return JSON.parse(localStorage.getItem(_ck('avitolog_active_client'))); } catch(e) { return null; }
 }
+function normalizeClientPickText(v) {
+  return String(v || '').toLowerCase().replace(/[()]/g, ' ').replace(/[^a-zа-яё0-9]+/gi, ' ').replace(/\s+/g, ' ').trim();
+}
+function folderNameMatchesClient(folderName, client) {
+  if (!client) return false;
+  var folder = normalizeClientPickText(folderName);
+  var company = normalizeClientPickText(client.company || client.folder_name || '');
+  if (!folder || !company) return false;
+  return folder.indexOf(company) >= 0 || company.indexOf(folder) >= 0;
+}
+function buildFolderClientPayload(folderId, folderName, categoryFolderId) {
+  var cleanName = String(folderName || 'Клиент').trim() || 'Клиент';
+  return {
+    folderId: folderId || '',
+    folderLink: folderId ? ('https://drive.google.com/drive/folders/' + folderId) : '',
+    company: cleanName,
+    folder_name: cleanName,
+    categoryFolderId: categoryFolderId || ''
+  };
+}
+function fillClientFormFromData(data) {
+  data = data || {};
+  var ids = ['company','contact_name','phone','tg','avito_account','category','city','notes','kp_count','client_type'];
+  var map = { tg: 'telegram' };
+  ids.forEach(function(id) {
+    var el = document.getElementById(id);
+    if (!el) return;
+    var key = map[id] || id;
+    el.value = data[key] || '';
+  });
+  if (typeof syncGeoFromValue === 'function') syncGeoFromValue();
+  document.querySelectorAll('.ctype-btn').forEach(function(b) {
+    b.classList.toggle('on', b.textContent.trim() === (data.client_type || ''));
+  });
+}
 function setActiveClient(client) {
   _activeClient = client;
   localStorage.setItem(_ck('avitolog_active_client'), JSON.stringify(client));
@@ -4152,7 +4187,8 @@ function startClientMenuDrag(e, el) {
   var folderLink = 'https://drive.google.com/drive/folders/' + folderId;
   var clients = getCrmClients();
   var found = clients.find(function(c) { return String(c.folderId || '') === folderId; });
-  var payload = found || { folderId: folderId, folderLink: folderLink, company: folderName };
+  if (found && !folderNameMatchesClient(folderName, found)) found = null;
+  var payload = found || buildFolderClientPayload(folderId, folderName, '');
   setActiveClient(payload);
   try {
     if (e && e.dataTransfer) {
@@ -4541,32 +4577,15 @@ function selectBrowseFolderBy(folderId, folderName, categoryFolderId) {
   folderName = arguments.length > 1 ? (folderName || currentFolderName) : currentFolderName;
   var folderLink = 'https://drive.google.com/drive/folders/' + folderId;
   
-  // Проверяем localStorage на этого клиента
+  // When Drive folder name conflicts with a legacy CRM duplicate, trust the clicked folder.
   var clients = getCrmClients();
   var found = clients.find(function(c) { return String(c.folderId || '') === String(folderId || ''); });
-  if (found) {
-    if (found.categoryFolderId && typeof setCrmCategorySelectValue === 'function') setCrmCategorySelectValue(found.categoryFolderId);
-    else if (typeof setCrmCategoryByFolderId === 'function') setCrmCategoryByFolderId(folderId);
-    document.getElementById('company').value = found.company || '';
-    document.getElementById('contact_name').value = found.contact_name || '';
-    document.getElementById('phone').value = found.phone || '';
-    document.getElementById('tg').value = found.telegram || '';
-    document.getElementById('avito_account').value = found.avito_account || '';
-    document.getElementById('category').value = found.category || '';
-    document.getElementById('city').value = found.city || '';
-    if (typeof syncGeoFromValue === 'function') syncGeoFromValue();
-    document.getElementById('notes').value = found.notes || '';
-    document.getElementById('kp_count').value = found.kp_count || '';
-    document.getElementById('client_type').value = found.client_type || '';
-    document.querySelectorAll('.ctype-btn').forEach(function(b) {
-      b.classList.toggle('on', b.textContent.trim() === (found.client_type || ''));
-    });
-    setActiveClient(found);
-  } else {
-    if (categoryFolderId && typeof setCrmCategorySelectValue === 'function') setCrmCategorySelectValue(categoryFolderId);
-    else if (typeof setCrmCategoryByFolderId === 'function') setCrmCategoryByFolderId(folderId);
-    setActiveClient({folderId: folderId, folderLink: folderLink, company: folderName, categoryFolderId: categoryFolderId || ''});
-  }
+  if (found && !folderNameMatchesClient(folderName, found)) found = null;
+  var activePayload = found || buildFolderClientPayload(folderId, folderName, categoryFolderId || '');
+  if (activePayload.categoryFolderId && typeof setCrmCategorySelectValue === 'function') setCrmCategorySelectValue(activePayload.categoryFolderId);
+  else if (typeof setCrmCategoryByFolderId === 'function') setCrmCategoryByFolderId(folderId);
+  fillClientFormFromData(activePayload);
+  setActiveClient(activePayload);
   if (_projectFolderBindTargetId) {
     var pd = loadProjectsData();
     var p = pd.projects.find(function(x){ return x.id === _projectFolderBindTargetId; });
