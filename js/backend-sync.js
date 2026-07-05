@@ -12,6 +12,7 @@
   var contentEnabled = false;
   var timers = {};
   var pendingWrites = {};
+  var appliedRevisions = {};
   var statusEl;
   var persistentSessionKey = 'avitolog_backend_session_v1';
   var serverOnlyMode = !!window.AVITOLOG_BACKEND_SERVER_ONLY;
@@ -103,13 +104,25 @@
     statusEl.textContent = text;
     statusEl.style.background = error ? '#701b2b' : '#073f35';
   }
+  function rememberRevision(key, revision) {
+    var rev = Number(revision || 0);
+    if (!key || !rev) return;
+    appliedRevisions[key] = Math.max(Number(appliedRevisions[key] || 0), rev);
+  }
+  function isOlderOrSameRevision(key, revision) {
+    var rev = Number(revision || 0);
+    var known = Number(appliedRevisions[key] || 0);
+    return !!rev && !!known && rev <= known;
+  }
   async function writeKey(key, value) {
     var response = await fetch(cfg.url + '/rest/v1/rpc/upsert_frontend_state', {
       method: 'POST', headers: await headers({ 'Content-Type': 'application/json' }),
       body: JSON.stringify({ p_key: key, p_value: String(value == null ? '' : value) })
     });
     if (!response.ok) throw new Error((await response.text()) || 'Supabase write failed');
-    return response.json();
+    var result = await response.json();
+    rememberRevision(key, result && result.revision);
+    return result;
   }
   function queueWrite(key, value) {
     if (!isCurrentProfileWritableKey(key)) return;
@@ -170,11 +183,8 @@
       appliedKeys.push(row.storage_key);
       var localBeforeApply = '';
       try { localBeforeApply = localStorage.getItem(row.storage_key) || ''; } catch (localReadError) {}
-      var pending = pendingWrites[row.storage_key];
-      if (pending && Date.now() - pending.ts < 15000) {
-        remoteKeys[row.storage_key] = true;
-        return;
-      }
+      if (isOlderOrSameRevision(row.storage_key, row.revision)) return;
+      rememberRevision(row.storage_key, row.revision);
       var shouldMerge = false;
       var mergedState = shouldMerge ? mergeRemoteWithLocalValue(row.storage_key, row.value_text || '', localBeforeApply) : { value: row.value_text, changed: false };
       var valueToApply = mergedState.value;
