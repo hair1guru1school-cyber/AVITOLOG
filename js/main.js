@@ -4389,7 +4389,7 @@ async function browseFolder(folderId, folderName) {
 
   menu.innerHTML = '<div class="cm-head"><span>📁 ' + folderName + '</span><span class="cm-close" onclick="closeClientMenu()">✕</span></div>' +
     '<div class="cm-path">' + pathStr + '</div>' +
-    '<div class="cm-tools"><input type="search" id="cmSearch" placeholder="Поиск папки..." oninput="filterBrowseFolders(this.value)"><button type="button" data-action="create-folder">+ Папка</button></div>' +
+    '<div class="cm-tools"><input type="search" id="cmSearch" name="avitolog-folder-search" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Поиск папки..." oninput="filterBrowseFolders(this.value)"><button type="button" data-action="create-folder">+ Папка</button></div>' +
     '<div class="cm-list"><div style="padding:20px;text-align:center;color:var(--muted);font-size:11px">⏳</div></div>' +
     '<div class="cm-foot">' + footInner + '</div>';
   bindBrowseCreateButtons(menu);
@@ -4431,7 +4431,7 @@ async function browseFolder(folderId, folderName) {
         var ac = { folderId: f.id, company: f.name };
         var avatar = typeof getClientAvatar === 'function' ? getClientAvatar(ac) : '';
         var avatarHtml = avatar ? '<img class="client-item-avatar" src="' + esc(avatar) + '" alt="">' : '<div class="client-item-avatar-wrap">📁</div>';
-        return '<div class="client-item" data-folder-id="' + esc(f.id) + '" data-folder-name="' + esc(f.name) + '" draggable="true" ondragstart="startClientMenuDrag(event,this)" ondragend="endClientMenuDrag(event)">' +
+        return '<div class="client-item" data-folder-id="' + esc(f.id) + '" data-folder-name="' + esc(f.name) + '">' +
           avatarHtml + '<span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(f.name) + '</span>' +
           '<span class="chevron">›</span>' +
         '</div>';
@@ -4518,7 +4518,7 @@ async function createBrowseFolderInCategory(categoryId) {
 }
 
 function enterFolder(id, name) {
-  _browseStack.push({id: _browseCurrentId, name: document.querySelector('.cm-head span:first-child').textContent.replace('📁 ', ''), level: _browseLevel});
+  _browseStack.push({id: _browseCurrentId, name: _browseCurrentName || 'CRM', level: _browseLevel});
   _browseLevel++;
   browseFolder(id, name);
 }
@@ -4543,7 +4543,7 @@ function selectBrowseFolderBy(folderId, folderName, categoryFolderId) {
   
   // Проверяем localStorage на этого клиента
   var clients = getCrmClients();
-  var found = clients.find(function(c) { return c.folderId === folderId; });
+  var found = clients.find(function(c) { return String(c.folderId || '') === String(folderId || ''); });
   if (found) {
     if (found.categoryFolderId && typeof setCrmCategorySelectValue === 'function') setCrmCategorySelectValue(found.categoryFolderId);
     else if (typeof setCrmCategoryByFolderId === 'function') setCrmCategoryByFolderId(folderId);
