@@ -1494,7 +1494,7 @@ function getProjectsStickyWidthPx(projects) {
   if (!statusPx) statusPx = Math.max(66, longestStatus.length * 7 + 14);
   // Base controls width approximated from real CSS sizes:
   // left cols + emoji + expand + path buttons + status + move + paddings/gaps.
-  var fixedControlsPx = 460 + statusPx;
+  var fixedControlsPx = 520 + statusPx;
   var w = fixedControlsPx + titlePx;
   getProjectsStickyWidthPx.lastTitleWidth = Math.max(120, Math.ceil(titlePx + 12));
   return Math.max(420, Math.min(2200, w));
