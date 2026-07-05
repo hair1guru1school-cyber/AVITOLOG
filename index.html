@@ -1731,7 +1731,8 @@ body.projects-row-ptr-dragging .projects-table-row[data-id] .projects-sticky{cur
 .proj-cell-editable input{flex:0 0 var(--projects-title-width,180px);min-width:70px;width:var(--projects-title-width,180px);background:transparent;border:none;color:var(--text);font-size:17px;font-weight:600;font-family:inherit;outline:none}
 .proj-main-line{display:flex;align-items:center;gap:4px;flex:1 1 auto;width:auto;min-width:0;max-width:100%;overflow:hidden}
 .field-expand-btn{width:18px;min-width:18px;height:18px;display:inline-flex;align-items:center;justify-content:center;border:1px solid rgba(255,255,255,0.35);border-radius:4px;background:var(--surface2);color:var(--muted);font-size:10px;line-height:1;cursor:pointer;transition:all 0.15s;padding:0;vertical-align:middle;box-shadow:0 0 0 1px rgba(255,255,255,0.08)}
-.proj-move-btn{width:18px;min-width:18px;height:18px;display:inline-flex;align-items:center;justify-content:center;border:none;background:transparent;color:rgba(53,208,255,0.85);font-size:14px;line-height:1;cursor:pointer;transition:color 0.15s;padding:0;vertical-align:middle}
+.proj-col-move{width:24px;min-width:24px;height:100%;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-left:4px;border-left:1px solid rgba(255,255,255,0.06)}
+.proj-move-btn{width:22px;min-width:22px;height:18px;display:inline-flex;align-items:center;justify-content:center;border:none;background:transparent;color:rgba(53,208,255,0.85);font-size:14px;line-height:1;cursor:pointer;transition:color 0.15s;padding:0;vertical-align:middle}
 .proj-move-btn:hover{color:#35d0ff}
 .field-expand-btn:hover{border-color:var(--accent);color:var(--accent)}
 .proj-cell-editable.expanded .field-expand-btn{border-color:var(--accent);color:var(--accent);background:rgba(0,217,126,0.12)}
@@ -3111,7 +3112,7 @@ if (!window.AVITOLOG_GOALS) {
 <script src="https://unpkg.com/mammoth@1.6.0/mammoth.min.js"></script>
 <script src="js/hero-asset.js?v=20260404-1"></script>
 <script src="js/core.js?v=20260627-paid-date-1"></script>
-<script src="js/projects.js?v=20260705-fullscreen-zoom-1"></script>
+<script src="js/projects.js?v=20260705-move-column-1"></script>
 <script src="js/ai-import.js?v=20260704-sasha-assets-pull-only-backend-1"></script>
 <script src="js/contract-generator.js?v=20260702-contract-pdf-deps-1"></script>
 <script src="js/ads.js?v=20260404-1"></script>
