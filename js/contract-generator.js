@@ -1592,9 +1592,10 @@
     var formArea = document.getElementById('contractFormArea');
     var previewArea = document.getElementById('contractPreviewArea');
     if (previewArea) renderContractPreview(previewArea, null);
+    var CONTRACT_PREVIEW_SCALE_KEY = 'avitolog_contract_preview_scale_v2';
     var contractPreviewScale = 1;
     try {
-      contractPreviewScale = Math.max(0.55, Math.min(1.35, parseFloat(localStorage.getItem('avitolog_contract_preview_scale') || '1') || 1));
+      contractPreviewScale = Math.max(0.75, Math.min(1.35, parseFloat(localStorage.getItem(CONTRACT_PREVIEW_SCALE_KEY) || '1') || 1));
     } catch (e) {}
     var contractTouchLensEnabled = false;
     var contractTouchLensEl = null;
@@ -1610,18 +1611,19 @@
       var pageWidth = page ? page.offsetWidth : 0;
       var availableWidth = previewArea ? Math.max(240, previewArea.clientWidth - 8) : pageWidth;
       var fitScale = pageWidth > 0 ? Math.min(1, availableWidth / (pageWidth + 36)) : 1;
-      var effectiveScale = Math.max(0.45, Math.min(1.35, fitScale * contractPreviewScale));
+      var effectiveScale = Math.max(0.52, Math.min(1.35, fitScale * contractPreviewScale));
       wrapPreview.style.zoom = String(effectiveScale);
-      wrapPreview.style.transformOrigin = 'top left';
+      wrapPreview.style.transformOrigin = 'top center';
       wrapPreview.classList.toggle('contract-preview-zoomed', effectiveScale !== 1);
       if (previewArea) previewArea.scrollLeft = 0;
     }
 
     window.__contractPreviewZoom = function(delta, reset) {
-      contractPreviewScale = reset ? 1 : Math.max(0.55, Math.min(1.35, Math.round((contractPreviewScale + Number(delta || 0)) * 100) / 100));
-      try { localStorage.setItem('avitolog_contract_preview_scale', String(contractPreviewScale)); } catch (e) {}
+      contractPreviewScale = reset ? 1 : Math.max(0.75, Math.min(1.35, Math.round((contractPreviewScale + Number(delta || 0)) * 100) / 100));
+      try { localStorage.setItem(CONTRACT_PREVIEW_SCALE_KEY, String(contractPreviewScale)); } catch (e) {}
       applyContractPreviewScale();
     };
+    window.__contractApplyPreviewScale = applyContractPreviewScale;
 
     function ensureContractTouchLens() {
       if (contractTouchLensEl) return contractTouchLensEl;
@@ -1675,6 +1677,20 @@
       }, { passive: true });
       wrap.addEventListener('pointerup', hideContractTouchLensSoon, { passive: true });
       wrap.addEventListener('pointercancel', hideContractTouchLensSoon, { passive: true });
+    }
+    if (!window.__contractPreviewResizeBound) {
+      window.__contractPreviewResizeBound = true;
+      window.addEventListener('resize', function() {
+        if (typeof window.__contractPreviewResizeTimer !== 'undefined') clearTimeout(window.__contractPreviewResizeTimer);
+        window.__contractPreviewResizeTimer = setTimeout(function() {
+          try { if (typeof window.__contractApplyPreviewScale === 'function') window.__contractApplyPreviewScale(); } catch (e) {}
+        }, 80);
+      }, { passive: true });
+      window.addEventListener('orientationchange', function() {
+        setTimeout(function() {
+          try { if (typeof window.__contractApplyPreviewScale === 'function') window.__contractApplyPreviewScale(); } catch (e) {}
+        }, 220);
+      }, { passive: true });
     }
     applyContractPreviewScale();
 
