@@ -1194,9 +1194,10 @@ body.day-mode .kp-tpl-card.kp-tpl-on{border-color:rgba(200,140,0,0.45);backgroun
 .contract-preview-wrap{display:flex;flex-direction:column;align-items:center;gap:22px;width:100%;min-width:0;box-sizing:border-box;background:radial-gradient(circle at 50% 0,rgba(53,208,255,.08),transparent 36%),rgba(0,0,0,.2);border:1px solid rgba(124,245,255,.14);border-radius:14px;padding:18px;overflow:visible;transform-origin:top center}
 .contract-preview-page{width:210mm;max-width:none;background:#fff;border-radius:2px;box-shadow:0 14px 48px rgba(0,0,0,.58);overflow:hidden}
 .contract-preview-page-label{width:210mm;max-width:none;margin:0 0 -14px;color:#91b9db;font-size:11px;font-weight:800;letter-spacing:.7px;text-transform:uppercase;text-align:left}
-.contract-preview-inner{width:100%;color:#1a1a1a;font-family:'Times New Roman',Times,serif}
-.contract-document{background:#fff;color:#1a1a1a;padding:16mm 14mm 14mm;min-height:297mm;box-sizing:border-box;display:flex;flex-direction:column}
-.contract-pdf-export-host .contract-document{width:210mm!important;max-width:none!important;min-height:297mm!important}
+.contract-preview-inner{width:210mm;max-width:210mm;color:#1a1a1a;font-family:'Times New Roman',Times,serif;overflow:hidden}
+.contract-document{width:210mm;min-width:210mm;max-width:210mm;background:#fff;color:#1a1a1a;padding:16mm 14mm 14mm;min-height:297mm;box-sizing:border-box;display:flex;flex-direction:column;overflow:hidden}
+.contract-document *{max-width:100%;box-sizing:border-box}
+.contract-pdf-export-host .contract-document{width:210mm!important;min-width:210mm!important;max-width:210mm!important;min-height:297mm!important}
 .contract-doc-header img{display:block;margin:0 auto 12px;max-width:100%}
 .contract-doc-body{font-size:10.5pt;line-height:1.55;flex:1 0 auto}
 .contract-doc-footer{margin-top:auto;padding-top:18px}
@@ -3116,7 +3117,7 @@ if (!window.AVITOLOG_GOALS) {
 <script src="js/core.js?v=20260627-paid-date-1"></script>
 <script src="js/projects.js?v=20260705-touch-date-width-1"></script>
 <script src="js/ai-import.js?v=20260704-sasha-assets-pull-only-backend-1"></script>
-<script src="js/contract-generator.js?v=20260706-contract-preview-fit-1"></script>
+<script src="js/contract-generator.js?v=20260707-contract-a4-lock-1"></script>
 <script src="js/ads.js?v=20260404-1"></script>
 <script charset="UTF-8" src="js/kp-generator.js?v=20260621-package-sync-2"></script>
 <script src="js/scripts-panel.js?v=20260426-1"></script>

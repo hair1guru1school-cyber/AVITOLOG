@@ -169,8 +169,8 @@
     return '' +
       '<h2 style="text-align:center;font-size:15.2pt;line-height:1.14;margin:2px 0 4px;letter-spacing:.15px;font-weight:800">Договор Возмездного<br>Оказания Услуг от ' + contractDate + '</h2>' +
       '<div style="text-align:center;font-size:10pt;line-height:1.28;margin:0 0 6px">' +
-        '<div style="white-space:nowrap"><strong>' + executor.name + '</strong> именуемый в дальнейшем "Исполнитель", с одной стороны, и</div>' +
-        '<div style="white-space:nowrap"><strong>' + clientName + '</strong> именуемый в дальнейшем "Заказчик"</div>' +
+        '<div style="white-space:normal;overflow-wrap:anywhere"><strong>' + executor.name + '</strong> именуемый в дальнейшем "Исполнитель", с одной стороны, и</div>' +
+        '<div style="white-space:normal;overflow-wrap:anywhere"><strong>' + clientName + '</strong> именуемый в дальнейшем "Заказчик"</div>' +
       '</div>' +
       '<table style="width:100%;border-collapse:collapse;margin:3px 0 6px;border:1px solid #2d2d2d">' +
         '<tr>' +
@@ -1531,7 +1531,7 @@
           source.style.boxSizing = 'border-box';
           waitForImagesLoaded(host).then(function() {
             var rect = source.getBoundingClientRect();
-            var sourceWidth = Math.ceil(source.scrollWidth || rect.width || 794);
+            var sourceWidth = Math.ceil(rect.width || 794);
             var sourceHeight = Math.ceil(source.scrollHeight || rect.height || 1123);
             html2canvasFn(source, {
               scale: 2,
