@@ -39,6 +39,28 @@
     }
   };
   var EXECUTOR = EXECUTORS.filipp;
+  var CONTRACT_DRAFT_KEY = 'avitolog_contract_draft_v2';
+
+  function loadContractDraft() {
+    try {
+      var raw = sessionStorage.getItem(CONTRACT_DRAFT_KEY);
+      return raw ? JSON.parse(raw) : null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function saveContractDraft(data) {
+    try {
+      sessionStorage.setItem(CONTRACT_DRAFT_KEY, JSON.stringify(data || {}));
+    } catch (e) {}
+  }
+
+  function clearContractDraft() {
+    try {
+      sessionStorage.removeItem(CONTRACT_DRAFT_KEY);
+    } catch (e) {}
+  }
 
   function getExecutor(data) {
     var key = data && data.executorKey ? String(data.executorKey) : 'filipp';
@@ -95,6 +117,9 @@
   function normalizeMoneyValue(v) {
     var n = parseInt(String(v == null ? '' : v).replace(/[^\d]/g, ''), 10);
     return Number.isFinite(n) ? n : 0;
+  }
+  function formatMoneyValue(v) {
+    return String(normalizeMoneyValue(v) || 0).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
   }
 
   // Шаблоны договора (на основе документов пользователя)
@@ -298,7 +323,11 @@
     var endDate = shortRuDate(data.endDate);
     var soldCount = esc(data.soldCount || '');
     var costNum = normalizeMoneyValue(data.cost);
-    var costFmt = String(costNum || 0).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+    var costFmt = formatMoneyValue(costNum);
+    var manageCostNum = costNum > 0 ? Math.min(5000, costNum) : 0;
+    var createCostNum = Math.max(0, costNum - manageCostNum);
+    var createCostFmt = formatMoneyValue(createCostNum);
+    var manageCostFmt = formatMoneyValue(manageCostNum);
     var clientName = esc(data.fio || data.companyName || 'Заказчик');
     var packageName = esc(data.packageName || '');
     function row(icon, name, qty, price) {
@@ -309,8 +338,8 @@
         '<td>' + (qty || '') + '</td><td>' + (price || '') + '</td>' +
       '</tr>';
     }
-    selected.push(row('📈', 'Создание Excel-файлов с объявлениями<br><span>(фото, тексты, офферы, SEO-анализ, обход блоков)</span>', soldCount, costFmt));
-    selected.push(row('📊', 'Постинг объявлений и их продвижение с помощью платных услуг, гибкое изменение рекламы под рынок', soldCount, 'включено'));
+    selected.push(row('📈', 'Создание Excel-файлов с объявлениями<br><span>(фото, тексты, офферы, SEO-анализ, обход блоков)</span>', soldCount, createCostFmt));
+    selected.push(row('📊', 'Постинг объявлений и их продвижение с помощью платных услуг, гибкое изменение рекламы под рынок', soldCount, manageCostFmt));
     if (infographicEnabled) selected.push(row('🖼', 'Инфографика на все карточки' + (packageName ? ' — тариф «' + packageName + '»' : '') + (infographicPower ? '<br><span>Уровень: ' + esc(infographicPower) + '</span>' : ''), '', '🎁'));
     if (includePackaging) selected.push(row('🎨', 'Дизайн магазина для бизнес-тарифа: баннеры ПК и мобильной версии', '6', '🎁'));
     if (botEnabled) selected.push(row('🤖', 'Автоответ с воронкой в Telegram-бот / канал и бонусный закреп', '1', '🎁'));
@@ -749,9 +778,25 @@
     };
 
     var _contractScreenshots = [];
+    var contractDraftSaveTimer = null;
+
+    function scheduleContractDraftSave() {
+      clearTimeout(contractDraftSaveTimer);
+      contractDraftSaveTimer = setTimeout(function() {
+        saveContractDraft(getFormData());
+      }, 120);
+    }
+
+    function saveContractDraftNow() {
+      clearTimeout(contractDraftSaveTimer);
+      saveContractDraft(getFormData());
+    }
 
     function getFormData() {
       var d = {};
+      var manualFioEl = document.getElementById('contract-manual-fio');
+      var hiddenFioEl = document.getElementById('contract-fio');
+      if (manualFioEl && hiddenFioEl) hiddenFioEl.value = manualFioEl.value.trim();
       ['fio', 'inn', 'ogrn', 'account', 'bank', 'bik', 'corrAccount', 'passport', 'startDate', 'endDate', 'daysCreate', 'daysManage', 'cost', 'soldCount', 'extraServices', 'packageName', 'executorKey', 'headerGender', 'appendixEnabled', 'packagingEnabled', 'infographicEnabled', 'infographicPower', 'botEnabled', 'extraManageEnabled', 'extraManageDays', 'scriptsEnabled'].forEach(function(k) {
         var el = document.getElementById('contract-' + k);
         if (!el) { d[k] = ''; return; }
@@ -798,6 +843,7 @@
       if (parsed.bik) document.getElementById('contract-bik').value = parsed.bik;
       if (parsed.corrAccount) document.getElementById('contract-corrAccount').value = parsed.corrAccount;
       if (parsed.passport) document.getElementById('contract-passport').value = parsed.passport;
+      scheduleContractDraftSave();
     }
 
     function escHtml(s) {
@@ -1017,6 +1063,7 @@
         return /^\s*🎁/.test(text) && !/(инфограф|дизайн магазина|автоответ|бот|дн(?:ей|я) ведения|скрипт|анализ.*ца|ресерч)/i.test(text);
       }).join('\n');
       syncAppendixOptionsState();
+      scheduleContractDraftSave();
     }
     function loadSavedKpPackages() {
       if (!kpPackageSelect) return;
@@ -1052,14 +1099,19 @@
     var pad2 = function(n) { return (n < 10 ? '0' : '') + n; };
     var todayStr = today.getFullYear() + '-' + pad2(today.getMonth() + 1) + '-' + pad2(today.getDate());
     var startEl = document.getElementById('contract-startDate');
-    if (startEl) startEl.value = todayStr;
     var daysCreateEl = document.getElementById('contract-daysCreate');
     var daysManageEl = document.getElementById('contract-daysManage');
     var endEl = document.getElementById('contract-endDate');
     var costEl = document.getElementById('contract-cost');
-    if (daysCreateEl && !daysCreateEl.value) daysCreateEl.value = '12';
-    if (daysManageEl && !daysManageEl.value) daysManageEl.value = '30';
-    if (costEl && !costEl.value) costEl.value = '50000';
+    var savedContractDraft = loadContractDraft();
+    if (savedContractDraft) {
+      setFormData(savedContractDraft);
+    } else {
+      if (startEl) startEl.value = todayStr;
+      if (daysCreateEl && !daysCreateEl.value) daysCreateEl.value = '12';
+      if (daysManageEl && !daysManageEl.value) daysManageEl.value = '30';
+      if (costEl && !costEl.value) costEl.value = '50000';
+    }
     function recalcEndDate() {
       if (!startEl || !endEl) return;
       var s = String(startEl.value || '').trim();
@@ -1076,7 +1128,7 @@
     if (startEl) startEl.addEventListener('input', recalcEndDate);
     if (daysCreateEl) daysCreateEl.addEventListener('input', recalcEndDate);
     if (daysManageEl) daysManageEl.addEventListener('input', recalcEndDate);
-    recalcEndDate();
+    if (!savedContractDraft) recalcEndDate();
     var appendixEnabledEl = document.getElementById('contract-appendixEnabled');
     var packagingEnabledEl = document.getElementById('contract-packagingEnabled');
     var infographicEnabledEl = document.getElementById('contract-infographicEnabled');
@@ -1129,6 +1181,7 @@
           btn.classList.toggle('on', btn.getAttribute('data-gender') === v);
         });
       }
+      scheduleContractDraftSave();
     }
     if (genderSwitch) {
       genderSwitch.querySelectorAll('.contract-gender-btn').forEach(function(btn) {
@@ -1137,10 +1190,11 @@
         });
       });
     }
-    setHeaderGender('m');
+    setHeaderGender(savedContractDraft && savedContractDraft.headerGender ? savedContractDraft.headerGender : 'm');
 
     window.__contractGenerate = function() {
       var d = getFormData();
+      saveContractDraft(d);
       var fmt = function(x) {
         if (!x) return '';
         var parts = String(x).split('-');
@@ -1153,6 +1207,7 @@
     };
 
     window.__contractClear = function() {
+      clearContractDraft();
       ['fio', 'inn', 'ogrn', 'account', 'bank', 'bik', 'corrAccount', 'passport', 'startDate', 'endDate', 'daysCreate', 'daysManage', 'cost', 'soldCount', 'extraServices'].forEach(function(k) {
         var el = document.getElementById('contract-' + k);
         if (el) el.value = '';
@@ -1194,6 +1249,7 @@
     window.__contractRemoveScreenshot = function(i) {
       _contractScreenshots.splice(i, 1);
       renderContractScreenshots();
+      saveContractDraftNow();
     };
 
     function addContractScreenshot(file) {
@@ -1202,6 +1258,7 @@
       reader.onload = function() {
         _contractScreenshots.push(reader.result);
         renderContractScreenshots();
+        saveContractDraftNow();
       };
       reader.readAsDataURL(file);
     }
@@ -1293,6 +1350,8 @@
     }
     container.addEventListener('input', scheduleLivePreview);
     container.addEventListener('change', scheduleLivePreview);
+    container.addEventListener('input', scheduleContractDraftSave);
+    container.addEventListener('change', scheduleContractDraftSave);
 
     return { getFormData: getFormData, setFormData: setFormData };
   }
