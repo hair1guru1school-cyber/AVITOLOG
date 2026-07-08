@@ -666,6 +666,7 @@
   }
 
   var KP_SAVED_CLIENT_PACKAGES_STORE = 'avito_kp_saved_client_packages_v1';
+  var KP_EDITOR_PRESETS_STORE = 'avitolog_kp_package_presets_v1';
 
   function rememberSavedKpPackageData(folderId, record) {
     try {
@@ -675,6 +676,38 @@
       list.unshift(record);
       all[folderId] = list.slice(0, 20);
       localStorage.setItem(KP_SAVED_CLIENT_PACKAGES_STORE, JSON.stringify(all));
+    } catch (e) {}
+  }
+
+  function rememberSavedKpAsEditorPreset(record) {
+    try {
+      if (!record || !Array.isArray(record.packages) || !record.packages.length) return;
+      var kind = String(record.presetKind || '').toLowerCase() === 'goods' ? 'goods' : 'services';
+      var all = JSON.parse(localStorage.getItem(KP_EDITOR_PRESETS_STORE) || '{}');
+      if (!all || typeof all !== 'object' || Array.isArray(all)) all = {};
+      all.services = Array.isArray(all.services) ? all.services : [];
+      all.goods = Array.isArray(all.goods) ? all.goods : [];
+      var defaultName = cleanKpFilePart((record.clientName || 'КП') + (record.heroName ? ' - ' + record.heroName : ''));
+      var name = defaultName;
+      try {
+        var asked = window.prompt('Название набора КП для сохранения в готовые пакеты', defaultName);
+        name = (asked === null ? defaultName : String(asked || '').trim()) || defaultName;
+      } catch (ePrompt) {}
+      var signature = JSON.stringify(record.packages);
+      all[kind] = all[kind].filter(function (item) {
+        return item && item.name !== name && JSON.stringify(item.packages || []) !== signature;
+      });
+      all[kind].unshift({
+        name: name,
+        packages: record.packages,
+        source: 'saved_kp',
+        savedAt: record.savedAt || new Date().toISOString(),
+        folderId: record.folderId || '',
+        imageFileId: record.imageFileId || '',
+        imageFileLink: record.imageFileLink || ''
+      });
+      all[kind] = all[kind].slice(0, 50);
+      localStorage.setItem(KP_EDITOR_PRESETS_STORE, JSON.stringify(all));
     } catch (e) {}
   }
 
@@ -709,9 +742,11 @@
       imageFileId: (result && result.id) || '',
       imageFileLink: (result && result.webViewLink) || '',
       heroName: (packageData && packageData.heroName) || '',
+      presetKind: (packageData && packageData.presetKind) || 'services',
       packages: packageData && Array.isArray(packageData.packages) ? packageData.packages : []
     };
     rememberSavedKpPackageData(String(ac.folderId), record);
+    rememberSavedKpAsEditorPreset(record);
     if (typeof driveUploadText === 'function') {
       var jsonName = fileName.replace(/\.png$/i, '.json');
       try {
@@ -746,7 +781,7 @@
     return (
       '<div class="kp-gen-section kp-editor-embed-section">' +
       '<div class="kp-gen-label">Расчет КП</div>' +
-      '<iframe class="kp-editor-embed" src="kp-editor.html?embedded=1&amp;v=20260621-package-sync-2" title="Редактор КП"></iframe>' +
+      '<iframe class="kp-editor-embed" src="kp-editor.html?embedded=1&amp;v=20260708-kp-draft-presets-1" title="Редактор КП"></iframe>' +
       '</div>'
     );
   }

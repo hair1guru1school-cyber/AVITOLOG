@@ -72,6 +72,7 @@
     .tabs{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
     .tab{height:34px;border-radius:8px;border:1px solid rgba(93,229,255,.18);background:#111c2b;color:#bcd4ec;font-weight:900;font-size:12px}
     .tab.active{background:rgba(0,223,134,.13);border-color:rgba(0,223,134,.62);color:#9dffd2}
+    .tab{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding:0 8px}
     label{display:flex;flex-direction:column;gap:5px;color:#b9c8d8;font-size:11px;font-weight:900;text-transform:uppercase;letter-spacing:.35px}
     input,textarea,select{width:100%;border:1px solid rgba(93,229,255,.22);background:#07111d;color:#fff;border-radius:8px;padding:9px 10px;outline:none}
     textarea{min-height:118px;resize:vertical;line-height:1.35}
@@ -448,8 +449,15 @@
     }
     function saveState(){
       readGlobalForm();
-      localStorage.setItem(LS_KEY, JSON.stringify(state));
+      persistState();
       draw();
+    }
+    function persistState(){
+      try { localStorage.setItem(LS_KEY, JSON.stringify(state)); } catch (e) {}
+    }
+    function autoSaveState(){
+      if (!formReady) return;
+      persistState();
     }
     function loadImage(src){
       return new Promise((resolve) => {
@@ -612,10 +620,18 @@
       state.packages.forEach((pkg, index) => {
         const btn = document.createElement("button");
         btn.className = "tab" + (index === selectedPackage ? " active" : "");
-        btn.textContent = `${index + 1}. ${pkg.name || "Пакет"}`;
+        btn.textContent = `${index + 1}. ${compactPackageName(pkg, index)}`;
+        btn.title = pkg.name || "Пакет";
         btn.addEventListener("click", () => selectPackage(index));
         tabsEl.appendChild(btn);
       });
+    }
+    function compactPackageName(pkg, index){
+      const fallback = ["СТАРТ", "МИДЛ", "ОПТИМА", "АЛЬФА"][index] || "ПАКЕТ";
+      let name = String((pkg && pkg.name) || fallback).trim();
+      name = name.replace(/\s*[+–—-]\s*.*/, "").replace(/\s+/g, " ").trim();
+      if (!name) name = fallback;
+      return name.length > 10 ? name.slice(0, 10).trim() : name;
     }
     function renderPackageForm(){
       const pkg = state.packages[selectedPackage];
@@ -642,6 +658,7 @@
     }
     function selectPackage(index){
       readPackageForm();
+      autoSaveState();
       selectedPackage = index;
       renderTabs();
       renderPackageForm();
@@ -669,6 +686,7 @@
       syncPackageDerivedLines(pkg);
       const syncedItems = pkg.items.join("\n");
       if ($("pkgItems").value !== syncedItems) $("pkgItems").value = syncedItems;
+      persistState();
     }
     function normalizeColor(color){
       if (/^#[0-9a-f]{6}$/i.test(color)) return color;
@@ -965,6 +983,7 @@
               version: 1,
               savedAt: new Date().toISOString(),
               heroName: state.heroName || "",
+              presetKind: $("presetKind").value || "services",
               packages: clone(state.packages).filter((pkg) => pkg.on)
             }
           );
