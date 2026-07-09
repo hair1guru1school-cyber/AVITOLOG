@@ -768,11 +768,16 @@ function getProjectTouchAgeClass(p, todayStr) {
   if (days <= 7) return 'week';
   return 'old';
 }
+function formatProjectTouchDate(ds) {
+  var parts = String(ds || '').split('-');
+  if (parts.length >= 3) return parts[2] + '.' + parts[1];
+  return String(ds || '');
+}
 function renderProjectTouchButton(p, todayStr) {
   var ds = String((p && p.lastTouchDate) || '').trim();
   var cls = getProjectTouchAgeClass(p, todayStr);
-  var label = ds ? ds.slice(5).replace('-', '.') : '•';
-  var title = ds ? ('Крайнее касание: ' + ds) : 'Зафиксировать касание клиента сегодня';
+  var label = ds ? formatProjectTouchDate(ds) : '•';
+  var title = ds ? ('Крайнее касание: ' + formatProjectTouchDate(ds)) : 'Зафиксировать касание клиента сегодня';
   return '<button type="button" class="proj-touch-btn touch-' + cls + '" title="' + escAttr(title) + '" onclick="event.stopPropagation();markProjectTouched(\'' + p.id + '\')">' + escAttr(label) + '</button>';
 }
 var AOAX_AUTOLOADS_KEY = 'avitolog_aoax_autoloads_v1';
