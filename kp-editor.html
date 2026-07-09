@@ -459,6 +459,11 @@
       if (!formReady) return;
       persistState();
     }
+    let drawTimer = null;
+    function scheduleDraw(){
+      clearTimeout(drawTimer);
+      drawTimer = setTimeout(draw, 120);
+    }
     function loadImage(src){
       return new Promise((resolve) => {
         const img = new Image();
@@ -1095,11 +1100,14 @@
     ["pkgOn","pkgIcon","pkgName","pkgLimit","pkgWork","pkgColor","pkgItems"].forEach((id) => {
       $(id).addEventListener("input", () => {
         readPackageForm();
-        renderTabs();
-        renderZones();
+        scheduleDraw();
+      });
+      $(id).addEventListener("change", () => {
+        readPackageForm();
+        if (id === "pkgOn" || id === "pkgIcon" || id === "pkgName") renderTabs();
+        if (id === "pkgOn") renderZones();
         draw();
       });
-      $(id).addEventListener("change", draw);
     });
     $("bgChoice").addEventListener("change", draw);
     $("titleStyle").addEventListener("change", draw);
