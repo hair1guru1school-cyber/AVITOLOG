@@ -1140,13 +1140,14 @@
         markPackageFormDirty();
       });
       $(id).addEventListener("change", () => {
-        flushPackageForm();
-        if (id === "pkgOn" || id === "pkgIcon" || id === "pkgName") renderTabs();
-        if (id === "pkgOn") renderZones();
-        draw();
+        markPackageFormDirty();
       });
       $(id).addEventListener("blur", () => {
+        const wasDirty = packageFormDirty;
         flushPackageForm();
+        if (wasDirty && (id === "pkgOn" || id === "pkgIcon" || id === "pkgName")) renderTabs();
+        if (wasDirty && id === "pkgOn") renderZones();
+        if (wasDirty) draw();
       });
     });
     document.addEventListener("visibilitychange", () => {
