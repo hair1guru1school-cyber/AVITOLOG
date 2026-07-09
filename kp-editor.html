@@ -244,6 +244,7 @@
     const W = 1414;
     const H = 2000;
     const LS_KEY = "avitolog_kp_editor_v9";
+    const SELECTED_PACKAGE_KEY = "avitolog_kp_editor_selected_package_v1";
     const HERO_DB_NAME = "avitolog-kp-hero-library";
     const HERO_DB_STORE = "images";
     const FONT = '"Source Sans 3","Source Sans Pro",Arial,sans-serif';
@@ -302,7 +303,7 @@
     const editorEl = document.querySelector(".editor");
     const images = {};
     const hitZones = [];
-    let selectedPackage = 0;
+    let selectedPackage = readSelectedPackageIndex();
     let customHeroSrc = "";
     let customNicheImages = [];
     let formReady = false;
@@ -453,7 +454,27 @@
       draw();
     }
     function persistState(){
+      state.selectedPackage = clampSelectedPackage();
       try { localStorage.setItem(LS_KEY, JSON.stringify(state)); } catch (e) {}
+    }
+    function readSelectedPackageIndex(){
+      try {
+        const saved = localStorage.getItem(SELECTED_PACKAGE_KEY);
+        const index = parseInt(saved || "0", 10);
+        return Number.isFinite(index) ? Math.max(0, index) : 0;
+      } catch (e) {
+        return 0;
+      }
+    }
+    function clampSelectedPackage(){
+      const count = state && Array.isArray(state.packages) ? state.packages.length : 1;
+      const max = Math.max(0, count - 1);
+      const index = parseInt(selectedPackage, 10);
+      selectedPackage = Number.isFinite(index) ? Math.max(0, Math.min(max, index)) : 0;
+      return selectedPackage;
+    }
+    function persistSelectedPackage(){
+      try { localStorage.setItem(SELECTED_PACKAGE_KEY, String(clampSelectedPackage())); } catch (e) {}
     }
     function autoSaveState(){
       if (!formReady) return;
@@ -621,6 +642,7 @@
       $("heroZone").classList.toggle("active", open);
     }
     function renderTabs(){
+      clampSelectedPackage();
       tabsEl.innerHTML = "";
       state.packages.forEach((pkg, index) => {
         const btn = document.createElement("button");
@@ -639,6 +661,7 @@
       return name.length > 10 ? name.slice(0, 10).trim() : name;
     }
     function renderPackageForm(){
+      clampSelectedPackage();
       const pkg = state.packages[selectedPackage];
       $("pkgOn").checked = !!pkg.on;
       $("pkgIcon").value = pkg.icon || "";
@@ -665,6 +688,7 @@
       readPackageForm();
       autoSaveState();
       selectedPackage = index;
+      persistSelectedPackage();
       renderTabs();
       renderPackageForm();
       renderZones();
@@ -678,6 +702,7 @@
       readPackageForm();
     }
     function readPackageForm(){
+      clampSelectedPackage();
       const pkg = state.packages[selectedPackage];
       if (!pkg) return;
       pkg.on = $("pkgOn").checked;
@@ -1012,6 +1037,7 @@
         pkg.on = index < count;
       });
       selectedPackage = Math.min(selectedPackage, count - 1);
+      persistSelectedPackage();
       renderForm();
       draw();
     }
@@ -1099,11 +1125,17 @@
 
     ["pkgOn","pkgIcon","pkgName","pkgLimit","pkgWork","pkgColor","pkgItems"].forEach((id) => {
       $(id).addEventListener("input", () => {
+        const activePackage = selectedPackage;
         readPackageForm();
+        selectedPackage = activePackage;
+        persistSelectedPackage();
         scheduleDraw();
       });
       $(id).addEventListener("change", () => {
+        const activePackage = selectedPackage;
         readPackageForm();
+        selectedPackage = activePackage;
+        persistSelectedPackage();
         if (id === "pkgOn" || id === "pkgIcon" || id === "pkgName") renderTabs();
         if (id === "pkgOn") renderZones();
         draw();
@@ -1163,9 +1195,11 @@
     $("saveBtn").addEventListener("click", saveState);
     $("resetBtn").addEventListener("click", () => {
       localStorage.removeItem(LS_KEY);
+      localStorage.removeItem(SELECTED_PACKAGE_KEY);
       customHeroSrc = "";
       state = clone(defaults);
       selectedPackage = 0;
+      persistSelectedPackage();
       preload();
     });
     $("template3Btn").addEventListener("click", () => applyPackageTemplate(3));
