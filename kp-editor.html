@@ -307,6 +307,7 @@
     let customHeroSrc = "";
     let customNicheImages = [];
     let formReady = false;
+    let packageFormDirty = false;
 
     const defaults = {
       bgChoice: "dark",
@@ -685,7 +686,7 @@
       });
     }
     function selectPackage(index){
-      readPackageForm();
+      flushPackageForm();
       autoSaveState();
       selectedPackage = index;
       persistSelectedPackage();
@@ -699,7 +700,17 @@
       state.titleStyle = $("titleStyle").value;
       state.titleScale = Number($("titleScale").value) || defaults.titleScale;
       $("titleScaleValue").textContent = `${state.titleScale}%`;
+      flushPackageForm();
+    }
+    function markPackageFormDirty(){
+      packageFormDirty = true;
+    }
+    function flushPackageForm(){
+      if (!packageFormDirty) return;
+      const activePackage = selectedPackage;
       readPackageForm();
+      selectedPackage = activePackage;
+      persistSelectedPackage();
     }
     function readPackageForm(){
       clampSelectedPackage();
@@ -716,6 +727,7 @@
       syncPackageDerivedLines(pkg);
       const syncedItems = pkg.items.join("\n");
       if ($("pkgItems").value !== syncedItems) $("pkgItems").value = syncedItems;
+      packageFormDirty = false;
       persistState();
     }
     function normalizeColor(color){
@@ -1125,22 +1137,22 @@
 
     ["pkgOn","pkgIcon","pkgName","pkgLimit","pkgWork","pkgColor","pkgItems"].forEach((id) => {
       $(id).addEventListener("input", () => {
-        const activePackage = selectedPackage;
-        readPackageForm();
-        selectedPackage = activePackage;
-        persistSelectedPackage();
-        scheduleDraw();
+        markPackageFormDirty();
       });
       $(id).addEventListener("change", () => {
-        const activePackage = selectedPackage;
-        readPackageForm();
-        selectedPackage = activePackage;
-        persistSelectedPackage();
+        flushPackageForm();
         if (id === "pkgOn" || id === "pkgIcon" || id === "pkgName") renderTabs();
         if (id === "pkgOn") renderZones();
         draw();
       });
+      $(id).addEventListener("blur", () => {
+        flushPackageForm();
+      });
     });
+    document.addEventListener("visibilitychange", () => {
+      if (document.hidden) flushPackageForm();
+    });
+    window.addEventListener("pagehide", flushPackageForm);
     $("bgChoice").addEventListener("change", draw);
     $("titleStyle").addEventListener("change", draw);
     $("titleScale").addEventListener("input", draw);
