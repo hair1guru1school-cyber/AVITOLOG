@@ -692,8 +692,12 @@
       persistSelectedPackage();
       renderTabs();
       renderPackageForm();
-      renderZones();
-      draw();
+      updateZoneSelection();
+    }
+    function updateZoneSelection(){
+      stage.querySelectorAll(".click-zone").forEach((zone, index) => {
+        zone.classList.toggle("active", index === selectedPackage);
+      });
     }
     function readGlobalForm(){
       state.bgChoice = $("bgChoice").value;
