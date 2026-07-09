@@ -57,6 +57,7 @@ var _projectsFilterLaunch = false;
 var _projectsFilterAutoload = false;
 var _projectsFilterMustLaunch = false;
 var _projectsZoneTab = 'active'; // active | second_chance | archive
+var _projectsMultiSelectIds = {};
 var TASKS_LAYER_ON_KEY = (typeof window.AVITOLOG_KEY === 'function') ? window.AVITOLOG_KEY('avitolog_tasks_layer_on') : 'avitolog_tasks_layer_on';
 var TASK_PANEL_FONT_KEY = (typeof window.AVITOLOG_KEY === 'function') ? window.AVITOLOG_KEY('avitolog_task_panel_font') : 'avitolog_task_panel_font';
 var TASK_PANEL_WIDTH_KEY = (typeof window.AVITOLOG_KEY === 'function') ? window.AVITOLOG_KEY('avitolog_task_panel_width') : 'avitolog_task_panel_width';
@@ -1058,6 +1059,7 @@ window.__AVITOLOG_AOAX_UPSERT = function(payload) {
 function setProjectsZoneTab(zone) {
   var z = (zone === 'active' || zone === 'second_chance' || zone === 'archive') ? zone : 'active';
   _projectsZoneTab = z;
+  clearProjectsMultiSelection();
   var sel = getSelectedProject();
   if (sel && (sel.zone || 'active') !== z) _selectedProjectId = null;
   renderProjectsScreen();
@@ -1112,6 +1114,42 @@ function moveProjectToZone(projectId, zone) {
   if (_projectsZoneTab !== z) _projectsZoneTab = z;
   renderProjectsScreen();
 }
+function getProjectBulkActionIds(projectId) {
+  var ids = getProjectsMultiSelectedIds();
+  if (ids.length > 1 && ids.indexOf(projectId) >= 0) return ids;
+  return [projectId];
+}
+function moveProjectsToZone(projectIds, zone) {
+  var z = (zone === 'active' || zone === 'second_chance' || zone === 'archive') ? zone : 'active';
+  var ids = (projectIds || []).filter(Boolean);
+  if (!ids.length) return;
+  if (ids.length === 1) {
+    moveProjectToZone(ids[0], z);
+    return;
+  }
+  var idMap = {};
+  ids.forEach(function(id){ idMap[id] = true; });
+  var data = loadProjectsData();
+  var changed = [];
+  var zoneList = (data.projects || []).filter(function(x){ return (x.zone || 'active') === z && !idMap[x.id]; });
+  var nextSort = zoneList.length ? Math.max.apply(null, zoneList.map(function(x){ return Number(x.sortOrder) || 0; })) + 1 : 0;
+  (data.projects || []).forEach(function(p){
+    if (!idMap[p.id]) return;
+    if ((p.zone || 'active') !== z) changed.push(p.id);
+    p.zone = z;
+    p.sortOrder = nextSort++;
+  });
+  if (!changed.length) {
+    clearProjectsMultiSelection();
+    updateProjectsMultiSelectionClasses();
+    return;
+  }
+  saveProjectsData(data);
+  changed.forEach(function(id){ syncProjectToActiveSheet(id, 'zone_move_' + z); });
+  clearProjectsMultiSelection();
+  if (_projectsZoneTab !== z) _projectsZoneTab = z;
+  renderProjectsScreen();
+}
 function deleteProject(projectId) {
   var data = loadProjectsData();
   var idx = (data.projects || []).findIndex(function(x){ return x.id === projectId; });
@@ -1124,6 +1162,33 @@ function deleteProject(projectId) {
   data.hiddenProjects.unshift(p);
   saveProjectsData(data);
   if (_selectedProjectId === projectId) _selectedProjectId = null;
+  renderProjectsScreen();
+}
+function deleteProjects(projectIds) {
+  var ids = (projectIds || []).filter(Boolean);
+  if (!ids.length) return;
+  if (ids.length === 1) {
+    deleteProject(ids[0]);
+    return;
+  }
+  var data = loadProjectsData();
+  var idMap = {};
+  ids.forEach(function(id){ idMap[id] = true; });
+  var titles = (data.projects || []).filter(function(p){ return idMap[p.id]; }).map(function(p){ return p.title || 'Без названия'; });
+  if (!titles.length) return;
+  if (!confirm('Удалить выбранные проекты: ' + titles.length + '? Они попадут в скрытый календарный лист справа.')) return;
+  var today = new Date().toISOString().slice(0, 10);
+  data.hiddenProjects = data.hiddenProjects || [];
+  data.projects = (data.projects || []).filter(function(p){
+    if (!idMap[p.id]) return true;
+    p.deletedAt = today;
+    p._hiddenZone = p.zone || 'active';
+    data.hiddenProjects.unshift(p);
+    return false;
+  });
+  if (idMap[_selectedProjectId]) _selectedProjectId = null;
+  clearProjectsMultiSelection();
+  saveProjectsData(data);
   renderProjectsScreen();
 }
 function restoreProjectFromHidden(projectId) {
@@ -1148,6 +1213,8 @@ function showProjectZoneMenu(btn, projectId) {
   var p = loadProjectsData().projects.find(function(x){ return x.id===projectId; });
   if (!p) return;
   var cur = p.zone || 'active';
+  var actionIds = getProjectBulkActionIds(projectId);
+  var bulkCount = actionIds.length;
   var picker = document.createElement('div');
   picker.id = 'projZonePicker';
   picker.className = 'proj-zone-picker';
@@ -1162,15 +1229,18 @@ function showProjectZoneMenu(btn, projectId) {
     var delCls = it.del ? ' zone-item-delete' : '';
     return '<button type="button" class="zone-item' + on + delCls + '" data-zone="' + it.k + '">' + it.t + '</button>';
   }).join('');
+  if (bulkCount > 1) {
+    picker.innerHTML = '<div class="proj-zone-count">Выбрано: ' + bulkCount + '</div>' + picker.innerHTML;
+  }
   picker.onclick = function(e) {
     var b = e.target.closest('button[data-zone]');
     if (!b) return;
     var z = b.getAttribute('data-zone');
     picker.remove();
     if (z === 'delete') {
-      deleteProject(projectId);
+      deleteProjects(actionIds);
     } else {
-      moveProjectToZone(projectId, z);
+      moveProjectsToZone(actionIds, z);
     }
   };
   document.body.appendChild(picker);
@@ -1742,6 +1812,42 @@ function markProjectRowSelection(projectId) {
   document.querySelectorAll('.projects-table-row[data-id]').forEach(function(row) {
     row.classList.toggle('selected', row.getAttribute('data-id') === projectId);
   });
+}
+function getProjectsMultiSelectedIds() {
+  var data = loadProjectsData();
+  var allowed = {};
+  (data.projects || []).forEach(function(p){
+    if ((p.zone || 'active') === _projectsZoneTab) allowed[p.id] = true;
+  });
+  return Object.keys(_projectsMultiSelectIds || {}).filter(function(id){ return allowed[id]; });
+}
+function isProjectMultiSelected(projectId) {
+  return !!(_projectsMultiSelectIds && _projectsMultiSelectIds[projectId]);
+}
+function clearProjectsMultiSelection() {
+  _projectsMultiSelectIds = {};
+}
+function updateProjectsMultiSelectionClasses() {
+  document.querySelectorAll('.projects-table-row[data-id]').forEach(function(row) {
+    row.classList.toggle('multi-selected', isProjectMultiSelected(row.getAttribute('data-id')));
+  });
+}
+function handleProjectRowClick(event, projectId) {
+  if (event && event.shiftKey) {
+    if (_projectsMultiSelectIds[projectId]) delete _projectsMultiSelectIds[projectId];
+    else _projectsMultiSelectIds[projectId] = true;
+    _selectedProjectId = projectId;
+    markProjectRowSelection(projectId);
+    updateProjectsMultiSelectionClasses();
+    if (event.preventDefault) event.preventDefault();
+    if (event.stopPropagation) event.stopPropagation();
+    return;
+  }
+  if (getProjectsMultiSelectedIds().length) {
+    clearProjectsMultiSelection();
+    updateProjectsMultiSelectionClasses();
+  }
+  selectProjectRow(projectId);
 }
 function showClientQuestionState(project) {
   var badge = document.getElementById('clientBadge');
@@ -4053,8 +4159,9 @@ function renderProjectsScreen(opts) {
     if (hasChildLines && _expandedProjectIds[p.id] === undefined) _expandedProjectIds[p.id] = false;
     var showPositionRows = hasChildLines && _expandedProjectIds[p.id];
     var extraLinesHtml = typeof renderProjectChildLinesHtml === 'function' ? renderProjectChildLinesHtml(p) : '';
-    var stickyHtml = '<div class="proj-col-expand">' + dragHandle + '<span class="proj-col-expand-arrow"' + (expandArrowOnclick || '') + '>' + expandContent + '</span></div><div class="proj-col-type" onclick="event.stopPropagation();cycleProjectClientType(\'' + p.id + '\')" title="Старые/новички/2-й раз">' + typeHtml + '</div><button type="button" class="' + driveClass + '" title="' + driveTitle + '" onclick="event.stopPropagation();openProjectDriveFolder(\'' + p.id + '\')">💿</button><div class="proj-cell-editable' + expandedClass + '" data-id="' + p.id + '" onclick="editProjectCell(this)">' + hoverPop + '<div class="proj-main-line"><button type="button" class="proj-emoji-btn" onclick="event.stopPropagation();showProjEmojiPicker(this,\'' + p.id + '\')">' + emHtml + '</button><input type="text" value="' + (p.title||'').replace(/"/g,'&quot;') + '" size="' + Math.max(8, String(p.title || '').length + 2) + '" readonly style="pointer-events:none">' + expandBtnName + '<span class="project-path">' + pathHtml + '</span>' + aoaxBadgeHtml + '<button type="button" class="proj-status-btn project-status" onclick="event.stopPropagation();showProjectStatusPicker(this,\'' + p.id + '\')" style="background:' + (PROJECT_STATUS_COLORS[p.status]||'#666') + '22;color:' + (PROJECT_STATUS_COLORS[p.status]||'#999') + '">' + (p.status||'В работе') + '</button>' + negativeBtnHtml + touchBtnHtml + '</div>' + (hasChildLines ? '' : '<div class="proj-optional-row">' + (typeof renderProjectChildLinesHtml === 'function' ? renderProjectChildLinesHtml(p) : '') + '</div>') + taskIndicatorsHtml + '</div><div class="proj-col-move">' + moveBtn + '</div>';
+    var stickyHtml = '<div class="proj-col-expand">' + dragHandle + '<span class="proj-col-expand-arrow"' + (expandArrowOnclick || '') + '>' + expandContent + '</span></div><div class="proj-col-type" onclick="event.stopPropagation();cycleProjectClientType(\'' + p.id + '\')" title="Старые/новички/2-й раз">' + typeHtml + '</div><button type="button" class="' + driveClass + '" title="' + driveTitle + '" onclick="event.stopPropagation();openProjectDriveFolder(\'' + p.id + '\')">💿</button><div class="proj-cell-editable' + expandedClass + '" data-id="' + p.id + '" onclick="if(event.shiftKey)return;editProjectCell(this)">' + hoverPop + '<div class="proj-main-line"><button type="button" class="proj-emoji-btn" onclick="event.stopPropagation();showProjEmojiPicker(this,\'' + p.id + '\')">' + emHtml + '</button><input type="text" value="' + (p.title||'').replace(/"/g,'&quot;') + '" size="' + Math.max(8, String(p.title || '').length + 2) + '" readonly style="pointer-events:none">' + expandBtnName + '<span class="project-path">' + pathHtml + '</span>' + aoaxBadgeHtml + '<button type="button" class="proj-status-btn project-status" onclick="event.stopPropagation();showProjectStatusPicker(this,\'' + p.id + '\')" style="background:' + (PROJECT_STATUS_COLORS[p.status]||'#666') + '22;color:' + (PROJECT_STATUS_COLORS[p.status]||'#999') + '">' + (p.status||'В работе') + '</button>' + negativeBtnHtml + touchBtnHtml + '</div>' + (hasChildLines ? '' : '<div class="proj-optional-row">' + (typeof renderProjectChildLinesHtml === 'function' ? renderProjectChildLinesHtml(p) : '') + '</div>') + taskIndicatorsHtml + '</div><div class="proj-col-move">' + moveBtn + '</div>';
     var selectedClass = (_selectedProjectId === p.id) ? ' selected' : '';
+    var multiSelectedClass = isProjectMultiSelected(p.id) ? ' multi-selected' : '';
     var groupedClass = (_projectsTypeSortPriority && normalizeProjectClientType(p.clientType) === _projectsTypeSortPriority) || (_projectsFilterLaunch && projectHasLaunch(p)) || (_projectsFilterAutoload && projectHasAutoload(p)) || (_projectsFilterMustLaunch && projectHasMustLaunch(p)) ? ' group-match' : '';
     var newFromGoalsClass = p._newFromGoals ? ' project-row-new-from-goals' : '';
     var negativeClass = getProjectNegativeRowClass(p);
@@ -4125,7 +4232,7 @@ function renderProjectsScreen(opts) {
     }
     var mainEvents = getEventsForProjectRow(p, -1);
     var eventsForMainRow = (hasChildLines && !showPositionRows) ? getAggregatedAutoloadEventsForCollapsed(p) : mainEvents;
-    var rowHtml = '<div class="projects-table-row' + selectedClass + groupedClass + newFromGoalsClass + negativeClass + '" data-id="' + p.id + '" data-child-line-index="-1" onclick="selectProjectRow(\'' + p.id + '\')"><div class="projects-sticky">' + stickyHtml + '</div><div class="projects-scroll">' + renderRowCells(eventsForMainRow, -1, hasChildLines && !showPositionRows) + '</div></div>';
+    var rowHtml = '<div class="projects-table-row' + selectedClass + multiSelectedClass + groupedClass + newFromGoalsClass + negativeClass + '" data-id="' + p.id + '" data-child-line-index="-1" onclick="handleProjectRowClick(event,\'' + p.id + '\')"><div class="projects-sticky">' + stickyHtml + '</div><div class="projects-scroll">' + renderRowCells(eventsForMainRow, -1, hasChildLines && !showPositionRows) + '</div></div>';
     html += rowHtml;
     var childLines = getProjectChildLines(p);
     if (hasChildLines) {
@@ -4134,7 +4241,7 @@ function renderProjectsScreen(opts) {
         var childLineHtml = renderProjectChildLineHtml(p, origIdx);
         var hiddenCls = showPositionRows ? '' : ' proj-position-hidden';
         var childStickySimple = '<div class="proj-col-expand"></div><div class="proj-col-type"></div><span class="proj-drive-btn" style="pointer-events:none;opacity:0"></span><div class="proj-cell-editable proj-child-line-cell" data-id="' + p.id + '" data-child-line-index="' + origIdx + '">' + childLineHtml + '</div>';
-        var childRowHtml = '<div class="projects-table-row projects-table-row-child proj-position-row' + hiddenCls + selectedClass + '" data-id="' + p.id + '" data-child-line-index="' + origIdx + '" onclick="selectProjectRow(\'' + p.id + '\')"><div class="projects-sticky">' + childStickySimple + '</div><div class="projects-scroll">' + renderRowCells(childEvents, origIdx) + '</div></div>';
+        var childRowHtml = '<div class="projects-table-row projects-table-row-child proj-position-row' + hiddenCls + selectedClass + multiSelectedClass + '" data-id="' + p.id + '" data-child-line-index="' + origIdx + '" onclick="handleProjectRowClick(event,\'' + p.id + '\')"><div class="projects-sticky">' + childStickySimple + '</div><div class="projects-scroll">' + renderRowCells(childEvents, origIdx) + '</div></div>';
         html += childRowHtml;
       });
     }
