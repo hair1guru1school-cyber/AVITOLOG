@@ -392,6 +392,22 @@ function loadProjectsData(forceReload) {
       var needMustToday = p.mustLaunchRequired && (md === '' || md < todayStr);
       if (needCardsToday) { p.cardsActiveDate = todayStr; cardsMoved = true; }
       if (needMustToday) { p.mustLaunchDate = todayStr; cardsMoved = true; }
+      if (Array.isArray(p.childLines) && p.childLines.length) {
+        ensureChildLineCardsActive(p);
+        (p.childLineCardsActive || []).forEach(function(childValue, childIdx) {
+          if (!String(childValue || '').trim()) return;
+          var childDate = String((p.childLineCardsActiveDate || [])[childIdx] || '').trim();
+          if (childDate) {
+            var childNorm = normalizeIsoDateStr(childDate);
+            if (childNorm && childNorm !== childDate) { p.childLineCardsActiveDate[childIdx] = childNorm; cardsMoved = true; childDate = childNorm; }
+          }
+          if (childDate) {
+            var childFixed = fix15to11(childDate);
+            if (childFixed !== childDate) { p.childLineCardsActiveDate[childIdx] = childFixed; cardsMoved = true; childDate = childFixed; }
+          }
+          if (childDate === '' || childDate < todayStr) { p.childLineCardsActiveDate[childIdx] = todayStr; cardsMoved = true; }
+        });
+      }
 
       /** Авто-связка «запуск → !!»:
        *  Если запуск был назначен на прошлое число (launch_range.endDate < сегодня),
@@ -1551,7 +1567,7 @@ function getChildCardsActiveTotalForDate(p, dateStr) {
     var n = parseInt(String(value || '').replace(/[^\d]/g, ''), 10);
     if (!isFinite(n) || n <= 0) return;
     var d = normalizeIsoDateStr((p.childLineCardsActiveDate || [])[idx] || '');
-    if (!d) d = typeof getTodayISO === 'function' ? getTodayISO() : '';
+    if (!d) d = typeof getTodayISOmsk === 'function' ? getTodayISOmsk() : (typeof getTodayISO === 'function' ? getTodayISO() : '');
     if (d === dateStr) total += n;
   });
   return total;
@@ -4010,6 +4026,22 @@ function renderProjectsScreen(opts) {
       // Как в loadProjectsData: только пусто или прошлое → сегодня; будущие даты не трогаем (иначе метки пропадают при каждом рендере).
       if (p.cardsActive && (cd === '' || cd < todayStr)) { p.cardsActiveDate = todayStr; moved = true; }
       if (p.mustLaunchRequired && (md === '' || md < todayStr)) { p.mustLaunchDate = todayStr; moved = true; }
+      if (Array.isArray(p.childLines) && p.childLines.length) {
+        ensureChildLineCardsActive(p);
+        (p.childLineCardsActive || []).forEach(function(childValue, childIdx) {
+          if (!String(childValue || '').trim()) return;
+          var childDate = String((p.childLineCardsActiveDate || [])[childIdx] || '').trim();
+          if (childDate) {
+            var childNorm = normalizeIsoDateStr(childDate);
+            if (childNorm && childNorm !== childDate) { p.childLineCardsActiveDate[childIdx] = childNorm; moved = true; childDate = childNorm; }
+          }
+          if (childDate) {
+            var childFixed = fix15to11(childDate);
+            if (childFixed !== childDate) { p.childLineCardsActiveDate[childIdx] = childFixed; moved = true; childDate = childFixed; }
+          }
+          if (childDate === '' || childDate < todayStr) { p.childLineCardsActiveDate[childIdx] = todayStr; moved = true; }
+        });
+      }
     });
     if (moved) saveProjectsData(data);
   })();
