@@ -2135,12 +2135,12 @@ body.goals-mode .content::before{content:'';position:fixed;top:0;left:0;right:0;
 .goals-smart-open-btn:hover{background:rgba(53,208,255,.22);transform:translateY(-1px)}
 .goals-month-chart-legend{display:flex;gap:10px;align-items:center;margin:0 0 10px;font-size:13px;font-weight:950;text-transform:uppercase;letter-spacing:.4px}
 .goals-month-chart-legend span{display:inline-flex;align-items:center;gap:6px}.goals-month-chart-legend span:before{content:'';width:10px;height:10px;border-radius:3px;display:inline-block}.goals-month-chart-legend .kp{color:#7cf5ff}.goals-month-chart-legend .kp:before{background:#35d0ff}.goals-month-chart-legend .sold{color:#00ff88}.goals-month-chart-legend .sold:before{background:#00ff88}.goals-month-chart-legend .drain{color:#ff9a70}.goals-month-chart-legend .drain:before{background:#ff6b35}
-.goals-month-chart-grid{display:grid;grid-template-columns:repeat(4,minmax(210px,1fr));gap:12px;width:100%}
-.goal-month-week-card{min-width:0;border:1px solid rgba(255,255,255,.09);border-radius:14px;background:linear-gradient(180deg,rgba(255,255,255,.05),rgba(255,255,255,.02));padding:11px 10px 10px;box-shadow:inset 0 0 24px rgba(255,255,255,.018)}
+.goals-month-chart-grid{display:flex;gap:12px;width:100%;overflow-x:auto;overflow-y:hidden;padding-bottom:8px;scrollbar-width:thin;scrollbar-color:rgba(124,245,255,.34) rgba(255,255,255,.06)}
+.goal-month-week-card{flex:0 0 auto;min-width:0;border:1px solid rgba(255,255,255,.09);border-radius:14px;background:linear-gradient(180deg,rgba(255,255,255,.05),rgba(255,255,255,.02));padding:11px 10px 10px;box-shadow:inset 0 0 24px rgba(255,255,255,.018)}
 .goal-month-week-head{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:8px}
 .goal-month-week-head b{font-size:15px;color:#fff;font-weight:950;text-transform:uppercase;letter-spacing:.8px;line-height:1}
 .goal-month-week-head span{font-size:12px;color:rgba(255,255,255,.66);font-weight:900;text-align:right;line-height:1.2}
-.goals-month-days{height:160px;display:grid;grid-template-columns:repeat(7,minmax(42px,1fr));gap:6px;align-items:end;padding:5px 0 0;border-bottom:1px solid rgba(255,255,255,.13)}
+.goals-month-days{height:160px;display:grid;grid-template-columns:repeat(7,48px);gap:6px;align-items:end;padding:5px 0 0;border-bottom:1px solid rgba(255,255,255,.13)}
 .goal-month-day-col{height:100%;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:4px;min-width:0;position:relative}
 .goal-month-events{height:132px;width:100%;display:grid;grid-template-columns:1fr 1fr;gap:3px;align-items:end}
 .goal-month-event{height:100%;display:flex;flex-direction:column;align-items:stretch;justify-content:flex-end;gap:3px;min-width:0}
@@ -2859,7 +2859,7 @@ body.day-mode .assets-col-sasha-hint{color:var(--accent)}
 <script src="js/supabase-config.js?v=20260619-write1"></script>
 <script src="js/backend-sync.js?v=20260705-project-action-merge-1"></script>
 <script src="js/user-config.js?v=20260702-sasha-backend-legacy-merge-1"></script>
-<script src="js/goals.js?v=20260710-crm-chart-compact-bars-1"></script>
+<script src="js/goals.js?v=20260710-crm-chart-stable-scroll-1"></script>
 <script>
 if (!window.AVITOLOG_GOALS) {
   window.AVITOLOG_GOALS = window.__AVITOLOG_GOALS_LEGACY = { render: function() {

@@ -1972,7 +1972,8 @@
           '<span class="goal-month-day-num">' + d.day + '</span>' +
         '</div>';
       }
-      var weeksHtml = [1, 2, 3, 4].map(function(w) {
+      var visibleWeekNums = [1, 2, 3, 4].filter(function(w) { return isArchiveView || hasWeekStarted(w, viewDay); });
+      var weeksHtml = visibleWeekNums.map(function(w) {
         var weekDays = days.filter(function(d) { return d.week === w; });
         var total = weekDays.reduce(function(s, d) { return s + d.kp.sum + d.sold.sum + d.drain.sum; }, 0);
         var totalCount = weekDays.reduce(function(s, d) { return s + d.kp.count + d.sold.count + d.drain.count; }, 0);
