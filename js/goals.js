@@ -1890,6 +1890,15 @@
     function fmtNum(n) {
       return String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
     }
+    function fmtShortRub(n) {
+      var v = Math.round(Number(n) || 0);
+      if (Math.abs(v) >= 1000) {
+        var k = v / 1000;
+        var rounded = Math.abs(k) >= 10 ? Math.round(k) : Math.round(k * 10) / 10;
+        return String(rounded).replace('.', ',') + 'к';
+      }
+      return String(v);
+    }
     function buildMonthCandleChartHtml() {
       var daysInMonth = new Date(y, m + 1, 0).getDate();
       var days = [];
@@ -1950,7 +1959,7 @@
           var h = has ? Math.max(type === 'kp' ? 12 : 18, Math.round((data.sum / maxSum) * (type === 'kp' ? 72 : 96))) : 0;
           return '<div class="goal-month-event goal-month-event-' + type + (has ? '' : ' goal-month-event-empty') + '">' +
             '<span class="goal-month-event-icon">' + (has ? label : '') + '</span>' +
-            '<span class="goal-month-event-sum">' + (has && data.sum ? fmtNum(data.sum) + ' ₽' : '') + '</span>' +
+            '<span class="goal-month-event-sum">' + (has && data.sum ? fmtShortRub(data.sum) : '') + '</span>' +
             '<i style="height:' + h + 'px"></i>' +
           '</div>';
         }
@@ -1968,8 +1977,8 @@
         var total = weekDays.reduce(function(s, d) { return s + d.kp.sum + d.sold.sum + d.drain.sum; }, 0);
         var totalCount = weekDays.reduce(function(s, d) { return s + d.kp.count + d.sold.count + d.drain.count; }, 0);
         return '<div class="goal-month-week-card">' +
-          '<div class="goal-month-week-head"><b>' + w + ' НЕДЕЛЯ</b><span>' + totalCount + ' событий · ' + fmtNum(total) + ' ₽</span></div>' +
-          '<div class="goals-month-days" style="grid-template-columns:repeat(' + weekDays.length + ',minmax(34px,1fr))">' + weekDays.map(col).join('') + '</div>' +
+          '<div class="goal-month-week-head"><b>' + w + ' НЕДЕЛЯ</b><span>' + totalCount + ' событий · ' + fmtShortRub(total) + '</span></div>' +
+          '<div class="goals-month-days" style="grid-template-columns:repeat(' + weekDays.length + ',minmax(42px,1fr))">' + weekDays.map(col).join('') + '</div>' +
         '</div>';
       }).join('');
       return '<div class="goals-month-chart-wrap">' +
