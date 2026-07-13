@@ -1055,6 +1055,34 @@ function renderProjectAoaxBadge(p) {
   if (href) return '<span class="proj-aoax-slot"><a class="proj-aoax-badge" href="' + escAttr(href) + '" target="_blank" rel="noopener" onclick="event.stopPropagation()"' + attrs + '>📗</a></span>';
   return '<span class="proj-aoax-slot"><span class="proj-aoax-badge"' + attrs + '>📗</span></span>';
 }
+function ensureAoaxCalendarEventsFromInfo(data) {
+  var changed = false;
+  ((data && data.projects) || []).forEach(function(p) {
+    var info = p && p.aoaxAutoload;
+    if (!info || info.exported === false) return;
+    var sheets = normalizeAoaxSheets({sheets: info.sheets || []});
+    if (!sheets.length || !Array.isArray(p.childLines) || !p.childLines.length) return;
+    ensureChildLineEvents(p);
+    var lines = getProjectChildLines(p);
+    sheets.forEach(function(sheet) {
+      var sheetKey = normalizeAoaxText(sheet.name);
+      var idx = lines.findIndex(function(line) { return normalizeAoaxText(line) === sheetKey; });
+      if (idx < 0) return;
+      var nextEvent = makeAoaxActiveEvent(sheet, info.dateBegin || '', info.dateEnd || '');
+      if (!nextEvent.startDate || !nextEvent.endDate) return;
+      var arr = p.childLineEvents[idx] || [];
+      var same = arr.some(function(ev) {
+        return ev && ev.source === 'aoax' && ev.type === 'active_range' &&
+          ev.startDate === nextEvent.startDate && ev.endDate === nextEvent.endDate;
+      });
+      if (same) return;
+      p.childLineEvents[idx] = arr.filter(function(ev) { return !(ev && ev.source === 'aoax'); });
+      p.childLineEvents[idx].push(nextEvent);
+      changed = true;
+    });
+  });
+  return changed;
+}
 window.__AVITOLOG_AOAX_UPSERT = function(payload) {
   var state = readAoaxAutoloadState();
   var p = payload || {};
@@ -4008,6 +4036,7 @@ function renderProjectsScreen(opts) {
   try {
     var data = loadProjectsData();
     var todayStr = getTodayISOmsk();
+    if (ensureAoaxCalendarEventsFromInfo(data)) saveProjectsData(data);
   // Повторная миграция !! и Актив на сегодня МСК (правило 00:00 МСК)
   (function migrateCardsToToday() {
     var moved = false;
