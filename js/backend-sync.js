@@ -443,11 +443,12 @@
     try {
       var keys = Array.isArray(changedKeys) ? changedKeys : [];
       var hasProjects = keys.some(function(key) { return /^avitolog_projects(?:_sasha)?$/.test(key); });
+      var hasAoax = keys.indexOf('avitolog_aoax_autoloads_v1') >= 0;
       var hasFinance = keys.some(function(key) { return isFinanceKey(key); });
       var hasCore = keys.some(function(key) { return coreKeys[key]; });
       setTimeout(function() {
         try {
-          if (hasProjects && typeof window !== 'undefined') {
+          if ((hasProjects || hasAoax) && typeof window !== 'undefined') {
             window._projectsDataMem = null;
             window._projectsDataMemKey = null;
             if (window.projectsMode && typeof window.renderProjectsScreen === 'function') {
