@@ -873,6 +873,35 @@
     }, 'Не удалось загрузить OCR для картинки. Попробуйте текстовый файл.');
   }
 
+  function extractTextFromPdfByOcr(pdf, callback) {
+    getTesseract(function(err, tesseract) {
+      if (err || !tesseract) {
+        callback(err || new Error('В PDF не найден текстовый слой, а OCR недоступен.'));
+        return;
+      }
+      var jobs = [];
+      for (var pageNo = 1; pageNo <= pdf.numPages; pageNo++) {
+        jobs.push(pdf.getPage(pageNo).then(function(page) {
+          var viewport = page.getViewport({ scale: 2 });
+          var canvas = document.createElement('canvas');
+          var ctx = canvas.getContext('2d');
+          canvas.width = Math.ceil(viewport.width);
+          canvas.height = Math.ceil(viewport.height);
+          return page.render({ canvasContext: ctx, viewport: viewport }).promise.then(function() {
+            return tesseract.recognize(canvas, 'rus+eng').then(function(result) {
+              return result && result.data ? result.data.text || '' : '';
+            });
+          });
+        }));
+      }
+      Promise.all(jobs).then(function(pages) {
+        callback(null, pages.join('\n').trim());
+      }).catch(function(e) {
+        callback(e);
+      });
+    });
+  }
+
   function extractTextFromPdfArrayBuffer(arrayBuffer, callback) {
     getPdfJs(function(err, pdfjsLib) {
       if (err || !pdfjsLib) {
@@ -888,11 +917,14 @@
             });
           }));
         }
-        return Promise.all(jobs);
-      }).then(function(pages) {
-        var text = pages.join('\n').replace(/\n{3,}/g, '\n\n').trim();
-        if (!text) throw new Error('В PDF не найден текстовый слой. Загрузите скрин/картинку, чтобы включить OCR.');
-        callback(null, text);
+        return Promise.all(jobs).then(function(pages) {
+          var text = pages.join('\n').replace(/\n{3,}/g, '\n\n').trim();
+          if (text) {
+            callback(null, text);
+            return;
+          }
+          extractTextFromPdfByOcr(pdf, callback);
+        });
       }).catch(function(e) {
         callback(e);
       });
