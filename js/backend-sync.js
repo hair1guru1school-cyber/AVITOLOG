@@ -124,6 +124,28 @@
     rememberRevision(key, result && result.revision);
     return result;
   }
+  function writeKeyKeepalive(key, value) {
+    try {
+      var data = sessionData();
+      var accessToken = data && data.access_token;
+      if (!accessToken || !key) return false;
+      var body = JSON.stringify({ p_key: key, p_value: String(value == null ? '' : value) });
+      if (body.length > 60000) return false;
+      fetch(cfg.url + '/rest/v1/rpc/upsert_frontend_state', {
+        method: 'POST',
+        keepalive: true,
+        headers: {
+          apikey: cfg.publishableKey,
+          Authorization: 'Bearer ' + accessToken,
+          'Content-Type': 'application/json'
+        },
+        body: body
+      }).catch(function () {});
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
   function isProjectsStorageKey(key) {
     return /^avitolog_projects(?:_sasha)?$/.test(String(key || ''));
   }
@@ -211,7 +233,7 @@
     clearTimeout(timers[key]);
     pendingWrites[key] = { value: String(value == null ? '' : value), previousValue: String(previousValue == null ? '' : previousValue), ts: Date.now() };
     setStatus('Supabase: сохраняю ' + (coreKeys[key] ? 'CRM/проекты' : (isFinanceKey(key) ? 'кассу/цели' : 'КП/ADS')) + '...');
-    var delay = key.indexOf('projects') >= 0 ? 0 : 700;
+    var delay = (key.indexOf('projects') >= 0 || isFinanceKey(key)) ? 0 : 700;
     timers[key] = setTimeout(function () {
       var pending = pendingWrites[key] || {};
       var expected = pending.value;
@@ -223,6 +245,16 @@
       }).catch(function (error) { setStatus('Ошибка записи: ' + error.message, true); });
     }, delay);
   }
+  function flushPendingWritesKeepalive() {
+    Object.keys(pendingWrites).forEach(function (key) {
+      var pending = pendingWrites[key];
+      if (!pending) return;
+      try { clearTimeout(timers[key]); } catch (e0) {}
+      if (writeKeyKeepalive(key, pending.value)) delete pendingWrites[key];
+    });
+  }
+  window.addEventListener('pagehide', flushPendingWritesKeepalive);
+  window.addEventListener('beforeunload', flushPendingWritesKeepalive);
   async function readRemote() {
     var sashaProfile = typeof window !== 'undefined' && window.AVITOLOG_KEY_SUFFIX === '_sasha';
     var response = await fetch(cfg.url + '/rest/v1/rpc/read_frontend_state', {
@@ -264,6 +296,7 @@
       appliedKeys.push(row.storage_key);
       var localBeforeApply = '';
       try { localBeforeApply = localStorage.getItem(row.storage_key) || ''; } catch (localReadError) {}
+      if (pendingWrites[row.storage_key]) return;
       if (isOlderOrSameRevision(row.storage_key, row.revision)) return;
       rememberRevision(row.storage_key, row.revision);
       var shouldMerge = false;
