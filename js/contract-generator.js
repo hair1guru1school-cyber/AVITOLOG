@@ -125,7 +125,7 @@
   // Шаблоны договора (на основе документов пользователя)
   function getContractMainTemplate(data) {
     var executor = getExecutor(data);
-    var clientName = data.companyName || data.fio || 'Заказчик';
+    var clientName = data.fullName || data.companyName || data.fio || 'Заказчик';
     var contractDate = data.contractDate || data.startDate || '—';
     var startDate = data.startDate || '—';
     var endDate = data.endDate || '—';
@@ -146,7 +146,14 @@
     var costFmt = String(costNum || 0).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
     var costWords = numberToWordsRu(costNum);
     var clientInn = data.inn || '';
+    var clientKpp = data.kpp || '';
     var clientOgrn = data.ogrn || '';
+    var clientLegalAddress = data.legalAddress || '';
+    var clientActualAddress = data.actualAddress || '';
+    var clientPostalAddress = data.postalAddress || '';
+    var clientCeo = data.ceo || '';
+    var clientEmail = data.email || '';
+    var clientShortName = data.shortName || '';
     var clientAccount = data.account || '';
     var clientBank = data.bank || '';
     var clientBik = data.bik || '';
@@ -174,22 +181,38 @@
       '</div>';
     var rightRows =
       '◆ ' + clientName + '<br>' +
+      clientRow('Кратко', clientShortName) +
+      clientRow('Юр. адрес', clientLegalAddress) +
+      clientRow('Факт. адрес', clientActualAddress) +
+      clientRow('Почт. адрес', clientPostalAddress) +
+      clientRow('Директор', clientCeo) +
       clientRow('ИНН', clientInn) +
+      clientRow('КПП', clientKpp) +
       clientRow('ОГРН', clientOgrn) +
       clientRow('Р/С', clientAccount) +
       clientRow('', clientBank) +
       clientRow('БИК', clientBik) +
       clientRow('К/С', clientCorr) +
+      clientRow('E-mail', clientEmail) +
       clientRow('Тел.', clientPhone);
     if (rightRows.endsWith('<br>')) rightRows = rightRows.slice(0, -4);
     var rightBullets = '<div style="font-size:8.7pt;line-height:1.24">' + rightRows + '</div>';
     var clientLegalRows =
+      clientRow('', clientName) +
+      clientRow('Кратко', clientShortName) +
+      clientRow('Юридический адрес', clientLegalAddress) +
+      clientRow('Фактический адрес', clientActualAddress) +
+      clientRow('Почтовый адрес', clientPostalAddress) +
+      clientRow('Генеральный директор', clientCeo) +
       clientRow('ИНН', clientInn) +
+      clientRow('КПП', clientKpp) +
       clientRow('ОГРН', clientOgrn) +
       clientRow('Р/С', clientAccount) +
       clientRow('Банк', clientBank) +
       clientRow('БИК', clientBik) +
-      clientRow('К/С', clientCorr);
+      clientRow('К/С', clientCorr) +
+      clientRow('E-mail', clientEmail) +
+      clientRow('Тел.', clientPhone);
 
     return '' +
       '<h2 style="text-align:center;font-size:15.2pt;line-height:1.14;margin:2px 0 4px;letter-spacing:.15px;font-weight:800">Договор Возмездного<br>Оказания Услуг от ' + contractDate + '</h2>' +
@@ -498,12 +521,12 @@
         } else setIfEmpty('innKpp', v);
         return;
       }
-      if (field === 'inn') { setIfEmpty('inn', (v.match(/\d{10,12}/) || [v])[0]); return; }
-      if (field === 'kpp') { setIfEmpty('kpp', (v.match(/\d{9}/) || [v])[0]); return; }
-      if (field === 'ogrn') { setIfEmpty('ogrn', (v.match(/\d{13,15}/) || [v])[0]); return; }
-      if (field === 'account') { setIfEmpty('account', (v.match(/\d{20}/) || [v])[0]); return; }
-      if (field === 'corrAccount') { setIfEmpty('corrAccount', (v.match(/\d{20}/) || [v])[0]); return; }
-      if (field === 'bik') { setIfEmpty('bik', (v.match(/\d{9}/) || [v])[0]); return; }
+      if (field === 'inn') { var innMatch = v.match(/\d{10,12}/); if (innMatch) setIfEmpty('inn', innMatch[0]); return; }
+      if (field === 'kpp') { var kppMatch = v.match(/\d{9}/); if (kppMatch) setIfEmpty('kpp', kppMatch[0]); return; }
+      if (field === 'ogrn') { var ogrnMatch = v.match(/\d{13,15}/); if (ogrnMatch) setIfEmpty('ogrn', ogrnMatch[0]); return; }
+      if (field === 'account') { var accountMatch = v.match(/\d{20}/); if (accountMatch) setIfEmpty('account', accountMatch[0]); return; }
+      if (field === 'corrAccount') { var corrMatch = v.match(/\d{20}/); if (corrMatch) setIfEmpty('corrAccount', corrMatch[0]); return; }
+      if (field === 'bik') { var bikMatch = v.match(/\d{9}/); if (bikMatch) setIfEmpty('bik', bikMatch[0]); return; }
       if (field === 'contacts') {
         setIfEmpty('contacts', v);
         setIfEmpty('phone', extractPhone(v));
@@ -535,14 +558,135 @@
 
     // 2nd pass: for DOCX tables that become "key line" + "value line"
     var lines = t.split(/\r?\n/).map(function(s) { return String(s || '').trim(); }).filter(Boolean);
+    lines.some(function(line) {
+      var ceoInline = String(line || '').match(/Генеральн(?:ый|ого)\s+директор\s+(.+)$/i);
+      if (ceoInline && ceoInline[1]) {
+        setIfEmpty('ceo', ceoInline[1].trim());
+        return true;
+      }
+      return false;
+    });
     for (var i = 0; i < lines.length - 1; i++) {
       var keyNorm = normKey(lines[i]);
       var rule2 = rules.find(function(r) { return r.rx.test(keyNorm); });
+      var valueOffset = 1;
+      if (!rule2 && i < lines.length - 2) {
+        var joinedKeyNorm = normKey(lines[i] + ' ' + lines[i + 1]);
+        rule2 = rules.find(function(r) { return r.rx.test(joinedKeyNorm); });
+        if (rule2) valueOffset = 2;
+      }
       if (!rule2) continue;
-      var next = String(lines[i + 1] || '').trim();
+      if (rule2.field === 'ceo' && /генеральн(?:ый|ого)\s+директор\s+\S/i.test(lines[i])) continue;
+      var next = String(lines[i + valueOffset] || '').trim();
       if (!next) continue;
       if (isLabelLine(next)) continue;
       applyFieldValue(rule2.field, next);
+    }
+
+    function digitsOnly(v) {
+      return String(v || '').replace(/\D/g, '');
+    }
+    function isBankLabel(v, rx) {
+      return rx.test(normKey(v));
+    }
+    for (var bi = 0; bi < lines.length; bi++) {
+      var b0 = lines[bi] || '';
+      var b1 = lines[bi + 1] || '';
+      var b2 = lines[bi + 2] || '';
+      var labelsLookLikeBankBlock =
+        isBankLabel(b0, /(р\/с|расчетн|расч[её]тн)/) &&
+        (isBankLabel(b1, /(к\/с|корреспондентск|кор\.?\s*сч)/) || isBankLabel(b2, /(к\/с|корреспондентск|кор\.?\s*сч)/)) &&
+        (isBankLabel(b1, /бик/) || isBankLabel(b2, /бик/) || isBankLabel(lines[bi + 3] || '', /бик/));
+      if (!labelsLookLikeBankBlock) continue;
+      var nums = [];
+      var bankParts = [];
+      var seenNumeric = false;
+      for (var bj = bi + 1; bj < Math.min(lines.length, bi + 18); bj++) {
+        var rawLine = String(lines[bj] || '').trim();
+        var ds = digitsOnly(rawLine);
+        if (ds.length === 20 || ds.length === 9 || ds.length === 13 || ds.length === 15) {
+          nums.push(ds);
+          seenNumeric = true;
+          continue;
+        }
+        if (seenNumeric && !isLabelLine(rawLine) && !/^(коды|e-?mail|телефон)$/i.test(rawLine)) {
+          if (/(банк|втб|сбер|т-?банк|альфа|филиал|центральн)/i.test(rawLine)) bankParts.push(rawLine);
+          else if (bankParts.length && bankParts.length < 3) bankParts.push(rawLine);
+        }
+      }
+      nums.forEach(function(ds) {
+        if (ds.length === 20 && !out.account) setIfEmpty('account', ds);
+        else if (ds.length === 20 && !out.corrAccount) setIfEmpty('corrAccount', ds);
+        else if (ds.length === 9 && !out.bik) setIfEmpty('bik', ds);
+      });
+      if (bankParts.length && (!out.bank || /^банковские$/i.test(out.bank))) {
+        out.bank = bankParts.join(' ').replace(/\s+/g, ' ').replace(/Б\s+АНКА/ig, 'БАНКА').trim();
+      }
+    }
+
+    for (var li = 0; li < lines.length; li++) {
+      var current = lines[li] || '';
+      var nextLine = lines[li + 1] || '';
+      var next2Line = lines[li + 2] || '';
+      var currentNorm = normKey(current);
+      if (/^юридическ/.test(currentNorm) && /фактическ.*адрес|адрес/.test(normKey(nextLine)) && next2Line && !isLabelLine(next2Line)) {
+        setIfEmpty('legalAddress', next2Line);
+        setIfEmpty('actualAddress', next2Line);
+      }
+      if (/^коды/.test(currentNorm)) {
+        for (var ci = li + 1; ci < Math.min(lines.length, li + 14); ci++) {
+          var codeNorm = normKey(lines[ci]);
+          if (/огрн/.test(codeNorm)) {
+            for (var cv = ci + 1; cv < Math.min(lines.length, ci + 8); cv++) {
+              var codeDigits = digitsOnly(lines[cv]);
+              if (codeDigits.length === 13 || codeDigits.length === 15) {
+                setIfEmpty('ogrn', codeDigits);
+                break;
+              }
+            }
+          }
+        }
+      }
+    }
+
+    var numericLines = lines.map(function(line, index) {
+      return { index: index, value: digitsOnly(line) };
+    }).filter(function(item) {
+      return item.value.length === 9 || item.value.length === 10 || item.value.length === 12 || item.value.length === 13 || item.value.length === 15 || item.value.length === 20;
+    });
+    numericLines.some(function(item) {
+      if ((item.value.length === 10 || item.value.length === 12) && !out.inn) {
+        setIfEmpty('inn', item.value);
+        return true;
+      }
+      return false;
+    });
+    numericLines.some(function(item) {
+      if (item.value.length === 9 && !out.kpp && item.index < (numericLines.find(function(n) { return n.value.length === 20; }) || { index: 9999 }).index) {
+        setIfEmpty('kpp', item.value);
+        return true;
+      }
+      return false;
+    });
+    numericLines.forEach(function(item) {
+      if (item.value.length === 20 && !out.account) setIfEmpty('account', item.value);
+      else if (item.value.length === 20 && !out.corrAccount) setIfEmpty('corrAccount', item.value);
+      else if (item.value.length === 9 && out.account && !out.bik) setIfEmpty('bik', item.value);
+      else if ((item.value.length === 13 || item.value.length === 15) && !out.ogrn) setIfEmpty('ogrn', item.value);
+    });
+    if (!out.bank && out.bik) {
+      var bikIdx = numericLines.find(function(item) { return item.value === out.bik; });
+      if (bikIdx) {
+        var inferredBankParts = [];
+        for (var nb = bikIdx.index + 1; nb < Math.min(lines.length, bikIdx.index + 5); nb++) {
+          var maybeBankLine = lines[nb] || '';
+          if (isLabelLine(maybeBankLine) || /^\d+$/.test(digitsOnly(maybeBankLine))) break;
+          if (/(банк|втб|сбер|т-?банк|альфа|филиал|центральн)/i.test(maybeBankLine) || inferredBankParts.length) inferredBankParts.push(maybeBankLine);
+        }
+        if (inferredBankParts.length) {
+          out.bank = inferredBankParts.join(' ').replace(/\s+/g, ' ').replace(/Б\s+АНКА/ig, 'БАНКА').trim();
+        }
+      }
     }
 
     var m;
@@ -554,7 +698,7 @@
     m = t.match(/\bБИК[\s:]*(\d{9})/i); if (m) setIfEmpty('bik', m[1]);
     m = t.match(/\bк[оа]р[.\s]*сч[её]т[\s:]*(\d{20})/i) || t.match(/\bк\/с[\s:]*(\d{20})/i); if (m) setIfEmpty('corrAccount', m[1]);
     m = t.match(/[a-z0-9._%+\-]+@[a-z0-9.\-]+\.[a-z]{2,}/ig); if (m && m.length) setIfEmpty('email', m[0]);
-    m = t.match(/\+?\d[\d\s\-()]{7,}\d/g); if (m && m.length) setIfEmpty('phone', m[0].replace(/\s+/g, ' ').trim());
+    m = t.match(/\+7[\d\s\-()]{8,}\d/g); if (m && m.length) setIfEmpty('phone', m[0].replace(/\s+/g, ' ').trim());
     m = t.match(/(?:ООО|АО|ПАО)\s*[«\"].+?[»\"]/i) || t.match(/(?:ИП)\s+[А-Яа-яЁё\s\-]+/i); if (m) setIfEmpty('shortName', m[0]);
     m = t.match(/(?:ФИО|Ф\.?\s*И\.?\s*О\.?)\s*[:\-]?\s*([А-ЯЁ][а-яё-]{1,32}\s+[А-ЯЁ][а-яё-]{1,32}\s+[А-ЯЁ][а-яё-]{1,32})/i);
     if (m) setIfEmpty('fio', m[1]);
@@ -566,7 +710,11 @@
       m = t.match(/Общество с ограниченной ответственностью\s+[«\"].+?[»\"]/i);
       if (m) setIfEmpty('fullName', m[0]);
     }
-    var bankMatch = t.match(/\b(ПАО СБЕРБАНК|СБЕРБАНК|Т-БАНК|ТБАНК|ВТБ|АЛЬФА-БАНК|[А-Яа-яЁё\s\-]+БАНК[а-яё]*)/i);
+    if (!out.ceo) {
+      m = t.match(/Генеральн(?:ый|ого)\s+директор\s+([А-ЯЁ][А-Яа-яЁё.\-\s]{2,80})/i);
+      if (m) setIfEmpty('ceo', m[1].trim());
+    }
+    var bankMatch = t.match(/\b(ПАО СБЕРБАНК|СБЕРБАНК|Т-БАНК|ТБАНК|ВТБ|АЛЬФА-БАНК|ФИЛИАЛ\s+[«\"А-Яа-яЁё\s]+БАНКА\s+[А-Яа-яЁё\s()]+|[А-Яа-яЁё\s\-]+БАНК(?:\s|\(|$)[А-Яа-яЁё\s()]*)/i);
     if (bankMatch) setIfEmpty('bank', bankMatch[1].trim());
     if (!out.actualAddress) {
       var addr = t.match(/\d{6}\s*,?\s*РОССИЯ[^,\n]*(?:,\s*[^,\n]+){2,}/i);
@@ -599,6 +747,15 @@
     'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js',
     'https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js',
     'https://unpkg.com/jspdf@2.5.1/dist/jspdf.umd.min.js'
+  ];
+  var PDFJS_CDNS = [
+    'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js',
+    'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js',
+    'https://unpkg.com/pdfjs-dist@3.11.174/build/pdf.min.js'
+  ];
+  var TESSERACT_CDNS = [
+    'https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js',
+    'https://unpkg.com/tesseract.js@5/dist/tesseract.min.js'
   ];
 
   function getMammoth(cb) {
@@ -634,13 +791,138 @@
     tryNext();
   }
 
+  function compactDecodedLegacyDocText(source) {
+    var s = String(source || '');
+    var allowedExtra = '\u2116\"\u00ab\u00bb.,:;()-/+@_';
+    var runs = [];
+    var cur = [];
+    for (var i = 0; i < s.length; i++) {
+      var ch = s.charAt(i);
+      if (/[^\x00-\x1F\x7F]/.test(ch) && (/[A-Za-z\u0400-\u04FF0-9\s]/.test(ch) || allowedExtra.indexOf(ch) >= 0)) cur.push(ch);
+      else {
+        if (cur.length >= 4) runs.push(cur.join(''));
+        cur = [];
+      }
+    }
+    if (cur.length >= 4) runs.push(cur.join(''));
+    return runs.map(function(part) { return part.replace(/\s+/g, ' ').trim(); })
+      .filter(function(part) { return part.length > 3 && (/[A-Za-z\u0400-\u04FF]/.test(part) || /\d{5,}/.test(part)); })
+      .join('\n');
+  }
+
+  function extractTextFromLegacyDoc(arrayBuffer) {
+    var decoders = ['utf-16le', 'windows-1251', 'utf-8'];
+    var parts = [];
+    decoders.forEach(function(encoding) {
+      try {
+        var decoded = new TextDecoder(encoding).decode(arrayBuffer || new ArrayBuffer(0));
+        var compact = compactDecodedLegacyDocText(decoded);
+        if (compact) parts.push(compact);
+      } catch (e) {}
+    });
+    return parts.join('\n');
+  }
+
+  function loadScriptFromList(urls, isReady, cb, message) {
+    if (isReady()) {
+      cb(null);
+      return;
+    }
+    var idx = 0;
+    var done = false;
+    function finish(err) {
+      if (done) return;
+      done = true;
+      cb(err || null);
+    }
+    function tryNext() {
+      if (isReady()) {
+        finish(null);
+        return;
+      }
+      if (idx >= urls.length) {
+        finish(new Error(message || 'Не удалось загрузить библиотеку обработки файла.'));
+        return;
+      }
+      var s = document.createElement('script');
+      s.src = urls[idx++];
+      s.async = true;
+      s.onload = function() { isReady() ? finish(null) : tryNext(); };
+      s.onerror = function() { tryNext(); };
+      document.head.appendChild(s);
+    }
+    tryNext();
+  }
+
+  function getPdfJs(cb) {
+    loadScriptFromList(PDFJS_CDNS, function() {
+      return !!(window.pdfjsLib && window.pdfjsLib.getDocument);
+    }, function(err) {
+      if (!err && window.pdfjsLib && window.pdfjsLib.GlobalWorkerOptions) {
+        window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+      }
+      cb(err, window.pdfjsLib || null);
+    }, 'Не удалось загрузить PDF-распознавание. Попробуйте .docx, .txt или скрин.');
+  }
+
+  function getTesseract(cb) {
+    loadScriptFromList(TESSERACT_CDNS, function() {
+      return !!(window.Tesseract && window.Tesseract.recognize);
+    }, function(err) {
+      cb(err, window.Tesseract || null);
+    }, 'Не удалось загрузить OCR для картинки. Попробуйте текстовый файл.');
+  }
+
+  function extractTextFromPdfArrayBuffer(arrayBuffer, callback) {
+    getPdfJs(function(err, pdfjsLib) {
+      if (err || !pdfjsLib) {
+        callback(err || new Error('PDF-распознавание недоступно.'));
+        return;
+      }
+      pdfjsLib.getDocument({ data: arrayBuffer }).promise.then(function(pdf) {
+        var jobs = [];
+        for (var pageNo = 1; pageNo <= pdf.numPages; pageNo++) {
+          jobs.push(pdf.getPage(pageNo).then(function(page) {
+            return page.getTextContent().then(function(content) {
+              return (content.items || []).map(function(item) { return item.str || ''; }).join('\n');
+            });
+          }));
+        }
+        return Promise.all(jobs);
+      }).then(function(pages) {
+        var text = pages.join('\n').replace(/\n{3,}/g, '\n\n').trim();
+        if (!text) throw new Error('В PDF не найден текстовый слой. Загрузите скрин/картинку, чтобы включить OCR.');
+        callback(null, text);
+      }).catch(function(e) {
+        callback(e);
+      });
+    });
+  }
+
+  function extractTextFromImageFile(file, callback) {
+    getTesseract(function(err, tesseract) {
+      if (err || !tesseract) {
+        callback(err || new Error('OCR недоступен.'));
+        return;
+      }
+      tesseract.recognize(file, 'rus+eng').then(function(result) {
+        var text = result && result.data ? result.data.text : '';
+        callback(null, text || '');
+      }).catch(function(e) {
+        callback(e);
+      });
+    });
+  }
+
   function readFileAsText(file, callback) {
     var reader = new FileReader();
     reader.onload = function() { callback(null, reader.result); };
     reader.onerror = function() { callback(new Error('Не удалось прочитать файл')); };
-    if (file.name.toLowerCase().endsWith('.txt')) {
+    var lowerName = String(file && file.name || '').toLowerCase();
+    var fileType = String(file && file.type || '').toLowerCase();
+    if (lowerName.endsWith('.txt')) {
       reader.readAsText(file, 'UTF-8');
-    } else if (file.name.toLowerCase().endsWith('.docx')) {
+    } else if (lowerName.endsWith('.docx')) {
       getMammoth(function(err, mammoth) {
         if (err || !mammoth) {
           callback(err || new Error('Библиотека mammoth недоступна. Обновите страницу.'));
@@ -653,8 +935,18 @@
         };
         reader.readAsArrayBuffer(file);
       });
-    } else if (file.name.toLowerCase().endsWith('.pdf')) {
-      callback(new Error('PDF пока не поддерживается. Используйте .txt или .docx'));
+    } else if (lowerName.endsWith('.doc')) {
+      reader.onload = function() {
+        callback(null, extractTextFromLegacyDoc(reader.result));
+      };
+      reader.readAsArrayBuffer(file);
+    } else if (lowerName.endsWith('.pdf') || fileType === 'application/pdf') {
+      reader.onload = function() {
+        extractTextFromPdfArrayBuffer(reader.result, callback);
+      };
+      reader.readAsArrayBuffer(file);
+    } else if (/^image\//.test(fileType) || /\.(png|jpe?g|webp|bmp|gif)$/i.test(lowerName)) {
+      extractTextFromImageFile(file, callback);
     } else {
       reader.readAsText(file, 'UTF-8');
     }
@@ -761,7 +1053,17 @@
     var state = {
       fio: '',
       companyName: '',
+      fullName: '',
+      shortName: '',
+      legalAddress: '',
+      postalAddress: '',
+      actualAddress: '',
+      ceo: '',
+      contacts: '',
+      phone: '',
+      email: '',
       inn: '',
+      kpp: '',
       ogrn: '',
       account: '',
       bank: '',
@@ -797,7 +1099,7 @@
       var manualFioEl = document.getElementById('contract-manual-fio');
       var hiddenFioEl = document.getElementById('contract-fio');
       if (manualFioEl && hiddenFioEl) hiddenFioEl.value = manualFioEl.value.trim();
-      ['fio', 'inn', 'ogrn', 'account', 'bank', 'bik', 'corrAccount', 'passport', 'startDate', 'endDate', 'daysCreate', 'daysManage', 'cost', 'soldCount', 'extraServices', 'packageName', 'executorKey', 'headerGender', 'appendixEnabled', 'packagingEnabled', 'infographicEnabled', 'infographicPower', 'botEnabled', 'extraManageEnabled', 'extraManageDays', 'scriptsEnabled'].forEach(function(k) {
+      ['fio', 'fullName', 'shortName', 'legalAddress', 'postalAddress', 'actualAddress', 'ceo', 'contacts', 'phone', 'email', 'inn', 'kpp', 'ogrn', 'account', 'bank', 'bik', 'corrAccount', 'passport', 'startDate', 'endDate', 'daysCreate', 'daysManage', 'cost', 'soldCount', 'extraServices', 'packageName', 'executorKey', 'headerGender', 'appendixEnabled', 'packagingEnabled', 'infographicEnabled', 'infographicPower', 'botEnabled', 'extraManageEnabled', 'extraManageDays', 'scriptsEnabled'].forEach(function(k) {
         var el = document.getElementById('contract-' + k);
         if (!el) { d[k] = ''; return; }
         if (el.type === 'checkbox') d[k] = el.checked ? '1' : '0';
@@ -806,7 +1108,7 @@
       if (!d.headerGender) d.headerGender = 'm';
       if (!d.executorKey) d.executorKey = 'filipp';
       d.cost = String(normalizeMoneyValue(d.cost || '50000') || 0);
-      d.companyName = d.fio;
+      d.companyName = d.fullName || d.fio;
       d.clientType = detectClientType(d);
       d.screenshots = (_contractScreenshots || []).slice();
       return d;
@@ -836,6 +1138,10 @@
       var fioVal = parsed.fio || parsed.shortName || parsed.fullName || '';
       if (fioEl && fioVal) fioEl.value = fioVal;
       if (manualFioEl && fioVal) manualFioEl.value = fioVal;
+      ['fullName', 'shortName', 'legalAddress', 'postalAddress', 'actualAddress', 'ceo', 'contacts', 'phone', 'email', 'kpp'].forEach(function(k) {
+        var el = document.getElementById('contract-' + k);
+        if (el && parsed[k]) el.value = parsed[k];
+      });
       if (parsed.inn) document.getElementById('contract-inn').value = parsed.inn;
       if (parsed.ogrn) document.getElementById('contract-ogrn').value = parsed.ogrn;
       if (parsed.account) document.getElementById('contract-account').value = parsed.account;
@@ -951,7 +1257,7 @@
       '<div class="contract-toolbar">' +
       '<div class="contract-ai-line">' +
       '<button type="button" class="contract-toolbar-btn contract-ai-upload-btn" onclick="document.getElementById(\'contract-file-inp\').click()">📄 Загрузить реквизиты</button>' +
-      '<input type="file" id="contract-file-inp" accept=".txt,.docx,.pdf" style="display:none">' +
+      '<input type="file" id="contract-file-inp" accept=".txt,.doc,.docx,.pdf,image/png,image/jpeg,image/jpg,image/webp,image/bmp" style="display:none">' +
       '<input type="text" id="contract-manual-fio" class="contract-ai-input contract-manual-fio" autocomplete="name" placeholder="ФИО заказчика">' +
       '</div>' +
       '<div class="contract-toolbar-row contract-toolbar-row-secondary" id="contractToolbarSecondary" style="display:none">' +
@@ -978,7 +1284,17 @@
       '<div class="contract-form">' +
       '<div class="contract-form-section contract-requisites-section">' +
       '<input type="hidden" id="contract-fio">' +
+      '<input type="hidden" id="contract-fullName">' +
+      '<input type="hidden" id="contract-shortName">' +
+      '<input type="hidden" id="contract-legalAddress">' +
+      '<input type="hidden" id="contract-postalAddress">' +
+      '<input type="hidden" id="contract-actualAddress">' +
+      '<input type="hidden" id="contract-ceo">' +
+      '<input type="hidden" id="contract-contacts">' +
+      '<input type="hidden" id="contract-phone">' +
+      '<input type="hidden" id="contract-email">' +
       '<input type="hidden" id="contract-inn">' +
+      '<input type="hidden" id="contract-kpp">' +
       '<input type="hidden" id="contract-ogrn">' +
       '<input type="hidden" id="contract-account">' +
       '<input type="hidden" id="contract-bank">' +
@@ -1265,7 +1581,7 @@
 
     var fileInp = document.getElementById('contract-file-inp');
     function clearClientRequisitesForManualName() {
-      ['inn', 'ogrn', 'account', 'bank', 'bik', 'corrAccount', 'passport'].forEach(function(k) {
+      ['fullName', 'shortName', 'legalAddress', 'postalAddress', 'actualAddress', 'ceo', 'contacts', 'phone', 'email', 'inn', 'kpp', 'ogrn', 'account', 'bank', 'bik', 'corrAccount', 'passport'].forEach(function(k) {
         var el = document.getElementById('contract-' + k);
         if (el) el.value = '';
       });
@@ -1302,15 +1618,21 @@
     function handleFile(file) {
       if (!file) return;
       var ext = (file.name || '').toLowerCase();
-      if (!ext.endsWith('.txt') && !ext.endsWith('.docx') && !ext.endsWith('.pdf')) {
-        alert('Поддерживаются файлы .txt, .docx, .pdf');
+      var type = String(file.type || '').toLowerCase();
+      var isSupported = ext.endsWith('.txt') || ext.endsWith('.doc') || ext.endsWith('.docx') || ext.endsWith('.pdf') || /^image\//.test(type) || /\.(png|jpe?g|webp|bmp|gif)$/i.test(ext);
+      if (!isSupported) {
+        alert('Поддерживаются .txt, .doc, .docx, .pdf и картинки/скриншоты');
         return;
       }
+      var statusEl = document.getElementById('contractSaveStatus');
+      if (statusEl) statusEl.textContent = /^image\//.test(type) ? 'Распознаю картинку с реквизитами...' : 'Читаю реквизиты из файла...';
       readFileAsText(file, function(err, text) {
         if (err) {
+          if (statusEl) statusEl.textContent = '';
           alert(err.message || 'Ошибка чтения файла');
           return;
         }
+        if (statusEl) statusEl.textContent = '';
         processRequisitesText(text, 'файла');
       });
     }
@@ -1318,6 +1640,24 @@
       var f = fileInp.files && fileInp.files[0];
       handleFile(f);
       fileInp.value = '';
+    });
+    var requisitesDrop = document.querySelector('.contract-requisites-section');
+    var aiLineDrop = document.querySelector('.contract-ai-line');
+    [requisitesDrop, aiLineDrop].forEach(function(dropEl) {
+      if (!dropEl) return;
+      dropEl.addEventListener('dragover', function(e) {
+        e.preventDefault();
+        dropEl.classList.add('contract-drop-over');
+      });
+      dropEl.addEventListener('dragleave', function() {
+        dropEl.classList.remove('contract-drop-over');
+      });
+      dropEl.addEventListener('drop', function(e) {
+        e.preventDefault();
+        dropEl.classList.remove('contract-drop-over');
+        var f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+        handleFile(f);
+      });
     });
 
     var screenshotsDrop = document.getElementById('contract-screenshots-drop');
