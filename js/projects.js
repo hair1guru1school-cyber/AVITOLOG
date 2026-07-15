@@ -387,9 +387,9 @@ function loadProjectsData(forceReload) {
       if (p.mustLaunchRequired && md) { var fixedM = fix15to11(md); if (fixedM !== md) { p.mustLaunchDate = fixedM; cardsMoved = true; } }
       cd = (p.cardsActiveDate || '').trim();
       md = (p.mustLaunchDate || '').trim();
-      // Только пустая дата или прошлое — переносим на сегодня. Будущие даты не трогаем (цифры остаются в своих колонках календаря).
+      // Актив карточек переносится на сегодня, а ручной «!!» держится на выбранной дате.
       var needCardsToday = p.cardsActive && (cd === '' || cd < todayStr);
-      var needMustToday = p.mustLaunchRequired && (md === '' || md < todayStr);
+      var needMustToday = p.mustLaunchRequired && md === '';
       if (needCardsToday) { p.cardsActiveDate = todayStr; cardsMoved = true; }
       if (needMustToday) { p.mustLaunchDate = todayStr; cardsMoved = true; }
       if (Array.isArray(p.childLines) && p.childLines.length) {
@@ -523,7 +523,7 @@ async function hydrateProjectsFromActiveSheet(forceMerge) {
     }
   } catch(e) {}
   try {
-    var range = PROJECTS_ACTIVE_SHEET_NAME + '!A2:Q';
+    var range = PROJECTS_ACTIVE_SHEET_NAME + '!A2:R';
     var url = 'https://sheets.googleapis.com/v4/spreadsheets/' + SHEETS_ID + '/values/' + encodeURIComponent(range);
     var resp = await fetch(url, { headers: {'Authorization': 'Bearer ' + _driveToken} });
     if (!resp.ok) return false;
@@ -563,11 +563,13 @@ async function hydrateProjectsFromActiveSheet(forceMerge) {
       var hasLaunchCols = r.length > 14;
       var hasCardsCol = r.length > 15;
       var hasMustLaunchCol = r.length > 16;
+      var hasMustLaunchDateCol = r.length > 17;
       var launchStart = hasLaunchCols ? (r[13] || '') : '';
       var launchEnd = hasLaunchCols ? (r[14] || '') : '';
       var cardsActive = hasCardsCol ? String(r[15] || '').trim() : null;
       var mustLaunchRaw = hasMustLaunchCol ? String(r[16] || '').trim().toLowerCase() : '';
       var mustLaunchRequired = hasMustLaunchCol ? (mustLaunchRaw === '1' || mustLaunchRaw === 'true' || mustLaunchRaw === 'yes' || mustLaunchRaw === 'да' || mustLaunchRaw === '‼️') : null;
+      var mustLaunchDate = hasMustLaunchDateCol ? normalizeIsoDateStr(r[17] || '') : '';
       if (p.title !== title) { p.title = title; changed = true; }
       if (p.status !== status) { p.status = status; changed = true; }
       if ((p.folderLink || '') !== folderLink) { p.folderLink = folderLink; changed = true; }
@@ -637,6 +639,14 @@ async function hydrateProjectsFromActiveSheet(forceMerge) {
       }
       if (hasMustLaunchCol && !!p.mustLaunchRequired !== !!mustLaunchRequired) {
         p.mustLaunchRequired = !!mustLaunchRequired;
+        changed = true;
+      }
+      if (hasMustLaunchCol && mustLaunchRequired && mustLaunchDate && (p.mustLaunchDate || '') !== mustLaunchDate) {
+        p.mustLaunchDate = mustLaunchDate;
+        changed = true;
+      }
+      if (hasMustLaunchCol && !mustLaunchRequired && (p.mustLaunchDate || '')) {
+        p.mustLaunchDate = '';
         changed = true;
       }
     });
@@ -1693,7 +1703,8 @@ function buildActiveProjectRow(p, reason) {
     launch.start || '',
     launch.end || '',
     p.cardsActive || '',
-    p.mustLaunchRequired ? '1' : '0'
+    p.mustLaunchRequired ? '1' : '0',
+    p.mustLaunchDate || ''
   ];
 }
 async function syncActiveProjectsSheetExact(reason) {
@@ -1704,14 +1715,14 @@ async function syncActiveProjectsSheetExact(reason) {
     .filter(function(p){ return (p.zone || 'active') === 'active'; })
     .sort(function(a,b){ return (a.sortOrder||0) - (b.sortOrder||0); });
   var rows = active.map(function(p){ return buildActiveProjectRow(p, reason || 'sync'); });
-  var clearUrl = 'https://sheets.googleapis.com/v4/spreadsheets/' + SHEETS_ID + '/values/' + encodeURIComponent(PROJECTS_ACTIVE_SHEET_NAME + '!A2:Q') + ':clear';
+  var clearUrl = 'https://sheets.googleapis.com/v4/spreadsheets/' + SHEETS_ID + '/values/' + encodeURIComponent(PROJECTS_ACTIVE_SHEET_NAME + '!A2:R') + ':clear';
   await fetch(clearUrl, {
     method: 'POST',
     headers: {'Authorization': 'Bearer ' + _driveToken, 'Content-Type': 'application/json'},
     body: '{}'
   });
   if (!rows.length) return;
-  var setUrl = 'https://sheets.googleapis.com/v4/spreadsheets/' + SHEETS_ID + '/values/' + encodeURIComponent(PROJECTS_ACTIVE_SHEET_NAME + '!A2:Q' + (rows.length + 1)) + '?valueInputOption=USER_ENTERED';
+  var setUrl = 'https://sheets.googleapis.com/v4/spreadsheets/' + SHEETS_ID + '/values/' + encodeURIComponent(PROJECTS_ACTIVE_SHEET_NAME + '!A2:R' + (rows.length + 1)) + '?valueInputOption=USER_ENTERED';
   var resp = await fetch(setUrl, {
     method: 'PUT',
     headers: {'Authorization': 'Bearer ' + _driveToken, 'Content-Type': 'application/json'},
@@ -4052,9 +4063,9 @@ function renderProjectsScreen(opts) {
       if (p.mustLaunchRequired && md) { var fm = fix15to11(md); if (fm !== md) { p.mustLaunchDate = fm; moved = true; } }
       cd = (p.cardsActiveDate || '').trim();
       md = (p.mustLaunchDate || '').trim();
-      // Как в loadProjectsData: только пусто или прошлое → сегодня; будущие даты не трогаем (иначе метки пропадают при каждом рендере).
+      // Как в loadProjectsData: ручной «!!» держим на выбранной дате; только пустая дата уходит на сегодня.
       if (p.cardsActive && (cd === '' || cd < todayStr)) { p.cardsActiveDate = todayStr; moved = true; }
-      if (p.mustLaunchRequired && (md === '' || md < todayStr)) { p.mustLaunchDate = todayStr; moved = true; }
+      if (p.mustLaunchRequired && md === '') { p.mustLaunchDate = todayStr; moved = true; }
       if (Array.isArray(p.childLines) && p.childLines.length) {
         ensureChildLineCardsActive(p);
         (p.childLineCardsActive || []).forEach(function(childValue, childIdx) {
