@@ -22,6 +22,25 @@
   function revisionSignatureStorageKey() {
     return 'avitolog_backend_revision_signature_' + (window.AVITOLOG_KEY_SUFFIX === '_sasha' ? 'sasha' : 'fil');
   }
+  function dirtyStorageKey(key) {
+    return 'avitolog_backend_dirty_' + String(key || '').replace(/[^\w.-]+/g, '_');
+  }
+  function markDirty(key) {
+    if (!key) return;
+    try { localStorage.setItem(dirtyStorageKey(key), String(Date.now())); } catch (e) {}
+  }
+  function clearDirty(key) {
+    if (!key) return;
+    try { localStorage.removeItem(dirtyStorageKey(key)); } catch (e) {}
+  }
+  function isRecentlyDirty(key) {
+    try {
+      var ts = Number(localStorage.getItem(dirtyStorageKey(key)) || 0);
+      return !!ts && (Date.now() - ts) < 10 * 60 * 1000;
+    } catch (e) {
+      return false;
+    }
+  }
 
   function ensureStatus() {
     if (statusEl) return statusEl;
@@ -232,6 +251,7 @@
     if (!enabled && !serverOnlyMode) return;
     clearTimeout(timers[key]);
     pendingWrites[key] = { value: String(value == null ? '' : value), previousValue: String(previousValue == null ? '' : previousValue), ts: Date.now() };
+    markDirty(key);
     setStatus('Supabase: сохраняю ' + (coreKeys[key] ? 'CRM/проекты' : (isFinanceKey(key) ? 'кассу/цели' : 'КП/ADS')) + '...');
     var delay = (key.indexOf('projects') >= 0 || isFinanceKey(key)) ? 0 : 700;
     timers[key] = setTimeout(function () {
@@ -241,6 +261,7 @@
         return writeKey(key, prepared);
       }).then(function (result) {
         if (pendingWrites[key] === pending) delete pendingWrites[key];
+        clearDirty(key);
         setStatus('Supabase: сохранено · версия ' + result.revision);
       }).catch(function (error) { setStatus('Ошибка записи: ' + error.message, true); });
     }, delay);
@@ -250,7 +271,10 @@
       var pending = pendingWrites[key];
       if (!pending) return;
       try { clearTimeout(timers[key]); } catch (e0) {}
-      if (writeKeyKeepalive(key, pending.value)) delete pendingWrites[key];
+      if (writeKeyKeepalive(key, pending.value)) {
+        delete pendingWrites[key];
+        clearDirty(key);
+      }
     });
   }
   window.addEventListener('pagehide', flushPendingWritesKeepalive);
@@ -296,6 +320,10 @@
       appliedKeys.push(row.storage_key);
       var localBeforeApply = '';
       try { localBeforeApply = localStorage.getItem(row.storage_key) || ''; } catch (localReadError) {}
+      if (isRecentlyDirty(row.storage_key) && localBeforeApply) {
+        mergedWrites.push({ key: row.storage_key, value: localBeforeApply, dirtyRetry: true });
+        return;
+      }
       if (pendingWrites[row.storage_key]) return;
       if (isOlderOrSameRevision(row.storage_key, row.revision)) return;
       rememberRevision(row.storage_key, row.revision);
@@ -312,6 +340,7 @@
     if (mergedWrites.length) {
       for (var mw = 0; mw < mergedWrites.length; mw++) {
         await writeKey(mergedWrites[mw].key, mergedWrites[mw].value);
+        clearDirty(mergedWrites[mw].key);
       }
     }
     return { remoteKeys: remoteKeys, appliedKeys: appliedKeys, mergedWrites: mergedWrites };
