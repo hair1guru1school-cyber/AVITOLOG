@@ -1422,6 +1422,37 @@ function getSavedProjectsDayPx() {
   var n = parseInt(localStorage.getItem(PROJECTS_DAY_PX_KEY) || '', 10);
   return Number.isFinite(n) && n >= 14 && n <= 64 ? n : 0;
 }
+function getProjectsCalendarScaleVars(dayPx, rowH) {
+  dayPx = Number.isFinite(dayPx) ? dayPx : 28;
+  rowH = Number.isFinite(rowH) ? rowH : 14;
+  var base = Math.max(6, Math.min(dayPx, rowH));
+  var cellNum = Math.max(5, Math.min(9, Math.round(base * 0.55)));
+  var headerNum = Math.max(10, Math.min(22, Math.round(dayPx * 0.72)));
+  var headerSmall = Math.max(5, Math.min(7, Math.round(dayPx * 0.24)));
+  var marker = Math.max(7, Math.min(20, Math.round(base * 0.82)));
+  var markerWide = Math.max(8, Math.min(20, Math.round(Math.min(dayPx, rowH) * 0.9)));
+  var markerSmall = Math.max(6, Math.min(12, Math.round(base * 0.58)));
+  var cardNum = Math.max(6, Math.min(16, Math.round(base * 0.78)));
+  var cardPadX = Math.max(1, Math.min(5, Math.round(dayPx * 0.12)));
+  return '--projects-cell-num-font:' + cellNum + 'px;' +
+    '--projects-header-num-font:' + headerNum + 'px;' +
+    '--projects-header-small-font:' + headerSmall + 'px;' +
+    '--projects-marker-font:' + marker + 'px;' +
+    '--projects-marker-wide-font:' + markerWide + 'px;' +
+    '--projects-marker-small-font:' + markerSmall + 'px;' +
+    '--projects-card-num-font:' + cardNum + 'px;' +
+    '--projects-card-pad-x:' + cardPadX + 'px';
+}
+function applyProjectsCalendarScaleVars(table, dayPx, rowH) {
+  if (!table) return;
+  var vars = getProjectsCalendarScaleVars(dayPx, rowH).split(';');
+  vars.forEach(function(pair) {
+    if (!pair) return;
+    var idx = pair.indexOf(':');
+    if (idx < 0) return;
+    table.style.setProperty(pair.slice(0, idx), pair.slice(idx + 1));
+  });
+}
 function saveProjectsDayPx(px) {
   px = Math.max(14, Math.min(64, Math.round(px)));
   localStorage.setItem(PROJECTS_DAY_PX_KEY, String(px));
@@ -1443,6 +1474,9 @@ function startCalCellWidthResize(e) {
       el.style.minWidth = px + 'px';
       if (el.style.maxWidth) el.style.maxWidth = px + 'px';
     });
+    var table = document.querySelector('.projects-table');
+    var rowH = table ? parseInt(getComputedStyle(table).getPropertyValue('--projects-row-height') || '', 10) : (getSavedProjectsRowHeight() || 14);
+    applyProjectsCalendarScaleVars(table, px, Number.isFinite(rowH) ? rowH : (getSavedProjectsRowHeight() || 14));
   }
   function onMove(ev) {
     var dx = ev.clientX - startX;
@@ -1503,6 +1537,7 @@ function saveProjectsZoom(z) {
     var rowH = getSavedProjectsRowHeight() || 14;
     var effectiveRowH = z < 1 ? Math.max(6, Math.round(rowH * z)) : rowH;
     table.style.setProperty('--projects-row-height', effectiveRowH + 'px');
+    applyProjectsCalendarScaleVars(table, getSavedProjectsDayPx() || 28, effectiveRowH);
   }
 }
 function toggleProjectsSidebar() {
@@ -4152,7 +4187,7 @@ function renderProjectsScreen(opts) {
   var rowH = getSavedProjectsRowHeight() || 14;
   var projectsZoom = getSavedProjectsZoom();
   var effectiveRowH = projectsZoom < 1 ? Math.max(6, Math.round(rowH * projectsZoom)) : rowH;
-  var tableStyle = '--projects-sticky-width:' + stickyW + 'px;--projects-title-width:' + projectTitleW + 'px;--projects-row-height:' + effectiveRowH + 'px';
+  var tableStyle = '--projects-sticky-width:' + stickyW + 'px;--projects-title-width:' + projectTitleW + 'px;--projects-row-height:' + effectiveRowH + 'px;' + getProjectsCalendarScaleVars(DAY_PX, effectiveRowH);
   var fitRowsCls = projectsZoom < 1 ? ' projects-fit-rows' : '';
   var zoneCls = _projectsZoneTab === 'second_chance' ? ' projects-zone-zzz' : _projectsZoneTab === 'archive' ? ' projects-zone-archive' : '';
   var boardWidthPct = projectsZoom < 1 ? (100 / projectsZoom) : 100;
