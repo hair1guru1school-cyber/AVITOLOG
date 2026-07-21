@@ -471,6 +471,7 @@
           heroSrc: preset.heroSrc || "",
           heroCustomId: preset.heroCustomId || "",
           heroName: preset.heroName || "",
+          heroDataUrl: preset.heroDataUrl || "",
           heroPreviewSrc: preset.heroPreviewSrc || "",
           previewDataUrl: preset.previewDataUrl || ""
         }));
@@ -502,6 +503,7 @@
         heroSrc: state.heroSrc || "",
         heroCustomId: state.heroCustomId || "",
         heroName: state.heroName || "",
+        heroDataUrl: (images.hero && String(images.hero.src || "").startsWith("data:")) ? images.hero.src : "",
         heroPreviewSrc: state.heroSrc || customHeroSrc || (images.hero && images.hero.src) || "",
         previewDataUrl: makePresetPreviewDataUrl()
       };
@@ -538,6 +540,7 @@
         heroSrc: preset.heroSrc || "",
         heroCustomId: preset.heroCustomId || "",
         heroName: preset.heroName || "",
+        heroDataUrl: preset.heroDataUrl || "",
         heroPreviewSrc: preset.heroPreviewSrc || "",
         previewDataUrl: preset.previewDataUrl || ""
       };
@@ -1172,6 +1175,7 @@
               heroName: state.heroName || "",
               heroSrc: state.heroSrc || "",
               heroCustomId: state.heroCustomId || "",
+              heroDataUrl: (images.hero && String(images.hero.src || "").startsWith("data:")) ? images.hero.src : "",
               heroPreviewSrc: state.heroSrc || customHeroSrc || (images.hero && images.hero.src) || "",
               previewDataUrl: makePresetPreviewDataUrl(),
               bgChoice: state.bgChoice || defaults.bgChoice,
@@ -1278,6 +1282,18 @@
         state.heroSrc = preset.heroSrc;
         state.heroCustomId = "";
         images.hero = await loadImage(preset.heroSrc);
+      } else if (preset.heroCustomId) {
+        let customRecord = null;
+        try { customRecord = await getCustomHeroImage(preset.heroCustomId); } catch (e) {}
+        customHeroSrc = (customRecord && customRecord.dataUrl) || preset.heroDataUrl || preset.heroPreviewSrc || "";
+        state.heroSrc = "";
+        state.heroCustomId = preset.heroCustomId;
+        images.hero = await loadImage(customHeroSrc || ASSETS.hero);
+      } else if (preset.heroDataUrl) {
+        customHeroSrc = preset.heroDataUrl;
+        state.heroSrc = "";
+        state.heroCustomId = "";
+        images.hero = await loadImage(preset.heroDataUrl);
       } else if (preset.heroPreviewSrc) {
         customHeroSrc = preset.heroPreviewSrc;
         state.heroSrc = "";
@@ -1320,11 +1336,15 @@
           packages: clone(preset.packages || defaults.packages),
           bgChoice: preset.bgChoice || state.bgChoice || defaults.bgChoice,
           heroSrc: preset.heroSrc || "",
-          heroCustomId: "",
+          heroCustomId: preset.heroCustomId || "",
           heroName: preset.heroName || state.heroName || ""
         });
-        customHeroSrc = preset.heroSrc ? "" : (preset.heroPreviewSrc || "");
-        images.hero = await loadImage(preset.heroSrc || preset.heroPreviewSrc || ASSETS.hero);
+        let customRecord = null;
+        if (preset.heroCustomId) {
+          try { customRecord = await getCustomHeroImage(preset.heroCustomId); } catch (e) {}
+        }
+        customHeroSrc = preset.heroSrc ? "" : ((customRecord && customRecord.dataUrl) || preset.heroDataUrl || preset.heroPreviewSrc || "");
+        images.hero = await loadImage(preset.heroSrc || customHeroSrc || ASSETS.hero);
         selectedPackage = 0;
         draw();
         return canvas.toDataURL("image/jpeg", 0.86);
@@ -1395,8 +1415,73 @@
         writeSavedPresets(saved);
         renderPresetSelect();
         closePresetEmojiPicker();
-        openPresetArchive();
+        refreshPresetArchive();
       });
+    }
+    function presetArchiveCardsHtml(kind){
+      const saved = readSavedPresets();
+      const list = (saved[kind] || []);
+      const meta = getCurrentPresetMeta();
+      return list.length ? list.map((preset, index) => {
+        const active = meta.kind === kind && meta.isSaved && meta.savedIndex === index ? " active" : "";
+        const bg = preset.heroSrc || preset.heroDataUrl || preset.heroPreviewSrc || preset.previewDataUrl || "";
+        return `
+          <div class="preset-archive-card${active}" data-index="${index}" data-bg="${escapeHtml(bg)}">
+            <div class="preset-card-top">
+              <span class="preset-card-emoji" data-action="emoji-picker" title="Р’С‹Р±СЂР°С‚СЊ emoji">${escapeHtml(preset.emoji || "рџ§ѕ")}</span>
+              <span class="preset-card-name">${escapeHtml(preset.name || "РЁР°Р±Р»РѕРЅ")}</span>
+            </div>
+            <div class="preset-card-prices">${escapeHtml(presetPricesLine(preset) || "РџР°РєРµС‚С‹ Р±РµР· С†РµРЅ")}</div>
+            <div class="preset-card-actions">
+              <button type="button" class="main" data-action="take">Р’Р—РЇРўР¬ / РџР РђР’РРўР¬</button>
+              <button type="button" data-action="update">рџ”„</button>
+              <button type="button" data-action="rename">вњЋ</button>
+              <button type="button" data-action="duplicate">в§‰</button>
+              <button type="button" class="danger" data-action="delete">Г—</button>
+            </div>
+          </div>`;
+      }).join("") : '<div class="mini-note">РЎРѕС…СЂР°РЅС‘РЅРЅС‹С… С€Р°Р±Р»РѕРЅРѕРІ РїРѕРєР° РЅРµС‚. РќР°Р¶РјРёС‚Рµ В«РЎРѕС…СЂР°РЅРёС‚СЊ С‚РµРєСѓС‰РёР№В».</div>';
+    }
+    function decoratePresetArchive(modal){
+      modal.querySelectorAll('[data-action="take"]').forEach((btn) => {
+        btn.textContent = "\u0412\u0417\u042f\u0422\u042c";
+      });
+      modal.querySelectorAll(".preset-archive-card[data-bg]").forEach((card) => {
+        const bg = card.getAttribute("data-bg") || "";
+        if (bg) card.style.backgroundImage = `linear-gradient(180deg,rgba(0,0,0,.18),rgba(0,0,0,.72)),url("${bg.replace(/"/g, '\\"')}")`;
+      });
+      hydratePresetArchiveCustomBgs(modal);
+    }
+    async function hydratePresetArchiveCustomBgs(modal){
+      const kind = $("presetKind").value || "services";
+      const saved = readSavedPresets();
+      let changed = false;
+      const cards = Array.from(modal.querySelectorAll(".preset-archive-card[data-index]"));
+      for (const card of cards) {
+        if (card.getAttribute("data-bg")) continue;
+        const index = Number(card.getAttribute("data-index") || 0);
+        const preset = saved[kind] && saved[kind][index];
+        if (!preset || !preset.heroCustomId) continue;
+        let record = null;
+        try { record = await getCustomHeroImage(preset.heroCustomId); } catch (e) {}
+        if (!record || !record.dataUrl) continue;
+        preset.heroDataUrl = record.dataUrl;
+        card.setAttribute("data-bg", record.dataUrl);
+        card.style.backgroundImage = `linear-gradient(180deg,rgba(0,0,0,.18),rgba(0,0,0,.72)),url("${record.dataUrl.replace(/"/g, '\\"')}")`;
+        changed = true;
+      }
+      if (changed) writeSavedPresets(saved);
+    }
+    function refreshPresetArchive(){
+      const modal = document.getElementById("presetArchiveModal");
+      if (!modal) return;
+      const kind = $("presetKind").value || "services";
+      const grid = modal.querySelector(".preset-archive-grid");
+      if (grid) grid.innerHTML = presetArchiveCardsHtml(kind);
+      modal.querySelectorAll("[data-kind]").forEach((btn) => {
+        btn.classList.toggle("primary", btn.getAttribute("data-kind") === kind);
+      });
+      decoratePresetArchive(modal);
     }
     function openPresetArchive(){
       closePresetArchive();
@@ -1406,7 +1491,7 @@
       const meta = getCurrentPresetMeta();
       const cards = list.length ? list.map((preset, index) => {
         const active = meta.kind === kind && meta.isSaved && meta.savedIndex === index ? " active" : "";
-        const bg = preset.heroSrc || preset.heroPreviewSrc || preset.previewDataUrl || "";
+        const bg = preset.heroSrc || preset.heroDataUrl || preset.heroPreviewSrc || preset.previewDataUrl || "";
         return `
           <div class="preset-archive-card${active}" data-index="${index}" data-bg="${escapeHtml(bg)}">
             <div class="preset-card-top">
@@ -1439,13 +1524,7 @@
           <div class="preset-archive-grid">${cards}</div>
         </div>`;
       document.body.appendChild(modal);
-      modal.querySelectorAll('[data-action="take"]').forEach((btn) => {
-        btn.textContent = "\u0412\u0417\u042f\u0422\u042c";
-      });
-      modal.querySelectorAll(".preset-archive-card[data-bg]").forEach((card) => {
-        const bg = card.getAttribute("data-bg") || "";
-        if (bg) card.style.backgroundImage = `linear-gradient(180deg,rgba(0,0,0,.18),rgba(0,0,0,.72)),url("${bg.replace(/"/g, '\\"')}")`;
-      });
+      decoratePresetArchive(modal);
       modal.addEventListener("click", (event) => {
         if (event.target === modal || event.target.classList.contains("preset-archive-close")) {
           closePresetArchive();
@@ -1455,7 +1534,7 @@
         if (kindBtn) {
           $("presetKind").value = kindBtn.getAttribute("data-kind") || "services";
           renderPresetSelect();
-          openPresetArchive();
+          refreshPresetArchive();
           return;
         }
         const card = event.target.closest(".preset-archive-card");
@@ -1463,19 +1542,20 @@
         const index = Number(card.getAttribute("data-index") || 0);
         const actionBtn = event.target.closest("[data-action]");
         const action = actionBtn ? actionBtn.getAttribute("data-action") : "take";
+        const activeKind = $("presetKind").value || kind;
         const nextSaved = readSavedPresets();
-        const preset = nextSaved[kind] && nextSaved[kind][index];
+        const preset = nextSaved[activeKind] && nextSaved[activeKind][index];
         if (!preset) return;
         if (action === "emoji-picker") {
-          openPresetEmojiPicker(event.target.closest(".preset-card-emoji"), kind, index);
+          openPresetEmojiPicker(event.target.closest(".preset-card-emoji"), activeKind, index);
           return;
         }
         if (!actionBtn) {
-          openPresetPreview(kind, index);
+          openPresetPreview(activeKind, index);
           return;
         }
         if (action === "take") {
-          takePreset(kind, index);
+          takePreset(activeKind, index);
           return;
         }
         if (action === "update") {
@@ -1485,8 +1565,8 @@
           Object.assign(preset, currentPresetVisualMeta());
           preset.updatedAt = new Date().toISOString();
           writeSavedPresets(nextSaved);
-          setPresetSelectToSaved(kind, index);
-          openPresetArchive();
+          setPresetSelectToSaved(activeKind, index);
+          refreshPresetArchive();
           return;
         }
         if (action === "rename") {
@@ -1496,7 +1576,7 @@
           preset.updatedAt = new Date().toISOString();
           writeSavedPresets(nextSaved);
           renderPresetSelect();
-          openPresetArchive();
+          refreshPresetArchive();
           return;
         }
         if (action === "duplicate") {
@@ -1505,18 +1585,18 @@
           copy.name = (copy.name || "Шаблон") + " копия";
           copy.savedAt = new Date().toISOString();
           copy.updatedAt = copy.savedAt;
-          nextSaved[kind].splice(index + 1, 0, copy);
+          nextSaved[activeKind].splice(index + 1, 0, copy);
           writeSavedPresets(nextSaved);
           renderPresetSelect();
-          openPresetArchive();
+          refreshPresetArchive();
           return;
         }
         if (action === "delete") {
           if (!confirm("Удалить шаблон «" + (preset.name || "Шаблон") + "»?")) return;
-          nextSaved[kind].splice(index, 1);
+          nextSaved[activeKind].splice(index, 1);
           writeSavedPresets(nextSaved);
           renderPresetSelect();
-          openPresetArchive();
+          refreshPresetArchive();
         }
       });
     }

@@ -709,6 +709,7 @@
         heroSrc: record.heroSrc || '',
         heroCustomId: record.heroCustomId || '',
         heroName: record.heroName || '',
+        heroDataUrl: record.heroDataUrl || '',
         heroPreviewSrc: record.heroPreviewSrc || '',
         previewDataUrl: record.previewDataUrl || ''
       });
@@ -750,6 +751,7 @@
       heroName: (packageData && packageData.heroName) || '',
       heroSrc: (packageData && packageData.heroSrc) || '',
       heroCustomId: (packageData && packageData.heroCustomId) || '',
+      heroDataUrl: (packageData && packageData.heroDataUrl) || '',
       heroPreviewSrc: (packageData && packageData.heroPreviewSrc) || '',
       previewDataUrl: (packageData && packageData.previewDataUrl) || '',
       bgChoice: (packageData && packageData.bgChoice) || '',
