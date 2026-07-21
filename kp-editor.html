@@ -100,7 +100,7 @@
     .preset-card-emoji{font-size:22px;line-height:1;filter:drop-shadow(0 2px 6px rgba(0,0,0,.45));cursor:pointer;flex-shrink:0}
     .preset-card-name{font-size:12px;font-weight:1000;line-height:1.08;min-width:0;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;text-shadow:0 2px 8px rgba(0,0,0,.7)}
     .preset-card-prices{font-size:13px;font-weight:1000;color:#e4fbff;text-shadow:0 2px 7px rgba(0,0,0,.9);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-    .preset-card-actions{display:grid;grid-template-columns:1.45fr repeat(4,34px);gap:4px}
+    .preset-card-actions{display:grid;grid-template-columns:1.05fr repeat(4,34px);gap:4px}
     .preset-card-actions button{height:24px;border-radius:7px;border:1px solid rgba(255,255,255,.12);background:rgba(0,0,0,.42);color:#dff7ff;font-size:10px;font-weight:900;cursor:pointer;padding:0 4px}
     .preset-card-actions button.main{background:rgba(0,217,126,.22);border-color:rgba(0,217,126,.48);color:#b9ffd9}
     .preset-card-actions button.danger{color:#ffd1d1;border-color:rgba(255,90,90,.35);background:rgba(120,20,20,.28)}
@@ -471,10 +471,30 @@
           heroSrc: preset.heroSrc || "",
           heroCustomId: preset.heroCustomId || "",
           heroName: preset.heroName || "",
-          heroPreviewSrc: preset.heroPreviewSrc || ""
+          heroPreviewSrc: preset.heroPreviewSrc || "",
+          previewDataUrl: preset.previewDataUrl || ""
         }));
       });
       localStorage.setItem(PRESET_KEY, JSON.stringify(clean));
+    }
+    function makePresetPreviewDataUrl(){
+      let prevFormReady = formReady;
+      try {
+        formReady = false;
+        draw();
+        const thumb = document.createElement("canvas");
+        const tw = 360;
+        const th = Math.round(H * (tw / W));
+        thumb.width = tw;
+        thumb.height = th;
+        const tctx = thumb.getContext("2d");
+        tctx.drawImage(canvas, 0, 0, tw, th);
+        return thumb.toDataURL("image/jpeg", 0.74);
+      } catch (e) {
+        return "";
+      } finally {
+        formReady = prevFormReady;
+      }
     }
     function currentPresetVisualMeta(){
       return {
@@ -482,7 +502,8 @@
         heroSrc: state.heroSrc || "",
         heroCustomId: state.heroCustomId || "",
         heroName: state.heroName || "",
-        heroPreviewSrc: state.heroSrc || customHeroSrc || (images.hero && images.hero.src) || ""
+        heroPreviewSrc: state.heroSrc || customHeroSrc || (images.hero && images.hero.src) || "",
+        previewDataUrl: makePresetPreviewDataUrl()
       };
     }
     function makePresetRecord(name, emoji){
@@ -517,7 +538,8 @@
         heroSrc: preset.heroSrc || "",
         heroCustomId: preset.heroCustomId || "",
         heroName: preset.heroName || "",
-        heroPreviewSrc: preset.heroPreviewSrc || ""
+        heroPreviewSrc: preset.heroPreviewSrc || "",
+        previewDataUrl: preset.previewDataUrl || ""
       };
     }
     function packagePriceShort(pkg){
@@ -1151,6 +1173,7 @@
               heroSrc: state.heroSrc || "",
               heroCustomId: state.heroCustomId || "",
               heroPreviewSrc: state.heroSrc || customHeroSrc || (images.hero && images.hero.src) || "",
+              previewDataUrl: makePresetPreviewDataUrl(),
               bgChoice: state.bgChoice || defaults.bgChoice,
               presetKind: $("presetKind").value || "services",
               packages: clone(state.packages).filter((pkg) => pkg.on)
@@ -1331,8 +1354,11 @@
           <img class="preset-preview-img" alt="${escapeHtml(preset.name || "КП")}">
         </div>`;
       document.body.appendChild(modal);
+      modal.querySelectorAll('[data-action="take"]').forEach((btn) => {
+        btn.textContent = "\u0412\u0417\u042f\u0422\u042c";
+      });
       const img = modal.querySelector(".preset-preview-img");
-      img.src = await buildPresetPreviewUrl(preset);
+      img.src = preset.previewDataUrl || await buildPresetPreviewUrl(preset);
       modal.addEventListener("click", (event) => {
         if (event.target === modal || event.target.closest('[data-action="close"]')) {
           closePresetPreview();
@@ -1380,7 +1406,7 @@
       const meta = getCurrentPresetMeta();
       const cards = list.length ? list.map((preset, index) => {
         const active = meta.kind === kind && meta.isSaved && meta.savedIndex === index ? " active" : "";
-        const bg = preset.heroSrc || preset.heroPreviewSrc || "";
+        const bg = preset.heroSrc || preset.heroPreviewSrc || preset.previewDataUrl || "";
         return `
           <div class="preset-archive-card${active}" data-index="${index}" data-bg="${escapeHtml(bg)}">
             <div class="preset-card-top">
@@ -1413,6 +1439,9 @@
           <div class="preset-archive-grid">${cards}</div>
         </div>`;
       document.body.appendChild(modal);
+      modal.querySelectorAll('[data-action="take"]').forEach((btn) => {
+        btn.textContent = "\u0412\u0417\u042f\u0422\u042c";
+      });
       modal.querySelectorAll(".preset-archive-card[data-bg]").forEach((card) => {
         const bg = card.getAttribute("data-bg") || "";
         if (bg) card.style.backgroundImage = `linear-gradient(180deg,rgba(0,0,0,.18),rgba(0,0,0,.72)),url("${bg.replace(/"/g, '\\"')}")`;

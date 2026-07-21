@@ -709,7 +709,8 @@
         heroSrc: record.heroSrc || '',
         heroCustomId: record.heroCustomId || '',
         heroName: record.heroName || '',
-        heroPreviewSrc: record.heroPreviewSrc || ''
+        heroPreviewSrc: record.heroPreviewSrc || '',
+        previewDataUrl: record.previewDataUrl || ''
       });
       all[kind] = all[kind].slice(0, 50);
       localStorage.setItem(KP_EDITOR_PRESETS_STORE, JSON.stringify(all));
@@ -750,6 +751,7 @@
       heroSrc: (packageData && packageData.heroSrc) || '',
       heroCustomId: (packageData && packageData.heroCustomId) || '',
       heroPreviewSrc: (packageData && packageData.heroPreviewSrc) || '',
+      previewDataUrl: (packageData && packageData.previewDataUrl) || '',
       bgChoice: (packageData && packageData.bgChoice) || '',
       presetKind: (packageData && packageData.presetKind) || 'services',
       packages: packageData && Array.isArray(packageData.packages) ? packageData.packages : []
