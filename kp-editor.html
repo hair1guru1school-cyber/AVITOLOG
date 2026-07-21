@@ -180,18 +180,6 @@
           <label>Картинка шапки
             <input id="heroFile" type="file" accept="image/*">
           </label>
-          <label>Надпись на шапке
-            <select id="titleStyle">
-              <option value="classic">Классика</option>
-              <option value="simple">Белая PNG</option>
-              <option value="color">Цветная плашка</option>
-              <option value="gold">Золото / черный</option>
-              <option value="premium">Премиум рамка</option>
-            </select>
-          </label>
-          <label>Размер надписи <span id="titleScaleValue" class="small-value">100%</span>
-            <input id="titleScale" type="range" min="55" max="130" step="1" value="100">
-          </label>
           <label>Фон
             <select id="bgChoice">
               <option value="dark">Фон 1 - город</option>
@@ -656,9 +644,9 @@
 
     function renderForm(){
       $("bgChoice").value = state.bgChoice || defaults.bgChoice;
-      $("titleStyle").value = state.titleStyle || defaults.titleStyle;
-      $("titleScale").value = state.titleScale || defaults.titleScale;
-      $("titleScaleValue").textContent = `${$("titleScale").value}%`;
+      if ($("titleStyle")) $("titleStyle").value = state.titleStyle || defaults.titleStyle;
+      if ($("titleScale")) $("titleScale").value = state.titleScale || defaults.titleScale;
+      if ($("titleScaleValue") && $("titleScale")) $("titleScaleValue").textContent = `${$("titleScale").value}%`;
       renderNicheLibrary();
       renderPresetSelect();
       renderTabs();
@@ -796,9 +784,9 @@
     }
     function readGlobalForm(){
       state.bgChoice = $("bgChoice").value;
-      state.titleStyle = $("titleStyle").value;
-      state.titleScale = Number($("titleScale").value) || defaults.titleScale;
-      $("titleScaleValue").textContent = `${state.titleScale}%`;
+      if ($("titleStyle")) state.titleStyle = $("titleStyle").value;
+      if ($("titleScale")) state.titleScale = Number($("titleScale").value) || defaults.titleScale;
+      if ($("titleScaleValue")) $("titleScaleValue").textContent = `${state.titleScale || defaults.titleScale}%`;
       flushPackageForm();
     }
     function markPackageFormDirty(){
@@ -1403,8 +1391,8 @@
     });
     window.addEventListener("pagehide", flushPackageForm);
     $("bgChoice").addEventListener("change", draw);
-    $("titleStyle").addEventListener("change", draw);
-    $("titleScale").addEventListener("input", draw);
+    if ($("titleStyle")) $("titleStyle").addEventListener("change", draw);
+    if ($("titleScale")) $("titleScale").addEventListener("input", draw);
     $("heroZone").addEventListener("click", () => toggleNichePanels());
     $("presetKind").addEventListener("change", renderPresetSelect);
     $("presetSelect").addEventListener("mousedown", (event) => {

@@ -781,7 +781,7 @@
     return (
       '<div class="kp-gen-section kp-editor-embed-section">' +
       '<div class="kp-gen-label">Расчет КП</div>' +
-      '<iframe class="kp-editor-embed" src="kp-editor.html?embedded=1&amp;v=20260721-kp-preset-archive-1" title="Редактор КП"></iframe>' +
+      '<iframe class="kp-editor-embed" src="kp-editor.html?embedded=1&amp;v=20260721-kp-header-controls-hidden-1" title="Редактор КП"></iframe>' +
       '</div>'
     );
   }
