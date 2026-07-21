@@ -82,7 +82,31 @@
     .preset-card{background:linear-gradient(135deg,rgba(255,212,95,.96),rgba(255,246,196,.94));color:#160d00;border:0}
     .preset-card label{color:#473000}
     .preset-card select,.preset-card input{background:rgba(255,255,255,.86);color:#160d00;border-color:rgba(0,0,0,.12)}
-    .preset-title{font-size:15px;font-weight:900;letter-spacing:.7px;text-align:center}
+    .preset-title{font-size:15px;font-weight:900;letter-spacing:.7px;text-align:center;display:flex;align-items:center;justify-content:center;gap:8px}
+    .preset-archive-btn{height:26px;padding:0 9px;border-radius:8px;border:1px solid rgba(0,0,0,.18);background:rgba(8,17,29,.88);color:#ffe9b3;font-size:11px;font-weight:900;cursor:pointer}
+    .preset-mini-btn{min-width:38px;padding-left:10px;padding-right:10px}
+    .preset-archive-modal{position:fixed;inset:0;z-index:10000;display:flex;align-items:center;justify-content:center;padding:18px;background:rgba(0,0,0,.68)}
+    .preset-archive-panel{width:min(1320px,96vw);height:min(820px,92vh);display:flex;flex-direction:column;gap:12px;border:1px solid rgba(93,229,255,.28);border-radius:16px;background:linear-gradient(180deg,#111928,#07111d);box-shadow:0 24px 80px rgba(0,0,0,.65);padding:14px;box-sizing:border-box;color:#eaf7ff}
+    .preset-archive-head{display:flex;align-items:center;justify-content:space-between;gap:12px}
+    .preset-archive-title{font-size:20px;font-weight:1000;letter-spacing:.6px;color:#fff}
+    .preset-archive-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+    .preset-archive-close{width:36px;height:36px;border-radius:10px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.06);color:#fff;font-size:22px;cursor:pointer}
+    .preset-archive-grid{display:grid;grid-template-columns:repeat(10,minmax(92px,1fr));gap:8px;overflow:auto;padding:2px 2px 8px}
+    .preset-archive-card{position:relative;min-height:138px;border-radius:12px;border:1px solid rgba(93,229,255,.18);background:linear-gradient(135deg,rgba(33,73,112,.92),rgba(8,17,29,.96));overflow:hidden;cursor:pointer;text-align:left;color:#fff;padding:9px;box-shadow:inset 0 0 0 1px rgba(255,255,255,.03);display:flex;flex-direction:column;justify-content:space-between;gap:8px}
+    .preset-archive-card::before{content:"";position:absolute;inset:0;background:radial-gradient(circle at 30% 20%,rgba(93,229,255,.22),transparent 42%),linear-gradient(180deg,rgba(0,0,0,.18),rgba(0,0,0,.58));pointer-events:none}
+    .preset-archive-card.active{border-color:rgba(255,217,98,.9);box-shadow:0 0 0 2px rgba(255,217,98,.18),0 0 22px rgba(255,217,98,.18)}
+    .preset-archive-card>*{position:relative;z-index:1}
+    .preset-card-top{display:flex;align-items:flex-start;gap:6px;min-width:0}
+    .preset-card-emoji{font-size:20px;line-height:1;filter:drop-shadow(0 2px 6px rgba(0,0,0,.45))}
+    .preset-card-name{font-size:11px;font-weight:1000;line-height:1.08;min-width:0;overflow:hidden;display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;text-shadow:0 2px 8px rgba(0,0,0,.7)}
+    .preset-card-prices{display:flex;flex-direction:column;gap:2px;font-size:10px;font-weight:900;color:#d7f7ff;text-shadow:0 1px 5px rgba(0,0,0,.8)}
+    .preset-card-actions{display:grid;grid-template-columns:1fr 1fr;gap:4px}
+    .preset-card-actions button{height:24px;border-radius:7px;border:1px solid rgba(255,255,255,.12);background:rgba(0,0,0,.42);color:#dff7ff;font-size:10px;font-weight:900;cursor:pointer;padding:0 4px}
+    .preset-card-actions button.main{grid-column:1/-1;background:rgba(0,217,126,.22);border-color:rgba(0,217,126,.48);color:#b9ffd9}
+    .preset-card-actions button.danger{color:#ffd1d1;border-color:rgba(255,90,90,.35);background:rgba(120,20,20,.28)}
+    .preset-card-actions button:hover,.preset-archive-close:hover,.preset-archive-btn:hover{filter:brightness(1.15)}
+    @media(max-width:1180px){.preset-archive-grid{grid-template-columns:repeat(6,minmax(96px,1fr))}}
+    @media(max-width:720px){.preset-archive-grid{grid-template-columns:repeat(2,minmax(120px,1fr))}.preset-archive-panel{height:94vh}}
     .switch{flex-direction:row;align-items:center;text-transform:none;letter-spacing:0;font-size:13px;color:#d6e7fa}
     .switch input{width:16px;height:16px;padding:0}
     .pill{display:inline-flex;align-items:center;height:27px;border-radius:999px;border:1px solid rgba(93,229,255,.18);background:rgba(89,235,255,.07);padding:0 9px;color:#cdeaff;font-weight:800;font-size:12px}
@@ -178,7 +202,7 @@
         </div>
 
         <div class="card preset-card">
-          <div class="preset-title">ГОТОВЫЕ ПАКЕТЫ</div>
+          <div class="preset-title"><span>ГОТОВЫЕ ПАКЕТЫ</span><button class="preset-archive-btn" id="presetArchiveBtn" type="button">🗄 АРХИВ</button></div>
           <div class="grid2">
             <label>Тип
               <select id="presetKind">
@@ -193,6 +217,7 @@
           <div class="toolbar">
             <button class="btn primary" id="applyPresetBtn">Применить</button>
             <button class="btn" id="savePresetBtn">Сохранить текущий</button>
+            <button class="btn preset-mini-btn" id="updatePresetBtn" type="button" title="Обновить активный шаблон текущими данными">🔄</button>
           </div>
         </div>
 
@@ -391,6 +416,7 @@
         { name: "Товары 4 пакета", packages: clone(defaults.packages) }
       ]
     };
+    const PRESET_EMOJIS = ["📊","💎","🚀","🧾","💰","🏗️","🏠","🧱","🪟","🛋️","⚡","🔧","⭐","🔥","🎯","🅰️","📦","🛠️","🌿","🤝"];
 
     let state = loadState();
 
@@ -412,6 +438,75 @@
       const digits = String(value || "").replace(/\D/g, "");
       if (!digits) return String(value || "").trim();
       return `${digits.replace(/\B(?=(\d{3})+(?!\d))/g, " ")} ₽`;
+    }
+    function makePresetId(){
+      return "kp_" + Date.now().toString(36) + "_" + Math.random().toString(36).slice(2, 8);
+    }
+    function readSavedPresets(){
+      let saved = { services: [], goods: [] };
+      try {
+        saved = Object.assign(saved, JSON.parse(localStorage.getItem(PRESET_KEY) || "{}"));
+      } catch (e) {}
+      saved.services = Array.isArray(saved.services) ? saved.services : [];
+      saved.goods = Array.isArray(saved.goods) ? saved.goods : [];
+      ["services","goods"].forEach((kind) => {
+        saved[kind] = saved[kind].filter(Boolean).map((preset) => {
+          if (!preset.id) preset.id = makePresetId();
+          if (!preset.emoji) preset.emoji = "🧾";
+          if (!Array.isArray(preset.packages)) preset.packages = clone(defaults.packages);
+          return preset;
+        });
+      });
+      return saved;
+    }
+    function writeSavedPresets(saved){
+      const clean = { services: [], goods: [] };
+      ["services","goods"].forEach((kind) => {
+        clean[kind] = (saved[kind] || []).filter(Boolean).map((preset) => ({
+          id: preset.id || makePresetId(),
+          name: preset.name || "Новый шаблон",
+          emoji: preset.emoji || "🧾",
+          packages: clone(preset.packages || defaults.packages),
+          source: preset.source || "editor",
+          savedAt: preset.savedAt || new Date().toISOString(),
+          updatedAt: preset.updatedAt || new Date().toISOString(),
+          imageFileLink: preset.imageFileLink || "",
+          imageFileId: preset.imageFileId || "",
+          folderId: preset.folderId || ""
+        }));
+      });
+      localStorage.setItem(PRESET_KEY, JSON.stringify(clean));
+    }
+    function getCurrentPresetMeta(){
+      const kind = $("presetKind").value || "services";
+      const index = Number($("presetSelect").value || 0);
+      const builtinCount = (DEFAULT_PRESETS[kind] || []).length;
+      return { kind, index, builtinCount, savedIndex: index - builtinCount, isSaved: index >= builtinCount };
+    }
+    function stripPresetMeta(preset){
+      return {
+        name: preset.name || "Шаблон",
+        emoji: preset.emoji || "🧾",
+        packages: clone(preset.packages || defaults.packages),
+        source: preset.source || "editor",
+        savedAt: preset.savedAt || new Date().toISOString(),
+        updatedAt: preset.updatedAt || new Date().toISOString(),
+        imageFileLink: preset.imageFileLink || "",
+        imageFileId: preset.imageFileId || "",
+        folderId: preset.folderId || ""
+      };
+    }
+    function packagePriceShort(pkg){
+      const digits = String((pkg && pkg.work) || "").replace(/\D/g, "");
+      if (!digits) return "";
+      const n = Number(digits);
+      if (!Number.isFinite(n)) return "";
+      return n >= 1000 ? `${Math.round(n / 1000)}к` : String(n);
+    }
+    function presetPricesLine(preset){
+      return (preset.packages || []).filter((pkg) => pkg && pkg.on !== false).slice(0, 4).map((pkg) => {
+        return `${pkg.name || "Пакет"} ${packagePriceShort(pkg) || ""}`.trim();
+      }).filter(Boolean).join(" · ");
     }
     function syncPackageDerivedLines(pkg){
       pkg.quantity = packageQuantity(pkg);
@@ -1058,13 +1153,10 @@
       draw();
     }
     function getPackagePresets(){
-      let saved = { services: [], goods: [] };
-      try {
-        saved = Object.assign(saved, JSON.parse(localStorage.getItem(PRESET_KEY) || "{}"));
-      } catch (e) {}
+      const saved = readSavedPresets();
       return {
-        services: DEFAULT_PRESETS.services.concat(saved.services || []),
-        goods: DEFAULT_PRESETS.goods.concat(saved.goods || [])
+        services: (DEFAULT_PRESETS.services || []).map((p) => Object.assign({ builtin: true, emoji: "🧾" }, p)).concat(saved.services || []),
+        goods: (DEFAULT_PRESETS.goods || []).map((p) => Object.assign({ builtin: true, emoji: "📦" }, p)).concat(saved.goods || [])
       };
     }
     function renderPresetSelect(){
@@ -1075,7 +1167,7 @@
       presets.forEach((preset, index) => {
         const option = document.createElement("option");
         option.value = String(index);
-        option.textContent = preset.name;
+        option.textContent = `${preset.emoji || ""} ${preset.name || "Шаблон"}`.trim();
         select.appendChild(option);
       });
     }
@@ -1090,19 +1182,171 @@
       saveState();
     }
     function saveCurrentPreset(){
+      flushPackageForm();
       readGlobalForm();
       const kind = $("presetKind").value || "services";
       const rawName = prompt("Название готового пакета", kind === "goods" ? "Товары - новый пакет" : "Услуги - новый пакет");
       const name = rawName && rawName.trim();
       if (!name) return;
-      let saved = { services: [], goods: [] };
-      try {
-        saved = Object.assign(saved, JSON.parse(localStorage.getItem(PRESET_KEY) || "{}"));
-      } catch (e) {}
+      const saved = readSavedPresets();
       saved[kind] = saved[kind] || [];
-      saved[kind].push({ name, packages: clone(state.packages) });
-      localStorage.setItem(PRESET_KEY, JSON.stringify(saved));
+      saved[kind].unshift({ id: makePresetId(), name, emoji: "🧾", packages: clone(state.packages), source: "editor", savedAt: new Date().toISOString(), updatedAt: new Date().toISOString() });
+      writeSavedPresets(saved);
       renderPresetSelect();
+      $("presetSelect").value = String((DEFAULT_PRESETS[kind] || []).length);
+    }
+    function updateSelectedPreset(){
+      flushPackageForm();
+      readGlobalForm();
+      const meta = getCurrentPresetMeta();
+      if (!meta.isSaved) {
+        alert("Это встроенный шаблон. Сначала нажмите «Сохранить текущий», потом его можно обновлять.");
+        return;
+      }
+      const saved = readSavedPresets();
+      const preset = saved[meta.kind] && saved[meta.kind][meta.savedIndex];
+      if (!preset) return;
+      preset.packages = clone(state.packages);
+      preset.updatedAt = new Date().toISOString();
+      writeSavedPresets(saved);
+      renderPresetSelect();
+      $("presetSelect").value = String(meta.index);
+    }
+    function setPresetSelectToSaved(kind, savedIndex){
+      $("presetKind").value = kind;
+      renderPresetSelect();
+      $("presetSelect").value = String((DEFAULT_PRESETS[kind] || []).length + savedIndex);
+    }
+    function takePreset(kind, savedIndex){
+      const saved = readSavedPresets();
+      const preset = saved[kind] && saved[kind][savedIndex];
+      if (!preset) return;
+      state.packages = clone(preset.packages || defaults.packages);
+      selectedPackage = 0;
+      setPresetSelectToSaved(kind, savedIndex);
+      renderForm();
+      saveState();
+      closePresetArchive();
+    }
+    function closePresetArchive(){
+      const modal = document.getElementById("presetArchiveModal");
+      if (modal) modal.remove();
+    }
+    function openPresetArchive(){
+      closePresetArchive();
+      const kind = $("presetKind").value || "services";
+      const saved = readSavedPresets();
+      const list = (saved[kind] || []);
+      const meta = getCurrentPresetMeta();
+      const cards = list.length ? list.map((preset, index) => {
+        const active = meta.kind === kind && meta.isSaved && meta.savedIndex === index ? " active" : "";
+        return `
+          <div class="preset-archive-card${active}" data-index="${index}">
+            <div class="preset-card-top">
+              <span class="preset-card-emoji">${escapeHtml(preset.emoji || "🧾")}</span>
+              <span class="preset-card-name">${escapeHtml(preset.name || "Шаблон")}</span>
+            </div>
+            <div class="preset-card-prices">${escapeHtml(presetPricesLine(preset) || "Пакеты без цен")}</div>
+            <div class="preset-card-actions">
+              <button type="button" class="main" data-action="take">ВЗЯТЬ / ПРАВИТЬ</button>
+              <button type="button" data-action="update">🔄</button>
+              <button type="button" data-action="rename">Имя</button>
+              <button type="button" data-action="emoji">Emoji</button>
+              <button type="button" data-action="duplicate">Дубль</button>
+              <button type="button" class="danger" data-action="delete">Удалить</button>
+            </div>
+          </div>`;
+      }).join("") : '<div class="mini-note">Сохранённых шаблонов пока нет. Нажмите «Сохранить текущий».</div>';
+      const modal = document.createElement("div");
+      modal.id = "presetArchiveModal";
+      modal.className = "preset-archive-modal";
+      modal.innerHTML = `
+        <div class="preset-archive-panel">
+          <div class="preset-archive-head">
+            <div class="preset-archive-title">🗄 Архив шаблонов КП</div>
+            <div class="preset-archive-actions">
+              <button class="btn ${kind === "services" ? "primary" : ""}" data-kind="services" type="button">Услуги</button>
+              <button class="btn ${kind === "goods" ? "primary" : ""}" data-kind="goods" type="button">Товары</button>
+              <button class="preset-archive-close" type="button">×</button>
+            </div>
+          </div>
+          <div class="preset-archive-grid">${cards}</div>
+        </div>`;
+      document.body.appendChild(modal);
+      modal.addEventListener("click", (event) => {
+        if (event.target === modal || event.target.classList.contains("preset-archive-close")) {
+          closePresetArchive();
+          return;
+        }
+        const kindBtn = event.target.closest("[data-kind]");
+        if (kindBtn) {
+          $("presetKind").value = kindBtn.getAttribute("data-kind") || "services";
+          renderPresetSelect();
+          openPresetArchive();
+          return;
+        }
+        const card = event.target.closest(".preset-archive-card");
+        if (!card) return;
+        const index = Number(card.getAttribute("data-index") || 0);
+        const actionBtn = event.target.closest("[data-action]");
+        const action = actionBtn ? actionBtn.getAttribute("data-action") : "take";
+        const nextSaved = readSavedPresets();
+        const preset = nextSaved[kind] && nextSaved[kind][index];
+        if (!preset) return;
+        if (action === "take") {
+          takePreset(kind, index);
+          return;
+        }
+        if (action === "update") {
+          flushPackageForm();
+          readGlobalForm();
+          preset.packages = clone(state.packages);
+          preset.updatedAt = new Date().toISOString();
+          writeSavedPresets(nextSaved);
+          setPresetSelectToSaved(kind, index);
+          openPresetArchive();
+          return;
+        }
+        if (action === "rename") {
+          const name = prompt("Новое название шаблона", preset.name || "");
+          if (name === null) return;
+          preset.name = name.trim() || preset.name || "Шаблон";
+          preset.updatedAt = new Date().toISOString();
+          writeSavedPresets(nextSaved);
+          renderPresetSelect();
+          openPresetArchive();
+          return;
+        }
+        if (action === "emoji") {
+          const emoji = prompt("Emoji для шаблона", preset.emoji || "🧾");
+          if (emoji === null) return;
+          preset.emoji = emoji.trim().slice(0, 8) || "🧾";
+          preset.updatedAt = new Date().toISOString();
+          writeSavedPresets(nextSaved);
+          renderPresetSelect();
+          openPresetArchive();
+          return;
+        }
+        if (action === "duplicate") {
+          const copy = stripPresetMeta(preset);
+          copy.id = makePresetId();
+          copy.name = (copy.name || "Шаблон") + " копия";
+          copy.savedAt = new Date().toISOString();
+          copy.updatedAt = copy.savedAt;
+          nextSaved[kind].splice(index + 1, 0, copy);
+          writeSavedPresets(nextSaved);
+          renderPresetSelect();
+          openPresetArchive();
+          return;
+        }
+        if (action === "delete") {
+          if (!confirm("Удалить шаблон «" + (preset.name || "Шаблон") + "»?")) return;
+          nextSaved[kind].splice(index, 1);
+          writeSavedPresets(nextSaved);
+          renderPresetSelect();
+          openPresetArchive();
+        }
+      });
     }
     function clamp(value, min, max){
       return Math.min(max, Math.max(min, value));
@@ -1163,8 +1407,16 @@
     $("titleScale").addEventListener("input", draw);
     $("heroZone").addEventListener("click", () => toggleNichePanels());
     $("presetKind").addEventListener("change", renderPresetSelect);
+    $("presetSelect").addEventListener("mousedown", (event) => {
+      if (event.shiftKey) {
+        event.preventDefault();
+        openPresetArchive();
+      }
+    });
     $("applyPresetBtn").addEventListener("click", applySelectedPreset);
     $("savePresetBtn").addEventListener("click", saveCurrentPreset);
+    $("updatePresetBtn").addEventListener("click", updateSelectedPreset);
+    $("presetArchiveBtn").addEventListener("click", openPresetArchive);
     $("heroFile").addEventListener("change", async (event) => {
       const file = event.target.files && event.target.files[0];
       if (!file) return;
