@@ -704,7 +704,12 @@
         savedAt: record.savedAt || new Date().toISOString(),
         folderId: record.folderId || '',
         imageFileId: record.imageFileId || '',
-        imageFileLink: record.imageFileLink || ''
+        imageFileLink: record.imageFileLink || '',
+        bgChoice: record.bgChoice || '',
+        heroSrc: record.heroSrc || '',
+        heroCustomId: record.heroCustomId || '',
+        heroName: record.heroName || '',
+        heroPreviewSrc: record.heroPreviewSrc || ''
       });
       all[kind] = all[kind].slice(0, 50);
       localStorage.setItem(KP_EDITOR_PRESETS_STORE, JSON.stringify(all));
@@ -742,6 +747,10 @@
       imageFileId: (result && result.id) || '',
       imageFileLink: (result && result.webViewLink) || '',
       heroName: (packageData && packageData.heroName) || '',
+      heroSrc: (packageData && packageData.heroSrc) || '',
+      heroCustomId: (packageData && packageData.heroCustomId) || '',
+      heroPreviewSrc: (packageData && packageData.heroPreviewSrc) || '',
+      bgChoice: (packageData && packageData.bgChoice) || '',
       presetKind: (packageData && packageData.presetKind) || 'services',
       packages: packageData && Array.isArray(packageData.packages) ? packageData.packages : []
     };
@@ -781,7 +790,7 @@
     return (
       '<div class="kp-gen-section kp-editor-embed-section">' +
       '<div class="kp-gen-label">Расчет КП</div>' +
-      '<iframe class="kp-editor-embed" src="kp-editor.html?embedded=1&amp;v=20260721-kp-header-controls-hidden-1" title="Редактор КП"></iframe>' +
+      '<iframe class="kp-editor-embed" src="kp-editor.html?embedded=1&amp;v=20260721-kp-preset-visual-archive-1" title="Редактор КП"></iframe>' +
       '</div>'
     );
   }
