@@ -14,9 +14,14 @@ declare
   v_org uuid;
 begin
   if auth.uid() is null then raise exception 'Authentication required'; end if;
-  if p_key not in (
-    'avitolog_clients', 'avitolog_projects', 'crm_tasks_v1',
-    'avitolog_clients_sasha', 'avitolog_projects_sasha', 'crm_tasks_v1_sasha'
+  if not (
+    p_key in (
+      'avitolog_clients', 'avitolog_projects', 'crm_tasks_v1',
+      'avitolog_clients_sasha', 'avitolog_projects_sasha', 'crm_tasks_v1_sasha'
+    )
+    or p_key ~ '^avitolog_goals_v1(_sasha)?(_month_[0-9]{4}-[0-9]{2})?$'
+    or p_key ~ '^avitolog_goal_achievements_v1(_sasha)?$'
+    or p_key ~ '^avitolog_assets_(my|sasha|base)_v2(_sasha)?(_month_[0-9]{4}-[0-9]{2})?$'
   ) then
     raise exception 'History key is not allowed';
   end if;

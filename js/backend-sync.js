@@ -378,7 +378,7 @@
     if (!value) return 0;
     try {
       var parsed = JSON.parse(value);
-      if (key.indexOf('projects') >= 0 && parsed && Array.isArray(parsed.projects)) {
+      if ((key.indexOf('projects') >= 0 || key.indexOf('goals') >= 0) && parsed && Array.isArray(parsed.projects)) {
         var score = parsed.projects.length * 100;
         parsed.projects.forEach(function(p) {
           if (!p) return;
