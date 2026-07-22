@@ -682,11 +682,23 @@
   function rememberSavedKpAsEditorPreset(record) {
     try {
       if (!record || !Array.isArray(record.packages) || !record.packages.length) return;
-      var kind = String(record.presetKind || '').toLowerCase() === 'goods' ? 'goods' : 'services';
+      var kind = String(record.presetKind || 'services').replace(/[^\w-]/g, '_') || 'services';
       var all = JSON.parse(localStorage.getItem(KP_EDITOR_PRESETS_STORE) || '{}');
       if (!all || typeof all !== 'object' || Array.isArray(all)) all = {};
+      all.groups = Array.isArray(all.groups) ? all.groups : [
+        { id: 'services', name: 'Услуги', emoji: '🧾' },
+        { id: 'goods', name: 'Товары', emoji: '📦' }
+      ];
+      if (!all.groups.some(function (group) { return group && group.id === kind; })) {
+        all.groups.push({
+          id: kind,
+          name: (record.presetGroupName || kind),
+          emoji: (record.presetGroupEmoji || '🧾')
+        });
+      }
       all.services = Array.isArray(all.services) ? all.services : [];
       all.goods = Array.isArray(all.goods) ? all.goods : [];
+      all[kind] = Array.isArray(all[kind]) ? all[kind] : [];
       var defaultName = cleanKpFilePart((record.clientName || 'КП') + (record.heroName ? ' - ' + record.heroName : ''));
       var name = defaultName;
       try {
@@ -756,6 +768,8 @@
       previewDataUrl: (packageData && packageData.previewDataUrl) || '',
       bgChoice: (packageData && packageData.bgChoice) || '',
       presetKind: (packageData && packageData.presetKind) || 'services',
+      presetGroupName: (packageData && packageData.presetGroupName) || '',
+      presetGroupEmoji: (packageData && packageData.presetGroupEmoji) || '',
       packages: packageData && Array.isArray(packageData.packages) ? packageData.packages : []
     };
     rememberSavedKpPackageData(String(ac.folderId), record);

@@ -307,6 +307,10 @@
       ]
     };
     const PRESET_KEY = "avitolog_kp_package_presets_v1";
+    const DEFAULT_PRESET_GROUPS = [
+      { id: "services", name: "\u0423\u0441\u043b\u0443\u0433\u0438", emoji: "\ud83e\uddfe" },
+      { id: "goods", name: "\u0422\u043e\u0432\u0430\u0440\u044b", emoji: "\ud83d\udce6" }
+    ];
     const TEMPLATE = {
       heroTitle: "СТРАТЕГИИ ПРОДВИЖЕНИЯ",
       tagline: "ВЫГОДНО / БЫСТРО / НАДЕЖНО",
@@ -436,14 +440,46 @@
     function makePresetId(){
       return "kp_" + Date.now().toString(36) + "_" + Math.random().toString(36).slice(2, 8);
     }
+    function makePresetGroupId(name){
+      const slug = String(name || "").toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "").slice(0, 36);
+      return "group_" + (slug || Date.now().toString(36));
+    }
+    function presetGroupDefaults(){
+      return DEFAULT_PRESET_GROUPS.map((group) => Object.assign({}, group));
+    }
+    function getPresetGroups(saved){
+      const source = saved || readSavedPresets();
+      return (source.groups && source.groups.length ? source.groups : presetGroupDefaults()).map((group) => Object.assign({}, group));
+    }
+    function presetGroupMeta(id){
+      return getPresetGroups().find((group) => group.id === id) || DEFAULT_PRESET_GROUPS.find((group) => group.id === id) || { id, name: id, emoji: "\ud83e\uddfe" };
+    }
     function readSavedPresets(){
-      let saved = { services: [], goods: [] };
+      let saved = { services: [], goods: [], groups: presetGroupDefaults() };
       try {
         saved = Object.assign(saved, JSON.parse(localStorage.getItem(PRESET_KEY) || "{}"));
       } catch (e) {}
-      saved.services = Array.isArray(saved.services) ? saved.services : [];
-      saved.goods = Array.isArray(saved.goods) ? saved.goods : [];
-      ["services","goods"].forEach((kind) => {
+      const groupMap = new Map();
+      presetGroupDefaults().forEach((group) => groupMap.set(group.id, Object.assign({}, group)));
+      if (Array.isArray(saved.groups)) {
+        saved.groups.forEach((group) => {
+          if (!group || !group.id) return;
+          groupMap.set(String(group.id), {
+            id: String(group.id),
+            name: String(group.name || group.id),
+            emoji: String(group.emoji || "\ud83e\uddfe")
+          });
+        });
+      }
+      Object.keys(saved).forEach((key) => {
+        if (key !== "groups" && Array.isArray(saved[key]) && !groupMap.has(key)) {
+          groupMap.set(key, { id: key, name: key, emoji: "\ud83e\uddfe" });
+        }
+      });
+      saved.groups = Array.from(groupMap.values());
+      saved.groups.forEach((group) => {
+        const kind = group.id;
+        saved[kind] = Array.isArray(saved[kind]) ? saved[kind] : [];
         saved[kind] = saved[kind].filter(Boolean).map((preset) => {
           if (!preset.id) preset.id = makePresetId();
           if (!preset.emoji) preset.emoji = "🧾";
@@ -454,8 +490,14 @@
       return saved;
     }
     function writeSavedPresets(saved){
-      const clean = { services: [], goods: [] };
-      ["services","goods"].forEach((kind) => {
+      const groups = getPresetGroups(saved);
+      const clean = { groups: groups.map((group) => ({
+        id: group.id,
+        name: group.name || group.id,
+        emoji: group.emoji || "\ud83e\uddfe"
+      })) };
+      groups.forEach((group) => {
+        const kind = group.id;
         clean[kind] = (saved[kind] || []).filter(Boolean).map((preset) => ({
           id: preset.id || makePresetId(),
           name: preset.name || "Новый шаблон",
@@ -1180,6 +1222,8 @@
               previewDataUrl: makePresetPreviewDataUrl(),
               bgChoice: state.bgChoice || defaults.bgChoice,
               presetKind: $("presetKind").value || "services",
+              presetGroupName: presetGroupMeta($("presetKind").value || "services").name,
+              presetGroupEmoji: presetGroupMeta($("presetKind").value || "services").emoji,
               packages: clone(state.packages).filter((pkg) => pkg.on)
             }
           );
@@ -1209,12 +1253,34 @@
     }
     function getPackagePresets(){
       const saved = readSavedPresets();
+      const result = {};
+      getPresetGroups(saved).forEach((group) => {
+        const builtinEmoji = group.id === "goods" ? "\ud83d\udce6" : "\ud83e\uddfe";
+        result[group.id] = (DEFAULT_PRESETS[group.id] || []).map((p) => Object.assign({ builtin: true, emoji: group.emoji || builtinEmoji }, p)).concat(saved[group.id] || []);
+      });
+      return result;
       return {
         services: (DEFAULT_PRESETS.services || []).map((p) => Object.assign({ builtin: true, emoji: "🧾" }, p)).concat(saved.services || []),
         goods: (DEFAULT_PRESETS.goods || []).map((p) => Object.assign({ builtin: true, emoji: "📦" }, p)).concat(saved.goods || [])
       };
     }
+    function renderPresetKindOptions(){
+      const select = $("presetKind");
+      if (!select) return;
+      const current = select.value || "services";
+      const saved = readSavedPresets();
+      const groups = getPresetGroups(saved);
+      select.innerHTML = "";
+      groups.forEach((group) => {
+        const option = document.createElement("option");
+        option.value = group.id;
+        option.textContent = `${group.emoji || ""} ${group.name || group.id}`.trim();
+        select.appendChild(option);
+      });
+      select.value = groups.some((group) => group.id === current) ? current : "services";
+    }
     function renderPresetSelect(){
+      renderPresetKindOptions();
       const kind = $("presetKind").value || "services";
       const select = $("presetSelect");
       const presets = getPackagePresets()[kind] || [];
@@ -1442,6 +1508,48 @@
           </div>`;
       }).join("") : '<div class="mini-note">РЎРѕС…СЂР°РЅС‘РЅРЅС‹С… С€Р°Р±Р»РѕРЅРѕРІ РїРѕРєР° РЅРµС‚. РќР°Р¶РјРёС‚Рµ В«РЎРѕС…СЂР°РЅРёС‚СЊ С‚РµРєСѓС‰РёР№В».</div>';
     }
+    function presetGroupButtonsHtml(kind){
+      const saved = readSavedPresets();
+      return getPresetGroups(saved).map((group) => {
+        return `<button class="btn ${group.id === kind ? "primary" : ""}" data-kind="${escapeHtml(group.id)}" type="button">${escapeHtml((group.emoji || "") + " " + (group.name || group.id))}</button>`;
+      }).join("") + `<button class="btn" data-action="add-group" type="button">+ \u0433\u0440\u0443\u043f\u043f\u0430</button><button class="btn" data-action="edit-group" type="button">\u270e</button>`;
+    }
+    function createPresetGroup(){
+      const saved = readSavedPresets();
+      const name = (prompt("\u041d\u0430\u0437\u0432\u0430\u043d\u0438\u0435 \u0433\u0440\u0443\u043f\u043f\u044b", "\u041a\u0430\u0440\u043a\u0430\u0441\u043d\u044b\u0435 \u0434\u043e\u043c\u0430") || "").trim();
+      if (!name) return;
+      const emoji = (prompt("Emoji \u0433\u0440\u0443\u043f\u043f\u044b", "\ud83c\udfe0") || "\ud83e\uddfe").trim() || "\ud83e\uddfe";
+      let id = makePresetGroupId(name);
+      while (saved.groups.some((group) => group.id === id) || saved[id]) id = makePresetGroupId(name + "_" + Date.now().toString(36));
+      saved.groups.push({ id, name, emoji });
+      saved[id] = [];
+      writeSavedPresets(saved);
+      $("presetKind").value = id;
+      renderPresetSelect();
+      refreshPresetArchive();
+    }
+    function editPresetGroup(){
+      const kind = $("presetKind").value || "services";
+      const saved = readSavedPresets();
+      const group = saved.groups.find((item) => item.id === kind);
+      if (!group) return;
+      const isDefault = DEFAULT_PRESET_GROUPS.some((item) => item.id === kind);
+      const name = prompt("\u041d\u0430\u0437\u0432\u0430\u043d\u0438\u0435 \u0433\u0440\u0443\u043f\u043f\u044b", group.name || kind);
+      if (name === null) return;
+      group.name = name.trim() || group.name || kind;
+      const emoji = prompt("Emoji \u0433\u0440\u0443\u043f\u043f\u044b", group.emoji || "\ud83e\uddfe");
+      if (emoji !== null) group.emoji = emoji.trim() || group.emoji || "\ud83e\uddfe";
+      if (!isDefault && confirm("\u0423\u0434\u0430\u043b\u0438\u0442\u044c \u044d\u0442\u0443 \u0433\u0440\u0443\u043f\u043f\u0443? OK = \u0443\u0434\u0430\u043b\u0438\u0442\u044c, Cancel = \u0442\u043e\u043b\u044c\u043a\u043e \u0441\u043e\u0445\u0440\u0430\u043d\u0438\u0442\u044c")) {
+        saved.groups = saved.groups.filter((item) => item.id !== kind);
+        delete saved[kind];
+        writeSavedPresets(saved);
+        $("presetKind").value = "services";
+      } else {
+        writeSavedPresets(saved);
+      }
+      renderPresetSelect();
+      refreshPresetArchive();
+    }
     function decoratePresetArchive(modal){
       modal.querySelectorAll('[data-action="take"]').forEach((btn) => {
         btn.textContent = "\u0412\u0417\u042f\u0422\u042c";
@@ -1478,6 +1586,8 @@
       const kind = $("presetKind").value || "services";
       const grid = modal.querySelector(".preset-archive-grid");
       if (grid) grid.innerHTML = presetArchiveCardsHtml(kind);
+      const actions = modal.querySelector(".preset-archive-actions");
+      if (actions) actions.innerHTML = presetGroupButtonsHtml(kind) + '<button class="preset-archive-close" type="button">\u00d7</button>';
       modal.querySelectorAll("[data-kind]").forEach((btn) => {
         btn.classList.toggle("primary", btn.getAttribute("data-kind") === kind);
       });
@@ -1524,10 +1634,20 @@
           <div class="preset-archive-grid">${cards}</div>
         </div>`;
       document.body.appendChild(modal);
+      const archiveActions = modal.querySelector(".preset-archive-actions");
+      if (archiveActions) {
+        archiveActions.innerHTML = presetGroupButtonsHtml(kind) + '<button class="preset-archive-close" type="button">\u00d7</button>';
+      }
       decoratePresetArchive(modal);
       modal.addEventListener("click", (event) => {
         if (event.target === modal || event.target.classList.contains("preset-archive-close")) {
           closePresetArchive();
+          return;
+        }
+        const groupAction = event.target.closest('[data-action="add-group"],[data-action="edit-group"]');
+        if (groupAction) {
+          if (groupAction.getAttribute("data-action") === "add-group") createPresetGroup();
+          else editPresetGroup();
           return;
         }
         const kindBtn = event.target.closest("[data-kind]");
