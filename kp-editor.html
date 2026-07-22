@@ -76,6 +76,7 @@
     label{display:flex;flex-direction:column;gap:5px;color:#b9c8d8;font-size:11px;font-weight:900;text-transform:uppercase;letter-spacing:.35px}
     input,textarea,select{width:100%;border:1px solid rgba(93,229,255,.22);background:#07111d;color:#fff;border-radius:8px;padding:9px 10px;outline:none}
     textarea{min-height:118px;resize:vertical;line-height:1.35}
+    #pkgItems{min-height:160px;overflow:hidden;resize:none}
     input:focus,textarea:focus,select:focus{border-color:rgba(89,235,255,.72);box-shadow:0 0 0 3px rgba(89,235,255,.08)}
     .grid2{display:grid;grid-template-columns:1fr 1fr;gap:9px}
     .card{border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.025);border-radius:8px;padding:11px;display:flex;flex-direction:column;gap:10px}
@@ -219,6 +220,7 @@
 
         <div class="card" id="packageEditor">
           <label class="switch"><input id="pkgOn" type="checkbox"> Показывать пакет</label>
+          <label class="switch"><input id="pkgAvitoBudgetOn" type="checkbox"> Бюджет на Авито</label>
           <div class="grid2">
             <label>Иконка
               <input id="pkgIcon">
@@ -599,24 +601,31 @@
         return packagePriceShort(pkg) || "";
       }).filter(Boolean).join(" - ");
     }
+    const AVITO_BUDGET_LABEL = "Примерная стоимость услуг Авито на месяц";
+    function isAvitoBudgetLine(line){
+      return /=\s*работа\b/i.test(line)
+        || /работа\s+авитолога/i.test(line)
+        || /стоимость\s+услуг\s+авито/i.test(line);
+    }
     function syncPackageDerivedLines(pkg){
       pkg.quantity = packageQuantity(pkg);
       const work = formatMoney(pkg.work);
       const quantity = pkg.quantity;
       let hasWorkLine = false;
       pkg.items = (pkg.items || []).map((line) => {
-        if (/=\s*работа\b/i.test(line) || /работа\s+авитолога/i.test(line)) {
+        if (isAvitoBudgetLine(line)) {
           hasWorkLine = true;
-          return work ? `${work} = работа Авитолога (оплачивается сразу)` : line;
+          return work && pkg.avitoBudgetOn !== false ? `${work} = ${AVITO_BUDGET_LABEL}` : "";
         }
         if (quantity && /автозагруз/i.test(line) && /постинг/i.test(line)) {
           return `Создание файла автозагрузки / ручной постинг на ${quantity} карточек на 30 дней`;
         }
         return line;
-      });
-      if (work && !hasWorkLine) pkg.items.unshift(`${work} = работа Авитолога (оплачивается сразу)`);
+      }).filter(Boolean);
+      if (work && pkg.avitoBudgetOn !== false && !hasWorkLine) pkg.items.unshift(`${work} = ${AVITO_BUDGET_LABEL}`);
     }
     function normalizePackage(pkg){
+      if (pkg.avitoBudgetOn === undefined) pkg.avitoBudgetOn = true;
       pkg.quantity = packageQuantity(pkg);
       syncPackageDerivedLines(pkg);
       return pkg;
@@ -709,6 +718,20 @@
     function listCustomHeroImages(){ return heroDbRequest("readonly", (store) => store.getAll()); }
     function getCustomHeroImage(id){ return heroDbRequest("readonly", (store) => store.get(id)); }
     function putCustomHeroImage(record){ return heroDbRequest("readwrite", (store) => store.put(record)); }
+    async function renameCustomHeroImage(record){
+      const name = prompt("Новое название картинки", record && record.name ? record.name : "");
+      if (name === null) return;
+      const nextName = name.trim();
+      if (!nextName || nextName === record.name) return;
+      const nextRecord = Object.assign({}, record, { name: nextName, updatedAt: new Date().toISOString() });
+      await putCustomHeroImage(nextRecord);
+      customNicheImages = customNicheImages.map((item) => item.id === nextRecord.id ? nextRecord : item);
+      if (state.heroCustomId === nextRecord.id) {
+        state.heroName = nextName;
+        saveState();
+      }
+      renderNicheLibrary();
+    }
     async function imageFileToDataUrl(file){
       const source = URL.createObjectURL(file);
       try {
@@ -799,6 +822,15 @@
         card.className = "niche-card" + (state.heroCustomId === record.id ? " active" : "");
         card.innerHTML = `<img src="${record.dataUrl}" alt=""><span><span class="niche-name">📌 ${escapeHtml(record.name)}</span><span class="niche-path">${kind === "goods" ? "Товары" : "Услуги"} · загружено</span></span>`;
         card.addEventListener("click", () => selectCustomNicheImage(record));
+        card.addEventListener("contextmenu", async (event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          try {
+            await renameCustomHeroImage(record);
+          } catch (error) {
+            alert(error && error.message ? error.message : "Не удалось переименовать картинку");
+          }
+        });
         grid.appendChild(card);
       });
     }
@@ -851,12 +883,14 @@
       clampSelectedPackage();
       const pkg = state.packages[selectedPackage];
       $("pkgOn").checked = !!pkg.on;
+      $("pkgAvitoBudgetOn").checked = pkg.avitoBudgetOn !== false;
       $("pkgIcon").value = pkg.icon || "";
       $("pkgName").value = pkg.name || "";
       $("pkgLimit").value = packageQuantity(pkg);
       $("pkgWork").value = pkg.work || "";
       $("pkgColor").value = normalizeColor(pkg.color || "#24308f");
       $("pkgItems").value = (pkg.items || []).join("\n");
+      autoResizePackageItems();
     }
     function renderZones(){
       stage.querySelectorAll(".click-zone").forEach((el) => el.remove());
@@ -907,6 +941,7 @@
       const pkg = state.packages[selectedPackage];
       if (!pkg) return;
       pkg.on = $("pkgOn").checked;
+      pkg.avitoBudgetOn = $("pkgAvitoBudgetOn").checked;
       pkg.icon = $("pkgIcon").value;
       pkg.name = $("pkgName").value;
       pkg.quantity = $("pkgLimit").value.replace(/\D/g, "");
@@ -917,8 +952,15 @@
       syncPackageDerivedLines(pkg);
       const syncedItems = pkg.items.join("\n");
       if ($("pkgItems").value !== syncedItems) $("pkgItems").value = syncedItems;
+      autoResizePackageItems();
       packageFormDirty = false;
       persistState();
+    }
+    function autoResizePackageItems(){
+      const el = $("pkgItems");
+      if (!el) return;
+      el.style.height = "auto";
+      el.style.height = Math.max(160, el.scrollHeight + 4) + "px";
     }
     function normalizeColor(color){
       if (/^#[0-9a-f]{6}$/i.test(color)) return color;
@@ -1755,9 +1797,10 @@
       }, { passive: false });
     }
 
-    ["pkgOn","pkgIcon","pkgName","pkgLimit","pkgWork","pkgColor","pkgItems"].forEach((id) => {
+    ["pkgOn","pkgAvitoBudgetOn","pkgIcon","pkgName","pkgLimit","pkgWork","pkgColor","pkgItems"].forEach((id) => {
       $(id).addEventListener("input", () => {
         markPackageFormDirty();
+        if (id === "pkgItems") autoResizePackageItems();
       });
       $(id).addEventListener("change", () => {
         markPackageFormDirty();
@@ -1769,6 +1812,10 @@
         if (wasDirty && id === "pkgOn") renderZones();
         if (wasDirty) draw();
       });
+    });
+    $("pkgAvitoBudgetOn").addEventListener("change", () => {
+      flushPackageForm();
+      draw();
     });
     document.addEventListener("visibilitychange", () => {
       if (document.hidden) flushPackageForm();
