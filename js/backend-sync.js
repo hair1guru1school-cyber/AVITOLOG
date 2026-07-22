@@ -374,6 +374,141 @@
     refreshOpenScreensAfterRemoteApply([storageKey]);
     return { ok: true, key: storageKey, audit_id: hit.audit_id, score: hit.score };
   };
+  function restoreEsc(value) {
+    return String(value == null ? '' : value).replace(/[&<>"']/g, function(ch) {
+      return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[ch];
+    });
+  }
+  function restoreMonthKey(delta) {
+    var d = new Date();
+    d.setMonth(d.getMonth() + Number(delta || 0));
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+  }
+  function restoreLabelForKey(key) {
+    var labels = {
+      avitolog_clients_sasha: 'CRM клиенты Саши',
+      avitolog_projects_sasha: 'Проекты Саши',
+      crm_tasks_v1_sasha: 'Задачи Саши',
+      avitolog_assets_my_v2_sasha: 'Касса Саши',
+      avitolog_goals_v1_sasha: 'CRM воронка Саши LIVE',
+      avitolog_goal_achievements_v1_sasha: 'Достижения Саши'
+    };
+    return labels[key] || key.replace('avitolog_goals_v1_sasha_month_', 'CRM воронка Саши ');
+  }
+  function ensureRestoreStyles() {
+    if (document.getElementById('backendRestoreStyles')) return;
+    var st = document.createElement('style');
+    st.id = 'backendRestoreStyles';
+    st.textContent = [
+      '.backend-restore-backdrop{position:fixed;inset:0;z-index:2147482500;background:rgba(0,0,0,.62);display:flex;align-items:center;justify-content:center;padding:22px}',
+      '.backend-restore-modal{width:min(980px,94vw);max-height:88vh;overflow:auto;background:#0d1724;border:1px solid rgba(53,208,255,.45);border-radius:18px;box-shadow:0 26px 90px #000;color:#e9f7ff;font:13px Segoe UI,Arial,sans-serif}',
+      '.backend-restore-head{display:flex;align-items:center;gap:12px;padding:16px 18px;border-bottom:1px solid rgba(53,208,255,.22);position:sticky;top:0;background:#0d1724;z-index:2}',
+      '.backend-restore-head b{font-size:18px}.backend-restore-close{margin-left:auto;background:#1c2a3c;border:1px solid #38516e;color:#fff;border-radius:9px;padding:8px 11px;cursor:pointer}',
+      '.backend-restore-body{padding:16px 18px}.backend-restore-tabs{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px}.backend-restore-tab{border:1px solid rgba(53,208,255,.35);background:#122235;color:#dff8ff;border-radius:10px;padding:8px 10px;font-weight:800;cursor:pointer}.backend-restore-tab.on{background:#18c99b;color:#061411}',
+      '.backend-restore-row{display:grid;grid-template-columns:110px 140px 1fr 100px 120px;gap:10px;align-items:center;padding:10px;border:1px solid rgba(53,208,255,.18);border-radius:12px;margin-bottom:8px;background:rgba(255,255,255,.035)}',
+      '.backend-restore-row small{color:#8ca5ba}.backend-restore-row button{background:#20d6a0;border:0;border-radius:9px;padding:8px 10px;font-weight:900;cursor:pointer;color:#061411}.backend-restore-row button.danger{background:#ff6b88;color:#24050b}',
+      '.backend-restore-meta{white-space:nowrap;color:#9fe7ff}.backend-restore-preview{font-family:Consolas,monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#d5e8f5}.backend-restore-status{color:#9fe7ff;margin-bottom:10px;font-weight:800}'
+    ].join('');
+    document.head.appendChild(st);
+  }
+  function restorePreviewForValue(key, value) {
+    try {
+      var parsed = JSON.parse(value || '');
+      if (Array.isArray(parsed)) {
+        return parsed.slice(0, 4).map(function(x) { return (x && (x.company || x.name || x.title)) || 'запись'; }).join(' · ');
+      }
+      if (parsed && Array.isArray(parsed.projects)) {
+        return parsed.projects.slice(0, 4).map(function(x) { return (x && (x.name || x.title)) || 'проект'; }).join(' · ');
+      }
+    } catch (e) {}
+    return String(value || '').slice(0, 120);
+  }
+  function defaultRestoreKeys() {
+    var cur = restoreMonthKey(0);
+    var prev = restoreMonthKey(-1);
+    return [
+      'avitolog_clients_sasha',
+      'avitolog_goals_v1_sasha',
+      'avitolog_goals_v1_sasha_month_' + cur,
+      'avitolog_goals_v1_sasha_month_' + prev,
+      'avitolog_projects_sasha',
+      'avitolog_assets_my_v2_sasha',
+      'crm_tasks_v1_sasha'
+    ];
+  }
+  async function renderRestoreHistory(key) {
+    var root = document.getElementById('backendRestoreList');
+    var status = document.getElementById('backendRestoreStatus');
+    if (!root || !status) return;
+    status.textContent = 'Загружаю историю: ' + restoreLabelForKey(key) + '...';
+    root.innerHTML = '';
+    document.querySelectorAll('.backend-restore-tab').forEach(function(btn) {
+      btn.classList.toggle('on', btn.getAttribute('data-key') === key);
+    });
+    try {
+      var rows = await window.__avitologBackendHistory(key, 40);
+      status.textContent = rows.length ? ('Версий найдено: ' + rows.length) : 'История пустая по этому разделу.';
+      root.innerHTML = rows.map(function(row) {
+        var dt = row.created_at ? new Date(row.created_at).toLocaleString('ru-RU') : '';
+        var preview = restorePreviewForValue(key, row.value_text || '');
+        return '<div class="backend-restore-row">' +
+          '<div class="backend-restore-meta">#' + restoreEsc(row.audit_id) + '<br><small>rev ' + restoreEsc(row.revision || '') + '</small></div>' +
+          '<div>' + restoreEsc(dt) + '<br><small>' + restoreEsc(row.action || '') + '</small></div>' +
+          '<div class="backend-restore-preview" title="' + restoreEsc(preview) + '">' + restoreEsc(preview || 'без превью') + '</div>' +
+          '<div><b>' + restoreEsc(row.score || 0) + '</b><br><small>вес</small></div>' +
+          '<button type="button" class="danger" data-restore-key="' + restoreEsc(key) + '" data-audit-id="' + restoreEsc(row.audit_id) + '">Вернуть</button>' +
+        '</div>';
+      }).join('');
+    } catch (error) {
+      status.textContent = 'Ошибка истории: ' + (error && error.message ? error.message : String(error));
+    }
+  }
+  window.__avitologBackendOpenRestore = function () {
+    ensureRestoreStyles();
+    var old = document.getElementById('backendRestoreModal');
+    if (old) old.remove();
+    var keys = defaultRestoreKeys();
+    var wrap = document.createElement('div');
+    wrap.id = 'backendRestoreModal';
+    wrap.className = 'backend-restore-backdrop';
+    wrap.innerHTML = '<div class="backend-restore-modal" role="dialog" aria-modal="true">' +
+      '<div class="backend-restore-head"><b>🛟 Восстановление из Supabase</b><span>Выбери раздел и версию. Это перезапишет только выбранный ключ.</span><button type="button" class="backend-restore-close">Закрыть</button></div>' +
+      '<div class="backend-restore-body"><div class="backend-restore-tabs">' +
+        keys.map(function(k) { return '<button type="button" class="backend-restore-tab" data-key="' + restoreEsc(k) + '">' + restoreEsc(restoreLabelForKey(k)) + '</button>'; }).join('') +
+      '</div><div id="backendRestoreStatus" class="backend-restore-status"></div><div id="backendRestoreList"></div></div>' +
+    '</div>';
+    document.body.appendChild(wrap);
+    wrap.addEventListener('click', function(e) {
+      if (e.target === wrap || e.target.closest('.backend-restore-close')) {
+        wrap.remove();
+        return;
+      }
+      var tab = e.target.closest('.backend-restore-tab');
+      if (tab) {
+        renderRestoreHistory(tab.getAttribute('data-key'));
+        return;
+      }
+      var restoreBtn = e.target.closest('[data-restore-key][data-audit-id]');
+      if (restoreBtn) {
+        var k = restoreBtn.getAttribute('data-restore-key');
+        var id = restoreBtn.getAttribute('data-audit-id');
+        if (!confirm('Восстановить "' + restoreLabelForKey(k) + '" из версии #' + id + '?')) return;
+        restoreBtn.disabled = true;
+        restoreBtn.textContent = '...';
+        window.__avitologBackendRestoreHistory(k, id)
+          .then(function() {
+            restoreBtn.textContent = 'Готово';
+            renderRestoreHistory(k);
+          })
+          .catch(function(error) {
+            restoreBtn.disabled = false;
+            restoreBtn.textContent = 'Вернуть';
+            alert('Ошибка восстановления: ' + (error && error.message ? error.message : String(error)));
+          });
+      }
+    });
+    renderRestoreHistory(keys[0]);
+  };
   function profileValueScore(key, value) {
     if (!value) return 0;
     try {
@@ -632,6 +767,10 @@
   });
   document.addEventListener('DOMContentLoaded', async function () {
     var phase = 'start';
+    try {
+      var restoreBtn = document.getElementById('backendRestoreBtn');
+      if (restoreBtn) restoreBtn.style.display = 'inline-flex';
+    } catch (restoreBtnError) {}
     if (window.AVITOLOG_BACKEND_PREVIEW) {
       ensureStatus();
       statusEl.textContent = 'Supabase: проверка записи...';

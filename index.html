@@ -2861,7 +2861,7 @@ body.day-mode .assets-col-sasha-hint{color:var(--accent)}
 })();
 </script>
 <script src="js/supabase-config.js?v=20260619-write1"></script>
-<script src="js/backend-sync.js?v=20260715-dirty-project-write-guard-1"></script>
+<script src="js/backend-sync.js?v=20260722-server-history-restore-1"></script>
 <script src="js/user-config.js?v=20260702-sasha-backend-legacy-merge-1"></script>
 <script src="js/goals.js?v=20260710-crm-chart-stable-scroll-1"></script>
 <script>
@@ -2894,6 +2894,7 @@ if (!window.AVITOLOG_GOALS) {
   <button type="button" id="authBtn" class="header-drive-btn header-mobile-show" onclick="startAuth(event)" title="Войти в Google Drive">🔑 Drive</button>
   <button type="button" id="userSwitchBtn" class="header-employee-btn header-mobile-show" onclick="switchUserProfile()" title="Переключить профиль пользователя"></button>
   <button type="button" id="sashaTeamSyncBtn" class="header-employee-btn header-sasha-sync-btn header-mobile-show" style="border-color:rgba(53,208,255,0.45);color:#9fe7ff" onclick="window.__avitologSashaCloudClick&&window.__avitologSashaCloudClick()" title="Синхронизация профиля Саша с Google Drive">☁️</button>
+  <button type="button" id="backendRestoreBtn" class="header-employee-btn header-mobile-show" style="display:none;border-color:rgba(255,120,150,0.5);color:#ffd0dc" onclick="window.__avitologBackendOpenRestore&&window.__avitologBackendOpenRestore()" title="Восстановить данные из истории Supabase">🛟</button>
   <form onsubmit="return false" style="display:flex;align-items:center;gap:8px">
     <input type="password" id="apiKeyInput" placeholder="sk-ant-... (API ключ с console.anthropic.com)"
       title="Anthropic API ключ. Получить: console.anthropic.com → API Keys"
