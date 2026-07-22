@@ -320,7 +320,7 @@
       appliedKeys.push(row.storage_key);
       var localBeforeApply = '';
       try { localBeforeApply = localStorage.getItem(row.storage_key) || ''; } catch (localReadError) {}
-      if (isRecentlyDirty(row.storage_key) && localBeforeApply) {
+      if (!serverOnlyMode && isRecentlyDirty(row.storage_key) && localBeforeApply) {
         mergedWrites.push({ key: row.storage_key, value: localBeforeApply, dirtyRetry: true });
         return;
       }
@@ -349,6 +349,30 @@
     var rows = await readRemote();
     var res = await applyRemoteRows(rows);
     return { ok: true, applied: res.appliedKeys.length, keys: res.appliedKeys };
+  };
+  window.__avitologBackendHistory = async function (key, limit) {
+    var storageKey = String(key || 'avitolog_clients_sasha');
+    var response = await fetch(cfg.url + '/rest/v1/rpc/frontend_state_history', {
+      method: 'POST',
+      headers: await headers({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify({ p_key: storageKey, p_limit: limit || 25 })
+    });
+    var rows = await response.json();
+    if (!response.ok) throw new Error((rows && rows.message) || 'frontend_state_history failed');
+    return (rows || []).map(function(row) {
+      var score = profileValueScore(storageKey, row.value_text || '');
+      return Object.assign({}, row, { score: score });
+    });
+  };
+  window.__avitologBackendRestoreHistory = async function (key, auditId) {
+    var storageKey = String(key || 'avitolog_clients_sasha');
+    var rows = await window.__avitologBackendHistory(storageKey, 100);
+    var hit = rows.find(function(row) { return String(row.audit_id) === String(auditId); });
+    if (!hit || !hit.value_text) throw new Error('Версия не найдена: ' + auditId);
+    await writeKey(storageKey, hit.value_text);
+    localStorage.setItem(storageKey, hit.value_text);
+    refreshOpenScreensAfterRemoteApply([storageKey]);
+    return { ok: true, key: storageKey, audit_id: hit.audit_id, score: hit.score };
   };
   function profileValueScore(key, value) {
     if (!value) return 0;
