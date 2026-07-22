@@ -1808,6 +1808,11 @@
       const rect = anchor.getBoundingClientRect();
       pop.style.left = Math.min(window.innerWidth - 190, Math.max(8, rect.left)) + "px";
       pop.style.top = Math.min(window.innerHeight - 230, Math.max(8, rect.bottom + 6)) + "px";
+      ["pointerdown", "mousedown", "mouseup", "click"].forEach((eventName) => {
+        pop.addEventListener(eventName, (event) => {
+          event.stopPropagation();
+        }, true);
+      });
       pop.addEventListener("click", (event) => {
         event.stopPropagation();
         const btn = event.target.closest("[data-emoji]");
@@ -1820,8 +1825,13 @@
         preset.updatedAt = new Date().toISOString();
         writeSavedPresets(saved);
         renderPresetSelect();
+        const modal = document.getElementById("presetArchiveModal");
+        const activeKind = $("presetKind").value || kind;
+        if (modal && activeKind === kind) {
+          const cardEmoji = modal.querySelector(`.preset-archive-card[data-index="${savedIndex}"] .preset-card-emoji`);
+          if (cardEmoji) cardEmoji.textContent = preset.emoji;
+        }
         closePresetEmojiPicker();
-        refreshPresetArchive();
       });
     }
     function presetArchiveCardsHtml(kind){
