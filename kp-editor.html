@@ -757,7 +757,17 @@
       persistState();
       draw();
     }
+    function keepCurrentHeroState(){
+      if (state.heroCustomId || state.heroSrc) return;
+      if (customHeroSrc) return;
+      const current = images.hero && String(images.hero.src || "");
+      if (current && current !== ASSETS.hero) {
+        if (current.indexOf("data:") === 0) customHeroSrc = current;
+        else state.heroSrc = current;
+      }
+    }
     function persistState(){
+      keepCurrentHeroState();
       state.selectedPackage = clampSelectedPackage();
       try { localStorage.setItem(LS_KEY, JSON.stringify(state)); } catch (e) {}
     }
@@ -943,21 +953,25 @@
       });
     }
     async function selectNicheImage(src, name){
+      const nextHero = await loadImage(src);
+      if (!nextHero) return;
       customHeroSrc = "";
       state.heroCustomId = "";
       state.heroSrc = src;
       state.heroName = name;
-      images.hero = await loadImage(src);
+      images.hero = nextHero;
       renderNicheLibrary();
       saveState();
       draw();
     }
     async function selectCustomNicheImage(record){
+      const nextHero = await loadImage(record.dataUrl);
+      if (!nextHero) return;
       customHeroSrc = "";
       state.heroCustomId = record.id;
       state.heroSrc = "";
       state.heroName = record.name;
-      images.hero = await loadImage(record.dataUrl);
+      images.hero = nextHero;
       renderNicheLibrary();
       saveState();
       draw();
@@ -1499,6 +1513,11 @@
       $("presetSelect").value = String((DEFAULT_PRESETS[kind] || []).length + savedIndex);
     }
     async function applyPresetVisual(preset){
+      const prevHero = images.hero;
+      const prevHeroSrc = state.heroSrc;
+      const prevHeroCustomId = state.heroCustomId;
+      const prevHeroName = state.heroName;
+      const prevCustomHeroSrc = customHeroSrc;
       state.bgChoice = preset.bgChoice || state.bgChoice || defaults.bgChoice;
       state.heroName = preset.heroName || state.heroName || "";
       if (preset.heroSrc) {
@@ -1512,7 +1531,7 @@
         customHeroSrc = (customRecord && customRecord.dataUrl) || preset.heroDataUrl || preset.heroPreviewSrc || "";
         state.heroSrc = "";
         state.heroCustomId = preset.heroCustomId;
-        images.hero = await loadImage(customHeroSrc || ASSETS.hero);
+        if (customHeroSrc) images.hero = await loadImage(customHeroSrc);
       } else if (preset.heroDataUrl) {
         customHeroSrc = preset.heroDataUrl;
         state.heroSrc = "";
@@ -1524,7 +1543,13 @@
         state.heroCustomId = "";
         images.hero = await loadImage(preset.heroPreviewSrc);
       }
-      if (!images.hero) images.hero = await loadImage(ASSETS.hero);
+      if (!images.hero) {
+        images.hero = prevHero || await loadImage(ASSETS.hero);
+        state.heroSrc = prevHeroSrc || "";
+        state.heroCustomId = prevHeroCustomId || "";
+        state.heroName = prevHeroName || state.heroName || "";
+        customHeroSrc = prevCustomHeroSrc || "";
+      }
     }
     async function takePreset(kind, savedIndex){
       const saved = readSavedPresets();
