@@ -958,6 +958,59 @@ function clearAoaxGeneratedEvents(p) {
   }
   return changed;
 }
+function getAoaxClearState(p) {
+  if (!p || !p.aoaxAutoloadManualClear || typeof p.aoaxAutoloadManualClear !== 'object') return null;
+  return p.aoaxAutoloadManualClear;
+}
+function getAoaxPackUpdatedAt(pack) {
+  return String((pack && (pack.updatedAt || pack.updated_at || pack.exportedAt || pack.exported_at || pack.lastExportAt || pack.last_export_at)) || '');
+}
+function isAoaxClearStillNewer(p, pack, key) {
+  var clear = getAoaxClearState(p);
+  if (!clear) return false;
+  var clearedAt = String((key && clear.sheets && clear.sheets[key]) || clear.allAt || clear.updatedAt || '');
+  if (!clearedAt) return false;
+  var packAt = getAoaxPackUpdatedAt(pack);
+  return !packAt || packAt <= clearedAt;
+}
+function isAoaxProjectManuallyCleared(p, pack) {
+  var clear = getAoaxClearState(p);
+  return !!(clear && clear.all && isAoaxClearStillNewer(p, pack, ''));
+}
+function isAoaxSheetManuallyCleared(p, pack, sheetName) {
+  var clear = getAoaxClearState(p);
+  var key = normalizeAoaxText(sheetName || '');
+  return !!(clear && key && clear.sheets && clear.sheets[key] && isAoaxClearStillNewer(p, pack, key));
+}
+function markAoaxAutoloadManuallyCleared(p, childLineIdx) {
+  if (!p) return;
+  var now = new Date().toISOString();
+  var clear = getAoaxClearState(p) || {all:false, allAt:'', sheets:{}, updatedAt:''};
+  if (!clear.sheets || typeof clear.sheets !== 'object') clear.sheets = {};
+  if (childLineIdx >= 0) {
+    var name = String(((p.childLines || [])[childLineIdx]) || '').trim();
+    if (name) clear.sheets[normalizeAoaxText(name)] = now;
+  } else {
+    clear.all = true;
+    clear.allAt = now;
+  }
+  clear.updatedAt = now;
+  p.aoaxAutoloadManualClear = clear;
+  delete p.aoaxAutoloadSignature;
+}
+function unmarkAoaxAutoloadManualClear(p, childLineIdx) {
+  var clear = getAoaxClearState(p);
+  if (!p || !clear) return;
+  if (childLineIdx >= 0) {
+    var name = String(((p.childLines || [])[childLineIdx]) || '').trim();
+    if (name && clear.sheets) delete clear.sheets[normalizeAoaxText(name)];
+  } else {
+    delete p.aoaxAutoloadManualClear;
+    return;
+  }
+  if (!clear.all && (!clear.sheets || !Object.keys(clear.sheets).length)) delete p.aoaxAutoloadManualClear;
+  else p.aoaxAutoloadManualClear = clear;
+}
 function applyAoaxAutoloadState(data) {
   var state = readAoaxAutoloadState();
   var changed = false;
@@ -989,6 +1042,7 @@ function applyAoaxAutoloadState(data) {
       dateEnd: fallbackEnd,
       updatedAt: pack.updatedAt || '',
       exported: exported,
+      manualClear: p.aoaxAutoloadManualClear || null,
       parserVersion: 'aoax-date-v3-datebegin'
     });
     if (p.aoaxAutoloadSignature === sig) return;
@@ -1013,6 +1067,15 @@ function applyAoaxAutoloadState(data) {
       changed = true;
       return;
     }
+    if (isAoaxProjectManuallyCleared(p, pack)) {
+      var restoredManualClear = restoreProjectBeforeAoax(p);
+      var clearedManualClear = clearAoaxGeneratedEvents(p);
+      if (!p.clientPath || typeof p.clientPath !== 'object') p.clientPath = {autoload:false,analytics:false,texts:false,packaging:false,portfolio:false};
+      p.clientPath.autoload = false;
+      if (restoredManualClear || clearedManualClear) changed = true;
+      changed = true;
+      return;
+    }
     snapshotProjectBeforeAoax(p);
     if (!p.clientPath || typeof p.clientPath !== 'object') p.clientPath = {autoload:false,analytics:false,texts:false,packaging:false,portfolio:false};
     p.clientPath.autoload = true;
@@ -1022,10 +1085,13 @@ function applyAoaxAutoloadState(data) {
       if (!hasUserLines || p.aoaxManagedChildLines) {
         p.childLines = sheets.map(function(s){ return s.name || 'Лист'; });
         p.aoaxManagedChildLines = true;
-        p.childLineEvents = sheets.map(function(s){ return [makeAoaxActiveEvent(s, fallbackStart, fallbackEnd)]; });
+        p.childLineEvents = sheets.map(function(s){
+          return isAoaxSheetManuallyCleared(p, pack, s.name) ? [] : [makeAoaxActiveEvent(s, fallbackStart, fallbackEnd)];
+        });
       } else {
         ensureChildLineEvents(p);
         sheets.forEach(function(s){
+          if (isAoaxSheetManuallyCleared(p, pack, s.name)) return;
           var sheetKey = normalizeAoaxText(s.name);
           var idx = (p.childLines || []).findIndex(function(line){ return normalizeAoaxText(line) === sheetKey; });
           if (idx >= 0) {
@@ -1064,12 +1130,15 @@ function ensureAoaxCalendarEventsFromInfo(data) {
   ((data && data.projects) || []).forEach(function(p) {
     var info = p && p.aoaxAutoload;
     if (!info || info.exported === false) return;
+    var clear = getAoaxClearState(p);
+    if (clear && clear.all) return;
     var sheets = normalizeAoaxSheets({sheets: info.sheets || []});
     if (!sheets.length || !Array.isArray(p.childLines) || !p.childLines.length) return;
     ensureChildLineEvents(p);
     var lines = getProjectChildLines(p);
     sheets.forEach(function(sheet) {
       var sheetKey = normalizeAoaxText(sheet.name);
+      if (clear && clear.sheets && clear.sheets[sheetKey]) return;
       var idx = lines.findIndex(function(line) { return normalizeAoaxText(line) === sheetKey; });
       if (idx < 0) return;
       var nextEvent = makeAoaxActiveEvent(sheet, info.dateBegin || '', info.dateEnd || '');
@@ -2372,6 +2441,7 @@ function applyProjectAutoloadRangeForRow(projectId, childLineIdx, startDate, end
   var data = loadProjectsData();
   var p = data.projects.find(function(x){ return x.id === projectId; });
   if (!p) return;
+  unmarkAoaxAutoloadManualClear(p, childLineIdx);
   var s = startDate <= endDate ? startDate : endDate;
   var e = startDate <= endDate ? endDate : startDate;
   var todayIso = getTodayISO();
@@ -2404,6 +2474,7 @@ function clearProjectCalendarRow(projectId, childLineIdx) {
   var data = loadProjectsData();
   var p = data.projects.find(function(x){ return x.id === projectId; });
   if (!p) return;
+  markAoaxAutoloadManuallyCleared(p, childLineIdx);
   var clearTypes = {
     launch_range: true,
     not_launched_project_marker: true,
@@ -2449,6 +2520,7 @@ function clearProjectAutoloadForRow(projectId, childLineIdx) {
   var data = loadProjectsData();
   var p = data.projects.find(function(x){ return x.id === projectId; });
   if (!p) return;
+  markAoaxAutoloadManuallyCleared(p, childLineIdx);
   if (childLineIdx >= 0) {
     ensureChildLineEvents(p);
     var evts = (p.childLineEvents[childLineIdx] || []).filter(function(ev){ return ev.type !== 'active_range'; });
@@ -2465,6 +2537,7 @@ function clearProjectAutoloadRangeForRow(projectId, childLineIdx, startDate, end
   var data = loadProjectsData();
   var p = data.projects.find(function(x){ return x.id === projectId; });
   if (!p) return;
+  markAoaxAutoloadManuallyCleared(p, childLineIdx);
   var s = startDate <= endDate ? startDate : endDate;
   var e = startDate <= endDate ? endDate : startDate;
   var clIdx = (childLineIdx != null && childLineIdx >= 0) ? childLineIdx : -1;
