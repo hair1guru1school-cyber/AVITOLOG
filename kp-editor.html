@@ -663,18 +663,7 @@
         }
       }, 0);
       function close(){ modal.remove(); }
-      const panel = modal.querySelector(".preset-small-panel");
-      if (panel) {
-        panel.addEventListener("click", (event) => event.stopPropagation());
-        panel.addEventListener("pointerdown", (event) => event.stopPropagation());
-      }
-      modal.addEventListener("click", (event) => {
-        event.stopPropagation();
-        if (event.target === modal || event.target.closest('[data-action="cancel"]')) {
-          close();
-          return;
-        }
-        if (!event.target.closest('[data-action="save"]')) return;
+      function submit(){
         const payload = {
           kind: kindEl ? kindEl.value : "",
           name: nameEl ? nameEl.value.trim() : "",
@@ -686,12 +675,31 @@
         }
         close();
         onSave(payload);
+      }
+      const panel = modal.querySelector(".preset-small-panel");
+      if (panel) {
+        panel.addEventListener("click", (event) => {
+          event.stopPropagation();
+          if (event.target.closest('[data-action="cancel"]')) {
+            close();
+            return;
+          }
+          if (event.target.closest('[data-action="save"]')) submit();
+        });
+        panel.addEventListener("pointerdown", (event) => event.stopPropagation());
+      }
+      modal.addEventListener("click", (event) => {
+        event.stopPropagation();
+        if (event.target === modal || event.target.closest('[data-action="cancel"]')) {
+          close();
+          return;
+        }
+        if (event.target.closest('[data-action="save"]')) submit();
       });
       modal.addEventListener("keydown", (event) => {
         if (event.key === "Escape") close();
         if (event.key === "Enter" && (event.ctrlKey || event.metaKey)) {
-          const btn = modal.querySelector('[data-action="save"]');
-          if (btn) btn.click();
+          submit();
         }
       });
     }
