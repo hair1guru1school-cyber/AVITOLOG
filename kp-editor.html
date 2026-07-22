@@ -1734,7 +1734,6 @@
       pop.id = "presetActionMenu";
       pop.className = "preset-action-pop";
       pop.innerHTML = `
-        <button type="button" data-preset-action="update">🔄 Обновить текущими данными</button>
         <button type="button" data-preset-action="rename">✎ Переименовать</button>
         <button type="button" data-preset-action="move">📁 Перенести в группу</button>
         <button type="button" data-preset-action="duplicate">⧉ Дублировать</button>
@@ -1776,8 +1775,10 @@
       pop.style.left = Math.min(window.innerWidth - 190, Math.max(8, rect.left)) + "px";
       pop.style.top = Math.min(window.innerHeight - 230, Math.max(8, rect.bottom + 6)) + "px";
       pop.addEventListener("click", (event) => {
+        event.stopPropagation();
         const btn = event.target.closest("[data-emoji]");
         if (!btn) return;
+        event.preventDefault();
         const saved = readSavedPresets();
         const preset = saved[kind] && saved[kind][savedIndex];
         if (!preset) return;
