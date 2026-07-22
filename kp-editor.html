@@ -649,7 +649,13 @@
         }
       }, 0);
       function close(){ modal.remove(); }
+      const panel = modal.querySelector(".preset-small-panel");
+      if (panel) {
+        panel.addEventListener("click", (event) => event.stopPropagation());
+        panel.addEventListener("pointerdown", (event) => event.stopPropagation());
+      }
       modal.addEventListener("click", (event) => {
+        event.stopPropagation();
         if (event.target === modal || event.target.closest('[data-action="cancel"]')) {
           close();
           return;
@@ -1684,9 +1690,11 @@
         return `<button type="button" data-target-kind="${escapeHtml(group.id)}"><span>${escapeHtml(group.emoji || "🧾")}</span><span>${escapeHtml(group.name || group.id)}</span></button>`;
       }).join("");
       document.body.appendChild(pop);
-      const rect = anchor.getBoundingClientRect();
-      pop.style.left = Math.min(window.innerWidth - 242, Math.max(8, rect.right - 230)) + "px";
-      pop.style.top = Math.min(window.innerHeight - 280, Math.max(8, rect.bottom + 6)) + "px";
+      const rect = anchor && anchor.getBoundingClientRect ? anchor.getBoundingClientRect() : anchor;
+      const right = rect && Number.isFinite(rect.right) ? rect.right : (rect && Number.isFinite(rect.clientX) ? rect.clientX : window.innerWidth / 2);
+      const bottom = rect && Number.isFinite(rect.bottom) ? rect.bottom : (rect && Number.isFinite(rect.clientY) ? rect.clientY : window.innerHeight / 2);
+      pop.style.left = Math.min(window.innerWidth - 242, Math.max(8, right - 230)) + "px";
+      pop.style.top = Math.min(window.innerHeight - 280, Math.max(8, bottom + 6)) + "px";
       pop.addEventListener("click", (event) => {
         event.stopPropagation();
         const btn = event.target.closest("[data-target-kind]");
@@ -1773,8 +1781,9 @@
         if (!btn) return;
         const action = btn.getAttribute("data-preset-action");
         if (action === "move") {
+          const anchorPoint = { right: event.clientX, bottom: event.clientY };
           closePresetActionMenu();
-          openPresetGroupMenu(btn, kind, index);
+          openPresetGroupMenu(anchorPoint, kind, index);
           return;
         }
         closePresetActionMenu();
