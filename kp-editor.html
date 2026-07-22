@@ -116,6 +116,10 @@
     .preset-action-pop button{height:34px;border-radius:8px;border:1px solid rgba(255,255,255,.10);background:rgba(255,255,255,.05);color:#eaf7ff;font-weight:900;text-align:left;padding:0 10px;cursor:pointer}
     .preset-action-pop button:hover{background:rgba(93,229,255,.14)}
     .preset-action-pop button.danger{color:#ffd1d1;border-color:rgba(255,90,90,.35);background:rgba(120,20,20,.28)}
+    .preset-group-pop{position:fixed;z-index:10036;width:230px;max-height:260px;overflow:auto;padding:8px;border-radius:12px;border:1px solid rgba(0,217,126,.38);background:#091421;box-shadow:0 16px 46px rgba(0,0,0,.62)}
+    .preset-group-pop-title{font-size:11px;font-weight:1000;color:#90f5c7;text-transform:uppercase;letter-spacing:.5px;margin:0 0 6px;padding:0 4px}
+    .preset-group-pop button{width:100%;min-height:34px;border-radius:8px;border:1px solid rgba(255,255,255,.10);background:rgba(255,255,255,.05);color:#eaf7ff;font-weight:900;text-align:left;padding:6px 9px;cursor:pointer;display:flex;align-items:center;gap:7px}
+    .preset-group-pop button:hover{background:rgba(0,217,126,.14);border-color:rgba(0,217,126,.42)}
     @media(max-width:1180px){.preset-archive-grid{grid-template-columns:repeat(4,minmax(145px,1fr))}}
     @media(max-width:720px){.preset-archive-grid{grid-template-columns:repeat(2,minmax(120px,1fr))}.preset-archive-panel{height:94vh}}
     .switch{flex-direction:row;align-items:center;text-transform:none;letter-spacing:0;font-size:13px;color:#d6e7fa}
@@ -1429,6 +1433,7 @@
     function closePresetArchive(){
       closePresetEmojiPicker();
       closePresetActionMenu();
+      closePresetGroupMenu();
       closePresetPreview();
       const modal = document.getElementById("presetArchiveModal");
       if (modal) modal.remove();
@@ -1511,21 +1516,16 @@
       const pop = document.getElementById("presetActionMenu");
       if (pop) pop.remove();
     }
-    function movePresetToGroup(kind, index){
+    function closePresetGroupMenu(){
+      const pop = document.getElementById("presetGroupMenu");
+      if (pop) pop.remove();
+    }
+    function movePresetToGroup(kind, index, targetId){
       const saved = readSavedPresets();
       const source = saved[kind] || [];
       const preset = source[index];
       if (!preset) return;
-      const groups = getPresetGroups(saved).filter((group) => group.id !== kind);
-      if (!groups.length) {
-        alert("Сначала создайте ещё одну группу.");
-        return;
-      }
-      const list = groups.map((group, i) => `${i + 1}. ${group.emoji || ""} ${group.name || group.id}`).join("\n");
-      const answer = prompt("В какую группу перенести?\n" + list, "1");
-      if (answer === null) return;
-      const groupIndex = Math.max(0, Math.min(groups.length - 1, Number(String(answer).trim()) - 1));
-      const target = groups[groupIndex];
+      const target = getPresetGroups(saved).find((group) => group.id === targetId);
       if (!target) return;
       const [moved] = source.splice(index, 1);
       saved[target.id] = Array.isArray(saved[target.id]) ? saved[target.id] : [];
@@ -1535,6 +1535,40 @@
       renderPresetSelect();
       $("presetSelect").value = String((DEFAULT_PRESETS[target.id] || []).length);
       refreshPresetArchive();
+    }
+    function openPresetGroupMenu(anchor, kind, index){
+      closePresetGroupMenu();
+      const saved = readSavedPresets();
+      const groups = getPresetGroups(saved).filter((group) => group.id !== kind);
+      if (!groups.length) {
+        alert("Сначала создайте ещё одну группу.");
+        return;
+      }
+      const pop = document.createElement("div");
+      pop.id = "presetGroupMenu";
+      pop.className = "preset-group-pop";
+      pop.innerHTML = '<div class="preset-group-pop-title">Перенести в группу</div>' + groups.map((group) => {
+        return `<button type="button" data-target-kind="${escapeHtml(group.id)}"><span>${escapeHtml(group.emoji || "🧾")}</span><span>${escapeHtml(group.name || group.id)}</span></button>`;
+      }).join("");
+      document.body.appendChild(pop);
+      const rect = anchor.getBoundingClientRect();
+      pop.style.left = Math.min(window.innerWidth - 242, Math.max(8, rect.right - 230)) + "px";
+      pop.style.top = Math.min(window.innerHeight - 280, Math.max(8, rect.bottom + 6)) + "px";
+      pop.addEventListener("click", (event) => {
+        event.stopPropagation();
+        const btn = event.target.closest("[data-target-kind]");
+        if (!btn) return;
+        const targetId = btn.getAttribute("data-target-kind") || "";
+        closePresetGroupMenu();
+        movePresetToGroup(kind, index, targetId);
+      });
+      const closeOnOutside = (event) => {
+        if (!pop.contains(event.target) && event.target !== anchor) {
+          closePresetGroupMenu();
+          document.removeEventListener("pointerdown", closeOnOutside, true);
+        }
+      };
+      setTimeout(() => document.addEventListener("pointerdown", closeOnOutside, true), 0);
     }
     function runPresetArchiveAction(action, kind, index){
       const nextSaved = readSavedPresets();
@@ -1587,6 +1621,7 @@
     }
     function openPresetActionMenu(anchor, kind, index){
       closePresetActionMenu();
+      closePresetGroupMenu();
       const pop = document.createElement("div");
       pop.id = "presetActionMenu";
       pop.className = "preset-action-pop";
@@ -1601,9 +1636,15 @@
       pop.style.left = Math.min(window.innerWidth - 222, Math.max(8, rect.right - 210)) + "px";
       pop.style.top = Math.min(window.innerHeight - 190, Math.max(8, rect.bottom + 6)) + "px";
       pop.addEventListener("click", (event) => {
+        event.stopPropagation();
         const btn = event.target.closest("[data-preset-action]");
         if (!btn) return;
         const action = btn.getAttribute("data-preset-action");
+        if (action === "move") {
+          closePresetActionMenu();
+          openPresetGroupMenu(btn, kind, index);
+          return;
+        }
         closePresetActionMenu();
         runPresetArchiveAction(action, kind, index);
       });
