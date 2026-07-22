@@ -537,7 +537,21 @@
           previewDataUrl: preset.previewDataUrl || ""
         }));
       });
-      localStorage.setItem(PRESET_KEY, JSON.stringify(clean));
+      const previousValue = localStorage.getItem(PRESET_KEY) || "";
+      const value = JSON.stringify(clean);
+      localStorage.setItem(PRESET_KEY, value);
+      try {
+        document.dispatchEvent(new CustomEvent("avitolog:storage-write", {
+          detail: { key: PRESET_KEY, value, previousValue }
+        }));
+      } catch (e) {}
+      try {
+        if (window.parent && window.parent !== window && window.parent.document) {
+          window.parent.document.dispatchEvent(new CustomEvent("avitolog:storage-write", {
+            detail: { key: PRESET_KEY, value, previousValue }
+          }));
+        }
+      } catch (e) {}
     }
     function makePresetPreviewDataUrl(){
       let prevFormReady = formReady;

@@ -668,6 +668,15 @@
   var KP_SAVED_CLIENT_PACKAGES_STORE = 'avito_kp_saved_client_packages_v1';
   var KP_EDITOR_PRESETS_STORE = 'avitolog_kp_package_presets_v1';
 
+  function writeKpStateKey(key, value, previousValue) {
+    try {
+      localStorage.setItem(key, value);
+      document.dispatchEvent(new CustomEvent('avitolog:storage-write', {
+        detail: { key: key, value: value, previousValue: previousValue || '' }
+      }));
+    } catch (e) {}
+  }
+
   function rememberSavedKpPackageData(folderId, record) {
     try {
       var all = JSON.parse(localStorage.getItem(KP_SAVED_CLIENT_PACKAGES_STORE) || '{}');
@@ -675,7 +684,7 @@
       var list = Array.isArray(all[folderId]) ? all[folderId] : [];
       list.unshift(record);
       all[folderId] = list.slice(0, 20);
-      localStorage.setItem(KP_SAVED_CLIENT_PACKAGES_STORE, JSON.stringify(all));
+      writeKpStateKey(KP_SAVED_CLIENT_PACKAGES_STORE, JSON.stringify(all), localStorage.getItem(KP_SAVED_CLIENT_PACKAGES_STORE) || '');
     } catch (e) {}
   }
 
@@ -726,7 +735,7 @@
         previewDataUrl: record.previewDataUrl || ''
       });
       all[kind] = all[kind].slice(0, 50);
-      localStorage.setItem(KP_EDITOR_PRESETS_STORE, JSON.stringify(all));
+      writeKpStateKey(KP_EDITOR_PRESETS_STORE, JSON.stringify(all), localStorage.getItem(KP_EDITOR_PRESETS_STORE) || '');
     } catch (e) {}
   }
 
@@ -808,7 +817,7 @@
     return (
       '<div class="kp-gen-section kp-editor-embed-section">' +
       '<div class="kp-gen-label">Расчет КП</div>' +
-      '<iframe class="kp-editor-embed" src="kp-editor.html?embedded=1&amp;v=20260721-kp-preset-visual-archive-1" title="Редактор КП"></iframe>' +
+      '<iframe class="kp-editor-embed" src="kp-editor.html?embedded=1&amp;v=20260722-kp-preset-groups-sync-1" title="Редактор КП"></iframe>' +
       '</div>'
     );
   }
