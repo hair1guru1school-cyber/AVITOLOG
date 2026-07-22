@@ -120,6 +120,15 @@
     .preset-group-pop-title{font-size:11px;font-weight:1000;color:#90f5c7;text-transform:uppercase;letter-spacing:.5px;margin:0 0 6px;padding:0 4px}
     .preset-group-pop button{width:100%;min-height:34px;border-radius:8px;border:1px solid rgba(255,255,255,.10);background:rgba(255,255,255,.05);color:#eaf7ff;font-weight:900;text-align:left;padding:6px 9px;cursor:pointer;display:flex;align-items:center;gap:7px}
     .preset-group-pop button:hover{background:rgba(0,217,126,.14);border-color:rgba(0,217,126,.42)}
+    .preset-small-modal{position:fixed;inset:0;z-index:10040;display:flex;align-items:center;justify-content:center;padding:18px;background:rgba(0,0,0,.58)}
+    .preset-small-panel{width:min(440px,94vw);border:1px solid rgba(93,229,255,.32);border-radius:16px;background:linear-gradient(180deg,#111928,#07111d);box-shadow:0 22px 70px rgba(0,0,0,.68);padding:16px;color:#eaf7ff}
+    .preset-small-title{font-size:18px;font-weight:1000;color:#fff;margin-bottom:8px}
+    .preset-small-hint{font-size:12px;color:#91a5bb;margin-bottom:12px;line-height:1.35}
+    .preset-small-row{display:grid;grid-template-columns:86px 1fr;gap:8px;align-items:center;margin-top:8px}
+    .preset-small-row label{font-size:11px;font-weight:1000;color:#8fdfff;text-transform:uppercase;letter-spacing:.45px}
+    .preset-small-row input,.preset-small-row select{height:36px;border-radius:9px;border:1px solid rgba(93,229,255,.25);background:#08111d;color:#fff;padding:0 10px;font:inherit;font-weight:800;min-width:0}
+    .preset-small-row.emoji input{font-size:22px;text-align:center;width:70px}
+    .preset-small-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:14px}
     @media(max-width:1180px){.preset-archive-grid{grid-template-columns:repeat(4,minmax(145px,1fr))}}
     @media(max-width:720px){.preset-archive-grid{grid-template-columns:repeat(2,minmax(120px,1fr))}.preset-archive-panel{height:94vh}}
     .switch{flex-direction:row;align-items:center;text-transform:none;letter-spacing:0;font-size:13px;color:#d6e7fa}
@@ -608,6 +617,97 @@
       return (preset.packages || []).filter((pkg) => pkg && pkg.on !== false).slice(0, 4).map((pkg) => {
         return packagePriceShort(pkg) || "";
       }).filter(Boolean).join(" - ");
+    }
+    function showPresetSmallModal(options, onSave){
+      const old = document.getElementById("presetSmallModal");
+      if (old) old.remove();
+      const groups = options.groups || [];
+      const modal = document.createElement("div");
+      modal.id = "presetSmallModal";
+      modal.className = "preset-small-modal";
+      modal.innerHTML = `
+        <div class="preset-small-panel">
+          <div class="preset-small-title">${escapeHtml(options.title || "Настройка")}</div>
+          ${options.hint ? `<div class="preset-small-hint">${escapeHtml(options.hint)}</div>` : ""}
+          ${groups.length ? `<div class="preset-small-row"><label>Группа</label><select id="presetSmallKind">${groups.map((group) => `<option value="${escapeHtml(group.id)}">${escapeHtml((group.emoji || "") + " " + (group.name || group.id))}</option>`).join("")}</select></div>` : ""}
+          <div class="preset-small-row"><label>Название</label><input id="presetSmallName" type="text" value="${escapeHtml(options.name || "")}"></div>
+          <div class="preset-small-row emoji"><label>Emoji</label><input id="presetSmallEmoji" type="text" maxlength="4" value="${escapeHtml(options.emoji || "🧾")}"></div>
+          <div class="preset-small-actions">
+            <button class="btn" type="button" data-action="cancel">Отмена</button>
+            <button class="btn primary" type="button" data-action="save">Сохранить</button>
+          </div>
+        </div>`;
+      document.body.appendChild(modal);
+      const kindEl = modal.querySelector("#presetSmallKind");
+      const nameEl = modal.querySelector("#presetSmallName");
+      const emojiEl = modal.querySelector("#presetSmallEmoji");
+      if (kindEl && options.kind) kindEl.value = options.kind;
+      setTimeout(() => {
+        if (nameEl) {
+          nameEl.focus();
+          nameEl.select();
+        }
+      }, 0);
+      function close(){ modal.remove(); }
+      modal.addEventListener("click", (event) => {
+        if (event.target === modal || event.target.closest('[data-action="cancel"]')) {
+          close();
+          return;
+        }
+        if (!event.target.closest('[data-action="save"]')) return;
+        const payload = {
+          kind: kindEl ? kindEl.value : "",
+          name: nameEl ? nameEl.value.trim() : "",
+          emoji: emojiEl ? emojiEl.value.trim() : ""
+        };
+        if (!payload.name) {
+          if (nameEl) nameEl.focus();
+          return;
+        }
+        close();
+        onSave(payload);
+      });
+      modal.addEventListener("keydown", (event) => {
+        if (event.key === "Escape") close();
+        if (event.key === "Enter" && (event.ctrlKey || event.metaKey)) {
+          const btn = modal.querySelector('[data-action="save"]');
+          if (btn) btn.click();
+        }
+      });
+    }
+    function inferPresetDefaults(){
+      const saved = readSavedPresets();
+      const groups = getPresetGroups(saved);
+      let kind = $("presetKind").value || "services";
+      let name = (state.heroName || "").trim();
+      if (!name && state.heroSrc) {
+        const decoded = decodeURIComponent(String(state.heroSrc).split("/").pop() || "");
+        name = cleanNicheName(decoded);
+      }
+      if (state.heroSrc) {
+        Object.keys(NICHE_LIBRARY).forEach((candidate) => {
+          if ((NICHE_LIBRARY[candidate] || []).some((file) => state.heroSrc === nichePath(file))) kind = candidate;
+        });
+      }
+      if (state.heroCustomId) {
+        const custom = customNicheImages.find((record) => record.id === state.heroCustomId);
+        if (custom) {
+          kind = custom.kind || kind;
+          name = custom.name || name;
+        }
+      }
+      const lowerName = name.toLowerCase();
+      const matchedGroup = groups.find((group) => {
+        if (group.id === "services" || group.id === "goods") return false;
+        const groupName = String(group.name || "").toLowerCase();
+        return groupName && (lowerName.includes(groupName) || groupName.split(/\s+/).some((part) => part.length > 4 && lowerName.includes(part)));
+      });
+      if (matchedGroup) kind = matchedGroup.id;
+      return {
+        kind,
+        name: name || (kind === "goods" ? "Товары - новый пакет" : "Услуги - новый пакет"),
+        emoji: emojiForNiche(name || presetGroupMeta(kind).name || "")
+      };
     }
     const AVITO_BUDGET_LABEL = "Примерная стоимость услуг Авито на месяц";
     function isAvitoBudgetLine(line){
@@ -1356,16 +1456,24 @@
     function saveCurrentPreset(){
       flushPackageForm();
       readGlobalForm();
-      const kind = $("presetKind").value || "services";
-      const rawName = prompt("Название готового пакета", kind === "goods" ? "Товары - новый пакет" : "Услуги - новый пакет");
-      const name = rawName && rawName.trim();
-      if (!name) return;
       const saved = readSavedPresets();
-      saved[kind] = saved[kind] || [];
-      saved[kind].unshift(makePresetRecord(name, "🧾"));
-      writeSavedPresets(saved);
-      renderPresetSelect();
-      $("presetSelect").value = String((DEFAULT_PRESETS[kind] || []).length);
+      const guess = inferPresetDefaults();
+      showPresetSmallModal({
+        title: "Сохранить шаблон КП",
+        hint: "Группа, название и emoji уже подобраны по выбранной нише. Можно поправить.",
+        groups: getPresetGroups(saved),
+        kind: guess.kind,
+        name: guess.name,
+        emoji: guess.emoji
+      }, (result) => {
+        const kind = result.kind || guess.kind || "services";
+        saved[kind] = saved[kind] || [];
+        saved[kind].unshift(makePresetRecord(result.name, result.emoji || guess.emoji || "🧾"));
+        writeSavedPresets(saved);
+        $("presetKind").value = kind;
+        renderPresetSelect();
+        $("presetSelect").value = String((DEFAULT_PRESETS[kind] || []).length);
+      });
     }
     function updateSelectedPreset(){
       flushPackageForm();
@@ -1709,42 +1817,46 @@
       }).join("") + `<button class="btn" data-action="add-group" type="button">+ \u0433\u0440\u0443\u043f\u043f\u0430</button><button class="btn" data-action="edit-group" type="button">\u270e</button>`;
     }
     function createPresetGroup(){
-      const saved = readSavedPresets();
-      const name = (prompt("\u041d\u0430\u0437\u0432\u0430\u043d\u0438\u0435 \u0433\u0440\u0443\u043f\u043f\u044b", "\u041a\u0430\u0440\u043a\u0430\u0441\u043d\u044b\u0435 \u0434\u043e\u043c\u0430") || "").trim();
-      if (!name) return;
-      const emoji = (prompt("Emoji \u0433\u0440\u0443\u043f\u043f\u044b", "\ud83c\udfe0") || "\ud83e\uddfe").trim() || "\ud83e\uddfe";
-      let id = makePresetGroupId(name);
-      while (saved.groups.some((group) => group.id === id) || saved[id]) id = makePresetGroupId(name + "_" + Date.now().toString(36));
-      saved.groups.push({ id, name, emoji });
-      saved[id] = [];
-      writeSavedPresets(saved);
-      $("presetKind").value = id;
-      renderPresetSelect();
-      refreshPresetArchive();
+      showPresetSmallModal({
+        title: "Новая группа КП",
+        hint: "Впиши название группы и emoji. Она появится в архиве и в выборе КП.",
+        name: "Каркасные дома",
+        emoji: "🏠"
+      }, (result) => {
+        const saved = readSavedPresets();
+        const name = result.name.trim();
+        if (!name) return;
+        let id = makePresetGroupId(name);
+        while (saved.groups.some((group) => group.id === id) || saved[id]) id = makePresetGroupId(name + "_" + Date.now().toString(36));
+        saved.groups.push({ id, name, emoji: result.emoji || "🧾" });
+        saved[id] = [];
+        writeSavedPresets(saved);
+        $("presetKind").value = id;
+        renderPresetSelect();
+        refreshPresetArchive();
+      });
     }
     function editPresetGroup(){
       const kind = $("presetKind").value || "services";
       const saved = readSavedPresets();
       const group = saved.groups.find((item) => item.id === kind);
       if (!group) return;
-      const isDefault = DEFAULT_PRESET_GROUPS.some((item) => item.id === kind);
-      const name = prompt("\u041d\u0430\u0437\u0432\u0430\u043d\u0438\u0435 \u0433\u0440\u0443\u043f\u043f\u044b", group.name || kind);
-      if (name === null) return;
-      group.name = name.trim() || group.name || kind;
-      const emoji = prompt("Emoji \u0433\u0440\u0443\u043f\u043f\u044b", group.emoji || "\ud83e\uddfe");
-      if (emoji !== null) group.emoji = emoji.trim() || group.emoji || "\ud83e\uddfe";
-      if (!isDefault && confirm("\u0423\u0434\u0430\u043b\u0438\u0442\u044c \u044d\u0442\u0443 \u0433\u0440\u0443\u043f\u043f\u0443? OK = \u0443\u0434\u0430\u043b\u0438\u0442\u044c, Cancel = \u0442\u043e\u043b\u044c\u043a\u043e \u0441\u043e\u0445\u0440\u0430\u043d\u0438\u0442\u044c")) {
-        saved.groups = saved.groups.filter((item) => item.id !== kind);
-        delete saved[kind];
-        writeSavedPresets(saved);
-        $("presetKind").value = "services";
-      } else {
-        writeSavedPresets(saved);
-      }
-      renderPresetSelect();
-      refreshPresetArchive();
-    }
-    function decoratePresetArchive(modal){
+      showPresetSmallModal({
+        title: "Правка группы КП",
+        hint: "Поменяй название или emoji группы. Шаблоны внутри сохранятся.",
+        name: group.name || kind,
+        emoji: group.emoji || "🧾"
+      }, (result) => {
+        const next = readSavedPresets();
+        const item = next.groups.find((entry) => entry.id === kind);
+        if (!item) return;
+        item.name = result.name || item.name || kind;
+        item.emoji = result.emoji || item.emoji || "🧾";
+        writeSavedPresets(next);
+        renderPresetSelect();
+        refreshPresetArchive();
+      });
+    }    function decoratePresetArchive(modal){
       modal.querySelectorAll('[data-action="take"]').forEach((btn) => {
         btn.textContent = "\u0412\u0417\u042f\u0422\u042c";
       });
