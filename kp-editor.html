@@ -101,7 +101,7 @@
     .preset-card-emoji{font-size:22px;line-height:1;filter:drop-shadow(0 2px 6px rgba(0,0,0,.45));cursor:pointer;flex-shrink:0}
     .preset-card-name{font-size:12px;font-weight:1000;line-height:1.08;min-width:0;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;text-shadow:0 2px 8px rgba(0,0,0,.7)}
     .preset-card-prices{font-size:13px;font-weight:1000;color:#e4fbff;text-shadow:0 2px 7px rgba(0,0,0,.9);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-    .preset-card-actions{display:grid;grid-template-columns:1.05fr repeat(4,34px);gap:4px}
+    .preset-card-actions{display:grid;grid-template-columns:1fr 36px;gap:5px}
     .preset-card-actions button{height:24px;border-radius:7px;border:1px solid rgba(255,255,255,.12);background:rgba(0,0,0,.42);color:#dff7ff;font-size:10px;font-weight:900;cursor:pointer;padding:0 4px}
     .preset-card-actions button.main{background:rgba(0,217,126,.22);border-color:rgba(0,217,126,.48);color:#b9ffd9}
     .preset-card-actions button.danger{color:#ffd1d1;border-color:rgba(255,90,90,.35);background:rgba(120,20,20,.28)}
@@ -112,6 +112,10 @@
     .preset-preview-bar{display:flex;justify-content:flex-end;gap:8px}
     .preset-emoji-pop{position:fixed;z-index:10030;display:grid;grid-template-columns:repeat(5,34px);gap:4px;max-height:210px;overflow:auto;padding:8px;border-radius:10px;border:1px solid rgba(93,229,255,.35);background:#091421;box-shadow:0 14px 40px rgba(0,0,0,.55)}
     .preset-emoji-pop button{width:34px;height:34px;border-radius:8px;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.04);font-size:20px;cursor:pointer}
+    .preset-action-pop{position:fixed;z-index:10035;display:flex;flex-direction:column;gap:5px;width:210px;padding:8px;border-radius:12px;border:1px solid rgba(93,229,255,.35);background:#091421;box-shadow:0 16px 46px rgba(0,0,0,.62)}
+    .preset-action-pop button{height:34px;border-radius:8px;border:1px solid rgba(255,255,255,.10);background:rgba(255,255,255,.05);color:#eaf7ff;font-weight:900;text-align:left;padding:0 10px;cursor:pointer}
+    .preset-action-pop button:hover{background:rgba(93,229,255,.14)}
+    .preset-action-pop button.danger{color:#ffd1d1;border-color:rgba(255,90,90,.35);background:rgba(120,20,20,.28)}
     @media(max-width:1180px){.preset-archive-grid{grid-template-columns:repeat(4,minmax(145px,1fr))}}
     @media(max-width:720px){.preset-archive-grid{grid-template-columns:repeat(2,minmax(120px,1fr))}.preset-archive-panel{height:94vh}}
     .switch{flex-direction:row;align-items:center;text-transform:none;letter-spacing:0;font-size:13px;color:#d6e7fa}
@@ -1424,6 +1428,7 @@
     }
     function closePresetArchive(){
       closePresetEmojiPicker();
+      closePresetActionMenu();
       closePresetPreview();
       const modal = document.getElementById("presetArchiveModal");
       if (modal) modal.remove();
@@ -1502,8 +1507,117 @@
       const pop = document.getElementById("presetEmojiPicker");
       if (pop) pop.remove();
     }
+    function closePresetActionMenu(){
+      const pop = document.getElementById("presetActionMenu");
+      if (pop) pop.remove();
+    }
+    function movePresetToGroup(kind, index){
+      const saved = readSavedPresets();
+      const source = saved[kind] || [];
+      const preset = source[index];
+      if (!preset) return;
+      const groups = getPresetGroups(saved).filter((group) => group.id !== kind);
+      if (!groups.length) {
+        alert("Сначала создайте ещё одну группу.");
+        return;
+      }
+      const list = groups.map((group, i) => `${i + 1}. ${group.emoji || ""} ${group.name || group.id}`).join("\n");
+      const answer = prompt("В какую группу перенести?\n" + list, "1");
+      if (answer === null) return;
+      const groupIndex = Math.max(0, Math.min(groups.length - 1, Number(String(answer).trim()) - 1));
+      const target = groups[groupIndex];
+      if (!target) return;
+      const [moved] = source.splice(index, 1);
+      saved[target.id] = Array.isArray(saved[target.id]) ? saved[target.id] : [];
+      saved[target.id].unshift(moved);
+      writeSavedPresets(saved);
+      $("presetKind").value = target.id;
+      renderPresetSelect();
+      $("presetSelect").value = String((DEFAULT_PRESETS[target.id] || []).length);
+      refreshPresetArchive();
+    }
+    function runPresetArchiveAction(action, kind, index){
+      const nextSaved = readSavedPresets();
+      const preset = nextSaved[kind] && nextSaved[kind][index];
+      if (!preset) return;
+      if (action === "update") {
+        flushPackageForm();
+        readGlobalForm();
+        preset.packages = clone(state.packages);
+        Object.assign(preset, currentPresetVisualMeta());
+        preset.updatedAt = new Date().toISOString();
+        writeSavedPresets(nextSaved);
+        setPresetSelectToSaved(kind, index);
+        refreshPresetArchive();
+        return;
+      }
+      if (action === "rename") {
+        const name = prompt("Новое название шаблона", preset.name || "");
+        if (name === null) return;
+        preset.name = name.trim() || preset.name || "Шаблон";
+        preset.updatedAt = new Date().toISOString();
+        writeSavedPresets(nextSaved);
+        renderPresetSelect();
+        refreshPresetArchive();
+        return;
+      }
+      if (action === "duplicate") {
+        const copy = stripPresetMeta(preset);
+        copy.id = makePresetId();
+        copy.name = (copy.name || "Шаблон") + " копия";
+        copy.savedAt = new Date().toISOString();
+        copy.updatedAt = copy.savedAt;
+        nextSaved[kind].splice(index + 1, 0, copy);
+        writeSavedPresets(nextSaved);
+        renderPresetSelect();
+        refreshPresetArchive();
+        return;
+      }
+      if (action === "move") {
+        movePresetToGroup(kind, index);
+        return;
+      }
+      if (action === "delete") {
+        if (!confirm("Удалить шаблон «" + (preset.name || "Шаблон") + "»?")) return;
+        nextSaved[kind].splice(index, 1);
+        writeSavedPresets(nextSaved);
+        renderPresetSelect();
+        refreshPresetArchive();
+      }
+    }
+    function openPresetActionMenu(anchor, kind, index){
+      closePresetActionMenu();
+      const pop = document.createElement("div");
+      pop.id = "presetActionMenu";
+      pop.className = "preset-action-pop";
+      pop.innerHTML = `
+        <button type="button" data-preset-action="update">🔄 Обновить текущими данными</button>
+        <button type="button" data-preset-action="rename">✎ Переименовать</button>
+        <button type="button" data-preset-action="move">📁 Перенести в группу</button>
+        <button type="button" data-preset-action="duplicate">⧉ Дублировать</button>
+        <button type="button" class="danger" data-preset-action="delete">× Удалить</button>`;
+      document.body.appendChild(pop);
+      const rect = anchor.getBoundingClientRect();
+      pop.style.left = Math.min(window.innerWidth - 222, Math.max(8, rect.right - 210)) + "px";
+      pop.style.top = Math.min(window.innerHeight - 190, Math.max(8, rect.bottom + 6)) + "px";
+      pop.addEventListener("click", (event) => {
+        const btn = event.target.closest("[data-preset-action]");
+        if (!btn) return;
+        const action = btn.getAttribute("data-preset-action");
+        closePresetActionMenu();
+        runPresetArchiveAction(action, kind, index);
+      });
+      const closeOnOutside = (event) => {
+        if (!pop.contains(event.target) && event.target !== anchor) {
+          closePresetActionMenu();
+          document.removeEventListener("pointerdown", closeOnOutside, true);
+        }
+      };
+      setTimeout(() => document.addEventListener("pointerdown", closeOnOutside, true), 0);
+    }
     function openPresetEmojiPicker(anchor, kind, savedIndex){
       closePresetEmojiPicker();
+      closePresetActionMenu();
       const pop = document.createElement("div");
       pop.id = "presetEmojiPicker";
       pop.className = "preset-emoji-pop";
@@ -1542,10 +1656,7 @@
             <div class="preset-card-prices">${escapeHtml(presetPricesLine(preset) || "РџР°РєРµС‚С‹ Р±РµР· С†РµРЅ")}</div>
             <div class="preset-card-actions">
               <button type="button" class="main" data-action="take">Р’Р—РЇРўР¬ / РџР РђР’РРўР¬</button>
-              <button type="button" data-action="update">рџ”„</button>
-              <button type="button" data-action="rename">вњЋ</button>
-              <button type="button" data-action="duplicate">в§‰</button>
-              <button type="button" class="danger" data-action="delete">Г—</button>
+              <button type="button" data-action="menu" title="Действия">&#8943;</button>
             </div>
           </div>`;
       }).join("") : '<div class="mini-note">РЎРѕС…СЂР°РЅС‘РЅРЅС‹С… С€Р°Р±Р»РѕРЅРѕРІ РїРѕРєР° РЅРµС‚. РќР°Р¶РјРёС‚Рµ В«РЎРѕС…СЂР°РЅРёС‚СЊ С‚РµРєСѓС‰РёР№В».</div>';
@@ -1653,10 +1764,7 @@
             <div class="preset-card-prices">${escapeHtml(presetPricesLine(preset) || "Пакеты без цен")}</div>
             <div class="preset-card-actions">
               <button type="button" class="main" data-action="take">ВЗЯТЬ / ПРАВИТЬ</button>
-              <button type="button" data-action="update">🔄</button>
-              <button type="button" data-action="rename">✎</button>
-              <button type="button" data-action="duplicate">⧉</button>
-              <button type="button" class="danger" data-action="delete">×</button>
+              <button type="button" data-action="menu" title="Действия">&#8943;</button>
             </div>
           </div>`;
       }).join("") : '<div class="mini-note">Сохранённых шаблонов пока нет. Нажмите «Сохранить текущий».</div>';
@@ -1718,6 +1826,10 @@
         }
         if (action === "take") {
           takePreset(activeKind, index);
+          return;
+        }
+        if (action === "menu") {
+          openPresetActionMenu(actionBtn, activeKind, index);
           return;
         }
         if (action === "update") {
