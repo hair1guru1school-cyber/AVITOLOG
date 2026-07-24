@@ -885,7 +885,7 @@ function normalizeAoaxSheets(pack) {
     if (typeof s === 'string') s = {name:s};
     s = s || {};
     var begin = normalizeAoaxDate(getAoaxField(s, ['dateBegin','DateBegin','date_begin','startDate','start_date','begin','Дата начала','Дата старт','Дата Бегин']));
-    var end = normalizeAoaxDate(getAoaxField(s, ['dateEnd','DateEnd','date_end','endDate','end_date','finishDate','finish_date','end','Дата конца','Дата окончания','Дата до','Дата енд','Дата End']));
+    var end = normalizeAoaxDate(getAoaxField(s, ['lastDateBegin','dateBeginLast','dateBeginEnd','last_date_begin','dateEnd','DateEnd','date_end','endDate','end_date','finishDate','finish_date','end','Дата конца','Дата окончания','Дата до','Дата енд','Дата End']));
     if (!end && begin && begin > getTodayISOmsk()) {
       end = begin;
       begin = getTodayISOmsk();
