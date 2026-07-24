@@ -138,7 +138,7 @@
       method: 'POST', headers: await headers({ 'Content-Type': 'application/json' }),
       body: JSON.stringify({ p_key: key, p_value: String(value == null ? '' : value) })
     });
-    if (!response.ok) throw new Error((await response.text()) || 'Supabase write failed');
+    if (!response.ok) throw new Error('[' + key + '] ' + ((await response.text()) || 'Supabase write failed'));
     var result = await response.json();
     rememberRevision(key, result && result.revision);
     return result;
@@ -244,6 +244,7 @@
     }
   }
   function queueWrite(key, value, previousValue) {
+    if (!isAllowed(key)) return;
     if (!isCurrentProfileWritableKey(key)) return;
     if (serverOnlyMode && !initialSyncReady) return;
     lastLocalWriteAt = Date.now();
