@@ -1135,6 +1135,23 @@ function ensureAoaxCalendarEventsFromInfo(data) {
     var clear = getAoaxClearState(p);
     if (clear && clear.all) return;
     var sheets = normalizeAoaxSheets({sheets: info.sheets || []});
+    var starts = sheets.map(function(s){ return s.dateBegin || ''; }).filter(Boolean).sort();
+    var ends = sheets.map(function(s){ return s.dateEnd || ''; }).filter(Boolean).sort();
+    var mainStart = starts[0] || info.dateBegin || '';
+    var mainEnd = info.dateEnd || ends[ends.length - 1] || '';
+    if (mainStart && mainEnd) {
+      var mainEvent = makeAoaxActiveEvent({name:'AoA-X', dateBegin:mainStart, dateEnd:mainEnd}, mainStart, mainEnd);
+      var mainEvents = Array.isArray(p.events) ? p.events : [];
+      var hasMain = mainEvents.some(function(ev) {
+        return ev && ev.source === 'aoax' && ev.type === 'active_range' &&
+          ev.startDate === mainEvent.startDate && ev.endDate === mainEvent.endDate;
+      });
+      if (!hasMain) {
+        p.events = mainEvents.filter(function(ev) { return !(ev && ev.source === 'aoax'); });
+        p.events.push(mainEvent);
+        changed = true;
+      }
+    }
     if (!sheets.length || !Array.isArray(p.childLines) || !p.childLines.length) return;
     ensureChildLineEvents(p);
     var lines = getProjectChildLines(p);
