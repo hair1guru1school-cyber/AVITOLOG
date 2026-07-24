@@ -334,6 +334,8 @@ function loadProjectsData(forceReload) {
       if (!Array.isArray(data.hiddenProjects)) data.hiddenProjects = [];
       if (!Array.isArray(data.tasks)) data.tasks = [];
       if (!Array.isArray(data.taskLog)) data.taskLog = [];
+      if (applyAoaxAutoloadState(data)) saveProjectsData(data);
+      if (applyProjectsAutoStatuses(data)) saveProjectsData(data);
       _projectsDataMem = data;
       _projectsDataMemKey = storageKey;
       return data;
