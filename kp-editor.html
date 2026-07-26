@@ -936,6 +936,15 @@
         img.src = src;
       });
     }
+    async function loadImageAny(paths){
+      const list = Array.isArray(paths) ? paths : [paths];
+      for (const src of list) {
+        if (!src) continue;
+        const image = await loadImage(src);
+        if (image) return { image, src };
+      }
+      return { image: null, src: "" };
+    }
     function openHeroDb(){
       return new Promise((resolve, reject) => {
         const request = indexedDB.open(HERO_DB_NAME, 1);
@@ -1032,6 +1041,9 @@
     function nichePath(file){
       return `assets/kp-niches/${encodeURIComponent(NICHE_FOLDER)}/${encodeURIComponent(file)}`;
     }
+    function nichePathPlain(file){
+      return `assets/kp-niches/${NICHE_FOLDER}/${file}`;
+    }
     function cleanNicheName(file){
       return file.replace(/\.[^.]+$/, "");
     }
@@ -1062,7 +1074,12 @@
         card.type = "button";
         card.className = "niche-card" + (state.heroSrc === src ? " active" : "");
         card.innerHTML = `<img src="${src}" alt=""><span><span class="niche-name">${emojiForNiche(name)} ${name}</span><span class="niche-path">${kind === "goods" ? "Товары" : "Услуги"}</span></span>`;
-        card.addEventListener("click", () => selectNicheImage(src, name));
+        card.addEventListener("pointerdown", (event) => event.stopPropagation());
+        card.addEventListener("click", (event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          selectNicheImage(file, name);
+        });
         grid.appendChild(card);
       });
       customNicheImages.filter((record) => record.kind === kind).forEach((record) => {
@@ -1072,7 +1089,12 @@
         const recordGroup = record.groupKind ? presetGroupMeta(record.groupKind) : null;
         const groupLabel = recordGroup && recordGroup.name ? ` · ${recordGroup.emoji || ""} ${recordGroup.name}` : "";
         card.innerHTML = `<img src="${record.dataUrl}" alt=""><span><span class="niche-name">📌 ${escapeHtml(record.name)}</span><span class="niche-path">${kind === "goods" ? "Товары" : "Услуги"}${escapeHtml(groupLabel)} · загружено</span></span>`;
-        card.addEventListener("click", () => selectCustomNicheImage(record));
+        card.addEventListener("pointerdown", (event) => event.stopPropagation());
+        card.addEventListener("click", (event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          selectCustomNicheImage(record);
+        });
         card.addEventListener("contextmenu", async (event) => {
           event.preventDefault();
           event.stopPropagation();
@@ -1085,14 +1107,20 @@
         grid.appendChild(card);
       });
     }
-    async function selectNicheImage(src, name){
-      const nextHero = await loadImage(src);
-      if (!nextHero) return;
+    async function selectNicheImage(fileOrSrc, name){
+      const encodedSrc = String(fileOrSrc || "").includes("/") ? String(fileOrSrc || "") : nichePath(fileOrSrc);
+      const plainSrc = String(fileOrSrc || "").includes("/") ? String(fileOrSrc || "") : nichePathPlain(fileOrSrc);
+      const loaded = await loadImageAny([encodedSrc, plainSrc]);
+      const nextHero = loaded.image;
+      if (!nextHero) {
+        alert("Не удалось выбрать картинку: " + (name || fileOrSrc || ""));
+        return;
+      }
       customHeroSrc = "";
       state.heroCustomId = "";
-      state.heroSrc = src;
+      state.heroSrc = loaded.src || encodedSrc;
       state.heroDataUrl = "";
-      state.heroPreviewSrc = src;
+      state.heroPreviewSrc = state.heroSrc;
       state.heroName = name;
       images.hero = nextHero;
       renderNicheLibrary();
