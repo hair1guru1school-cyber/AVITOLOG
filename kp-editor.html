@@ -111,7 +111,19 @@
     .archive-menu button{width:100%;height:34px;border-radius:7px;background:#172438;color:#eaf4ff;text-align:left;font-weight:900;margin:2px 0;padding:0 10px}
     .archive-menu button:hover{background:#21334d}
     .archive-menu button.danger{background:rgba(255,92,138,.15);color:#ffd3df}
+    .emoji-pick-btn{height:42px;min-width:74px;border-radius:10px;border:1px solid rgba(93,229,255,.28);background:#07111d;color:#fff;font-size:22px}
+    .emoji-picker{position:absolute;z-index:120;width:260px;border:1px solid rgba(89,235,255,.34);border-radius:12px;background:#101b2b;box-shadow:0 18px 54px rgba(0,0,0,.6);padding:10px;display:none;grid-template-columns:repeat(6,1fr);gap:6px}
+    .emoji-picker.open{display:grid}
+    .emoji-picker button{height:36px;border-radius:8px;background:#172438;color:#fff;font-size:20px}
+    .emoji-picker button:hover{background:#243854}
     .preset-title-row{display:flex;align-items:center;justify-content:center;gap:8px}
+    .cover-carousel{display:grid;grid-template-columns:42px 1fr 42px;align-items:center;gap:12px}
+    .cover-track{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;min-height:260px}
+    .cover-card{border:1px solid rgba(89,235,255,.25);border-radius:13px;background:#07111d;padding:9px;color:#fff;text-align:left;display:flex;flex-direction:column;gap:8px}
+    .cover-card.active{border-color:rgba(0,223,134,.9);box-shadow:0 0 0 2px rgba(0,223,134,.18)}
+    .cover-card img{width:100%;height:220px;object-fit:cover;border-radius:10px;background:#050911}
+    .cover-card-title{font-weight:900;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .cover-arrow{height:64px;border-radius:12px;background:#172438;color:#dcecff;border:1px solid rgba(93,229,255,.25);font-size:24px;font-weight:900}
     #pkgItems{min-height:220px;overflow:hidden;resize:none}
     @media(max-width:1500px){.niche-panel{position:fixed;top:78px;max-height:calc(100vh - 100px)}.niche-panel.left{left:18px;right:auto}.niche-panel.right{right:18px;left:auto}}
     @media(max-width:1100px){.archive-grid{grid-template-columns:repeat(3,minmax(150px,1fr))}}
@@ -271,16 +283,18 @@
     </aside>
 
     <div class="modal-backdrop" id="coverModal">
-      <div class="modal small">
+      <div class="modal">
         <div class="modal-head">
           <div class="modal-title">Обложка КП</div>
           <button class="btn" id="closeCoverBtn" type="button">Закрыть</button>
         </div>
         <div class="card">
-          <div class="mini-note">Обложка хранится отдельно от второго листа с пакетами. Архив пакетов не смешивается с обложками.</div>
-          <label>Файл обложки
-            <input id="coverFile" type="file" accept="image/*">
-          </label>
+          <div class="mini-note">Выберите обложку из папки Cp-Constructor. Она хранится отдельно от второго листа с пакетами.</div>
+          <div class="cover-carousel">
+            <button class="cover-arrow" id="coverPrevBtn" type="button">‹</button>
+            <div class="cover-track" id="coverTrack"></div>
+            <button class="cover-arrow" id="coverNextBtn" type="button">›</button>
+          </div>
           <div class="toolbar">
             <button class="btn primary" id="saveCoverBtn" type="button">Запомнить обложку</button>
             <button class="btn danger" id="clearCoverBtn" type="button">Убрать</button>
@@ -318,7 +332,8 @@
             <input id="presetSaveName">
           </label>
           <label>Emoji
-            <input id="presetSaveEmoji">
+            <button class="emoji-pick-btn" id="presetSaveEmojiBtn" type="button">📄</button>
+            <input id="presetSaveEmoji" type="hidden">
           </label>
           <div class="toolbar">
             <button class="btn" id="presetSaveCancelBtn" type="button">Отмена</button>
@@ -329,6 +344,7 @@
     </div>
 
     <div class="archive-menu" id="archiveMenu"></div>
+    <div class="emoji-picker" id="emojiPicker"></div>
   </main>
 
   <script>
@@ -353,6 +369,12 @@
       titlePremium: "assets/kp-layers/kp-title-premium.png"
     };
     const NICHE_FOLDER = "КАРТИНКИ КП";
+    const COVER_LIBRARY = [
+      { id: "avto-moto", name: "Авто / мото", src: "Cp-Constructor/avto-moto.png" },
+      { id: "mebel", name: "Мебель", src: "Cp-Constructor/mebel.png" },
+      { id: "stroyka", name: "Стройка", src: "Cp-Constructor/stroyka.png" }
+    ];
+    const NICHE_EMOJIS = ["📄","👷","🏗️","🏠","🧱","🪑","🛋️","🚪","🪟","🚗","🏍️","📦","🌿","⚡","🔧","🛠️","💧","🔥","⭐","💎","🚀","🎯","🧾","💰"];
     const NICHE_LIBRARY = {
       goods: [
         "Бизнес с Китаем.png",
@@ -404,6 +426,9 @@
     let archiveMenuPreset = null;
     let presetSaveMode = "create";
     let presetSaveTarget = null;
+    let coverCarouselIndex = 0;
+    let selectedCoverId = "";
+    let emojiPickerCallback = null;
 
     const defaults = {
       bgChoice: "dark",
@@ -1346,6 +1371,7 @@
     }
     function openCoverModal(){
       updateCoverStatus();
+      renderCoverCarousel();
       $("coverModal").classList.add("open");
     }
     function closeCoverModal(){
@@ -1354,21 +1380,44 @@
     function updateCoverStatus(){
       let cover = null;
       try { cover = JSON.parse(localStorage.getItem(COVER_KEY) || "null"); } catch (e) {}
+      selectedCoverId = cover && cover.id ? cover.id : selectedCoverId;
       $("coverStatus").textContent = cover && cover.name ? `Выбрана: ${cover.name}` : "Обложка пока не выбрана.";
+      $("coverBtn").textContent = cover && cover.name ? "Обложка ✓" : "Обложка";
     }
-    async function saveCoverSelection(){
-      const file = $("coverFile").files && $("coverFile").files[0];
-      if (!file) return;
+    function renderCoverCarousel(){
+      const track = $("coverTrack");
+      track.innerHTML = "";
+      const start = Math.max(0, Math.min(coverCarouselIndex, Math.max(0, COVER_LIBRARY.length - 3)));
+      COVER_LIBRARY.slice(start, start + 3).forEach((cover) => {
+        const card = document.createElement("button");
+        card.type = "button";
+        card.className = "cover-card" + (cover.id === selectedCoverId ? " active" : "");
+        card.innerHTML = `<img src="${cover.src}" alt=""><div class="cover-card-title">${escapeHtml(cover.name)}</div>`;
+        card.addEventListener("click", () => {
+          selectedCoverId = cover.id;
+          renderCoverCarousel();
+        });
+        track.appendChild(card);
+      });
+    }
+    function shiftCoverCarousel(delta){
+      coverCarouselIndex = Math.max(0, Math.min(coverCarouselIndex + delta, Math.max(0, COVER_LIBRARY.length - 3)));
+      renderCoverCarousel();
+    }
+    function saveCoverSelection(){
+      const selected = COVER_LIBRARY.find((cover) => cover.id === selectedCoverId) || COVER_LIBRARY[0];
+      if (!selected) return;
       const cover = {
-        id: `cover-${Date.now()}`,
-        name: file.name.replace(/\.[^.]+$/, ""),
-        dataUrl: await imageFileToDataUrl(file),
+        id: selected.id,
+        name: selected.name,
+        src: selected.src,
         updatedAt: new Date().toISOString()
       };
       localStorage.setItem(COVER_KEY, JSON.stringify(cover));
       try { window.dispatchEvent(new CustomEvent("avitolog:storage-write", { detail: { key: COVER_KEY, value: cover } })); } catch (e) {}
-      $("coverFile").value = "";
       updateCoverStatus();
+      closeCoverModal();
+      $("packageEditor").scrollIntoView({ block: "center" });
     }
     function openArchiveModal(groupId){
       const presets = readPresetStore();
@@ -1406,7 +1455,7 @@
         const bg = preset.previewDataUrl || preset.heroDataUrl || preset.heroSrc || "";
         if (bg) card.style.backgroundImage = `url("${String(bg).replace(/"/g, "%22")}")`;
         card.innerHTML = `
-          <div class="archive-name"><span>${escapeHtml(preset.emoji || "📄")}</span><span>${escapeHtml(preset.name || "Шаблон КП")}</span></div>
+          <div class="archive-name"><button class="emoji-pick-btn" type="button" data-action="emoji">${escapeHtml(preset.emoji || "📄")}</button><span>${escapeHtml(preset.name || "Шаблон КП")}</span></div>
           <div class="archive-prices">${escapeHtml(formatPresetPrices(preset.packages) || "без цен")}</div>
           <div class="archive-card-actions">
             <button class="btn primary" type="button" data-action="take">Взять</button>
@@ -1420,6 +1469,15 @@
           event.stopPropagation();
           openArchiveMenu(event.currentTarget, preset, index);
         });
+        card.querySelector('[data-action="emoji"]').addEventListener("click", (event) => {
+          event.stopPropagation();
+          openEmojiPicker(event.currentTarget, (emoji) => {
+            mutatePresetStore((store) => {
+              const item = (store[archiveGroupId] || [])[index];
+              if (item) item.emoji = emoji;
+            });
+          });
+        });
         grid.appendChild(card);
       });
     }
@@ -1429,6 +1487,7 @@
       menu.innerHTML = `
         <button type="button" data-action="rename">✎ Переименовать</button>
         <button type="button" data-action="emoji">Emoji</button>
+        <button type="button" data-action="picture">🖼 Картинка из КП</button>
         <button type="button" data-action="move">📁 Перенести в группу</button>
         <button type="button" data-action="duplicate">⧉ Дублировать</button>
         <button class="danger" type="button" data-action="delete">× Удалить</button>`;
@@ -1461,7 +1520,25 @@
         return;
       }
       if (action === "emoji") {
-        openPresetSaveModal({ mode: "emoji", target: ref });
+        openEmojiPicker(document.body, (emoji) => {
+          mutatePresetStore((store) => {
+            const item = (store[ref.groupId] || [])[ref.index];
+            if (item) item.emoji = emoji;
+          });
+        });
+        return;
+      }
+      if (action === "picture") {
+        mutatePresetStore((store) => {
+          const item = (store[ref.groupId] || [])[ref.index];
+          if (!item) return;
+          item.heroSrc = state.heroSrc || "";
+          item.heroCustomId = state.heroCustomId || "";
+          item.heroName = state.heroName || "";
+          item.heroDataUrl = currentHeroDataUrl();
+          item.previewDataUrl = makePresetPreviewDataUrl();
+          item.updatedAt = new Date().toISOString();
+        });
         return;
       }
       if (action === "move") {
@@ -1499,7 +1576,7 @@
       const targetPreset = presetSaveTarget && presetSaveTarget.preset;
       $("presetSaveTitle").textContent = presetSaveMode === "create" ? "Сохранить шаблон КП" : presetSaveMode === "move" ? "Перенести шаблон" : "Править шаблон";
       $("presetSaveName").value = targetPreset && targetPreset.name ? targetPreset.name : inferPresetName();
-      $("presetSaveEmoji").value = targetPreset && targetPreset.emoji ? targetPreset.emoji : emojiForNiche(state.heroName || "") || "📄";
+      setPresetEmoji(targetPreset && targetPreset.emoji ? targetPreset.emoji : emojiForNiche(state.heroName || "") || "📄");
       $("presetSaveName").parentElement.style.display = presetSaveMode === "move" ? "none" : "";
       $("presetSaveEmoji").parentElement.style.display = presetSaveMode === "move" ? "none" : "";
       $("presetSaveModal").classList.add("open");
@@ -1559,7 +1636,35 @@
       $("presetSaveTitle").textContent = "Новая группа КП";
       $("presetSaveGroup").parentElement.style.display = "none";
       $("presetSaveName").value = "";
-      $("presetSaveEmoji").value = "📁";
+      setPresetEmoji("📁");
+    }
+    function setPresetEmoji(emoji){
+      $("presetSaveEmoji").value = emoji || "📄";
+      $("presetSaveEmojiBtn").textContent = emoji || "📄";
+    }
+    function openEmojiPicker(anchor, callback){
+      emojiPickerCallback = callback;
+      const picker = $("emojiPicker");
+      picker.innerHTML = "";
+      NICHE_EMOJIS.forEach((emoji) => {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.textContent = emoji;
+        btn.addEventListener("click", (event) => {
+          event.stopPropagation();
+          if (emojiPickerCallback) emojiPickerCallback(emoji);
+          closeEmojiPicker();
+        });
+        picker.appendChild(btn);
+      });
+      const rect = anchor && anchor.getBoundingClientRect ? anchor.getBoundingClientRect() : { left: window.innerWidth / 2, bottom: window.innerHeight / 2 };
+      picker.style.left = `${Math.min(rect.left, window.innerWidth - 278)}px`;
+      picker.style.top = `${Math.min(rect.bottom + 6, window.innerHeight - 270)}px`;
+      picker.classList.add("open");
+    }
+    function closeEmojiPicker(){
+      $("emojiPicker").classList.remove("open");
+      emojiPickerCallback = null;
     }
     function clamp(value, min, max){
       return Math.min(max, Math.max(min, value));
@@ -1622,6 +1727,8 @@
     $("heroZone").addEventListener("click", () => toggleNichePanels());
     $("coverBtn").addEventListener("click", openCoverModal);
     $("packagesBtn").addEventListener("click", () => $("packageEditor").scrollIntoView({ block: "center" }));
+    $("coverPrevBtn").addEventListener("click", () => shiftCoverCarousel(-1));
+    $("coverNextBtn").addEventListener("click", () => shiftCoverCarousel(1));
     $("closeCoverBtn").addEventListener("click", closeCoverModal);
     $("coverModal").addEventListener("click", (event) => { if (event.target === $("coverModal")) closeCoverModal(); });
     $("saveCoverBtn").addEventListener("click", () => { saveCoverSelection().catch((error) => alert(error && error.message ? error.message : String(error))); });
@@ -1633,8 +1740,13 @@
     $("presetSaveCloseBtn").addEventListener("click", closePresetSaveModal);
     $("presetSaveCancelBtn").addEventListener("click", closePresetSaveModal);
     $("presetSaveConfirmBtn").addEventListener("click", confirmPresetSave);
+    $("presetSaveEmojiBtn").addEventListener("click", (event) => {
+      event.stopPropagation();
+      openEmojiPicker(event.currentTarget, setPresetEmoji);
+    });
     $("presetSaveModal").addEventListener("click", (event) => { if (event.target === $("presetSaveModal")) closePresetSaveModal(); });
     document.addEventListener("click", (event) => {
+      if ($("emojiPicker").classList.contains("open") && !$("emojiPicker").contains(event.target)) closeEmojiPicker();
       if (!$("archiveMenu").classList.contains("open")) return;
       if ($("archiveMenu").contains(event.target)) return;
       closeArchiveMenu();
