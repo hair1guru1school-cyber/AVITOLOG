@@ -641,6 +641,7 @@
       const old = document.getElementById("presetSmallModal");
       if (old) old.remove();
       const groups = options.groups || [];
+      const archiveWasOpen = !!document.getElementById("presetArchiveModal");
       const modal = document.createElement("div");
       modal.id = "presetSmallModal";
       modal.className = "preset-small-modal";
@@ -680,6 +681,9 @@
         }
         close();
         onSave(payload);
+        if (archiveWasOpen && document.getElementById("presetArchiveModal")) {
+          refreshPresetArchive();
+        }
       }
       const panel = modal.querySelector(".preset-small-panel");
       if (panel) {
@@ -695,11 +699,19 @@
       }
       modal.addEventListener("click", (event) => {
         event.stopPropagation();
-        if (event.target === modal || event.target.closest('[data-action="cancel"]')) {
+        if (event.target === modal) {
+          if (archiveWasOpen) return;
+          close();
+          return;
+        }
+        if (event.target.closest('[data-action="cancel"]')) {
           close();
           return;
         }
         if (event.target.closest('[data-action="save"]')) submit();
+      });
+      ["pointerdown","mousedown","mouseup","click"].forEach((eventName) => {
+        modal.addEventListener(eventName, (event) => event.stopPropagation(), true);
       });
       modal.addEventListener("keydown", (event) => {
         if (event.key === "Escape") close();
