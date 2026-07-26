@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AVITOBOSS · Архив КП</title>
+<style>
+  :root{--bg:#05080d;--panel:#0b1624;--line:rgba(93,229,255,.22);--cyan:#59ebff;--green:#00df86;--muted:#91a5bb}
+  *{box-sizing:border-box}
+  body{margin:0;background:radial-gradient(circle at 20% 0,rgba(89,235,255,.12),transparent 28%),#05080d;color:#eaf7ff;font-family:Arial,sans-serif}
+  .top{position:sticky;top:0;z-index:20;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 18px;background:rgba(5,8,13,.92);border-bottom:1px solid var(--line);backdrop-filter:blur(10px)}
+  .logo{font-weight:1000;letter-spacing:3px;color:#1aff9a}
+  .hint{color:var(--muted);font-size:12px}
+  .tabs{display:flex;gap:8px;flex-wrap:wrap}
+  .tab,.btn{border:1px solid var(--line);background:#101b2b;color:#eaf7ff;border-radius:10px;height:38px;padding:0 14px;font-weight:900;cursor:pointer}
+  .tab.active,.btn.primary{background:linear-gradient(135deg,#00df86,#59ebff);color:#02100b;border-color:transparent}
+  .btn.danger{background:rgba(120,20,20,.38);border-color:rgba(255,90,90,.45);color:#ffd8d8}
+  .wrap{padding:18px;max-width:1540px;margin:0 auto}
+  .section{display:none}
+  .section.active{display:block}
+  .bar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px}
+  .groupbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+  .group-btn{height:34px;border-radius:10px;border:1px solid rgba(255,255,255,.12);background:#111c2d;color:#dff7ff;font-weight:900;padding:0 12px;cursor:pointer}
+  .group-btn.active{background:linear-gradient(135deg,#00df86,#59ebff);color:#02100b;border-color:transparent}
+  .grid{display:grid;grid-template-columns:repeat(6,minmax(170px,1fr));gap:12px}
+  .card{position:relative;min-height:150px;border:1px solid var(--line);border-radius:15px;overflow:hidden;background:#0b1726;background-size:cover;background-position:center;box-shadow:inset 0 0 0 1px rgba(255,255,255,.03)}
+  .card:before{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.18),rgba(0,0,0,.82));pointer-events:none}
+  .card.active{outline:2px solid rgba(255,215,92,.8);box-shadow:0 0 24px rgba(255,215,92,.22)}
+  .card-inner{position:relative;z-index:1;min-height:150px;padding:12px;display:flex;flex-direction:column;justify-content:space-between;gap:10px}
+  .card-title{display:flex;gap:8px;align-items:flex-start;min-width:0}
+  .emoji{font-size:25px;line-height:1;cursor:pointer;filter:drop-shadow(0 2px 6px rgba(0,0,0,.55))}
+  .name{font-size:13px;line-height:1.12;font-weight:1000;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;text-shadow:0 2px 8px #000}
+  .prices{font-size:15px;font-weight:1000;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-shadow:0 2px 8px #000}
+  .actions{display:grid;grid-template-columns:1fr 38px;gap:7px}
+  .actions button{height:29px;border-radius:8px;border:1px solid rgba(255,255,255,.13);background:rgba(0,0,0,.45);color:#eaf7ff;font-weight:1000;cursor:pointer}
+  .actions .take{background:rgba(0,223,134,.24);border-color:rgba(0,223,134,.55);color:#baffdc}
+  .empty{padding:30px;border:1px dashed var(--line);border-radius:14px;color:var(--muted)}
+  .pop{position:fixed;z-index:50;background:#091421;border:1px solid var(--line);border-radius:13px;box-shadow:0 18px 55px rgba(0,0,0,.68);padding:8px}
+  .menu{display:flex;flex-direction:column;gap:5px;width:230px}
+  .menu button,.group-pop button{height:36px;border-radius:9px;border:1px solid rgba(255,255,255,.11);background:rgba(255,255,255,.05);color:#eaf7ff;text-align:left;padding:0 10px;font-weight:900;cursor:pointer}
+  .menu button:hover,.group-pop button:hover{background:rgba(93,229,255,.13)}
+  .emoji-pop{display:grid;grid-template-columns:repeat(6,36px);gap:5px;max-height:230px;overflow:auto}
+  .emoji-pop button{text-align:center;font-size:21px;padding:0}
+  .modal{position:fixed;inset:0;z-index:80;background:rgba(0,0,0,.66);display:flex;align-items:center;justify-content:center;padding:18px}
+  .panel{width:min(560px,94vw);border:1px solid var(--line);border-radius:18px;background:linear-gradient(180deg,#111928,#07111d);box-shadow:0 24px 80px rgba(0,0,0,.75);padding:18px}
+  .panel.wide{width:min(980px,96vw)}
+  .panel-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px}
+  .panel-title{font-size:20px;font-weight:1000;color:#fff}
+  .close{width:38px;height:38px;border-radius:10px;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.06);color:#fff;font-size:22px;cursor:pointer}
+  label{display:flex;flex-direction:column;gap:6px;color:#9edfff;font-size:12px;font-weight:1000;text-transform:uppercase;margin-top:10px}
+  input,select{height:40px;border-radius:10px;border:1px solid var(--line);background:#07111d;color:#fff;padding:0 12px;font:inherit;font-weight:800}
+  .row{display:grid;grid-template-columns:1fr 90px;gap:10px}
+  .panel-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:16px}
+  .preview{width:100%;max-height:72vh;object-fit:contain;border-radius:13px;background:#fff;box-shadow:0 16px 60px rgba(0,0,0,.55)}
+  .note{color:var(--muted);line-height:1.45}
+  canvas{display:none}
+  @media(max-width:1180px){.grid{grid-template-columns:repeat(4,minmax(160px,1fr))}}
+  @media(max-width:760px){.grid{grid-template-columns:repeat(2,minmax(135px,1fr))}.top{align-items:flex-start;flex-direction:column}}
+</style>
+</head>
+<body>
+<header class="top">
+  <div>
+    <div class="logo">AVITOBOSS · КП ARCHIVE LAB</div>
+    <div class="hint">Отдельная песочница. Живой редактор КП не меняется.</div>
+  </div>
+  <nav class="tabs">
+    <button class="tab active" data-tab="cover">Обложка</button>
+    <button class="tab" data-tab="packages">Пакеты</button>
+    <button class="tab" data-tab="book">PDF-книга</button>
+  </nav>
+</header>
+
+<main class="wrap">
+  <section class="section active" id="tab-cover">
+    <div class="bar">
+      <div>
+        <h2>Обложка</h2>
+        <div class="note">Здесь будет архив обложек и выбор первого листа КП-книги. Пока страница подготовлена, без вмешательства в рабочее КП.</div>
+      </div>
+    </div>
+    <div class="empty">Следующий шаг: шаблоны обложек, превью, кнопка “Взять обложку”.</div>
+  </section>
+
+  <section class="section" id="tab-packages">
+    <div class="bar">
+      <div>
+        <h2>Архив шаблонов пакетов</h2>
+        <div class="note">Картинка-превью, группы, emoji, переносы, удаление, дублирование и “Взять” тестируются здесь отдельно.</div>
+      </div>
+      <div class="groupbar">
+        <button class="btn primary" id="newGroupBtn">+ группа</button>
+        <button class="btn" id="importCurrentBtn">+ из текущего редактора</button>
+      </div>
+    </div>
+    <div class="groupbar" id="groups"></div>
+    <div class="grid" id="cards"></div>
+  </section>
+
+  <section class="section" id="tab-book">
+    <h2>PDF-книга КП</h2>
+    <div class="empty">Финальная логика: Обложка + Пакеты + дополнительные листы → PDF, скачать / Google Drive / позже Telegram.</div>
+  </section>
+</main>
+
+<canvas id="previewCanvas" width="900" height="1273"></canvas>
+
+<script>
+(function(){
+  const PRESET_KEY = "avitolog_kp_package_presets_v1";
+  const EDITOR_KEY = "avitolog_kp_editor_v9";
+  const TAKE_KEY = "avitolog_kp_archive_take_v1";
+  const EMOJIS = ["🧾","📦","🏠","🏗️","🧱","🪟","🛋️","⚡","🔧","💎","🚀","🔥","🎯","💰","🅰️","🌿","⭐","🤝","🛠️","📊"];
+  const defaultGroups = [
+    { id:"services", name:"Услуги", emoji:"🧾" },
+    { id:"goods", name:"Товары", emoji:"📦" }
+  ];
+  let activeGroup = "services";
+
+  function $(id){ return document.getElementById(id); }
+  function clone(value){ return JSON.parse(JSON.stringify(value)); }
+  function escapeHtml(value){ return String(value == null ? "" : value).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
+  function uid(prefix){ return prefix + "_" + Date.now().toString(36) + "_" + Math.random().toString(36).slice(2,7); }
+  function moneyShort(value){
+    const n = Number(String(value || "").replace(/\D/g,""));
+    if (!n) return "";
+    return n >= 1000 ? Math.round(n/1000) + "к" : String(n);
+  }
+  function presetPrices(preset){
+    return (preset.packages || []).filter(p => p && p.on !== false).slice(0,4).map(p => moneyShort(p.work)).filter(Boolean).join(" - ");
+  }
+  function readSaved(){
+    let raw = {};
+    try { raw = JSON.parse(localStorage.getItem(PRESET_KEY) || "{}") || {}; } catch(e) {}
+    const groups = [];
+    const seen = new Set();
+    function addGroup(g){
+      if (!g || !g.id || seen.has(g.id)) return;
+      seen.add(g.id);
+      groups.push({ id:String(g.id), name:String(g.name || g.id), emoji:String(g.emoji || "🧾") });
+    }
+    defaultGroups.forEach(addGroup);
+    (Array.isArray(raw.groups) ? raw.groups : []).forEach(addGroup);
+    Object.keys(raw).forEach(key => { if (key !== "groups" && Array.isArray(raw[key])) addGroup({ id:key, name:key, emoji:"🧾" }); });
+    const saved = { groups };
+    groups.forEach(group => {
+      saved[group.id] = (Array.isArray(raw[group.id]) ? raw[group.id] : []).filter(Boolean).map(p => normalizePreset(p, group.id));
+    });
+    return saved;
+  }
+  function normalizePreset(preset, groupId){
+    return {
+      id: preset.id || uid("kp"),
+      name: preset.name || "Шаблон КП",
+      emoji: preset.emoji || "🧾",
+      packages: Array.isArray(preset.packages) ? preset.packages : [],
+      bgChoice: preset.bgChoice || "",
+      heroSrc: preset.heroSrc || "",
+      heroCustomId: preset.heroCustomId || "",
+      heroName: preset.heroName || "",
+      heroDataUrl: preset.heroDataUrl || "",
+      heroPreviewSrc: preset.heroPreviewSrc || "",
+      previewDataUrl: preset.previewDataUrl || "",
+      groupId,
+      savedAt: preset.savedAt || new Date().toISOString(),
+      updatedAt: preset.updatedAt || new Date().toISOString()
+    };
+  }
+  function writeSaved(saved){
+    const clean = { groups: saved.groups.map(g => ({ id:g.id, name:g.name, emoji:g.emoji || "🧾" })) };
+    saved.groups.forEach(group => {
+      clean[group.id] = (saved[group.id] || []).map(p => ({
+        id:p.id || uid("kp"),
+        name:p.name || "Шаблон КП",
+        emoji:p.emoji || "🧾",
+        packages: clone(p.packages || []),
+        bgChoice:p.bgChoice || "",
+        heroSrc:p.heroSrc || "",
+        heroCustomId:p.heroCustomId || "",
+        heroName:p.heroName || "",
+        heroDataUrl:p.heroDataUrl || "",
+        heroPreviewSrc:p.heroPreviewSrc || "",
+        previewDataUrl:p.previewDataUrl || "",
+        savedAt:p.savedAt || new Date().toISOString(),
+        updatedAt:new Date().toISOString()
+      }));
+    });
+    const previousValue = localStorage.getItem(PRESET_KEY) || "";
+    const value = JSON.stringify(clean);
+    localStorage.setItem(PRESET_KEY, value);
+    try { document.dispatchEvent(new CustomEvent("avitolog:storage-write", { detail:{ key:PRESET_KEY, value, previousValue } })); } catch(e) {}
+  }
+  function currentGroup(saved){
+    if (!saved.groups.some(g => g.id === activeGroup)) activeGroup = saved.groups[0] ? saved.groups[0].id : "services";
+    return activeGroup;
+  }
+  function render(){
+    const saved = readSaved();
+    const groupId = currentGroup(saved);
+    $("groups").innerHTML = saved.groups.map(g => `<button class="group-btn ${g.id===groupId?"active":""}" data-group="${escapeHtml(g.id)}">${escapeHtml((g.emoji||"") + " " + g.name)}</button>`).join("");
+    const list = saved[groupId] || [];
+    $("cards").innerHTML = list.length ? list.map((preset, index) => cardHtml(preset, index)).join("") : '<div class="empty">В этой группе пока нет шаблонов. Можно создать из текущего редактора.</div>';
+    hydrateCardBackgrounds(list);
+  }
+  function cardHtml(preset, index){
+    const bg = preset.heroDataUrl || preset.heroPreviewSrc || preset.previewDataUrl || preset.heroSrc || "";
+    return `<article class="card" data-index="${index}" data-bg="${escapeHtml(bg)}">
+      <div class="card-inner">
+        <div class="card-title">
+          <span class="emoji" data-action="emoji" title="Поменять emoji">${escapeHtml(preset.emoji || "🧾")}</span>
+          <span class="name">${escapeHtml(preset.name)}</span>
+        </div>
+        <div class="prices">${escapeHtml(presetPrices(preset) || "Пакеты без цен")}</div>
+        <div class="actions">
+          <button class="take" data-action="take">ВЗЯТЬ</button>
+          <button data-action="menu">...</button>
+        </div>
+      </div>
+    </article>`;
+  }
+  function hydrateCardBackgrounds(list){
+    document.querySelectorAll(".card").forEach(card => {
+      const bg = card.getAttribute("data-bg") || "";
+      if (bg) card.style.backgroundImage = `url("${bg.replace(/"/g,'\\"')}")`;
+    });
+  }
+  function getPreset(groupId, index){
+    const saved = readSaved();
+    const preset = saved[groupId] && saved[groupId][index];
+    return { saved, preset };
+  }
+  function openAt(el, pop){
+    document.body.appendChild(pop);
+    const r = el.getBoundingClientRect();
+    pop.style.left = Math.min(window.innerWidth - pop.offsetWidth - 8, Math.max(8, r.right - pop.offsetWidth)) + "px";
+    pop.style.top = Math.min(window.innerHeight - pop.offsetHeight - 8, Math.max(8, r.bottom + 6)) + "px";
+  }
+  function closePops(){ document.querySelectorAll(".pop").forEach(p => p.remove()); }
+  function openMenu(anchor, groupId, index){
+    closePops();
+    const pop = document.createElement("div");
+    pop.className = "pop menu";
+    pop.innerHTML = `
+      <button data-act="preview">👁 Превью</button>
+      <button data-act="image">🖼 Картинка превью</button>
+      <button data-act="rename">✎ Переименовать</button>
+      <button data-act="move">📁 Перенести в группу</button>
+      <button data-act="duplicate">⧉ Дублировать</button>
+      <button class="danger" data-act="delete">× Удалить</button>`;
+    pop.addEventListener("click", e => {
+      e.stopPropagation();
+      const act = e.target.closest("[data-act]")?.getAttribute("data-act");
+      if (!act) return;
+      closePops();
+      runAction(act, groupId, index, anchor);
+    });
+    openAt(anchor, pop);
+  }
+  function openEmoji(anchor, groupId, index){
+    closePops();
+    const pop = document.createElement("div");
+    pop.className = "pop emoji-pop";
+    pop.innerHTML = EMOJIS.map(e => `<button data-emoji="${escapeHtml(e)}">${escapeHtml(e)}</button>`).join("");
+    pop.addEventListener("click", e => {
+      e.stopPropagation();
+      const emoji = e.target.closest("[data-emoji]")?.getAttribute("data-emoji");
+      if (!emoji) return;
+      const { saved, preset } = getPreset(groupId, index);
+      if (preset) {
+        preset.emoji = emoji;
+        writeSaved(saved);
+        render();
+      }
+      closePops();
+    });
+    openAt(anchor, pop);
+  }
+  function openGroupMove(anchor, groupId, index){
+    closePops();
+    const saved = readSaved();
+    const groups = saved.groups.filter(g => g.id !== groupId);
+    const pop = document.createElement("div");
+    pop.className = "pop group-pop";
+    pop.innerHTML = groups.length ? groups.map(g => `<button data-target="${escapeHtml(g.id)}">${escapeHtml((g.emoji||"") + " " + g.name)}</button>`).join("") : '<div class="hint">Сначала создай вторую группу</div>';
+    pop.addEventListener("click", e => {
+      e.stopPropagation();
+      const target = e.target.closest("[data-target]")?.getAttribute("data-target");
+      if (!target) return;
+      const list = saved[groupId] || [];
+      const preset = list[index];
+      if (!preset) return;
+      list.splice(index,1);
+      saved[target] = saved[target] || [];
+      saved[target].unshift(preset);
+      activeGroup = target;
+      writeSaved(saved);
+      closePops();
+      render();
+    });
+    openAt(anchor, pop);
+  }
+  function runAction(action, groupId, index, anchor){
+    const { saved, preset } = getPreset(groupId, index);
+    if (!preset && action !== "move") return;
+    if (action === "preview") return openPreview(preset);
+    if (action === "image") return openImageModal(groupId, index);
+    if (action === "rename") return openNameModal("Переименовать шаблон", preset.name, preset.emoji, result => {
+      preset.name = result.name || preset.name;
+      preset.emoji = result.emoji || preset.emoji;
+      writeSaved(saved);
+      render();
+    });
+    if (action === "move") return openGroupMove(anchor, groupId, index);
+    if (action === "duplicate") {
+      const copy = clone(preset);
+      copy.id = uid("kp");
+      copy.name = (copy.name || "Шаблон") + " копия";
+      saved[groupId].splice(index + 1, 0, copy);
+      writeSaved(saved);
+      return render();
+    }
+    if (action === "delete") {
+      if (!confirm("Удалить шаблон «" + (preset.name || "Шаблон") + "»?")) return;
+      saved[groupId].splice(index,1);
+      writeSaved(saved);
+      return render();
+    }
+  }
+  function openNameModal(title, name, emoji, onSave, withGroup){
+    const saved = readSaved();
+    const modal = document.createElement("div");
+    modal.className = "modal";
+    modal.innerHTML = `<div class="panel">
+      <div class="panel-head"><div class="panel-title">${escapeHtml(title)}</div><button class="close">×</button></div>
+      ${withGroup ? `<label>Группа<select id="modalGroup">${saved.groups.map(g => `<option value="${escapeHtml(g.id)}">${escapeHtml((g.emoji||"") + " " + g.name)}</option>`).join("")}</select></label>` : ""}
+      <div class="row">
+        <label>Название<input id="modalName" value="${escapeHtml(name || "")}"></label>
+        <label>Emoji<input id="modalEmoji" value="${escapeHtml(emoji || "🧾")}" maxlength="4"></label>
+      </div>
+      <div class="panel-actions"><button class="btn" data-close>Отмена</button><button class="btn primary" data-save>Сохранить</button></div>
+    </div>`;
+    document.body.appendChild(modal);
+    const close = () => modal.remove();
+    modal.querySelector(".close").onclick = close;
+    modal.querySelector("[data-close]").onclick = close;
+    modal.addEventListener("click", e => { if (e.target === modal) close(); });
+    modal.querySelector("[data-save]").onclick = () => {
+      const result = {
+        group: modal.querySelector("#modalGroup")?.value || activeGroup,
+        name: modal.querySelector("#modalName").value.trim(),
+        emoji: modal.querySelector("#modalEmoji").value.trim() || "🧾"
+      };
+      if (!result.name) return modal.querySelector("#modalName").focus();
+      onSave(result);
+      close();
+    };
+    setTimeout(() => modal.querySelector("#modalName").focus(), 0);
+  }
+  function openGroupModal(){
+    openNameModal("Новая группа", "Каркасные дома", "🏠", result => {
+      const saved = readSaved();
+      let id = "group_" + result.name.toLowerCase().replace(/[^a-zа-яё0-9]+/gi,"_").replace(/^_+|_+$/g,"").slice(0,30);
+      if (!id || id === "group_") id = uid("group");
+      while (saved.groups.some(g => g.id === id)) id = uid("group");
+      saved.groups.push({ id, name:result.name, emoji:result.emoji });
+      saved[id] = [];
+      activeGroup = id;
+      writeSaved(saved);
+      render();
+    });
+  }
+  function openImageModal(groupId, index){
+    const modal = document.createElement("div");
+    modal.className = "modal";
+    modal.innerHTML = `<div class="panel">
+      <div class="panel-head"><div class="panel-title">Картинка превью шаблона</div><button class="close">×</button></div>
+      <div class="note">Выбери картинку. Она будет фоном карточки и превью шаблона.</div>
+      <label>Файл<input id="imageInput" type="file" accept="image/*"></label>
+      <div class="panel-actions"><button class="btn" data-close>Закрыть</button></div>
+    </div>`;
+    document.body.appendChild(modal);
+    const close = () => modal.remove();
+    modal.querySelector(".close").onclick = close;
+    modal.querySelector("[data-close]").onclick = close;
+    modal.addEventListener("click", e => { if (e.target === modal) close(); });
+    modal.querySelector("#imageInput").onchange = async e => {
+      const file = e.target.files && e.target.files[0];
+      if (!file) return;
+      const dataUrl = await fileToDataUrl(file);
+      const { saved, preset } = getPreset(groupId, index);
+      if (!preset) return;
+      preset.heroDataUrl = dataUrl;
+      preset.heroPreviewSrc = dataUrl;
+      preset.previewDataUrl = dataUrl;
+      writeSaved(saved);
+      render();
+      close();
+    };
+  }
+  function fileToDataUrl(file){
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      const url = URL.createObjectURL(file);
+      img.onload = () => {
+        const max = 1200;
+        const scale = Math.min(1, max / Math.max(img.naturalWidth, img.naturalHeight));
+        const c = document.createElement("canvas");
+        c.width = Math.max(1, Math.round(img.naturalWidth * scale));
+        c.height = Math.max(1, Math.round(img.naturalHeight * scale));
+        c.getContext("2d").drawImage(img,0,0,c.width,c.height);
+        URL.revokeObjectURL(url);
+        resolve(c.toDataURL("image/jpeg", .82));
+      };
+      img.onerror = () => { URL.revokeObjectURL(url); reject(new Error("Не удалось прочитать картинку")); };
+      img.src = url;
+    });
+  }
+  async function openPreview(preset){
+    const src = preset.previewDataUrl || await buildPreview(preset);
+    const modal = document.createElement("div");
+    modal.className = "modal";
+    modal.innerHTML = `<div class="panel wide">
+      <div class="panel-head"><div class="panel-title">${escapeHtml(preset.emoji || "🧾")} ${escapeHtml(preset.name || "Шаблон")}</div><button class="close">×</button></div>
+      <img class="preview" src="${src}" alt="">
+      <div class="panel-actions"><button class="btn primary" data-take>Взять</button><button class="btn" data-close>Закрыть</button></div>
+    </div>`;
+    document.body.appendChild(modal);
+    const close = () => modal.remove();
+    modal.querySelector(".close").onclick = close;
+    modal.querySelector("[data-close]").onclick = close;
+    modal.addEventListener("click", e => { if (e.target === modal) close(); });
+    modal.querySelector("[data-take]").onclick = () => { takePreset(preset); close(); };
+  }
+  function buildPreview(preset){
+    return new Promise(resolve => {
+      const c = $("previewCanvas");
+      const ctx = c.getContext("2d");
+      const bg = preset.heroDataUrl || preset.heroPreviewSrc || preset.heroSrc || "";
+      function paint(img){
+        ctx.clearRect(0,0,c.width,c.height);
+        const g = ctx.createLinearGradient(0,0,0,c.height);
+        g.addColorStop(0,"#10233a"); g.addColorStop(1,"#020509");
+        ctx.fillStyle = g; ctx.fillRect(0,0,c.width,c.height);
+        if (img) {
+          ctx.globalAlpha = .72;
+          ctx.drawImage(img,0,0,c.width,360);
+          ctx.globalAlpha = 1;
+        }
+        ctx.fillStyle = "rgba(0,0,0,.58)"; ctx.fillRect(0,0,c.width,c.height);
+        ctx.fillStyle = "#fff"; ctx.font = "900 42px Arial"; ctx.fillText("СТРАТЕГИИ ПРОДВИЖЕНИЯ", 52, 245);
+        let y = 430;
+        (preset.packages || []).filter(p=>p.on!==false).slice(0,4).forEach((p,i)=>{
+          ctx.fillStyle = ["#0d6bff","#00d986","#8c5cff","#ff5277"][i] || "#59ebff";
+          ctx.beginPath(); ctx.roundRect(42,y-34,48,48,14); ctx.fill();
+          ctx.fillStyle = "#fff"; ctx.font = "900 30px Arial"; ctx.fillText(p.icon || String(i+1), 56, y);
+          ctx.font = "900 28px Arial"; ctx.fillText(`${p.limit || ""} — ${p.name || ""}`, 105, y);
+          ctx.font = "700 22px Arial"; ctx.fillText((p.items || []).slice(0,3).join(" • ").slice(0,92), 105, y+34);
+          y += 150;
+        });
+        resolve(c.toDataURL("image/jpeg", .84));
+      }
+      if (!bg) return paint(null);
+      const img = new Image();
+      img.crossOrigin = "anonymous";
+      img.onload = () => paint(img);
+      img.onerror = () => paint(null);
+      img.src = bg;
+    });
+  }
+  function takePreset(preset){
+    localStorage.setItem(TAKE_KEY, JSON.stringify({ takenAt:new Date().toISOString(), preset }));
+    alert("Шаблон положен в тестовый буфер. Живой редактор пока не меняю.");
+  }
+  function importCurrentEditor(){
+    let current = null;
+    try { current = JSON.parse(localStorage.getItem(EDITOR_KEY) || "null"); } catch(e) {}
+    if (!current || !Array.isArray(current.packages)) return alert("Текущий черновик КП не найден в этом браузере.");
+    openNameModal("Сохранить текущий КП в архив", current.heroName || "Новый шаблон", "🧾", result => {
+      const saved = readSaved();
+      const group = result.group || activeGroup;
+      saved[group] = saved[group] || [];
+      saved[group].unshift(normalizePreset({
+        id: uid("kp"),
+        name: result.name,
+        emoji: result.emoji,
+        packages: current.packages,
+        bgChoice: current.bgChoice || "",
+        heroSrc: current.heroSrc || "",
+        heroCustomId: current.heroCustomId || "",
+        heroName: current.heroName || "",
+        heroDataUrl: current.heroDataUrl || "",
+        heroPreviewSrc: current.heroPreviewSrc || "",
+        previewDataUrl: current.previewDataUrl || ""
+      }, group));
+      activeGroup = group;
+      writeSaved(saved);
+      render();
+    }, true);
+  }
+
+  document.querySelectorAll(".tab").forEach(btn => btn.addEventListener("click", () => {
+    document.querySelectorAll(".tab").forEach(b => b.classList.toggle("active", b === btn));
+    document.querySelectorAll(".section").forEach(s => s.classList.toggle("active", s.id === "tab-" + btn.dataset.tab));
+  }));
+  $("groups").addEventListener("click", e => {
+    const group = e.target.closest("[data-group]")?.getAttribute("data-group");
+    if (!group) return;
+    activeGroup = group;
+    render();
+  });
+  $("cards").addEventListener("click", e => {
+    const card = e.target.closest(".card");
+    if (!card) return;
+    const index = Number(card.dataset.index || 0);
+    const action = e.target.closest("[data-action]")?.getAttribute("data-action") || "preview";
+    if (action === "menu") return openMenu(e.target.closest("[data-action]"), activeGroup, index);
+    if (action === "emoji") return openEmoji(e.target, activeGroup, index);
+    const { preset } = getPreset(activeGroup, index);
+    if (!preset) return;
+    if (action === "take") return takePreset(preset);
+    openPreview(preset);
+  });
+  document.addEventListener("click", e => { if (!e.target.closest(".pop") && !e.target.closest("[data-action]")) closePops(); });
+  $("newGroupBtn").onclick = openGroupModal;
+  $("importCurrentBtn").onclick = importCurrentEditor;
+  render();
+})();
+</script>
+</body>
+</html>
