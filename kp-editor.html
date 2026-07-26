@@ -691,6 +691,7 @@
       renderPackageForm();
       renderZones();
       formReady = true;
+      updateCoverStatus();
     }
     function nichePath(file){
       return `assets/kp-niches/${encodeURIComponent(NICHE_FOLDER)}/${encodeURIComponent(file)}`;
@@ -1417,7 +1418,6 @@
       try { window.dispatchEvent(new CustomEvent("avitolog:storage-write", { detail: { key: COVER_KEY, value: cover } })); } catch (e) {}
       updateCoverStatus();
       closeCoverModal();
-      $("packageEditor").scrollIntoView({ block: "center" });
     }
     function openArchiveModal(groupId){
       const presets = readPresetStore();
@@ -1726,12 +1726,12 @@
     $("titleScale").addEventListener("input", draw);
     $("heroZone").addEventListener("click", () => toggleNichePanels());
     $("coverBtn").addEventListener("click", openCoverModal);
-    $("packagesBtn").addEventListener("click", () => $("packageEditor").scrollIntoView({ block: "center" }));
+    $("packagesBtn").addEventListener("click", closeCoverModal);
     $("coverPrevBtn").addEventListener("click", () => shiftCoverCarousel(-1));
     $("coverNextBtn").addEventListener("click", () => shiftCoverCarousel(1));
     $("closeCoverBtn").addEventListener("click", closeCoverModal);
     $("coverModal").addEventListener("click", (event) => { if (event.target === $("coverModal")) closeCoverModal(); });
-    $("saveCoverBtn").addEventListener("click", () => { saveCoverSelection().catch((error) => alert(error && error.message ? error.message : String(error))); });
+    $("saveCoverBtn").addEventListener("click", saveCoverSelection);
     $("clearCoverBtn").addEventListener("click", () => { localStorage.removeItem(COVER_KEY); updateCoverStatus(); });
     $("openArchiveBtn").addEventListener("click", () => openArchiveModal());
     $("archiveCloseBtn").addEventListener("click", closeArchiveModal);
