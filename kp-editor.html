@@ -1115,6 +1115,7 @@
         btn.className = "tab" + (index === selectedPackage ? " active" : "");
         btn.textContent = `${index + 1}. ${compactPackageName(pkg, index)}`;
         btn.title = pkg.name || "Пакет";
+        btn.addEventListener("pointerdown", () => flushPackageForm({ updateTextarea: false }));
         btn.addEventListener("click", () => selectPackage(index));
         tabsEl.appendChild(btn);
       });
@@ -1148,12 +1149,13 @@
         zone.style.top = `${item.top / H * 100}%`;
         zone.style.height = `${item.height / H * 100}%`;
         zone.setAttribute("aria-label", `Пакет ${item.index + 1}`);
+        zone.addEventListener("pointerdown", () => flushPackageForm({ updateTextarea: false }));
         zone.addEventListener("click", () => selectPackage(item.index));
         stage.appendChild(zone);
       });
     }
     function selectPackage(index){
-      flushPackageForm();
+      flushPackageForm({ updateTextarea: false });
       autoSaveState();
       selectedPackage = index;
       persistSelectedPackage();
@@ -1176,14 +1178,14 @@
     function markPackageFormDirty(){
       packageFormDirty = true;
     }
-    function flushPackageForm(){
+    function flushPackageForm(options = {}){
       if (!packageFormDirty) return;
       const activePackage = selectedPackage;
-      readPackageForm();
+      readPackageForm(options);
       selectedPackage = activePackage;
       persistSelectedPackage();
     }
-    function readPackageForm(){
+    function readPackageForm(options = {}){
       clampSelectedPackage();
       const pkg = state.packages[selectedPackage];
       if (!pkg) return;
@@ -1196,12 +1198,12 @@
       pkg.work = $("pkgWork").value;
       pkg.color = $("pkgColor").value;
       pkg.items = $("pkgItems").value.split("\n").map((line) => line.trim()).filter(Boolean);
-      syncPackageDerivedLines(pkg);
+      if (options.syncDerived !== false) syncPackageDerivedLines(pkg);
       const syncedItems = pkg.items.join("\n");
-      if ($("pkgItems").value !== syncedItems) $("pkgItems").value = syncedItems;
-      autoResizePackageItems();
-      packageFormDirty = false;
-      persistState();
+      if (options.updateTextarea !== false && $("pkgItems").value !== syncedItems) $("pkgItems").value = syncedItems;
+      if (options.resize !== false) autoResizePackageItems();
+      if (!options.keepDirty) packageFormDirty = false;
+      if (options.persist !== false) persistState();
     }
     function autoResizePackageItems(){
       const el = $("pkgItems");
@@ -2242,27 +2244,41 @@
     ["pkgOn","pkgAvitoBudgetOn","pkgIcon","pkgName","pkgLimit","pkgWork","pkgColor","pkgItems"].forEach((id) => {
       $(id).addEventListener("input", () => {
         markPackageFormDirty();
+        readPackageForm({
+          persist: false,
+          updateTextarea: false,
+          resize: id === "pkgItems",
+          keepDirty: true,
+          syncDerived: id !== "pkgItems"
+        });
         if (id === "pkgItems") autoResizePackageItems();
       });
       $(id).addEventListener("change", () => {
         markPackageFormDirty();
+        readPackageForm({
+          persist: false,
+          updateTextarea: false,
+          resize: id === "pkgItems",
+          keepDirty: true,
+          syncDerived: id !== "pkgItems"
+        });
       });
       $(id).addEventListener("blur", () => {
         const wasDirty = packageFormDirty;
-        flushPackageForm();
+        flushPackageForm({ updateTextarea: false });
         if (wasDirty && (id === "pkgOn" || id === "pkgIcon" || id === "pkgName")) renderTabs();
         if (wasDirty && id === "pkgOn") renderZones();
         if (wasDirty) draw();
       });
     });
     $("pkgAvitoBudgetOn").addEventListener("change", () => {
-      flushPackageForm();
+      flushPackageForm({ updateTextarea: false });
       draw();
     });
     document.addEventListener("visibilitychange", () => {
-      if (document.hidden) flushPackageForm();
+      if (document.hidden) flushPackageForm({ updateTextarea: false });
     });
-    window.addEventListener("pagehide", flushPackageForm);
+    window.addEventListener("pagehide", () => flushPackageForm({ updateTextarea: false }));
     $("bgChoice").addEventListener("change", () => {
       readGlobalForm(false);
       persistState();
