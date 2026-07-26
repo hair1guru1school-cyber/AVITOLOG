@@ -118,11 +118,11 @@
     .emoji-picker button:hover{background:#243854}
     .preset-title-row{display:flex;align-items:center;justify-content:center;gap:8px}
     .cover-carousel{display:grid;grid-template-columns:42px 1fr 42px;align-items:center;gap:12px}
-    .cover-track{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;min-height:260px}
-    .cover-card{border:1px solid rgba(89,235,255,.25);border-radius:13px;background:#07111d;padding:9px;color:#fff;text-align:left;display:flex;flex-direction:column;gap:8px}
+    .cover-track{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;min-height:430px}
+    .cover-card{border:1px solid rgba(89,235,255,.25);border-radius:16px;background:#07111d;padding:12px;color:#fff;text-align:left;display:flex;flex-direction:column;gap:10px}
     .cover-card.active{border-color:rgba(0,223,134,.9);box-shadow:0 0 0 2px rgba(0,223,134,.18)}
-    .cover-card img{width:100%;height:220px;object-fit:cover;border-radius:10px;background:#050911}
-    .cover-card-title{font-weight:900;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .cover-card img{width:100%;height:350px;object-fit:cover;border-radius:12px;background:#050911}
+    .cover-card-title{font-weight:900;font-size:18px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
     .cover-arrow{height:64px;border-radius:12px;background:#172438;color:#dcecff;border:1px solid rgba(93,229,255,.25);font-size:24px;font-weight:900}
     #pkgItems{min-height:220px;overflow:hidden;resize:none}
     @media(max-width:1500px){.niche-panel{position:fixed;top:78px;max-height:calc(100vh - 100px)}.niche-panel.left{left:18px;right:auto}.niche-panel.right{right:18px;left:auto}}
@@ -289,15 +289,14 @@
           <button class="btn" id="closeCoverBtn" type="button">Закрыть</button>
         </div>
         <div class="card">
-          <div class="mini-note">Выберите обложку из папки Cp-Constructor. Она хранится отдельно от второго листа с пакетами.</div>
+          <div class="mini-note">Готовые обложки из папки Cp-Constructor. Нажмите нужную карточку или кнопку «Выбрать».</div>
           <div class="cover-carousel">
             <button class="cover-arrow" id="coverPrevBtn" type="button">‹</button>
             <div class="cover-track" id="coverTrack"></div>
             <button class="cover-arrow" id="coverNextBtn" type="button">›</button>
           </div>
           <div class="toolbar">
-            <button class="btn primary" id="saveCoverBtn" type="button">Запомнить обложку</button>
-            <button class="btn danger" id="clearCoverBtn" type="button">Убрать</button>
+            <button class="btn danger" id="clearCoverBtn" type="button">Убрать выбранную</button>
           </div>
           <div class="mini-note" id="coverStatus">Обложка пока не выбрана.</div>
         </div>
@@ -1390,14 +1389,10 @@
       track.innerHTML = "";
       const start = Math.max(0, Math.min(coverCarouselIndex, Math.max(0, COVER_LIBRARY.length - 3)));
       COVER_LIBRARY.slice(start, start + 3).forEach((cover) => {
-        const card = document.createElement("button");
-        card.type = "button";
+        const card = document.createElement("div");
         card.className = "cover-card" + (cover.id === selectedCoverId ? " active" : "");
-        card.innerHTML = `<img src="${cover.src}" alt=""><div class="cover-card-title">${escapeHtml(cover.name)}</div>`;
-        card.addEventListener("click", () => {
-          selectedCoverId = cover.id;
-          renderCoverCarousel();
-        });
+        card.innerHTML = `<img src="${cover.src}" alt=""><div class="cover-card-title">${escapeHtml(cover.name)}</div><button class="btn primary" type="button">Выбрать</button>`;
+        card.addEventListener("click", () => saveCoverSelection(cover.id));
         track.appendChild(card);
       });
     }
@@ -1405,7 +1400,8 @@
       coverCarouselIndex = Math.max(0, Math.min(coverCarouselIndex + delta, Math.max(0, COVER_LIBRARY.length - 3)));
       renderCoverCarousel();
     }
-    function saveCoverSelection(){
+    function saveCoverSelection(id){
+      selectedCoverId = id || selectedCoverId;
       const selected = COVER_LIBRARY.find((cover) => cover.id === selectedCoverId) || COVER_LIBRARY[0];
       if (!selected) return;
       const cover = {
@@ -1731,7 +1727,6 @@
     $("coverNextBtn").addEventListener("click", () => shiftCoverCarousel(1));
     $("closeCoverBtn").addEventListener("click", closeCoverModal);
     $("coverModal").addEventListener("click", (event) => { if (event.target === $("coverModal")) closeCoverModal(); });
-    $("saveCoverBtn").addEventListener("click", saveCoverSelection);
     $("clearCoverBtn").addEventListener("click", () => { localStorage.removeItem(COVER_KEY); updateCoverStatus(); });
     $("openArchiveBtn").addEventListener("click", () => openArchiveModal());
     $("archiveCloseBtn").addEventListener("click", closeArchiveModal);
