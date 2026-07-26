@@ -89,7 +89,32 @@
     .small-value{float:right;color:var(--cyan);font-weight:900}
     .file-row input{padding:7px}
     .mini-note{color:#91a5bb;font-size:12px;line-height:1.35}
+    .modal-backdrop{position:fixed;inset:0;z-index:80;background:rgba(0,0,0,.68);display:none;align-items:center;justify-content:center;padding:24px}
+    .modal-backdrop.open{display:flex}
+    .modal{width:min(1180px,calc(100vw - 48px));max-height:calc(100vh - 54px);overflow:auto;border:1px solid rgba(89,235,255,.36);border-radius:14px;background:#0b1625;box-shadow:0 28px 90px rgba(0,0,0,.72);padding:18px}
+    .modal.small{width:min(520px,calc(100vw - 40px))}
+    .modal-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px}
+    .modal-title{font-size:20px;font-weight:900;color:#fff}
+    .modal-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+    .archive-groups{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
+    .group-chip{height:34px;border-radius:9px;padding:0 12px;border:1px solid rgba(93,229,255,.28);background:#122238;color:#dcecff;font-weight:900}
+    .group-chip.active{background:linear-gradient(135deg,#00df86,#59ebff);color:#03110c;border:0}
+    .archive-grid{display:grid;grid-template-columns:repeat(6,minmax(150px,1fr));gap:12px}
+    .archive-card{min-height:116px;border:1px solid rgba(89,235,255,.32);border-radius:12px;background:linear-gradient(135deg,rgba(14,44,64,.9),rgba(7,15,26,.96));background-size:cover;background-position:center;overflow:hidden;position:relative;padding:10px;display:flex;flex-direction:column;justify-content:space-between}
+    .archive-card:before{content:"";position:absolute;inset:0;background:linear-gradient(90deg,rgba(2,8,13,.88),rgba(2,8,13,.55));pointer-events:none}
+    .archive-card>*{position:relative}
+    .archive-name{display:flex;gap:8px;align-items:flex-start;font-weight:900;font-size:12px;line-height:1.08;color:#fff;min-height:31px}
+    .archive-prices{font-weight:900;font-size:13px;color:#fff;letter-spacing:.2px;white-space:nowrap}
+    .archive-card-actions{display:grid;grid-template-columns:1fr 38px;gap:6px}
+    .archive-menu{position:absolute;z-index:90;min-width:190px;border:1px solid rgba(89,235,255,.28);border-radius:10px;background:#101b2b;box-shadow:0 18px 54px rgba(0,0,0,.58);padding:6px;display:none}
+    .archive-menu.open{display:block}
+    .archive-menu button{width:100%;height:34px;border-radius:7px;background:#172438;color:#eaf4ff;text-align:left;font-weight:900;margin:2px 0;padding:0 10px}
+    .archive-menu button:hover{background:#21334d}
+    .archive-menu button.danger{background:rgba(255,92,138,.15);color:#ffd3df}
+    .preset-title-row{display:flex;align-items:center;justify-content:center;gap:8px}
+    #pkgItems{min-height:220px;overflow:hidden;resize:none}
     @media(max-width:1500px){.niche-panel{position:fixed;top:78px;max-height:calc(100vh - 100px)}.niche-panel.left{left:18px;right:auto}.niche-panel.right{right:18px;left:auto}}
+    @media(max-width:1100px){.archive-grid{grid-template-columns:repeat(3,minmax(150px,1fr))}}
     @media(max-width:1320px){.layout{min-width:1010px}.stage-wrap{height:calc(100vh - 126px)}}
     @media(max-width:920px){.stage{width:760px;min-width:760px}}
     @media(max-width:680px){.layout{padding:10px}.top{position:static}.status{display:none}.logo{font-size:18px;letter-spacing:5px}.grid2{grid-template-columns:1fr}}
@@ -122,6 +147,8 @@
           <div class="hint">Формат 1414×2000. Клик по пакету на картине выбирает его для редактирования.</div>
         </div>
         <div class="toolbar">
+          <button class="btn" id="coverBtn" type="button">Обложка</button>
+          <button class="btn" id="packagesBtn" type="button">Пакеты</button>
           <button class="btn gold" id="downloadBtn">Скачать PNG</button>
           <button class="btn" id="copyTextBtn">Текст КП</button>
         </div>
@@ -178,7 +205,10 @@
         </div>
 
         <div class="card preset-card">
-          <div class="preset-title">ГОТОВЫЕ ПАКЕТЫ</div>
+          <div class="preset-title-row">
+            <div class="preset-title">ГОТОВЫЕ ПАКЕТЫ</div>
+            <button class="btn" id="openArchiveBtn" type="button">🗄 Архив</button>
+          </div>
           <div class="grid2">
             <label>Тип
               <select id="presetKind">
@@ -193,6 +223,7 @@
           <div class="toolbar">
             <button class="btn primary" id="applyPresetBtn">Применить</button>
             <button class="btn" id="savePresetBtn">Сохранить текущий</button>
+            <button class="btn" id="updatePresetBtn" type="button">🔄</button>
           </div>
         </div>
 
@@ -238,6 +269,66 @@
         </div>
       </div>
     </aside>
+
+    <div class="modal-backdrop" id="coverModal">
+      <div class="modal small">
+        <div class="modal-head">
+          <div class="modal-title">Обложка КП</div>
+          <button class="btn" id="closeCoverBtn" type="button">Закрыть</button>
+        </div>
+        <div class="card">
+          <div class="mini-note">Обложка хранится отдельно от второго листа с пакетами. Архив пакетов не смешивается с обложками.</div>
+          <label>Файл обложки
+            <input id="coverFile" type="file" accept="image/*">
+          </label>
+          <div class="toolbar">
+            <button class="btn primary" id="saveCoverBtn" type="button">Запомнить обложку</button>
+            <button class="btn danger" id="clearCoverBtn" type="button">Убрать</button>
+          </div>
+          <div class="mini-note" id="coverStatus">Обложка пока не выбрана.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal-backdrop" id="archiveModal">
+      <div class="modal">
+        <div class="modal-head">
+          <div class="modal-title">Архив шаблонов КП · второй лист</div>
+          <div class="modal-actions">
+            <button class="btn primary" id="archiveAddGroupBtn" type="button">+ группа</button>
+            <button class="btn" id="archiveCloseBtn" type="button">Закрыть</button>
+          </div>
+        </div>
+        <div class="archive-groups" id="archiveGroups"></div>
+        <div class="archive-grid" id="archiveGrid"></div>
+      </div>
+    </div>
+
+    <div class="modal-backdrop" id="presetSaveModal">
+      <div class="modal small">
+        <div class="modal-head">
+          <div class="modal-title" id="presetSaveTitle">Сохранить шаблон КП</div>
+          <button class="btn" id="presetSaveCloseBtn" type="button">Закрыть</button>
+        </div>
+        <div class="card">
+          <label>Группа
+            <select id="presetSaveGroup"></select>
+          </label>
+          <label>Название
+            <input id="presetSaveName">
+          </label>
+          <label>Emoji
+            <input id="presetSaveEmoji">
+          </label>
+          <div class="toolbar">
+            <button class="btn" id="presetSaveCancelBtn" type="button">Отмена</button>
+            <button class="btn primary" id="presetSaveConfirmBtn" type="button">Сохранить</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="archive-menu" id="archiveMenu"></div>
   </main>
 
   <script>
@@ -247,6 +338,7 @@
     const SELECTED_PACKAGE_KEY = "avitolog_kp_editor_selected_package_v1";
     const HERO_DB_NAME = "avitolog-kp-hero-library";
     const HERO_DB_STORE = "images";
+    const COVER_KEY = "avitolog_kp_cover_v1";
     const FONT = '"Source Sans 3","Source Sans Pro",Arial,sans-serif';
     const ASSETS = {
       bgDark: "assets/kp-layers/kp-bg-dark.jpg",
@@ -308,6 +400,10 @@
     let customNicheImages = [];
     let formReady = false;
     let packageFormDirty = false;
+    let archiveGroupId = "services";
+    let archiveMenuPreset = null;
+    let presetSaveMode = "create";
+    let presetSaveTarget = null;
 
     const defaults = {
       bgChoice: "dark",
@@ -671,6 +767,13 @@
       $("pkgWork").value = pkg.work || "";
       $("pkgColor").value = normalizeColor(pkg.color || "#24308f");
       $("pkgItems").value = (pkg.items || []).join("\n");
+      resizePackageItemsField();
+    }
+    function resizePackageItemsField(){
+      const field = $("pkgItems");
+      if (!field) return;
+      field.style.height = "auto";
+      field.style.height = `${Math.max(220, field.scrollHeight + 4)}px`;
     }
     function renderZones(){
       stage.querySelectorAll(".click-zone").forEach((el) => el.remove());
@@ -1057,17 +1160,67 @@
       renderForm();
       draw();
     }
+    function basePresetGroups(){
+      return [
+        { id: "services", name: "Услуги", emoji: "📄", builtin: true },
+        { id: "goods", name: "Товары", emoji: "📦", builtin: true }
+      ];
+    }
+    function normalizePresetStore(raw){
+      const store = raw && typeof raw === "object" ? raw : {};
+      const groups = basePresetGroups();
+      (store.groups || []).forEach((group) => {
+        if (!group || !group.id || group.id === "services" || group.id === "goods") return;
+        groups.push({
+          id: String(group.id),
+          name: String(group.name || group.id),
+          emoji: String(group.emoji || "📁")
+        });
+      });
+      const normalized = { groups };
+      groups.forEach((group) => {
+        normalized[group.id] = Array.isArray(store[group.id]) ? store[group.id] : [];
+      });
+      normalized.services = Array.isArray(store.services) ? store.services : [];
+      normalized.goods = Array.isArray(store.goods) ? store.goods : [];
+      return normalized;
+    }
+    function readPresetStore(){
+      try { return normalizePresetStore(JSON.parse(localStorage.getItem(PRESET_KEY) || "{}")); }
+      catch (e) { return normalizePresetStore({}); }
+    }
+    function writePresetStore(store){
+      const normalized = normalizePresetStore(store);
+      const payload = { groups: normalized.groups.filter((group) => !group.builtin) };
+      normalized.groups.forEach((group) => { payload[group.id] = normalized[group.id] || []; });
+      localStorage.setItem(PRESET_KEY, JSON.stringify(payload));
+      try { window.dispatchEvent(new CustomEvent("avitolog:storage-write", { detail: { key: PRESET_KEY, value: payload } })); } catch (e) {}
+    }
     function getPackagePresets(){
-      let saved = { services: [], goods: [] };
-      try {
-        saved = Object.assign(saved, JSON.parse(localStorage.getItem(PRESET_KEY) || "{}"));
-      } catch (e) {}
-      return {
-        services: DEFAULT_PRESETS.services.concat(saved.services || []),
-        goods: DEFAULT_PRESETS.goods.concat(saved.goods || [])
-      };
+      const saved = readPresetStore();
+      const result = {};
+      saved.groups.forEach((group) => {
+        const defaultsForGroup = group.id === "services" ? DEFAULT_PRESETS.services : group.id === "goods" ? DEFAULT_PRESETS.goods : [];
+        result[group.id] = defaultsForGroup.concat(saved[group.id] || []);
+      });
+      result.groups = saved.groups;
+      return result;
+    }
+    function renderPresetKindOptions(){
+      const select = $("presetKind");
+      const current = select.value || "services";
+      const presets = getPackagePresets();
+      select.innerHTML = "";
+      presets.groups.forEach((group) => {
+        const option = document.createElement("option");
+        option.value = group.id;
+        option.textContent = `${group.emoji || "📁"} ${group.name}`;
+        select.appendChild(option);
+      });
+      select.value = presets.groups.some((group) => group.id === current) ? current : "services";
     }
     function renderPresetSelect(){
+      renderPresetKindOptions();
       const kind = $("presetKind").value || "services";
       const select = $("presetSelect");
       const presets = getPackagePresets()[kind] || [];
@@ -1079,30 +1232,334 @@
         select.appendChild(option);
       });
     }
-    function applySelectedPreset(){
-      const kind = $("presetKind").value || "services";
-      const presets = getPackagePresets()[kind] || [];
-      const preset = presets[Number($("presetSelect").value || 0)];
+    async function applyPresetRecord(preset){
       if (!preset) return;
-      state.packages = clone(preset.packages);
+      state.packages = clone(preset.packages || []);
+      if (preset.heroCustomId) {
+        const record = await getCustomHeroImage(preset.heroCustomId).catch(() => null);
+        if (record) {
+          await selectCustomNicheImage(record);
+        } else if (preset.heroDataUrl) {
+          customHeroSrc = preset.heroDataUrl;
+          state.heroSrc = "";
+          state.heroCustomId = "";
+          state.heroName = preset.heroName || state.heroName;
+          images.hero = await loadImage(customHeroSrc);
+        }
+      } else if (preset.heroSrc) {
+        await selectNicheImage(preset.heroSrc, preset.heroName || "");
+      } else if (preset.heroDataUrl) {
+        customHeroSrc = preset.heroDataUrl;
+        state.heroSrc = "";
+        state.heroCustomId = "";
+        state.heroName = preset.heroName || state.heroName;
+        images.hero = await loadImage(customHeroSrc);
+      }
       selectedPackage = 0;
+      persistSelectedPackage();
       renderForm();
       saveState();
     }
-    function saveCurrentPreset(){
-      readGlobalForm();
+    function applySelectedPreset(){
       const kind = $("presetKind").value || "services";
-      const rawName = prompt("Название готового пакета", kind === "goods" ? "Товары - новый пакет" : "Услуги - новый пакет");
-      const name = rawName && rawName.trim();
-      if (!name) return;
-      let saved = { services: [], goods: [] };
+      const presets = getPackagePresets()[kind] || [];
+      applyPresetRecord(presets[Number($("presetSelect").value || 0)]);
+    }
+    function currentPresetRecord(name, groupId, emoji){
+      readGlobalForm();
+      const previewDataUrl = makePresetPreviewDataUrl();
+      return {
+        id: `preset-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+        name,
+        groupId,
+        emoji: emoji || emojiForNiche(state.heroName || name) || "📄",
+        packages: clone(state.packages),
+        heroSrc: state.heroSrc || "",
+        heroCustomId: state.heroCustomId || "",
+        heroName: state.heroName || "",
+        heroDataUrl: currentHeroDataUrl(),
+        previewDataUrl,
+        updatedAt: new Date().toISOString()
+      };
+    }
+    function inferPresetName(){
+      const hero = String(state.heroName || "").trim();
+      return hero || "Новый шаблон КП";
+    }
+    function saveCurrentPreset(){
+      openPresetSaveModal({ mode: "create" });
+    }
+    function updateSelectedPreset(){
+      const groupId = $("presetKind").value || "services";
+      const selectedIndex = Number($("presetSelect").value || 0);
+      const builtinCount = groupId === "services" ? DEFAULT_PRESETS.services.length : groupId === "goods" ? DEFAULT_PRESETS.goods.length : 0;
+      const savedIndex = selectedIndex - builtinCount;
+      if (savedIndex < 0) {
+        openPresetSaveModal({ mode: "create" });
+        return;
+      }
+      mutatePresetStore((store) => {
+        const list = store[groupId] || [];
+        const old = list[savedIndex];
+        if (!old) return;
+        const next = currentPresetRecord(old.name || inferPresetName(), groupId, old.emoji || "📄");
+        next.id = old.id || next.id;
+        list[savedIndex] = next;
+      });
+    }
+    function makePresetPreviewDataUrl(){
       try {
-        saved = Object.assign(saved, JSON.parse(localStorage.getItem(PRESET_KEY) || "{}"));
-      } catch (e) {}
-      saved[kind] = saved[kind] || [];
-      saved[kind].push({ name, packages: clone(state.packages) });
-      localStorage.setItem(PRESET_KEY, JSON.stringify(saved));
+        draw();
+        const thumb = document.createElement("canvas");
+        thumb.width = 360;
+        thumb.height = 220;
+        const tctx = thumb.getContext("2d");
+        tctx.drawImage(canvas, 0, 0, W, Math.round(W * 220 / 360), 0, 0, thumb.width, thumb.height);
+        return thumb.toDataURL("image/jpeg", 0.78);
+      } catch (e) {
+        return "";
+      }
+    }
+    function currentHeroDataUrl(){
+      if (customHeroSrc) return customHeroSrc;
+      if (!state.heroCustomId || !images.hero) return "";
+      try {
+        const img = images.hero;
+        const sourceWidth = img.naturalWidth || img.width || 1;
+        const sourceHeight = img.naturalHeight || img.height || 1;
+        const maxSide = 1200;
+        const scale = Math.min(1, maxSide / Math.max(sourceWidth, sourceHeight));
+        const buffer = document.createElement("canvas");
+        buffer.width = Math.max(1, Math.round(sourceWidth * scale));
+        buffer.height = Math.max(1, Math.round(sourceHeight * scale));
+        buffer.getContext("2d").drawImage(img, 0, 0, buffer.width, buffer.height);
+        return buffer.toDataURL("image/jpeg", 0.84);
+      } catch (e) {
+        return "";
+      }
+    }
+    function formatPresetPrices(packages){
+      return (packages || []).filter((pkg) => pkg && pkg.on !== false).map((pkg) => {
+        const value = String((pkg.work || "").match(/\d[\d\s]*/) || "").replace(/\s+/g, "");
+        return value ? `${Math.round(Number(value) / 1000)}k` : "";
+      }).filter(Boolean).slice(0, 4).join(" - ");
+    }
+    function openCoverModal(){
+      updateCoverStatus();
+      $("coverModal").classList.add("open");
+    }
+    function closeCoverModal(){
+      $("coverModal").classList.remove("open");
+    }
+    function updateCoverStatus(){
+      let cover = null;
+      try { cover = JSON.parse(localStorage.getItem(COVER_KEY) || "null"); } catch (e) {}
+      $("coverStatus").textContent = cover && cover.name ? `Выбрана: ${cover.name}` : "Обложка пока не выбрана.";
+    }
+    async function saveCoverSelection(){
+      const file = $("coverFile").files && $("coverFile").files[0];
+      if (!file) return;
+      const cover = {
+        id: `cover-${Date.now()}`,
+        name: file.name.replace(/\.[^.]+$/, ""),
+        dataUrl: await imageFileToDataUrl(file),
+        updatedAt: new Date().toISOString()
+      };
+      localStorage.setItem(COVER_KEY, JSON.stringify(cover));
+      try { window.dispatchEvent(new CustomEvent("avitolog:storage-write", { detail: { key: COVER_KEY, value: cover } })); } catch (e) {}
+      $("coverFile").value = "";
+      updateCoverStatus();
+    }
+    function openArchiveModal(groupId){
+      const presets = readPresetStore();
+      archiveGroupId = groupId || $("presetKind").value || archiveGroupId || "services";
+      if (!presets.groups.some((group) => group.id === archiveGroupId)) archiveGroupId = "services";
+      closeArchiveMenu();
+      renderArchiveModal();
+      $("archiveModal").classList.add("open");
+    }
+    function closeArchiveModal(){
+      closeArchiveMenu();
+      $("archiveModal").classList.remove("open");
+    }
+    function renderArchiveModal(){
+      const presets = readPresetStore();
+      const groups = $("archiveGroups");
+      groups.innerHTML = "";
+      presets.groups.forEach((group) => {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "group-chip" + (group.id === archiveGroupId ? " active" : "");
+        btn.textContent = `${group.emoji || "📁"} ${group.name}`;
+        btn.addEventListener("click", () => {
+          archiveGroupId = group.id;
+          $("presetKind").value = group.id;
+          renderArchiveModal();
+        });
+        groups.appendChild(btn);
+      });
+      const grid = $("archiveGrid");
+      grid.innerHTML = "";
+      (presets[archiveGroupId] || []).forEach((preset, index) => {
+        const card = document.createElement("div");
+        card.className = "archive-card";
+        const bg = preset.previewDataUrl || preset.heroDataUrl || preset.heroSrc || "";
+        if (bg) card.style.backgroundImage = `url("${String(bg).replace(/"/g, "%22")}")`;
+        card.innerHTML = `
+          <div class="archive-name"><span>${escapeHtml(preset.emoji || "📄")}</span><span>${escapeHtml(preset.name || "Шаблон КП")}</span></div>
+          <div class="archive-prices">${escapeHtml(formatPresetPrices(preset.packages) || "без цен")}</div>
+          <div class="archive-card-actions">
+            <button class="btn primary" type="button" data-action="take">Взять</button>
+            <button class="btn" type="button" data-action="menu">...</button>
+          </div>`;
+        card.querySelector('[data-action="take"]').addEventListener("click", async () => {
+          await applyPresetRecord(preset);
+          closeArchiveModal();
+        });
+        card.querySelector('[data-action="menu"]').addEventListener("click", (event) => {
+          event.stopPropagation();
+          openArchiveMenu(event.currentTarget, preset, index);
+        });
+        grid.appendChild(card);
+      });
+    }
+    function openArchiveMenu(anchor, preset, index){
+      archiveMenuPreset = { preset, index, groupId: archiveGroupId };
+      const menu = $("archiveMenu");
+      menu.innerHTML = `
+        <button type="button" data-action="rename">✎ Переименовать</button>
+        <button type="button" data-action="emoji">Emoji</button>
+        <button type="button" data-action="move">📁 Перенести в группу</button>
+        <button type="button" data-action="duplicate">⧉ Дублировать</button>
+        <button class="danger" type="button" data-action="delete">× Удалить</button>`;
+      menu.querySelectorAll("button").forEach((button) => {
+        button.addEventListener("click", () => runArchiveAction(button.dataset.action));
+      });
+      const rect = anchor.getBoundingClientRect();
+      menu.style.left = `${Math.min(rect.left, window.innerWidth - 210)}px`;
+      menu.style.top = `${rect.bottom + 6}px`;
+      menu.classList.add("open");
+    }
+    function closeArchiveMenu(){
+      const menu = $("archiveMenu");
+      menu.classList.remove("open");
+      archiveMenuPreset = null;
+    }
+    function mutatePresetStore(mutator){
+      const store = readPresetStore();
+      mutator(store);
+      writePresetStore(store);
       renderPresetSelect();
+      if ($("archiveModal").classList.contains("open")) renderArchiveModal();
+    }
+    function runArchiveAction(action){
+      if (!archiveMenuPreset) return;
+      const ref = archiveMenuPreset;
+      closeArchiveMenu();
+      if (action === "rename") {
+        openPresetSaveModal({ mode: "rename", target: ref });
+        return;
+      }
+      if (action === "emoji") {
+        openPresetSaveModal({ mode: "emoji", target: ref });
+        return;
+      }
+      if (action === "move") {
+        openPresetSaveModal({ mode: "move", target: ref });
+        return;
+      }
+      mutatePresetStore((store) => {
+        const list = store[ref.groupId] || [];
+        if (!list[ref.index]) return;
+        if (action === "duplicate") {
+          const copy = clone(list[ref.index]);
+          copy.id = `preset-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+          copy.name = `${copy.name || "Шаблон"} копия`;
+          list.splice(ref.index + 1, 0, copy);
+        }
+        if (action === "delete") list.splice(ref.index, 1);
+      });
+    }
+    function openPresetSaveModal(options){
+      options = options || {};
+      presetSaveMode = options.mode || "create";
+      presetSaveTarget = options.target || null;
+      const store = readPresetStore();
+      const groupSelect = $("presetSaveGroup");
+      groupSelect.parentElement.style.display = "";
+      groupSelect.innerHTML = "";
+      store.groups.forEach((group) => {
+        const option = document.createElement("option");
+        option.value = group.id;
+        option.textContent = `${group.emoji || "📁"} ${group.name}`;
+        groupSelect.appendChild(option);
+      });
+      const currentGroup = presetSaveTarget ? presetSaveTarget.groupId : ($("presetKind").value || "services");
+      groupSelect.value = store.groups.some((group) => group.id === currentGroup) ? currentGroup : "services";
+      const targetPreset = presetSaveTarget && presetSaveTarget.preset;
+      $("presetSaveTitle").textContent = presetSaveMode === "create" ? "Сохранить шаблон КП" : presetSaveMode === "move" ? "Перенести шаблон" : "Править шаблон";
+      $("presetSaveName").value = targetPreset && targetPreset.name ? targetPreset.name : inferPresetName();
+      $("presetSaveEmoji").value = targetPreset && targetPreset.emoji ? targetPreset.emoji : emojiForNiche(state.heroName || "") || "📄";
+      $("presetSaveName").parentElement.style.display = presetSaveMode === "move" ? "none" : "";
+      $("presetSaveEmoji").parentElement.style.display = presetSaveMode === "move" ? "none" : "";
+      $("presetSaveModal").classList.add("open");
+      setTimeout(() => $("presetSaveName").focus(), 0);
+    }
+    function closePresetSaveModal(){
+      $("presetSaveModal").classList.remove("open");
+      $("presetSaveGroup").parentElement.style.display = "";
+      $("presetSaveName").parentElement.style.display = "";
+      $("presetSaveEmoji").parentElement.style.display = "";
+      presetSaveTarget = null;
+    }
+    function confirmPresetSave(){
+      const groupId = $("presetSaveGroup").value || "services";
+      const name = $("presetSaveName").value.trim();
+      const emoji = $("presetSaveEmoji").value.trim() || "📄";
+      mutatePresetStore((store) => {
+        store[groupId] = store[groupId] || [];
+        if (presetSaveMode === "newGroup") {
+          if (!name) return;
+          const id = `group-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+          store.groups.push({ id, name, emoji });
+          store[id] = [];
+          archiveGroupId = id;
+          return;
+        }
+        if (presetSaveMode === "create") {
+          if (!name) return;
+          store[groupId].push(currentPresetRecord(name, groupId, emoji));
+          archiveGroupId = groupId;
+          $("presetKind").value = groupId;
+          return;
+        }
+        const ref = presetSaveTarget;
+        if (!ref) return;
+        const list = store[ref.groupId] || [];
+        const preset = list[ref.index];
+        if (!preset) return;
+        if (presetSaveMode === "move") {
+          list.splice(ref.index, 1);
+          preset.groupId = groupId;
+          store[groupId].push(preset);
+          archiveGroupId = groupId;
+          $("presetKind").value = groupId;
+          return;
+        }
+        if (presetSaveMode === "rename" && name) preset.name = name;
+        if (presetSaveMode === "emoji") preset.emoji = emoji;
+        preset.updatedAt = new Date().toISOString();
+      });
+      if (presetSaveMode === "newGroup") $("presetKind").value = archiveGroupId;
+      closePresetSaveModal();
+      if ($("archiveModal").classList.contains("open")) renderArchiveModal();
+    }
+    function addArchiveGroup(){
+      openPresetSaveModal({ mode: "newGroup" });
+      $("presetSaveTitle").textContent = "Новая группа КП";
+      $("presetSaveGroup").parentElement.style.display = "none";
+      $("presetSaveName").value = "";
+      $("presetSaveEmoji").value = "📁";
     }
     function clamp(value, min, max){
       return Math.min(max, Math.max(min, value));
@@ -1142,6 +1599,7 @@
     ["pkgOn","pkgIcon","pkgName","pkgLimit","pkgWork","pkgColor","pkgItems"].forEach((id) => {
       $(id).addEventListener("input", () => {
         markPackageFormDirty();
+        if (id === "pkgItems") resizePackageItemsField();
       });
       $(id).addEventListener("change", () => {
         markPackageFormDirty();
@@ -1162,9 +1620,29 @@
     $("titleStyle").addEventListener("change", draw);
     $("titleScale").addEventListener("input", draw);
     $("heroZone").addEventListener("click", () => toggleNichePanels());
+    $("coverBtn").addEventListener("click", openCoverModal);
+    $("packagesBtn").addEventListener("click", () => $("packageEditor").scrollIntoView({ block: "center" }));
+    $("closeCoverBtn").addEventListener("click", closeCoverModal);
+    $("coverModal").addEventListener("click", (event) => { if (event.target === $("coverModal")) closeCoverModal(); });
+    $("saveCoverBtn").addEventListener("click", () => { saveCoverSelection().catch((error) => alert(error && error.message ? error.message : String(error))); });
+    $("clearCoverBtn").addEventListener("click", () => { localStorage.removeItem(COVER_KEY); updateCoverStatus(); });
+    $("openArchiveBtn").addEventListener("click", () => openArchiveModal());
+    $("archiveCloseBtn").addEventListener("click", closeArchiveModal);
+    $("archiveModal").addEventListener("click", (event) => { if (event.target === $("archiveModal")) closeArchiveModal(); });
+    $("archiveAddGroupBtn").addEventListener("click", addArchiveGroup);
+    $("presetSaveCloseBtn").addEventListener("click", closePresetSaveModal);
+    $("presetSaveCancelBtn").addEventListener("click", closePresetSaveModal);
+    $("presetSaveConfirmBtn").addEventListener("click", confirmPresetSave);
+    $("presetSaveModal").addEventListener("click", (event) => { if (event.target === $("presetSaveModal")) closePresetSaveModal(); });
+    document.addEventListener("click", (event) => {
+      if (!$("archiveMenu").classList.contains("open")) return;
+      if ($("archiveMenu").contains(event.target)) return;
+      closeArchiveMenu();
+    });
     $("presetKind").addEventListener("change", renderPresetSelect);
     $("applyPresetBtn").addEventListener("click", applySelectedPreset);
     $("savePresetBtn").addEventListener("click", saveCurrentPreset);
+    $("updatePresetBtn").addEventListener("click", updateSelectedPreset);
     $("heroFile").addEventListener("change", async (event) => {
       const file = event.target.files && event.target.files[0];
       if (!file) return;
