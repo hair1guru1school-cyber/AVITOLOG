@@ -353,6 +353,7 @@
     let customNicheImages = [];
     let formReady = false;
     let packageFormDirty = false;
+    let draftPersistTimer = null;
 
     const defaults = {
       bgChoice: "dark",
@@ -857,8 +858,9 @@
         if (!saved || !saved.packages) return clone(defaults);
         const next = Object.assign(clone(defaults), saved);
         next.packages = defaults.packages.map((pkg, index) => {
-          const merged = Object.assign(clone(pkg), saved.packages[index] || {});
-          return merged.name ? normalizePackage(merged) : normalizePackage(clone(pkg));
+          const savedPkg = saved.packages[index];
+          const merged = Object.assign(clone(pkg), savedPkg || {});
+          return savedPkg ? normalizePackage(merged) : normalizePackage(clone(pkg));
         });
         return next;
       } catch (e) {
@@ -912,6 +914,13 @@
     function autoSaveState(){
       if (!formReady) return;
       persistState();
+    }
+    function scheduleDraftPersist(){
+      if (!formReady) return;
+      clearTimeout(draftPersistTimer);
+      draftPersistTimer = setTimeout(() => {
+        persistState();
+      }, 450);
     }
     let drawTimer = null;
     function scheduleDraw(){
@@ -1008,6 +1017,7 @@
     }
 
     function renderForm(){
+      if (formReady && packageFormDirty) flushPackageForm({ updateTextarea: false, resize: false });
       $("bgChoice").value = state.bgChoice || defaults.bgChoice;
       if ($("titleStyle")) $("titleStyle").value = state.titleStyle || defaults.titleStyle;
       if ($("titleScale")) $("titleScale").value = state.titleScale || defaults.titleScale;
@@ -2251,6 +2261,7 @@
           keepDirty: true,
           syncDerived: id !== "pkgItems"
         });
+        scheduleDraftPersist();
         if (id === "pkgItems") autoResizePackageItems();
       });
       $(id).addEventListener("change", () => {
@@ -2262,6 +2273,7 @@
           keepDirty: true,
           syncDerived: id !== "pkgItems"
         });
+        scheduleDraftPersist();
       });
       $(id).addEventListener("blur", () => {
         const wasDirty = packageFormDirty;
