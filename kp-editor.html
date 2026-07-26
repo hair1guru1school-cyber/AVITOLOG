@@ -76,64 +76,13 @@
     label{display:flex;flex-direction:column;gap:5px;color:#b9c8d8;font-size:11px;font-weight:900;text-transform:uppercase;letter-spacing:.35px}
     input,textarea,select{width:100%;border:1px solid rgba(93,229,255,.22);background:#07111d;color:#fff;border-radius:8px;padding:9px 10px;outline:none}
     textarea{min-height:118px;resize:vertical;line-height:1.35}
-    #pkgItems{min-height:160px;overflow:hidden;resize:none}
     input:focus,textarea:focus,select:focus{border-color:rgba(89,235,255,.72);box-shadow:0 0 0 3px rgba(89,235,255,.08)}
     .grid2{display:grid;grid-template-columns:1fr 1fr;gap:9px}
     .card{border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.025);border-radius:8px;padding:11px;display:flex;flex-direction:column;gap:10px}
     .preset-card{background:linear-gradient(135deg,rgba(255,212,95,.96),rgba(255,246,196,.94));color:#160d00;border:0}
     .preset-card label{color:#473000}
     .preset-card select,.preset-card input{background:rgba(255,255,255,.86);color:#160d00;border-color:rgba(0,0,0,.12)}
-    .preset-title{font-size:15px;font-weight:900;letter-spacing:.7px;text-align:center;display:flex;align-items:center;justify-content:center;gap:8px}
-    .preset-archive-btn{height:26px;padding:0 9px;border-radius:8px;border:1px solid rgba(0,0,0,.18);background:rgba(8,17,29,.88);color:#ffe9b3;font-size:11px;font-weight:900;cursor:pointer}
-    .preset-mini-btn{min-width:38px;padding-left:10px;padding-right:10px}
-    .preset-archive-modal{position:fixed;inset:0;z-index:10000;display:flex;align-items:center;justify-content:center;padding:18px;background:rgba(0,0,0,.68)}
-    .preset-archive-panel{width:min(1320px,96vw);height:min(820px,92vh);display:flex;flex-direction:column;gap:12px;border:1px solid rgba(93,229,255,.28);border-radius:16px;background:linear-gradient(180deg,#111928,#07111d);box-shadow:0 24px 80px rgba(0,0,0,.65);padding:14px;box-sizing:border-box;color:#eaf7ff}
-    .preset-archive-head{display:flex;align-items:center;justify-content:space-between;gap:12px}
-    .preset-archive-title{font-size:20px;font-weight:1000;letter-spacing:.6px;color:#fff}
-    .preset-archive-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-    .preset-archive-close{width:36px;height:36px;border-radius:10px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.06);color:#fff;font-size:22px;cursor:pointer}
-    .preset-archive-grid{display:grid;grid-template-columns:repeat(6,minmax(150px,1fr));gap:10px;overflow:auto;padding:2px 2px 8px}
-    .preset-archive-card{position:relative;min-height:118px;border-radius:13px;border:1px solid rgba(93,229,255,.22);background-color:#0a1726;background-image:radial-gradient(circle at 30% 20%,rgba(93,229,255,.18),transparent 42%),linear-gradient(135deg,rgba(33,73,112,.92),rgba(8,17,29,.96));background-size:cover;background-position:center;overflow:hidden;cursor:pointer;text-align:left;color:#fff;padding:10px;box-shadow:inset 0 0 0 1px rgba(255,255,255,.03);display:flex;flex-direction:column;justify-content:space-between;gap:8px}
-    .preset-archive-card::before{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.28),rgba(0,0,0,.76));pointer-events:none}
-    .preset-archive-card.active{border-color:rgba(255,217,98,.9);box-shadow:0 0 0 2px rgba(255,217,98,.18),0 0 22px rgba(255,217,98,.18)}
-    .preset-archive-card>*{position:relative;z-index:1}
-    .preset-card-top{display:flex;align-items:flex-start;gap:6px;min-width:0}
-    .preset-card-emoji{font-size:22px;line-height:1;filter:drop-shadow(0 2px 6px rgba(0,0,0,.45));cursor:pointer;flex-shrink:0}
-    .preset-card-name{font-size:12px;font-weight:1000;line-height:1.08;min-width:0;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;text-shadow:0 2px 8px rgba(0,0,0,.7)}
-    .preset-card-prices{font-size:13px;font-weight:1000;color:#e4fbff;text-shadow:0 2px 7px rgba(0,0,0,.9);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-    .preset-card-actions{display:grid;grid-template-columns:1fr 36px;gap:5px}
-    .preset-card-actions button{height:24px;border-radius:7px;border:1px solid rgba(255,255,255,.12);background:rgba(0,0,0,.42);color:#dff7ff;font-size:10px;font-weight:900;cursor:pointer;padding:0 4px}
-    .preset-card-actions button.main{background:rgba(0,217,126,.22);border-color:rgba(0,217,126,.48);color:#b9ffd9}
-    .preset-card-actions button.danger{color:#ffd1d1;border-color:rgba(255,90,90,.35);background:rgba(120,20,20,.28)}
-    .preset-card-actions button:hover,.preset-archive-close:hover,.preset-archive-btn:hover{filter:brightness(1.15)}
-    .preset-preview-modal{position:fixed;inset:0;z-index:10020;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.72);padding:18px}
-    .preset-preview-panel{max-width:min(92vw,900px);max-height:94vh;display:flex;flex-direction:column;gap:10px}
-    .preset-preview-img{max-width:100%;max-height:calc(94vh - 58px);object-fit:contain;border-radius:12px;box-shadow:0 18px 70px rgba(0,0,0,.75);background:#fff}
-    .preset-preview-bar{display:flex;justify-content:flex-end;gap:8px}
-    .preset-emoji-pop{position:fixed;z-index:10030;display:grid;grid-template-columns:repeat(5,34px);gap:4px;max-height:210px;overflow:auto;padding:8px;border-radius:10px;border:1px solid rgba(93,229,255,.35);background:#091421;box-shadow:0 14px 40px rgba(0,0,0,.55)}
-    .preset-emoji-pop button{width:34px;height:34px;border-radius:8px;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.04);font-size:20px;cursor:pointer}
-    .preset-action-pop{position:fixed;z-index:10035;display:flex;flex-direction:column;gap:5px;width:210px;padding:8px;border-radius:12px;border:1px solid rgba(93,229,255,.35);background:#091421;box-shadow:0 16px 46px rgba(0,0,0,.62)}
-    .preset-action-pop button{height:34px;border-radius:8px;border:1px solid rgba(255,255,255,.10);background:rgba(255,255,255,.05);color:#eaf7ff;font-weight:900;text-align:left;padding:0 10px;cursor:pointer}
-    .preset-action-pop button:hover{background:rgba(93,229,255,.14)}
-    .preset-action-pop button.danger{color:#ffd1d1;border-color:rgba(255,90,90,.35);background:rgba(120,20,20,.28)}
-    .preset-group-pop{position:fixed;z-index:10036;width:230px;max-height:260px;overflow:auto;padding:8px;border-radius:12px;border:1px solid rgba(0,217,126,.38);background:#091421;box-shadow:0 16px 46px rgba(0,0,0,.62)}
-    .preset-group-pop-title{font-size:11px;font-weight:1000;color:#90f5c7;text-transform:uppercase;letter-spacing:.5px;margin:0 0 6px;padding:0 4px}
-    .preset-group-pop button{width:100%;min-height:34px;border-radius:8px;border:1px solid rgba(255,255,255,.10);background:rgba(255,255,255,.05);color:#eaf7ff;font-weight:900;text-align:left;padding:6px 9px;cursor:pointer;display:flex;align-items:center;gap:7px}
-    .preset-group-pop button:hover{background:rgba(0,217,126,.14);border-color:rgba(0,217,126,.42)}
-    .preset-small-modal{position:fixed;inset:0;z-index:10040;display:flex;align-items:center;justify-content:center;padding:18px;background:rgba(0,0,0,.58)}
-    .preset-small-panel{width:min(440px,94vw);border:1px solid rgba(93,229,255,.32);border-radius:16px;background:linear-gradient(180deg,#111928,#07111d);box-shadow:0 22px 70px rgba(0,0,0,.68);padding:16px;color:#eaf7ff}
-    .preset-small-title{font-size:18px;font-weight:1000;color:#fff;margin-bottom:8px}
-    .preset-small-hint{font-size:12px;color:#91a5bb;margin-bottom:12px;line-height:1.35}
-    .preset-small-row{display:grid;grid-template-columns:86px 1fr;gap:8px;align-items:center;margin-top:8px}
-    .preset-small-row label{font-size:11px;font-weight:1000;color:#8fdfff;text-transform:uppercase;letter-spacing:.45px}
-    .preset-small-row input,.preset-small-row select{height:36px;border-radius:9px;border:1px solid rgba(93,229,255,.25);background:#08111d;color:#fff;padding:0 10px;font:inherit;font-weight:800;min-width:0}
-    .preset-small-row.emoji input{font-size:22px;text-align:center;width:70px}
-    .hero-kind-buttons{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-    .hero-kind-btn{height:38px;border-radius:10px;border:1px solid rgba(93,229,255,.25);background:rgba(255,255,255,.05);color:#dff7ff;font-weight:1000;cursor:pointer}
-    .hero-kind-btn.active{background:linear-gradient(135deg,#00df86,#59ebff);border-color:transparent;color:#02100b}
-    .preset-small-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:14px}
-    @media(max-width:1180px){.preset-archive-grid{grid-template-columns:repeat(4,minmax(145px,1fr))}}
-    @media(max-width:720px){.preset-archive-grid{grid-template-columns:repeat(2,minmax(120px,1fr))}.preset-archive-panel{height:94vh}}
+    .preset-title{font-size:15px;font-weight:900;letter-spacing:.7px;text-align:center}
     .switch{flex-direction:row;align-items:center;text-transform:none;letter-spacing:0;font-size:13px;color:#d6e7fa}
     .switch input{width:16px;height:16px;padding:0}
     .pill{display:inline-flex;align-items:center;height:27px;border-radius:999px;border:1px solid rgba(93,229,255,.18);background:rgba(89,235,255,.07);padding:0 9px;color:#cdeaff;font-weight:800;font-size:12px}
@@ -207,6 +156,18 @@
           <label>Картинка шапки
             <input id="heroFile" type="file" accept="image/*">
           </label>
+          <label>Надпись на шапке
+            <select id="titleStyle">
+              <option value="classic">Классика</option>
+              <option value="simple">Белая PNG</option>
+              <option value="color">Цветная плашка</option>
+              <option value="gold">Золото / черный</option>
+              <option value="premium">Премиум рамка</option>
+            </select>
+          </label>
+          <label>Размер надписи <span id="titleScaleValue" class="small-value">100%</span>
+            <input id="titleScale" type="range" min="55" max="130" step="1" value="100">
+          </label>
           <label>Фон
             <select id="bgChoice">
               <option value="dark">Фон 1 - город</option>
@@ -217,7 +178,7 @@
         </div>
 
         <div class="card preset-card">
-          <div class="preset-title"><span>ГОТОВЫЕ ПАКЕТЫ</span><button class="preset-archive-btn" id="presetArchiveBtn" type="button">🗄 АРХИВ</button></div>
+          <div class="preset-title">ГОТОВЫЕ ПАКЕТЫ</div>
           <div class="grid2">
             <label>Тип
               <select id="presetKind">
@@ -232,7 +193,6 @@
           <div class="toolbar">
             <button class="btn primary" id="applyPresetBtn">Применить</button>
             <button class="btn" id="savePresetBtn">Сохранить текущий</button>
-            <button class="btn preset-mini-btn" id="updatePresetBtn" type="button" title="Обновить активный шаблон текущими данными">🔄</button>
           </div>
         </div>
 
@@ -240,7 +200,6 @@
 
         <div class="card" id="packageEditor">
           <label class="switch"><input id="pkgOn" type="checkbox"> Показывать пакет</label>
-          <label class="switch"><input id="pkgAvitoBudgetOn" type="checkbox"> Бюджет на Авито</label>
           <div class="grid2">
             <label>Иконка
               <input id="pkgIcon">
@@ -329,10 +288,6 @@
       ]
     };
     const PRESET_KEY = "avitolog_kp_package_presets_v1";
-    const DEFAULT_PRESET_GROUPS = [
-      { id: "services", name: "\u0423\u0441\u043b\u0443\u0433\u0438", emoji: "\ud83e\uddfe" },
-      { id: "goods", name: "\u0422\u043e\u0432\u0430\u0440\u044b", emoji: "\ud83d\udce6" }
-    ];
     const TEMPLATE = {
       heroTitle: "СТРАТЕГИИ ПРОДВИЖЕНИЯ",
       tagline: "ВЫГОДНО / БЫСТРО / НАДЕЖНО",
@@ -353,7 +308,6 @@
     let customNicheImages = [];
     let formReady = false;
     let packageFormDirty = false;
-    let draftPersistTimer = null;
 
     const defaults = {
       bgChoice: "dark",
@@ -361,8 +315,6 @@
       titleScale: 100,
       heroSrc: "",
       heroCustomId: "",
-      heroDataUrl: "",
-      heroPreviewSrc: "",
       heroName: "Террасы МО - ВИП",
       packages: [
         {
@@ -439,7 +391,6 @@
         { name: "Товары 4 пакета", packages: clone(defaults.packages) }
       ]
     };
-    const PRESET_EMOJIS = ["📊","💎","🚀","🧾","💰","🏗️","🏠","🧱","🪟","🛋️","⚡","🔧","⭐","🔥","🎯","🅰️","📦","🛠️","🌿","🤝"];
 
     let state = loadState();
 
@@ -462,389 +413,24 @@
       if (!digits) return String(value || "").trim();
       return `${digits.replace(/\B(?=(\d{3})+(?!\d))/g, " ")} ₽`;
     }
-    function makePresetId(){
-      return "kp_" + Date.now().toString(36) + "_" + Math.random().toString(36).slice(2, 8);
-    }
-    function makePresetGroupId(name){
-      const slug = String(name || "").toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "").slice(0, 36);
-      return "group_" + (slug || Date.now().toString(36));
-    }
-    function presetGroupDefaults(){
-      return DEFAULT_PRESET_GROUPS.map((group) => Object.assign({}, group));
-    }
-    function getPresetGroups(saved){
-      const source = saved || readSavedPresets();
-      return (source.groups && source.groups.length ? source.groups : presetGroupDefaults()).map((group) => Object.assign({}, group));
-    }
-    function presetGroupMeta(id){
-      return getPresetGroups().find((group) => group.id === id) || DEFAULT_PRESET_GROUPS.find((group) => group.id === id) || { id, name: id, emoji: "\ud83e\uddfe" };
-    }
-    function readSavedPresets(){
-      let saved = { services: [], goods: [], groups: presetGroupDefaults() };
-      try {
-        saved = Object.assign(saved, JSON.parse(localStorage.getItem(PRESET_KEY) || "{}"));
-      } catch (e) {}
-      const groupMap = new Map();
-      presetGroupDefaults().forEach((group) => groupMap.set(group.id, Object.assign({}, group)));
-      if (Array.isArray(saved.groups)) {
-        saved.groups.forEach((group) => {
-          if (!group || !group.id) return;
-          groupMap.set(String(group.id), {
-            id: String(group.id),
-            name: String(group.name || group.id),
-            emoji: String(group.emoji || "\ud83e\uddfe")
-          });
-        });
-      }
-      Object.keys(saved).forEach((key) => {
-        if (key !== "groups" && Array.isArray(saved[key]) && !groupMap.has(key)) {
-          groupMap.set(key, { id: key, name: key, emoji: "\ud83e\uddfe" });
-        }
-      });
-      saved.groups = Array.from(groupMap.values());
-      saved.groups.forEach((group) => {
-        const kind = group.id;
-        saved[kind] = Array.isArray(saved[kind]) ? saved[kind] : [];
-        saved[kind] = saved[kind].filter(Boolean).map((preset) => {
-          if (!preset.id) preset.id = makePresetId();
-          if (!preset.emoji) preset.emoji = "🧾";
-          if (!Array.isArray(preset.packages)) preset.packages = clone(defaults.packages);
-          return preset;
-        });
-      });
-      return saved;
-    }
-    function writeSavedPresets(saved){
-      const groups = getPresetGroups(saved);
-      const clean = { groups: groups.map((group) => ({
-        id: group.id,
-        name: group.name || group.id,
-        emoji: group.emoji || "\ud83e\uddfe"
-      })) };
-      groups.forEach((group) => {
-        const kind = group.id;
-        clean[kind] = (saved[kind] || []).filter(Boolean).map((preset) => ({
-          id: preset.id || makePresetId(),
-          name: preset.name || "Новый шаблон",
-          emoji: preset.emoji || "🧾",
-          packages: clone(preset.packages || defaults.packages),
-          source: preset.source || "editor",
-          savedAt: preset.savedAt || new Date().toISOString(),
-          updatedAt: preset.updatedAt || new Date().toISOString(),
-          imageFileLink: preset.imageFileLink || "",
-          imageFileId: preset.imageFileId || "",
-          folderId: preset.folderId || "",
-          bgChoice: preset.bgChoice || "",
-          heroSrc: preset.heroSrc || "",
-          heroCustomId: preset.heroCustomId || "",
-          heroName: preset.heroName || "",
-          heroDataUrl: preset.heroDataUrl || "",
-          heroPreviewSrc: preset.heroPreviewSrc || "",
-          previewDataUrl: preset.previewDataUrl || ""
-        }));
-      });
-      const previousValue = localStorage.getItem(PRESET_KEY) || "";
-      const value = JSON.stringify(clean);
-      localStorage.setItem(PRESET_KEY, value);
-      try {
-        document.dispatchEvent(new CustomEvent("avitolog:storage-write", {
-          detail: { key: PRESET_KEY, value, previousValue }
-        }));
-      } catch (e) {}
-      try {
-        if (window.parent && window.parent !== window && window.parent.document) {
-          window.parent.document.dispatchEvent(new CustomEvent("avitolog:storage-write", {
-            detail: { key: PRESET_KEY, value, previousValue }
-          }));
-        }
-      } catch (e) {}
-    }
-    function makePresetPreviewDataUrl(){
-      let prevFormReady = formReady;
-      try {
-        formReady = false;
-        draw();
-        const thumb = document.createElement("canvas");
-        const tw = 360;
-        const th = Math.round(H * (tw / W));
-        thumb.width = tw;
-        thumb.height = th;
-        const tctx = thumb.getContext("2d");
-        tctx.drawImage(canvas, 0, 0, tw, th);
-        return thumb.toDataURL("image/jpeg", 0.74);
-      } catch (e) {
-        return "";
-      } finally {
-        formReady = prevFormReady;
-      }
-    }
-    function currentPresetVisualMeta(){
-      return {
-        bgChoice: state.bgChoice || defaults.bgChoice,
-        heroSrc: state.heroSrc || "",
-        heroCustomId: state.heroCustomId || "",
-        heroName: state.heroName || "",
-        heroDataUrl: state.heroDataUrl || ((images.hero && String(images.hero.src || "").startsWith("data:")) ? images.hero.src : ""),
-        heroPreviewSrc: state.heroPreviewSrc || state.heroSrc || customHeroSrc || (images.hero && images.hero.src) || "",
-        previewDataUrl: makePresetPreviewDataUrl()
-      };
-    }
-    function makePresetRecord(name, emoji){
-      return Object.assign({
-        id: makePresetId(),
-        name,
-        emoji: emoji || "🧾",
-        packages: clone(state.packages),
-        source: "editor",
-        savedAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
-      }, currentPresetVisualMeta());
-    }
-    function getCurrentPresetMeta(){
-      const kind = $("presetKind").value || "services";
-      const index = Number($("presetSelect").value || 0);
-      const builtinCount = (DEFAULT_PRESETS[kind] || []).length;
-      return { kind, index, builtinCount, savedIndex: index - builtinCount, isSaved: index >= builtinCount };
-    }
-    function stripPresetMeta(preset){
-      return {
-        name: preset.name || "Шаблон",
-        emoji: preset.emoji || "🧾",
-        packages: clone(preset.packages || defaults.packages),
-        source: preset.source || "editor",
-        savedAt: preset.savedAt || new Date().toISOString(),
-        updatedAt: preset.updatedAt || new Date().toISOString(),
-        imageFileLink: preset.imageFileLink || "",
-        imageFileId: preset.imageFileId || "",
-        folderId: preset.folderId || "",
-        bgChoice: preset.bgChoice || "",
-        heroSrc: preset.heroSrc || "",
-        heroCustomId: preset.heroCustomId || "",
-        heroName: preset.heroName || "",
-        heroDataUrl: preset.heroDataUrl || "",
-        heroPreviewSrc: preset.heroPreviewSrc || "",
-        previewDataUrl: preset.previewDataUrl || ""
-      };
-    }
-    function packagePriceShort(pkg){
-      const digits = String((pkg && pkg.work) || "").replace(/\D/g, "");
-      if (!digits) return "";
-      const n = Number(digits);
-      if (!Number.isFinite(n)) return "";
-      return n >= 1000 ? `${Math.round(n / 1000)}к` : String(n);
-    }
-    function presetPricesLine(preset){
-      return (preset.packages || []).filter((pkg) => pkg && pkg.on !== false).slice(0, 4).map((pkg) => {
-        return packagePriceShort(pkg) || "";
-      }).filter(Boolean).join(" - ");
-    }
-    function showPresetSmallModal(options, onSave){
-      const old = document.getElementById("presetSmallModal");
-      if (old) old.remove();
-      const groups = options.groups || [];
-      const archiveWasOpen = !!document.getElementById("presetArchiveModal");
-      const modal = document.createElement("div");
-      modal.id = "presetSmallModal";
-      modal.className = "preset-small-modal";
-      modal.innerHTML = `
-        <div class="preset-small-panel">
-          <div class="preset-small-title">${escapeHtml(options.title || "Настройка")}</div>
-          ${options.hint ? `<div class="preset-small-hint">${escapeHtml(options.hint)}</div>` : ""}
-          ${groups.length ? `<div class="preset-small-row"><label>Группа</label><select id="presetSmallKind">${groups.map((group) => `<option value="${escapeHtml(group.id)}">${escapeHtml((group.emoji || "") + " " + (group.name || group.id))}</option>`).join("")}</select></div>` : ""}
-          <div class="preset-small-row"><label>Название</label><input id="presetSmallName" type="text" value="${escapeHtml(options.name || "")}"></div>
-          <div class="preset-small-row emoji"><label>Emoji</label><input id="presetSmallEmoji" type="text" maxlength="4" value="${escapeHtml(options.emoji || "🧾")}"></div>
-          <div class="preset-small-actions">
-            <button class="btn" type="button" data-action="cancel">Отмена</button>
-            <button class="btn primary" type="button" data-action="save">Сохранить</button>
-          </div>
-        </div>`;
-      document.body.appendChild(modal);
-      const kindEl = modal.querySelector("#presetSmallKind");
-      const nameEl = modal.querySelector("#presetSmallName");
-      const emojiEl = modal.querySelector("#presetSmallEmoji");
-      if (kindEl && options.kind) kindEl.value = options.kind;
-      setTimeout(() => {
-        if (nameEl) {
-          nameEl.focus();
-          nameEl.select();
-        }
-      }, 0);
-      function close(){ modal.remove(); }
-      function submit(){
-        const payload = {
-          kind: kindEl ? kindEl.value : "",
-          name: nameEl ? nameEl.value.trim() : "",
-          emoji: emojiEl ? emojiEl.value.trim() : ""
-        };
-        if (!payload.name) {
-          if (nameEl) nameEl.focus();
-          return;
-        }
-        close();
-        onSave(payload);
-        if (archiveWasOpen && document.getElementById("presetArchiveModal")) {
-          refreshPresetArchive();
-        }
-      }
-      const panel = modal.querySelector(".preset-small-panel");
-      if (panel) {
-        panel.addEventListener("click", (event) => {
-          event.stopPropagation();
-          if (event.target.closest('[data-action="cancel"]')) {
-            close();
-            return;
-          }
-          if (event.target.closest('[data-action="save"]')) submit();
-        });
-        panel.addEventListener("pointerdown", (event) => event.stopPropagation());
-      }
-      modal.addEventListener("click", (event) => {
-        event.stopPropagation();
-        if (event.target === modal) {
-          if (archiveWasOpen) return;
-          close();
-          return;
-        }
-        if (event.target.closest('[data-action="cancel"]')) {
-          close();
-          return;
-        }
-        if (event.target.closest('[data-action="save"]')) submit();
-      });
-      modal.addEventListener("keydown", (event) => {
-        if (event.key === "Escape") close();
-        if (event.key === "Enter" && (event.ctrlKey || event.metaKey)) {
-          submit();
-        }
-      });
-    }
-    function showHeroImageSaveModal(file, onSave){
-      const old = document.getElementById("heroImageSaveModal");
-      if (old) old.remove();
-      const saved = readSavedPresets();
-      const groups = getPresetGroups(saved);
-      let kind = $("presetKind").value === "goods" ? "goods" : "services";
-      const currentGroup = $("presetKind").value || kind;
-      const defaultName = file && file.name ? file.name.replace(/\.[^.]+$/, "") : "";
-      const modal = document.createElement("div");
-      modal.id = "heroImageSaveModal";
-      modal.className = "preset-small-modal";
-      modal.innerHTML = `
-        <div class="preset-small-panel">
-          <div class="preset-small-title">Сохранить картинку КП</div>
-          <div class="preset-small-hint">Сначала выбери: товар или услуга. Ниже можно привязать картинку к группе архива КП.</div>
-          <div class="preset-small-row"><label>Тип</label><div class="hero-kind-buttons">
-            <button class="hero-kind-btn ${kind === "goods" ? "active" : ""}" type="button" data-kind="goods">📦 Товар</button>
-            <button class="hero-kind-btn ${kind === "services" ? "active" : ""}" type="button" data-kind="services">🧾 Услуга</button>
-          </div></div>
-          <div class="preset-small-row"><label>Имя</label><input id="heroImageName" type="text" value="${escapeHtml(defaultName)}"></div>
-          <div class="preset-small-row"><label>Группа</label><select id="heroImageGroup">
-            <option value="">Без группы</option>
-            ${groups.map((group) => `<option value="${escapeHtml(group.id)}">${escapeHtml((group.emoji || "") + " " + (group.name || group.id))}</option>`).join("")}
-          </select></div>
-          <div class="preset-small-actions">
-            <button class="btn" type="button" data-action="cancel">Отмена</button>
-            <button class="btn primary" type="button" data-action="save">Сохранить</button>
-          </div>
-        </div>`;
-      document.body.appendChild(modal);
-      const nameEl = modal.querySelector("#heroImageName");
-      const groupEl = modal.querySelector("#heroImageGroup");
-      if (groupEl) groupEl.value = groups.some((group) => group.id === currentGroup) ? currentGroup : "";
-      setTimeout(() => { if (nameEl) { nameEl.focus(); nameEl.select(); } }, 0);
-      function close(){ modal.remove(); }
-      function syncButtons(){
-        modal.querySelectorAll(".hero-kind-btn").forEach((btn) => {
-          btn.classList.toggle("active", btn.getAttribute("data-kind") === kind);
-        });
-      }
-      function submit(){
-        const name = nameEl ? nameEl.value.trim() : "";
-        if (!name) { if (nameEl) nameEl.focus(); return; }
-        const groupKind = groupEl ? groupEl.value : "";
-        close();
-        onSave({ kind, groupKind, name });
-      }
-      modal.addEventListener("click", (event) => {
-        event.stopPropagation();
-        if (event.target === modal || event.target.closest('[data-action="cancel"]')) {
-          close();
-          return;
-        }
-        const kindBtn = event.target.closest(".hero-kind-btn");
-        if (kindBtn) {
-          kind = kindBtn.getAttribute("data-kind") || kind;
-          syncButtons();
-          return;
-        }
-        if (event.target.closest('[data-action="save"]')) submit();
-      });
-      const panel = modal.querySelector(".preset-small-panel");
-      if (panel) panel.addEventListener("pointerdown", (event) => event.stopPropagation());
-      modal.addEventListener("keydown", (event) => {
-        if (event.key === "Escape") close();
-        if (event.key === "Enter" && (event.ctrlKey || event.metaKey)) submit();
-      });
-    }
-    function inferPresetDefaults(){
-      const saved = readSavedPresets();
-      const groups = getPresetGroups(saved);
-      let kind = $("presetKind").value || "services";
-      let name = (state.heroName || "").trim();
-      if (!name && state.heroSrc) {
-        const decoded = decodeURIComponent(String(state.heroSrc).split("/").pop() || "");
-        name = cleanNicheName(decoded);
-      }
-      if (state.heroSrc) {
-        Object.keys(NICHE_LIBRARY).forEach((candidate) => {
-          if ((NICHE_LIBRARY[candidate] || []).some((file) => state.heroSrc === nichePath(file))) kind = candidate;
-        });
-      }
-      if (state.heroCustomId) {
-        const custom = customNicheImages.find((record) => record.id === state.heroCustomId);
-        if (custom) {
-          kind = custom.kind || kind;
-          name = custom.name || name;
-        }
-      }
-      const lowerName = name.toLowerCase();
-      const matchedGroup = groups.find((group) => {
-        if (group.id === "services" || group.id === "goods") return false;
-        const groupName = String(group.name || "").toLowerCase();
-        return groupName && (lowerName.includes(groupName) || groupName.split(/\s+/).some((part) => part.length > 4 && lowerName.includes(part)));
-      });
-      if (matchedGroup) kind = matchedGroup.id;
-      return {
-        kind,
-        name: name || (kind === "goods" ? "Товары - новый пакет" : "Услуги - новый пакет"),
-        emoji: emojiForNiche(name || presetGroupMeta(kind).name || "")
-      };
-    }
-    const AVITO_BUDGET_LABEL = "Примерная стоимость услуг Авито на месяц";
-    function isAvitoBudgetLine(line){
-      return /=\s*работа\b/i.test(line)
-        || /работа\s+авитолога/i.test(line)
-        || /стоимость\s+услуг\s+авито/i.test(line);
-    }
     function syncPackageDerivedLines(pkg){
       pkg.quantity = packageQuantity(pkg);
       const work = formatMoney(pkg.work);
       const quantity = pkg.quantity;
       let hasWorkLine = false;
       pkg.items = (pkg.items || []).map((line) => {
-        if (isAvitoBudgetLine(line)) {
+        if (/=\s*работа\b/i.test(line) || /работа\s+авитолога/i.test(line)) {
           hasWorkLine = true;
-          return work && pkg.avitoBudgetOn !== false ? `${work} = ${AVITO_BUDGET_LABEL}` : "";
+          return work ? `${work} = работа Авитолога (оплачивается сразу)` : line;
         }
         if (quantity && /автозагруз/i.test(line) && /постинг/i.test(line)) {
           return `Создание файла автозагрузки / ручной постинг на ${quantity} карточек на 30 дней`;
         }
         return line;
-      }).filter(Boolean);
-      if (work && pkg.avitoBudgetOn !== false && !hasWorkLine) pkg.items.unshift(`${work} = ${AVITO_BUDGET_LABEL}`);
+      });
+      if (work && !hasWorkLine) pkg.items.unshift(`${work} = работа Авитолога (оплачивается сразу)`);
     }
     function normalizePackage(pkg){
-      if (pkg.avitoBudgetOn === undefined) pkg.avitoBudgetOn = true;
       pkg.quantity = packageQuantity(pkg);
       syncPackageDerivedLines(pkg);
       return pkg;
@@ -855,9 +441,8 @@
         if (!saved || !saved.packages) return clone(defaults);
         const next = Object.assign(clone(defaults), saved);
         next.packages = defaults.packages.map((pkg, index) => {
-          const savedPkg = saved.packages[index];
-          const merged = Object.assign(clone(pkg), savedPkg || {});
-          return savedPkg ? normalizePackage(merged) : normalizePackage(clone(pkg));
+          const merged = Object.assign(clone(pkg), saved.packages[index] || {});
+          return merged.name ? normalizePackage(merged) : normalizePackage(clone(pkg));
         });
         return next;
       } catch (e) {
@@ -869,23 +454,7 @@
       persistState();
       draw();
     }
-    function keepCurrentHeroState(){
-      const current = images.hero && String(images.hero.src || "");
-      if (current && current.indexOf("data:") === 0) {
-        state.heroDataUrl = current;
-        state.heroPreviewSrc = current;
-        customHeroSrc = current;
-        return;
-      }
-      if (state.heroCustomId || state.heroSrc) return;
-      if (customHeroSrc) return;
-      if (current && current !== ASSETS.hero) {
-        if (current.indexOf("data:") === 0) customHeroSrc = current;
-        else state.heroSrc = current;
-      }
-    }
     function persistState(){
-      keepCurrentHeroState();
       state.selectedPackage = clampSelectedPackage();
       try { localStorage.setItem(LS_KEY, JSON.stringify(state)); } catch (e) {}
     }
@@ -912,13 +481,6 @@
       if (!formReady) return;
       persistState();
     }
-    function scheduleDraftPersist(){
-      if (!formReady) return;
-      clearTimeout(draftPersistTimer);
-      draftPersistTimer = setTimeout(() => {
-        persistState();
-      }, 450);
-    }
     let drawTimer = null;
     function scheduleDraw(){
       clearTimeout(drawTimer);
@@ -932,15 +494,6 @@
         img.onerror = () => resolve(null);
         img.src = src;
       });
-    }
-    async function loadImageAny(paths){
-      const list = Array.isArray(paths) ? paths : [paths];
-      for (const src of list) {
-        if (!src) continue;
-        const image = await loadImage(src);
-        if (image) return { image, src };
-      }
-      return { image: null, src: "" };
     }
     function openHeroDb(){
       return new Promise((resolve, reject) => {
@@ -970,20 +523,6 @@
     function listCustomHeroImages(){ return heroDbRequest("readonly", (store) => store.getAll()); }
     function getCustomHeroImage(id){ return heroDbRequest("readonly", (store) => store.get(id)); }
     function putCustomHeroImage(record){ return heroDbRequest("readwrite", (store) => store.put(record)); }
-    async function renameCustomHeroImage(record){
-      const name = prompt("Новое название картинки", record && record.name ? record.name : "");
-      if (name === null) return;
-      const nextName = name.trim();
-      if (!nextName || nextName === record.name) return;
-      const nextRecord = Object.assign({}, record, { name: nextName, updatedAt: new Date().toISOString() });
-      await putCustomHeroImage(nextRecord);
-      customNicheImages = customNicheImages.map((item) => item.id === nextRecord.id ? nextRecord : item);
-      if (state.heroCustomId === nextRecord.id) {
-        state.heroName = nextName;
-        saveState();
-      }
-      renderNicheLibrary();
-    }
     async function imageFileToDataUrl(file){
       const source = URL.createObjectURL(file);
       try {
@@ -1010,9 +549,7 @@
       if (state.heroCustomId) {
         try { customRecord = await getCustomHeroImage(state.heroCustomId); } catch (e) {}
       }
-      const savedHeroDataUrl = state.heroDataUrl || state.heroPreviewSrc || "";
-      customHeroSrc = (customRecord && customRecord.dataUrl) || customHeroSrc || savedHeroDataUrl || "";
-      images.hero = await loadImage(customHeroSrc || state.heroSrc || ASSETS.hero);
+      images.hero = await loadImage((customRecord && customRecord.dataUrl) || customHeroSrc || state.heroSrc || ASSETS.hero);
       images.footer = await loadImage(ASSETS.footer);
       images.titleSimple = await loadImage(ASSETS.titleSimple);
       images.titleColor = await loadImage(ASSETS.titleColor);
@@ -1023,11 +560,10 @@
     }
 
     function renderForm(){
-      if (formReady && packageFormDirty) flushPackageForm({ updateTextarea: false, resize: false });
       $("bgChoice").value = state.bgChoice || defaults.bgChoice;
-      if ($("titleStyle")) $("titleStyle").value = state.titleStyle || defaults.titleStyle;
-      if ($("titleScale")) $("titleScale").value = state.titleScale || defaults.titleScale;
-      if ($("titleScaleValue") && $("titleScale")) $("titleScaleValue").textContent = `${$("titleScale").value}%`;
+      $("titleStyle").value = state.titleStyle || defaults.titleStyle;
+      $("titleScale").value = state.titleScale || defaults.titleScale;
+      $("titleScaleValue").textContent = `${$("titleScale").value}%`;
       renderNicheLibrary();
       renderPresetSelect();
       renderTabs();
@@ -1037,9 +573,6 @@
     }
     function nichePath(file){
       return `assets/kp-niches/${encodeURIComponent(NICHE_FOLDER)}/${encodeURIComponent(file)}`;
-    }
-    function nichePathPlain(file){
-      return `assets/kp-niches/${NICHE_FOLDER}/${file}`;
     }
     function cleanNicheName(file){
       return file.replace(/\.[^.]+$/, "");
@@ -1071,70 +604,37 @@
         card.type = "button";
         card.className = "niche-card" + (state.heroSrc === src ? " active" : "");
         card.innerHTML = `<img src="${src}" alt=""><span><span class="niche-name">${emojiForNiche(name)} ${name}</span><span class="niche-path">${kind === "goods" ? "Товары" : "Услуги"}</span></span>`;
-        card.addEventListener("pointerdown", (event) => event.stopPropagation());
-        card.addEventListener("click", (event) => {
-          event.preventDefault();
-          event.stopPropagation();
-          selectNicheImage(file, name);
-        });
+        card.addEventListener("click", () => selectNicheImage(src, name));
         grid.appendChild(card);
       });
       customNicheImages.filter((record) => record.kind === kind).forEach((record) => {
         const card = document.createElement("button");
         card.type = "button";
         card.className = "niche-card" + (state.heroCustomId === record.id ? " active" : "");
-        const recordGroup = record.groupKind ? presetGroupMeta(record.groupKind) : null;
-        const groupLabel = recordGroup && recordGroup.name ? ` · ${recordGroup.emoji || ""} ${recordGroup.name}` : "";
-        card.innerHTML = `<img src="${record.dataUrl}" alt=""><span><span class="niche-name">📌 ${escapeHtml(record.name)}</span><span class="niche-path">${kind === "goods" ? "Товары" : "Услуги"}${escapeHtml(groupLabel)} · загружено</span></span>`;
-        card.addEventListener("pointerdown", (event) => event.stopPropagation());
-        card.addEventListener("click", (event) => {
-          event.preventDefault();
-          event.stopPropagation();
-          selectCustomNicheImage(record);
-        });
-        card.addEventListener("contextmenu", async (event) => {
-          event.preventDefault();
-          event.stopPropagation();
-          try {
-            await renameCustomHeroImage(record);
-          } catch (error) {
-            alert(error && error.message ? error.message : "Не удалось переименовать картинку");
-          }
-        });
+        card.innerHTML = `<img src="${record.dataUrl}" alt=""><span><span class="niche-name">📌 ${escapeHtml(record.name)}</span><span class="niche-path">${kind === "goods" ? "Товары" : "Услуги"} · загружено</span></span>`;
+        card.addEventListener("click", () => selectCustomNicheImage(record));
         grid.appendChild(card);
       });
     }
-    async function selectNicheImage(fileOrSrc, name){
-      const encodedSrc = String(fileOrSrc || "").includes("/") ? String(fileOrSrc || "") : nichePath(fileOrSrc);
-      const plainSrc = String(fileOrSrc || "").includes("/") ? String(fileOrSrc || "") : nichePathPlain(fileOrSrc);
-      const loaded = await loadImageAny([encodedSrc, plainSrc]);
-      const nextHero = loaded.image;
-      if (!nextHero) {
-        alert("Не удалось выбрать картинку: " + (name || fileOrSrc || ""));
-        return;
-      }
+    async function selectNicheImage(src, name){
       customHeroSrc = "";
       state.heroCustomId = "";
-      state.heroSrc = loaded.src || encodedSrc;
-      state.heroDataUrl = "";
-      state.heroPreviewSrc = state.heroSrc;
+      state.heroSrc = src;
       state.heroName = name;
-      images.hero = nextHero;
+      images.hero = await loadImage(src);
       renderNicheLibrary();
       saveState();
+      draw();
     }
     async function selectCustomNicheImage(record){
-      const nextHero = await loadImage(record.dataUrl);
-      if (!nextHero) return;
-      customHeroSrc = record.dataUrl;
+      customHeroSrc = "";
       state.heroCustomId = record.id;
       state.heroSrc = "";
-      state.heroDataUrl = record.dataUrl || "";
-      state.heroPreviewSrc = record.dataUrl || "";
       state.heroName = record.name;
-      images.hero = nextHero;
+      images.hero = await loadImage(record.dataUrl);
       renderNicheLibrary();
       saveState();
+      draw();
     }
     function toggleNichePanels(force){
       const open = force === undefined ? !$("goodsPanel").classList.contains("open") : force;
@@ -1150,7 +650,6 @@
         btn.className = "tab" + (index === selectedPackage ? " active" : "");
         btn.textContent = `${index + 1}. ${compactPackageName(pkg, index)}`;
         btn.title = pkg.name || "Пакет";
-        btn.addEventListener("pointerdown", () => flushPackageForm({ updateTextarea: false }));
         btn.addEventListener("click", () => selectPackage(index));
         tabsEl.appendChild(btn);
       });
@@ -1166,14 +665,12 @@
       clampSelectedPackage();
       const pkg = state.packages[selectedPackage];
       $("pkgOn").checked = !!pkg.on;
-      $("pkgAvitoBudgetOn").checked = pkg.avitoBudgetOn !== false;
       $("pkgIcon").value = pkg.icon || "";
       $("pkgName").value = pkg.name || "";
       $("pkgLimit").value = packageQuantity(pkg);
       $("pkgWork").value = pkg.work || "";
       $("pkgColor").value = normalizeColor(pkg.color || "#24308f");
       $("pkgItems").value = (pkg.items || []).join("\n");
-      autoResizePackageItems();
     }
     function renderZones(){
       stage.querySelectorAll(".click-zone").forEach((el) => el.remove());
@@ -1184,13 +681,12 @@
         zone.style.top = `${item.top / H * 100}%`;
         zone.style.height = `${item.height / H * 100}%`;
         zone.setAttribute("aria-label", `Пакет ${item.index + 1}`);
-        zone.addEventListener("pointerdown", () => flushPackageForm({ updateTextarea: false }));
         zone.addEventListener("click", () => selectPackage(item.index));
         stage.appendChild(zone);
       });
     }
     function selectPackage(index){
-      flushPackageForm({ updateTextarea: false });
+      flushPackageForm();
       autoSaveState();
       selectedPackage = index;
       persistSelectedPackage();
@@ -1203,29 +699,28 @@
         zone.classList.toggle("active", index === selectedPackage);
       });
     }
-    function readGlobalForm(flushPackages = true){
+    function readGlobalForm(){
       state.bgChoice = $("bgChoice").value;
-      if ($("titleStyle")) state.titleStyle = $("titleStyle").value;
-      if ($("titleScale")) state.titleScale = Number($("titleScale").value) || defaults.titleScale;
-      if ($("titleScaleValue")) $("titleScaleValue").textContent = `${state.titleScale || defaults.titleScale}%`;
-      if (flushPackages) flushPackageForm();
+      state.titleStyle = $("titleStyle").value;
+      state.titleScale = Number($("titleScale").value) || defaults.titleScale;
+      $("titleScaleValue").textContent = `${state.titleScale}%`;
+      flushPackageForm();
     }
     function markPackageFormDirty(){
       packageFormDirty = true;
     }
-    function flushPackageForm(options = {}){
+    function flushPackageForm(){
       if (!packageFormDirty) return;
       const activePackage = selectedPackage;
-      readPackageForm(options);
+      readPackageForm();
       selectedPackage = activePackage;
       persistSelectedPackage();
     }
-    function readPackageForm(options = {}){
+    function readPackageForm(){
       clampSelectedPackage();
       const pkg = state.packages[selectedPackage];
       if (!pkg) return;
       pkg.on = $("pkgOn").checked;
-      pkg.avitoBudgetOn = $("pkgAvitoBudgetOn").checked;
       pkg.icon = $("pkgIcon").value;
       pkg.name = $("pkgName").value;
       pkg.quantity = $("pkgLimit").value.replace(/\D/g, "");
@@ -1233,18 +728,11 @@
       pkg.work = $("pkgWork").value;
       pkg.color = $("pkgColor").value;
       pkg.items = $("pkgItems").value.split("\n").map((line) => line.trim()).filter(Boolean);
-      if (options.syncDerived !== false) syncPackageDerivedLines(pkg);
+      syncPackageDerivedLines(pkg);
       const syncedItems = pkg.items.join("\n");
-      if (options.updateTextarea !== false && $("pkgItems").value !== syncedItems) $("pkgItems").value = syncedItems;
-      if (options.resize !== false) autoResizePackageItems();
-      if (!options.keepDirty) packageFormDirty = false;
-      if (options.persist !== false) persistState();
-    }
-    function autoResizePackageItems(){
-      const el = $("pkgItems");
-      if (!el) return;
-      el.style.height = "auto";
-      el.style.height = Math.max(160, el.scrollHeight + 4) + "px";
+      if ($("pkgItems").value !== syncedItems) $("pkgItems").value = syncedItems;
+      packageFormDirty = false;
+      persistState();
     }
     function normalizeColor(color){
       if (/^#[0-9a-f]{6}$/i.test(color)) return color;
@@ -1252,6 +740,7 @@
     }
 
     function draw(){
+      if (formReady) readGlobalForm();
       ctx.clearRect(0, 0, W, H);
       drawBackground();
       drawHero();
@@ -1540,15 +1029,7 @@
               version: 1,
               savedAt: new Date().toISOString(),
               heroName: state.heroName || "",
-              heroSrc: state.heroSrc || "",
-              heroCustomId: state.heroCustomId || "",
-              heroDataUrl: state.heroDataUrl || ((images.hero && String(images.hero.src || "").startsWith("data:")) ? images.hero.src : ""),
-              heroPreviewSrc: state.heroPreviewSrc || state.heroSrc || customHeroSrc || (images.hero && images.hero.src) || "",
-              previewDataUrl: makePresetPreviewDataUrl(),
-              bgChoice: state.bgChoice || defaults.bgChoice,
               presetKind: $("presetKind").value || "services",
-              presetGroupName: presetGroupMeta($("presetKind").value || "services").name,
-              presetGroupEmoji: presetGroupMeta($("presetKind").value || "services").emoji,
               packages: clone(state.packages).filter((pkg) => pkg.on)
             }
           );
@@ -1577,35 +1058,16 @@
       draw();
     }
     function getPackagePresets(){
-      const saved = readSavedPresets();
-      const result = {};
-      getPresetGroups(saved).forEach((group) => {
-        const builtinEmoji = group.id === "goods" ? "\ud83d\udce6" : "\ud83e\uddfe";
-        result[group.id] = (DEFAULT_PRESETS[group.id] || []).map((p) => Object.assign({ builtin: true, emoji: group.emoji || builtinEmoji }, p)).concat(saved[group.id] || []);
-      });
-      return result;
+      let saved = { services: [], goods: [] };
+      try {
+        saved = Object.assign(saved, JSON.parse(localStorage.getItem(PRESET_KEY) || "{}"));
+      } catch (e) {}
       return {
-        services: (DEFAULT_PRESETS.services || []).map((p) => Object.assign({ builtin: true, emoji: "🧾" }, p)).concat(saved.services || []),
-        goods: (DEFAULT_PRESETS.goods || []).map((p) => Object.assign({ builtin: true, emoji: "📦" }, p)).concat(saved.goods || [])
+        services: DEFAULT_PRESETS.services.concat(saved.services || []),
+        goods: DEFAULT_PRESETS.goods.concat(saved.goods || [])
       };
     }
-    function renderPresetKindOptions(){
-      const select = $("presetKind");
-      if (!select) return;
-      const current = select.value || "services";
-      const saved = readSavedPresets();
-      const groups = getPresetGroups(saved);
-      select.innerHTML = "";
-      groups.forEach((group) => {
-        const option = document.createElement("option");
-        option.value = group.id;
-        option.textContent = `${group.emoji || ""} ${group.name || group.id}`.trim();
-        select.appendChild(option);
-      });
-      select.value = groups.some((group) => group.id === current) ? current : "services";
-    }
     function renderPresetSelect(){
-      renderPresetKindOptions();
       const kind = $("presetKind").value || "services";
       const select = $("presetSelect");
       const presets = getPackagePresets()[kind] || [];
@@ -1613,633 +1075,34 @@
       presets.forEach((preset, index) => {
         const option = document.createElement("option");
         option.value = String(index);
-        option.textContent = `${preset.emoji || ""} ${preset.name || "Шаблон"}`.trim();
+        option.textContent = preset.name;
         select.appendChild(option);
       });
     }
-    async function applySelectedPreset(){
+    function applySelectedPreset(){
       const kind = $("presetKind").value || "services";
       const presets = getPackagePresets()[kind] || [];
       const preset = presets[Number($("presetSelect").value || 0)];
       if (!preset) return;
       state.packages = clone(preset.packages);
-      await applyPresetVisual(preset);
       selectedPackage = 0;
       renderForm();
       saveState();
     }
     function saveCurrentPreset(){
-      flushPackageForm();
       readGlobalForm();
-      const saved = readSavedPresets();
-      const guess = inferPresetDefaults();
-      showPresetSmallModal({
-        title: "Сохранить шаблон КП",
-        hint: "Группа, название и emoji уже подобраны по выбранной нише. Можно поправить.",
-        groups: getPresetGroups(saved),
-        kind: guess.kind,
-        name: guess.name,
-        emoji: guess.emoji
-      }, (result) => {
-        const kind = result.kind || guess.kind || "services";
-        saved[kind] = saved[kind] || [];
-        saved[kind].unshift(makePresetRecord(result.name, result.emoji || guess.emoji || "🧾"));
-        writeSavedPresets(saved);
-        $("presetKind").value = kind;
-        renderPresetSelect();
-        $("presetSelect").value = String((DEFAULT_PRESETS[kind] || []).length);
-      });
-    }
-    function updateSelectedPreset(){
-      flushPackageForm();
-      readGlobalForm();
-      const meta = getCurrentPresetMeta();
-      if (!meta.isSaved) {
-        alert("Это встроенный шаблон. Сначала нажмите «Сохранить текущий», потом его можно обновлять.");
-        return;
-      }
-      const saved = readSavedPresets();
-      const preset = saved[meta.kind] && saved[meta.kind][meta.savedIndex];
-      if (!preset) return;
-      preset.packages = clone(state.packages);
-      Object.assign(preset, currentPresetVisualMeta());
-      preset.updatedAt = new Date().toISOString();
-      writeSavedPresets(saved);
-      renderPresetSelect();
-      $("presetSelect").value = String(meta.index);
-    }
-    function setPresetSelectToSaved(kind, savedIndex){
-      $("presetKind").value = kind;
-      renderPresetSelect();
-      $("presetSelect").value = String((DEFAULT_PRESETS[kind] || []).length + savedIndex);
-    }
-    async function applyPresetVisual(preset){
-      const prevHero = images.hero;
-      const prevHeroSrc = state.heroSrc;
-      const prevHeroCustomId = state.heroCustomId;
-      const prevHeroName = state.heroName;
-      const prevHeroDataUrl = state.heroDataUrl || "";
-      const prevHeroPreviewSrc = state.heroPreviewSrc || "";
-      const prevCustomHeroSrc = customHeroSrc;
-      state.bgChoice = preset.bgChoice || state.bgChoice || defaults.bgChoice;
-      state.heroName = preset.heroName || state.heroName || "";
-      if (preset.heroSrc) {
-        customHeroSrc = "";
-        state.heroSrc = preset.heroSrc;
-        state.heroCustomId = "";
-        state.heroDataUrl = "";
-        state.heroPreviewSrc = preset.heroSrc;
-        images.hero = await loadImage(preset.heroSrc);
-      } else if (preset.heroCustomId) {
-        let customRecord = null;
-        try { customRecord = await getCustomHeroImage(preset.heroCustomId); } catch (e) {}
-        customHeroSrc = (customRecord && customRecord.dataUrl) || preset.heroDataUrl || preset.heroPreviewSrc || "";
-        state.heroSrc = "";
-        state.heroCustomId = preset.heroCustomId;
-        state.heroDataUrl = customHeroSrc || "";
-        state.heroPreviewSrc = customHeroSrc || "";
-        if (customHeroSrc) images.hero = await loadImage(customHeroSrc);
-      } else if (preset.heroDataUrl) {
-        customHeroSrc = preset.heroDataUrl;
-        state.heroSrc = "";
-        state.heroCustomId = "";
-        state.heroDataUrl = preset.heroDataUrl;
-        state.heroPreviewSrc = preset.heroPreviewSrc || preset.heroDataUrl;
-        images.hero = await loadImage(preset.heroDataUrl);
-      } else if (preset.heroPreviewSrc) {
-        customHeroSrc = preset.heroPreviewSrc;
-        state.heroSrc = "";
-        state.heroCustomId = "";
-        state.heroDataUrl = preset.heroPreviewSrc;
-        state.heroPreviewSrc = preset.heroPreviewSrc;
-        images.hero = await loadImage(preset.heroPreviewSrc);
-      }
-      if (!images.hero) {
-        images.hero = prevHero || await loadImage(ASSETS.hero);
-        state.heroSrc = prevHeroSrc || "";
-        state.heroCustomId = prevHeroCustomId || "";
-        state.heroName = prevHeroName || state.heroName || "";
-        state.heroDataUrl = prevHeroDataUrl || "";
-        state.heroPreviewSrc = prevHeroPreviewSrc || "";
-        customHeroSrc = prevCustomHeroSrc || "";
-      }
-    }
-    async function takePreset(kind, savedIndex){
-      const saved = readSavedPresets();
-      const preset = saved[kind] && saved[kind][savedIndex];
-      if (!preset) return;
-      state.packages = clone(preset.packages || defaults.packages);
-      await applyPresetVisual(preset);
-      selectedPackage = 0;
-      setPresetSelectToSaved(kind, savedIndex);
-      renderForm();
-      saveState();
-      closePresetArchive();
-    }
-    function closePresetArchive(){
-      closePresetEmojiPicker();
-      closePresetActionMenu();
-      closePresetGroupMenu();
-      closePresetPreview();
-      const modal = document.getElementById("presetArchiveModal");
-      if (modal) modal.remove();
-    }
-    function closePresetPreview(){
-      const modal = document.getElementById("presetPreviewModal");
-      if (modal) modal.remove();
-    }
-    async function buildPresetPreviewUrl(preset){
-      const prevState = clone(state);
-      const prevHero = images.hero;
-      const prevCustomHeroSrc = customHeroSrc;
-      const prevSelectedPackage = selectedPackage;
-      const prevFormReady = formReady;
+      const kind = $("presetKind").value || "services";
+      const rawName = prompt("Название готового пакета", kind === "goods" ? "Товары - новый пакет" : "Услуги - новый пакет");
+      const name = rawName && rawName.trim();
+      if (!name) return;
+      let saved = { services: [], goods: [] };
       try {
-        formReady = false;
-        state = Object.assign(clone(state), {
-          packages: clone(preset.packages || defaults.packages),
-          bgChoice: preset.bgChoice || state.bgChoice || defaults.bgChoice,
-          heroSrc: preset.heroSrc || "",
-          heroCustomId: preset.heroCustomId || "",
-          heroDataUrl: preset.heroDataUrl || "",
-          heroPreviewSrc: preset.heroPreviewSrc || "",
-          heroName: preset.heroName || state.heroName || ""
-        });
-        let customRecord = null;
-        if (preset.heroCustomId) {
-          try { customRecord = await getCustomHeroImage(preset.heroCustomId); } catch (e) {}
-        }
-        customHeroSrc = preset.heroSrc ? "" : ((customRecord && customRecord.dataUrl) || preset.heroDataUrl || preset.heroPreviewSrc || "");
-        images.hero = await loadImage(preset.heroSrc || customHeroSrc || ASSETS.hero);
-        selectedPackage = 0;
-        draw();
-        return canvas.toDataURL("image/jpeg", 0.86);
-      } finally {
-        state = prevState;
-        images.hero = prevHero;
-        customHeroSrc = prevCustomHeroSrc;
-        selectedPackage = prevSelectedPackage;
-        formReady = prevFormReady;
-        draw();
-      }
-    }
-    async function openPresetPreview(kind, savedIndex){
-      const saved = readSavedPresets();
-      const preset = saved[kind] && saved[kind][savedIndex];
-      if (!preset) return;
-      closePresetPreview();
-      const modal = document.createElement("div");
-      modal.id = "presetPreviewModal";
-      modal.className = "preset-preview-modal";
-      modal.innerHTML = `
-        <div class="preset-preview-panel">
-          <div class="preset-preview-bar">
-            <button class="btn primary" data-action="take" type="button">ВЗЯТЬ / ПРАВИТЬ</button>
-            <button class="btn" data-action="close" type="button">Закрыть</button>
-          </div>
-          <img class="preset-preview-img" alt="${escapeHtml(preset.name || "КП")}">
-        </div>`;
-      document.body.appendChild(modal);
-      modal.querySelectorAll('[data-action="take"]').forEach((btn) => {
-        btn.textContent = "\u0412\u0417\u042f\u0422\u042c";
-      });
-      const img = modal.querySelector(".preset-preview-img");
-      img.src = preset.previewDataUrl || await buildPresetPreviewUrl(preset);
-      modal.addEventListener("click", (event) => {
-        if (event.target === modal || event.target.closest('[data-action="close"]')) {
-          closePresetPreview();
-          return;
-        }
-        if (event.target.closest('[data-action="take"]')) {
-          closePresetPreview();
-          takePreset(kind, savedIndex);
-        }
-      });
-    }
-    function closePresetEmojiPicker(){
-      const pop = document.getElementById("presetEmojiPicker");
-      if (pop) pop.remove();
-    }
-    function closePresetActionMenu(){
-      const pop = document.getElementById("presetActionMenu");
-      if (pop) pop.remove();
-    }
-    function closePresetGroupMenu(){
-      const pop = document.getElementById("presetGroupMenu");
-      if (pop) pop.remove();
-    }
-    function movePresetToGroup(kind, index, targetId){
-      const saved = readSavedPresets();
-      const source = saved[kind] || [];
-      const preset = source[index];
-      if (!preset) return;
-      const target = getPresetGroups(saved).find((group) => group.id === targetId);
-      if (!target) return;
-      const [moved] = source.splice(index, 1);
-      saved[target.id] = Array.isArray(saved[target.id]) ? saved[target.id] : [];
-      saved[target.id].unshift(moved);
-      writeSavedPresets(saved);
-      $("presetKind").value = target.id;
+        saved = Object.assign(saved, JSON.parse(localStorage.getItem(PRESET_KEY) || "{}"));
+      } catch (e) {}
+      saved[kind] = saved[kind] || [];
+      saved[kind].push({ name, packages: clone(state.packages) });
+      localStorage.setItem(PRESET_KEY, JSON.stringify(saved));
       renderPresetSelect();
-      $("presetSelect").value = String((DEFAULT_PRESETS[target.id] || []).length);
-      refreshPresetArchive();
-    }
-    function openPresetGroupMenu(anchor, kind, index){
-      closePresetGroupMenu();
-      const saved = readSavedPresets();
-      const groups = getPresetGroups(saved).filter((group) => group.id !== kind);
-      if (!groups.length) {
-        alert("Сначала создайте ещё одну группу.");
-        return;
-      }
-      const pop = document.createElement("div");
-      pop.id = "presetGroupMenu";
-      pop.className = "preset-group-pop";
-      pop.innerHTML = '<div class="preset-group-pop-title">Перенести в группу</div>' + groups.map((group) => {
-        return `<button type="button" data-target-kind="${escapeHtml(group.id)}"><span>${escapeHtml(group.emoji || "🧾")}</span><span>${escapeHtml(group.name || group.id)}</span></button>`;
-      }).join("");
-      document.body.appendChild(pop);
-      const rect = anchor && anchor.getBoundingClientRect ? anchor.getBoundingClientRect() : anchor;
-      const right = rect && Number.isFinite(rect.right) ? rect.right : (rect && Number.isFinite(rect.clientX) ? rect.clientX : window.innerWidth / 2);
-      const bottom = rect && Number.isFinite(rect.bottom) ? rect.bottom : (rect && Number.isFinite(rect.clientY) ? rect.clientY : window.innerHeight / 2);
-      pop.style.left = Math.min(window.innerWidth - 242, Math.max(8, right - 230)) + "px";
-      pop.style.top = Math.min(window.innerHeight - 280, Math.max(8, bottom + 6)) + "px";
-      pop.addEventListener("click", (event) => {
-        event.stopPropagation();
-        const btn = event.target.closest("[data-target-kind]");
-        if (!btn) return;
-        const targetId = btn.getAttribute("data-target-kind") || "";
-        closePresetGroupMenu();
-        movePresetToGroup(kind, index, targetId);
-      });
-      const closeOnOutside = (event) => {
-        if (!pop.contains(event.target) && event.target !== anchor) {
-          closePresetGroupMenu();
-          document.removeEventListener("pointerdown", closeOnOutside, true);
-        }
-      };
-      setTimeout(() => document.addEventListener("pointerdown", closeOnOutside, true), 0);
-    }
-    function runPresetArchiveAction(action, kind, index){
-      const nextSaved = readSavedPresets();
-      const preset = nextSaved[kind] && nextSaved[kind][index];
-      if (!preset) return;
-      if (action === "update") {
-        flushPackageForm();
-        readGlobalForm();
-        preset.packages = clone(state.packages);
-        Object.assign(preset, currentPresetVisualMeta());
-        preset.updatedAt = new Date().toISOString();
-        writeSavedPresets(nextSaved);
-        setPresetSelectToSaved(kind, index);
-        refreshPresetArchive();
-        return;
-      }
-      if (action === "rename") {
-        const name = prompt("Новое название шаблона", preset.name || "");
-        if (name === null) return;
-        preset.name = name.trim() || preset.name || "Шаблон";
-        preset.updatedAt = new Date().toISOString();
-        writeSavedPresets(nextSaved);
-        renderPresetSelect();
-        refreshPresetArchive();
-        return;
-      }
-      if (action === "duplicate") {
-        const copy = stripPresetMeta(preset);
-        copy.id = makePresetId();
-        copy.name = (copy.name || "Шаблон") + " копия";
-        copy.savedAt = new Date().toISOString();
-        copy.updatedAt = copy.savedAt;
-        nextSaved[kind].splice(index + 1, 0, copy);
-        writeSavedPresets(nextSaved);
-        renderPresetSelect();
-        refreshPresetArchive();
-        return;
-      }
-      if (action === "move") {
-        movePresetToGroup(kind, index);
-        return;
-      }
-      if (action === "delete") {
-        if (!confirm("Удалить шаблон «" + (preset.name || "Шаблон") + "»?")) return;
-        nextSaved[kind].splice(index, 1);
-        writeSavedPresets(nextSaved);
-        renderPresetSelect();
-        refreshPresetArchive();
-      }
-    }
-    function openPresetActionMenu(anchor, kind, index){
-      closePresetActionMenu();
-      closePresetGroupMenu();
-      const pop = document.createElement("div");
-      pop.id = "presetActionMenu";
-      pop.className = "preset-action-pop";
-      pop.innerHTML = `
-        <button type="button" data-preset-action="rename">✎ Переименовать</button>
-        <button type="button" data-preset-action="move">📁 Перенести в группу</button>
-        <button type="button" data-preset-action="duplicate">⧉ Дублировать</button>
-        <button type="button" class="danger" data-preset-action="delete">× Удалить</button>`;
-      document.body.appendChild(pop);
-      const rect = anchor.getBoundingClientRect();
-      pop.style.left = Math.min(window.innerWidth - 222, Math.max(8, rect.right - 210)) + "px";
-      pop.style.top = Math.min(window.innerHeight - 190, Math.max(8, rect.bottom + 6)) + "px";
-      pop.addEventListener("click", (event) => {
-        event.stopPropagation();
-        const btn = event.target.closest("[data-preset-action]");
-        if (!btn) return;
-        const action = btn.getAttribute("data-preset-action");
-        if (action === "move") {
-          const anchorPoint = { right: event.clientX, bottom: event.clientY };
-          closePresetActionMenu();
-          openPresetGroupMenu(anchorPoint, kind, index);
-          return;
-        }
-        closePresetActionMenu();
-        runPresetArchiveAction(action, kind, index);
-      });
-      const closeOnOutside = (event) => {
-        if (!pop.contains(event.target) && event.target !== anchor) {
-          closePresetActionMenu();
-          document.removeEventListener("pointerdown", closeOnOutside, true);
-        }
-      };
-      setTimeout(() => document.addEventListener("pointerdown", closeOnOutside, true), 0);
-    }
-    function openPresetEmojiPicker(anchor, kind, savedIndex){
-      closePresetEmojiPicker();
-      closePresetActionMenu();
-      const pop = document.createElement("div");
-      pop.id = "presetEmojiPicker";
-      pop.className = "preset-emoji-pop";
-      pop.innerHTML = PRESET_EMOJIS.map((emoji) => `<button type="button" data-emoji="${escapeHtml(emoji)}">${escapeHtml(emoji)}</button>`).join("");
-      document.body.appendChild(pop);
-      const rect = anchor.getBoundingClientRect();
-      pop.style.left = Math.min(window.innerWidth - 190, Math.max(8, rect.left)) + "px";
-      pop.style.top = Math.min(window.innerHeight - 230, Math.max(8, rect.bottom + 6)) + "px";
-      ["pointerdown", "mousedown", "mouseup", "click"].forEach((eventName) => {
-        pop.addEventListener(eventName, (event) => {
-          event.stopPropagation();
-        }, true);
-      });
-      pop.addEventListener("click", (event) => {
-        event.stopPropagation();
-        const btn = event.target.closest("[data-emoji]");
-        if (!btn) return;
-        event.preventDefault();
-        const saved = readSavedPresets();
-        const preset = saved[kind] && saved[kind][savedIndex];
-        if (!preset) return;
-        preset.emoji = btn.getAttribute("data-emoji") || "🧾";
-        preset.updatedAt = new Date().toISOString();
-        writeSavedPresets(saved);
-        renderPresetSelect();
-        const modal = document.getElementById("presetArchiveModal");
-        const activeKind = $("presetKind").value || kind;
-        if (modal && activeKind === kind) {
-          const cardEmoji = modal.querySelector(`.preset-archive-card[data-index="${savedIndex}"] .preset-card-emoji`);
-          if (cardEmoji) cardEmoji.textContent = preset.emoji;
-        }
-        closePresetEmojiPicker();
-      });
-    }
-    function presetArchiveCardsHtml(kind){
-      const saved = readSavedPresets();
-      const list = (saved[kind] || []);
-      const meta = getCurrentPresetMeta();
-      return list.length ? list.map((preset, index) => {
-        const active = meta.kind === kind && meta.isSaved && meta.savedIndex === index ? " active" : "";
-        const bg = preset.heroSrc || preset.heroDataUrl || preset.heroPreviewSrc || preset.previewDataUrl || "";
-        return `
-          <div class="preset-archive-card${active}" data-index="${index}" data-bg="${escapeHtml(bg)}">
-            <div class="preset-card-top">
-              <span class="preset-card-emoji" data-action="emoji-picker" title="Р’С‹Р±СЂР°С‚СЊ emoji">${escapeHtml(preset.emoji || "рџ§ѕ")}</span>
-              <span class="preset-card-name">${escapeHtml(preset.name || "РЁР°Р±Р»РѕРЅ")}</span>
-            </div>
-            <div class="preset-card-prices">${escapeHtml(presetPricesLine(preset) || "РџР°РєРµС‚С‹ Р±РµР· С†РµРЅ")}</div>
-            <div class="preset-card-actions">
-              <button type="button" class="main" data-action="take">Р’Р—РЇРўР¬ / РџР РђР’РРўР¬</button>
-              <button type="button" data-action="menu" title="Действия">&#8943;</button>
-            </div>
-          </div>`;
-      }).join("") : '<div class="mini-note">РЎРѕС…СЂР°РЅС‘РЅРЅС‹С… С€Р°Р±Р»РѕРЅРѕРІ РїРѕРєР° РЅРµС‚. РќР°Р¶РјРёС‚Рµ В«РЎРѕС…СЂР°РЅРёС‚СЊ С‚РµРєСѓС‰РёР№В».</div>';
-    }
-    function presetGroupButtonsHtml(kind){
-      const saved = readSavedPresets();
-      return getPresetGroups(saved).map((group) => {
-        return `<button class="btn ${group.id === kind ? "primary" : ""}" data-kind="${escapeHtml(group.id)}" type="button">${escapeHtml((group.emoji || "") + " " + (group.name || group.id))}</button>`;
-      }).join("") + `<button class="btn" data-action="add-group" type="button">+ \u0433\u0440\u0443\u043f\u043f\u0430</button><button class="btn" data-action="edit-group" type="button">\u270e</button>`;
-    }
-    function createPresetGroup(){
-      showPresetSmallModal({
-        title: "Новая группа КП",
-        hint: "Впиши название группы и emoji. Она появится в архиве и в выборе КП.",
-        name: "Каркасные дома",
-        emoji: "🏠"
-      }, (result) => {
-        const saved = readSavedPresets();
-        const name = result.name.trim();
-        if (!name) return;
-        let id = makePresetGroupId(name);
-        while (saved.groups.some((group) => group.id === id) || saved[id]) id = makePresetGroupId(name + "_" + Date.now().toString(36));
-        saved.groups.push({ id, name, emoji: result.emoji || "🧾" });
-        saved[id] = [];
-        writeSavedPresets(saved);
-        $("presetKind").value = id;
-        renderPresetSelect();
-        refreshPresetArchive();
-      });
-    }
-    function editPresetGroup(){
-      const kind = $("presetKind").value || "services";
-      const saved = readSavedPresets();
-      const group = saved.groups.find((item) => item.id === kind);
-      if (!group) return;
-      showPresetSmallModal({
-        title: "Правка группы КП",
-        hint: "Поменяй название или emoji группы. Шаблоны внутри сохранятся.",
-        name: group.name || kind,
-        emoji: group.emoji || "🧾"
-      }, (result) => {
-        const next = readSavedPresets();
-        const item = next.groups.find((entry) => entry.id === kind);
-        if (!item) return;
-        item.name = result.name || item.name || kind;
-        item.emoji = result.emoji || item.emoji || "🧾";
-        writeSavedPresets(next);
-        renderPresetSelect();
-        refreshPresetArchive();
-      });
-    }    function decoratePresetArchive(modal){
-      modal.querySelectorAll('[data-action="take"]').forEach((btn) => {
-        btn.textContent = "\u0412\u0417\u042f\u0422\u042c";
-      });
-      modal.querySelectorAll(".preset-archive-card[data-bg]").forEach((card) => {
-        const bg = card.getAttribute("data-bg") || "";
-        if (bg) card.style.backgroundImage = `linear-gradient(180deg,rgba(0,0,0,.18),rgba(0,0,0,.72)),url("${bg.replace(/"/g, '\\"')}")`;
-      });
-      hydratePresetArchiveCustomBgs(modal);
-    }
-    async function hydratePresetArchiveCustomBgs(modal){
-      const kind = $("presetKind").value || "services";
-      const saved = readSavedPresets();
-      let changed = false;
-      const cards = Array.from(modal.querySelectorAll(".preset-archive-card[data-index]"));
-      for (const card of cards) {
-        if (card.getAttribute("data-bg")) continue;
-        const index = Number(card.getAttribute("data-index") || 0);
-        const preset = saved[kind] && saved[kind][index];
-        if (!preset || !preset.heroCustomId) continue;
-        let record = null;
-        try { record = await getCustomHeroImage(preset.heroCustomId); } catch (e) {}
-        if (!record || !record.dataUrl) continue;
-        preset.heroDataUrl = record.dataUrl;
-        card.setAttribute("data-bg", record.dataUrl);
-        card.style.backgroundImage = `linear-gradient(180deg,rgba(0,0,0,.18),rgba(0,0,0,.72)),url("${record.dataUrl.replace(/"/g, '\\"')}")`;
-        changed = true;
-      }
-      if (changed) writeSavedPresets(saved);
-    }
-    function refreshPresetArchive(){
-      const modal = document.getElementById("presetArchiveModal");
-      if (!modal) return;
-      const kind = $("presetKind").value || "services";
-      const grid = modal.querySelector(".preset-archive-grid");
-      if (grid) grid.innerHTML = presetArchiveCardsHtml(kind);
-      const actions = modal.querySelector(".preset-archive-actions");
-      if (actions) actions.innerHTML = presetGroupButtonsHtml(kind) + '<button class="preset-archive-close" type="button">\u00d7</button>';
-      modal.querySelectorAll("[data-kind]").forEach((btn) => {
-        btn.classList.toggle("primary", btn.getAttribute("data-kind") === kind);
-      });
-      decoratePresetArchive(modal);
-    }
-    function openPresetArchive(){
-      closePresetArchive();
-      const kind = $("presetKind").value || "services";
-      const saved = readSavedPresets();
-      const list = (saved[kind] || []);
-      const meta = getCurrentPresetMeta();
-      const cards = list.length ? list.map((preset, index) => {
-        const active = meta.kind === kind && meta.isSaved && meta.savedIndex === index ? " active" : "";
-        const bg = preset.heroSrc || preset.heroDataUrl || preset.heroPreviewSrc || preset.previewDataUrl || "";
-        return `
-          <div class="preset-archive-card${active}" data-index="${index}" data-bg="${escapeHtml(bg)}">
-            <div class="preset-card-top">
-              <span class="preset-card-emoji" data-action="emoji-picker" title="Выбрать emoji">${escapeHtml(preset.emoji || "🧾")}</span>
-              <span class="preset-card-name">${escapeHtml(preset.name || "Шаблон")}</span>
-            </div>
-            <div class="preset-card-prices">${escapeHtml(presetPricesLine(preset) || "Пакеты без цен")}</div>
-            <div class="preset-card-actions">
-              <button type="button" class="main" data-action="take">ВЗЯТЬ / ПРАВИТЬ</button>
-              <button type="button" data-action="menu" title="Действия">&#8943;</button>
-            </div>
-          </div>`;
-      }).join("") : '<div class="mini-note">Сохранённых шаблонов пока нет. Нажмите «Сохранить текущий».</div>';
-      const modal = document.createElement("div");
-      modal.id = "presetArchiveModal";
-      modal.className = "preset-archive-modal";
-      modal.innerHTML = `
-        <div class="preset-archive-panel">
-          <div class="preset-archive-head">
-            <div class="preset-archive-title">🗄 Архив шаблонов КП</div>
-            <div class="preset-archive-actions">
-              <button class="btn ${kind === "services" ? "primary" : ""}" data-kind="services" type="button">Услуги</button>
-              <button class="btn ${kind === "goods" ? "primary" : ""}" data-kind="goods" type="button">Товары</button>
-              <button class="preset-archive-close" type="button">×</button>
-            </div>
-          </div>
-          <div class="preset-archive-grid">${cards}</div>
-        </div>`;
-      document.body.appendChild(modal);
-      const archiveActions = modal.querySelector(".preset-archive-actions");
-      if (archiveActions) {
-        archiveActions.innerHTML = presetGroupButtonsHtml(kind) + '<button class="preset-archive-close" type="button">\u00d7</button>';
-      }
-      decoratePresetArchive(modal);
-      modal.addEventListener("click", (event) => {
-        if (event.target === modal || event.target.classList.contains("preset-archive-close")) {
-          closePresetArchive();
-          return;
-        }
-        const groupAction = event.target.closest('[data-action="add-group"],[data-action="edit-group"]');
-        if (groupAction) {
-          if (groupAction.getAttribute("data-action") === "add-group") createPresetGroup();
-          else editPresetGroup();
-          return;
-        }
-        const kindBtn = event.target.closest("[data-kind]");
-        if (kindBtn) {
-          $("presetKind").value = kindBtn.getAttribute("data-kind") || "services";
-          renderPresetSelect();
-          refreshPresetArchive();
-          return;
-        }
-        const card = event.target.closest(".preset-archive-card");
-        if (!card) return;
-        const index = Number(card.getAttribute("data-index") || 0);
-        const actionBtn = event.target.closest("[data-action]");
-        const action = actionBtn ? actionBtn.getAttribute("data-action") : "take";
-        const activeKind = $("presetKind").value || kind;
-        const nextSaved = readSavedPresets();
-        const preset = nextSaved[activeKind] && nextSaved[activeKind][index];
-        if (!preset) return;
-        if (action === "emoji-picker") {
-          openPresetEmojiPicker(event.target.closest(".preset-card-emoji"), activeKind, index);
-          return;
-        }
-        if (!actionBtn) {
-          openPresetPreview(activeKind, index);
-          return;
-        }
-        if (action === "take") {
-          takePreset(activeKind, index);
-          return;
-        }
-        if (action === "menu") {
-          openPresetActionMenu(actionBtn, activeKind, index);
-          return;
-        }
-        if (action === "update") {
-          flushPackageForm();
-          readGlobalForm();
-          preset.packages = clone(state.packages);
-          Object.assign(preset, currentPresetVisualMeta());
-          preset.updatedAt = new Date().toISOString();
-          writeSavedPresets(nextSaved);
-          setPresetSelectToSaved(activeKind, index);
-          refreshPresetArchive();
-          return;
-        }
-        if (action === "rename") {
-          const name = prompt("Новое название шаблона", preset.name || "");
-          if (name === null) return;
-          preset.name = name.trim() || preset.name || "Шаблон";
-          preset.updatedAt = new Date().toISOString();
-          writeSavedPresets(nextSaved);
-          renderPresetSelect();
-          refreshPresetArchive();
-          return;
-        }
-        if (action === "duplicate") {
-          const copy = stripPresetMeta(preset);
-          copy.id = makePresetId();
-          copy.name = (copy.name || "Шаблон") + " копия";
-          copy.savedAt = new Date().toISOString();
-          copy.updatedAt = copy.savedAt;
-          nextSaved[activeKind].splice(index + 1, 0, copy);
-          writeSavedPresets(nextSaved);
-          renderPresetSelect();
-          refreshPresetArchive();
-          return;
-        }
-        if (action === "delete") {
-          if (!confirm("Удалить шаблон «" + (preset.name || "Шаблон") + "»?")) return;
-          nextSaved[activeKind].splice(index, 1);
-          writeSavedPresets(nextSaved);
-          renderPresetSelect();
-          refreshPresetArchive();
-        }
-      });
     }
     function clamp(value, min, max){
       return Math.min(max, Math.max(min, value));
@@ -2276,96 +1139,67 @@
       }, { passive: false });
     }
 
-    ["pkgOn","pkgAvitoBudgetOn","pkgIcon","pkgName","pkgLimit","pkgWork","pkgColor","pkgItems"].forEach((id) => {
+    ["pkgOn","pkgIcon","pkgName","pkgLimit","pkgWork","pkgColor","pkgItems"].forEach((id) => {
       $(id).addEventListener("input", () => {
         markPackageFormDirty();
-        readPackageForm({
-          persist: false,
-          updateTextarea: false,
-          resize: id === "pkgItems",
-          keepDirty: true,
-          syncDerived: id !== "pkgItems"
-        });
-        scheduleDraftPersist();
-        if (id === "pkgItems") autoResizePackageItems();
       });
       $(id).addEventListener("change", () => {
         markPackageFormDirty();
-        readPackageForm({
-          persist: false,
-          updateTextarea: false,
-          resize: id === "pkgItems",
-          keepDirty: true,
-          syncDerived: id !== "pkgItems"
-        });
-        scheduleDraftPersist();
       });
       $(id).addEventListener("blur", () => {
         const wasDirty = packageFormDirty;
-        flushPackageForm({ updateTextarea: false });
+        flushPackageForm();
         if (wasDirty && (id === "pkgOn" || id === "pkgIcon" || id === "pkgName")) renderTabs();
         if (wasDirty && id === "pkgOn") renderZones();
         if (wasDirty) draw();
       });
     });
-    $("pkgAvitoBudgetOn").addEventListener("change", () => {
-      flushPackageForm({ updateTextarea: false });
-      draw();
-    });
     document.addEventListener("visibilitychange", () => {
-      if (document.hidden) flushPackageForm({ updateTextarea: false });
+      if (document.hidden) flushPackageForm();
     });
-    window.addEventListener("pagehide", () => flushPackageForm({ updateTextarea: false }));
-    $("bgChoice").addEventListener("change", () => {
-      readGlobalForm(false);
-      persistState();
-      draw();
-    });
-    if ($("titleStyle")) $("titleStyle").addEventListener("change", () => {
-      readGlobalForm(false);
-      persistState();
-      draw();
-    });
-    if ($("titleScale")) $("titleScale").addEventListener("input", () => {
-      readGlobalForm(false);
-      scheduleDraw();
-    });
+    window.addEventListener("pagehide", flushPackageForm);
+    $("bgChoice").addEventListener("change", draw);
+    $("titleStyle").addEventListener("change", draw);
+    $("titleScale").addEventListener("input", draw);
     $("heroZone").addEventListener("click", () => toggleNichePanels());
     $("presetKind").addEventListener("change", renderPresetSelect);
-    $("presetSelect").addEventListener("mousedown", (event) => {
-      if (event.shiftKey) {
-        event.preventDefault();
-        openPresetArchive();
-      }
-    });
     $("applyPresetBtn").addEventListener("click", applySelectedPreset);
     $("savePresetBtn").addEventListener("click", saveCurrentPreset);
-    $("updatePresetBtn").addEventListener("click", updateSelectedPreset);
-    $("presetArchiveBtn").addEventListener("click", openPresetArchive);
     $("heroFile").addEventListener("change", async (event) => {
       const file = event.target.files && event.target.files[0];
       if (!file) return;
-      event.target.value = "";
-      showHeroImageSaveModal(file, async (result) => {
-        try {
-          const record = {
-            id: crypto.randomUUID ? crypto.randomUUID() : `hero-${Date.now()}`,
-            kind: result.kind === "goods" ? "goods" : "services",
-            groupKind: result.groupKind || "",
-            name: result.name,
-            dataUrl: await imageFileToDataUrl(file),
-            createdAt: new Date().toISOString()
-          };
-          await putCustomHeroImage(record);
-          customNicheImages = [record].concat(customNicheImages.filter((item) => item.id !== record.id));
-          await selectCustomNicheImage(record);
-          toggleNichePanels(true);
-        } catch (error) {
-          alert(error && error.message ? error.message : "Не удалось сохранить изображение");
-        } finally {
-          event.target.value = "";
-        }
-      });
+      const defaultKind = $("presetKind").value === "goods" ? "товары" : "услуги";
+      const kindAnswer = prompt("Куда сохранить картинку: товары или услуги?", defaultKind);
+      if (kindAnswer === null) { event.target.value = ""; return; }
+      const normalizedKind = kindAnswer.trim().toLowerCase();
+      const kind = normalizedKind.startsWith("тов") || normalizedKind === "goods" ? "goods"
+        : normalizedKind.startsWith("усл") || normalizedKind === "services" ? "services" : "";
+      if (!kind) {
+        alert("Напишите «товары» или «услуги».");
+        event.target.value = "";
+        return;
+      }
+      const defaultName = file.name.replace(/\.[^.]+$/, "");
+      const nameAnswer = prompt("Как назвать картинку?", defaultName);
+      const name = nameAnswer && nameAnswer.trim();
+      if (!name) { event.target.value = ""; return; }
+      try {
+        const record = {
+          id: crypto.randomUUID ? crypto.randomUUID() : `hero-${Date.now()}`,
+          kind,
+          name,
+          dataUrl: await imageFileToDataUrl(file),
+          createdAt: new Date().toISOString()
+        };
+        await putCustomHeroImage(record);
+        customNicheImages = [record].concat(customNicheImages.filter((item) => item.id !== record.id));
+        await selectCustomNicheImage(record);
+        toggleNichePanels(true);
+      } catch (error) {
+        alert(error && error.message ? error.message : "Не удалось сохранить изображение");
+      } finally {
+        event.target.value = "";
+      }
     });
     if (document.body.classList.contains("embedded")) {
       $("downloadBtn").textContent = "Сохранить КП";
