@@ -128,6 +128,9 @@
     .preset-small-row label{font-size:11px;font-weight:1000;color:#8fdfff;text-transform:uppercase;letter-spacing:.45px}
     .preset-small-row input,.preset-small-row select{height:36px;border-radius:9px;border:1px solid rgba(93,229,255,.25);background:#08111d;color:#fff;padding:0 10px;font:inherit;font-weight:800;min-width:0}
     .preset-small-row.emoji input{font-size:22px;text-align:center;width:70px}
+    .hero-kind-buttons{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+    .hero-kind-btn{height:38px;border-radius:10px;border:1px solid rgba(93,229,255,.25);background:rgba(255,255,255,.05);color:#dff7ff;font-weight:1000;cursor:pointer}
+    .hero-kind-btn.active{background:linear-gradient(135deg,#00df86,#59ebff);border-color:transparent;color:#02100b}
     .preset-small-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:14px}
     @media(max-width:1180px){.preset-archive-grid{grid-template-columns:repeat(4,minmax(145px,1fr))}}
     @media(max-width:720px){.preset-archive-grid{grid-template-columns:repeat(2,minmax(120px,1fr))}.preset-archive-panel{height:94vh}}
@@ -705,6 +708,74 @@
         }
       });
     }
+    function showHeroImageSaveModal(file, onSave){
+      const old = document.getElementById("heroImageSaveModal");
+      if (old) old.remove();
+      const saved = readSavedPresets();
+      const groups = getPresetGroups(saved);
+      let kind = $("presetKind").value === "goods" ? "goods" : "services";
+      const currentGroup = $("presetKind").value || kind;
+      const defaultName = file && file.name ? file.name.replace(/\.[^.]+$/, "") : "";
+      const modal = document.createElement("div");
+      modal.id = "heroImageSaveModal";
+      modal.className = "preset-small-modal";
+      modal.innerHTML = `
+        <div class="preset-small-panel">
+          <div class="preset-small-title">Сохранить картинку КП</div>
+          <div class="preset-small-hint">Сначала выбери: товар или услуга. Ниже можно привязать картинку к группе архива КП.</div>
+          <div class="preset-small-row"><label>Тип</label><div class="hero-kind-buttons">
+            <button class="hero-kind-btn ${kind === "goods" ? "active" : ""}" type="button" data-kind="goods">📦 Товар</button>
+            <button class="hero-kind-btn ${kind === "services" ? "active" : ""}" type="button" data-kind="services">🧾 Услуга</button>
+          </div></div>
+          <div class="preset-small-row"><label>Имя</label><input id="heroImageName" type="text" value="${escapeHtml(defaultName)}"></div>
+          <div class="preset-small-row"><label>Группа</label><select id="heroImageGroup">
+            <option value="">Без группы</option>
+            ${groups.map((group) => `<option value="${escapeHtml(group.id)}">${escapeHtml((group.emoji || "") + " " + (group.name || group.id))}</option>`).join("")}
+          </select></div>
+          <div class="preset-small-actions">
+            <button class="btn" type="button" data-action="cancel">Отмена</button>
+            <button class="btn primary" type="button" data-action="save">Сохранить</button>
+          </div>
+        </div>`;
+      document.body.appendChild(modal);
+      const nameEl = modal.querySelector("#heroImageName");
+      const groupEl = modal.querySelector("#heroImageGroup");
+      if (groupEl) groupEl.value = groups.some((group) => group.id === currentGroup) ? currentGroup : "";
+      setTimeout(() => { if (nameEl) { nameEl.focus(); nameEl.select(); } }, 0);
+      function close(){ modal.remove(); }
+      function syncButtons(){
+        modal.querySelectorAll(".hero-kind-btn").forEach((btn) => {
+          btn.classList.toggle("active", btn.getAttribute("data-kind") === kind);
+        });
+      }
+      function submit(){
+        const name = nameEl ? nameEl.value.trim() : "";
+        if (!name) { if (nameEl) nameEl.focus(); return; }
+        const groupKind = groupEl ? groupEl.value : "";
+        close();
+        onSave({ kind, groupKind, name });
+      }
+      modal.addEventListener("click", (event) => {
+        event.stopPropagation();
+        if (event.target === modal || event.target.closest('[data-action="cancel"]')) {
+          close();
+          return;
+        }
+        const kindBtn = event.target.closest(".hero-kind-btn");
+        if (kindBtn) {
+          kind = kindBtn.getAttribute("data-kind") || kind;
+          syncButtons();
+          return;
+        }
+        if (event.target.closest('[data-action="save"]')) submit();
+      });
+      const panel = modal.querySelector(".preset-small-panel");
+      if (panel) panel.addEventListener("pointerdown", (event) => event.stopPropagation());
+      modal.addEventListener("keydown", (event) => {
+        if (event.key === "Escape") close();
+        if (event.key === "Enter" && (event.ctrlKey || event.metaKey)) submit();
+      });
+    }
     function inferPresetDefaults(){
       const saved = readSavedPresets();
       const groups = getPresetGroups(saved);
@@ -976,7 +1047,9 @@
         const card = document.createElement("button");
         card.type = "button";
         card.className = "niche-card" + (state.heroCustomId === record.id ? " active" : "");
-        card.innerHTML = `<img src="${record.dataUrl}" alt=""><span><span class="niche-name">📌 ${escapeHtml(record.name)}</span><span class="niche-path">${kind === "goods" ? "Товары" : "Услуги"} · загружено</span></span>`;
+        const recordGroup = record.groupKind ? presetGroupMeta(record.groupKind) : null;
+        const groupLabel = recordGroup && recordGroup.name ? ` · ${recordGroup.emoji || ""} ${recordGroup.name}` : "";
+        card.innerHTML = `<img src="${record.dataUrl}" alt=""><span><span class="niche-name">📌 ${escapeHtml(record.name)}</span><span class="niche-path">${kind === "goods" ? "Товары" : "Услуги"}${escapeHtml(groupLabel)} · загружено</span></span>`;
         card.addEventListener("click", () => selectCustomNicheImage(record));
         card.addEventListener("contextmenu", async (event) => {
           event.preventDefault();
@@ -2199,38 +2272,27 @@
     $("heroFile").addEventListener("change", async (event) => {
       const file = event.target.files && event.target.files[0];
       if (!file) return;
-      const defaultKind = $("presetKind").value === "goods" ? "товары" : "услуги";
-      const kindAnswer = prompt("Куда сохранить картинку: товары или услуги?", defaultKind);
-      if (kindAnswer === null) { event.target.value = ""; return; }
-      const normalizedKind = kindAnswer.trim().toLowerCase();
-      const kind = normalizedKind.startsWith("тов") || normalizedKind === "goods" ? "goods"
-        : normalizedKind.startsWith("усл") || normalizedKind === "services" ? "services" : "";
-      if (!kind) {
-        alert("Напишите «товары» или «услуги».");
-        event.target.value = "";
-        return;
-      }
-      const defaultName = file.name.replace(/\.[^.]+$/, "");
-      const nameAnswer = prompt("Как назвать картинку?", defaultName);
-      const name = nameAnswer && nameAnswer.trim();
-      if (!name) { event.target.value = ""; return; }
-      try {
-        const record = {
-          id: crypto.randomUUID ? crypto.randomUUID() : `hero-${Date.now()}`,
-          kind,
-          name,
-          dataUrl: await imageFileToDataUrl(file),
-          createdAt: new Date().toISOString()
-        };
-        await putCustomHeroImage(record);
-        customNicheImages = [record].concat(customNicheImages.filter((item) => item.id !== record.id));
-        await selectCustomNicheImage(record);
-        toggleNichePanels(true);
-      } catch (error) {
-        alert(error && error.message ? error.message : "Не удалось сохранить изображение");
-      } finally {
-        event.target.value = "";
-      }
+      event.target.value = "";
+      showHeroImageSaveModal(file, async (result) => {
+        try {
+          const record = {
+            id: crypto.randomUUID ? crypto.randomUUID() : `hero-${Date.now()}`,
+            kind: result.kind === "goods" ? "goods" : "services",
+            groupKind: result.groupKind || "",
+            name: result.name,
+            dataUrl: await imageFileToDataUrl(file),
+            createdAt: new Date().toISOString()
+          };
+          await putCustomHeroImage(record);
+          customNicheImages = [record].concat(customNicheImages.filter((item) => item.id !== record.id));
+          await selectCustomNicheImage(record);
+          toggleNichePanels(true);
+        } catch (error) {
+          alert(error && error.message ? error.message : "Не удалось сохранить изображение");
+        } finally {
+          event.target.value = "";
+        }
+      });
     });
     if (document.body.classList.contains("embedded")) {
       $("downloadBtn").textContent = "Сохранить КП";
