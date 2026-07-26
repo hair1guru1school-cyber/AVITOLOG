@@ -711,9 +711,6 @@
         }
         if (event.target.closest('[data-action="save"]')) submit();
       });
-      ["pointerdown","mousedown","mouseup","click"].forEach((eventName) => {
-        modal.addEventListener(eventName, (event) => event.stopPropagation(), true);
-      });
       modal.addEventListener("keydown", (event) => {
         if (event.key === "Escape") close();
         if (event.key === "Enter" && (event.ctrlKey || event.metaKey)) {
