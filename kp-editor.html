@@ -1087,7 +1087,6 @@
       images.hero = nextHero;
       renderNicheLibrary();
       saveState();
-      draw();
     }
     async function selectCustomNicheImage(record){
       const nextHero = await loadImage(record.dataUrl);
@@ -1101,7 +1100,6 @@
       images.hero = nextHero;
       renderNicheLibrary();
       saveState();
-      draw();
     }
     function toggleNichePanels(force){
       const open = force === undefined ? !$("goodsPanel").classList.contains("open") : force;
@@ -1168,12 +1166,12 @@
         zone.classList.toggle("active", index === selectedPackage);
       });
     }
-    function readGlobalForm(){
+    function readGlobalForm(flushPackages = true){
       state.bgChoice = $("bgChoice").value;
       if ($("titleStyle")) state.titleStyle = $("titleStyle").value;
       if ($("titleScale")) state.titleScale = Number($("titleScale").value) || defaults.titleScale;
       if ($("titleScaleValue")) $("titleScaleValue").textContent = `${state.titleScale || defaults.titleScale}%`;
-      flushPackageForm();
+      if (flushPackages) flushPackageForm();
     }
     function markPackageFormDirty(){
       packageFormDirty = true;
@@ -1217,7 +1215,6 @@
     }
 
     function draw(){
-      if (formReady) readGlobalForm();
       ctx.clearRect(0, 0, W, H);
       drawBackground();
       drawHero();
@@ -2266,9 +2263,20 @@
       if (document.hidden) flushPackageForm();
     });
     window.addEventListener("pagehide", flushPackageForm);
-    $("bgChoice").addEventListener("change", draw);
-    if ($("titleStyle")) $("titleStyle").addEventListener("change", draw);
-    if ($("titleScale")) $("titleScale").addEventListener("input", draw);
+    $("bgChoice").addEventListener("change", () => {
+      readGlobalForm(false);
+      persistState();
+      draw();
+    });
+    if ($("titleStyle")) $("titleStyle").addEventListener("change", () => {
+      readGlobalForm(false);
+      persistState();
+      draw();
+    });
+    if ($("titleScale")) $("titleScale").addEventListener("input", () => {
+      readGlobalForm(false);
+      scheduleDraw();
+    });
     $("heroZone").addEventListener("click", () => toggleNichePanels());
     $("presetKind").addEventListener("change", renderPresetSelect);
     $("presetSelect").addEventListener("mousedown", (event) => {
