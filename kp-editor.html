@@ -357,6 +357,8 @@
       titleScale: 100,
       heroSrc: "",
       heroCustomId: "",
+      heroDataUrl: "",
+      heroPreviewSrc: "",
       heroName: "Террасы МО - ВИП",
       packages: [
         {
@@ -578,8 +580,8 @@
         heroSrc: state.heroSrc || "",
         heroCustomId: state.heroCustomId || "",
         heroName: state.heroName || "",
-        heroDataUrl: (images.hero && String(images.hero.src || "").startsWith("data:")) ? images.hero.src : "",
-        heroPreviewSrc: state.heroSrc || customHeroSrc || (images.hero && images.hero.src) || "",
+        heroDataUrl: state.heroDataUrl || ((images.hero && String(images.hero.src || "").startsWith("data:")) ? images.hero.src : ""),
+        heroPreviewSrc: state.heroPreviewSrc || state.heroSrc || customHeroSrc || (images.hero && images.hero.src) || "",
         previewDataUrl: makePresetPreviewDataUrl()
       };
     }
@@ -786,9 +788,15 @@
       draw();
     }
     function keepCurrentHeroState(){
+      const current = images.hero && String(images.hero.src || "");
+      if (current && current.indexOf("data:") === 0) {
+        state.heroDataUrl = current;
+        state.heroPreviewSrc = current;
+        customHeroSrc = current;
+        return;
+      }
       if (state.heroCustomId || state.heroSrc) return;
       if (customHeroSrc) return;
-      const current = images.hero && String(images.hero.src || "");
       if (current && current !== ASSETS.hero) {
         if (current.indexOf("data:") === 0) customHeroSrc = current;
         else state.heroSrc = current;
@@ -904,7 +912,9 @@
       if (state.heroCustomId) {
         try { customRecord = await getCustomHeroImage(state.heroCustomId); } catch (e) {}
       }
-      images.hero = await loadImage((customRecord && customRecord.dataUrl) || customHeroSrc || state.heroSrc || ASSETS.hero);
+      const savedHeroDataUrl = state.heroDataUrl || state.heroPreviewSrc || "";
+      customHeroSrc = (customRecord && customRecord.dataUrl) || customHeroSrc || savedHeroDataUrl || "";
+      images.hero = await loadImage(customHeroSrc || state.heroSrc || ASSETS.hero);
       images.footer = await loadImage(ASSETS.footer);
       images.titleSimple = await loadImage(ASSETS.titleSimple);
       images.titleColor = await loadImage(ASSETS.titleColor);
@@ -986,6 +996,8 @@
       customHeroSrc = "";
       state.heroCustomId = "";
       state.heroSrc = src;
+      state.heroDataUrl = "";
+      state.heroPreviewSrc = src;
       state.heroName = name;
       images.hero = nextHero;
       renderNicheLibrary();
@@ -995,9 +1007,11 @@
     async function selectCustomNicheImage(record){
       const nextHero = await loadImage(record.dataUrl);
       if (!nextHero) return;
-      customHeroSrc = "";
+      customHeroSrc = record.dataUrl;
       state.heroCustomId = record.id;
       state.heroSrc = "";
+      state.heroDataUrl = record.dataUrl || "";
+      state.heroPreviewSrc = record.dataUrl || "";
       state.heroName = record.name;
       images.hero = nextHero;
       renderNicheLibrary();
@@ -1409,8 +1423,8 @@
               heroName: state.heroName || "",
               heroSrc: state.heroSrc || "",
               heroCustomId: state.heroCustomId || "",
-              heroDataUrl: (images.hero && String(images.hero.src || "").startsWith("data:")) ? images.hero.src : "",
-              heroPreviewSrc: state.heroSrc || customHeroSrc || (images.hero && images.hero.src) || "",
+              heroDataUrl: state.heroDataUrl || ((images.hero && String(images.hero.src || "").startsWith("data:")) ? images.hero.src : ""),
+              heroPreviewSrc: state.heroPreviewSrc || state.heroSrc || customHeroSrc || (images.hero && images.hero.src) || "",
               previewDataUrl: makePresetPreviewDataUrl(),
               bgChoice: state.bgChoice || defaults.bgChoice,
               presetKind: $("presetKind").value || "services",
@@ -1545,6 +1559,8 @@
       const prevHeroSrc = state.heroSrc;
       const prevHeroCustomId = state.heroCustomId;
       const prevHeroName = state.heroName;
+      const prevHeroDataUrl = state.heroDataUrl || "";
+      const prevHeroPreviewSrc = state.heroPreviewSrc || "";
       const prevCustomHeroSrc = customHeroSrc;
       state.bgChoice = preset.bgChoice || state.bgChoice || defaults.bgChoice;
       state.heroName = preset.heroName || state.heroName || "";
@@ -1552,6 +1568,8 @@
         customHeroSrc = "";
         state.heroSrc = preset.heroSrc;
         state.heroCustomId = "";
+        state.heroDataUrl = "";
+        state.heroPreviewSrc = preset.heroSrc;
         images.hero = await loadImage(preset.heroSrc);
       } else if (preset.heroCustomId) {
         let customRecord = null;
@@ -1559,16 +1577,22 @@
         customHeroSrc = (customRecord && customRecord.dataUrl) || preset.heroDataUrl || preset.heroPreviewSrc || "";
         state.heroSrc = "";
         state.heroCustomId = preset.heroCustomId;
+        state.heroDataUrl = customHeroSrc || "";
+        state.heroPreviewSrc = customHeroSrc || "";
         if (customHeroSrc) images.hero = await loadImage(customHeroSrc);
       } else if (preset.heroDataUrl) {
         customHeroSrc = preset.heroDataUrl;
         state.heroSrc = "";
         state.heroCustomId = "";
+        state.heroDataUrl = preset.heroDataUrl;
+        state.heroPreviewSrc = preset.heroPreviewSrc || preset.heroDataUrl;
         images.hero = await loadImage(preset.heroDataUrl);
       } else if (preset.heroPreviewSrc) {
         customHeroSrc = preset.heroPreviewSrc;
         state.heroSrc = "";
         state.heroCustomId = "";
+        state.heroDataUrl = preset.heroPreviewSrc;
+        state.heroPreviewSrc = preset.heroPreviewSrc;
         images.hero = await loadImage(preset.heroPreviewSrc);
       }
       if (!images.hero) {
@@ -1576,6 +1600,8 @@
         state.heroSrc = prevHeroSrc || "";
         state.heroCustomId = prevHeroCustomId || "";
         state.heroName = prevHeroName || state.heroName || "";
+        state.heroDataUrl = prevHeroDataUrl || "";
+        state.heroPreviewSrc = prevHeroPreviewSrc || "";
         customHeroSrc = prevCustomHeroSrc || "";
       }
     }
@@ -1616,6 +1642,8 @@
           bgChoice: preset.bgChoice || state.bgChoice || defaults.bgChoice,
           heroSrc: preset.heroSrc || "",
           heroCustomId: preset.heroCustomId || "",
+          heroDataUrl: preset.heroDataUrl || "",
+          heroPreviewSrc: preset.heroPreviewSrc || "",
           heroName: preset.heroName || state.heroName || ""
         });
         let customRecord = null;
