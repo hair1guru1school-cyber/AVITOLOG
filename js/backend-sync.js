@@ -56,6 +56,8 @@
       /^avitolog_assets_(?:my|sasha|base)_v2(?:_sasha)?(?:_month_\d{4}-\d{2})?$/.test(key);
   }
   function isContentKey(key) {
+    if (/^avitolog_kp_editor(?:_|$)/.test(String(key || ''))) return false;
+    if (key === 'avitolog_kp_preview_width' || key === 'avitolog_kp_editor_zoom') return false;
     return /^avitolog_kp_/.test(key) || key === 'avito_kp_saved_client_packages_v1' || key === 'avito_kp_custom' ||
       key === 'avitolog_aoax_autoloads_v1' ||
       /^crm_ads_(?:expenses_v1|expenses_month_\d{4}-\d{2}|posts_plan_v1|posts_source_v1|links_v1|posts_sync_queue_v1)$/.test(key);
