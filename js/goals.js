@@ -700,10 +700,35 @@
     var sid = String(id || '').trim();
     return STATUS_LEGACY[sid] || sid;
   }
+  function kassaSyncPendingKey() {
+    return (typeof window.AVITOLOG_KEY === 'function') ? window.AVITOLOG_KEY('avitolog_goal_kassa_pending_v1') : 'avitolog_goal_kassa_pending_v1';
+  }
+  function enqueueGoalKassaSync(p) {
+    if (!p || !p.id) return;
+    try {
+      var key = kassaSyncPendingKey();
+      var arr = JSON.parse(localStorage.getItem(key) || '[]');
+      if (!Array.isArray(arr)) arr = [];
+      arr = arr.filter(function(x) { return x && String(x.id || '') !== String(p.id); });
+      arr.push(p);
+      localStorage.setItem(key, JSON.stringify(arr.slice(-50)));
+    } catch (e) {}
+  }
   function syncGoalToKassaIfReady(p) {
     try {
-      if (typeof window.__syncGoalPaidToAssetsFromCrm === 'function') window.__syncGoalPaidToAssetsFromCrm(p);
-    } catch (e) {}
+      if (typeof window.__syncGoalPaidToAssetsFromCrm === 'function') {
+        window.__syncGoalPaidToAssetsFromCrm(p);
+        return;
+      }
+      enqueueGoalKassaSync(p);
+      setTimeout(function() {
+        try {
+          if (typeof window.__syncGoalPaidToAssetsFromCrm === 'function') window.__syncGoalPaidToAssetsFromCrm(p);
+        } catch (e2) { enqueueGoalKassaSync(p); }
+      }, 300);
+    } catch (e) {
+      enqueueGoalKassaSync(p);
+    }
   }
   function removeKassaByGoalId(id) {
     try {
@@ -2616,6 +2641,18 @@
           return;
         }
         var src = cur;
+        var existingSold = (data.projects || []).find(function(x) {
+          return x && x.stage === 'sold' && String(x.soldFromId || '') === String(projectId);
+        });
+        if (existingSold) {
+          existingSold.saleAmount = saleAmount || existingSold.saleAmount || '';
+          existingSold.date = saleDate;
+          existingSold.weekIndex = getWeekIndex(parseInt(String(saleDate).split('-')[2], 10) || 1);
+          syncGoalToKassaIfReady(existingSold);
+          saveData(data);
+          render();
+          return;
+        }
         var copy = {};
         for (var k in src) if (Object.prototype.hasOwnProperty.call(src, k)) copy[k] = src[k];
         copy.id = generateId();

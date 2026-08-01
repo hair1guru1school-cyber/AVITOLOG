@@ -1507,6 +1507,44 @@
     if (typeof window.__wireAssetsDragTargets === 'function') window.__wireAssetsDragTargets();
   }
 
+  function goalKassaPendingKey() {
+    return (typeof window.AVITOLOG_KEY === 'function') ? window.AVITOLOG_KEY('avitolog_goal_kassa_pending_v1') : 'avitolog_goal_kassa_pending_v1';
+  }
+  function drainPendingGoalKassaSync() {
+    try {
+      var key = goalKassaPendingKey();
+      var arr = JSON.parse(localStorage.getItem(key) || '[]');
+      if (!Array.isArray(arr) || !arr.length) return 0;
+      var done = 0;
+      arr.forEach(function(p) {
+        if (!p || !p.id) return;
+        syncGoalPaidToAssetsFromCrm(p);
+        done += 1;
+      });
+      localStorage.removeItem(key);
+      return done;
+    } catch (e) {
+      return 0;
+    }
+  }
+  function syncSoldGoalsToKassaNow() {
+    try {
+      var key = (typeof window.AVITOLOG_KEY === 'function') ? window.AVITOLOG_KEY('avitolog_goals_v1') : 'avitolog_goals_v1';
+      var data = JSON.parse(localStorage.getItem(key) || '{}');
+      var projects = Array.isArray(data.projects) ? data.projects : [];
+      var count = 0;
+      projects.forEach(function(p) {
+        if (!p || p.stage !== 'sold') return;
+        if (!goalProjectShouldSyncPaidToKassa(p)) return;
+        syncGoalPaidToAssetsFromCrm(p);
+        count += 1;
+      });
+      return count;
+    } catch (e) {
+      return 0;
+    }
+  }
+
   function removeAssetsProject(owner, idx) {
     if (owner === 'me') {
       var arr = getAssetsMy();
@@ -2651,8 +2689,14 @@
   }
 
   window.__syncGoalPaidToAssetsFromCrm = syncGoalPaidToAssetsFromCrm;
+  window.__drainPendingGoalKassaSync = drainPendingGoalKassaSync;
+  window.__syncSoldGoalsToKassaNow = syncSoldGoalsToKassaNow;
   window.__backfillAssetsPaymentDatesFromGoals = backfillAssetsPaymentDatesFromGoals;
   window.__removeKassaRowByGoalProjectId = removeAssetsRowByGoalProjectId;
+  try {
+    drainPendingGoalKassaSync();
+    setTimeout(drainPendingGoalKassaSync, 400);
+  } catch (eDrain) {}
 
   window.__aiImportParse = parseAndShow;
   window.__aiImportRejectRow = rejectRow;
