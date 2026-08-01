@@ -4127,7 +4127,11 @@ function compactActiveClientForStorage(client) {
     'kp_count',
     'client_type'
   ].forEach(function(key) {
-    if (client[key] !== undefined && client[key] !== null && client[key] !== '') out[key] = client[key];
+    if (client[key] !== undefined && client[key] !== null && client[key] !== '') {
+      var value = client[key];
+      if (typeof value === 'string') value = value.slice(0, key === 'notes' ? 500 : 180);
+      out[key] = value;
+    }
   });
   if (!out.company && out.folder_name) out.company = out.folder_name;
   if (!out.folder_name && out.company) out.folder_name = out.company;
@@ -4135,7 +4139,14 @@ function compactActiveClientForStorage(client) {
 }
 function setActiveClient(client) {
   _activeClient = client;
-  localStorage.setItem(_ck('avitolog_active_client'), JSON.stringify(compactActiveClientForStorage(client)));
+  try {
+    var activeKey = _ck('avitolog_active_client');
+    var compact = compactActiveClientForStorage(client);
+    localStorage.removeItem(activeKey);
+    localStorage.setItem(activeKey, JSON.stringify(compact));
+  } catch (e) {
+    console.warn('AVITOLOG active client storage skipped', e);
+  }
   updateClientBadge();
   if (!projectsMode && !goalsMode && !agencyMode && !assetsMode && !adsMode && !tasksMode) {
     if (currentTab === 'kp' && typeof window.__showKpGenerator === 'function') {
