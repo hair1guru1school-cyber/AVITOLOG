@@ -3369,6 +3369,9 @@
     var dateStr = y + '-' + pad2(m + 1) + '-' + pad2(day);
     var folderLink = (client.folderLink || (client.folderId ? 'https://drive.google.com/drive/folders/' + client.folderId : '')) || '';
     var detectedPrice = extractClientPrice(client);
+    var stage = targetStage || 'weekly';
+    var status = stage === 'weekly' ? ['kp'] : [];
+    var statusDates = stage === 'weekly' ? { kp: getTodayISO() } : {};
     var project = {
       id: generateId(),
       name: name,
@@ -3378,11 +3381,12 @@
       weekIndex: weekNum,
       mainPrice: detectedPrice || '',
       priceOptions: detectedPrice ? [detectedPrice] : ['—'],
-      status: [],
+      status: status,
+      statusDates: statusDates,
       touchMarkers: [],
       tags: [],
       note: '',
-      stage: targetStage || 'weekly',
+      stage: stage,
       company: client.company || '',
       phone: client.phone || '',
       category: client.category || '',
@@ -3417,6 +3421,12 @@
     if (existing) {
       existing.weekIndex = weekNum;
       existing.stage = targetStage || 'weekly';
+      if (existing.stage === 'weekly') {
+        existing.status = existing.status ? existing.status.slice() : [];
+        if (existing.status.indexOf('kp') < 0) existing.status.unshift('kp');
+        existing.statusDates = Object.assign({}, existing.statusDates || {});
+        if (!existing.statusDates.kp) existing.statusDates.kp = getTodayISO();
+      }
       if (targetStage === 'sold') {
         existing.saleAmount = existing.saleAmount || existing.mainPrice || '';
         existing.status = ['paid'];
