@@ -1152,7 +1152,7 @@
     var avatarHtml = clientAvatar
       ? '<span class="goal-week-add-client-thumb"><img src="' + esc(clientAvatar) + '" alt=""></span>'
       : '<span class="goal-week-add-client-thumb"><span class="goal-week-add-client-fallback">🖼</span></span>';
-    var addClientBtn = clientName ? '<button type="button" class="goal-week-add-client" draggable="true" ondragstart="window.__goalsClientDragStart && window.__goalsClientDragStart(event)" ondragend="window.__goalsClientDragEnd && window.__goalsClientDragEnd(event)" onclick="window.__goalsAddClientToWeek && window.__goalsAddClientToWeek(' + weekNum + ')" title="Добавить прикреплённый проект в неделю">' + avatarHtml + '<span class="goal-week-add-client-text"><span class="goal-week-add-client-plus">+</span><span>Добавить</span><span class="goal-week-add-client-name">' + esc(clientName) + '</span></span></button>' : '';
+    var addClientBtn = clientName ? '<button type="button" class="goal-week-add-client" data-week="' + weekNum + '" onclick="event.preventDefault();event.stopPropagation();window.__goalsAddClientToWeek && window.__goalsAddClientToWeek(' + weekNum + ')" title="Добавить прикреплённый проект в неделю">' + avatarHtml + '<span class="goal-week-add-client-text"><span class="goal-week-add-client-plus">+</span><span>Добавить</span><span class="goal-week-add-client-name">' + esc(clientName) + '</span></span></button>' : '';
     var dateRange = (typeof year === 'number' && typeof month === 'number') ? getWeekDateRange(weekNum, year, month) : '';
     var titleText = weekNum + ' НЕДЕЛЯ' + (dateRange ? ' · ' + dateRange : '');
     var activeCls = (currentWeekNum === weekNum) ? ' goal-week-active' : '';
@@ -2079,6 +2079,16 @@
     var main = document.getElementById('mainContent');
     if (main) {
       main.innerHTML = html;
+      main.querySelectorAll('.goal-week-add-client').forEach(function(btn) {
+        btn.onclick = function(e) {
+          if (e) {
+            e.preventDefault();
+            e.stopPropagation();
+          }
+          var wn = parseInt(btn.getAttribute('data-week') || '1', 10);
+          addClientToWeek((wn >= 1 && wn <= 4) ? wn : 1);
+        };
+      });
       var smartInp = main.querySelector('#goalsSmartInput');
       var smartBtn = main.querySelector('#goalsSmartInputBtn');
       var metricsBoard = main.querySelector('#goalsMetricsBoard');
