@@ -4418,7 +4418,7 @@ async function browseFolder(folderId, folderName) {
   
   var backBtn = _browseStack.length > 0 ? '<button type="button" onclick="browseBack()">← Назад</button>' : '';
   // Кнопка выбора только на уровне 2+ (внутри категории)
-  var selectBtn = _browseLevel >= 2 ? '<button type="button" class="primary" onclick="selectBrowseFolder()">✓ Выбрать</button>' : '';
+  var selectBtn = _browseLevel >= 2 ? '<button type="button" class="primary" data-action="select-current-folder" onclick="selectBrowseFolder()">✓ Выбрать</button>' : '';
   var newFolderBtn = '<button type="button" class="primary" data-action="create-folder">+ Папка</button>';
   /** «+ Папка» всегда в .cm-tools; в подвале дублировать нельзя — при «Назад»+«Выбрать» три кнопки не помещались (flex + min-width). В корне — одна широкая кнопка внизу, как раньше. */
   var footInner = _browseStack.length === 0 ? newFolderBtn : (backBtn + selectBtn);
@@ -5012,6 +5012,23 @@ document.addEventListener('DOMContentLoaded', function() {
           e.preventDefault();
           e.stopPropagation();
           createBrowseFolderInCategory(catItem.getAttribute('data-category-id'));
+          return;
+        }
+        var currentFolderBtn = e.target.closest('[data-action="select-current-folder"]');
+        if (currentFolderBtn) {
+          e.preventDefault();
+          e.stopPropagation();
+          try {
+            selectBrowseFolder();
+          } catch (err) {
+            var st = document.getElementById('crmSt');
+            if (st) {
+              st.style.display = 'block';
+              st.className = 'crm-st err';
+              st.textContent = 'Ошибка выбора папки: ' + (err && err.message ? err.message : String(err));
+            }
+            console.error('AVITOLOG folder select failed', err);
+          }
           return;
         }
         var item = e.target.closest('.client-item[data-folder-id]');
