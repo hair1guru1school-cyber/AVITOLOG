@@ -52,6 +52,11 @@
     return saveSession(data);
   }
   function showReady() { loginCard.classList.add('off'); loadCard.classList.remove('off'); }
+  function openMainAppSoon() {
+    setTimeout(function () {
+      window.location.href = 'index.html?v=20260801-session-quota-2';
+    }, 450);
+  }
 
   document.getElementById('previewLoginBtn').addEventListener('click', async function () {
     var button = this; button.disabled = true; setStatus('Проверяю вход и RLS...');
@@ -64,7 +69,8 @@
       if (!response.ok || !data.access_token) throw new Error(data.error_description || data.msg || 'Ошибка входа');
       document.getElementById('previewPassword').value = '';
       saveSession(data);
-      showReady(); setStatus('Вход выполнен. Можно загрузить изолированную копию.');
+      showReady(); setStatus('Вход выполнен. Открываю AVITOBOSS...');
+      openMainAppSoon();
     } catch (error) { setStatus('Ошибка: ' + error.message); }
     finally { button.disabled = false; }
   });

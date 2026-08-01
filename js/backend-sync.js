@@ -82,7 +82,9 @@
     try {
       var temporary = sessionStorage.getItem('avitolog_backend_preview_session') || sessionStorage.getItem('avitolog_backend_app_session');
       var raw = temporary || localStorage.getItem(persistentSessionKey) || 'null';
-      if (temporary && !localStorage.getItem(persistentSessionKey)) localStorage.setItem(persistentSessionKey, temporary);
+      if (temporary && !localStorage.getItem(persistentSessionKey)) {
+        try { localStorage.setItem(persistentSessionKey, temporary); } catch (persistError) {}
+      }
       return JSON.parse(raw);
     } catch (e) { return null; }
   }
@@ -106,7 +108,7 @@
     btn.textContent = 'Войти';
     btn.style.cssText = 'margin-left:8px;padding:3px 8px;border:0;border-radius:6px;background:#ffd0dc;color:#24050b;font:800 11px Segoe UI,Arial,sans-serif;cursor:pointer';
     btn.onclick = function () {
-      window.location.href = 'backend-preview.html';
+      window.location.href = 'backend-preview.html?v=20260801-session-quota-2';
     };
     statusEl.appendChild(text);
     statusEl.appendChild(btn);
