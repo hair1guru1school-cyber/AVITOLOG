@@ -2877,30 +2877,38 @@ body.day-mode .assets-col-sasha-hint{color:var(--accent)}
 (function(){
   try {
     var key = 'avitolog_assets_my_v2_month_2026-07';
-    var flag = 'avitolog_emergency_july_2026_819400_restore_v1';
+    var augustKey = 'avitolog_assets_my_v2_month_2026-08';
+    var flag = 'avitolog_emergency_july_2026_real_rows_restore_v2';
     if (localStorage.getItem(flag) === '1') return;
-    var raw = localStorage.getItem(key);
-    if (!raw) return;
-    var rows = JSON.parse(raw);
-    if (!Array.isArray(rows)) return;
     function money(v){ return Number(String(v || '').replace(/[^0-9.-]/g, '')) || 0; }
+    var rows = JSON.parse(localStorage.getItem(key) || '[]');
+    if (!Array.isArray(rows)) rows = [];
     var paid = rows.reduce(function(sum, row){ return sum + money(row && row.paid); }, 0);
-    var hasFix = rows.some(function(row){ return row && row._emergencyRestoreId === 'july-2026-missing-143500'; });
-    if (paid === 640500 && !hasFix) {
-      rows.push({
-        emoji: '🛟',
-        name: 'Восстановление июльских оплат',
-        paid: '143500',
-        expected: '',
-        paymentDate: '2026-07-31',
-        startDate: '',
-        clientType: 'old',
-        paymentHistory: [{ date: '2026-07-31', amount: 143500 }],
-        _emergencyRestoreId: 'july-2026-missing-143500',
-        note: 'Аварийное восстановление итоговой суммы июля до 819 400 ₽'
-      });
-      localStorage.setItem(key, JSON.stringify(rows));
+    var hasOldSyntheticFix = rows.some(function(row){ return row && row._emergencyRestoreId === 'july-2026-missing-143500'; });
+    if (paid === 784000 && !hasOldSyntheticFix) {
       localStorage.setItem(flag, '1');
+      return;
+    }
+    var augustRows = JSON.parse(localStorage.getItem(augustKey) || localStorage.getItem('avitolog_assets_my_v2') || '[]');
+    if (!Array.isArray(augustRows)) return;
+    var restored = augustRows.filter(function(row){
+      return money(row && row.expected) > 0 && String(row && row.name || '').trim() !== 'Воронеж Дом';
+    }).map(function(row){
+      var amount = money(row.expected);
+      var copy = Object.assign({}, row);
+      copy.paid = String(amount);
+      copy.expected = '';
+      copy.paymentHistory = [{ date: copy.paymentDate || '2026-07-31', amount: amount }];
+      copy.restoredFrom = 'august_expected_carryover_2026_08_01';
+      return copy;
+    });
+    var restoredPaid = restored.reduce(function(sum, row){ return sum + money(row && row.paid); }, 0);
+    if ((paid === 640500 || hasOldSyntheticFix) && restoredPaid === 784000) {
+      localStorage.setItem(key, JSON.stringify(restored));
+      localStorage.setItem(flag, '1');
+      try {
+        window.dispatchEvent(new CustomEvent('avitolog:state-restored', { detail: { key: key, paid: restoredPaid } }));
+      } catch (eventError) {}
     }
   } catch (e) {}
 })();
