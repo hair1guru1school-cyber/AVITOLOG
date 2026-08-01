@@ -97,7 +97,6 @@
     return /session expired|jwt expired|invalid refresh token|refresh_token/i.test(String((error && error.message) || error || ''));
   }
   function showReauthStatus(prefix) {
-    clearBackendSession();
     ensureStatus();
     statusEl.innerHTML = '';
     statusEl.style.background = '#701b2b';
@@ -108,7 +107,8 @@
     btn.textContent = 'Войти';
     btn.style.cssText = 'margin-left:8px;padding:3px 8px;border:0;border-radius:6px;background:#ffd0dc;color:#24050b;font:800 11px Segoe UI,Arial,sans-serif;cursor:pointer';
     btn.onclick = function () {
-      window.location.href = 'backend-preview.html?v=20260801-session-quota-2';
+      clearBackendSession();
+      window.location.href = 'backend-preview.html?v=20260801-no-auto-backend-1';
     };
     statusEl.appendChild(text);
     statusEl.appendChild(btn);
@@ -125,7 +125,7 @@
       email: String((data.user && data.user.email) || data.email || previous.email || '').toLowerCase()
     };
     sessionStorage.setItem(key, JSON.stringify(value));
-    localStorage.setItem(persistentSessionKey, JSON.stringify(value));
+    try { localStorage.setItem(persistentSessionKey, JSON.stringify(value)); } catch (persistError) {}
     return value;
   }
   async function token() {
@@ -139,7 +139,6 @@
     });
     var refreshed = await response.json();
     if (!response.ok || !refreshed.access_token) {
-      clearBackendSession();
       return null;
     }
     return saveSession(refreshed).access_token;

@@ -69,8 +69,7 @@
       if (!response.ok || !data.access_token) throw new Error(data.error_description || data.msg || 'Ошибка входа');
       document.getElementById('previewPassword').value = '';
       saveSession(data);
-      showReady(); setStatus('Вход выполнен. Открываю AVITOBOSS...');
-      openMainAppSoon();
+      showReady(); setStatus('Вход выполнен. Автоматически ничего не загружаю.');
     } catch (error) { setStatus('Ошибка: ' + error.message); }
     finally { button.disabled = false; }
   });
