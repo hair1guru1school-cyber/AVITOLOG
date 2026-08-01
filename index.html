@@ -2873,6 +2873,38 @@ body.day-mode .assets-col-sasha-hint{color:var(--accent)}
 })();
 </script>
 <script src="js/supabase-config.js?v=20260619-write1"></script>
+<script>
+(function(){
+  try {
+    var key = 'avitolog_assets_my_v2_month_2026-07';
+    var flag = 'avitolog_emergency_july_2026_819400_restore_v1';
+    if (localStorage.getItem(flag) === '1') return;
+    var raw = localStorage.getItem(key);
+    if (!raw) return;
+    var rows = JSON.parse(raw);
+    if (!Array.isArray(rows)) return;
+    function money(v){ return Number(String(v || '').replace(/[^0-9.-]/g, '')) || 0; }
+    var paid = rows.reduce(function(sum, row){ return sum + money(row && row.paid); }, 0);
+    var hasFix = rows.some(function(row){ return row && row._emergencyRestoreId === 'july-2026-missing-143500'; });
+    if (paid === 640500 && !hasFix) {
+      rows.push({
+        emoji: '🛟',
+        name: 'Восстановление июльских оплат',
+        paid: '143500',
+        expected: '',
+        paymentDate: '2026-07-31',
+        startDate: '',
+        clientType: 'old',
+        paymentHistory: [{ date: '2026-07-31', amount: 143500 }],
+        _emergencyRestoreId: 'july-2026-missing-143500',
+        note: 'Аварийное восстановление итоговой суммы июля до 819 400 ₽'
+      });
+      localStorage.setItem(key, JSON.stringify(rows));
+      localStorage.setItem(flag, '1');
+    }
+  } catch (e) {}
+})();
+</script>
 <script src="js/backend-sync.js?v=20260801-no-auto-backend-1"></script>
 <script src="js/user-config.js?v=20260702-sasha-backend-legacy-merge-1"></script>
 <script src="js/goals.js?v=20260801-goals-kassa-sync-1"></script>
