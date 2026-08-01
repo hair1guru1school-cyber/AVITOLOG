@@ -86,6 +86,31 @@
       return JSON.parse(raw);
     } catch (e) { return null; }
   }
+  function clearBackendSession() {
+    try { sessionStorage.removeItem('avitolog_backend_preview_session'); } catch (e1) {}
+    try { sessionStorage.removeItem('avitolog_backend_app_session'); } catch (e2) {}
+    try { localStorage.removeItem(persistentSessionKey); } catch (e3) {}
+  }
+  function isSessionExpiredError(error) {
+    return /session expired|jwt expired|invalid refresh token|refresh_token/i.test(String((error && error.message) || error || ''));
+  }
+  function showReauthStatus(prefix) {
+    clearBackendSession();
+    ensureStatus();
+    statusEl.innerHTML = '';
+    statusEl.style.background = '#701b2b';
+    var text = document.createElement('span');
+    text.textContent = (prefix || 'Supabase') + ': сессия истекла. ';
+    var btn = document.createElement('button');
+    btn.type = 'button';
+    btn.textContent = 'Войти';
+    btn.style.cssText = 'margin-left:8px;padding:3px 8px;border:0;border-radius:6px;background:#ffd0dc;color:#24050b;font:800 11px Segoe UI,Arial,sans-serif;cursor:pointer';
+    btn.onclick = function () {
+      window.location.href = 'backend-preview.html';
+    };
+    statusEl.appendChild(text);
+    statusEl.appendChild(btn);
+  }
   function saveSession(data) {
     var previous = sessionData() || {};
     var key = sessionStorage.getItem('avitolog_backend_preview_session') ? 'avitolog_backend_preview_session' : 'avitolog_backend_app_session';
@@ -111,7 +136,10 @@
       body: JSON.stringify({ refresh_token: data.refresh_token })
     });
     var refreshed = await response.json();
-    if (!response.ok || !refreshed.access_token) return null;
+    if (!response.ok || !refreshed.access_token) {
+      clearBackendSession();
+      return null;
+    }
     return saveSession(refreshed).access_token;
   }
   async function headers(extra) {
@@ -266,7 +294,10 @@
         if (pendingWrites[key] === pending) delete pendingWrites[key];
         clearDirty(key);
         setStatus('Supabase: сохранено · версия ' + result.revision);
-      }).catch(function (error) { setStatus('Ошибка записи: ' + error.message, true); });
+      }).catch(function (error) {
+        if (isSessionExpiredError(error)) { showReauthStatus('Supabase write'); return; }
+        setStatus('Ошибка записи: ' + error.message, true);
+      });
     }, delay);
   }
   function flushPendingWritesKeepalive() {
@@ -778,7 +809,7 @@
       ensureStatus();
       statusEl.textContent = 'Supabase: проверка записи...';
     }
-    if (!sessionData()) { setStatus('Нет активной Supabase-сессии', true); return; }
+    if (!sessionData()) { showReauthStatus('Supabase'); return; }
     try {
       phase = 'team'; await ensureSashaTeamMember();
       var forceLocalToServer = false;
@@ -830,10 +861,17 @@
           pullTimer = setInterval(function () {
             if (document.hidden) return;
             if (Date.now() - lastLocalWriteAt < 3500) return;
-            window.__avitologBackendPullNow().catch(function (pullError) { setStatus('Ошибка server pull: ' + pullError.message, true); });
+            window.__avitologBackendPullNow().catch(function (pullError) {
+              if (isSessionExpiredError(pullError)) { showReauthStatus('Supabase read'); return; }
+              setStatus('Ошибка server pull: ' + pullError.message, true);
+            });
           }, 5000);
         }
       }
-    } catch (error) { setStatus('Ошибка Supabase (' + phase + '): ' + error.message, true); }
+    } catch (error) {
+      if (isSessionExpiredError(error)) { showReauthStatus('Supabase ' + phase); return; }
+      setStatus('Ошибка Supabase (' + phase + '): ' + error.message, true);
+    }
   });
 })();
+
