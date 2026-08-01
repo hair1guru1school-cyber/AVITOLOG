@@ -492,6 +492,28 @@
       };
     } catch(e) { return { my: [], sasha: [] }; }
   }
+  function assetsGetMyForVisibleMonth() {
+    if (_assetsViewMonth) return assetsLoadMonthSnapshot(_assetsViewMonth).my || [];
+    return getAssetsMy();
+  }
+  function assetsGetSashaForVisibleMonth() {
+    if (_assetsViewMonth) return assetsLoadMonthSnapshot(_assetsViewMonth).sasha || [];
+    return getAssetsSasha();
+  }
+  function assetsSaveMyForVisibleMonth(arr) {
+    if (_assetsViewMonth) {
+      try { localStorage.setItem(assetsMonthStorageKey(_assetsViewMonth), JSON.stringify(arr)); } catch(e) {}
+      return;
+    }
+    saveAssetsMy(arr);
+  }
+  function assetsSaveSashaForVisibleMonth(arr) {
+    if (_assetsViewMonth) {
+      try { localStorage.setItem(assetsSashaMonthStorageKey(_assetsViewMonth), JSON.stringify(arr)); } catch(e) {}
+      return;
+    }
+    saveAssetsSasha(arr);
+  }
   function assetsFillMonthRange(monthsObj) {
     var keys = Object.keys(monthsObj).sort();
     if (keys.length < 1) return;
@@ -1836,18 +1858,18 @@
     var val = (field === 'name' || field === 'paymentDate' || field === 'startDate') ? String(el.value || '').trim() : String(el.value || '').replace(/\s/g, '');
     if (!owner || idx < 0 || !field) return;
     if (owner === 'me') {
-      var arr = getAssetsMy();
+      var arr = assetsGetMyForVisibleMonth();
       if (arr[idx]) {
         arr[idx][field] = val;
         if (field === 'paid') { var amt = parseInt(val.replace(/\s/g, ''), 10) || 0; arr[idx].paymentHistory = amt > 0 ? [{ date: (arr[idx].paymentDate || '').trim() || getTodayStr(), amount: amt }] : []; }
-        saveAssetsMy(arr);
+        assetsSaveMyForVisibleMonth(arr);
       }
     } else {
-      var arr2 = getAssetsSasha();
+      var arr2 = assetsGetSashaForVisibleMonth();
       if (arr2[idx]) {
         arr2[idx][field] = val;
         if (field === 'soldFor') { var amt = parseInt(val.replace(/\s/g, ''), 10) || 0; arr2[idx].paymentHistory = amt > 0 ? [{ date: (arr2[idx].paymentDate || '').trim() || getTodayStr(), amount: amt }] : []; }
-        saveAssetsSasha(arr2);
+        assetsSaveSashaForVisibleMonth(arr2);
       }
     }
     updateColTotals();
@@ -1860,8 +1882,8 @@
 
   function updateColTotals() {
     var fmt = function(n) { return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ' '); };
-    var myList = getAssetsMy();
-    var sashaList = getAssetsSasha();
+    var myList = assetsGetMyForVisibleMonth();
+    var sashaList = assetsGetSashaForVisibleMonth();
     var isSasha = isSashaKassaProfile();
     var myTotal = myList.reduce(function(a, p) {
       var v = isSasha ? assetsSashaMyProfitRub(p) : (parseInt(String(p.paid || '').replace(/\s/g, ''), 10) || 0);
@@ -2261,14 +2283,8 @@
   function addPaymentToHistory(owner, idx) {
     var sel = window._assetsSelectedProject;
     if (!sel || sel.owner !== owner || sel.idx !== idx) return;
-    var p = null;
-    if (owner === 'me') {
-      var arr = getAssetsMy();
-      p = arr && arr[idx] ? arr[idx] : null;
-    } else {
-      var arr2 = getAssetsSasha();
-      p = arr2 && arr2[idx] ? arr2[idx] : null;
-    }
+    var ref = getAssetsRowRef(owner, idx);
+    var p = ref.row;
     if (!p) return;
     var todayStr = getTodayStr();
     var inp = prompt('Добавить оплату. Введите дату (ГГГГ-ММ-ДД) и сумму через пробел:\nНапример: 2026-01-15 17000', todayStr + ' ');
@@ -2292,26 +2308,19 @@
     }
     p.paymentHistory.push({ date: dateStr, amount: amount });
     recalcPaidFromHistory(p, owner);
-    if (owner === 'me') {
-      var arr = getAssetsMy();
-      if (arr[idx]) arr[idx] = p;
-      saveAssetsMy(arr);
-    } else {
-      var arr2 = getAssetsSasha();
-      if (arr2[idx]) arr2[idx] = p;
-      saveAssetsSasha(arr2);
-    }
+    if (ref.list && ref.list[idx]) ref.list[idx] = p;
+    ref.save(ref.list);
     if (typeof window.__renderAssetsPage === 'function') window.__renderAssetsPage();
     updateAssetsDetailPanel(owner, idx);
   }
 
   function getAssetsRowRef(owner, idx) {
     if (owner === 'me') {
-      var arr = getAssetsMy();
-      return { list: arr, row: arr && arr[idx] ? arr[idx] : null, save: saveAssetsMy };
+      var arr = assetsGetMyForVisibleMonth();
+      return { list: arr, row: arr && arr[idx] ? arr[idx] : null, save: assetsSaveMyForVisibleMonth };
     }
-    var arr2 = getAssetsSasha();
-    return { list: arr2, row: arr2 && arr2[idx] ? arr2[idx] : null, save: saveAssetsSasha };
+    var arr2 = assetsGetSashaForVisibleMonth();
+    return { list: arr2, row: arr2 && arr2[idx] ? arr2[idx] : null, save: assetsSaveSashaForVisibleMonth };
   }
 
   function parseAssetsMoney(value) {
