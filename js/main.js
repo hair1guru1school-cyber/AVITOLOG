@@ -4472,6 +4472,17 @@ async function browseFolder(folderId, folderName) {
           '<span class="chevron">›</span>' +
         '</div>';
       }).join('');
+      listEl.querySelectorAll('.client-item[data-folder-id]').forEach(function(row) {
+        if (row.querySelector('[data-action="select-drive-folder"]')) return;
+        var btn = document.createElement('button');
+        btn.type = 'button';
+        btn.setAttribute('data-action', 'select-drive-folder');
+        btn.title = 'Select this folder';
+        btn.textContent = '✓';
+        btn.style.cssText = 'width:26px;height:24px;border-radius:7px;border:1px solid rgba(0,217,126,.45);background:rgba(0,217,126,.1);color:#00d97e;font-weight:900;cursor:pointer;flex-shrink:0';
+        var chev = row.querySelector('.chevron');
+        row.insertBefore(btn, chev || null);
+      });
     }
     var searchEl = document.getElementById('cmSearch');
     if (searchEl && searchEl.value) filterBrowseFolders(searchEl.value);
@@ -5005,6 +5016,18 @@ document.addEventListener('DOMContentLoaded', function() {
           e.preventDefault();
           e.stopPropagation();
           createBrowseFolderInCategory(catItem.getAttribute('data-category-id'));
+          return;
+        }
+        var selectBtn = e.target.closest('[data-action="select-drive-folder"]');
+        if (selectBtn) {
+          var selectItem = selectBtn.closest('.client-item[data-folder-id]');
+          if (!selectItem) return;
+          e.preventDefault();
+          e.stopPropagation();
+          var selectId = selectItem.getAttribute('data-folder-id');
+          var selectName = selectItem.getAttribute('data-folder-name') || '';
+          var parentId = _browseLevel >= 1 ? _browseCurrentId : '';
+          if (selectId) selectBrowseFolderBy(selectId, selectName, parentId);
           return;
         }
         var item = e.target.closest('.client-item[data-folder-id]');
