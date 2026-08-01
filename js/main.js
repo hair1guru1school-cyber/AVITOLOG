@@ -4106,9 +4106,36 @@ function fillClientFormFromData(data) {
     b.classList.toggle('on', b.textContent.trim() === (data.client_type || ''));
   });
 }
+function compactActiveClientForStorage(client) {
+  client = client || {};
+  var out = {};
+  [
+    'client_id',
+    'folderId',
+    'folderLink',
+    'folder_name',
+    'categoryFolderId',
+    'company',
+    'contact_name',
+    'phone',
+    'telegram',
+    'tg',
+    'avito_account',
+    'category',
+    'city',
+    'notes',
+    'kp_count',
+    'client_type'
+  ].forEach(function(key) {
+    if (client[key] !== undefined && client[key] !== null && client[key] !== '') out[key] = client[key];
+  });
+  if (!out.company && out.folder_name) out.company = out.folder_name;
+  if (!out.folder_name && out.company) out.folder_name = out.company;
+  return out;
+}
 function setActiveClient(client) {
   _activeClient = client;
-  localStorage.setItem(_ck('avitolog_active_client'), JSON.stringify(client));
+  localStorage.setItem(_ck('avitolog_active_client'), JSON.stringify(compactActiveClientForStorage(client)));
   updateClientBadge();
   if (!projectsMode && !goalsMode && !agencyMode && !assetsMode && !adsMode && !tasksMode) {
     if (currentTab === 'kp' && typeof window.__showKpGenerator === 'function') {
