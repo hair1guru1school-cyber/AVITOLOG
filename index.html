@@ -2755,6 +2755,18 @@ body.day-mode .assets-col-sasha-hint{color:var(--accent)}
   try {
     var params = new URLSearchParams(window.location.search);
     var previewMode = params.get('backendPreview') === '1';
+    if (!previewMode && params.get('resetBackend') === '1') {
+      [
+        'avitolog_backend_primary',
+        'avitolog_backend_server_only',
+        'avitolog_backend_session_v1',
+        'avitolog_backend_app_session',
+        'avitolog_backend_preview_session'
+      ].forEach(function(key) {
+        try { localStorage.removeItem(key); } catch (localError) {}
+        try { sessionStorage.removeItem(key); } catch (sessionError) {}
+      });
+    }
     var backendSessionRaw = sessionStorage.getItem('avitolog_backend_preview_session') || sessionStorage.getItem('avitolog_backend_app_session') || localStorage.getItem('avitolog_backend_session_v1') || '';
     var explicitBackendMode = params.get('backendSource') === 'supabase' || params.get('backend') === 'supabase';
     var explicitServerOnly = params.get('serverOnly') === '1' || params.get('server') === '1';
