@@ -3341,14 +3341,7 @@
   }
 
   function addClientToWeek(weekNum) {
-    var client = getSelectedLeftPayload();
-    var project = createGoalProjectFromClient(client, weekNum, 'weekly');
-    if (!project) return;
-    var data = loadData();
-    data.projects = data.projects || [];
-    data.projects.unshift(project);
-    saveData(data);
-    render();
+    insertClientToWeekAt(weekNum, '', 'weekly');
   }
 
   function extractClientPrice(client) {
