@@ -4472,17 +4472,6 @@ async function browseFolder(folderId, folderName) {
           '<span class="chevron">›</span>' +
         '</div>';
       }).join('');
-      listEl.querySelectorAll('.client-item[data-folder-id]').forEach(function(row) {
-        if (row.querySelector('[data-action="select-drive-folder"]')) return;
-        var btn = document.createElement('button');
-        btn.type = 'button';
-        btn.setAttribute('data-action', 'select-drive-folder');
-        btn.title = 'Select this folder';
-        btn.textContent = '✓';
-        btn.style.cssText = 'width:26px;height:24px;border-radius:7px;border:1px solid rgba(0,217,126,.45);background:rgba(0,217,126,.1);color:#00d97e;font-weight:900;cursor:pointer;flex-shrink:0';
-        var chev = row.querySelector('.chevron');
-        row.insertBefore(btn, chev || null);
-      });
     }
     var searchEl = document.getElementById('cmSearch');
     if (searchEl && searchEl.value) filterBrowseFolders(searchEl.value);
@@ -4578,13 +4567,17 @@ function browseBack() {
 }
 
 function selectBrowseFolder() {
-  var head = document.querySelector('.cm-head span:first-child');
-  return selectBrowseFolderBy(_browseCurrentId, head ? head.textContent.replace('📁 ', '') : _browseCurrentName);
+  if (!_browseCurrentId || _browseCurrentId === CRM_ROOT) return;
+  var parentId = (_browseStack.length && _browseStack[_browseStack.length - 1].id !== CRM_ROOT)
+    ? (_browseStack[_browseStack.length - 1].id || '')
+    : '';
+  return selectBrowseFolderBy(_browseCurrentId, _browseCurrentName, parentId);
 }
 
 function selectBrowseFolderBy(folderId, folderName, categoryFolderId) {
-  var head = document.querySelector('.cm-head span:first-child');
-  var currentFolderName = head ? head.textContent.replace('📁 ', '') : _browseCurrentName;
+  folderId = String(folderId || '').trim();
+  if (!folderId) return;
+  var currentFolderName = _browseCurrentName || 'Client';
   folderName = arguments.length > 1 ? (folderName || currentFolderName) : currentFolderName;
   var folderLink = 'https://drive.google.com/drive/folders/' + folderId;
   
@@ -4593,6 +4586,9 @@ function selectBrowseFolderBy(folderId, folderName, categoryFolderId) {
   var found = clients.find(function(c) { return String(c.folderId || '') === String(folderId || ''); });
   if (found && !folderNameMatchesClient(folderName, found)) found = null;
   var activePayload = found || buildFolderClientPayload(folderId, folderName, categoryFolderId || '');
+  activePayload.folderId = activePayload.folderId || folderId;
+  activePayload.folderLink = activePayload.folderLink || folderLink;
+  activePayload.company = activePayload.company || folderName || 'Client';
   if (activePayload.categoryFolderId && typeof setCrmCategorySelectValue === 'function') setCrmCategorySelectValue(activePayload.categoryFolderId);
   else if (typeof setCrmCategoryByFolderId === 'function') setCrmCategoryByFolderId(folderId);
   fillClientFormFromData(activePayload);
@@ -4611,8 +4607,8 @@ function selectBrowseFolderBy(folderId, folderName, categoryFolderId) {
         p.categoryFolderId = categoryFolderId;
         if (typeof setCrmCategorySelectValue === 'function') setCrmCategorySelectValue(categoryFolderId);
       } else {
-        setCrmCategoryByFolderId(folderId);
-        driveGetFolderParent(folderId).then(function(parentId) { if (parentId) { p.categoryFolderId = parentId; saveProjectsData(pd); } }).catch(function(){});
+        if (typeof setCrmCategoryByFolderId === 'function') setCrmCategoryByFolderId(folderId);
+        if (typeof driveGetFolderParent === 'function') driveGetFolderParent(folderId).then(function(parentId) { if (parentId) { p.categoryFolderId = parentId; saveProjectsData(pd); } }).catch(function(){});
       }
       if (found) {
         p.crmData.client_id = found.client_id || p.crmData.client_id || '';
@@ -5016,18 +5012,6 @@ document.addEventListener('DOMContentLoaded', function() {
           e.preventDefault();
           e.stopPropagation();
           createBrowseFolderInCategory(catItem.getAttribute('data-category-id'));
-          return;
-        }
-        var selectBtn = e.target.closest('[data-action="select-drive-folder"]');
-        if (selectBtn) {
-          var selectItem = selectBtn.closest('.client-item[data-folder-id]');
-          if (!selectItem) return;
-          e.preventDefault();
-          e.stopPropagation();
-          var selectId = selectItem.getAttribute('data-folder-id');
-          var selectName = selectItem.getAttribute('data-folder-name') || '';
-          var parentId = _browseLevel >= 1 ? _browseCurrentId : '';
-          if (selectId) selectBrowseFolderBy(selectId, selectName, parentId);
           return;
         }
         var item = e.target.closest('.client-item[data-folder-id]');
