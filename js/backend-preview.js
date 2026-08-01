@@ -26,8 +26,15 @@
       expires_at: expiresAt,
       email: String((data.user && data.user.email) || data.email || previous.email || '').toLowerCase()
     };
-    sessionStorage.setItem(SESSION_KEY, JSON.stringify(value));
-    localStorage.setItem(PERSISTENT_SESSION_KEY, JSON.stringify(value));
+    var packed = JSON.stringify(value);
+    sessionStorage.setItem(SESSION_KEY, packed);
+    try {
+      localStorage.removeItem(PERSISTENT_SESSION_KEY);
+      localStorage.setItem(PERSISTENT_SESSION_KEY, packed);
+    } catch (e) {
+      try { localStorage.removeItem(PERSISTENT_SESSION_KEY); } catch (e2) {}
+      setStatus('Вход выполнен. Постоянная сессия не сохранилась из-за переполненного браузерного хранилища; на этой вкладке работать можно.');
+    }
     return value;
   }
   async function activeSession() {
