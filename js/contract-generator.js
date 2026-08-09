@@ -464,6 +464,13 @@
       if (!value) return;
       if (!out[field]) out[field] = String(value).trim();
     }
+    function rememberCompanyName(value) {
+      var v = String(value || '').trim();
+      if (!v) return;
+      setIfEmpty('fullName', v);
+      var orgName = v.match(/(?:ООО|АО|ПАО)\s*["«].+?["»]/i) || v.match(/(?:ООО|АО|ПАО)\s+[^\n,;]+/i) || v.match(/(?:ИП)\s+[А-Яа-яЁё\s\-]+/i);
+      if (orgName) setIfEmpty('shortName', orgName[0].trim());
+    }
     function extractEmail(v) {
       var m = String(v || '').match(/[a-z0-9._%+\-]+@[a-z0-9.\-]+\.[a-z]{2,}/ig);
       return m && m.length ? m[0] : '';
@@ -552,9 +559,7 @@
         return;
       }
       if (field === 'fullName') {
-        setIfEmpty('fullName', v);
-        var orgName = v.match(/(?:\u041e\u041e\u041e|\u0410\u041e|\u041f\u0410\u041e)\s*["\u00ab].+?["\u00bb]/i) || v.match(/(?:\u041e\u041e\u041e|\u0410\u041e|\u041f\u0410\u041e)\s+[^\n,;]+/i) || v.match(/(?:\u0418\u041f)\s+[\u0410-\u042f\u0430-\u044f\u0401\u0451\s\-]+/i);
-        if (orgName) setIfEmpty('shortName', orgName[0].trim());
+        rememberCompanyName(v);
         return;
       }
       setIfEmpty(field, v);
@@ -703,6 +708,26 @@
     }
 
     var m;
+    function captureLabeledValue(labelPattern) {
+      var stop = '(?=\\s+(?:Наименование|Название|ИНН\\s*:|КПП\\s*:|ОГРН|ОГРНИП|Расч[её]тный\\s+сч[её]т|Р/С|Банк\\s*:|БИК|Корсч[её]т|К/С|ИНН\\s+банка|КПП\\s+банка)\\s*:|$)';
+      var re = new RegExp(labelPattern + '\\s*:\\s*([\\s\\S]+?)' + stop, 'i');
+      var mm = t.match(re);
+      return mm && mm[1] ? mm[1].replace(/\s+/g, ' ').trim() : '';
+    }
+    function captureDigits(labelPattern, lenPattern) {
+      var value = captureLabeledValue(labelPattern);
+      var mm = value.match(new RegExp('\\b(\\d{' + lenPattern + '})\\b'));
+      return mm ? mm[1] : '';
+    }
+    rememberCompanyName(captureLabeledValue('(?:Наименование|Название)'));
+    setIfEmpty('inn', captureDigits('ИНН', '10,12'));
+    setIfEmpty('kpp', captureDigits('КПП', '9'));
+    setIfEmpty('ogrn', captureDigits('ОГРН(?:ИП)?', '13,15'));
+    setIfEmpty('account', captureDigits('(?:Расч[её]тный\\s+сч[её]т|Р/С)', '20'));
+    setIfEmpty('bank', captureLabeledValue('Банк'));
+    setIfEmpty('bik', captureDigits('БИК(?:\\s+банка)?', '9'));
+    setIfEmpty('corrAccount', captureDigits('(?:Корсч[её]т|К/С)', '20'));
+
     m = t.match(/\bИНН[\s:]*(\d{10,12})/i); if (m) setIfEmpty('inn', m[1]);
     m = t.match(/\bКПП[\s:]*(\d{9})/i); if (m) setIfEmpty('kpp', m[1]);
     m = t.match(/\bОГРН[\s:]*(\d{13,15})/i); if (m) setIfEmpty('ogrn', m[1]);
@@ -712,7 +737,7 @@
     m = t.match(/\bк[оа]р[.\s]*сч[её]т[\s:]*(\d{20})/i) || t.match(/\bк\/с[\s:]*(\d{20})/i); if (m) setIfEmpty('corrAccount', m[1]);
     m = t.match(/[a-z0-9._%+\-]+@[a-z0-9.\-]+\.[a-z]{2,}/ig); if (m && m.length) setIfEmpty('email', m[0]);
     m = t.match(/\+7[\d\s\-()]{8,}\d/g); if (m && m.length) setIfEmpty('phone', m[0].replace(/\s+/g, ' ').trim());
-    m = t.match(/(?:ООО|АО|ПАО)\s*[«\"].+?[»\"]/i) || t.match(/(?:ИП)\s+[А-Яа-яЁё\s\-]+/i); if (m) { setIfEmpty('shortName', m[0]); setIfEmpty('fullName', m[0]); }
+    m = t.match(/(?:ООО|АО|ПАО)\s*[«\"].+?[»\"]/i) || t.match(/(?:ИП)\s+[А-Яа-яЁё\s\-]+/i); if (m) rememberCompanyName(m[0]);
     m = t.match(/(?:ФИО|Ф\.?\s*И\.?\s*О\.?)\s*[:\-]?\s*([А-ЯЁ][а-яё-]{1,32}\s+[А-ЯЁ][а-яё-]{1,32}\s+[А-ЯЁ][а-яё-]{1,32})/i);
     if (m) setIfEmpty('fio', m[1]);
     if (!out.fio) {
@@ -1531,6 +1556,23 @@
       if (fio) setSecondaryVisible(true);
     }
     if (fioEl) fioEl.addEventListener('input', refreshClientCaption);
+    if (manualFioEl) {
+      manualFioEl.addEventListener('paste', function(e) {
+        var clip = e.clipboardData || (window && window.clipboardData);
+        var raw = clip && clip.getData ? clip.getData('text') : '';
+        if (!/(Наименование|ИНН|КПП|ОГРН|Расч[её]тный|БИК|Корсч[её]т)\s*:/i.test(raw || '')) return;
+        e.preventDefault();
+        var parsed = parseRequisitesFromText(raw);
+        applyParsed(parsed);
+        var name = parsed.shortName || parsed.fullName || parsed.fio || '';
+        if (name) {
+          manualFioEl.value = name;
+          if (fioEl) fioEl.value = name;
+        }
+        refreshClientCaption();
+        window.__contractGenerate && window.__contractGenerate();
+      });
+    }
     refreshClientCaption();
     var genderInp = document.getElementById('contract-headerGender');
     var genderSwitch = document.getElementById('contractGenderSwitch');
