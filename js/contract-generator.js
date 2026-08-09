@@ -122,6 +122,17 @@
     return String(normalizeMoneyValue(v) || 0).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
   }
 
+  function getContractClientDisplayName(data) {
+    data = data || {};
+    var embeddedReq = parseRequisitesFromText([data.fullName, data.shortName, data.companyName, data.fio].filter(Boolean).join('\n'));
+    function pick(field) {
+      var own = data[field] || '';
+      var looksLikeReqBlock = /(^|\n)\s*(?:\u041d\u0430\u0438\u043c\u0435\u043d\u043e\u0432\u0430\u043d\u0438\u0435|\u0418\u041d\u041d|\u041a\u041f\u041f|\u041e\u0413\u0420\u041d|\u041e\u0413\u0420\u041d\u0418\u041f|\u0420\u0430\u0441\u0447[\u0435\u0451]\u0442\u043d\u044b\u0439|\u0411\u0430\u043d\u043a|\u0411\u0418\u041a|\u041a\u043e\u0440\u0441\u0447[\u0435\u0451]\u0442)\s*:/i.test(String(own));
+      return looksLikeReqBlock ? (embeddedReq[field] || '') : (own || embeddedReq[field] || '');
+    }
+    return pick('shortName') || pick('fullName') || pick('companyName') || pick('fio') || 'Заказчик';
+  }
+
   // Шаблоны договора (на основе документов пользователя)
   function getContractMainTemplate(data) {
     var executor = getExecutor(data);
@@ -131,7 +142,7 @@
       var looksLikeReqBlock = /(^|\n)\s*(?:\u041d\u0430\u0438\u043c\u0435\u043d\u043e\u0432\u0430\u043d\u0438\u0435|\u0418\u041d\u041d|\u041a\u041f\u041f|\u041e\u0413\u0420\u041d|\u041e\u0413\u0420\u041d\u0418\u041f|\u0420\u0430\u0441\u0447[\u0435\u0451]\u0442\u043d\u044b\u0439|\u0411\u0430\u043d\u043a|\u0411\u0418\u041a|\u041a\u043e\u0440\u0441\u0447[\u0435\u0451]\u0442)\s*:/i.test(String(own));
       return looksLikeReqBlock ? (embeddedReq[field] || own || '') : (own || embeddedReq[field] || '');
     }
-    var clientName = pickClientField('shortName') || pickClientField('fullName') || pickClientField('companyName') || pickClientField('fio') || 'Заказчик';
+    var clientName = getContractClientDisplayName(data);
     var contractDate = data.contractDate || data.startDate || '—';
     var startDate = data.startDate || '—';
     var endDate = data.endDate || '—';
@@ -301,7 +312,7 @@
   function getAppendix1Template(data) {
     var executor = getExecutor(data);
     var costFmt = String(data.cost || '0').replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
-    var clientName = data.fio || data.companyName || 'Заказчик';
+    var clientName = getContractClientDisplayName(data);
     var startDate = data.startDate || '—';
     var endDate = data.endDate || '—';
     return '<h3 style="font-size:12pt;margin:24px 0 12px">Приложение № 1 к договору с ' + clientName + ' оказания услуг по размещению рекламы</h3>' +
@@ -319,7 +330,7 @@
 
   function getAppendix2Template(data) {
     var executor = getExecutor(data);
-    var clientName = data.fio || data.companyName || 'Заказчик';
+    var clientName = getContractClientDisplayName(data);
     return '<h3 style="font-size:12pt;margin:24px 0 12px">ПРИЛОЖЕНИЕ № 2 к Договору возмездного оказания услуг</h3>' +
       '<p style="font-size:10pt;margin-bottom:12px">от ' + (data.startDate || '') + '</p>' +
       '<p style="font-size:11pt;font-weight:700;margin-bottom:12px">Техническое задание и описание оказываемых услуг</p>' +
@@ -358,7 +369,7 @@
     var createCostNum = Math.max(0, costNum - manageCostNum);
     var createCostFmt = formatMoneyValue(createCostNum);
     var manageCostFmt = formatMoneyValue(manageCostNum);
-    var clientName = esc(data.fio || data.companyName || 'Заказчик');
+    var clientName = esc(getContractClientDisplayName(data));
     var packageName = esc(data.packageName || '');
     function row(icon, name, qty, price) {
       return '<tr>' +
