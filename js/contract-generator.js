@@ -125,7 +125,13 @@
   // Шаблоны договора (на основе документов пользователя)
   function getContractMainTemplate(data) {
     var executor = getExecutor(data);
-    var clientName = data.fullName || data.companyName || data.fio || 'Заказчик';
+    var embeddedReq = parseRequisitesFromText([data.fullName, data.shortName, data.companyName, data.fio].filter(Boolean).join('\n'));
+    function pickClientField(field) {
+      var own = data[field] || '';
+      var looksLikeReqBlock = /(^|\n)\s*(?:\u041d\u0430\u0438\u043c\u0435\u043d\u043e\u0432\u0430\u043d\u0438\u0435|\u0418\u041d\u041d|\u041a\u041f\u041f|\u041e\u0413\u0420\u041d|\u041e\u0413\u0420\u041d\u0418\u041f|\u0420\u0430\u0441\u0447[\u0435\u0451]\u0442\u043d\u044b\u0439|\u0411\u0430\u043d\u043a|\u0411\u0418\u041a|\u041a\u043e\u0440\u0441\u0447[\u0435\u0451]\u0442)\s*:/i.test(String(own));
+      return looksLikeReqBlock ? (embeddedReq[field] || own || '') : (own || embeddedReq[field] || '');
+    }
+    var clientName = pickClientField('shortName') || pickClientField('fullName') || pickClientField('companyName') || pickClientField('fio') || 'Заказчик';
     var contractDate = data.contractDate || data.startDate || '—';
     var startDate = data.startDate || '—';
     var endDate = data.endDate || '—';
@@ -145,20 +151,21 @@
     var costNum = normalizeMoneyValue(data.cost);
     var costFmt = String(costNum || 0).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
     var costWords = numberToWordsRu(costNum);
-    var clientInn = data.inn || '';
-    var clientKpp = data.kpp || '';
-    var clientOgrn = data.ogrn || '';
-    var clientLegalAddress = data.legalAddress || '';
-    var clientActualAddress = data.actualAddress || '';
-    var clientPostalAddress = data.postalAddress || '';
-    var clientCeo = data.ceo || '';
-    var clientEmail = data.email || '';
-    var clientShortName = data.shortName || '';
-    var clientAccount = data.account || '';
-    var clientBank = data.bank || '';
-    var clientBik = data.bik || '';
-    var clientCorr = data.corrAccount || '';
-    var clientPhone = data.phone || data.contacts || '';
+    var clientInn = pickClientField('inn');
+    var clientKpp = pickClientField('kpp');
+    var clientOgrn = pickClientField('ogrn');
+    var clientLegalAddress = pickClientField('legalAddress');
+    var clientActualAddress = pickClientField('actualAddress');
+    var clientPostalAddress = pickClientField('postalAddress');
+    var clientCeo = pickClientField('ceo');
+    var clientEmail = pickClientField('email');
+    var clientShortName = pickClientField('shortName');
+    if (String(clientShortName || '').trim().toLowerCase() === String(clientName || '').trim().toLowerCase()) clientShortName = '';
+    var clientAccount = pickClientField('account');
+    var clientBank = pickClientField('bank');
+    var clientBik = pickClientField('bik');
+    var clientCorr = pickClientField('corrAccount');
+    var clientPhone = pickClientField('phone') || pickClientField('contacts');
     function hasClientValue(v) {
       var s = String(v == null ? '' : v).trim();
       if (!s) return false;
@@ -482,7 +489,7 @@
 
     var rules = [
       { field: 'fio', rx: /^(фио|ф\.?\s*и\.?\s*о\.?|фамилия имя отчество|заказчик)$/ },
-      { field: 'fullName', rx: /(полное наименование|наименование организации|официальное наименование)/ },
+      { field: 'fullName', rx: /(^наименование$|^название$|полное наименование|наименование организации|официальное наименование|название организации|организация)/ },
       { field: 'shortName', rx: /(сокращенн(ое|ое) наименование|краткое наименование|сокр\.? наименование)/ },
       { field: 'legalAddress', rx: /(юридическ(ий|ого) адрес|адрес регистрации|юр\.? адрес)/ },
       { field: 'postalAddress', rx: /(почтов(ый|ого) адрес)/ },
@@ -542,6 +549,12 @@
       if (field === 'bank') {
         var vv = v.replace(/^БИК\s*Банка$/i, '').trim();
         if (vv) setIfEmpty('bank', vv);
+        return;
+      }
+      if (field === 'fullName') {
+        setIfEmpty('fullName', v);
+        var orgName = v.match(/(?:\u041e\u041e\u041e|\u0410\u041e|\u041f\u0410\u041e)\s*["\u00ab].+?["\u00bb]/i) || v.match(/(?:\u041e\u041e\u041e|\u0410\u041e|\u041f\u0410\u041e)\s+[^\n,;]+/i) || v.match(/(?:\u0418\u041f)\s+[\u0410-\u042f\u0430-\u044f\u0401\u0451\s\-]+/i);
+        if (orgName) setIfEmpty('shortName', orgName[0].trim());
         return;
       }
       setIfEmpty(field, v);
@@ -699,7 +712,7 @@
     m = t.match(/\bк[оа]р[.\s]*сч[её]т[\s:]*(\d{20})/i) || t.match(/\bк\/с[\s:]*(\d{20})/i); if (m) setIfEmpty('corrAccount', m[1]);
     m = t.match(/[a-z0-9._%+\-]+@[a-z0-9.\-]+\.[a-z]{2,}/ig); if (m && m.length) setIfEmpty('email', m[0]);
     m = t.match(/\+7[\d\s\-()]{8,}\d/g); if (m && m.length) setIfEmpty('phone', m[0].replace(/\s+/g, ' ').trim());
-    m = t.match(/(?:ООО|АО|ПАО)\s*[«\"].+?[»\"]/i) || t.match(/(?:ИП)\s+[А-Яа-яЁё\s\-]+/i); if (m) setIfEmpty('shortName', m[0]);
+    m = t.match(/(?:ООО|АО|ПАО)\s*[«\"].+?[»\"]/i) || t.match(/(?:ИП)\s+[А-Яа-яЁё\s\-]+/i); if (m) { setIfEmpty('shortName', m[0]); setIfEmpty('fullName', m[0]); }
     m = t.match(/(?:ФИО|Ф\.?\s*И\.?\s*О\.?)\s*[:\-]?\s*([А-ЯЁ][а-яё-]{1,32}\s+[А-ЯЁ][а-яё-]{1,32}\s+[А-ЯЁ][а-яё-]{1,32})/i);
     if (m) setIfEmpty('fio', m[1]);
     if (!out.fio) {
