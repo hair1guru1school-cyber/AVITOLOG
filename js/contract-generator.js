@@ -172,7 +172,6 @@
     var clientCeo = pickClientField('ceo');
     var clientEmail = pickClientField('email');
     var clientShortName = pickClientField('shortName');
-    if (String(clientShortName || '').trim().toLowerCase() === String(clientName || '').trim().toLowerCase()) clientShortName = '';
     var clientAccount = pickClientField('account');
     var clientBank = pickClientField('bank');
     var clientBik = pickClientField('bik');
@@ -187,6 +186,18 @@
       if (!hasClientValue(value)) return '';
       return '◆ ' + (label ? (label + ' ') : '') + value + '<br>';
     }
+    function sameClientName(a, b) {
+      function norm(v) {
+        return String(v || '')
+          .replace(/^\s*(?:наименование|название|кратко)\s*:\s*/i, '')
+          .replace(/[«»"]/g, '')
+          .replace(/\s+/g, ' ')
+          .trim()
+          .toLowerCase();
+      }
+      return !!norm(a) && norm(a) === norm(b);
+    }
+    if (sameClientName(clientShortName, clientName)) clientShortName = '';
     var leftBullets =
       '<div style="font-size:8.7pt;line-height:1.24">' +
       '◆ ' + executor.name + '<br>' +
