@@ -35,7 +35,8 @@
       bik: '044525974',
       corrAccount: '30101810145250000974',
       bankAddress: '127287, г. Москва, ул. Хуторская 2-я, д. 38А, стр. 26',
-      phone: ''
+      phone: '',
+      footerImage: 'assets/contract_footer_regina.jpg'
     }
   };
   var EXECUTOR = EXECUTORS.filipp;
@@ -436,8 +437,10 @@
       '</div>';
     var appendixHtml = getServiceAppendixTemplate(data).replace('<div style="page-break-before:always"></div>', '');
     var body = headerHtml + '<div class="contract-doc-body">' + getContractMainTemplate(data) + '</div>';
-    var footerImg = 'assets/contract_footer.png';
-    try { footerImg = new URL('assets/contract_footer.png', window.location.href).href; } catch (e) {}
+    var executor = getExecutor(data);
+    var footerSrc = executor.footerImage || 'assets/contract_footer.png';
+    var footerImg = footerSrc;
+    try { footerImg = new URL(footerSrc, window.location.href).href; } catch (e) {}
     var footerHtml =
       '<div class="contract-doc-footer" style="text-align:center;margin:4px auto 0">' +
         '<img src="' + esc(footerImg) + '" width="621" height="285" alt="" onerror="this.style.display=\'none\'" style="display:block;margin:0 auto;width:16.44cm;height:7.54cm;max-width:100%;object-fit:contain">' +
