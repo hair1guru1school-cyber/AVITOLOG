@@ -3007,6 +3007,14 @@ function bindProjectsTableRowDrag() {
   table.addEventListener('pointerdown', onProjectRowPtrDown);
 }
 function reorderProjectsWithinZone(sourceId, targetId, placeAfter) {
+  var domOrderIds = [];
+  try {
+    document.querySelectorAll('.projects-table .projects-table-row[data-child-line-index="-1"][data-id]').forEach(function(row) {
+      var id = row.getAttribute('data-id');
+      if (id) domOrderIds.push(id);
+    });
+  } catch(eDomOrder) {}
+  resetProjectManualOrderBlockers();
   var data = loadProjectsData();
   var projects = data.projects || [];
   var src = null;
@@ -3024,7 +3032,10 @@ function reorderProjectsWithinZone(sourceId, targetId, placeAfter) {
     if ((projects[j].zone || 'active') === zone) zoneList.push(projects[j]);
   }
   zoneList.sort(function(a,b){ return (a.sortOrder||0) - (b.sortOrder||0); });
-  var ids = zoneList.map(function(p){ return p.id; });
+  var zoneIdSet = {};
+  zoneList.forEach(function(p){ zoneIdSet[p.id] = true; });
+  var ids = domOrderIds.filter(function(id){ return zoneIdSet[id]; });
+  zoneList.forEach(function(p){ if (ids.indexOf(p.id) < 0) ids.push(p.id); });
   var fromIdx = ids.indexOf(sourceId);
   if (fromIdx < 0 || ids.indexOf(targetId) < 0) return false;
   var moving = ids.splice(fromIdx, 1)[0];
@@ -3609,6 +3620,16 @@ function toggleTasksSortFilter() {
   _projectsTasksSortOn = !_projectsTasksSortOn;
   try { localStorage.setItem(TASKS_SORT_ON_KEY, _projectsTasksSortOn ? '1' : '0'); } catch(e) {}
   if (typeof rerenderProjectsPreserveScroll === 'function') rerenderProjectsPreserveScroll();
+}
+function resetProjectManualOrderBlockers() {
+  _projectsTypeSortPriority = null;
+  _projectsFilterLaunch = false;
+  _projectsFilterAutoload = false;
+  _projectsFilterMustLaunch = false;
+  if (_projectsTasksSortOn) {
+    _projectsTasksSortOn = false;
+    try { localStorage.setItem(TASKS_SORT_ON_KEY, '0'); } catch(e) {}
+  }
 }
 
 function getTasksForProject(projectId) {
