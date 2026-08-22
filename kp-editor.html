@@ -531,6 +531,45 @@
     function escapeHtml(value){
       return String(value).replace(/[&<>"']/g, (char) => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[char]);
     }
+    function compactDataUrl(value, maxLen){
+      const s = String(value || "");
+      if (!s) return "";
+      if (!s.startsWith("data:")) return s;
+      return s.length <= maxLen ? s : "";
+    }
+    function compactPresetForStorage(preset, stripImages){
+      const p = Object.assign({}, preset || {});
+      p.heroDataUrl = stripImages ? "" : compactDataUrl(p.heroDataUrl, 180000);
+      p.heroPreviewSrc = stripImages ? "" : compactDataUrl(p.heroPreviewSrc || p.previewDataUrl, 90000);
+      p.previewDataUrl = stripImages ? "" : compactDataUrl(p.previewDataUrl, 90000);
+      if (p.heroSrc && String(p.heroSrc).startsWith("data:")) p.heroSrc = stripImages ? "" : compactDataUrl(p.heroSrc, 180000);
+      return p;
+    }
+    function compactPresetPayload(payload, stripImages){
+      const source = payload || {};
+      const out = { groups: Array.isArray(source.groups) ? source.groups : [] };
+      out.groups.forEach((group) => {
+        out[group.id] = (Array.isArray(source[group.id]) ? source[group.id] : []).map((preset) => compactPresetForStorage(preset, stripImages));
+      });
+      return out;
+    }
+    function safeSetJsonStorage(key, payload){
+      let value = JSON.stringify(payload);
+      try {
+        localStorage.setItem(key, value);
+        return value;
+      } catch (error) {
+        const lightPayload = key === PRESET_KEY ? compactPresetPayload(payload, true) : payload;
+        value = JSON.stringify(lightPayload);
+        try {
+          localStorage.setItem(key, value);
+          return value;
+        } catch (error2) {
+          console.warn("KP storage skipped", key, error2);
+          return "";
+        }
+      }
+    }
     function packageQuantity(pkg){
       const source = pkg && (pkg.quantity || pkg.limit || "");
       const match = String(source).replace(/\s/g, "").match(/\d+/);
@@ -600,7 +639,7 @@
     }
     function persistState(){
       state.selectedPackage = clampSelectedPackage();
-      try { localStorage.setItem(LS_KEY, JSON.stringify(state)); } catch (e) {}
+      try { safeSetJsonStorage(LS_KEY, state); } catch (e) {}
     }
     function readSelectedPackageIndex(){
       try {
@@ -1185,12 +1224,19 @@
         button.textContent = "Сохраняю...";
         try {
           readGlobalForm();
+          const presetPreview = makePresetPreviewDataUrl();
           const result = await window.parent.__saveKpPngToActiveClient(
             await canvasPngBlob(),
             {
               version: 1,
               savedAt: new Date().toISOString(),
               heroName: state.heroName || "",
+              heroSrc: state.heroSrc || "",
+              heroCustomId: state.heroCustomId || "",
+              heroDataUrl: currentHeroDataUrl(),
+              heroPreviewSrc: presetPreview,
+              previewDataUrl: presetPreview,
+              bgChoice: state.bgChoice || "",
               presetKind: $("presetKind").value || "services",
               packages: clone(state.packages).filter((pkg) => pkg.on)
             }
@@ -1251,9 +1297,11 @@
     function writePresetStore(store){
       const normalized = normalizePresetStore(store);
       const payload = { groups: normalized.groups.filter((group) => !group.builtin) };
-      normalized.groups.forEach((group) => { payload[group.id] = normalized[group.id] || []; });
-      localStorage.setItem(PRESET_KEY, JSON.stringify(payload));
-      try { window.dispatchEvent(new CustomEvent("avitolog:storage-write", { detail: { key: PRESET_KEY, value: payload } })); } catch (e) {}
+      normalized.groups.forEach((group) => {
+        payload[group.id] = (normalized[group.id] || []).map((preset) => compactPresetForStorage(preset, false));
+      });
+      const storedValue = safeSetJsonStorage(PRESET_KEY, payload);
+      try { window.dispatchEvent(new CustomEvent("avitolog:storage-write", { detail: { key: PRESET_KEY, value: storedValue || JSON.stringify(payload) } })); } catch (e) {}
     }
     function getPackagePresets(){
       const saved = readPresetStore();
@@ -1337,6 +1385,7 @@
         heroCustomId: state.heroCustomId || "",
         heroName: state.heroName || "",
         heroDataUrl: currentHeroDataUrl(),
+        heroPreviewSrc: previewDataUrl,
         previewDataUrl,
         updatedAt: new Date().toISOString()
       };
@@ -1374,25 +1423,25 @@
         thumb.height = 220;
         const tctx = thumb.getContext("2d");
         tctx.drawImage(canvas, 0, 0, W, Math.round(W * 220 / 360), 0, 0, thumb.width, thumb.height);
-        return thumb.toDataURL("image/jpeg", 0.78);
+        return thumb.toDataURL("image/jpeg", 0.68);
       } catch (e) {
         return "";
       }
     }
     function currentHeroDataUrl(){
-      if (customHeroSrc) return customHeroSrc;
+      if (customHeroSrc) return compactDataUrl(customHeroSrc, 180000);
       if (!state.heroCustomId || !images.hero) return "";
       try {
         const img = images.hero;
         const sourceWidth = img.naturalWidth || img.width || 1;
         const sourceHeight = img.naturalHeight || img.height || 1;
-        const maxSide = 1200;
+        const maxSide = 900;
         const scale = Math.min(1, maxSide / Math.max(sourceWidth, sourceHeight));
         const buffer = document.createElement("canvas");
         buffer.width = Math.max(1, Math.round(sourceWidth * scale));
         buffer.height = Math.max(1, Math.round(sourceHeight * scale));
         buffer.getContext("2d").drawImage(img, 0, 0, buffer.width, buffer.height);
-        return buffer.toDataURL("image/jpeg", 0.84);
+        return compactDataUrl(buffer.toDataURL("image/jpeg", 0.72), 180000);
       } catch (e) {
         return "";
       }
@@ -1566,7 +1615,8 @@
           item.heroCustomId = state.heroCustomId || "";
           item.heroName = state.heroName || "";
           item.heroDataUrl = currentHeroDataUrl();
-          item.previewDataUrl = makePresetPreviewDataUrl();
+          item.heroPreviewSrc = makePresetPreviewDataUrl();
+          item.previewDataUrl = item.heroPreviewSrc;
           item.updatedAt = new Date().toISOString();
         });
         return;

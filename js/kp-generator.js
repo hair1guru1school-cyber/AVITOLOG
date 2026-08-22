@@ -330,11 +330,31 @@
   }
 
   function saveDraft(d) {
-    try {
-      localStorage.setItem(kpStorageKey(), JSON.stringify(d));
-    } catch (e) {
-      if (typeof alert === 'function') alert('Не удалось сохранить (возможно, картинка слишком большая для хранилища).');
+    var key = kpStorageKey();
+    var previousValue = '';
+    try { previousValue = localStorage.getItem(key) || ''; } catch (e0) {}
+    var value = '';
+    try { value = JSON.stringify(d || {}); } catch (e1) { value = '{}'; }
+    if (!writeKpStateKey(key, value, previousValue)) {
+      try {
+        writeKpStateKey(key, JSON.stringify(compactKpDraftForStorage(d || {})), previousValue);
+      } catch (e2) {}
     }
+  }
+
+  function compactKpDataUrl(value, maxLen) {
+    var s = String(value || '');
+    if (!s) return '';
+    if (s.indexOf('data:') !== 0) return s;
+    return s.length <= (maxLen || 180000) ? s : '';
+  }
+
+  function compactKpDraftForStorage(d) {
+    var out = deepClone(d || {});
+    out.heroDataUrl = compactKpDataUrl(out.heroDataUrl, 180000);
+    out.heroPreviewSrc = compactKpDataUrl(out.heroPreviewSrc, 90000);
+    out.previewDataUrl = compactKpDataUrl(out.previewDataUrl, 90000);
+    return out;
   }
 
   function ensureBlock2(d) {
@@ -734,6 +754,7 @@
       var list = Array.isArray(all[folderId]) ? all[folderId] : [];
       list.unshift(record);
       all[folderId] = list.slice(0, 20);
+      all = compactSavedKpRecordMap(all);
       _savedKpPackagesMemory = all;
       writeKpStateKey(KP_SAVED_CLIENT_PACKAGES_STORE, JSON.stringify(all), localStorage.getItem(KP_SAVED_CLIENT_PACKAGES_STORE) || '');
     } catch (e) {}
@@ -742,6 +763,7 @@
   function rememberSavedKpAsEditorPreset(record) {
     try {
       if (!record || !Array.isArray(record.packages) || !record.packages.length) return;
+      record = compactSavedKpRecord(record);
       var kind = String(record.presetKind || 'services').replace(/[^\w-]/g, '_') || 'services';
       var all = JSON.parse(localStorage.getItem(KP_EDITOR_PRESETS_STORE) || '{}');
       if (!all || typeof all !== 'object' || Array.isArray(all)) all = {};
@@ -786,6 +808,7 @@
         previewDataUrl: record.previewDataUrl || ''
       });
       all[kind] = all[kind].slice(0, 50);
+      all = compactSavedKpRecordMap(all);
       writeKpStateKey(KP_EDITOR_PRESETS_STORE, JSON.stringify(all), localStorage.getItem(KP_EDITOR_PRESETS_STORE) || '');
     } catch (e) {}
   }
@@ -813,7 +836,7 @@
     ].join('-') + ' ' + String(now.getHours()).padStart(2, '0') + '-' + String(now.getMinutes()).padStart(2, '0');
     var fileName = 'КП - ' + clientName + ' - ' + stamp + '.png';
     var result = await driveUploadBlob(fileName, blob, 'image/png', ac.folderId);
-    var record = {
+    var record = compactSavedKpRecord({
       version: 1,
       savedAt: (packageData && packageData.savedAt) || now.toISOString(),
       clientName: clientName,
@@ -832,7 +855,7 @@
       presetGroupName: (packageData && packageData.presetGroupName) || '',
       presetGroupEmoji: (packageData && packageData.presetGroupEmoji) || '',
       packages: packageData && Array.isArray(packageData.packages) ? packageData.packages : []
-    };
+    });
     rememberSavedKpPackageData(String(ac.folderId), record);
     rememberSavedKpAsEditorPreset(record);
     if (typeof driveUploadText === 'function') {
@@ -852,6 +875,28 @@
     };
   };
 
+  function compactSavedKpRecord(record) {
+    var r = Object.assign({}, record || {});
+    r.heroDataUrl = compactKpDataUrl(r.heroDataUrl, 180000);
+    r.heroPreviewSrc = compactKpDataUrl(r.heroPreviewSrc, 90000);
+    r.previewDataUrl = compactKpDataUrl(r.previewDataUrl, 90000);
+    return r;
+  }
+
+  function compactSavedKpRecordMap(all) {
+    var out = {};
+    Object.keys(all || {}).forEach(function(key) {
+      if (key === 'groups' && Array.isArray(all[key])) {
+        out[key] = all[key];
+      } else if (Array.isArray(all[key])) {
+        out[key] = all[key].map(compactSavedKpRecord);
+      } else {
+        out[key] = all[key];
+      }
+    });
+    return out;
+  }
+
   function buildCanvaToggleHtml(d) {
     var open = !!d.canvaTemplatesOpen;
     return (
@@ -869,7 +914,7 @@
     return (
       '<div class="kp-gen-section kp-editor-embed-section">' +
       '<div class="kp-gen-label">Расчет КП</div>' +
-      '<iframe class="kp-editor-embed" src="kp-editor.html?embedded=1&amp;v=20260822-alpha-only-1" title="Редактор КП"></iframe>' +
+      '<iframe class="kp-editor-embed" src="kp-editor.html?embedded=1&amp;v=20260822-kp-quota-safe-1" title="Редактор КП"></iframe>' +
       '</div>'
     );
   }
