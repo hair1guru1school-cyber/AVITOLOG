@@ -1586,6 +1586,8 @@
       var keys = event && event.detail && event.detail.keys;
       if (!Array.isArray(keys) || keys.indexOf('avito_kp_saved_client_packages_v1') !== -1) loadSavedKpPackages();
     });
+    document.addEventListener('avitolog:active-client-changed', loadSavedKpPackages);
+    window.__contractReloadSavedKpPackages = loadSavedKpPackages;
 
     var today = new Date();
     var pad2 = function(n) { return (n < 10 ? '0' : '') + n; };

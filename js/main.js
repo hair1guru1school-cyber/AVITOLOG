@@ -4140,8 +4140,31 @@ window.__crmRefreshAfterSashaSync = function() {
     }
   } catch (e3) {}
 };
+function hasActiveClientPayload(client) {
+  return !!(client && typeof client === 'object' && (
+    client.folderId ||
+    client.folder_id ||
+    client.drive_folder_id ||
+    client.folderLink ||
+    client.driveFolderUrl ||
+    client.folderUrl
+  ));
+}
+function notifyActiveClientChanged(client) {
+  try {
+    document.dispatchEvent(new CustomEvent('avitolog:active-client-changed', {
+      detail: { client: client || null }
+    }));
+  } catch(e) {}
+}
 function getActiveClient() {
-  try { return JSON.parse(localStorage.getItem(_ck('avitolog_active_client'))); } catch(e) { return null; }
+  if (hasActiveClientPayload(_activeClient)) return _activeClient;
+  try {
+    var raw = localStorage.getItem(_ck('avitolog_active_client'));
+    var stored = raw ? JSON.parse(raw) : null;
+    if (hasActiveClientPayload(stored)) return stored;
+  } catch(e) {}
+  return null;
 }
 function normalizeClientPickText(v) {
   return String(v || '').toLowerCase().replace(/[()]/g, ' ').replace(/[^a-zа-яё0-9]+/gi, ' ').replace(/\s+/g, ' ').trim();
@@ -4180,6 +4203,12 @@ function fillClientFormFromData(data) {
 }
 function compactActiveClientForStorage(client) {
   client = client || {};
+  var linkedFolderId = client.folderId || client.folder_id || client.drive_folder_id || '';
+  if (!linkedFolderId) {
+    var linkText = String(client.folderLink || client.driveFolderUrl || client.folderUrl || '').trim();
+    var linkMatch = linkText.match(/\/folders\/([a-zA-Z0-9_-]+)/) || linkText.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+    if (linkMatch) linkedFolderId = linkMatch[1];
+  }
   var out = {};
   [
     'client_id',
@@ -4207,19 +4236,46 @@ function compactActiveClientForStorage(client) {
   });
   if (!out.company && out.folder_name) out.company = out.folder_name;
   if (!out.folder_name && out.company) out.folder_name = out.company;
+  if (!out.folderId && linkedFolderId) out.folderId = String(linkedFolderId);
+  if (!out.folderLink && out.folderId) out.folderLink = 'https://drive.google.com/drive/folders/' + out.folderId;
   return out;
 }
 function setActiveClient(client) {
+  var compact = compactActiveClientForStorage(client);
+  if (!hasActiveClientPayload(compact)) {
+    _activeClient = null;
+    try { localStorage.removeItem(_ck('avitolog_active_client')); } catch (e0) {}
+    updateClientBadge();
+    notifyActiveClientChanged(null);
+    if (!projectsMode && !goalsMode && !agencyMode && !assetsMode && !adsMode && !tasksMode) {
+      if (currentTab === 'kp' && typeof window.__showKpGenerator === 'function') {
+        window.__showKpGenerator(document.getElementById('mainContent'));
+      } else if (['analysis','presale','avito1'].indexOf(currentTab) >= 0 && !docReady) {
+        refreshClientContents();
+      }
+    }
+    if (goalsMode && window.AVITOLOG_GOALS && typeof window.AVITOLOG_GOALS.render === 'function') window.AVITOLOG_GOALS.render();
+    return;
+  }
   _activeClient = client;
   try {
     var activeKey = _ck('avitolog_active_client');
-    var compact = compactActiveClientForStorage(client);
     localStorage.removeItem(activeKey);
     localStorage.setItem(activeKey, JSON.stringify(compact));
   } catch (e) {
-    console.warn('AVITOLOG active client storage skipped', e);
+    if (isStorageQuotaError(e)) {
+      freeCrmLocalStorageQuota();
+      try {
+        localStorage.setItem(_ck('avitolog_active_client'), JSON.stringify(compact));
+      } catch (e2) {
+        console.warn('AVITOLOG active client storage skipped', e2);
+      }
+    } else {
+      console.warn('AVITOLOG active client storage skipped', e);
+    }
   }
   updateClientBadge();
+  notifyActiveClientChanged(_activeClient);
   if (!projectsMode && !goalsMode && !agencyMode && !assetsMode && !adsMode && !tasksMode) {
     if (currentTab === 'kp' && typeof window.__showKpGenerator === 'function') {
       window.__showKpGenerator(document.getElementById('mainContent'));
@@ -4257,7 +4313,7 @@ function updateClientBadge() {
   var badge = document.getElementById('clientBadge');
   var avatarEl = document.getElementById('clientBadgeAvatar');
   var nameEl = document.getElementById('clientBadgeName');
-  var ac = _activeClient || getActiveClient();
+  var ac = getActiveClient();
   if (ac && ac.folderId) {
     badge.style.display = 'inline-flex';
     badge.style.alignItems = 'center';
@@ -4285,7 +4341,7 @@ function updateClientBadge() {
 
 function openClientFolder() {
   if (window.__clientDragJustHappened) return;
-  var ac = _activeClient || getActiveClient();
+  var ac = getActiveClient();
   if (ac && ac.folderLink) window.open(ac.folderLink, '_blank');
 }
 
@@ -4313,7 +4369,7 @@ function endClientMenuDrag(e) {
   if (window.__goalsClientDragEnd) window.__goalsClientDragEnd(e);
 }
 
-window.__goalsGetActiveClient = function() { return _activeClient || getActiveClient(); };
+window.__goalsGetActiveClient = function() { return getActiveClient(); };
 window.__goalsGetSelectedProjectName = function() {
   try {
     var p = getSelectedProject();
@@ -4324,7 +4380,7 @@ window.__goalsGetSelectedProjectName = function() {
   }
 };
 window.__goalsGetActiveClientAvatar = function() {
-  var ac = _activeClient || getActiveClient();
+  var ac = getActiveClient();
   if (!ac) return '';
   try {
     return typeof getClientAvatar === 'function' ? (getClientAvatar(ac) || '') : '';
