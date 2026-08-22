@@ -372,6 +372,11 @@
       else localStorage.setItem(row.storage_key, valueToApply);
     });
     refreshOpenScreensAfterRemoteApply(appliedKeys);
+    try {
+      document.dispatchEvent(new CustomEvent('avitolog:backend-remote-applied', {
+        detail: { keys: appliedKeys.slice(), remoteKeys: remoteKeys }
+      }));
+    } catch (appliedEventError) {}
     if (mergedWrites.length) {
       for (var mw = 0; mw < mergedWrites.length; mw++) {
         await writeKey(mergedWrites[mw].key, mergedWrites[mw].value);

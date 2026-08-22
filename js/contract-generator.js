@@ -1466,7 +1466,13 @@
     }
     function readSavedKpPackageMapFallback() {
       try {
-        var raw = localStorage.getItem('avito_kp_saved_client_packages_v1') || '{}';
+        var key = 'avito_kp_saved_client_packages_v1';
+        var raw = localStorage.getItem(key) || '';
+        if (!raw && window.AVITOLOG_BACKEND_STORAGE_TARGET) {
+          var prefix = typeof window.AVITOLOG_BACKEND_STORAGE_PREFIX === 'string' ? window.AVITOLOG_BACKEND_STORAGE_PREFIX : '';
+          raw = window.AVITOLOG_BACKEND_STORAGE_TARGET.getItem(prefix + key) || '';
+        }
+        raw = raw || '{}';
         var parsed = JSON.parse(raw);
         return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {};
       } catch (e) {
@@ -1571,8 +1577,14 @@
     }
     loadSavedKpPackages();
     setTimeout(loadSavedKpPackages, 250);
+    setTimeout(loadSavedKpPackages, 900);
+    setTimeout(loadSavedKpPackages, 1800);
     document.addEventListener('avitolog:storage-write', function(event) {
       if (event && event.detail && event.detail.key === 'avito_kp_saved_client_packages_v1') loadSavedKpPackages();
+    });
+    document.addEventListener('avitolog:backend-remote-applied', function(event) {
+      var keys = event && event.detail && event.detail.keys;
+      if (!Array.isArray(keys) || keys.indexOf('avito_kp_saved_client_packages_v1') !== -1) loadSavedKpPackages();
     });
 
     var today = new Date();
