@@ -4094,41 +4094,6 @@ function freeCrmLocalStorageQuota() {
   } catch(e) {}
   return removed;
 }
-function compactCrmClientRecordForStorage(client) {
-  client = client || {};
-  var out = {};
-  [
-    'client_id', 'id', 'legacy_key',
-    'folderId', 'folderLink', 'folder_name', 'drive_folder_id', 'categoryFolderId',
-    'company', 'contact_name', 'name', 'phone', 'telegram', 'tg', 'avito_account',
-    'client_type', 'category', 'city', 'notes', 'kp_count',
-    'createdAt', 'updatedAt', 'source', 'owner', 'profile'
-  ].forEach(function(key) {
-    var value = client[key];
-    if (value === undefined || value === null || value === '') return;
-    if (typeof value === 'string') {
-      out[key] = value.slice(0, key === 'notes' ? 1200 : 260);
-    } else if (typeof value === 'number' || typeof value === 'boolean') {
-      out[key] = value;
-    }
-  });
-  if (Array.isArray(client.positions)) {
-    out.positions = client.positions.slice(0, 80).map(function(pos) {
-      if (typeof pos === 'string') return pos.slice(0, 260);
-      if (!pos || typeof pos !== 'object') return pos;
-      return {
-        name: String(pos.name || pos.title || '').slice(0, 260),
-        value: String(pos.value || pos.price || '').slice(0, 80)
-      };
-    });
-  }
-  if (!out.company && out.folder_name) out.company = out.folder_name;
-  if (!out.folder_name && out.company) out.folder_name = out.company;
-  return out;
-}
-function compactCrmClientsListForStorage(list) {
-  return (Array.isArray(list) ? list : []).map(compactCrmClientRecordForStorage);
-}
 function saveCrmClients(list) {
   var key = _ck('avitolog_clients');
   var arr = Array.isArray(list) ? list : [];
@@ -4144,14 +4109,11 @@ function saveCrmClients(list) {
   } catch(e) {
     if (!isStorageQuotaError(e)) throw e;
   }
-  var compactList = compactCrmClientsListForStorage(arr);
-  var compactValue = JSON.stringify(compactList);
-  var valueToStore = compactValue.length < value.length ? compactValue : value;
+  var valueToStore = value;
   writeCrmClientsShadow(key, valueToStore);
   freeCrmLocalStorageQuota();
   try {
     localStorage.setItem(key, valueToStore);
-    if (valueToStore === compactValue) _crmClientsMemoryByKey[key] = compactList;
     _crmClientsMemorySourceByKey[key] = valueToStore;
     notifyCrmClientsStorageWrite(key, valueToStore, previousValue);
     return;
