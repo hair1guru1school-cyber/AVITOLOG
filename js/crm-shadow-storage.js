@@ -111,8 +111,14 @@
     configurable: true,
     writable: true,
     value: function (key, value) {
-      _origSetItem(key, value);
-      try { shadowWrite(key, String(value)); } catch (e) {}
+      var stringValue = String(value);
+      try { shadowWrite(key, stringValue); } catch (e) {}
+      try {
+        _origSetItem(key, value);
+      } catch (err) {
+        try { shadowWrite(key, stringValue); } catch (e2) {}
+        throw err;
+      }
     }
   });
 
@@ -130,6 +136,9 @@
     liveStore: LIVE_STORE,
     snapStore: SNAP_STORE,
     isBackupKey: isBackupKey,
+    writeLive: function (key, value) {
+      try { shadowWrite(String(key), String(value)); } catch (e) {}
+    },
     takeSnapshot: function () {
       if (_db) takeSnapshot(_db);
     },

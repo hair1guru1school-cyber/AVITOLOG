@@ -4043,14 +4043,124 @@ function findClientIndexByData(list, d) {
 
 function _ck(k) { return (typeof window.AVITOLOG_KEY === 'function' ? window.AVITOLOG_KEY(k) : k); }
 /** CRM-клиенты: только текущий профиль — avitolog_clients (Фил) или avitolog_clients_sasha (Саша). Без слияния и без записи в чужой ключ. */
+var _crmClientsMemoryByKey = {};
+var _crmClientsMemorySourceByKey = {};
 function getCrmClients() {
-  try { return JSON.parse(localStorage.getItem(_ck('avitolog_clients')) || '[]'); } catch(e) { return []; }
+  var key = _ck('avitolog_clients');
+  try {
+    var raw = localStorage.getItem(key);
+    if (_crmClientsMemorySourceByKey[key] === raw && Array.isArray(_crmClientsMemoryByKey[key])) {
+      return _crmClientsMemoryByKey[key];
+    }
+    var parsed = JSON.parse(raw || '[]');
+    _crmClientsMemoryByKey[key] = Array.isArray(parsed) ? parsed : [];
+    _crmClientsMemorySourceByKey[key] = raw;
+    return _crmClientsMemoryByKey[key];
+  } catch(e) {
+    if (Array.isArray(_crmClientsMemoryByKey[key])) return _crmClientsMemoryByKey[key];
+    return [];
+  }
+}
+function isStorageQuotaError(e) {
+  var name = String((e && e.name) || '');
+  var msg = String((e && e.message) || '');
+  return name.indexOf('Quota') >= 0 || msg.indexOf('exceeded the quota') >= 0 || msg.indexOf('quota') >= 0;
+}
+function notifyCrmClientsStorageWrite(key, value, previousValue) {
+  try {
+    document.dispatchEvent(new CustomEvent('avitolog:storage-write', {
+      detail: { key: key, value: value, previousValue: previousValue }
+    }));
+  } catch(e) {}
+}
+function writeCrmClientsShadow(key, value) {
+  try {
+    if (window.__crmShadow && typeof window.__crmShadow.writeLive === 'function') {
+      window.__crmShadow.writeLive(key, value);
+    }
+  } catch(e) {}
+}
+function freeCrmLocalStorageQuota() {
+  var removed = 0;
+  try {
+    var keys = [];
+    for (var i = 0; i < localStorage.length; i++) {
+      var k = localStorage.key(i);
+      if (k && k.indexOf(AVITO_IMG_CACHE_PREFIX) === 0) keys.push(k);
+    }
+    keys.forEach(function(k) {
+      try { localStorage.removeItem(k); removed++; } catch(e) {}
+    });
+  } catch(e) {}
+  return removed;
+}
+function compactCrmClientRecordForStorage(client) {
+  client = client || {};
+  var out = {};
+  [
+    'client_id', 'id', 'legacy_key',
+    'folderId', 'folderLink', 'folder_name', 'drive_folder_id', 'categoryFolderId',
+    'company', 'contact_name', 'name', 'phone', 'telegram', 'tg', 'avito_account',
+    'client_type', 'category', 'city', 'notes', 'kp_count',
+    'createdAt', 'updatedAt', 'source', 'owner', 'profile'
+  ].forEach(function(key) {
+    var value = client[key];
+    if (value === undefined || value === null || value === '') return;
+    if (typeof value === 'string') {
+      out[key] = value.slice(0, key === 'notes' ? 1200 : 260);
+    } else if (typeof value === 'number' || typeof value === 'boolean') {
+      out[key] = value;
+    }
+  });
+  if (Array.isArray(client.positions)) {
+    out.positions = client.positions.slice(0, 80).map(function(pos) {
+      if (typeof pos === 'string') return pos.slice(0, 260);
+      if (!pos || typeof pos !== 'object') return pos;
+      return {
+        name: String(pos.name || pos.title || '').slice(0, 260),
+        value: String(pos.value || pos.price || '').slice(0, 80)
+      };
+    });
+  }
+  if (!out.company && out.folder_name) out.company = out.folder_name;
+  if (!out.folder_name && out.company) out.folder_name = out.company;
+  return out;
+}
+function compactCrmClientsListForStorage(list) {
+  return (Array.isArray(list) ? list : []).map(compactCrmClientRecordForStorage);
 }
 function saveCrmClients(list) {
   var key = _ck('avitolog_clients');
-  var value = JSON.stringify(list || []);
-  localStorage.setItem(key, value);
-  try { document.dispatchEvent(new CustomEvent('avitolog:storage-write', { detail: { key: key, value: value } })); } catch(e) {}
+  var arr = Array.isArray(list) ? list : [];
+  _crmClientsMemoryByKey[key] = arr;
+  var previousValue = null;
+  try { previousValue = localStorage.getItem(key); } catch(readError) {}
+  var value = JSON.stringify(arr);
+  try {
+    localStorage.setItem(key, value);
+    _crmClientsMemorySourceByKey[key] = value;
+    notifyCrmClientsStorageWrite(key, value, previousValue);
+    return;
+  } catch(e) {
+    if (!isStorageQuotaError(e)) throw e;
+  }
+  var compactList = compactCrmClientsListForStorage(arr);
+  var compactValue = JSON.stringify(compactList);
+  var valueToStore = compactValue.length < value.length ? compactValue : value;
+  writeCrmClientsShadow(key, valueToStore);
+  freeCrmLocalStorageQuota();
+  try {
+    localStorage.setItem(key, valueToStore);
+    if (valueToStore === compactValue) _crmClientsMemoryByKey[key] = compactList;
+    _crmClientsMemorySourceByKey[key] = valueToStore;
+    notifyCrmClientsStorageWrite(key, valueToStore, previousValue);
+    return;
+  } catch(e2) {
+    if (!isStorageQuotaError(e2)) throw e2;
+    _crmClientsMemorySourceByKey[key] = previousValue;
+    notifyCrmClientsStorageWrite(key, valueToStore, previousValue);
+    console.warn('AVITOLOG CRM clients saved without localStorage because browser quota is full', e2);
+  }
 }
 /** После ☁️ синка Саши: обновить списки CRM (данные уже в *_sasha). */
 window.__crmRefreshAfterSashaSync = function() {
