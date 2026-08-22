@@ -869,7 +869,7 @@
     return (
       '<div class="kp-gen-section kp-editor-embed-section">' +
       '<div class="kp-gen-label">Расчет КП</div>' +
-      '<iframe class="kp-editor-embed" src="kp-editor.html?embedded=1&amp;v=20260822-kp-contract-package-1" title="Редактор КП"></iframe>' +
+      '<iframe class="kp-editor-embed" src="kp-editor.html?embedded=1&amp;v=20260822-alpha-only-1" title="Редактор КП"></iframe>' +
       '</div>'
     );
   }

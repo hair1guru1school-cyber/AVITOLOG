@@ -1436,15 +1436,51 @@
 
     var kpPackageSelect = document.getElementById('contract-kpPackage');
     var savedKpRecords = [];
-    function activeClientFolderId() {
+    function folderIdFromAny(value) {
+      var text = String(value || '').trim();
+      if (!text) return '';
+      var m = text.match(/\/folders\/([a-zA-Z0-9_-]+)/) || text.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+      return m ? m[1] : (/^[a-zA-Z0-9_-]{12,}$/.test(text) ? text : '');
+    }
+    function activeContractClient() {
       try {
         var ac = null;
-        if (typeof getActiveClient === 'function') ac = getActiveClient();
-        if ((!ac || !(ac.folderId || ac.drive_folder_id)) && typeof window._activeClient !== 'undefined') ac = window._activeClient;
-        return ac && (ac.folderId || ac.drive_folder_id) ? String(ac.folderId || ac.drive_folder_id) : '';
+        if (typeof window.__goalsGetActiveClient === 'function') ac = window.__goalsGetActiveClient();
+        if (!ac && typeof getActiveClient === 'function') ac = getActiveClient();
+        if (!ac && typeof window._activeClient !== 'undefined') ac = window._activeClient;
+        return ac || null;
+      } catch (e) {
+        return null;
+      }
+    }
+    function activeClientFolderId() {
+      try {
+        var ac = activeContractClient();
+        return folderIdFromAny(ac && (ac.folderId || ac.folder_id || ac.drive_folder_id || ac.folderLink || ac.driveFolderUrl || ac.folderUrl || ac.crmClientId));
       } catch (e) {
         return '';
       }
+    }
+    function normalizedClientName(value) {
+      return String(value || '').toLowerCase().replace(/[^0-9a-zа-яё]+/gi, ' ').replace(/\s+/g, ' ').trim();
+    }
+    function readSavedKpPackageMapFallback() {
+      try {
+        var raw = localStorage.getItem('avito_kp_saved_client_packages_v1') || '{}';
+        var parsed = JSON.parse(raw);
+        return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {};
+      } catch (e) {
+        return {};
+      }
+    }
+    function dedupeSavedKpRecords(records) {
+      var seen = {};
+      return (records || []).filter(function(record) {
+        var key = [record && record.folderId, record && record.savedAt, record && record.imageName].join('|');
+        if (seen[key]) return false;
+        seen[key] = true;
+        return true;
+      });
     }
     function packagePrice(pkg) {
       var values = String((pkg && pkg.work) || '').match(/\d[\d\s]*/g) || [];
@@ -1481,12 +1517,39 @@
     function loadSavedKpPackages() {
       if (!kpPackageSelect) return;
       var folderId = activeClientFolderId();
+      var activeClient = activeContractClient();
       try {
-        savedKpRecords = typeof window.__getSavedKpPackagesForClient === 'function'
+        savedKpRecords = folderId && typeof window.__getSavedKpPackagesForClient === 'function'
           ? window.__getSavedKpPackagesForClient(folderId)
           : [];
       } catch (e) {
         savedKpRecords = [];
+      }
+      if (!savedKpRecords.length) {
+        var all = readSavedKpPackageMapFallback();
+        var candidates = [
+          folderId,
+          activeClient && activeClient.folderId,
+          activeClient && activeClient.folder_id,
+          activeClient && activeClient.drive_folder_id,
+          activeClient && activeClient.folderLink,
+          activeClient && activeClient.crmClientId
+        ].map(folderIdFromAny).filter(Boolean);
+        var byFolder = [];
+        candidates.forEach(function(id) {
+          if (Array.isArray(all[id])) byFolder = byFolder.concat(all[id]);
+        });
+        savedKpRecords = dedupeSavedKpRecords(byFolder);
+        if (!savedKpRecords.length && activeClient) {
+          var names = [activeClient.company, activeClient.name, activeClient.contact_name]
+            .map(normalizedClientName).filter(Boolean);
+          Object.keys(all).forEach(function(key) {
+            (Array.isArray(all[key]) ? all[key] : []).forEach(function(record) {
+              if (names.indexOf(normalizedClientName(record && record.clientName)) !== -1) savedKpRecords.push(record);
+            });
+          });
+          savedKpRecords = dedupeSavedKpRecords(savedKpRecords);
+        }
       }
       var options = ['<option value="">Не выбран</option>'];
       savedKpRecords.forEach(function(record, recordIndex) {
@@ -1507,6 +1570,10 @@
       });
     }
     loadSavedKpPackages();
+    setTimeout(loadSavedKpPackages, 250);
+    document.addEventListener('avitolog:storage-write', function(event) {
+      if (event && event.detail && event.detail.key === 'avito_kp_saved_client_packages_v1') loadSavedKpPackages();
+    });
 
     var today = new Date();
     var pad2 = function(n) { return (n < 10 ? '0' : '') + n; };
