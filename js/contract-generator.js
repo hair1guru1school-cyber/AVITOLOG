@@ -1488,6 +1488,65 @@
         return true;
       });
     }
+    function collectSavedKpRecordsFromJson(parsed, folderId) {
+      var out = [];
+      function pushRecord(record) {
+        if (!record || typeof record !== 'object' || !Array.isArray(record.packages) || !record.packages.length) return;
+        record.folderId = record.folderId || folderId || '';
+        out.push(record);
+      }
+      pushRecord(parsed);
+      if (Array.isArray(parsed)) parsed.forEach(pushRecord);
+      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+        Object.keys(parsed).forEach(function(key) {
+          if (Array.isArray(parsed[key])) parsed[key].forEach(pushRecord);
+        });
+      }
+      return out;
+    }
+    var driveSavedKpCache = {};
+    var driveSavedKpLoading = {};
+    async function loadSavedKpPackagesFromDrive(folderId) {
+      folderId = folderIdFromAny(folderId);
+      if (!folderId || driveSavedKpLoading[folderId]) return [];
+      if (Array.isArray(driveSavedKpCache[folderId])) return driveSavedKpCache[folderId].slice();
+      if (typeof driveListFolderItems !== 'function' || typeof driveGetFileContent !== 'function') return [];
+      driveSavedKpLoading[folderId] = true;
+      var found = [];
+      try {
+        var items = await driveListFolderItems(folderId);
+        var jsonFiles = (items || []).filter(function(item) {
+          var name = String(item && item.name || '').toLowerCase();
+          var mime = String(item && item.mimeType || '').toLowerCase();
+          return item && item.id && (name.slice(-5) === '.json' || mime.indexOf('json') >= 0);
+        }).slice(0, 20);
+        for (var i = 0; i < jsonFiles.length; i++) {
+          var text = await driveGetFileContent(jsonFiles[i].id, jsonFiles[i].mimeType);
+          if (!text) continue;
+          try {
+            found = found.concat(collectSavedKpRecordsFromJson(JSON.parse(text), folderId));
+          } catch (parseError) {}
+        }
+        found = dedupeSavedKpRecords(found);
+        driveSavedKpCache[folderId] = found;
+        return found.slice();
+      } catch (e) {
+        console.warn('Contract saved KP Drive fallback failed', e);
+        return [];
+      } finally {
+        driveSavedKpLoading[folderId] = false;
+      }
+    }
+    function renderSavedKpPackageOptions() {
+      var options = ['<option value="">Не выбран</option>'];
+      savedKpRecords.forEach(function(record, recordIndex) {
+        (record.packages || []).forEach(function(pkg, packageIndex) {
+          var label = (pkg.name || ('Пакет ' + (packageIndex + 1))) + ' · ' + (pkg.limit || '') + ' · ' + (pkg.work || '');
+          options.push('<option value="' + recordIndex + ':' + packageIndex + '">' + escHtml(label) + '</option>');
+        });
+      });
+      kpPackageSelect.innerHTML = options.join('');
+    }
     function packagePrice(pkg) {
       var values = String((pkg && pkg.work) || '').match(/\d[\d\s]*/g) || [];
       return values.length ? normalizeMoneyValue(values[0]) : 0;
@@ -1557,14 +1616,14 @@
           savedKpRecords = dedupeSavedKpRecords(savedKpRecords);
         }
       }
-      var options = ['<option value="">Не выбран</option>'];
-      savedKpRecords.forEach(function(record, recordIndex) {
-        (record.packages || []).forEach(function(pkg, packageIndex) {
-          var label = (pkg.name || ('Пакет ' + (packageIndex + 1))) + ' · ' + (pkg.limit || '') + ' · ' + (pkg.work || '');
-          options.push('<option value="' + recordIndex + ':' + packageIndex + '">' + escHtml(label) + '</option>');
+      renderSavedKpPackageOptions();
+      if (!savedKpRecords.length && folderId) {
+        loadSavedKpPackagesFromDrive(folderId).then(function(records) {
+          if (!records || !records.length || activeClientFolderId() !== folderId) return;
+          savedKpRecords = dedupeSavedKpRecords(savedKpRecords.concat(records));
+          renderSavedKpPackageOptions();
         });
-      });
-      kpPackageSelect.innerHTML = options.join('');
+      }
     }
     if (kpPackageSelect) {
       kpPackageSelect.addEventListener('change', function() {
