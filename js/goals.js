@@ -24,16 +24,79 @@
   function monthStorageKey(ym) {
     return goalsStorageKey() + '_month_' + ym;
   }
-  function setGoalsStorageValue(key, value) {
+  var _goalsStorageMemoryByKey = {};
+  function isGoalsStorageQuotaError(e) {
+    var name = String((e && e.name) || '');
+    var msg = String((e && e.message) || '');
+    return name.indexOf('Quota') >= 0 || msg.indexOf('exceeded the quota') >= 0 || msg.indexOf('quota') >= 0;
+  }
+  function readGoalsLocalStorageValue(key) {
+    try { return localStorage.getItem(key); } catch(e) { return null; }
+  }
+  function readGoalsStorageValue(key) {
+    if (Object.prototype.hasOwnProperty.call(_goalsStorageMemoryByKey, key)) return _goalsStorageMemoryByKey[key];
+    return readGoalsLocalStorageValue(key);
+  }
+  function notifyGoalsStorageWrite(key, value, previousValue) {
+    if (String(value == null ? '' : value) === String(previousValue == null ? '' : previousValue)) return;
     try {
-      localStorage.setItem(key, value);
+      document.dispatchEvent(new CustomEvent('avitolog:storage-write', {
+        detail: { key: key, value: value, previousValue: previousValue }
+      }));
+    } catch(e) {}
+  }
+  function writeGoalsShadow(key, value) {
+    try {
+      if (window.__crmShadow && typeof window.__crmShadow.writeLive === 'function') {
+        window.__crmShadow.writeLive(key, value);
+      }
+    } catch(e) {}
+  }
+  function freeGoalsLocalStorageQuota() {
+    try {
+      var keys = [];
+      for (var i = 0; i < localStorage.length; i++) {
+        var k = localStorage.key(i);
+        if (k && k.indexOf('avito_img_') === 0) keys.push(k);
+      }
+      keys.forEach(function(k) { try { localStorage.removeItem(k); } catch(e) {} });
+    } catch(e) {}
+  }
+  function setGoalsStorageValue(key, value) {
+    var previousValue = readGoalsLocalStorageValue(key);
+    var stringValue = String(value == null ? '' : value);
+    _goalsStorageMemoryByKey[key] = stringValue;
+    writeGoalsShadow(key, stringValue);
+    try {
+      localStorage.setItem(key, stringValue);
+      notifyGoalsStorageWrite(key, stringValue, previousValue);
       return true;
     } catch(e) {
-      console.warn('Goals save failed', e);
-      try { showGoalsSmallToast('Ошибка сохранения CRM: ' + (e && e.message ? e.message : String(e))); } catch(eToast) {}
-      return false;
+      if (isGoalsStorageQuotaError(e)) {
+        freeGoalsLocalStorageQuota();
+        try {
+          localStorage.setItem(key, stringValue);
+          notifyGoalsStorageWrite(key, stringValue, previousValue);
+          return true;
+        } catch(e2) {
+          notifyGoalsStorageWrite(key, stringValue, previousValue);
+          console.warn('Goals saved without localStorage because browser quota is full', e2);
+          return true;
+        }
+      }
+      notifyGoalsStorageWrite(key, stringValue, previousValue);
+      console.warn('Goals saved through backend event after localStorage failed', e);
+      return true;
     }
   }
+  document.addEventListener('avitolog:backend-remote-applied', function(event) {
+    try {
+      var keys = (event.detail && event.detail.keys) || [];
+      keys.forEach(function(key) {
+        if (String(key || '').indexOf(goalsStorageKey()) === 0) delete _goalsStorageMemoryByKey[key];
+      });
+    } catch(e) {}
+  });
   function snapshotCurrentMonth(data) {
     try {
       var key = monthStorageKey(getCurrentMonthKey());
@@ -42,7 +105,7 @@
   }
   function loadMonthSnapshot(ym) {
     try {
-      var s = localStorage.getItem(monthStorageKey(ym));
+      var s = readGoalsStorageValue(monthStorageKey(ym));
       if (s) return JSON.parse(s);
     } catch(e) {}
     return null;
@@ -70,6 +133,12 @@
         if (/^\d{4}-\d{2}$/.test(ym)) months[ym] = true;
       }
     }
+    Object.keys(_goalsStorageMemoryByKey).forEach(function(k) {
+      if (k && k.indexOf(prefix) === 0) {
+        var ym = k.substring(prefix.length);
+        if (/^\d{4}-\d{2}$/.test(ym)) months[ym] = true;
+      }
+    });
     var cur = getCurrentMonthKey();
     months[cur] = true;
     var cp = cur.split('-');
@@ -141,7 +210,7 @@
     var currentYM = getCurrentMonthKey();
     var liveData;
     try {
-      var raw = localStorage.getItem(goalsStorageKey());
+      var raw = readGoalsStorageValue(goalsStorageKey());
       liveData = raw ? JSON.parse(raw) : { projects: [] };
     } catch(e) { liveData = { projects: [] }; }
     if (!liveData || typeof liveData !== 'object') liveData = { projects: [] };
@@ -169,10 +238,10 @@
     if (changed) {
       var workingAll = liveData.projects.filter(function(x) { return x && x.stage === 'working'; });
       liveData.workOrderWork = mergeWorkingOrderIds(liveData.workOrderWork || [], workingAll);
-      try { localStorage.setItem(goalsStorageKey(), JSON.stringify(liveData)); } catch(e) {}
+      setGoalsStorageValue(goalsStorageKey(), JSON.stringify(liveData));
       /** Снимок текущего месяца тоже обновляем, чтобы при следующем archive-просмотре
        *  он отражал актуальное состояние «в работе». Снимки прошлых месяцев НЕ трогаем — они история. */
-      try { localStorage.setItem(monthStorageKey(currentYM), JSON.stringify(liveData)); } catch(e) {}
+      setGoalsStorageValue(monthStorageKey(currentYM), JSON.stringify(liveData));
     }
     return changed;
   }
@@ -201,7 +270,7 @@
     if (firstTimeThisMonth) {
       var liveDataBefore;
       try {
-        var raw = localStorage.getItem(goalsStorageKey());
+        var raw = readGoalsStorageValue(goalsStorageKey());
         liveDataBefore = raw ? JSON.parse(raw) : { projects: [] };
       } catch(e) { liveDataBefore = { projects: [] }; }
       if (!liveDataBefore || typeof liveDataBefore !== 'object') liveDataBefore = { projects: [] };
@@ -211,13 +280,13 @@
       /** Снимок прошлого месяца — фиксируем ДО переноса, чтобы апрель сохранил
        *  weekly-проекты в своих неделях как историю. */
       if (prevYM && !loadMonthSnapshot(prevYM)) {
-        try { localStorage.setItem(monthStorageKey(prevYM), JSON.stringify(liveDataBefore)); } catch(e) {}
+        setGoalsStorageValue(monthStorageKey(prevYM), JSON.stringify(liveDataBefore));
       }
 
       /** Сброс «общая сумма КП» — была цифра прошлого месяца. */
       if (liveDataBefore.totalKpFullOverride !== 0) {
         liveDataBefore.totalKpFullOverride = 0;
-        try { localStorage.setItem(goalsStorageKey(), JSON.stringify(liveDataBefore)); } catch(e) {}
+        setGoalsStorageValue(goalsStorageKey(), JSON.stringify(liveDataBefore));
       }
     }
 
@@ -636,7 +705,7 @@
   }
   function loadLiveData() {
     try {
-      var s = localStorage.getItem(goalsStorageKey());
+      var s = readGoalsStorageValue(goalsStorageKey());
       return normalizeLoadedData(s ? JSON.parse(s) : { projects: [] });
     } catch(e) {}
     return normalizeLoadedData({ projects: [] });
@@ -647,7 +716,7 @@
         var snap = loadMonthSnapshot(_goalsViewMonth);
         if (snap) return normalizeLoadedData(snap);
       }
-      var s = localStorage.getItem(goalsStorageKey());
+      var s = readGoalsStorageValue(goalsStorageKey());
       var d = s ? JSON.parse(s) : { projects: [] };
       if (!d.customMetrics) d.customMetrics = [];
       if (!d.pinnedMetrics) d.pinnedMetrics = [];
@@ -1751,7 +1820,7 @@
     if (rpm < 1) { rpm = 12; rpy--; }
     var retroPrevYM = rpy + '-' + String(rpm).padStart(2, '0');
     if (!loadMonthSnapshot(retroPrevYM)) {
-      try { localStorage.setItem(monthStorageKey(retroPrevYM), JSON.stringify(liveData)); } catch(e) {}
+      setGoalsStorageValue(monthStorageKey(retroPrevYM), JSON.stringify(liveData));
     }
     var data;
     if (isArchiveView) {

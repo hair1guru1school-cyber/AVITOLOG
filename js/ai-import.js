@@ -478,14 +478,14 @@
   function assetsSnapshotCurrentMonth() {
     try {
       var ym = assetsCurrentMonthKey();
-      localStorage.setItem(assetsMonthStorageKey(ym), JSON.stringify(getAssetsMy()));
-      localStorage.setItem(assetsSashaMonthStorageKey(ym), JSON.stringify(getAssetsSasha()));
+      setAssetsStorageValue(assetsMonthStorageKey(ym), JSON.stringify(getAssetsMy()));
+      setAssetsStorageValue(assetsSashaMonthStorageKey(ym), JSON.stringify(getAssetsSasha()));
     } catch(e) {}
   }
   function assetsLoadMonthSnapshot(ym) {
     try {
-      var myRaw = localStorage.getItem(assetsMonthStorageKey(ym));
-      var saRaw = localStorage.getItem(assetsSashaMonthStorageKey(ym));
+      var myRaw = readAssetsStorageValue(assetsMonthStorageKey(ym));
+      var saRaw = readAssetsStorageValue(assetsSashaMonthStorageKey(ym));
       return {
         my: myRaw ? JSON.parse(myRaw) : [],
         sasha: saRaw ? JSON.parse(saRaw) : []
@@ -502,14 +502,14 @@
   }
   function assetsSaveMyForVisibleMonth(arr) {
     if (_assetsViewMonth) {
-      try { localStorage.setItem(assetsMonthStorageKey(_assetsViewMonth), JSON.stringify(arr)); } catch(e) {}
+      setAssetsStorageValue(assetsMonthStorageKey(_assetsViewMonth), JSON.stringify(arr));
       return;
     }
     saveAssetsMy(arr);
   }
   function assetsSaveSashaForVisibleMonth(arr) {
     if (_assetsViewMonth) {
-      try { localStorage.setItem(assetsSashaMonthStorageKey(_assetsViewMonth), JSON.stringify(arr)); } catch(e) {}
+      setAssetsStorageValue(assetsSashaMonthStorageKey(_assetsViewMonth), JSON.stringify(arr));
       return;
     }
     saveAssetsSasha(arr);
@@ -852,9 +852,80 @@
 
   var ASSETS_LEGACY_KEY = 'avitolog_assets_projects_v1';
   var ASSETS_USD_RATE = 95;
+  var _assetsStorageMemoryByKey = {};
+  function isAssetsStorageQuotaError(e) {
+    var name = String((e && e.name) || '');
+    var msg = String((e && e.message) || '');
+    return name.indexOf('Quota') >= 0 || msg.indexOf('exceeded the quota') >= 0 || msg.indexOf('quota') >= 0;
+  }
+  function readAssetsStorageValue(key) {
+    if (Object.prototype.hasOwnProperty.call(_assetsStorageMemoryByKey, key)) return _assetsStorageMemoryByKey[key];
+    try { return localStorage.getItem(key); } catch(e) { return null; }
+  }
+  function notifyAssetsStorageWrite(key, value, previousValue) {
+    if (String(value == null ? '' : value) === String(previousValue == null ? '' : previousValue)) return;
+    try {
+      document.dispatchEvent(new CustomEvent('avitolog:storage-write', {
+        detail: { key: key, value: value, previousValue: previousValue }
+      }));
+    } catch(e) {}
+  }
+  function writeAssetsShadow(key, value) {
+    try {
+      if (window.__crmShadow && typeof window.__crmShadow.writeLive === 'function') {
+        window.__crmShadow.writeLive(key, value);
+      }
+    } catch(e) {}
+  }
+  function freeAssetsLocalStorageQuota() {
+    try {
+      var keys = [];
+      for (var i = 0; i < localStorage.length; i++) {
+        var k = localStorage.key(i);
+        if (k && k.indexOf('avito_img_') === 0) keys.push(k);
+      }
+      keys.forEach(function(k) { try { localStorage.removeItem(k); } catch(e) {} });
+    } catch(e) {}
+  }
+  function setAssetsStorageValue(key, value) {
+    var previousValue = null;
+    try { previousValue = localStorage.getItem(key); } catch(eRead) {}
+    var stringValue = String(value == null ? '' : value);
+    _assetsStorageMemoryByKey[key] = stringValue;
+    writeAssetsShadow(key, stringValue);
+    try {
+      localStorage.setItem(key, stringValue);
+      notifyAssetsStorageWrite(key, stringValue, previousValue);
+      return true;
+    } catch(e) {
+      if (isAssetsStorageQuotaError(e)) {
+        freeAssetsLocalStorageQuota();
+        try {
+          localStorage.setItem(key, stringValue);
+          notifyAssetsStorageWrite(key, stringValue, previousValue);
+          return true;
+        } catch(e2) {
+          notifyAssetsStorageWrite(key, stringValue, previousValue);
+          console.warn('Assets saved without localStorage because browser quota is full', e2);
+          return true;
+        }
+      }
+      notifyAssetsStorageWrite(key, stringValue, previousValue);
+      console.warn('Assets saved through backend event after localStorage failed', e);
+      return true;
+    }
+  }
+  document.addEventListener('avitolog:backend-remote-applied', function(event) {
+    try {
+      var keys = (event.detail && event.detail.keys) || [];
+      keys.forEach(function(key) {
+        if (/^avitolog_assets_/.test(String(key || ''))) delete _assetsStorageMemoryByKey[key];
+      });
+    } catch(e) {}
+  });
   function readAssetsArrayByKey(key) {
     try {
-      var raw = localStorage.getItem(key);
+      var raw = readAssetsStorageValue(key);
       if (raw === null || raw === undefined) return null;
       var arr = JSON.parse(raw);
       return Array.isArray(arr) ? arr : null;
@@ -871,7 +942,7 @@
       return false;
     });
     if (picked !== null) {
-      try { localStorage.setItem(targetKey, JSON.stringify(picked)); } catch (e2) {}
+      setAssetsStorageValue(targetKey, JSON.stringify(picked));
       return picked;
     }
     return null;
@@ -1132,8 +1203,9 @@
   }
 
   function saveAssetsMy(arr) {
-    try { localStorage.setItem(ASSETS_MY_KEY, JSON.stringify(arr)); } catch (e) {}
-    try { localStorage.setItem(assetsMonthStorageKey(assetsCurrentMonthKey()), JSON.stringify(arr)); } catch(e) {}
+    var value = JSON.stringify(Array.isArray(arr) ? arr : []);
+    setAssetsStorageValue(ASSETS_MY_KEY, value);
+    setAssetsStorageValue(assetsMonthStorageKey(assetsCurrentMonthKey()), value);
   }
 
   /** У Саши «Получено за все» = только «Оплатил» — туда синком пишется доля («Агенту»), без полной суммы сделки. */
@@ -1159,8 +1231,9 @@
   }
 
   function saveAssetsSasha(arr) {
-    try { localStorage.setItem(ASSETS_SASHA_KEY, JSON.stringify(arr)); } catch (e) {}
-    try { localStorage.setItem(assetsSashaMonthStorageKey(assetsCurrentMonthKey()), JSON.stringify(arr)); } catch(e) {}
+    var value = JSON.stringify(Array.isArray(arr) ? arr : []);
+    setAssetsStorageValue(ASSETS_SASHA_KEY, value);
+    setAssetsStorageValue(assetsSashaMonthStorageKey(assetsCurrentMonthKey()), value);
   }
 
   /** «Мои клиенты» в профиле Саша (AVITOLOG_KEY_SUFFIX === '_sasha'), отдельно от данных Фила. */
