@@ -126,6 +126,10 @@
     .cover-card-title{font-weight:900;font-size:18px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
     .cover-arrow{height:64px;border-radius:12px;background:#172438;color:#dcecff;border:1px solid rgba(93,229,255,.25);font-size:24px;font-weight:900}
     #pkgItems{min-height:220px;overflow:hidden;resize:none}
+    .pkg-limit-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:end}
+    .pkg-unlimited-check{height:42px;display:flex;align-items:center;gap:7px;padding:0 10px;border:1px solid rgba(124,245,255,.22);border-radius:8px;background:#081b2d;color:#d9f8ff;font-size:12px;font-weight:800;white-space:nowrap}
+    .pkg-unlimited-check input{width:16px;height:16px;margin:0}
+    .pkg-limit-row.is-unlimited #pkgLimit{opacity:.55}
     @media(max-width:1500px){.niche-panel{position:fixed;top:78px;max-height:calc(100vh - 100px)}.niche-panel.left{left:18px;right:auto}.niche-panel.right{right:18px;left:auto}}
     @media(max-width:1100px){.archive-grid{grid-template-columns:repeat(3,minmax(150px,1fr))}}
     @media(max-width:1320px){.layout{min-width:1010px}.stage-wrap{height:calc(100vh - 126px)}}
@@ -252,9 +256,14 @@
               <input id="pkgName">
             </label>
           </div>
-          <label>Количество объявлений
-            <input id="pkgLimit" type="number" min="1" step="1" inputmode="numeric" placeholder="250">
-          </label>
+          <div class="pkg-limit-row" id="pkgLimitRow">
+            <label>Количество объявлений
+              <input id="pkgLimit" type="number" min="1" step="1" inputmode="numeric" placeholder="250">
+            </label>
+            <label class="pkg-unlimited-check" title="Для Альфы: без ограничения по количеству объявлений">
+              <input id="pkgUnlimited" type="checkbox"> ∞ без ограничений
+            </label>
+          </div>
           <div class="grid2">
             <label>Работа авитолога
               <input id="pkgWork">
@@ -526,6 +535,7 @@
       return match ? match[0] : "";
     }
     function packageLimitLabel(pkg){
+      if (isPackageUnlimited(pkg)) return "Без ограничений кол-во объявлений";
       const quantity = packageQuantity(pkg);
       return quantity ? `${quantity} объявлений` : (pkg.limit || "Объявления");
     }
@@ -534,8 +544,12 @@
       if (!digits) return String(value || "").trim();
       return `${digits.replace(/\B(?=(\d{3})+(?!\d))/g, " ")} ₽`;
     }
+    function isPackageUnlimited(pkg){
+      return !!(pkg && (pkg.unlimited || /без\s+огранич/i.test(String(pkg.limit || ""))));
+    }
     function syncPackageDerivedLines(pkg){
-      pkg.quantity = packageQuantity(pkg);
+      pkg.unlimited = isPackageUnlimited(pkg);
+      pkg.quantity = pkg.unlimited ? "" : packageQuantity(pkg);
       const work = formatMoney(pkg.work);
       const quantity = pkg.quantity;
       let hasWorkLine = false;
@@ -552,7 +566,9 @@
       if (work && !hasWorkLine) pkg.items.unshift(`${work} = работа Авитолога (оплачивается сразу)`);
     }
     function normalizePackage(pkg){
-      pkg.quantity = packageQuantity(pkg);
+      pkg.unlimited = isPackageUnlimited(pkg);
+      pkg.quantity = pkg.unlimited ? "" : packageQuantity(pkg);
+      if (pkg.unlimited) pkg.limit = "Без ограничений кол-во объявлений";
       syncPackageDerivedLines(pkg);
       return pkg;
     }
@@ -789,7 +805,11 @@
       $("pkgOn").checked = !!pkg.on;
       $("pkgIcon").value = pkg.icon || "";
       $("pkgName").value = pkg.name || "";
-      $("pkgLimit").value = packageQuantity(pkg);
+      const unlimited = isPackageUnlimited(pkg);
+      $("pkgLimit").value = unlimited ? "" : packageQuantity(pkg);
+      $("pkgLimit").disabled = unlimited;
+      $("pkgUnlimited").checked = unlimited;
+      $("pkgLimitRow").classList.toggle("is-unlimited", unlimited);
       $("pkgWork").value = pkg.work || "";
       $("pkgColor").value = normalizeColor(pkg.color || "#24308f");
       $("pkgItems").value = (pkg.items || []).join("\n");
@@ -852,8 +872,11 @@
       pkg.on = $("pkgOn").checked;
       pkg.icon = $("pkgIcon").value;
       pkg.name = $("pkgName").value;
-      pkg.quantity = $("pkgLimit").value.replace(/\D/g, "");
-      if (pkg.quantity) pkg.limit = `${pkg.quantity} объявлений`;
+      pkg.unlimited = $("pkgUnlimited").checked;
+      pkg.quantity = pkg.unlimited ? "" : $("pkgLimit").value.replace(/\D/g, "");
+      if (pkg.unlimited) pkg.limit = "Без ограничений кол-во объявлений";
+      else if (pkg.quantity) pkg.limit = `${pkg.quantity} объявлений`;
+      else pkg.limit = "";
       pkg.work = $("pkgWork").value;
       pkg.color = $("pkgColor").value;
       pkg.items = $("pkgItems").value.split("\n").map((line) => line.trim()).filter(Boolean);
@@ -1698,13 +1721,17 @@
       }, { passive: false });
     }
 
-    ["pkgOn","pkgIcon","pkgName","pkgLimit","pkgWork","pkgColor","pkgItems"].forEach((id) => {
+    ["pkgOn","pkgIcon","pkgName","pkgLimit","pkgUnlimited","pkgWork","pkgColor","pkgItems"].forEach((id) => {
       $(id).addEventListener("input", () => {
         markPackageFormDirty();
         if (id === "pkgItems") resizePackageItemsField();
       });
       $(id).addEventListener("change", () => {
         markPackageFormDirty();
+        if (id === "pkgUnlimited") {
+          $("pkgLimit").disabled = $("pkgUnlimited").checked;
+          $("pkgLimitRow").classList.toggle("is-unlimited", $("pkgUnlimited").checked);
+        }
       });
       $(id).addEventListener("blur", () => {
         const wasDirty = packageFormDirty;

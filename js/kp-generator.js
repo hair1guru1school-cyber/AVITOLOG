@@ -667,23 +667,74 @@
 
   var KP_SAVED_CLIENT_PACKAGES_STORE = 'avito_kp_saved_client_packages_v1';
   var KP_EDITOR_PRESETS_STORE = 'avitolog_kp_package_presets_v1';
+  var _savedKpPackagesMemory = null;
+
+  function isKpStorageQuotaError(e) {
+    var name = String((e && e.name) || '');
+    var msg = String((e && e.message) || '');
+    return name.indexOf('Quota') >= 0 || msg.indexOf('exceeded the quota') >= 0 || msg.indexOf('quota') >= 0;
+  }
+
+  function freeKpLocalStorageQuota() {
+    try {
+      var keys = [];
+      for (var i = 0; i < localStorage.length; i++) {
+        var key = localStorage.key(i);
+        if (key && key.indexOf('avito_img_') === 0) keys.push(key);
+      }
+      keys.forEach(function(key) {
+        try { localStorage.removeItem(key); } catch(e) {}
+      });
+    } catch(e) {}
+  }
+
+  function readSavedKpPackageMap() {
+    try {
+      var parsed = JSON.parse(localStorage.getItem(KP_SAVED_CLIENT_PACKAGES_STORE) || '{}');
+      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+        _savedKpPackagesMemory = parsed;
+        return parsed;
+      }
+    } catch (e) {}
+    if (_savedKpPackagesMemory && typeof _savedKpPackagesMemory === 'object') return _savedKpPackagesMemory;
+    _savedKpPackagesMemory = {};
+    return _savedKpPackagesMemory;
+  }
 
   function writeKpStateKey(key, value, previousValue) {
+    var stored = false;
     try {
       localStorage.setItem(key, value);
+      stored = true;
+    } catch (e) {
+      if (isKpStorageQuotaError(e)) {
+        freeKpLocalStorageQuota();
+        try {
+          localStorage.setItem(key, value);
+          stored = true;
+        } catch (e2) {
+          if (!isKpStorageQuotaError(e2)) console.warn('KP state localStorage write failed', e2);
+        }
+      } else {
+        console.warn('KP state localStorage write failed', e);
+      }
+    }
+    try {
       document.dispatchEvent(new CustomEvent('avitolog:storage-write', {
         detail: { key: key, value: value, previousValue: previousValue || '' }
       }));
-    } catch (e) {}
+    } catch (e3) {}
+    return stored;
   }
 
   function rememberSavedKpPackageData(folderId, record) {
     try {
-      var all = JSON.parse(localStorage.getItem(KP_SAVED_CLIENT_PACKAGES_STORE) || '{}');
+      var all = readSavedKpPackageMap();
       if (!all || typeof all !== 'object' || Array.isArray(all)) all = {};
       var list = Array.isArray(all[folderId]) ? all[folderId] : [];
       list.unshift(record);
       all[folderId] = list.slice(0, 20);
+      _savedKpPackagesMemory = all;
       writeKpStateKey(KP_SAVED_CLIENT_PACKAGES_STORE, JSON.stringify(all), localStorage.getItem(KP_SAVED_CLIENT_PACKAGES_STORE) || '');
     } catch (e) {}
   }
@@ -741,8 +792,9 @@
 
   window.__getSavedKpPackagesForClient = function (folderId) {
     try {
-      var all = JSON.parse(localStorage.getItem(KP_SAVED_CLIENT_PACKAGES_STORE) || '{}');
-      return Array.isArray(all && all[folderId]) ? all[folderId].slice() : [];
+      var all = readSavedKpPackageMap();
+      var key = String(folderId || '');
+      return Array.isArray(all && all[key]) ? all[key].slice() : [];
     } catch (e) {
       return [];
     }
@@ -817,7 +869,7 @@
     return (
       '<div class="kp-gen-section kp-editor-embed-section">' +
       '<div class="kp-gen-label">Расчет КП</div>' +
-      '<iframe class="kp-editor-embed" src="kp-editor.html?embedded=1&amp;v=20260726-kp-inline-archive-5" title="Редактор КП"></iframe>' +
+      '<iframe class="kp-editor-embed" src="kp-editor.html?embedded=1&amp;v=20260822-kp-contract-package-1" title="Редактор КП"></iframe>' +
       '</div>'
     );
   }

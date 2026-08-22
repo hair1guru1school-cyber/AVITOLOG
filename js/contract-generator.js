@@ -1438,8 +1438,10 @@
     var savedKpRecords = [];
     function activeClientFolderId() {
       try {
-        var ac = typeof getActiveClient === 'function' ? getActiveClient() : null;
-        return ac && ac.folderId ? String(ac.folderId) : '';
+        var ac = null;
+        if (typeof getActiveClient === 'function') ac = getActiveClient();
+        if ((!ac || !(ac.folderId || ac.drive_folder_id)) && typeof window._activeClient !== 'undefined') ac = window._activeClient;
+        return ac && (ac.folderId || ac.drive_folder_id) ? String(ac.folderId || ac.drive_folder_id) : '';
       } catch (e) {
         return '';
       }
