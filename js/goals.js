@@ -24,10 +24,20 @@
   function monthStorageKey(ym) {
     return goalsStorageKey() + '_month_' + ym;
   }
+  function setGoalsStorageValue(key, value) {
+    try {
+      localStorage.setItem(key, value);
+      return true;
+    } catch(e) {
+      console.warn('Goals save failed', e);
+      try { showGoalsSmallToast('Ошибка сохранения CRM: ' + (e && e.message ? e.message : String(e))); } catch(eToast) {}
+      return false;
+    }
+  }
   function snapshotCurrentMonth(data) {
     try {
       var key = monthStorageKey(getCurrentMonthKey());
-      localStorage.setItem(key, JSON.stringify(data));
+      setGoalsStorageValue(key, JSON.stringify(data));
     } catch(e) {}
   }
   function loadMonthSnapshot(ym) {
@@ -651,13 +661,18 @@
 
   function saveData(data) {
     try {
+      var raw = JSON.stringify(data);
       if (_goalsViewMonth) {
-        localStorage.setItem(monthStorageKey(_goalsViewMonth), JSON.stringify(data));
-        return;
+        return setGoalsStorageValue(monthStorageKey(_goalsViewMonth), raw);
       }
-      localStorage.setItem(goalsStorageKey(), JSON.stringify(data));
+      if (!setGoalsStorageValue(goalsStorageKey(), raw)) return false;
       snapshotCurrentMonth(data);
-    } catch (e) { console.warn('Goals save failed', e); }
+      return true;
+    } catch (e) {
+      console.warn('Goals save failed', e);
+      try { showGoalsSmallToast('Ошибка сохранения CRM: ' + (e && e.message ? e.message : String(e))); } catch(eToast) {}
+      return false;
+    }
   }
 
   function esc(s) {
@@ -2507,6 +2522,10 @@
     if (!p) return;
     if (!p.status) p.status = [];
     var sid = normalizeStatusId(statusId);
+    if (sid === 'paid' && p.stage !== 'sold') {
+      commitGoalSold(projectId, getGoalInlineAmount(projectId), getDefaultSaleDateISO());
+      return;
+    }
     var has = (p.status || []).some(function(id) { return normalizeStatusId(id) === sid; });
     if (!has) p.status.push(sid);
     var statusDates = getStatusDateMap(p);
@@ -2646,6 +2665,9 @@
     var dates = getStatusDateMap(p);
     dates.paid = saleDate || dates.paid || getTodayISO();
   }
+  function statusListHasPaid(list) {
+    return (Array.isArray(list) ? list : []).some(function(id) { return normalizeStatusId(id) === 'paid'; });
+  }
 
   function commitGoalSold(projectId, saleAmount, saleDate) {
     var data = loadData();
@@ -2665,7 +2687,7 @@
       data.workOrderWork = (data.workOrderWork || []).filter(function(id) { return id !== cur.id; });
       var workingAll = data.projects.filter(function(x) { return x && x.stage === 'working'; });
       data.workOrderWork = mergeWorkingOrderIds(data.workOrderWork || [], workingAll);
-      saveData(data);
+      if (!saveData(data)) return false;
       try { checkMonthlyTotalAchievements(loadData(), cur.date, cur.name || cur.title || ''); } catch (eAch) {}
       syncGoalToKassaIfReady(cur);
       try {
@@ -2682,7 +2704,7 @@
       existingSold.date = saleDate;
       existingSold.weekIndex = getWeekIndex(parseInt(String(saleDate).split('-')[2], 10) || 1);
       markGoalAsPaid(existingSold, saleDate);
-      saveData(data);
+      if (!saveData(data)) return false;
       syncGoalToKassaIfReady(existingSold);
       render();
       return true;
@@ -2713,7 +2735,7 @@
       }
     }
     data.projects.push(copy);
-    saveData(data);
+    if (!saveData(data)) return false;
     try { checkMonthlyTotalAchievements(loadData(), copy.date || getTodayISO(), copy.name || copy.title || ''); } catch (eAch2) {}
     syncGoalToKassaIfReady(copy);
     render();
@@ -2721,7 +2743,9 @@
   }
 
   function quickSetSold(projectId) {
-    commitGoalSold(projectId, getGoalInlineAmount(projectId), getDefaultSaleDateISO());
+    if (!commitGoalSold(projectId, getGoalInlineAmount(projectId), getDefaultSaleDateISO())) {
+      showGoalsSmallToast('Не удалось перевести в ПРОДАНО');
+    }
   }
 
   function setStage(projectId, stage, options) {
@@ -3414,10 +3438,17 @@
         note: (document.getElementById('goalInpNote') || {}).value || '',
         stage: modalStage
       };
+      if (statusListHasPaid(status)) {
+        project.stage = 'sold';
+        project.saleAmount = mainPrice || '';
+        project.status = ['paid'];
+        project.statusDates = { paid: dateVal || getTodayISO() };
+      }
       var data = loadData();
       data.projects = data.projects || [];
       data.projects.unshift(project);
-      saveData(data);
+      if (!saveData(data)) return;
+      if (project.stage === 'sold') syncGoalToKassaIfReady(project);
       modal.remove();
       render();
     };
