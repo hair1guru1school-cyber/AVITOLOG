@@ -756,7 +756,13 @@
       all[folderId] = list.slice(0, 20);
       all = compactSavedKpRecordMap(all);
       _savedKpPackagesMemory = all;
+      window.__lastSavedKpPackageRecord = record;
       writeKpStateKey(KP_SAVED_CLIENT_PACKAGES_STORE, JSON.stringify(all), localStorage.getItem(KP_SAVED_CLIENT_PACKAGES_STORE) || '');
+      if (typeof window.__contractReloadSavedKpPackages === 'function') {
+        setTimeout(function () {
+          try { window.__contractReloadSavedKpPackages(); } catch (eReload) {}
+        }, 0);
+      }
     } catch (e) {}
   }
 
@@ -818,6 +824,19 @@
       var all = readSavedKpPackageMap();
       var key = String(folderId || '');
       return Array.isArray(all && all[key]) ? all[key].slice() : [];
+    } catch (e) {
+      return [];
+    }
+  };
+
+  window.__getAllSavedKpPackageRecords = function () {
+    try {
+      var all = readSavedKpPackageMap();
+      var out = [];
+      Object.keys(all || {}).forEach(function (key) {
+        if (Array.isArray(all[key])) out = out.concat(all[key]);
+      });
+      return out;
     } catch (e) {
       return [];
     }

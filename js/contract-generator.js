@@ -1465,19 +1465,33 @@
       return String(value || '').toLowerCase().replace(/[^0-9a-zа-яё]+/gi, ' ').replace(/\s+/g, ' ').trim();
     }
     function readSavedKpPackageMapFallback() {
-      try {
-        var key = 'avito_kp_saved_client_packages_v1';
-        var raw = localStorage.getItem(key) || '';
-        if (!raw && window.AVITOLOG_BACKEND_STORAGE_TARGET) {
-          var prefix = typeof window.AVITOLOG_BACKEND_STORAGE_PREFIX === 'string' ? window.AVITOLOG_BACKEND_STORAGE_PREFIX : '';
-          raw = window.AVITOLOG_BACKEND_STORAGE_TARGET.getItem(prefix + key) || '';
+      var key = 'avito_kp_saved_client_packages_v1';
+      var merged = {};
+      function readRaw(raw) {
+        try {
+          var parsed = JSON.parse(raw || '{}');
+          return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {};
+        } catch (e) {
+          return {};
         }
-        raw = raw || '{}';
-        var parsed = JSON.parse(raw);
-        return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {};
-      } catch (e) {
-        return {};
       }
+      function mergeMap(map) {
+        Object.keys(map || {}).forEach(function(id) {
+          if (!Array.isArray(map[id])) return;
+          merged[id] = dedupeSavedKpRecords((merged[id] || []).concat(map[id]));
+        });
+      }
+      try { mergeMap(readRaw(localStorage.getItem(key) || '')); } catch (e1) {}
+      try {
+        var target = window.AVITOLOG_BACKEND_STORAGE_TARGET;
+        var prefix = typeof window.AVITOLOG_BACKEND_STORAGE_PREFIX === 'string' ? window.AVITOLOG_BACKEND_STORAGE_PREFIX : '';
+        if (target) mergeMap(readRaw(target.getItem(prefix + key) || ''));
+      } catch (e2) {}
+      try {
+        var prefix2 = typeof window.AVITOLOG_BACKEND_STORAGE_PREFIX === 'string' ? window.AVITOLOG_BACKEND_STORAGE_PREFIX : '';
+        if (prefix2) mergeMap(readRaw(localStorage.getItem(prefix2 + key) || ''));
+      } catch (e3) {}
+      return merged;
     }
     function dedupeSavedKpRecords(records) {
       var seen = {};
@@ -1538,26 +1552,31 @@
       }
     }
     function renderSavedKpPackageOptions() {
+      var previousValue = kpPackageSelect.value;
       var options = ['<option value="">Не выбран</option>'];
       savedKpRecords.forEach(function(record, recordIndex) {
         (record.packages || []).forEach(function(pkg, packageIndex) {
-          var label = (pkg.name || ('Пакет ' + (packageIndex + 1))) + ' · ' + (pkg.limit || '') + ' · ' + (pkg.work || '');
+          var label = (pkg.name || ('Пакет ' + (packageIndex + 1))) + ' · ' + (pkg.limit || pkg.quantity || '') + ' · ' + (pkg.work || pkg.price || '');
           options.push('<option value="' + recordIndex + ':' + packageIndex + '">' + escHtml(label) + '</option>');
         });
       });
       kpPackageSelect.innerHTML = options.join('');
+      if (previousValue && Array.prototype.some.call(kpPackageSelect.options, function(opt) { return opt.value === previousValue; })) {
+        kpPackageSelect.value = previousValue;
+      }
     }
     function packagePrice(pkg) {
-      var values = String((pkg && pkg.work) || '').match(/\d[\d\s]*/g) || [];
+      var values = String((pkg && (pkg.work || pkg.price || pkg.priceRub || pkg.priceLine)) || '').match(/\d[\d\s]*/g) || [];
       return values.length ? normalizeMoneyValue(values[0]) : 0;
     }
     function packageLimit(pkg) {
-      var m = String((pkg && pkg.limit) || '').match(/\d[\d\s]*/);
+      if (pkg && (pkg.unlimited || /без\s+огранич/i.test(String(pkg.limit || '')))) return 0;
+      var m = String((pkg && (pkg.limit || pkg.quantity || pkg.adsCount)) || '').match(/\d[\d\s]*/);
       return m ? normalizeMoneyValue(m[0]) : 0;
     }
     function applySavedKpPackage(pkg) {
       if (!pkg) return;
-      var items = Array.isArray(pkg.items) ? pkg.items : [];
+      var items = Array.isArray(pkg.items) ? pkg.items : String(pkg.items || pkg.lines || pkg.text || '').split('\n').filter(Boolean);
       var packageNameEl = document.getElementById('contract-packageName');
       if (packageNameEl) packageNameEl.value = pkg.name || '';
       var joined = items.join('\n').toLowerCase();
@@ -1614,6 +1633,24 @@
             });
           });
           savedKpRecords = dedupeSavedKpRecords(savedKpRecords);
+        }
+        if (!savedKpRecords.length && typeof window.__getAllSavedKpPackageRecords === 'function') {
+          var activeNames = activeClient ? [activeClient.company, activeClient.name, activeClient.contact_name]
+            .map(normalizedClientName).filter(Boolean) : [];
+          savedKpRecords = dedupeSavedKpRecords(window.__getAllSavedKpPackageRecords().filter(function(record) {
+            var recFolder = folderIdFromAny(record && (record.folderId || record.folderLink || record.imageFileLink));
+            if (folderId && recFolder === folderId) return true;
+            return activeNames.indexOf(normalizedClientName(record && record.clientName)) !== -1;
+          }));
+        }
+        if (!savedKpRecords.length && window.__lastSavedKpPackageRecord) {
+          var last = window.__lastSavedKpPackageRecord;
+          var lastFolder = folderIdFromAny(last && (last.folderId || last.folderLink || last.imageFileLink));
+          var activeNames2 = activeClient ? [activeClient.company, activeClient.name, activeClient.contact_name]
+            .map(normalizedClientName).filter(Boolean) : [];
+          if ((folderId && lastFolder === folderId) || activeNames2.indexOf(normalizedClientName(last && last.clientName)) !== -1) {
+            savedKpRecords = [last];
+          }
         }
       }
       renderSavedKpPackageOptions();
