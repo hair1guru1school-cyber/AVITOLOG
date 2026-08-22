@@ -1106,7 +1106,7 @@
         : '<button type="button" class="goal-move-btn" onclick="event.stopPropagation();window.__goalsSetStage&&window.__goalsSetStage(\'' + esc(p.id) + '\',\'archive\')" title="В архив CRM (строка на неделе останется с 💀)">🗂</button>';
       var actionsBtns = '<span class="goal-actions goal-actions-inline">' +
         '<button type="button" class="goal-more-btn" onclick="event.stopPropagation();window.__goalsSelectRow&&window.__goalsSelectRow(\'' + esc(p.id) + '\')" title="Полное редактирование">⋯</button>' +
-        '<button type="button" class="goal-move-btn" data-goal-action="sold" data-id="' + esc(p.id) + '" onclick="event.preventDefault();event.stopPropagation();window.__goalsSetStage&&window.__goalsSetStage(\'' + esc(p.id) + '\',\'sold\')" title="В Продано">✓</button>' +
+        '<button type="button" class="goal-move-btn" data-goal-action="sold" data-id="' + esc(p.id) + '" onclick="event.preventDefault();event.stopPropagation();window.__goalsQuickSetSold&&window.__goalsQuickSetSold(\'' + esc(p.id) + '\')" title="В Продано">✓</button>' +
         '<button type="button" class="goal-move-btn" onclick="event.stopPropagation();window.__goalsSetStage&&window.__goalsSetStage(\'' + esc(p.id) + '\',\'working\')" title="В работу (копия; строка на неделе остаётся)">🔥</button>' +
         archToCrmBtn +
         '<button type="button" class="goal-del-btn" onclick="event.stopPropagation();window.__goalsDelete&&window.__goalsDelete(\'' + esc(p.id) + '\',' + weekNum + ')" title="Удалить из недели">×</button>' +
@@ -1246,7 +1246,7 @@
       var toActiveBtn = (blockType === 'sold') ? '<button type="button" class="goal-to-work-btn goal-to-active-btn" onclick="event.stopPropagation();window.__goalsCreateActiveFromSold&&window.__goalsCreateActiveFromSold(\'' + esc(p.id) + '\')" title="Создать активный проект в ПРОЕКТАХ">🅰️</button>' : '';
       var workEditBtn = (blockType === 'work') ? '<button type="button" class="goal-more-btn" onclick="event.stopPropagation();window.__goalsSelectRow&&window.__goalsSelectRow(\'' + esc(p.id) + '\')" title="Редактировать">⋯</button>' : '';
       var workToWeekBtn = (blockType === 'work') ? '<button type="button" class="goal-move-btn goal-to-week-btn" onclick="event.stopPropagation();window.__goalsShowSendToWeek&&window.__goalsShowSendToWeek(\'' + esc(p.id) + '\',this)" title="Отправить в неделю">📅</button>' : '';
-      var workToSoldBtn = (blockType === 'work') ? '<button type="button" class="goal-move-btn" data-goal-action="sold" data-id="' + esc(p.id) + '" onclick="event.preventDefault();event.stopPropagation();window.__goalsSetStage&&window.__goalsSetStage(\'' + esc(p.id) + '\',\'sold\')" title="В продано">✓</button>' : '';
+      var workToSoldBtn = (blockType === 'work') ? '<button type="button" class="goal-move-btn" data-goal-action="sold" data-id="' + esc(p.id) + '" onclick="event.preventDefault();event.stopPropagation();window.__goalsQuickSetSold&&window.__goalsQuickSetSold(\'' + esc(p.id) + '\')" title="В продано">✓</button>' : '';
       var workToArchiveBtn = (blockType === 'work') ? '<button type="button" class="goal-move-btn" onclick="event.stopPropagation();window.__goalsSetStage&&window.__goalsSetStage(\'' + esc(p.id) + '\',\'archive\')" title="В архив">🗂</button>' : '';
       var delBtn = (blockType === 'sold' || blockType === 'work') ? '<button type="button" class="goal-del-btn" onclick="event.stopPropagation();window.__goalsDeletePermanent&&window.__goalsDeletePermanent(\'' + esc(p.id) + '\')" title="Удалить">×</button>' : '';
       var dispName = String(p.name || '').replace(/\s+/g, ' ').trim();
@@ -2121,7 +2121,7 @@
             e.stopPropagation();
           }
           var id = btn.getAttribute('data-id') || '';
-          if (id) setStage(id, 'sold');
+          if (id) quickSetSold(id);
         };
       });
       var smartInp = main.querySelector('#goalsSmartInput');
@@ -2261,6 +2261,7 @@
       openModal(btn, null, stage);
     };
     window.__goalsSetStage = setStage;
+    window.__goalsQuickSetSold = quickSetSold;
     window.__goalsShowSendToWeek = showSendToWeekPopup;
     window.__goalsSendWorkingToWeek = sendWorkingToWeek;
     window.__goalsRemoveTag = removeTag;
@@ -2609,76 +2610,132 @@
     return s !== 'sold' && s !== 'working' && s !== 'archive';
   }
 
-  function setStage(projectId, stage) {
+  function getGoalInlineAmount(projectId) {
+    try {
+      var id = String(projectId || '').replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+      var inp = document.querySelector('.goal-sum-inline[data-id="' + id + '"]');
+      return inp ? String(inp.value || '').trim() : '';
+    } catch (e) {
+      return '';
+    }
+  }
+
+  function normalizeGoalSaleAmount(p, fallback) {
+    var candidates = [
+      fallback,
+      p && p.saleAmount,
+      p && p.mainPrice,
+      p && p.priceOptions && p.priceOptions[0],
+      getMinPrice(p || {})
+    ];
+    for (var i = 0; i < candidates.length; i++) {
+      var s = String(candidates[i] || '').trim();
+      if (!s || s === '—') continue;
+      var clean = s.replace(/\s/g, '').replace(/[^\d.]/g, '');
+      if (clean && /\d/.test(clean)) return clean;
+    }
+    return '';
+  }
+
+  function markGoalAsPaid(p, saleDate) {
+    if (!p) return;
+    var status = Array.isArray(p.status) ? p.status.slice() : [];
+    var hasPaid = status.some(function(id) { return normalizeStatusId(id) === 'paid'; });
+    if (!hasPaid) status.push('paid');
+    p.status = status;
+    var dates = getStatusDateMap(p);
+    dates.paid = saleDate || dates.paid || getTodayISO();
+  }
+
+  function commitGoalSold(projectId, saleAmount, saleDate) {
+    var data = loadData();
+    data.projects = data.projects || [];
+    var cur = data.projects.find(function(x) { return x && x.id === projectId; });
+    if (!cur) return false;
+    saleDate = saleDate || getDefaultSaleDateISO();
+    var finalAmount = normalizeGoalSaleAmount(cur, saleAmount);
+    if (cur.stage === 'working') {
+      cur.stage = 'sold';
+      cur.saleAmount = finalAmount;
+      cur.date = saleDate;
+      cur.weekIndex = getWeekIndex(parseInt(String(saleDate).split('-')[2], 10) || 1);
+      if (cur.workCopyOfWeekId) cur.soldFromId = cur.workCopyOfWeekId;
+      delete cur.workCopyOfWeekId;
+      markGoalAsPaid(cur, saleDate);
+      data.workOrderWork = (data.workOrderWork || []).filter(function(id) { return id !== cur.id; });
+      var workingAll = data.projects.filter(function(x) { return x && x.stage === 'working'; });
+      data.workOrderWork = mergeWorkingOrderIds(data.workOrderWork || [], workingAll);
+      saveData(data);
+      try { checkMonthlyTotalAchievements(loadData(), cur.date, cur.name || cur.title || ''); } catch (eAch) {}
+      syncGoalToKassaIfReady(cur);
+      try {
+        if (typeof window.__goalsCreateActiveFromSold === 'function') window.__goalsCreateActiveFromSold(cur.id);
+      } catch (eAct) {}
+      render();
+      return true;
+    }
+    var existingSold = data.projects.find(function(x) {
+      return x && x.stage === 'sold' && String(x.soldFromId || '') === String(projectId);
+    });
+    if (existingSold) {
+      existingSold.saleAmount = finalAmount || existingSold.saleAmount || '';
+      existingSold.date = saleDate;
+      existingSold.weekIndex = getWeekIndex(parseInt(String(saleDate).split('-')[2], 10) || 1);
+      markGoalAsPaid(existingSold, saleDate);
+      saveData(data);
+      syncGoalToKassaIfReady(existingSold);
+      render();
+      return true;
+    }
+    var copy;
+    try {
+      copy = JSON.parse(JSON.stringify(cur));
+    } catch (eCopy) {
+      copy = {};
+      for (var kCopy in cur) if (Object.prototype.hasOwnProperty.call(cur, kCopy)) copy[kCopy] = cur[kCopy];
+    }
+    copy.id = generateId();
+    copy.stage = 'sold';
+    copy.saleAmount = finalAmount;
+    copy.date = saleDate;
+    copy.weekIndex = getWeekIndex(parseInt(String(saleDate).split('-')[2], 10) || 1);
+    copy.soldFromId = projectId;
+    delete copy.crmArchived;
+    delete copy.emojiBeforeArchive;
+    delete copy.archiveCopyOfWeekId;
+    markGoalAsPaid(copy, saleDate);
+    if (cur.crmArchived) {
+      data.projects = data.projects.filter(function(x) { return x.archiveCopyOfWeekId !== projectId; });
+      cur.crmArchived = false;
+      if (cur.emojiBeforeArchive) {
+        cur.emoji = cur.emojiBeforeArchive;
+        delete cur.emojiBeforeArchive;
+      }
+    }
+    data.projects.push(copy);
+    saveData(data);
+    try { checkMonthlyTotalAchievements(loadData(), copy.date || getTodayISO(), copy.name || copy.title || ''); } catch (eAch2) {}
+    syncGoalToKassaIfReady(copy);
+    render();
+    return true;
+  }
+
+  function quickSetSold(projectId) {
+    commitGoalSold(projectId, getGoalInlineAmount(projectId), getDefaultSaleDateISO());
+  }
+
+  function setStage(projectId, stage, options) {
+    options = options || {};
     var data = loadData();
     var p = (data.projects || []).find(function(x) { return x.id === projectId; });
     if (!p) return;
     if (stage === 'sold') {
+      if (options.quick) {
+        commitGoalSold(projectId, options.saleAmount || getGoalInlineAmount(projectId), options.saleDate || getDefaultSaleDateISO());
+        return;
+      }
       showSaleAmountPicker(projectId, p, function(saleAmount, saleDate) {
-        var data = loadData();
-        var cur = (data.projects || []).find(function(x) { return x.id === projectId; });
-        if (!cur) return;
-        saleDate = saleDate || getDefaultSaleDateISO();
-        /** Из «В работе»: та же строка становится «Продано», дубликата в работе нет; касса + активный проект — как 🅰️ */
-        if (cur.stage === 'working') {
-          cur.stage = 'sold';
-          cur.saleAmount = saleAmount || '';
-          cur.date = saleDate;
-          if (cur.workCopyOfWeekId) cur.soldFromId = cur.workCopyOfWeekId;
-          delete cur.workCopyOfWeekId;
-          data.workOrderWork = (data.workOrderWork || []).filter(function(id) { return id !== cur.id; });
-          var workingAll = (data.projects || []).filter(function(x) { return x && x.stage === 'working'; });
-          data.workOrderWork = mergeWorkingOrderIds(data.workOrderWork || [], workingAll);
-          saveData(data);
-          try {
-            checkMonthlyTotalAchievements(loadData(), cur.date, cur.name || cur.title || '');
-          } catch (eAch) {}
-          syncGoalToKassaIfReady(cur);
-          try {
-            if (typeof window.__goalsCreateActiveFromSold === 'function') window.__goalsCreateActiveFromSold(cur.id);
-          } catch (eAct) {}
-          render();
-          return;
-        }
-        var src = cur;
-        var existingSold = (data.projects || []).find(function(x) {
-          return x && x.stage === 'sold' && String(x.soldFromId || '') === String(projectId);
-        });
-        if (existingSold) {
-          existingSold.saleAmount = saleAmount || existingSold.saleAmount || '';
-          existingSold.date = saleDate;
-          existingSold.weekIndex = getWeekIndex(parseInt(String(saleDate).split('-')[2], 10) || 1);
-          syncGoalToKassaIfReady(existingSold);
-          saveData(data);
-          render();
-          return;
-        }
-        var copy = {};
-        for (var k in src) if (Object.prototype.hasOwnProperty.call(src, k)) copy[k] = src[k];
-        copy.id = generateId();
-        copy.stage = 'sold';
-        copy.saleAmount = saleAmount || '';
-        copy.date = saleDate;
-        copy.weekIndex = getWeekIndex(parseInt(String(saleDate).split('-')[2], 10) || 1);
-        copy.soldFromId = projectId;
-        delete copy.crmArchived;
-        delete copy.emojiBeforeArchive;
-        delete copy.archiveCopyOfWeekId;
-        if (src.crmArchived) {
-          data.projects = (data.projects || []).filter(function(x) { return x.archiveCopyOfWeekId !== projectId; });
-          src.crmArchived = false;
-          if (src.emojiBeforeArchive) {
-            src.emoji = src.emojiBeforeArchive;
-            delete src.emojiBeforeArchive;
-          }
-        }
-        data.projects.push(copy);
-        saveData(data);
-        try {
-          checkMonthlyTotalAchievements(loadData(), copy.date || getTodayISO(), copy.name || copy.title || '');
-        } catch (eAch2) {}
-        syncGoalToKassaIfReady(copy);
-        render();
+        commitGoalSold(projectId, saleAmount, saleDate);
       });
       return;
     }
