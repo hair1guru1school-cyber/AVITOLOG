@@ -19,24 +19,61 @@
   var pullTimer = null;
   var lastLocalWriteAt = 0;
   var initialSyncReady = !serverOnlyMode;
+  var DIRTY_RETRY_TTL_MS = 14 * 24 * 60 * 60 * 1000;
+  var DIRTY_QUEUE_KEY = 'avitolog_backend_dirty_keys_v1';
   function revisionSignatureStorageKey() {
     return 'avitolog_backend_revision_signature_' + (window.AVITOLOG_KEY_SUFFIX === '_sasha' ? 'sasha' : 'fil');
   }
   function dirtyStorageKey(key) {
     return 'avitolog_backend_dirty_' + String(key || '').replace(/[^\w.-]+/g, '_');
   }
+  function storageGetAny(key) {
+    var value = '';
+    try { value = localStorage.getItem(key) || ''; } catch (eLocal) {}
+    if (!value) { try { value = sessionStorage.getItem(key) || ''; } catch (eSession) {} }
+    return value;
+  }
+  function readDirtyKeys() {
+    var out = [];
+    var seen = {};
+    [storageGetAny(DIRTY_QUEUE_KEY)].forEach(function(raw) {
+      try {
+        JSON.parse(raw || '[]').forEach(function(key) {
+          if (key && !seen[key]) { seen[key] = true; out.push(key); }
+        });
+      } catch (e) {}
+    });
+    return out;
+  }
+  function writeDirtyKeys(keys) {
+    var raw = JSON.stringify((keys || []).filter(Boolean));
+    try { localStorage.setItem(DIRTY_QUEUE_KEY, raw); } catch (eLocal) {}
+    try { sessionStorage.setItem(DIRTY_QUEUE_KEY, raw); } catch (eSession) {}
+  }
+  function rememberDirtyKey(key) {
+    var keys = readDirtyKeys();
+    if (keys.indexOf(key) < 0) { keys.push(key); writeDirtyKeys(keys); }
+  }
+  function forgetDirtyKey(key) {
+    var keys = readDirtyKeys().filter(function(item) { return item !== key; });
+    writeDirtyKeys(keys);
+  }
   function markDirty(key) {
     if (!key) return;
     try { localStorage.setItem(dirtyStorageKey(key), String(Date.now())); } catch (e) {}
+    try { sessionStorage.setItem(dirtyStorageKey(key), String(Date.now())); } catch (e2) {}
+    rememberDirtyKey(key);
   }
   function clearDirty(key) {
     if (!key) return;
     try { localStorage.removeItem(dirtyStorageKey(key)); } catch (e) {}
+    try { sessionStorage.removeItem(dirtyStorageKey(key)); } catch (e2) {}
+    forgetDirtyKey(key);
   }
   function isRecentlyDirty(key) {
     try {
-      var ts = Number(localStorage.getItem(dirtyStorageKey(key)) || 0);
-      return !!ts && (Date.now() - ts) < 10 * 60 * 1000;
+      var ts = Number(storageGetAny(dirtyStorageKey(key)) || 0);
+      return !!ts && (Date.now() - ts) < DIRTY_RETRY_TTL_MS;
     } catch (e) {
       return false;
     }
@@ -179,6 +216,7 @@
       var data = sessionData();
       var accessToken = data && data.access_token;
       if (!accessToken || !key) return false;
+      if (data && data.expires_at && Number(data.expires_at) <= Math.floor(Date.now() / 1000) + 60) return false;
       var body = JSON.stringify({ p_key: key, p_value: String(value == null ? '' : value) });
       if (body.length > 60000) return false;
       fetch(cfg.url + '/rest/v1/rpc/upsert_frontend_state', {
@@ -274,19 +312,13 @@
       return value;
     }
   }
-  function queueWrite(key, value, previousValue) {
-    if (!isAllowed(key)) return;
-    if (!isCurrentProfileWritableKey(key)) return;
-    if (serverOnlyMode && !initialSyncReady) return;
-    lastLocalWriteAt = Date.now();
-    var enabled = coreKeys[key] ? coreEnabled : (isFinanceKey(key) ? financeEnabled : (isContentKey(key) && contentEnabled));
-    if (!enabled && !serverOnlyMode) return;
+  function writeLabelForKey(key) {
+    return coreKeys[key] ? 'CRM/проекты' : (isFinanceKey(key) ? 'кассу/цели' : 'КП/ADS');
+  }
+  function schedulePendingWrite(key, delay) {
     clearTimeout(timers[key]);
-    pendingWrites[key] = { value: String(value == null ? '' : value), previousValue: String(previousValue == null ? '' : previousValue), ts: Date.now() };
-    markDirty(key);
-    setStatus('Supabase: сохраняю ' + (coreKeys[key] ? 'CRM/проекты' : (isFinanceKey(key) ? 'кассу/цели' : 'КП/ADS')) + '...');
-    var delay = (key.indexOf('projects') >= 0 || isFinanceKey(key)) ? 0 : 700;
     timers[key] = setTimeout(function () {
+      timers[key] = null;
       var pending = pendingWrites[key] || {};
       var expected = pending.value;
       prepareValueForWrite(key, expected, pending.previousValue).then(function (prepared) {
@@ -301,6 +333,24 @@
       });
     }, delay);
   }
+  function flushDeferredPendingWrites() {
+    Object.keys(pendingWrites).forEach(function (key) {
+      if (!timers[key]) schedulePendingWrite(key, 0);
+    });
+  }
+  function queueWrite(key, value, previousValue) {
+    if (!isAllowed(key)) return;
+    if (!isCurrentProfileWritableKey(key)) return;
+    lastLocalWriteAt = Date.now();
+    var enabled = coreKeys[key] ? coreEnabled : (isFinanceKey(key) ? financeEnabled : (isContentKey(key) && contentEnabled));
+    if (!enabled && !serverOnlyMode) return;
+    pendingWrites[key] = { value: String(value == null ? '' : value), previousValue: String(previousValue == null ? '' : previousValue), ts: Date.now() };
+    markDirty(key);
+    setStatus('Supabase: сохраняю ' + writeLabelForKey(key) + '...');
+    if (serverOnlyMode && !initialSyncReady) return;
+    var delay = (key.indexOf('projects') >= 0 || isFinanceKey(key)) ? 0 : 700;
+    schedulePendingWrite(key, delay);
+  }
   function flushPendingWritesKeepalive() {
     Object.keys(pendingWrites).forEach(function (key) {
       var pending = pendingWrites[key];
@@ -308,7 +358,6 @@
       try { clearTimeout(timers[key]); } catch (e0) {}
       if (writeKeyKeepalive(key, pending.value)) {
         delete pendingWrites[key];
-        clearDirty(key);
       }
     });
   }
@@ -345,6 +394,16 @@
       });
     } catch (e) {}
   }
+  function isStaleRemoteRow(row) {
+    var t = Date.parse((row && row.updated_at) || '');
+    return !!t && (Date.now() - t) > 12 * 60 * 60 * 1000;
+  }
+  function shouldKeepLocalOverStaleRemote(row, localValue) {
+    if (!serverOnlyMode || !row || !localValue || localValue === (row.value_text || '')) return false;
+    if (!isCurrentProfileWritableKey(row.storage_key) || !isStaleRemoteRow(row)) return false;
+    if (!hasProfileData(row.storage_key, localValue)) return false;
+    return profileValueScore(row.storage_key, localValue) > profileValueScore(row.storage_key, row.value_text || '');
+  }
   async function applyRemoteRows(rows) {
     var remoteKeys = {};
     var appliedKeys = [];
@@ -355,7 +414,12 @@
       appliedKeys.push(row.storage_key);
       var localBeforeApply = '';
       try { localBeforeApply = localStorage.getItem(row.storage_key) || ''; } catch (localReadError) {}
-      if (!serverOnlyMode && isRecentlyDirty(row.storage_key) && localBeforeApply) {
+      if (shouldKeepLocalOverStaleRemote(row, localBeforeApply)) {
+        markDirty(row.storage_key);
+        mergedWrites.push({ key: row.storage_key, value: localBeforeApply, staleLocalRecovery: true });
+        return;
+      }
+      if (isRecentlyDirty(row.storage_key) && localBeforeApply) {
         mergedWrites.push({ key: row.storage_key, value: localBeforeApply, dirtyRetry: true });
         return;
       }
@@ -549,6 +613,9 @@
     });
     renderRestoreHistory(keys[0]);
   };
+  function scoreMoney(value) {
+    return Number(String(value || '').replace(/[^0-9.-]/g, '')) || 0;
+  }
   function profileValueScore(key, value) {
     if (!value) return 0;
     try {
@@ -564,6 +631,12 @@
           if (p.name && String(p.name).trim() && String(p.name).trim() !== 'Новый проект') score += 5;
         });
         return score;
+      }
+      if (/^avitolog_assets_/.test(key) && Array.isArray(parsed)) {
+        return parsed.length * 1000000 + parsed.reduce(function(sum, row) {
+          if (!row) return sum;
+          return sum + scoreMoney(row.paid) + scoreMoney(row.expected) + scoreMoney(row.soldFor) + scoreMoney(row.toAgent);
+        }, 0);
       }
       if (Array.isArray(parsed)) return parsed.length;
     } catch (e) {}
@@ -625,9 +698,24 @@
     try {
       var parsed = JSON.parse(value);
       if (key.indexOf('clients') >= 0 || key.indexOf('tasks') >= 0 || /^avitolog_assets_/.test(key) || /^avitolog_goal_achievements_v1/.test(key)) return Array.isArray(parsed) && parsed.length > 0;
-      if (key.indexOf('projects') >= 0) return parsed && Array.isArray(parsed.projects) && parsed.projects.length > 0;
+      if (key.indexOf('projects') >= 0 || key.indexOf('goals') >= 0) return parsed && Array.isArray(parsed.projects) && parsed.projects.length > 0;
     } catch (e) {}
     return false;
+  }
+  async function retryDirtyLocalWrites() {
+    var keys = readDirtyKeys();
+    var written = 0;
+    for (var i = 0; i < keys.length; i++) {
+      var key = keys[i];
+      if (!isAllowed(key) || !isCurrentProfileWritableKey(key) || !isRecentlyDirty(key) || pendingWrites[key]) continue;
+      var value = '';
+      try { value = localStorage.getItem(key) || ''; } catch (eLocal) {}
+      if (!hasProfileData(key, value)) continue;
+      await writeKey(key, value);
+      clearDirty(key);
+      written++;
+    }
+    return written;
   }
   function clientMergeKey(item) {
     item = item || {};
@@ -835,6 +923,8 @@
       phase = 'read'; var rows = await readRemote();
       phase = 'apply'; var applied = await applyRemoteRows(rows); var remoteKeys = applied.remoteKeys; var appliedKeys = applied.appliedKeys;
       initialSyncReady = true;
+      phase = 'pending'; flushDeferredPendingWrites();
+      phase = 'dirty'; await retryDirtyLocalWrites();
       phase = 'seed';
       if (await seedCurrentProfile(remoteKeys)) {
         sessionStorage.removeItem(revisionSignatureStorageKey());
