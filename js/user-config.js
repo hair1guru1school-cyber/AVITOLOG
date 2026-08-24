@@ -288,6 +288,7 @@
     var targetKey = window.AVITOLOG_KEY(baseKey);
     var targetParsed = safeParse(localStorage.getItem(targetKey) || 'null');
     var targetScore = scoreByBase(baseKey, targetParsed);
+    if (window.AVITOLOG_BACKEND_MODE && targetScore > 0) return;
     var bestKey = targetKey;
     var bestParsed = targetParsed;
     var bestScore = targetScore;
@@ -394,7 +395,7 @@
   // Месячные снимки (_month_) уже исключены в getAllCandidateKeys выше.
   try {
     ['avitolog_projects', 'avitolog_goals_v1', 'avitolog_clients', 'crm_tasks_v1'].forEach(recoverBaseKey);
-    mergeProjectsFloatMarkersFromAllCandidates();
+    if (!window.AVITOLOG_BACKEND_MODE) mergeProjectsFloatMarkersFromAllCandidates();
   } catch (e5) {}
   try {
     window.__projectsMergeCardsFromStorageBackups = mergeProjectsFloatMarkersFromAllCandidates;

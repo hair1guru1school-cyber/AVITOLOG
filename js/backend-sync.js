@@ -21,11 +21,77 @@
   var initialSyncReady = !serverOnlyMode;
   var DIRTY_RETRY_TTL_MS = 14 * 24 * 60 * 60 * 1000;
   var DIRTY_QUEUE_KEY = 'avitolog_backend_dirty_keys_v1';
+  var PENDING_PAYLOAD_PREFIX = 'avitolog_backend_pending_payload_';
   function revisionSignatureStorageKey() {
     return 'avitolog_backend_revision_signature_' + (window.AVITOLOG_KEY_SUFFIX === '_sasha' ? 'sasha' : 'fil');
   }
   function dirtyStorageKey(key) {
     return 'avitolog_backend_dirty_' + String(key || '').replace(/[^\w.-]+/g, '_');
+  }
+  function pendingPayloadKey(key) {
+    return PENDING_PAYLOAD_PREFIX + String(key || '').replace(/[^\w.-]+/g, '_');
+  }
+  function parseStoredJson(raw) {
+    try { return JSON.parse(raw || 'null'); } catch (e) { return null; }
+  }
+  function shadowWriteRaw(key, value) {
+    try {
+      if (window.__crmShadow && typeof window.__crmShadow.writeLive === 'function') {
+        window.__crmShadow.writeLive(String(key), String(value == null ? '' : value));
+      }
+    } catch (e) {}
+  }
+  function readShadowLiveAll() {
+    return new Promise(function(resolve) {
+      try {
+        if (!window.__crmShadow || typeof window.__crmShadow.readAllLive !== 'function') return resolve(null);
+        window.__crmShadow.readAllLive(function(rows) { resolve(rows || null); });
+      } catch (e) { resolve(null); }
+    });
+  }
+  function pendingPayloadFromRaw(key, raw) {
+    var data = parseStoredJson(raw);
+    if (!data || String(data.key || '') !== String(key || '')) return null;
+    var ts = Number(data.ts || 0);
+    if (!ts || (Date.now() - ts) > DIRTY_RETRY_TTL_MS) return null;
+    return {
+      key: String(data.key),
+      value: String(data.value == null ? '' : data.value),
+      previousValue: String(data.previousValue == null ? '' : data.previousValue),
+      ts: ts
+    };
+  }
+  function readPendingPayloadCached(key, shadowRows) {
+    var raw = storageGetAny(pendingPayloadKey(key));
+    if (!raw && shadowRows && shadowRows[pendingPayloadKey(key)]) {
+      raw = String(shadowRows[pendingPayloadKey(key)].value || '');
+    }
+    return pendingPayloadFromRaw(key, raw);
+  }
+  async function readPendingPayload(key, shadowRows) {
+    var hit = readPendingPayloadCached(key, shadowRows);
+    if (hit) return hit;
+    var rows = shadowRows || await readShadowLiveAll();
+    return readPendingPayloadCached(key, rows);
+  }
+  function rememberPendingPayload(key, value, previousValue) {
+    if (!key) return;
+    var raw = JSON.stringify({
+      key: String(key),
+      value: String(value == null ? '' : value),
+      previousValue: String(previousValue == null ? '' : previousValue),
+      ts: Date.now()
+    });
+    var pKey = pendingPayloadKey(key);
+    try { sessionStorage.setItem(pKey, raw); } catch (eSession) {}
+    try { localStorage.setItem(pKey, raw); } catch (eLocal) {}
+    shadowWriteRaw(pKey, raw);
+  }
+  function clearPendingPayload(key) {
+    var pKey = pendingPayloadKey(key);
+    try { sessionStorage.removeItem(pKey); } catch (eSession) {}
+    try { localStorage.removeItem(pKey); } catch (eLocal) {}
+    shadowWriteRaw(pKey, '');
   }
   function storageGetAny(key) {
     var value = '';
@@ -49,6 +115,28 @@
     var raw = JSON.stringify((keys || []).filter(Boolean));
     try { localStorage.setItem(DIRTY_QUEUE_KEY, raw); } catch (eLocal) {}
     try { sessionStorage.setItem(DIRTY_QUEUE_KEY, raw); } catch (eSession) {}
+    shadowWriteRaw(DIRTY_QUEUE_KEY, raw);
+  }
+  async function readDirtyKeysWithShadow(shadowRows) {
+    var out = readDirtyKeys();
+    var seen = {};
+    out.forEach(function(key) { if (key) seen[key] = true; });
+    var rows = shadowRows || await readShadowLiveAll();
+    if (rows) {
+      var dirtyRow = rows[DIRTY_QUEUE_KEY];
+      try {
+        JSON.parse((dirtyRow && dirtyRow.value) || '[]').forEach(function(key) {
+          if (key && !seen[key]) { seen[key] = true; out.push(key); }
+        });
+      } catch (e) {}
+      Object.keys(rows).forEach(function(rowKey) {
+        if (rowKey.indexOf(PENDING_PAYLOAD_PREFIX) !== 0) return;
+        var data = parseStoredJson(rows[rowKey] && rows[rowKey].value);
+        var key = data && data.key;
+        if (key && !seen[key]) { seen[key] = true; out.push(key); }
+      });
+    }
+    return out;
   }
   function rememberDirtyKey(key) {
     var keys = readDirtyKeys();
@@ -326,6 +414,7 @@
       }).then(function (result) {
         if (pendingWrites[key] === pending) delete pendingWrites[key];
         clearDirty(key);
+        clearPendingPayload(key);
         setStatus('Supabase: сохранено · версия ' + result.revision);
       }).catch(function (error) {
         if (isSessionExpiredError(error)) { showReauthStatus('Supabase write'); return; }
@@ -345,6 +434,7 @@
     var enabled = coreKeys[key] ? coreEnabled : (isFinanceKey(key) ? financeEnabled : (isContentKey(key) && contentEnabled));
     if (!enabled && !serverOnlyMode) return;
     pendingWrites[key] = { value: String(value == null ? '' : value), previousValue: String(previousValue == null ? '' : previousValue), ts: Date.now() };
+    rememberPendingPayload(key, value, previousValue);
     markDirty(key);
     setStatus('Supabase: сохраняю ' + writeLabelForKey(key) + '...');
     if (serverOnlyMode && !initialSyncReady) return;
@@ -404,23 +494,42 @@
     if (!hasProfileData(row.storage_key, localValue)) return false;
     return profileValueScore(row.storage_key, localValue) > profileValueScore(row.storage_key, row.value_text || '');
   }
+  function shouldKeepLocalOverOlderLowerRemote(row, localValue, shadowRows) {
+    if (!serverOnlyMode || !row || !localValue || localValue === (row.value_text || '')) return false;
+    if (!isCurrentProfileWritableKey(row.storage_key) || !hasProfileData(row.storage_key, localValue)) return false;
+    var localScore = profileValueScore(row.storage_key, localValue);
+    var remoteScore = profileValueScore(row.storage_key, row.value_text || '');
+    if (localScore <= remoteScore) return false;
+    var localTs = 0;
+    try { localTs = Date.parse((shadowRows && shadowRows[row.storage_key] && shadowRows[row.storage_key].updatedAt) || '') || 0; } catch (eLocalTs) {}
+    var remoteTs = Date.parse((row && row.updated_at) || '') || 0;
+    return !remoteTs || !localTs || localTs > remoteTs + 1000;
+  }
   async function applyRemoteRows(rows) {
     var remoteKeys = {};
     var appliedKeys = [];
     var mergedWrites = [];
+    var shadowRows = await readShadowLiveAll();
     (rows || []).forEach(function (row) {
       if (!isAllowed(row.storage_key)) return;
       remoteKeys[row.storage_key] = true;
       appliedKeys.push(row.storage_key);
       var localBeforeApply = '';
       try { localBeforeApply = localStorage.getItem(row.storage_key) || ''; } catch (localReadError) {}
-      if (shouldKeepLocalOverStaleRemote(row, localBeforeApply)) {
+      if (shouldKeepLocalOverOlderLowerRemote(row, localBeforeApply, shadowRows) || shouldKeepLocalOverStaleRemote(row, localBeforeApply)) {
         markDirty(row.storage_key);
-        mergedWrites.push({ key: row.storage_key, value: localBeforeApply, staleLocalRecovery: true });
+        rememberPendingPayload(row.storage_key, localBeforeApply, row.value_text || '');
+        mergedWrites.push({ key: row.storage_key, value: localBeforeApply, previousValue: row.value_text || '', staleLocalRecovery: true });
         return;
       }
-      if (isRecentlyDirty(row.storage_key) && localBeforeApply) {
-        mergedWrites.push({ key: row.storage_key, value: localBeforeApply, dirtyRetry: true });
+      var pendingPayload = readPendingPayloadCached(row.storage_key, shadowRows);
+      if ((isRecentlyDirty(row.storage_key) || pendingPayload) && (localBeforeApply || pendingPayload)) {
+        mergedWrites.push({
+          key: row.storage_key,
+          value: pendingPayload ? pendingPayload.value : localBeforeApply,
+          previousValue: pendingPayload ? pendingPayload.previousValue : '',
+          dirtyRetry: true
+        });
         return;
       }
       if (pendingWrites[row.storage_key]) return;
@@ -443,8 +552,11 @@
     } catch (appliedEventError) {}
     if (mergedWrites.length) {
       for (var mw = 0; mw < mergedWrites.length; mw++) {
-        await writeKey(mergedWrites[mw].key, mergedWrites[mw].value);
+        var preparedMerged = await prepareValueForWrite(mergedWrites[mw].key, mergedWrites[mw].value, mergedWrites[mw].previousValue || '');
+        await writeKey(mergedWrites[mw].key, preparedMerged);
+        try { localStorage.setItem(mergedWrites[mw].key, preparedMerged); } catch (eSetMerged) {}
         clearDirty(mergedWrites[mw].key);
+        clearPendingPayload(mergedWrites[mw].key);
       }
     }
     return { remoteKeys: remoteKeys, appliedKeys: appliedKeys, mergedWrites: mergedWrites };
@@ -703,18 +815,30 @@
     return false;
   }
   async function retryDirtyLocalWrites() {
-    var keys = readDirtyKeys();
+    var shadowRows = await readShadowLiveAll();
+    var keys = await readDirtyKeysWithShadow(shadowRows);
     var written = 0;
     for (var i = 0; i < keys.length; i++) {
       var key = keys[i];
-      if (!isAllowed(key) || !isCurrentProfileWritableKey(key) || !isRecentlyDirty(key) || pendingWrites[key]) continue;
+      var pendingPayload = await readPendingPayload(key, shadowRows);
+      if (!isAllowed(key) || !isCurrentProfileWritableKey(key) || (!isRecentlyDirty(key) && !pendingPayload) || pendingWrites[key]) continue;
       var value = '';
-      try { value = localStorage.getItem(key) || ''; } catch (eLocal) {}
+      var previousValue = '';
+      if (pendingPayload) {
+        value = pendingPayload.value;
+        previousValue = pendingPayload.previousValue;
+      } else {
+        try { value = localStorage.getItem(key) || ''; } catch (eLocal) {}
+      }
       if (!hasProfileData(key, value)) continue;
-      await writeKey(key, value);
+      var prepared = await prepareValueForWrite(key, value, previousValue);
+      await writeKey(key, prepared);
+      try { localStorage.setItem(key, prepared); } catch (eSet) {}
       clearDirty(key);
+      clearPendingPayload(key);
       written++;
     }
+    if (written) refreshOpenScreensAfterRemoteApply(keys);
     return written;
   }
   function clientMergeKey(item) {

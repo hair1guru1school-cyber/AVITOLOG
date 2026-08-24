@@ -20,6 +20,8 @@
     'avitolog_active_client',
     'crm_tasks_v1',
     'avitolog_assets',
+    'avitolog_backend_dirty',
+    'avitolog_backend_pending_payload_',
     'client_tags_',
     'client_avatar_',
     'crm_ads_'
