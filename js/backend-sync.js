@@ -1083,6 +1083,7 @@
         phase = 'forcepush';
         await pushCurrentProfileStateNow({ skipNative: true });
       }
+      phase = 'pre-dirty'; await retryDirtyLocalWrites();
       phase = 'read'; var rows = await readRemote();
       phase = 'apply'; var applied = await applyRemoteRows(rows); var remoteKeys = applied.remoteKeys; var appliedKeys = applied.appliedKeys;
       initialSyncReady = true;
