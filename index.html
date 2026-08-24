@@ -2769,11 +2769,12 @@ body.day-mode .assets-col-sasha-hint{color:var(--accent)}
     }
     var backendSessionRaw = sessionStorage.getItem('avitolog_backend_preview_session') || sessionStorage.getItem('avitolog_backend_app_session') || localStorage.getItem('avitolog_backend_session_v1') || '';
     var explicitBackendMode = params.get('backendSource') === 'supabase' || params.get('backend') === 'supabase';
+    var storedPrimaryMode = localStorage.getItem('avitolog_backend_primary') === '1' || localStorage.getItem('avitolog_backend_server_only') === '1';
     var explicitServerOnly = params.get('serverOnly') === '1' || params.get('server') === '1';
     var explicitLocalCacheMode = params.get('serverOnly') === '0' || params.get('server') === '0';
     if (explicitServerOnly) localStorage.setItem('avitolog_backend_server_only', '1');
     if (explicitLocalCacheMode) localStorage.removeItem('avitolog_backend_server_only');
-    var primaryMode = !previewMode && explicitBackendMode;
+    var primaryMode = !previewMode && (explicitBackendMode || storedPrimaryMode);
     if (!previewMode && !primaryMode) return;
     window.AVITOLOG_BACKEND_MODE = true;
     window.AVITOLOG_BACKEND_PREVIEW = previewMode;
