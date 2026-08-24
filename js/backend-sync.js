@@ -12,6 +12,7 @@
   var contentEnabled = false;
   var timers = {};
   var pendingWrites = {};
+  var writeInFlight = {};
   var appliedRevisions = {};
   var statusEl;
   var persistentSessionKey = 'avitolog_backend_session_v1';
@@ -403,23 +404,43 @@
   function writeLabelForKey(key) {
     return coreKeys[key] ? 'CRM/проекты' : (isFinanceKey(key) ? 'кассу/цели' : 'КП/ADS');
   }
+  function drainPendingWrite(key) {
+    if (writeInFlight[key]) {
+      clearTimeout(timers[key]);
+      timers[key] = setTimeout(function () { timers[key] = null; drainPendingWrite(key); }, 250);
+      return;
+    }
+    var pending = pendingWrites[key];
+    if (!pending) return;
+    writeInFlight[key] = true;
+    var shouldWriteNext = false;
+    prepareValueForWrite(key, pending.value, pending.previousValue).then(function (prepared) {
+      return writeKey(key, prepared).then(function (result) {
+        return { result: result, prepared: prepared };
+      });
+    }).then(function (payload) {
+      if (pendingWrites[key] === pending) {
+        delete pendingWrites[key];
+        clearDirty(key);
+        clearPendingPayload(key);
+        setStatus('Supabase: сохранено · версия ' + payload.result.revision);
+      } else {
+        shouldWriteNext = true;
+        setStatus('Supabase: дописываю свежую версию...');
+      }
+    }).catch(function (error) {
+      if (isSessionExpiredError(error)) { showReauthStatus('Supabase write'); return; }
+      setStatus('Ошибка записи: ' + error.message, true);
+    }).finally(function () {
+      writeInFlight[key] = false;
+      if (shouldWriteNext || pendingWrites[key]) schedulePendingWrite(key, 0);
+    });
+  }
   function schedulePendingWrite(key, delay) {
     clearTimeout(timers[key]);
     timers[key] = setTimeout(function () {
       timers[key] = null;
-      var pending = pendingWrites[key] || {};
-      var expected = pending.value;
-      prepareValueForWrite(key, expected, pending.previousValue).then(function (prepared) {
-        return writeKey(key, prepared);
-      }).then(function (result) {
-        if (pendingWrites[key] === pending) delete pendingWrites[key];
-        clearDirty(key);
-        clearPendingPayload(key);
-        setStatus('Supabase: сохранено · версия ' + result.revision);
-      }).catch(function (error) {
-        if (isSessionExpiredError(error)) { showReauthStatus('Supabase write'); return; }
-        setStatus('Ошибка записи: ' + error.message, true);
-      });
+      drainPendingWrite(key);
     }, delay);
   }
   function flushDeferredPendingWrites() {
@@ -446,9 +467,7 @@
       var pending = pendingWrites[key];
       if (!pending) return;
       try { clearTimeout(timers[key]); } catch (e0) {}
-      if (writeKeyKeepalive(key, pending.value)) {
-        delete pendingWrites[key];
-      }
+      writeKeyKeepalive(key, pending.value);
     });
   }
   window.addEventListener('pagehide', flushPendingWritesKeepalive);
