@@ -9,6 +9,8 @@
   var inviteCard = document.getElementById('inviteCard');
   var deactivatePrimaryBtn = document.getElementById('deactivatePrimaryBtn');
   var inviteTokens = null;
+  var params = new URLSearchParams(window.location.search);
+  var returnToApp = params.get('return') === 'app';
 
   function setStatus(text) { status.textContent = text; }
   function session() {
@@ -52,9 +54,19 @@
     return saveSession(data);
   }
   function showReady() { loginCard.classList.add('off'); loadCard.classList.remove('off'); }
-  function openMainAppSoon() {
+  function markPrimaryMode(current) {
+    try { sessionStorage.setItem('avitolog_backend_primary_session', '1'); } catch (e0) {}
+    try { localStorage.setItem('avitolog_backend_primary', '1'); } catch (e1) {}
+    try { localStorage.setItem('avitolog_backend_server_only', '1'); } catch (e2) {}
+    if (String((current && current.email) || '').toLowerCase() === 'cyplakovaleksandr153@gmail.com') {
+      try { localStorage.setItem('avitolog_current_user', 'sasha'); } catch (e3) {}
+      try { localStorage.setItem('avitolog_profile_bookmark', 'sasha'); } catch (e4) {}
+    }
+  }
+  function openMainAppSoon(current) {
+    markPrimaryMode(current || session() || {});
     setTimeout(function () {
-      window.location.href = 'index.html?v=20260801-session-quota-2';
+      window.location.href = 'index.html?v=20260824-main-link-primary-session-1';
     }, 450);
   }
 
@@ -68,8 +80,9 @@
       var data = await response.json();
       if (!response.ok || !data.access_token) throw new Error(data.error_description || data.msg || 'Ошибка входа');
       document.getElementById('previewPassword').value = '';
-      saveSession(data);
+      var saved = saveSession(data);
       showReady(); setStatus('Вход выполнен. Автоматически ничего не загружаю.');
+      if (returnToApp) { setStatus('Вход выполнен. Открываю рабочий AVITOLOG...'); openMainAppSoon(saved); }
     } catch (error) { setStatus('Ошибка: ' + error.message); }
     finally { button.disabled = false; }
   });
@@ -136,13 +149,9 @@
       loginCard.classList.remove('off'); loadCard.classList.add('off'); return;
     }
     if (!window.confirm('Включить Supabase как основную базу на этом браузере? Google Drive продолжит работать, а возврат останется доступен внизу экрана.')) return;
-    localStorage.setItem('avitolog_backend_primary', '1');
-    if (String(current.email || '').toLowerCase() === 'cyplakovaleksandr153@gmail.com') {
-      localStorage.setItem('avitolog_current_user', 'sasha');
-      localStorage.setItem('avitolog_profile_bookmark', 'sasha');
-    }
+    markPrimaryMode(current);
     setStatus('Supabase включён как основная база. Открываю рабочий AVITOLOG...');
-    window.location.href = 'index.html?backendSource=supabase';
+    openMainAppSoon(current);
   });
 
   document.getElementById('addSashaMemberBtn').addEventListener('click', async function () {
@@ -192,5 +201,8 @@
     setStatus('Приглашение подтверждено. Придумайте личный пароль Саши.');
   })();
 
-  if (!inviteTokens && session() && session().access_token) showReady();
+  if (!inviteTokens && session() && session().access_token) {
+    showReady();
+    if (returnToApp) { setStatus('Авторизация есть. Открываю рабочий AVITOLOG...'); openMainAppSoon(session()); }
+  }
 })();
