@@ -524,6 +524,24 @@
     var remoteTs = Date.parse((row && row.updated_at) || '') || 0;
     return !remoteTs || !localTs || localTs > remoteTs + 1000;
   }
+  function pickLocalApplyCandidate(row, localValue, shadowRows) {
+    if (!serverOnlyMode || !row || !isCurrentProfileWritableKey(row.storage_key)) return localValue || '';
+    var remoteValue = row.value_text || '';
+    var bestValue = localValue || '';
+    var bestScore = profileValueScore(row.storage_key, bestValue);
+    var remoteScore = profileValueScore(row.storage_key, remoteValue);
+    var remoteTs = Date.parse((row && row.updated_at) || '') || 0;
+    var shadowRow = shadowRows && shadowRows[row.storage_key];
+    var shadowValue = shadowRow ? String(shadowRow.value || '') : '';
+    if (shadowValue && shadowValue !== remoteValue && hasProfileData(row.storage_key, shadowValue)) {
+      var shadowScore = profileValueScore(row.storage_key, shadowValue);
+      var shadowTs = Date.parse((shadowRow && shadowRow.updatedAt) || '') || 0;
+      if (shadowScore > Math.max(bestScore, remoteScore) && (!remoteTs || !shadowTs || shadowTs > remoteTs + 1000)) {
+        bestValue = shadowValue;
+      }
+    }
+    return bestValue;
+  }
   async function applyRemoteRows(rows) {
     var remoteKeys = {};
     var appliedKeys = [];
@@ -535,6 +553,7 @@
       appliedKeys.push(row.storage_key);
       var localBeforeApply = '';
       try { localBeforeApply = localStorage.getItem(row.storage_key) || ''; } catch (localReadError) {}
+      localBeforeApply = pickLocalApplyCandidate(row, localBeforeApply, shadowRows);
       if (shouldKeepLocalOverOlderLowerRemote(row, localBeforeApply, shadowRows) || shouldKeepLocalOverStaleRemote(row, localBeforeApply)) {
         markDirty(row.storage_key);
         rememberPendingPayload(row.storage_key, localBeforeApply, row.value_text || '');
@@ -760,6 +779,7 @@
             p.childLineEvents.forEach(function(arr) { if (Array.isArray(arr)) score += arr.length * 3; });
           }
           if (p.name && String(p.name).trim() && String(p.name).trim() !== 'Новый проект') score += 5;
+          score += scoreMoney(p.saleAmount || p.mainPrice || p.paid || 0);
         });
         return score;
       }
