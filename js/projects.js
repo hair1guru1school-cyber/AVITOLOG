@@ -620,9 +620,11 @@ async function hydrateProjectsFromActiveSheet(forceMerge) {
         }
       }
       // Не затираем локальные «Актив карточек» пустой ячейкой таблицы — иначе метки пропадают после pull
-      if (hasCardsCol && (p.cardsActive || '') !== cardsActive) {
+      var sheetCardsStale = isProjectSheetRowStaleForCards(ts, p);
+      if (hasCardsCol && !sheetCardsStale && (p.cardsActive || '') !== cardsActive) {
         if (cardsActive !== '' || String(p.cardsActive || '').trim() === '') {
           p.cardsActive = cardsActive;
+          p.cardsActiveUpdatedAt = ts || p.cardsActiveUpdatedAt || new Date().toISOString();
           changed = true;
         }
       }
@@ -636,11 +638,13 @@ async function hydrateProjectsFromActiveSheet(forceMerge) {
         p.events = (p.events || []).filter(function(e){ return e && e.type !== 'deadline'; });
         changed = true;
       }
-      if (hasMustLaunchCol && !!p.mustLaunchRequired !== !!mustLaunchRequired) {
+      var sheetMustLaunchStale = isProjectSheetRowStaleForMustLaunch(ts, p);
+      if (hasMustLaunchCol && !sheetMustLaunchStale && !!p.mustLaunchRequired !== !!mustLaunchRequired) {
         p.mustLaunchRequired = !!mustLaunchRequired;
+        p.mustLaunchUpdatedAt = ts || p.mustLaunchUpdatedAt || new Date().toISOString();
         changed = true;
       }
-      if (hasMustLaunchCol && !mustLaunchRequired && (p.mustLaunchDate || '')) {
+      if (hasMustLaunchCol && !sheetMustLaunchStale && !mustLaunchRequired && (p.mustLaunchDate || '')) {
         p.mustLaunchDate = '';
         changed = true;
       }
@@ -972,6 +976,18 @@ function getProjectTimestampMs(value) {
 }
 function isProjectSheetRowStaleForAutoload(rowTs, p) {
   var localMs = getProjectTimestampMs(p && p.autoloadUpdatedAt);
+  if (!localMs) return false;
+  var sheetMs = getProjectTimestampMs(rowTs);
+  return !sheetMs || sheetMs < localMs;
+}
+function isProjectSheetRowStaleForCards(rowTs, p) {
+  var localMs = getProjectTimestampMs(p && p.cardsActiveUpdatedAt);
+  if (!localMs) return false;
+  var sheetMs = getProjectTimestampMs(rowTs);
+  return !sheetMs || sheetMs < localMs;
+}
+function isProjectSheetRowStaleForMustLaunch(rowTs, p) {
+  var localMs = getProjectTimestampMs(p && p.mustLaunchUpdatedAt);
   if (!localMs) return false;
   var sheetMs = getProjectTimestampMs(rowTs);
   return !sheetMs || sheetMs < localMs;
@@ -4785,6 +4801,7 @@ function setProjectCardsActiveWithDate(projectId, value, date, childLineIdx) {
       p.cardsActiveDate = date || '';
     }
   }
+  p.cardsActiveUpdatedAt = new Date().toISOString();
   _projectJokerDetachArmedId = null;
   saveProjectsData(data);
   rerenderProjectsPreserveScroll();
@@ -4862,6 +4879,7 @@ function removeProjectCardsActive(projectId, childLineIdx) {
     if (Array.isArray(p.childLineCardsActive)) p.childLineCardsActive = p.childLineCardsActive.map(function(){ return ''; });
     if (Array.isArray(p.childLineCardsActiveDate)) p.childLineCardsActiveDate = p.childLineCardsActiveDate.map(function(){ return ''; });
   }
+  p.cardsActiveUpdatedAt = new Date().toISOString();
   _projectJokerDetachArmedId = null;
   saveProjectsData(data);
   rerenderProjectsPreserveScroll();
@@ -5009,6 +5027,7 @@ function setProjectMustLaunchWithDate(projectId, enabled, date) {
   var prevSetSince = String(p.mustLaunchSetSince || '');
   p.mustLaunchRequired = !!enabled;
   p.mustLaunchDate = (enabled && date) ? date : '';
+  p.mustLaunchUpdatedAt = new Date().toISOString();
   if (enabled) {
     /** Точка отсчёта ожидания: ставится один раз при включении и не сбрасывается
      *  при ежедневных авто-переносах mustLaunchDate. */

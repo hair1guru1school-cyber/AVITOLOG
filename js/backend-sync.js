@@ -189,6 +189,26 @@
       /^crm_ads_(?:expenses_v1|expenses_month_\d{4}-\d{2}|posts_plan_v1|posts_source_v1|links_v1|posts_sync_queue_v1)$/.test(key);
   }
   function isAllowed(key) { return Boolean(coreKeys[key] || isFinanceKey(key) || isContentKey(key)); }
+  function isQuotaStorageError(error) {
+    var name = String((error && error.name) || '');
+    var message = String((error && error.message) || '');
+    return name === 'QuotaExceededError' || name === 'NS_ERROR_DOM_QUOTA_REACHED' || /exceeded the quota|quota/i.test(message);
+  }
+  function applyStorageValue(key, value) {
+    var target = window.AVITOLOG_BACKEND_STORAGE_TARGET;
+    var prefix = typeof window.AVITOLOG_BACKEND_STORAGE_PREFIX === 'string' ? window.AVITOLOG_BACKEND_STORAGE_PREFIX : 'sb_backend::';
+    try {
+      if (target) Storage.prototype.setItem.call(target, prefix + key, value);
+      else localStorage.setItem(key, value);
+      return true;
+    } catch (error) {
+      if (isContentKey(key) && isQuotaStorageError(error)) {
+        console.warn('Backend content key is too large for localStorage, kept in Supabase:', key);
+        return false;
+      }
+      throw error;
+    }
+  }
   function isSashaScopedKey(key) {
     return /_sasha(?:_month_\d{4}-\d{2})?$/.test(String(key || ''));
   }
@@ -577,10 +597,7 @@
       var mergedState = shouldMerge ? mergeRemoteWithLocalValue(row.storage_key, row.value_text || '', localBeforeApply) : { value: row.value_text, changed: false };
       var valueToApply = mergedState.value;
       if (mergedState.changed) mergedWrites.push({ key: row.storage_key, value: valueToApply });
-      var target = window.AVITOLOG_BACKEND_STORAGE_TARGET;
-      var prefix = typeof window.AVITOLOG_BACKEND_STORAGE_PREFIX === 'string' ? window.AVITOLOG_BACKEND_STORAGE_PREFIX : 'sb_backend::';
-      if (target) Storage.prototype.setItem.call(target, prefix + row.storage_key, valueToApply);
-      else localStorage.setItem(row.storage_key, valueToApply);
+      applyStorageValue(row.storage_key, valueToApply);
     });
     refreshOpenScreensAfterRemoteApply(appliedKeys);
     try {
@@ -778,6 +795,15 @@
           if (Array.isArray(p.childLineEvents)) {
             p.childLineEvents.forEach(function(arr) { if (Array.isArray(arr)) score += arr.length * 3; });
           }
+          if (String(p.cardsActive || '').trim()) score += 20 + scoreMoney(p.cardsActive);
+          if (Array.isArray(p.childLineCardsActive)) {
+            p.childLineCardsActive.forEach(function(value) {
+              if (String(value || '').trim()) score += 20 + scoreMoney(value);
+            });
+          }
+          if (p.mustLaunchRequired) score += 20;
+          if (p.cardsActiveUpdatedAt) score += 2;
+          if (p.mustLaunchUpdatedAt) score += 2;
           if (p.name && String(p.name).trim() && String(p.name).trim() !== 'Новый проект') score += 5;
           score += scoreMoney(p.saleAmount || p.mainPrice || p.paid || 0);
         });
