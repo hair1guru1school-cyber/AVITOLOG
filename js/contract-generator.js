@@ -1251,10 +1251,41 @@
       return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
     }
 
+    function updateParsedRequisiteFields(fieldsCsv, value) {
+      var fields = String(fieldsCsv || '').split(',').map(function(s) { return s.trim(); }).filter(Boolean);
+      var v = String(value || '').trim();
+      fields.forEach(function(field) {
+        if (field === 'innKpp') {
+          var m = v.match(/(\d{10,12})\D+(\d{9})/);
+          if (m) {
+            var innEl = document.getElementById('contract-inn');
+            var kppEl = document.getElementById('contract-kpp');
+            if (innEl) innEl.value = m[1];
+            if (kppEl) kppEl.value = m[2];
+          }
+          return;
+        }
+        var el = document.getElementById('contract-' + field);
+        if (el) el.value = v;
+      });
+      if (fields.indexOf('fullName') >= 0 || fields.indexOf('shortName') >= 0 || fields.indexOf('fio') >= 0) {
+        var shortEl = document.getElementById('contract-shortName');
+        var fullEl = document.getElementById('contract-fullName');
+        var fioEl = document.getElementById('contract-fio');
+        var manualFioEl = document.getElementById('contract-manual-fio');
+        var name = String((shortEl && shortEl.value) || (fullEl && fullEl.value) || (fioEl && fioEl.value) || v || '').trim();
+        if (fioEl) fioEl.value = name;
+        if (manualFioEl) manualFioEl.value = name;
+        if (typeof refreshClientCaption === 'function') refreshClientCaption();
+      }
+      if (typeof setSecondaryVisible === 'function') setSecondaryVisible(true);
+    }
+
     function renderParsedRequisites(parsed) {
       var box = document.getElementById('contractParsedRequisites');
       if (!box) return;
       var valueToLabels = {};
+      var valueToFields = {};
       var valueOrder = [];
       var normalizedValueToDisplayValue = {};
       function normContactValue(v) {
@@ -1268,9 +1299,10 @@
           .replace(/\s+/g, ' ')
           .trim();
       }
-      function add(label, val) {
+      function add(label, val, fields) {
         var value = String(val || '').trim();
         if (!value) return;
+        var fieldList = (Array.isArray(fields) ? fields : [fields]).map(function(f) { return String(f || '').trim(); }).filter(Boolean);
         var valueNorm = normValue(value);
         var displayValue = normalizedValueToDisplayValue[valueNorm] || value;
         if (!normalizedValueToDisplayValue[valueNorm]) {
@@ -1278,31 +1310,35 @@
         }
         if (!valueToLabels[displayValue]) {
           valueToLabels[displayValue] = [];
+          valueToFields[displayValue] = [];
           valueOrder.push(displayValue);
         }
         if (valueToLabels[displayValue].indexOf(label) < 0) valueToLabels[displayValue].push(label);
+        fieldList.forEach(function(field) {
+          if (valueToFields[displayValue].indexOf(field) < 0) valueToFields[displayValue].push(field);
+        });
       }
 
-      add('Полное наименование', parsed.fullName);
-      add('Сокращенное наименование', parsed.shortName || parsed.fio);
-      add('Юридический адрес', parsed.legalAddress);
-      add('Почтовый адрес', parsed.postalAddress);
-      add('Фактический адрес', parsed.actualAddress);
-      add('Генеральный директор', parsed.ceo);
+      add('Полное наименование', parsed.fullName, 'fullName');
+      add('Сокращенное наименование', parsed.shortName || parsed.fio, parsed.shortName ? 'shortName' : 'fio');
+      add('Юридический адрес', parsed.legalAddress, 'legalAddress');
+      add('Почтовый адрес', parsed.postalAddress, 'postalAddress');
+      add('Фактический адрес', parsed.actualAddress, 'actualAddress');
+      add('Генеральный директор', parsed.ceo, 'ceo');
       var contactsMerged = String(parsed.contacts || '').trim() || [parsed.phone, parsed.email].filter(Boolean).join(' / ').trim();
       var accountingMerged = String(parsed.accountingContacts || '').trim() || [parsed.accountingPhone, parsed.accountingEmail].filter(Boolean).join(' / ').trim();
-      add('Телефон / эл. почта', contactsMerged);
+      add('Телефон / эл. почта', contactsMerged, 'contacts');
       if (accountingMerged && normContactValue(accountingMerged) !== normContactValue(contactsMerged)) {
         add('Телефон / эл. почта бухгалтерия', accountingMerged);
       }
-      add('ИНН', parsed.inn);
-      add('КПП', parsed.kpp);
-      add('ИНН/КПП', parsed.innKpp);
-      add('ОГРН', parsed.ogrn);
-      add('Расчетный счет', parsed.account);
-      add('Корреспондентский счет', parsed.corrAccount);
-      add('БИК Банка', parsed.bik);
-      add('Банк', parsed.bank);
+      add('ИНН', parsed.inn, 'inn');
+      add('КПП', parsed.kpp, 'kpp');
+      add('ИНН/КПП', parsed.innKpp, 'innKpp');
+      add('ОГРН', parsed.ogrn, 'ogrn');
+      add('Расчетный счет', parsed.account, 'account');
+      add('Корреспондентский счет', parsed.corrAccount, 'corrAccount');
+      add('БИК Банка', parsed.bik, 'bik');
+      add('Банк', parsed.bank, 'bank');
       add('GUID (ЭДО)', parsed.edoGuid);
 
       var rows = valueOrder.map(function(value) {
@@ -1332,7 +1368,7 @@
             return ll !== 'телефон бухгалтерии' && ll !== 'e-mail бухгалтерии' && ll !== 'email бухгалтерии' && ll !== 'эл. почта бухгалтерии';
           });
         }
-        return { label: labels.join(', '), value: value };
+        return { label: labels.join(', '), value: value, fields: valueToFields[value] || [] };
       }).filter(function(row) {
         return String(row.label || '').trim().length > 0;
       });
@@ -1344,8 +1380,17 @@
       }
       box.style.display = 'block';
       box.innerHTML = '<table class="contract-parsed-table"><tbody>' +
-        rows.map(function(r) { return '<tr><td>' + escHtml(r.label) + '</td><td>' + escHtml(r.value) + '</td></tr>'; }).join('') +
+        rows.map(function(r) {
+          var fieldsAttr = escHtml((r.fields || []).join(','));
+          var disabledAttr = fieldsAttr ? '' : ' disabled';
+          return '<tr><td>' + escHtml(r.label) + '</td><td><input type="text" class="contract-parsed-input" data-fields="' + fieldsAttr + '" value="' + escHtml(r.value) + '"' + disabledAttr + '></td></tr>';
+        }).join('') +
         '</tbody></table>';
+      box.querySelectorAll('.contract-parsed-input').forEach(function(inp) {
+        inp.addEventListener('input', function() {
+          updateParsedRequisiteFields(inp.getAttribute('data-fields'), inp.value);
+        });
+      });
     }
 
     var html = '<div class="contract-form-wrap">' +
@@ -1768,6 +1813,7 @@
         e.preventDefault();
         var parsed = parseRequisitesFromText(raw);
         applyParsed(parsed);
+        renderParsedRequisites(parsed);
         var name = parsed.shortName || parsed.fullName || parsed.fio || '';
         if (name) {
           manualFioEl.value = name;
