@@ -592,15 +592,14 @@ async function hydrateProjectsFromActiveSheet(forceMerge) {
         changed = true;
       }
       var prevRange = (p.events || []).find(function(e){ return e.type === 'active_range'; });
+      var sheetAutoloadStale = isProjectSheetRowStaleForAutoload(ts, p);
       if (start && end) {
-        if (!prevRange || prevRange.startDate !== start || prevRange.endDate !== end) {
+        if (!sheetAutoloadStale && (!prevRange || prevRange.startDate !== start || prevRange.endDate !== end)) {
           p.events = (p.events || []).filter(function(e){ return e.type !== 'active_range'; });
-          p.events.push({type:'active_range', startDate:start, endDate:end});
+          p.events.push({type:'active_range', startDate:start, endDate:end, source:'sheet', updatedAt:ts || ''});
+          p.autoloadUpdatedAt = ts || p.autoloadUpdatedAt || new Date().toISOString();
           changed = true;
         }
-      } else if (prevRange) {
-        p.events = (p.events || []).filter(function(e){ return e.type !== 'active_range'; });
-        changed = true;
       }
       if (hasLaunchCols) {
         if (launchStart && launchEnd) {
@@ -967,6 +966,22 @@ function getAoaxClearState(p) {
 function getAoaxPackUpdatedAt(pack) {
   return String((pack && (pack.updatedAt || pack.updated_at || pack.exportedAt || pack.exported_at || pack.lastExportAt || pack.last_export_at)) || '');
 }
+function getProjectTimestampMs(value) {
+  var t = Date.parse(String(value || ''));
+  return isNaN(t) ? 0 : t;
+}
+function isProjectSheetRowStaleForAutoload(rowTs, p) {
+  var localMs = getProjectTimestampMs(p && p.autoloadUpdatedAt);
+  if (!localMs) return false;
+  var sheetMs = getProjectTimestampMs(rowTs);
+  return !sheetMs || sheetMs < localMs;
+}
+function isManualAutoloadNewerThanAoax(p, pack) {
+  var localMs = getProjectTimestampMs(p && p.autoloadManualOverrideAt);
+  if (!localMs) return false;
+  var packMs = getProjectTimestampMs(getAoaxPackUpdatedAt(pack));
+  return !packMs || packMs < localMs;
+}
 function isAoaxClearStillNewer(p, pack, key) {
   var clear = getAoaxClearState(p);
   if (!clear) return false;
@@ -1036,6 +1051,11 @@ function applyAoaxAutoloadState(data) {
     var fallbackEnd = normalizeAoaxDate(getAoaxField(pack, ['dateEnd','DateEnd','date_end','endDate','end_date','finishDate','finish_date','end','Дата конца','Дата окончания','Дата до','Дата енд','Дата End']));
     var fallbackStart = normalizeAoaxDate(getAoaxField(pack, ['dateBegin','DateBegin','date_begin','startDate','start_date','begin','Дата начала','Дата старт','Дата Бегин']));
     var exported = isAoaxPackExported(pack);
+    if (isManualAutoloadNewerThanAoax(p, pack)) {
+      var clearedManualOverride = clearAoaxGeneratedEvents(p);
+      if (clearedManualOverride) changed = true;
+      return;
+    }
     var sig = JSON.stringify({
       fileId: file.id || file.driveFileId || pack.fileId || pack.driveFileId || '',
       fileName: file.name || pack.fileName || '',
@@ -1132,6 +1152,10 @@ function ensureAoaxCalendarEventsFromInfo(data) {
   ((data && data.projects) || []).forEach(function(p) {
     var info = p && p.aoaxAutoload;
     if (!info || info.exported === false) return;
+    if (isManualAutoloadNewerThanAoax(p, info)) {
+      if (clearAoaxGeneratedEvents(p)) changed = true;
+      return;
+    }
     var clear = getAoaxClearState(p);
     if (clear && clear.all) return;
     var sheets = normalizeAoaxSheets({sheets: info.sheets || []});
@@ -2125,6 +2149,19 @@ function addDaysISO(dateStr, n) {
   d.setDate(d.getDate() + n);
   return toIsoDateLocal(d);
 }
+function addMonthsISO(dateStr, months) {
+  var parts = String(dateStr || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!parts) return addDaysISO(dateStr, 30);
+  var y = parseInt(parts[1], 10);
+  var m = parseInt(parts[2], 10) - 1;
+  var d = parseInt(parts[3], 10);
+  var target = m + (parseInt(months, 10) || 0);
+  var ty = y + Math.floor(target / 12);
+  var tm = target % 12;
+  if (tm < 0) { tm += 12; ty -= 1; }
+  var lastDay = new Date(ty, tm + 1, 0).getDate();
+  return toIsoDateLocal(new Date(ty, tm, Math.min(d, lastDay)));
+}
 function normalizeIsoDateInput(v) {
   var s = String(v || '').trim();
   if (!s) return '';
@@ -2219,6 +2256,7 @@ function showProjectsCalMenu(x, y, projectId, dateStr, childLineIndex) {
         [3,4,5,7,10,12,14].map(function(n){
           return '<div class="menu-item" data-action="autoload-days" data-days="' + n + '">до + ' + n + ' дн.</div>';
         }).join('') +
+        '<div class="menu-item" data-action="autoload-month">до + 1 мес.</div>' +
         '<div class="menu-item" data-action="autoload-date">📅 Указать дату…</div>' +
       '</div>' +
     '</div>' +
@@ -2296,6 +2334,10 @@ function showProjectsCalMenu(x, y, projectId, dateStr, childLineIndex) {
       var na = parseInt(item.getAttribute('data-days') || '0', 10);
       var todayIso = typeof getTodayISO === 'function' ? getTodayISO() : new Date().toISOString().slice(0, 10);
       applyProjectAutoloadRangeForRow(pid, clIdx >= 0 ? clIdx : -1, todayIso, addDaysISO(todayIso, Math.max(0, na)));
+      hideProjectsCalMenu();
+    } else if (action === 'autoload-month') {
+      var todayIsoMonth = typeof getTodayISO === 'function' ? getTodayISO() : new Date().toISOString().slice(0, 10);
+      applyProjectAutoloadRangeForRow(pid, clIdx >= 0 ? clIdx : -1, todayIsoMonth, addMonthsISO(todayIsoMonth, 1));
       hideProjectsCalMenu();
     } else if (action === 'autoload-date') {
       var menuRect = menu.getBoundingClientRect();
@@ -2464,15 +2506,20 @@ function applyProjectAutoloadRangeForRow(projectId, childLineIdx, startDate, end
   var s = startDate <= endDate ? startDate : endDate;
   var e = startDate <= endDate ? endDate : startDate;
   var todayIso = getTodayISO();
+  var updatedAt = new Date().toISOString();
+  p.autoloadUpdatedAt = updatedAt;
+  p.autoloadManualOverrideAt = updatedAt;
+  if (!p.clientPath || typeof p.clientPath !== 'object') p.clientPath = {autoload:false,analytics:false,texts:false,packaging:false,portfolio:false};
+  p.clientPath.autoload = true;
   if (childLineIdx >= 0) {
     ensureChildLineEvents(p);
     var evts = p.childLineEvents[childLineIdx] || [];
     evts = evts.filter(function(ev){ return ev.type !== 'active_range'; });
-    evts.push({type:'active_range', startDate:s, endDate:e});
+    evts.push({type:'active_range', startDate:s, endDate:e, source:'manual', updatedAt:updatedAt});
     p.childLineEvents[childLineIdx] = evts;
   } else {
     p.events = (p.events || []).filter(function(ev) { return ev.type !== 'active_range'; });
-    p.events.push({type:'active_range', startDate:s, endDate:e});
+    p.events.push({type:'active_range', startDate:s, endDate:e, source:'manual', updatedAt:updatedAt});
     if (p.mustLaunchRequired && e > todayIso) {
       p.mustLaunchRequired = false;
       p.mustLaunchSetSince = '';
@@ -2494,6 +2541,8 @@ function clearProjectCalendarRow(projectId, childLineIdx) {
   var p = data.projects.find(function(x){ return x.id === projectId; });
   if (!p) return;
   markAoaxAutoloadManuallyCleared(p, childLineIdx);
+  p.autoloadUpdatedAt = new Date().toISOString();
+  p.autoloadManualOverrideAt = p.autoloadUpdatedAt;
   var clearTypes = {
     launch_range: true,
     not_launched_project_marker: true,
@@ -2540,6 +2589,8 @@ function clearProjectAutoloadForRow(projectId, childLineIdx) {
   var p = data.projects.find(function(x){ return x.id === projectId; });
   if (!p) return;
   markAoaxAutoloadManuallyCleared(p, childLineIdx);
+  p.autoloadUpdatedAt = new Date().toISOString();
+  p.autoloadManualOverrideAt = p.autoloadUpdatedAt;
   if (childLineIdx >= 0) {
     ensureChildLineEvents(p);
     var evts = (p.childLineEvents[childLineIdx] || []).filter(function(ev){ return ev.type !== 'active_range'; });
@@ -2557,6 +2608,8 @@ function clearProjectAutoloadRangeForRow(projectId, childLineIdx, startDate, end
   var p = data.projects.find(function(x){ return x.id === projectId; });
   if (!p) return;
   markAoaxAutoloadManuallyCleared(p, childLineIdx);
+  p.autoloadUpdatedAt = new Date().toISOString();
+  p.autoloadManualOverrideAt = p.autoloadUpdatedAt;
   var s = startDate <= endDate ? startDate : endDate;
   var e = startDate <= endDate ? endDate : startDate;
   var clIdx = (childLineIdx != null && childLineIdx >= 0) ? childLineIdx : -1;
