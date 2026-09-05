@@ -1266,7 +1266,7 @@
     var titleText = weekNum + ' НЕДЕЛЯ' + (dateRange ? ' · ' + dateRange : '');
     var activeCls = (currentWeekNum === weekNum) ? ' goal-week-active' : '';
     return '<div class="goal-week' + activeCls + '" data-week="' + weekNum + '">' +
-      '<div class="goal-week-title">' + titleText + '</div>' +
+      '<div class="goal-week-title">' + titleText + '<span class="goal-block-project-count">Проектов: ' + rows.length + '</span></div>' +
       '<div class="goal-week-rows" onclick="window.__goalsQuickAddClientToWeek && window.__goalsQuickAddClientToWeek(' + weekNum + ',event)" ondragover="window.__goalsClientDragOver && window.__goalsClientDragOver(event)" ondrop="window.__goalsClientDropOnWeek && window.__goalsClientDropOnWeek(' + weekNum + ',event)">' + header + (rows.length ? rows.join('') : '<div class="goal-empty">Нет проектов</div>') + '</div>' +
       weekIndicators +
       '<div class="goal-week-add-row">' +
@@ -2157,7 +2157,7 @@
         '</span>' +
       '</div>' +
       '<div class="goals-sold-wrap">' +
-          renderSection('ПРОДАНО <span class="goal-sold-total">' + fmtNum(totalRevenue) + ' ₽</span> ' + monthName, '☑', sold, '', true, true, 'sold') +
+          renderSection('ПРОДАНО <span class="goal-sold-total">' + fmtNum(totalRevenue) + ' ₽</span> ' + monthName + '<span class="goal-block-project-count">Проектов: ' + sold.length + '</span>', '☑', sold, '', true, true, 'sold') +
       '</div>' +
       '<div class="goals-weeks-wrap">' +
         '<div class="goals-weeks">' +

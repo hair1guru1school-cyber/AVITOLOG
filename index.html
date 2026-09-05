@@ -2175,6 +2175,7 @@ body.goals-client-dragging .goal-week,
 body.goals-client-dragging .goal-block-sold{transition:all .18s ease}
 .goal-week[data-week="4"]{order:1}.goal-week[data-week="3"]{order:2}.goal-week[data-week="2"]{order:3}.goal-week[data-week="1"]{order:4}
 .goal-week-title{font-size:15px;font-weight:700;letter-spacing:1.2px;color:rgba(124,245,255,0.95);margin-bottom:8px;padding:6px 12px;border-radius:8px;background:rgba(53,208,255,0.06);border:1px solid rgba(53,208,255,0.15);font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+.goal-block-project-count{display:inline-block;margin-left:12px;font-size:12px;font-weight:600;letter-spacing:0;white-space:nowrap;opacity:.85}
 .goal-week-active .goal-week-title{background:linear-gradient(135deg,rgba(0,217,126,0.18),rgba(53,208,255,0.12));border-color:rgba(0,217,126,0.45);color:#7cf5a8;box-shadow:0 0 20px rgba(0,217,126,0.12),inset 0 1px 0 rgba(255,255,255,0.06)}
 .goal-week-active{border-radius:10px;padding:8px;margin:-2px 0;background:rgba(0,217,126,0.04);border:1px solid rgba(0,217,126,0.2);box-shadow:0 0 16px rgba(0,217,126,0.08)}
 .goal-week-indicators{display:flex;align-items:center;gap:12px;margin-top:6px;margin-bottom:4px;font-size:12px;font-weight:600;letter-spacing:.4px}
@@ -2922,7 +2923,7 @@ body.day-mode .assets-col-sasha-hint{color:var(--accent)}
 </script>
 <script src="js/backend-sync.js?v=20260826-quota-safe-apply-1"></script>
 <script src="js/user-config.js?v=20260824-server-truth-no-local-recover-1"></script>
-<script src="js/goals.js?v=20260822-crm-sold-save-safe-1"></script>
+<script src="js/goals.js?v=20260905-crm-block-counts-1"></script>
 <script>
 if (!window.AVITOLOG_GOALS) {
   window.AVITOLOG_GOALS = window.__AVITOLOG_GOALS_LEGACY = { render: function() {
