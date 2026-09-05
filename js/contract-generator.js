@@ -473,6 +473,11 @@
     return inn.length > 0 ? 'company' : 'person';
   }
 
+  function looksLikeRequisitesText(text) {
+    var markers = String(text || '').match(/(?:Наименование|Название|ИНН(?:\s+банка)?|КПП(?:\s+банка)?|ОГРНИП|ОГРН|Расч[её]тный\s+сч[её]т|Р\/С|Банк|БИК|Корреспондентский\s+сч[её]т|Корсч[её]т|К\/С)/gi) || [];
+    return markers.length >= 2;
+  }
+
   function parseRequisitesFromText(text) {
     var t = String(text || '');
     var out = {};
@@ -505,16 +510,24 @@
       return m && m.length ? m[0].replace(/\s+/g, ' ').trim() : '';
     }
 
-    t.split(/\r?\n/).forEach(function(lineRaw) {
+    var pairLabelPattern = '(?:Полное\s+наименование|Сокращенн(?:ое|ое)\s+наименование|Краткое\s+наименование|Наименование(?:\s+организации)?|Название(?:\s+организации)?|ИНН\s+банка|КПП\s+банка|ИНН\s*\/\s*КПП|Расч[её]тный\s+сч[её]т|Корреспондентский\s+сч[её]т|Корсч[её]т|ОГРНИП|ОГРН|КПП|ИНН|Р\/С|К\/С|БИК(?:\s+банка)?|Банк|Юридический\s+адрес|Почтовый\s+адрес|Фактический\s+адрес|Генеральный\s+директор|Директор|Руководитель|ФИО|Телефон|E-?mail|Эл\.?\s*почта)';
+    var pairSource = t
+      .replace(/\u00a0/g, ' ')
+      .replace(/(?:^|\s)[#•◆]+\s*/g, '\n')
+      .replace(new RegExp('[,;|]+\\s*(?=' + pairLabelPattern + '(?:\\s|:|=|[-–—]))', 'gi'), '\n');
+    var knownPairRx = new RegExp('^(' + pairLabelPattern + ')\\s*(?::|=|[-–—])?\\s*(.+)$', 'i');
+    pairSource.split(/\r?\n/).forEach(function(lineRaw) {
       var line = String(lineRaw || '').trim();
       if (!line) return;
       var mTab = line.match(/^([^\t]+)\t+(.+)$/);
       var mColon = line.match(/^([^:]{2,}?):\s*(.+)$/);
       var m2sp = line.match(/^(.+?)\s{2,}(.+)$/);
+      var mKnown = line.match(knownPairRx);
       var left = '', right = '';
       if (mTab) { left = mTab[1]; right = mTab[2]; }
       else if (mColon) { left = mColon[1]; right = mColon[2]; }
       else if (m2sp) { left = m2sp[1]; right = m2sp[2]; }
+      else if (mKnown) { left = mKnown[1]; right = mKnown[2]; }
       if (!left || !right) return;
       pairs.push({ key: left.trim(), value: right.trim() });
     });
@@ -530,8 +543,10 @@
       { field: 'accountingContacts', rx: /(бухгалтер|бухгалтерия|телефон.*бухгалтер)/ },
       { field: 'contacts', rx: /(телефон|эл\.?\s*почта|email|e-mail|контакт)/ },
       { field: 'innKpp', rx: /(инн\s*\/\s*кпп|инн кпп)/ },
-      { field: 'inn', rx: /\bинн\b/ },
-      { field: 'kpp', rx: /\bкпп\b/ },
+      { field: 'bankInn', rx: /^инн банка$/ },
+      { field: 'bankKpp', rx: /^кпп банка$/ },
+      { field: 'inn', rx: /^инн$/ },
+      { field: 'kpp', rx: /^кпп$/ },
       { field: 'ogrn', rx: /(огрн|огрнип)/ },
       { field: 'account', rx: /(расчетн(ый|ого) счет|расч[её]тн(ый|ого) сч[её]т|р\/с)/ },
       { field: 'corrAccount', rx: /(корреспондентск(ий|ого) счет|корреспондентск(ий|ого) сч[её]т|к\/с|кор\.?\s*сч)/ },
@@ -753,12 +768,12 @@
     setIfEmpty('bik', captureDigits('БИК(?:\\s+банка)?', '9'));
     setIfEmpty('corrAccount', captureDigits('(?:Корсч[её]т|К/С)', '20'));
 
-    m = t.match(/\bИНН[\s:]*(\d{10,12})/i); if (m) setIfEmpty('inn', m[1]);
-    m = t.match(/\bКПП[\s:]*(\d{9})/i); if (m) setIfEmpty('kpp', m[1]);
-    m = t.match(/\bОГРН[\s:]*(\d{13,15})/i); if (m) setIfEmpty('ogrn', m[1]);
-    m = t.match(/\bОГРНИП[\s:]*(\d{13,15})/i); if (m) setIfEmpty('ogrn', m[1]);
+    m = t.match(/(?:^|[\s,;|])ИНН(?!\s+банка)[\s:]*(\d{10,12})/i); if (m) setIfEmpty('inn', m[1]);
+    m = t.match(/(?:^|[\s,;|])КПП(?!\s+банка)[\s:]*(\d{9})/i); if (m) setIfEmpty('kpp', m[1]);
+    m = t.match(/(?:^|[\s,;|])ОГРН[\s:]*(\d{13,15})/i); if (m) setIfEmpty('ogrn', m[1]);
+    m = t.match(/(?:^|[\s,;|])ОГРНИП[\s:]*(\d{13,15})/i); if (m) setIfEmpty('ogrn', m[1]);
     m = t.match(/\b[р\/\s]*сч[её]т[\s:]*(\d{20})/i) || t.match(/\bр\/с[\s:]*(\d{20})/i) || t.match(/\b(\d{20})\b/); if (m) setIfEmpty('account', m[1]);
-    m = t.match(/\bБИК[\s:]*(\d{9})/i); if (m) setIfEmpty('bik', m[1]);
+    m = t.match(/(?:^|[\s,;|])БИК(?:\s+банка)?[\s:]*(\d{9})/i); if (m) setIfEmpty('bik', m[1]);
     m = t.match(/\bк[оа]р[.\s]*сч[её]т[\s:]*(\d{20})/i) || t.match(/\bк\/с[\s:]*(\d{20})/i); if (m) setIfEmpty('corrAccount', m[1]);
     m = t.match(/[a-z0-9._%+\-]+@[a-z0-9.\-]+\.[a-z]{2,}/ig); if (m && m.length) setIfEmpty('email', m[0]);
     m = t.match(/\+7[\d\s\-()]{8,}\d/g); if (m && m.length) setIfEmpty('phone', m[0].replace(/\s+/g, ' ').trim());
@@ -1284,106 +1299,29 @@
     function renderParsedRequisites(parsed) {
       var box = document.getElementById('contractParsedRequisites');
       if (!box) return;
-      var valueToLabels = {};
-      var valueToFields = {};
-      var valueOrder = [];
-      var normalizedValueToDisplayValue = {};
-      function normContactValue(v) {
-        return String(v || '').toLowerCase().replace(/\s+/g, ' ').trim();
-      }
-      function normValue(v) {
-        return String(v || '')
-          .toLowerCase()
-          .replace(/ё/g, 'е')
-          .replace(/\s*,\s*/g, ', ')
-          .replace(/\s+/g, ' ')
-          .trim();
-      }
-      function add(label, val, fields) {
-        var value = String(val || '').trim();
-        if (!value) return;
-        var fieldList = (Array.isArray(fields) ? fields : [fields]).map(function(f) { return String(f || '').trim(); }).filter(Boolean);
-        var valueNorm = normValue(value);
-        var displayValue = normalizedValueToDisplayValue[valueNorm] || value;
-        if (!normalizedValueToDisplayValue[valueNorm]) {
-          normalizedValueToDisplayValue[valueNorm] = displayValue;
-        }
-        if (!valueToLabels[displayValue]) {
-          valueToLabels[displayValue] = [];
-          valueToFields[displayValue] = [];
-          valueOrder.push(displayValue);
-        }
-        if (valueToLabels[displayValue].indexOf(label) < 0) valueToLabels[displayValue].push(label);
-        fieldList.forEach(function(field) {
-          if (valueToFields[displayValue].indexOf(field) < 0) valueToFields[displayValue].push(field);
-        });
-      }
-
-      add('Полное наименование', parsed.fullName, 'fullName');
-      add('Сокращенное наименование', parsed.shortName || parsed.fio, parsed.shortName ? 'shortName' : 'fio');
-      add('Юридический адрес', parsed.legalAddress, 'legalAddress');
-      add('Почтовый адрес', parsed.postalAddress, 'postalAddress');
-      add('Фактический адрес', parsed.actualAddress, 'actualAddress');
-      add('Генеральный директор', parsed.ceo, 'ceo');
-      var contactsMerged = String(parsed.contacts || '').trim() || [parsed.phone, parsed.email].filter(Boolean).join(' / ').trim();
-      var accountingMerged = String(parsed.accountingContacts || '').trim() || [parsed.accountingPhone, parsed.accountingEmail].filter(Boolean).join(' / ').trim();
-      add('Телефон / эл. почта', contactsMerged, 'contacts');
-      if (accountingMerged && normContactValue(accountingMerged) !== normContactValue(contactsMerged)) {
-        add('Телефон / эл. почта бухгалтерия', accountingMerged);
-      }
-      add('ИНН', parsed.inn, 'inn');
-      add('КПП', parsed.kpp, 'kpp');
-      add('ИНН/КПП', parsed.innKpp, 'innKpp');
-      add('ОГРН', parsed.ogrn, 'ogrn');
-      add('Расчетный счет', parsed.account, 'account');
-      add('Корреспондентский счет', parsed.corrAccount, 'corrAccount');
-      add('БИК Банка', parsed.bik, 'bik');
-      add('Банк', parsed.bank, 'bank');
-      add('GUID (ЭДО)', parsed.edoGuid);
-
-      var rows = valueOrder.map(function(value) {
-        var labels = valueToLabels[value].slice();
-        var hasLegal = labels.indexOf('Юридический адрес') >= 0;
-        var hasPostal = labels.indexOf('Почтовый адрес') >= 0;
-        var hasActual = labels.indexOf('Фактический адрес') >= 0;
-        if (hasLegal || hasPostal || hasActual) {
-          labels = labels.filter(function(l) {
-            return l !== 'Юридический адрес' && l !== 'Почтовый адрес' && l !== 'Фактический адрес';
-          });
-          var addrParts = [];
-          if (hasLegal) addrParts.push('Юридический');
-          if (hasPostal) addrParts.push('Почтовый');
-          if (hasActual) addrParts.push('Фактический');
-          labels.unshift(addrParts.join(', ') + ' адрес');
-        }
-        if (labels.indexOf('Телефон / эл. почта') >= 0) {
-          labels = labels.filter(function(l) {
-            var ll = String(l || '').toLowerCase();
-            return ll !== 'телефон' && ll !== 'e-mail' && ll !== 'email' && ll !== 'эл. почта' && ll !== 'эл почта';
-          });
-        }
-        if (labels.indexOf('Телефон / эл. почта бухгалтерия') >= 0) {
-          labels = labels.filter(function(l) {
-            var ll = String(l || '').toLowerCase();
-            return ll !== 'телефон бухгалтерии' && ll !== 'e-mail бухгалтерии' && ll !== 'email бухгалтерии' && ll !== 'эл. почта бухгалтерии';
-          });
-        }
-        return { label: labels.join(', '), value: value, fields: valueToFields[value] || [] };
-      }).filter(function(row) {
-        return String(row.label || '').trim().length > 0;
-      });
-
-      if (!rows.length) {
-        box.style.display = 'none';
-        box.innerHTML = '';
-        return;
-      }
+      parsed = parsed || {};
+      var displayName = parsed.shortName || parsed.fio || parsed.fullName || '';
+      var rows = [
+        { label: 'Название / ФИО', value: displayName, fields: ['shortName', 'fio'] },
+        { label: 'Полное наименование', value: parsed.fullName || '', fields: ['fullName'] },
+        { label: 'ИНН', value: parsed.inn || '', fields: ['inn'] },
+        { label: 'КПП', value: parsed.kpp || '', fields: ['kpp'] },
+        { label: 'ОГРН / ОГРНИП', value: parsed.ogrn || '', fields: ['ogrn'] },
+        { label: 'Расчетный счет', value: parsed.account || '', fields: ['account'] },
+        { label: 'Банк', value: parsed.bank || '', fields: ['bank'] },
+        { label: 'БИК банка', value: parsed.bik || '', fields: ['bik'] },
+        { label: 'Корреспондентский счет', value: parsed.corrAccount || '', fields: ['corrAccount'] },
+        { label: 'Юридический адрес', value: parsed.legalAddress || '', fields: ['legalAddress'] },
+        { label: 'Фактический адрес', value: parsed.actualAddress || '', fields: ['actualAddress'] },
+        { label: 'Руководитель', value: parsed.ceo || '', fields: ['ceo'] },
+        { label: 'Телефон', value: parsed.phone || '', fields: ['phone'] },
+        { label: 'E-mail', value: parsed.email || '', fields: ['email'] }
+      ];
       box.style.display = 'block';
-      box.innerHTML = '<table class="contract-parsed-table"><tbody>' +
+      box.innerHTML = '<div class="contract-parsed-title">Реквизиты заказчика · можно исправить вручную</div><table class="contract-parsed-table"><tbody>' +
         rows.map(function(r) {
           var fieldsAttr = escHtml((r.fields || []).join(','));
-          var disabledAttr = fieldsAttr ? '' : ' disabled';
-          return '<tr><td>' + escHtml(r.label) + '</td><td><input type="text" class="contract-parsed-input" data-fields="' + fieldsAttr + '" value="' + escHtml(r.value) + '"' + disabledAttr + '></td></tr>';
+          return '<tr><td>' + escHtml(r.label) + '</td><td><input type="text" class="contract-parsed-input" data-fields="' + fieldsAttr + '" value="' + escHtml(r.value) + '" placeholder="Введите вручную"></td></tr>';
         }).join('') +
         '</tbody></table>';
       box.querySelectorAll('.contract-parsed-input').forEach(function(inp) {
@@ -1442,7 +1380,7 @@
       '<input type="hidden" id="contract-corrAccount">' +
       '<input type="hidden" id="contract-passport">' +
       '<input type="hidden" id="contract-packageName">' +
-      '<div class="contract-parsed-wrap" id="contractParsedRequisites" style="display:none"></div>' +
+      '<div class="contract-parsed-wrap" id="contractParsedRequisites"></div>' +
       '</div>' +
       '<div class="contract-extra-panel">' +
       '<h4 class="contract-form-title">Дополнительные параметры договора</h4>' +
@@ -1747,6 +1685,7 @@
       if (daysManageEl && !daysManageEl.value) daysManageEl.value = '30';
       if (costEl && !costEl.value) costEl.value = '50000';
     }
+    renderParsedRequisites(getFormData());
     function recalcEndDate() {
       if (!startEl || !endEl) return;
       var s = String(startEl.value || '').trim();
@@ -1809,7 +1748,7 @@
       manualFioEl.addEventListener('paste', function(e) {
         var clip = e.clipboardData || (window && window.clipboardData);
         var raw = clip && clip.getData ? clip.getData('text') : '';
-        if (!/(Наименование|ИНН|КПП|ОГРН|Расч[её]тный|БИК|Корсч[её]т)\s*:/i.test(raw || '')) return;
+        if (!looksLikeRequisitesText(raw)) return;
         e.preventDefault();
         var parsed = parseRequisitesFromText(raw);
         applyParsed(parsed);
@@ -1861,7 +1800,7 @@
 
     window.__contractClear = function() {
       clearContractDraft();
-      ['fio', 'inn', 'ogrn', 'account', 'bank', 'bik', 'corrAccount', 'passport', 'startDate', 'endDate', 'daysCreate', 'daysManage', 'cost', 'soldCount', 'extraServices'].forEach(function(k) {
+      ['fio', 'fullName', 'shortName', 'legalAddress', 'postalAddress', 'actualAddress', 'ceo', 'contacts', 'phone', 'email', 'inn', 'kpp', 'ogrn', 'account', 'bank', 'bik', 'corrAccount', 'passport', 'startDate', 'endDate', 'daysCreate', 'daysManage', 'cost', 'soldCount', 'extraServices'].forEach(function(k) {
         var el = document.getElementById('contract-' + k);
         if (el) el.value = '';
       });
@@ -1879,6 +1818,7 @@
       var startEl = document.getElementById('contract-startDate');
       if (startEl) startEl.value = todayStr;
       recalcEndDate();
+      renderParsedRequisites({});
       onClear && onClear();
     };
 
@@ -1917,21 +1857,11 @@
     }
 
     var fileInp = document.getElementById('contract-file-inp');
-    function clearClientRequisitesForManualName() {
-      ['fullName', 'shortName', 'legalAddress', 'postalAddress', 'actualAddress', 'ceo', 'contacts', 'phone', 'email', 'inn', 'kpp', 'ogrn', 'account', 'bank', 'bik', 'corrAccount', 'passport'].forEach(function(k) {
-        var el = document.getElementById('contract-' + k);
-        if (el) el.value = '';
-      });
-      var parsedBox = document.getElementById('contractParsedRequisites');
-      if (parsedBox) {
-        parsedBox.innerHTML = '';
-        parsedBox.style.display = 'none';
-      }
-    }
     if (manualFioEl) {
       manualFioEl.addEventListener('input', function() {
         if (fioEl) fioEl.value = manualFioEl.value.trim();
-        clearClientRequisitesForManualName();
+        var nameEditor = document.querySelector('#contractParsedRequisites .contract-parsed-input[data-fields="shortName,fio"]');
+        if (nameEditor && document.activeElement !== nameEditor) nameEditor.value = manualFioEl.value.trim();
         refreshClientCaption();
         if (!manualFioEl.value.trim()) setSecondaryVisible(false);
       });
