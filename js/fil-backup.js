@@ -149,17 +149,36 @@
 
   /* ─── Основная функция бэкапа ─────────────────────── */
 
-  async function runBackup(force) {
-    if (_running) return;
-    if (!isFilProfile()) return;
+  async function runBackup(force, options) {
+    options = options || {};
+    if (_running) {
+      if (options.manualSnapshot) {
+        for (var waitStep = 0; waitStep < 50 && _running; waitStep++) {
+          await new Promise(function (resolve) { setTimeout(resolve, 200); });
+        }
+        if (!_running) return runBackup(force, options);
+      }
+      if (options.reportErrors) throw new Error('Предыдущее сохранение Drive ещё выполняется');
+      return { ok: false, skipped: 'running' };
+    }
+    if (!isFilProfile()) return { ok: false, skipped: 'profile' };
 
     var token;
-    try { token = await driveTokenSafe(); } catch (e) { return; }
-    if (!token) return;
+    try { token = await driveTokenSafe(); } catch (e) {
+      if (options.reportErrors) throw e;
+      return { ok: false, skipped: 'drive-auth' };
+    }
+    if (!token) {
+      if (options.reportErrors) throw new Error('Google Drive не подключён');
+      return { ok: false, skipped: 'drive-auth' };
+    }
 
     var keys = collectKeys();
     var keyCount = Object.keys(keys).length;
-    if (keyCount === 0) return;
+    if (keyCount === 0) {
+      if (options.reportErrors) throw new Error('Нет данных для резервной копии');
+      return { ok: false, skipped: 'empty' };
+    }
 
     var hash = quickHash(keys);
     if (!force && hash === _lastBackupHash) return; // данные не изменились
@@ -171,7 +190,8 @@
     } catch (e) {
       showToast('⚠️ Бэкап: не удалось получить папку Drive. ' + (e.message || ''), true);
       _running = false;
-      return;
+      if (options.reportErrors) throw e;
+      return { ok: false, error: e };
     }
 
     try {
@@ -210,11 +230,22 @@
         try { localStorage.setItem(dailyFlagKey, '1'); } catch (e) {}
       }
 
+      // Ручное сохранение всегда получает отдельный неизменяемый снимок.
+      var manualId = null;
+      if (options.manualSnapshot) {
+        var seconds = String(now.getSeconds()).padStart(2, '0');
+        var manualName = 'fil-crm-backup-manual-' + dateStr + '-' + timeStr + seconds + '.json';
+        manualId = await uploadFile(folderId, manualName, payload, null);
+      }
+
       _lastBackupHash = hash;
       showToast('☁️ Бэкап сохранён (' + keyCount + ' ключей · ' + dateStr + ' ' +
         String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0') + ')', false);
+      return { ok: true, keyCount: keyCount, latestFileId: newId, manualFileId: manualId };
     } catch (err) {
       showToast('⚠️ Бэкап Drive не удался: ' + (err.message || String(err)).slice(0, 100), true);
+      if (options.reportErrors) throw err;
+      return { ok: false, error: err };
     } finally {
       _running = false;
     }
@@ -296,6 +327,9 @@
 
   window.__filBackupNow = function () {
     return runBackup(true);
+  };
+  window.__filManualBackupNow = function () {
+    return runBackup(true, { manualSnapshot: true, reportErrors: true });
   };
   window.__filBackupSchedule = scheduleBackup;
 

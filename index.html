@@ -738,6 +738,9 @@ body.day-mode .sidebar-inner-toggle:hover,body.day-mode .sidebar-toggle-peek:hov
 .mobile-webview-scale{min-width:44px;text-align:center;font-size:11px;color:var(--muted);font-weight:700}
 .header-day-toggle{width:38px;height:38px;border:1px solid var(--border);background:var(--surface2);color:var(--text);border-radius:10px;cursor:pointer;font-size:18px;display:flex;align-items:center;justify-content:center;transition:all .2s}
 .header-day-toggle:hover{background:rgba(0,217,126,0.15);border-color:var(--accent);color:var(--accent)}
+.header-manual-save-btn.is-saving{opacity:.7;cursor:wait;animation:manualSavePulse .9s ease-in-out infinite alternate}
+.header-manual-save-btn.is-saved{border-color:var(--accent);color:var(--accent);background:rgba(0,217,126,.18)}
+@keyframes manualSavePulse{from{box-shadow:none}to{box-shadow:0 0 12px rgba(0,217,126,.5)}}
 @media (max-width: 768px) {
   .mobile-webview-controls{display:flex}
   body.mobile-webview-on .layout{grid-template-columns:340px 1fr;grid-template-areas:none}
@@ -2949,6 +2952,7 @@ if (!window.AVITOLOG_GOALS) {
   <button type="button" class="header-menu-btn" id="headerMenuBtn" onclick="toggleMobileSidebar()" title="Меню" aria-label="Меню">☰</button>
   <div class="logo">🃏AVITOBO$$</div>
   <div style="flex:1"></div>
+  <button type="button" id="manualSaveBtn" class="header-day-toggle header-manual-save-btn" onclick="window.__avitologManualSave&&window.__avitologManualSave()" title="Принудительно сохранить основные данные в Supabase и резервную копию Drive" aria-label="Принудительно сохранить данные">💾</button>
   <button type="button" id="openSecondTabBtn" class="header-day-toggle" onclick="__avitologOpenNewTab && __avitologOpenNewTab()" title="Открыть копию в новой вкладке — данные синхронизируются между вкладками">📑</button>
   <button type="button" id="dayModeToggle" class="header-day-toggle" onclick="toggleDayMode()" title="Дневной режим — светлый интерфейс">☀️</button>
   <button type="button" id="authBtn" class="header-drive-btn header-mobile-show" onclick="startAuth(event)" title="Войти в Google Drive">🔑 Drive</button>
@@ -3194,7 +3198,8 @@ if (!window.AVITOLOG_GOALS) {
 <script src="js/scripts-panel.js?v=20260426-1"></script>
 <script src="js/main.js?v=20260822-active-client-sticky-1"></script>
 <script src="js/sasha-team-sync.js?v=20260622-backend-auto-sync-1"></script>
-<script src="js/fil-backup.js?v=20260620-session-exclude-1"></script>
+<script src="js/fil-backup.js?v=20260908-manual-snapshot-1"></script>
+<script src="js/manual-save.js?v=20260908-manual-save-1"></script>
 <script src="js/sasha-backup.js?v=20260419-1"></script>
 <script src="js/data-backup.js?v=20260404-1"></script>
 <script>
