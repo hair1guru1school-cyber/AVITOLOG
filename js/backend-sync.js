@@ -871,6 +871,9 @@
       collectFromStore(nativeStore, '', 2);
       if (window.AVITOLOG_BACKEND_STORAGE_TARGET && prefix) collectFromStore(window.AVITOLOG_BACKEND_STORAGE_TARGET, prefix, 2);
     }
+    (options.authoritativeRecords || []).forEach(function(record) {
+      if (record && record.key) addRecord(record.key, String(record.value == null ? '' : record.value), 10);
+    });
     var records = Object.keys(byKey).map(function(key) { return byKey[key]; });
     var written = [];
     for (var j = 0; j < records.length; j++) {

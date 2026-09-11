@@ -629,6 +629,9 @@
 
   function assetsAutoRepairIfSnapshotBetter() {
     try {
+      // Supabase is authoritative in backend mode. This legacy local repair may
+      // otherwise replace a freshly loaded cash ledger with an older snapshot.
+      if (window.AVITOLOG_BACKEND_MODE || window.AVITOLOG_BACKEND_SERVER_ONLY) return;
       var currentYM = assetsCurrentMonthKey();
       var prevYM = assetsGetPrevMonthKey(currentYM);
       var liveRaw = localStorage.getItem(ASSETS_MY_KEY);
@@ -813,6 +816,9 @@
    *      обнуляем все денежные поля. Иначе НЕ трогаем (вдруг уже есть оплаты текущего месяца).
    *   3. Ставим маркер «переход выполнен», чтобы не повторять. */
   function assetsCheckMonthTransition() {
+    // Server-backed data must never be cleared automatically during page load.
+    // A month can still be started explicitly through __assetsStartNewMonth.
+    if (window.AVITOLOG_BACKEND_MODE || window.AVITOLOG_BACKEND_SERVER_ONLY) return false;
     var currentYM = assetsCurrentMonthKey();
     var lastYM = '';
     try { lastYM = localStorage.getItem(ASSETS_LAST_MONTH_MARKER) || ''; } catch(e) {}
@@ -1235,6 +1241,27 @@
     setAssetsStorageValue(ASSETS_SASHA_KEY, value);
     setAssetsStorageValue(assetsSashaMonthStorageKey(assetsCurrentMonthKey()), value);
   }
+
+  window.__assetsPrepareManualSave = function() {
+    var ym = assetsCurrentMonthKey();
+    var myValue = JSON.stringify(getAssetsMy());
+    var sashaValue = JSON.stringify(getAssetsSasha());
+    setAssetsStorageValue(ASSETS_MY_KEY, myValue);
+    setAssetsStorageValue(assetsMonthStorageKey(ym), myValue);
+    if (!isSashaKassaProfile()) {
+      setAssetsStorageValue(ASSETS_SASHA_KEY, sashaValue);
+      setAssetsStorageValue(assetsSashaMonthStorageKey(ym), sashaValue);
+    }
+    var records = [
+      { key: ASSETS_MY_KEY, value: myValue },
+      { key: assetsMonthStorageKey(ym), value: myValue }
+    ];
+    if (!isSashaKassaProfile()) {
+      records.push({ key: ASSETS_SASHA_KEY, value: sashaValue });
+      records.push({ key: assetsSashaMonthStorageKey(ym), value: sashaValue });
+    }
+    return { records: records };
+  };
 
   /** «Мои клиенты» в профиле Саша (AVITOLOG_KEY_SUFFIX === '_sasha'), отдельно от данных Фила. */
   var ASSETS_MY_KEY_SASHA_PROFILE = 'avitolog_assets_my_v2_sasha';

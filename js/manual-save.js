@@ -34,10 +34,19 @@
     var backendCount = 0;
     var driveResult = null;
     try {
+      var active = document.activeElement;
+      if (active && /^(INPUT|TEXTAREA|SELECT)$/.test(active.tagName || '')) active.blur();
+      await new Promise(function(resolve) { setTimeout(resolve, 0); });
+      var cashState = typeof window.__assetsPrepareManualSave === 'function'
+        ? window.__assetsPrepareManualSave()
+        : { records: [] };
       if (typeof window.__avitologBackendPushCurrentProfileNow !== 'function') {
         throw new Error('модуль Supabase не загружен');
       }
-      var backendResult = await window.__avitologBackendPushCurrentProfileNow({ verify: true });
+      var backendResult = await window.__avitologBackendPushCurrentProfileNow({
+        verify: true,
+        authoritativeRecords: cashState.records || []
+      });
       backendCount = Number(backendResult && backendResult.count != null ? backendResult.count : backendResult) || 0;
     } catch (err) {
       backendError = err;
@@ -47,7 +56,7 @@
       if (typeof window.__filManualBackupNow !== 'function') {
         throw new Error('модуль резервной копии Drive не загружен');
       }
-      driveResult = await window.__filManualBackupNow();
+      driveResult = await window.__filManualBackupNow(cashState && cashState.records ? cashState.records : []);
     } catch (err) {
       driveError = err;
     }

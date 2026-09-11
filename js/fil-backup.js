@@ -194,6 +194,11 @@
     }
 
     var keys = await mergeShadowKeys(collectKeys());
+    (options.authoritativeRecords || []).forEach(function(record) {
+      if (record && isFilBackupKey(record.key)) {
+        keys[record.key] = String(record.value == null ? '' : record.value);
+      }
+    });
     var keyCount = Object.keys(keys).length;
     if (keyCount === 0) {
       if (options.reportErrors) throw new Error('Нет данных для резервной копии');
@@ -348,8 +353,12 @@
   window.__filBackupNow = function () {
     return runBackup(true);
   };
-  window.__filManualBackupNow = function () {
-    return runBackup(true, { manualSnapshot: true, reportErrors: true });
+  window.__filManualBackupNow = function (authoritativeRecords) {
+    return runBackup(true, {
+      manualSnapshot: true,
+      reportErrors: true,
+      authoritativeRecords: authoritativeRecords || []
+    });
   };
   window.__filBackupSchedule = scheduleBackup;
 
