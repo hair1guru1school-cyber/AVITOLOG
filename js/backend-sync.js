@@ -581,7 +581,26 @@
         return;
       }
       var pendingPayload = readPendingPayloadCached(row.storage_key, shadowRows);
-      if ((isRecentlyDirty(row.storage_key) || pendingPayload) && (localBeforeApply || pendingPayload)) {
+      var hasDirtyCandidate = isRecentlyDirty(row.storage_key) || pendingPayload;
+      if (serverOnlyMode && hasDirtyCandidate && /^avitolog_assets_/.test(row.storage_key)) {
+        var dirtyValue = pendingPayload ? pendingPayload.value : localBeforeApply;
+        var dirtyScore = profileValueScore(row.storage_key, dirtyValue || '');
+        var remoteScore = profileValueScore(row.storage_key, row.value_text || '');
+        var dirtyTime = Number((pendingPayload && pendingPayload.ts) || 0);
+        if (!dirtyTime) {
+          try { dirtyTime = Date.parse((shadowRows && shadowRows[row.storage_key] && shadowRows[row.storage_key].updatedAt) || '') || 0; } catch (eDirtyTime) {}
+        }
+        var remoteTime = Date.parse((row && row.updated_at) || '') || 0;
+        var remoteIsSafer = dirtyScore < remoteScore ||
+          (dirtyScore === remoteScore && dirtyTime && remoteTime && dirtyTime <= remoteTime);
+        if (remoteIsSafer) {
+          clearDirty(row.storage_key);
+          clearPendingPayload(row.storage_key);
+          pendingPayload = null;
+          hasDirtyCandidate = false;
+        }
+      }
+      if (hasDirtyCandidate && (localBeforeApply || pendingPayload)) {
         mergedWrites.push({
           key: row.storage_key,
           value: pendingPayload ? pendingPayload.value : localBeforeApply,
@@ -1153,7 +1172,9 @@
         phase = 'forcepush';
         await pushCurrentProfileStateNow({ skipNative: true });
       }
-      phase = 'pre-dirty'; await retryDirtyLocalWrites();
+      // In server-only mode read the server first. Retrying a stale browser queue
+      // before this read can roll a complete cash ledger back to an older copy.
+      if (!serverOnlyMode) { phase = 'pre-dirty'; await retryDirtyLocalWrites(); }
       phase = 'read'; var rows = await readRemote();
       phase = 'apply'; var applied = await applyRemoteRows(rows); var remoteKeys = applied.remoteKeys; var appliedKeys = applied.appliedKeys;
       initialSyncReady = true;
