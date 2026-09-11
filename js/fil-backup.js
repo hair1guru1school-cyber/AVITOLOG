@@ -33,32 +33,52 @@
 
   /* ─── Сбор ключей ──────────────────────────────────── */
 
+  function isSashaProfileKey(k) {
+    return /_sasha(?:_month_\d{4}-\d{2})?$/.test(String(k || ''));
+  }
+
+  function isFilBackupKey(k) {
+    if (!k || isSashaProfileKey(k)) return false;
+    if (k.indexOf('avitolog_drive_auth') === 0) return false;
+    if (k.indexOf('avitolog_backend_session') === 0) return false;
+    if (k === 'avitolog_current_user' || k === 'avitolog_profile_bookmark') return false;
+    if (k.indexOf('avitolog_fil_backup_') === 0) return false;
+    if (k.indexOf('avitolog_sasha_') === 0) return false;
+    return k.indexOf('avitolog_') === 0 || k.indexOf('crm_') === 0 ||
+      k === 'avito_kp_saved_client_packages_v1' || k === 'avito_kp_custom';
+  }
+
   function collectKeys() {
     var result = {};
     try {
       for (var i = 0; i < localStorage.length; i++) {
         var k = localStorage.key(i);
-        if (!k) continue;
-        // Исключаем Сашины ключи и служебные
-        if (/_sasha/.test(k)) continue;
-        if (k.indexOf('avitolog_drive_auth') === 0) continue;
-        if (k.indexOf('avitolog_backend_session') === 0) continue;
-        if (k === 'avitolog_current_user' || k === 'avitolog_profile_bookmark') continue;
-        if (k.indexOf('avitolog_fil_backup_') === 0) continue;
-        if (k.indexOf('avitolog_sasha_') === 0) continue;
-        // Берём всё avitolog_ и crm_ — включая _month_ снапшоты!
-        if (k.indexOf('avitolog_') === 0 || k.indexOf('crm_') === 0 || k === 'avito_kp_saved_client_packages_v1' || k === 'avito_kp_custom') {
-          result[k] = localStorage.getItem(k);
-        }
+        if (isFilBackupKey(k)) result[k] = localStorage.getItem(k);
       }
     } catch (e) {}
     return result;
   }
 
+  function mergeShadowKeys(keys) {
+    return new Promise(function(resolve) {
+      try {
+        if (!window.__crmShadow || typeof window.__crmShadow.readAllLive !== 'function') return resolve(keys);
+        window.__crmShadow.readAllLive(function(rows) {
+          try {
+            Object.keys(rows || {}).forEach(function(k) {
+              if (isFilBackupKey(k) && rows[k] && rows[k].value != null) keys[k] = String(rows[k].value);
+            });
+          } catch (e) {}
+          resolve(keys);
+        });
+      } catch (e) { resolve(keys); }
+    });
+  }
+
   function quickHash(keys) {
     var s = JSON.stringify(keys);
     var h = 0;
-    for (var i = 0; i < Math.min(s.length, 2000); i++) {
+    for (var i = 0; i < s.length; i++) {
       h = ((h << 5) - h) + s.charCodeAt(i);
       h |= 0;
     }
@@ -173,7 +193,7 @@
       return { ok: false, skipped: 'drive-auth' };
     }
 
-    var keys = collectKeys();
+    var keys = await mergeShadowKeys(collectKeys());
     var keyCount = Object.keys(keys).length;
     if (keyCount === 0) {
       if (options.reportErrors) throw new Error('Нет данных для резервной копии');

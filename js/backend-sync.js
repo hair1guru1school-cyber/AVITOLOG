@@ -821,15 +821,22 @@
   }
   async function pushCurrentProfileStateNow(options) {
     options = options || {};
+    var startedAt = Date.now();
+    for (var idleStep = 0; idleStep < 100 && Object.keys(writeInFlight).some(function(key) { return writeInFlight[key]; }); idleStep++) {
+      await new Promise(function(resolve) { setTimeout(resolve, 50); });
+    }
     var byKey = {};
-    function addRecord(key, value) {
+    function addRecord(key, value, priority) {
       if (!key || !isAllowed(key) || !isCurrentProfileWritableKey(key)) return;
       value = value || '';
       var score = profileValueScore(key, value);
       var current = byKey[key];
-      if (!current || score > current.score) byKey[key] = { key: key, value: value, score: score };
+      priority = Number(priority || 0);
+      if (!current || priority > current.priority || (priority === current.priority && score > current.score)) {
+        byKey[key] = { key: key, value: value, score: score, priority: priority };
+      }
     }
-    function collectFromStore(store, stripPrefix) {
+    function collectFromStore(store, stripPrefix, priority) {
       if (!store) return;
       try {
         for (var i = 0; i < store.length; i++) {
@@ -840,22 +847,56 @@
             if (rawKey.indexOf(stripPrefix) !== 0) continue;
             key = rawKey.slice(stripPrefix.length);
           }
-          addRecord(key, store.getItem(rawKey) || '');
+          var rawValue = store.getItem(rawKey) || '';
+          addRecord(key, rawValue, priority);
+          var pendingKey = key.indexOf(PENDING_PAYLOAD_PREFIX) === 0 ? key.slice(PENDING_PAYLOAD_PREFIX.length) : key;
+          var pending = pendingPayloadFromRaw(pendingKey, rawValue);
+          if (pending) addRecord(pending.key, pending.value, 4);
         }
       } catch (e) {}
     }
-    collectFromStore(localStorage, '');
+    collectFromStore(localStorage, '', 1);
+    var shadowRows = await readShadowLiveAll();
+    Object.keys(shadowRows || {}).forEach(function(key) {
+      var row = shadowRows[key];
+      var raw = row && row.value != null ? String(row.value) : '';
+      addRecord(key, raw, 3);
+      var pendingKey = key.indexOf(PENDING_PAYLOAD_PREFIX) === 0 ? key.slice(PENDING_PAYLOAD_PREFIX.length) : key;
+      var pending = pendingPayloadFromRaw(pendingKey, raw);
+      if (pending) addRecord(pending.key, pending.value, 4);
+    });
     if (serverOnlyMode && !isServerOnlySashaViewer() && !options.skipNative) {
       var nativeStore = window.AVITOLOG_BACKEND_NATIVE_STORAGE;
       var prefix = typeof window.AVITOLOG_BACKEND_STORAGE_PREFIX === 'string' ? window.AVITOLOG_BACKEND_STORAGE_PREFIX : '';
-      collectFromStore(nativeStore, '');
-      if (window.AVITOLOG_BACKEND_STORAGE_TARGET && prefix) collectFromStore(window.AVITOLOG_BACKEND_STORAGE_TARGET, prefix);
+      collectFromStore(nativeStore, '', 2);
+      if (window.AVITOLOG_BACKEND_STORAGE_TARGET && prefix) collectFromStore(window.AVITOLOG_BACKEND_STORAGE_TARGET, prefix, 2);
     }
     var records = Object.keys(byKey).map(function(key) { return byKey[key]; });
+    var written = [];
     for (var j = 0; j < records.length; j++) {
-      if (hasProfileData(records[j].key, records[j].value)) await writeKey(records[j].key, records[j].value);
+      if (hasProfileData(records[j].key, records[j].value)) {
+        await writeKey(records[j].key, records[j].value);
+        written.push(records[j]);
+      }
     }
-    return records.length;
+    if (options.verify) {
+      var remoteRows = await readRemote();
+      var remoteByKey = {};
+      (remoteRows || []).forEach(function(row) { remoteByKey[row.storage_key] = String(row.value_text == null ? '' : row.value_text); });
+      var mismatches = written.filter(function(record) { return remoteByKey[record.key] !== String(record.value); });
+      if (mismatches.length) throw new Error('Supabase не подтвердил ключи: ' + mismatches.map(function(row) { return row.key; }).join(', '));
+      written.forEach(function(record) {
+        var pendingWrite = pendingWrites[record.key];
+        if (!pendingWrite || Number(pendingWrite.ts || 0) > startedAt || String(pendingWrite.value) !== String(record.value)) return;
+        try { clearTimeout(timers[record.key]); } catch (e) {}
+        delete timers[record.key];
+        delete pendingWrites[record.key];
+        clearDirty(record.key);
+        clearPendingPayload(record.key);
+      });
+      return { count: written.length, verified: written.length, keys: written.map(function(row) { return row.key; }) };
+    }
+    return written.length;
   }
   async function forceSashaLegacyProjectsToServer() {
     if (!serverOnlyMode || window.AVITOLOG_KEY_SUFFIX !== '_sasha' || !isBackendSessionSasha()) return false;

@@ -37,7 +37,8 @@
       if (typeof window.__avitologBackendPushCurrentProfileNow !== 'function') {
         throw new Error('модуль Supabase не загружен');
       }
-      backendCount = await window.__avitologBackendPushCurrentProfileNow();
+      var backendResult = await window.__avitologBackendPushCurrentProfileNow({ verify: true });
+      backendCount = Number(backendResult && backendResult.count != null ? backendResult.count : backendResult) || 0;
     } catch (err) {
       backendError = err;
     }
@@ -52,7 +53,7 @@
     }
 
     if (!backendError && !driveError && driveResult && driveResult.ok) {
-      toast('Сохранено: Supabase (' + backendCount + ' записей) и отдельный снимок Drive (' + driveResult.keyCount + ' ключей)', false);
+      toast('Сохранено и проверено: Supabase (' + backendCount + ' ключей) и отдельный снимок Drive (' + driveResult.keyCount + ' ключей)', false);
       if (btn) btn.classList.add('is-saved');
     } else {
       var parts = [];
