@@ -594,6 +594,9 @@
         var remoteIsSafer = dirtyScore < remoteScore ||
           (dirtyScore === remoteScore && dirtyTime && remoteTime && dirtyTime <= remoteTime);
         if (remoteIsSafer) {
+          try { clearTimeout(timers[row.storage_key]); } catch (eTimer) {}
+          delete timers[row.storage_key];
+          delete pendingWrites[row.storage_key];
           clearDirty(row.storage_key);
           clearPendingPayload(row.storage_key);
           pendingPayload = null;
