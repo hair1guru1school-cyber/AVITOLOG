@@ -921,11 +921,21 @@
       return true;
     }
   }
+  window.__assetsApplyBackendValue = function(key, value) {
+    if (!/^avitolog_assets_/.test(String(key || ''))) return false;
+    var stringValue = String(value == null ? '' : value);
+    _assetsStorageMemoryByKey[key] = stringValue;
+    writeAssetsShadow(key, stringValue);
+    return true;
+  };
   document.addEventListener('avitolog:backend-remote-applied', function(event) {
     try {
       var keys = (event.detail && event.detail.keys) || [];
+      var fallbackKeys = (event.detail && event.detail.fallbackKeys) || [];
       keys.forEach(function(key) {
-        if (/^avitolog_assets_/.test(String(key || ''))) delete _assetsStorageMemoryByKey[key];
+        if (/^avitolog_assets_/.test(String(key || '')) && fallbackKeys.indexOf(key) < 0) {
+          delete _assetsStorageMemoryByKey[key];
+        }
       });
     } catch(e) {}
   });
@@ -1902,19 +1912,19 @@
         '<button type="button" class="assets-col-emoji" onclick="window.__assetsShowEmojiPicker(this,\'' + owner + '\',' + idx + ')" title="Выбрать эмодзи">' + (p.emoji || '📦') + '</button>' +
         '<span class="assets-col-name">' +
           '<span class="assets-col-name-row">' +
-            '<input type="text" value="' + esc(p.name || '') + '" placeholder="Проект" data-field="name" onblur="window.__assetsSaveColRow(this)">' +
+            '<input type="text" value="' + esc(p.name || '') + '" placeholder="Проект" data-field="name" oninput="window.__assetsScheduleColRowSave(this)" onblur="window.__assetsSaveColRow(this)">' +
             folderHtml +
             '<button type="button" class="assets-status-badge ' + statusCls + '" onclick="window.__assetsCycleClientType(\'' + owner + '\',' + idx + ')" title="Старый/новичок/2-й раз">' + esc(statusBadge) + '</button>' +
           '</span>' +
         '</span>' +
         '<span class="assets-col-payment" title="Дата платежа — клик для выбора"><span class="assets-payment-cell"><span class="assets-progress-bar" title="След. платёж"><span class="assets-progress-fill" style="width:' + barPct + '%"></span></span><span class="assets-payment-wrap" onclick="event.stopPropagation();window.__assetsOpenPaymentCalendar&&window.__assetsOpenPaymentCalendar(this,\'' + owner + '\',' + idx + ')"><span class="assets-payment-display">' + esc(payDays) + '</span></span></span></span>';
       if (owner === 'sasha') {
-        base += '<span class="assets-col-extra"><input type="text" value="' + esc(soldForFmt) + '" placeholder="0" data-field="soldFor" onblur="window.__assetsSaveColRow(this)" title="Продано за"></span>' +
-          '<span class="assets-col-extra"><input type="text" value="' + esc(toAgentFmt) + '" placeholder="0" data-field="toAgent" onblur="window.__assetsSaveColRow(this)" title="Агенту"></span>' +
-          '<span class="assets-col-extra"><input type="text" value="' + esc(aoaFmt) + '" placeholder="0" data-field="aoaPercent" onblur="window.__assetsSaveColRow(this)" title="AoA %"></span>';
+        base += '<span class="assets-col-extra"><input type="text" value="' + esc(soldForFmt) + '" placeholder="0" data-field="soldFor" oninput="window.__assetsScheduleColRowSave(this)" onblur="window.__assetsSaveColRow(this)" title="Продано за"></span>' +
+          '<span class="assets-col-extra"><input type="text" value="' + esc(toAgentFmt) + '" placeholder="0" data-field="toAgent" oninput="window.__assetsScheduleColRowSave(this)" onblur="window.__assetsSaveColRow(this)" title="Агенту"></span>' +
+          '<span class="assets-col-extra"><input type="text" value="' + esc(aoaFmt) + '" placeholder="0" data-field="aoaPercent" oninput="window.__assetsScheduleColRowSave(this)" onblur="window.__assetsSaveColRow(this)" title="AoA %"></span>';
       } else {
-        base += '<span class="assets-col-paid"><input type="text" value="' + esc(paidFmt) + '" placeholder="0" data-field="paid" onblur="window.__assetsSaveColRow(this)" title="' + (isSashaView ? 'Твоя доля от сделки (сумма «Агенту» с Фила или вручную)' : '') + '"></span>' +
-          '<span class="assets-col-expected"><input type="text" value="' + esc(expectedFmt) + '" placeholder="0" data-field="expected" onblur="window.__assetsSaveColRow(this)"></span>';
+        base += '<span class="assets-col-paid"><input type="text" value="' + esc(paidFmt) + '" placeholder="0" data-field="paid" oninput="window.__assetsScheduleColRowSave(this)" onblur="window.__assetsSaveColRow(this)" title="' + (isSashaView ? 'Твоя доля от сделки (сумма «Агенту» с Фила или вручную)' : '') + '"></span>' +
+          '<span class="assets-col-expected"><input type="text" value="' + esc(expectedFmt) + '" placeholder="0" data-field="expected" oninput="window.__assetsScheduleColRowSave(this)" onblur="window.__assetsSaveColRow(this)"></span>';
       }
       base += '<button type="button" class="assets-col-remove" onclick="window.__assetsRemoveProject(\'' + owner + '\',' + idx + ')" title="Удалить">✕</button>' +
         '</div>';
@@ -1987,8 +1997,25 @@
     }, 50);
   }
 
+  var _assetsPendingColInputs = [];
+  function scheduleColRowSave(el) {
+    if (!el) return;
+    if (_assetsPendingColInputs.indexOf(el) < 0) _assetsPendingColInputs.push(el);
+    if (el.__assetsSaveTimer) clearTimeout(el.__assetsSaveTimer);
+    el.__assetsSaveTimer = setTimeout(function() { saveColRow(el); }, 250);
+  }
+  function flushPendingColSaves() {
+    _assetsPendingColInputs.slice().forEach(function(el) { saveColRow(el); });
+  }
+  window.addEventListener('pagehide', flushPendingColSaves, true);
+  window.addEventListener('beforeunload', flushPendingColSaves, true);
+
   function saveColRow(el) {
     if (!el) return;
+    if (el.__assetsSaveTimer) clearTimeout(el.__assetsSaveTimer);
+    el.__assetsSaveTimer = null;
+    var pendingIndex = _assetsPendingColInputs.indexOf(el);
+    if (pendingIndex >= 0) _assetsPendingColInputs.splice(pendingIndex, 1);
     var row = el.closest('.assets-col-row');
     var owner = row && row.getAttribute('data-owner');
     var idx = row ? parseInt(row.getAttribute('data-idx'), 10) : -1;
@@ -2805,6 +2832,7 @@
   window.__aiImportRender = renderAiImportContent;
   window.__renderAssetsPage = renderAssetsPage;
   window.__assetsSaveColRow = saveColRow;
+  window.__assetsScheduleColRowSave = scheduleColRowSave;
   window.__assetsAddProject = addProjectBlank;
   window.__assetsRemoveProject = removeAssetsProject;
   window.__assetsCycleClientType = cycleAssetsClientType;

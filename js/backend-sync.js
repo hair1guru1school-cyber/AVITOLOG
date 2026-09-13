@@ -202,8 +202,13 @@
       else localStorage.setItem(key, value);
       return true;
     } catch (error) {
-      if (isContentKey(key) && isQuotaStorageError(error)) {
-        console.warn('Backend content key is too large for localStorage, kept in Supabase:', key);
+      if (isQuotaStorageError(error) && (isContentKey(key) || isFinanceKey(key))) {
+        shadowWriteRaw(key, value);
+        if (/^avitolog_assets_/.test(String(key || '')) &&
+            typeof window.__assetsApplyBackendValue === 'function') {
+          window.__assetsApplyBackendValue(key, value);
+        }
+        console.warn('Backend key kept outside full localStorage:', key);
         return false;
       }
       throw error;
@@ -565,6 +570,7 @@
   async function applyRemoteRows(rows) {
     var remoteKeys = {};
     var appliedKeys = [];
+    var fallbackKeys = [];
     var mergedWrites = [];
     var shadowRows = await readShadowLiveAll();
     (rows || []).forEach(function (row) {
@@ -619,12 +625,12 @@
       var mergedState = shouldMerge ? mergeRemoteWithLocalValue(row.storage_key, row.value_text || '', localBeforeApply) : { value: row.value_text, changed: false };
       var valueToApply = mergedState.value;
       if (mergedState.changed) mergedWrites.push({ key: row.storage_key, value: valueToApply });
-      applyStorageValue(row.storage_key, valueToApply);
+      if (!applyStorageValue(row.storage_key, valueToApply)) fallbackKeys.push(row.storage_key);
     });
     refreshOpenScreensAfterRemoteApply(appliedKeys);
     try {
       document.dispatchEvent(new CustomEvent('avitolog:backend-remote-applied', {
-        detail: { keys: appliedKeys.slice(), remoteKeys: remoteKeys }
+        detail: { keys: appliedKeys.slice(), remoteKeys: remoteKeys, fallbackKeys: fallbackKeys.slice() }
       }));
     } catch (appliedEventError) {}
     if (mergedWrites.length) {
