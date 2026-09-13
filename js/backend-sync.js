@@ -202,11 +202,14 @@
       else localStorage.setItem(key, value);
       return true;
     } catch (error) {
-      if (isQuotaStorageError(error) && (isContentKey(key) || isFinanceKey(key))) {
+      if (isQuotaStorageError(error) && (isContentKey(key) || isFinanceKey(key) || isProjectsStorageKey(key))) {
         shadowWriteRaw(key, value);
         if (/^avitolog_assets_/.test(String(key || '')) &&
             typeof window.__assetsApplyBackendValue === 'function') {
           window.__assetsApplyBackendValue(key, value);
+        }
+        if (isProjectsStorageKey(key) && typeof window.__projectsApplyBackendValue === 'function') {
+          window.__projectsApplyBackendValue(key, value);
         }
         console.warn('Backend key kept outside full localStorage:', key);
         return false;
@@ -627,7 +630,7 @@
       if (mergedState.changed) mergedWrites.push({ key: row.storage_key, value: valueToApply });
       if (!applyStorageValue(row.storage_key, valueToApply)) fallbackKeys.push(row.storage_key);
     });
-    refreshOpenScreensAfterRemoteApply(appliedKeys);
+    refreshOpenScreensAfterRemoteApply(appliedKeys, fallbackKeys);
     try {
       document.dispatchEvent(new CustomEvent('avitolog:backend-remote-applied', {
         detail: { keys: appliedKeys.slice(), remoteKeys: remoteKeys, fallbackKeys: fallbackKeys.slice() }
@@ -1049,18 +1052,22 @@
       return { value: remoteValue, changed: false };
     }
   }
-  function refreshOpenScreensAfterRemoteApply(changedKeys) {
+  function refreshOpenScreensAfterRemoteApply(changedKeys, fallbackKeys) {
     try {
       var keys = Array.isArray(changedKeys) ? changedKeys : [];
+      var fallback = Array.isArray(fallbackKeys) ? fallbackKeys : [];
       var hasProjects = keys.some(function(key) { return /^avitolog_projects(?:_sasha)?$/.test(key); });
+      var projectsInFallback = fallback.some(function(key) { return /^avitolog_projects(?:_sasha)?$/.test(key); });
       var hasAoax = keys.indexOf('avitolog_aoax_autoloads_v1') >= 0;
       var hasFinance = keys.some(function(key) { return isFinanceKey(key); });
       var hasCore = keys.some(function(key) { return coreKeys[key]; });
       setTimeout(function() {
         try {
           if ((hasProjects || hasAoax) && typeof window !== 'undefined') {
-            window._projectsDataMem = null;
-            window._projectsDataMemKey = null;
+            if (!projectsInFallback) {
+              window._projectsDataMem = null;
+              window._projectsDataMemKey = null;
+            }
             if (window.projectsMode && typeof window.renderProjectsScreen === 'function') {
               window.renderProjectsScreen();
             } else if (window.projectsMode && typeof window.rerenderProjectsPreserveScroll === 'function') {

@@ -501,6 +501,23 @@ function flushProjectsDataToStorage(data) {
   try { localStorage.setItem(key, value); } catch(e) {}
   notifyProjectsStorageWrite(key, value, previousValue);
 }
+window.__projectsApplyBackendValue = function(key, value) {
+  if (String(key || '') !== projectsDataKey()) return false;
+  try {
+    var parsed = JSON.parse(String(value || ''));
+    if (!parsed || !Array.isArray(parsed.projects)) return false;
+    _projectsDataMem = parsed;
+    _projectsDataMemKey = key;
+    try {
+      if (window.__crmShadow && typeof window.__crmShadow.writeLive === 'function') {
+        window.__crmShadow.writeLive(key, String(value));
+      }
+    } catch(eShadow) {}
+    return true;
+  } catch(eParse) {
+    return false;
+  }
+};
 function scheduleProjectsStorageFlush(data) {
   _projectsDataMem = data;
   _projectsDataMemKey = projectsDataKey();
@@ -514,6 +531,11 @@ function scheduleProjectsStorageFlush(data) {
     notifyProjectsStorageWrite(_projectsDataMemKey, value, previousValue);
   }, 0);
 }
+function flushScheduledProjectsData() {
+  if (_projectsStorageFlushTimer && _projectsDataMem) flushProjectsDataToStorage(_projectsDataMem);
+}
+window.addEventListener('pagehide', flushScheduledProjectsData, true);
+window.addEventListener('beforeunload', flushScheduledProjectsData, true);
 async function hydrateProjectsFromActiveSheet(forceMerge) {
   if (!_driveToken) return false;
   if (typeof forceMerge === 'undefined') forceMerge = false;
