@@ -4080,6 +4080,19 @@ function writeCrmClientsShadow(key, value) {
     }
   } catch(e) {}
 }
+window.__crmClientsApplyBackendValue = function(key, value) {
+  var expectedKey = _ck('avitolog_clients');
+  if (String(key || '') !== expectedKey) return false;
+  var parsed;
+  try { parsed = JSON.parse(value || '[]'); } catch(e) { return false; }
+  if (!Array.isArray(parsed)) return false;
+  var localValue = null;
+  try { localValue = localStorage.getItem(expectedKey); } catch(readError) {}
+  _crmClientsMemoryByKey[expectedKey] = parsed;
+  _crmClientsMemorySourceByKey[expectedKey] = localValue;
+  writeCrmClientsShadow(expectedKey, value);
+  return true;
+};
 function freeCrmLocalStorageQuota() {
   var removed = 0;
   try {

@@ -202,7 +202,7 @@
       else localStorage.setItem(key, value);
       return true;
     } catch (error) {
-      if (isQuotaStorageError(error) && (isContentKey(key) || isFinanceKey(key) || isProjectsStorageKey(key))) {
+      if (isQuotaStorageError(error) && (isContentKey(key) || isFinanceKey(key) || isProjectsStorageKey(key) || isClientsStorageKey(key))) {
         shadowWriteRaw(key, value);
         if (/^avitolog_assets_/.test(String(key || '')) &&
             typeof window.__assetsApplyBackendValue === 'function') {
@@ -210,6 +210,9 @@
         }
         if (isProjectsStorageKey(key) && typeof window.__projectsApplyBackendValue === 'function') {
           window.__projectsApplyBackendValue(key, value);
+        }
+        if (isClientsStorageKey(key) && typeof window.__crmClientsApplyBackendValue === 'function') {
+          window.__crmClientsApplyBackendValue(key, value);
         }
         console.warn('Backend key kept outside full localStorage:', key);
         return false;
@@ -353,6 +356,9 @@
   }
   function isProjectsStorageKey(key) {
     return /^avitolog_projects(?:_sasha)?$/.test(String(key || ''));
+  }
+  function isClientsStorageKey(key) {
+    return /^avitolog_clients(?:_sasha)?$/.test(String(key || ''));
   }
   function parseJsonValue(value) {
     try { return JSON.parse(value || ''); } catch (e) { return null; }
