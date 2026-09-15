@@ -4137,6 +4137,12 @@ function saveCrmClients(list) {
     console.warn('AVITOLOG CRM clients saved without localStorage because browser quota is full', e2);
   }
 }
+window.__crmClientsPrepareManualSave = function() {
+  return {
+    key: _ck('avitolog_clients'),
+    value: JSON.stringify(getCrmClients())
+  };
+};
 /** После ☁️ синка Саши: обновить списки CRM (данные уже в *_sasha). */
 window.__crmRefreshAfterSashaSync = function() {
   try {

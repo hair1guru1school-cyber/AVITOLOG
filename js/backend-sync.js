@@ -424,12 +424,83 @@
     });
     return JSON.stringify(out);
   }
+  function mergeClientArrayByChanges(remoteArr, previousArr, nextArr) {
+    remoteArr = Array.isArray(remoteArr) ? remoteArr : [];
+    previousArr = Array.isArray(previousArr) ? previousArr : [];
+    nextArr = Array.isArray(nextArr) ? nextArr : [];
+    var previousByKey = {};
+    var nextByKey = {};
+    var changedByKey = {};
+    var removedByKey = {};
+    previousArr.forEach(function(item) {
+      var key = clientMergeKey(item);
+      if (key) previousByKey[key] = item;
+    });
+    nextArr.forEach(function(item) {
+      var key = clientMergeKey(item);
+      if (key) nextByKey[key] = item;
+    });
+    Object.keys(nextByKey).forEach(function(key) {
+      if (!previousByKey[key] || stableJson(previousByKey[key]) !== stableJson(nextByKey[key])) changedByKey[key] = nextByKey[key];
+    });
+    Object.keys(previousByKey).forEach(function(key) {
+      if (!nextByKey[key]) removedByKey[key] = previousByKey[key];
+    });
+    var out = [];
+    var seen = {};
+    remoteArr.forEach(function(item) {
+      var key = clientMergeKey(item);
+      if (key && removedByKey[key] && stableJson(item) === stableJson(removedByKey[key])) return;
+      if (key && changedByKey[key]) {
+        out.push(changedByKey[key]);
+        seen[key] = true;
+        return;
+      }
+      out.push(item);
+      if (key) seen[key] = true;
+    });
+    Object.keys(changedByKey).forEach(function(key) {
+      if (!seen[key]) out.push(changedByKey[key]);
+    });
+    return out;
+  }
+  function mergeClientsValue(remoteValue, previousValue, nextValue) {
+    var remote = parseJsonValue(remoteValue);
+    var previous = parseJsonValue(previousValue);
+    var next = parseJsonValue(nextValue);
+    if (!Array.isArray(remote) || !Array.isArray(previous) || !Array.isArray(next)) return nextValue;
+    return JSON.stringify(mergeClientArrayByChanges(remote, previous, next));
+  }
+  function mergeClientsWithoutLoss(remoteValue, localValue) {
+    var remote = parseJsonValue(remoteValue);
+    var local = parseJsonValue(localValue);
+    if (!Array.isArray(remote) || !Array.isArray(local)) return localValue;
+    var out = remote.slice();
+    var positions = {};
+    out.forEach(function(item, index) {
+      var key = clientMergeKey(item);
+      if (key) positions[key] = index;
+    });
+    local.forEach(function(item) {
+      var key = clientMergeKey(item);
+      if (key && positions[key] != null) out[positions[key]] = item;
+      else {
+        if (key) positions[key] = out.length;
+        out.push(item);
+      }
+    });
+    return JSON.stringify(out);
+  }
   async function prepareValueForWrite(key, value, previousValue) {
-    if (!isProjectsStorageKey(key) || !previousValue) return value;
+    if (!isProjectsStorageKey(key) && !isClientsStorageKey(key)) return value;
     try {
       var rows = await readRemote();
       var row = (rows || []).find(function (item) { return item && item.storage_key === key; });
       if (!row || !row.value_text) return value;
+      if (isClientsStorageKey(key)) {
+        return previousValue ? mergeClientsValue(row.value_text, previousValue, value) : mergeClientsWithoutLoss(row.value_text, value);
+      }
+      if (!previousValue) return value;
       return mergeProjectsValue(row.value_text, previousValue, value);
     } catch (e) {
       return value;
@@ -493,7 +564,7 @@
     markDirty(key);
     setStatus('Supabase: сохраняю ' + writeLabelForKey(key) + '...');
     if (serverOnlyMode && !initialSyncReady) return;
-    var delay = (key.indexOf('projects') >= 0 || isFinanceKey(key)) ? 0 : 700;
+    var delay = (isClientsStorageKey(key) || key.indexOf('projects') >= 0 || isFinanceKey(key)) ? 0 : 700;
     schedulePendingWrite(key, delay);
   }
   function flushPendingWritesKeepalive() {
@@ -912,9 +983,17 @@
       if (record && record.key) addRecord(record.key, String(record.value == null ? '' : record.value), 10);
     });
     var records = Object.keys(byKey).map(function(key) { return byKey[key]; });
+    var remoteRowsForPush = records.some(function(record) { return isClientsStorageKey(record.key); }) ? await readRemote() : [];
+    var remoteByKeyForPush = {};
+    (remoteRowsForPush || []).forEach(function(row) {
+      remoteByKeyForPush[row.storage_key] = String(row.value_text == null ? '' : row.value_text);
+    });
     var written = [];
     for (var j = 0; j < records.length; j++) {
       if (hasProfileData(records[j].key, records[j].value)) {
+        if (isClientsStorageKey(records[j].key) && remoteByKeyForPush[records[j].key]) {
+          records[j].value = mergeClientsWithoutLoss(remoteByKeyForPush[records[j].key], records[j].value);
+        }
         await writeKey(records[j].key, records[j].value);
         written.push(records[j]);
       }
