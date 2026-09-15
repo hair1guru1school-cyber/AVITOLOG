@@ -214,6 +214,9 @@
         if (isClientsStorageKey(key) && typeof window.__crmClientsApplyBackendValue === 'function') {
           window.__crmClientsApplyBackendValue(key, value);
         }
+        if (isGoalsStorageKey(key) && typeof window.__goalsApplyBackendValue === 'function') {
+          window.__goalsApplyBackendValue(key, value);
+        }
         console.warn('Backend key kept outside full localStorage:', key);
         return false;
       }
@@ -360,6 +363,9 @@
   function isClientsStorageKey(key) {
     return /^avitolog_clients(?:_sasha)?$/.test(String(key || ''));
   }
+  function isGoalsStorageKey(key) {
+    return /^avitolog_goals_v1(?:_sasha)?(?:_month_\d{4}-\d{2})?$/.test(String(key || ''));
+  }
   function parseJsonValue(value) {
     try { return JSON.parse(value || ''); } catch (e) { return null; }
   }
@@ -491,14 +497,55 @@
     });
     return JSON.stringify(out);
   }
+  function mergeGoalsValue(remoteValue, previousValue, nextValue) {
+    var remote = parseJsonValue(remoteValue);
+    var previous = parseJsonValue(previousValue);
+    var next = parseJsonValue(nextValue);
+    if (!remote || !previous || !next || !Array.isArray(remote.projects) || !Array.isArray(previous.projects) || !Array.isArray(next.projects)) return nextValue;
+    var out = Object.assign({}, remote);
+    Object.keys(next).forEach(function(field) {
+      if (field === 'projects') return;
+      if (!Object.prototype.hasOwnProperty.call(previous, field) || stableJson(previous[field]) !== stableJson(next[field])) out[field] = next[field];
+    });
+    Object.keys(previous).forEach(function(field) {
+      if (field === 'projects' || Object.prototype.hasOwnProperty.call(next, field)) return;
+      if (stableJson(remote[field]) === stableJson(previous[field])) delete out[field];
+    });
+    out.projects = mergeArrayByChangedIds(remote.projects, previous.projects, next.projects);
+    return JSON.stringify(out);
+  }
+  function mergeGoalsWithoutLoss(remoteValue, localValue) {
+    var remote = parseJsonValue(remoteValue);
+    var local = parseJsonValue(localValue);
+    if (!remote || !local || !Array.isArray(remote.projects) || !Array.isArray(local.projects)) return localValue;
+    var out = Object.assign({}, remote, local);
+    var positions = {};
+    out.projects = remote.projects.slice();
+    out.projects.forEach(function(item, index) {
+      var id = backendItemId(item);
+      if (id) positions[id] = index;
+    });
+    local.projects.forEach(function(item) {
+      var id = backendItemId(item);
+      if (id && positions[id] != null) out.projects[positions[id]] = item;
+      else {
+        if (id) positions[id] = out.projects.length;
+        out.projects.push(item);
+      }
+    });
+    return JSON.stringify(out);
+  }
   async function prepareValueForWrite(key, value, previousValue) {
-    if (!isProjectsStorageKey(key) && !isClientsStorageKey(key)) return value;
+    if (!isProjectsStorageKey(key) && !isClientsStorageKey(key) && !isGoalsStorageKey(key)) return value;
     try {
       var rows = await readRemote();
       var row = (rows || []).find(function (item) { return item && item.storage_key === key; });
       if (!row || !row.value_text) return value;
       if (isClientsStorageKey(key)) {
         return previousValue ? mergeClientsValue(row.value_text, previousValue, value) : mergeClientsWithoutLoss(row.value_text, value);
+      }
+      if (isGoalsStorageKey(key)) {
+        return previousValue ? mergeGoalsValue(row.value_text, previousValue, value) : mergeGoalsWithoutLoss(row.value_text, value);
       }
       if (!previousValue) return value;
       return mergeProjectsValue(row.value_text, previousValue, value);
@@ -983,7 +1030,7 @@
       if (record && record.key) addRecord(record.key, String(record.value == null ? '' : record.value), 10);
     });
     var records = Object.keys(byKey).map(function(key) { return byKey[key]; });
-    var remoteRowsForPush = records.some(function(record) { return isClientsStorageKey(record.key); }) ? await readRemote() : [];
+    var remoteRowsForPush = records.some(function(record) { return isClientsStorageKey(record.key) || isGoalsStorageKey(record.key); }) ? await readRemote() : [];
     var remoteByKeyForPush = {};
     (remoteRowsForPush || []).forEach(function(row) {
       remoteByKeyForPush[row.storage_key] = String(row.value_text == null ? '' : row.value_text);
@@ -993,6 +1040,9 @@
       if (hasProfileData(records[j].key, records[j].value)) {
         if (isClientsStorageKey(records[j].key) && remoteByKeyForPush[records[j].key]) {
           records[j].value = mergeClientsWithoutLoss(remoteByKeyForPush[records[j].key], records[j].value);
+        }
+        if (isGoalsStorageKey(records[j].key) && remoteByKeyForPush[records[j].key]) {
+          records[j].value = mergeGoalsWithoutLoss(remoteByKeyForPush[records[j].key], records[j].value);
         }
         await writeKey(records[j].key, records[j].value);
         written.push(records[j]);

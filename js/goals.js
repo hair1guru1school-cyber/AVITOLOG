@@ -52,6 +52,20 @@
       }
     } catch(e) {}
   }
+  window.__goalsApplyBackendValue = function(key, value) {
+    var baseKey = goalsStorageKey();
+    var storageKey = String(key || '');
+    if (storageKey !== baseKey && storageKey.indexOf(baseKey + '_month_') !== 0) return false;
+    try {
+      var parsed = JSON.parse(value || '');
+      if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return false;
+    } catch(e) {
+      return false;
+    }
+    _goalsStorageMemoryByKey[storageKey] = String(value);
+    writeGoalsShadow(storageKey, String(value));
+    return true;
+  };
   function freeGoalsLocalStorageQuota() {
     try {
       var keys = [];
@@ -92,8 +106,9 @@
   document.addEventListener('avitolog:backend-remote-applied', function(event) {
     try {
       var keys = (event.detail && event.detail.keys) || [];
+      var fallbackKeys = (event.detail && event.detail.fallbackKeys) || [];
       keys.forEach(function(key) {
-        if (String(key || '').indexOf(goalsStorageKey()) === 0) delete _goalsStorageMemoryByKey[key];
+        if (String(key || '').indexOf(goalsStorageKey()) === 0 && fallbackKeys.indexOf(key) < 0) delete _goalsStorageMemoryByKey[key];
       });
     } catch(e) {}
   });
