@@ -658,6 +658,7 @@
       });
     }).then(function (payload) {
       if (pendingWrites[key] === pending) {
+        applyStorageValue(key, payload.prepared);
         delete pendingWrites[key];
         clearDirty(key);
         clearPendingPayload(key);
@@ -847,13 +848,17 @@
       }));
     } catch (appliedEventError) {}
     if (mergedWrites.length) {
+      var mergedAppliedKeys = [];
+      var mergedFallbackKeys = [];
       for (var mw = 0; mw < mergedWrites.length; mw++) {
         var preparedMerged = await prepareValueForWrite(mergedWrites[mw].key, mergedWrites[mw].value, mergedWrites[mw].previousValue || '');
         await writeKey(mergedWrites[mw].key, preparedMerged);
-        try { localStorage.setItem(mergedWrites[mw].key, preparedMerged); } catch (eSetMerged) {}
+        mergedAppliedKeys.push(mergedWrites[mw].key);
+        if (!applyStorageValue(mergedWrites[mw].key, preparedMerged)) mergedFallbackKeys.push(mergedWrites[mw].key);
         clearDirty(mergedWrites[mw].key);
         clearPendingPayload(mergedWrites[mw].key);
       }
+      refreshOpenScreensAfterRemoteApply(mergedAppliedKeys, mergedFallbackKeys);
     }
     return { remoteKeys: remoteKeys, appliedKeys: appliedKeys, mergedWrites: mergedWrites };
   }
@@ -1184,6 +1189,8 @@
     var shadowRows = await readShadowLiveAll();
     var keys = await readDirtyKeysWithShadow(shadowRows);
     var written = 0;
+    var writtenKeys = [];
+    var fallbackKeys = [];
     for (var i = 0; i < keys.length; i++) {
       var key = keys[i];
       var pendingPayload = await readPendingPayload(key, shadowRows);
@@ -1199,12 +1206,13 @@
       if (!hasProfileData(key, value)) continue;
       var prepared = await prepareValueForWrite(key, value, previousValue);
       await writeKey(key, prepared);
-      try { localStorage.setItem(key, prepared); } catch (eSet) {}
+      writtenKeys.push(key);
+      if (!applyStorageValue(key, prepared)) fallbackKeys.push(key);
       clearDirty(key);
       clearPendingPayload(key);
       written++;
     }
-    if (written) refreshOpenScreensAfterRemoteApply(keys);
+    if (written) refreshOpenScreensAfterRemoteApply(writtenKeys, fallbackKeys);
     return written;
   }
   function clientMergeKey(item) {
