@@ -417,6 +417,69 @@
     });
     return out;
   }
+  function mergeProjectRecordByChanges(remoteItem, previousItem, nextItem) {
+    if (!remoteItem || !previousItem || !nextItem) return nextItem;
+    var out = Object.assign({}, remoteItem);
+    Object.keys(nextItem).forEach(function(field) {
+      if (!Object.prototype.hasOwnProperty.call(previousItem, field) ||
+          stableJson(previousItem[field]) !== stableJson(nextItem[field])) {
+        out[field] = nextItem[field];
+      }
+    });
+    Object.keys(previousItem).forEach(function(field) {
+      if (Object.prototype.hasOwnProperty.call(nextItem, field)) return;
+      if (stableJson(remoteItem[field]) === stableJson(previousItem[field])) delete out[field];
+    });
+    return out;
+  }
+  function mergeProjectArrayByChanges(remoteArr, previousArr, nextArr) {
+    remoteArr = Array.isArray(remoteArr) ? remoteArr : [];
+    previousArr = Array.isArray(previousArr) ? previousArr : [];
+    nextArr = Array.isArray(nextArr) ? nextArr : [];
+    var previousById = {};
+    var nextById = {};
+    previousArr.forEach(function(item) {
+      var id = backendItemId(item);
+      if (id) previousById[id] = item;
+    });
+    nextArr.forEach(function(item) {
+      var id = backendItemId(item);
+      if (id) nextById[id] = item;
+    });
+    var out = [];
+    var seen = {};
+    remoteArr.forEach(function(remoteItem) {
+      var id = backendItemId(remoteItem);
+      if (!id) {
+        out.push(remoteItem);
+        return;
+      }
+      var previousItem = previousById[id];
+      var nextItem = nextById[id];
+      if (previousItem && !nextItem) {
+        if (stableJson(remoteItem) !== stableJson(previousItem)) {
+          out.push(remoteItem);
+          seen[id] = true;
+        }
+        return;
+      }
+      if (nextItem && (!previousItem || stableJson(previousItem) !== stableJson(nextItem))) {
+        out.push(previousItem ? mergeProjectRecordByChanges(remoteItem, previousItem, nextItem) : nextItem);
+        seen[id] = true;
+        return;
+      }
+      out.push(remoteItem);
+      seen[id] = true;
+    });
+    nextArr.forEach(function(nextItem) {
+      var id = backendItemId(nextItem);
+      if (id && !seen[id] && (!previousById[id] || stableJson(previousById[id]) !== stableJson(nextItem))) {
+        out.push(nextItem);
+        seen[id] = true;
+      }
+    });
+    return out;
+  }
   function mergeProjectsValue(remoteValue, previousValue, nextValue) {
     var remote = parseJsonValue(remoteValue);
     var previous = parseJsonValue(previousValue);
@@ -425,7 +488,30 @@
     var out = Object.assign({}, remote);
     ['projects', 'hiddenProjects', 'tasks', 'taskLog'].forEach(function (field) {
       if (Array.isArray(next[field]) || Array.isArray(previous[field]) || Array.isArray(remote[field])) {
-        out[field] = mergeArrayByChangedIds(remote[field], previous[field], next[field]);
+        out[field] = field === 'projects'
+          ? mergeProjectArrayByChanges(remote[field], previous[field], next[field])
+          : mergeArrayByChangedIds(remote[field], previous[field], next[field]);
+      }
+    });
+    return JSON.stringify(out);
+  }
+  function mergeProjectsWithoutLoss(remoteValue, localValue) {
+    var remote = parseJsonValue(remoteValue);
+    var local = parseJsonValue(localValue);
+    if (!remote || !local || !Array.isArray(remote.projects) || !Array.isArray(local.projects)) return localValue;
+    var out = Object.assign({}, remote, local);
+    var positions = {};
+    out.projects = remote.projects.slice();
+    out.projects.forEach(function(item, index) {
+      var id = backendItemId(item);
+      if (id) positions[id] = index;
+    });
+    local.projects.forEach(function(item) {
+      var id = backendItemId(item);
+      if (id && positions[id] != null) out.projects[positions[id]] = item;
+      else {
+        if (id) positions[id] = out.projects.length;
+        out.projects.push(item);
       }
     });
     return JSON.stringify(out);
@@ -547,7 +633,7 @@
       if (isGoalsStorageKey(key)) {
         return previousValue ? mergeGoalsValue(row.value_text, previousValue, value) : mergeGoalsWithoutLoss(row.value_text, value);
       }
-      if (!previousValue) return value;
+      if (!previousValue) return mergeProjectsWithoutLoss(row.value_text, value);
       return mergeProjectsValue(row.value_text, previousValue, value);
     } catch (e) {
       return value;
@@ -1030,7 +1116,9 @@
       if (record && record.key) addRecord(record.key, String(record.value == null ? '' : record.value), 10);
     });
     var records = Object.keys(byKey).map(function(key) { return byKey[key]; });
-    var remoteRowsForPush = records.some(function(record) { return isClientsStorageKey(record.key) || isGoalsStorageKey(record.key); }) ? await readRemote() : [];
+    var remoteRowsForPush = records.some(function(record) {
+      return isProjectsStorageKey(record.key) || isClientsStorageKey(record.key) || isGoalsStorageKey(record.key);
+    }) ? await readRemote() : [];
     var remoteByKeyForPush = {};
     (remoteRowsForPush || []).forEach(function(row) {
       remoteByKeyForPush[row.storage_key] = String(row.value_text == null ? '' : row.value_text);
@@ -1038,6 +1126,9 @@
     var written = [];
     for (var j = 0; j < records.length; j++) {
       if (hasProfileData(records[j].key, records[j].value)) {
+        if (isProjectsStorageKey(records[j].key) && remoteByKeyForPush[records[j].key]) {
+          records[j].value = mergeProjectsWithoutLoss(remoteByKeyForPush[records[j].key], records[j].value);
+        }
         if (isClientsStorageKey(records[j].key) && remoteByKeyForPush[records[j].key]) {
           records[j].value = mergeClientsWithoutLoss(remoteByKeyForPush[records[j].key], records[j].value);
         }

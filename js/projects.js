@@ -518,6 +518,12 @@ window.__projectsApplyBackendValue = function(key, value) {
     return false;
   }
 };
+window.__projectsPrepareManualSave = function() {
+  flushScheduledProjectsData();
+  var key = projectsDataKey();
+  var data = (_projectsDataMem && _projectsDataMemKey === key) ? _projectsDataMem : loadProjectsData();
+  return { key: key, value: JSON.stringify(data) };
+};
 function scheduleProjectsStorageFlush(data) {
   _projectsDataMem = data;
   _projectsDataMemKey = projectsDataKey();

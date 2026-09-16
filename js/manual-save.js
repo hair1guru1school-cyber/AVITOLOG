@@ -46,6 +46,10 @@
         var crmRecord = window.__crmClientsPrepareManualSave();
         if (crmRecord && crmRecord.key) authoritativeRecords.push(crmRecord);
       }
+      if (typeof window.__projectsPrepareManualSave === 'function') {
+        var projectsRecord = window.__projectsPrepareManualSave();
+        if (projectsRecord && projectsRecord.key) authoritativeRecords.push(projectsRecord);
+      }
       if (typeof window.__avitologBackendPushCurrentProfileNow !== 'function') {
         throw new Error('модуль Supabase не загружен');
       }
