@@ -597,7 +597,19 @@
       if (field === 'projects' || Object.prototype.hasOwnProperty.call(next, field)) return;
       if (stableJson(remote[field]) === stableJson(previous[field])) delete out[field];
     });
-    out.projects = mergeArrayByChangedIds(remote.projects, previous.projects, next.projects);
+    var deletedMap = {};
+    var deletedIds = [];
+    [remote.deletedProjectIds, next.deletedProjectIds].forEach(function(list) {
+      (Array.isArray(list) ? list : []).forEach(function(id) {
+        id = String(id || '');
+        if (id && !deletedMap[id]) { deletedMap[id] = true; deletedIds.push(id); }
+      });
+    });
+    out.deletedProjectIds = deletedIds;
+    out.projects = mergeArrayByChangedIds(remote.projects, previous.projects, next.projects).filter(function(item) {
+      var id = backendItemId(item);
+      return !id || !deletedMap[id];
+    });
     return JSON.stringify(out);
   }
   function mergeGoalsWithoutLoss(remoteValue, localValue) {
@@ -605,6 +617,15 @@
     var local = parseJsonValue(localValue);
     if (!remote || !local || !Array.isArray(remote.projects) || !Array.isArray(local.projects)) return localValue;
     var out = Object.assign({}, remote, local);
+    var deletedMap = {};
+    var deletedIds = [];
+    [remote.deletedProjectIds, local.deletedProjectIds].forEach(function(list) {
+      (Array.isArray(list) ? list : []).forEach(function(id) {
+        id = String(id || '');
+        if (id && !deletedMap[id]) { deletedMap[id] = true; deletedIds.push(id); }
+      });
+    });
+    out.deletedProjectIds = deletedIds;
     var positions = {};
     out.projects = remote.projects.slice();
     out.projects.forEach(function(item, index) {
@@ -613,11 +634,16 @@
     });
     local.projects.forEach(function(item) {
       var id = backendItemId(item);
+      if (id && deletedMap[id]) return;
       if (id && positions[id] != null) out.projects[positions[id]] = item;
       else {
         if (id) positions[id] = out.projects.length;
         out.projects.push(item);
       }
+    });
+    out.projects = out.projects.filter(function(item) {
+      var id = backendItemId(item);
+      return !id || !deletedMap[id];
     });
     return JSON.stringify(out);
   }

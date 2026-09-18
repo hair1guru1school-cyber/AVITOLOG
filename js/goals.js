@@ -710,6 +710,13 @@
   }
 
   function normalizeLoadedData(d) {
+    if (!Array.isArray(d.projects)) d.projects = [];
+    if (!Array.isArray(d.deletedProjectIds)) d.deletedProjectIds = [];
+    if (d.deletedProjectIds.length) {
+      var deleted = {};
+      d.deletedProjectIds.forEach(function(id) { if (id) deleted[String(id)] = true; });
+      d.projects = d.projects.filter(function(p) { return !p || !p.id || !deleted[String(p.id)]; });
+    }
     if (!d.customMetrics) d.customMetrics = [];
     if (!d.pinnedMetrics) d.pinnedMetrics = [];
     if (!d.pinnedMetricsMain) d.pinnedMetricsMain = [];
@@ -717,6 +724,18 @@
     if (!Array.isArray(d.workOrderWork)) d.workOrderWork = [];
     if (d.workTargetFilter === undefined) d.workTargetFilter = false;
     return d;
+  }
+  function markGoalProjectsDeleted(data, ids) {
+    data.deletedProjectIds = Array.isArray(data.deletedProjectIds) ? data.deletedProjectIds : [];
+    var seen = {};
+    data.deletedProjectIds.forEach(function(id) { if (id) seen[String(id)] = true; });
+    (ids || []).forEach(function(id) {
+      id = String(id || '');
+      if (id && !seen[id]) {
+        data.deletedProjectIds.push(id);
+        seen[id] = true;
+      }
+    });
   }
   function loadLiveData() {
     try {
@@ -732,7 +751,7 @@
         if (snap) return normalizeLoadedData(snap);
       }
       var s = readGoalsStorageValue(goalsStorageKey());
-      var d = s ? JSON.parse(s) : { projects: [] };
+      var d = normalizeLoadedData(s ? JSON.parse(s) : { projects: [] });
       if (!d.customMetrics) d.customMetrics = [];
       if (!d.pinnedMetrics) d.pinnedMetrics = [];
       if (!d.pinnedMetricsMain) d.pinnedMetricsMain = [];
@@ -2811,6 +2830,8 @@
     delete copy.archiveCopyOfWeekId;
     markGoalAsPaid(copy, saleDate);
     if (cur.crmArchived) {
+      var removedArchiveIds = data.projects.filter(function(x) { return x.archiveCopyOfWeekId === projectId; }).map(function(x) { return x.id; });
+      markGoalProjectsDeleted(data, removedArchiveIds);
       data.projects = data.projects.filter(function(x) { return x.archiveCopyOfWeekId !== projectId; });
       cur.crmArchived = false;
       if (cur.emojiBeforeArchive) {
@@ -3089,6 +3110,7 @@
         }
       }
     }
+    markGoalProjectsDeleted(data, [projectId]);
     data.projects = projects.filter(function(x) { return x.id !== projectId; });
     saveData(data);
     render();
@@ -3274,6 +3296,10 @@
     var wi = (typeof p.weekIndex === 'number' && p.weekIndex >= 1 && p.weekIndex <= 4) ? p.weekIndex : getWeekIndex(day);
     if (wi !== weekNum) return;
     removeKassaByGoalId(projectId);
+    var removedIds = projects.filter(function(x) {
+      return x.id === projectId || x.archiveCopyOfWeekId === projectId || x.workCopyOfWeekId === projectId;
+    }).map(function(x) { return x.id; });
+    markGoalProjectsDeleted(data, removedIds);
     data.projects = projects.filter(function(x) {
       if (x.id === projectId) return false;
       if (x.archiveCopyOfWeekId === projectId) return false;
@@ -3301,6 +3327,7 @@
     copy.touchDates = Object.assign({}, copy.touchDates || {});
     copy.tags = (copy.tags || []).slice();
     if (copy.tags.indexOf('new') < 0) copy.tags.unshift('new');
+    markGoalProjectsDeleted(data, [projectId]);
     data.projects = data.projects.filter(function(x) { return x.id !== projectId; });
     removeKassaByGoalId(projectId);
     data.projects.push(copy);
