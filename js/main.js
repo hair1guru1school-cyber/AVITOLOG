@@ -3393,7 +3393,8 @@ function saveNorm(n) {
   if (!n) return;
   function set(id, val) {
     if (!val) return;
-    acSave(id, val);
+    // Autocomplete history is optional and must never invalidate a generated result.
+    try { acSave(id, val); } catch(e) { console.warn('Autocomplete save skipped:', id, e); }
     var e = document.getElementById(id);
     if (e && e.value) e.value = val;
   }
@@ -3658,6 +3659,7 @@ function fixJSON(s) {
 // ── AUTOCOMPLETE ──
 var ACF = ['category','notes'];
 var ACP = 'avitolog_ac_';
+var _acMemory = {};
 
 var NICHE_PRESETS = [
   '🏠 Дома под ключ (услуги)',
@@ -3681,7 +3683,33 @@ var NICHE_PRESETS = [
 var GEO_CITIES = ['Москва','Московская область','Санкт-Петербург','Ленинградская область','Краснодар','Краснодарский край','Крым','Симферополь','Севастополь','Ростов-на-Дону','Ростовская область','Казань','Татарстан','Екатеринбург','Свердловская область','Новосибирск','Новосибирская область','Нижний Новгород','Нижегородская область','Самара','Самарская область','Воронеж','Воронежская область','Уфа','Башкортостан','Волгоград','Волгоградская область','Пермь','Пермский край','Красноярск','Красноярский край','Саратов','Саратовская область','Вологда','Вологодская область','Тюмень','Тюменская область','Тольятти','Ижевск','Удмуртия','Барнаул','Алтайский край','Иркутск','Иркутская область','Хабаровск','Хабаровский край','Ярославль','Ярославская область','Владивосток','Приморский край','Махачкала','Дагестан','Томск','Томская область','Оренбург','Оренбургская область','Кемерово','Кемеровская область','Новокузнецк','Липецк','Липецкая область','Тула','Тульская область','Киров','Кировская область','Чебоксары','Чувашия','Калининград','Калининградская область','Брянск','Брянская область','Курск','Курская область','Иваново','Ивановская область','Магнитогорск','Сочи','Владикавказ','Северная Осетия','Грозный','Чечня','Ставрополь','Ставропольский край','Чита','Забайкальский край','Подольск','Люберцы','Балашиха','Мытищи','Королёв','Химки','Коломна','Обнинск','Тверь','Тверская область','Рязань','Рязанская область','Пенза','Пензенская область','Астрахань','Астраханская область','Челябинск','Челябинская область','Ульяновск','Ульяновская область','Омск','Омская область','Курган','Курганская область','Нальчик','Кабардино-Балкария','Элиста','Калмыкия','Владимир','Владимирская область','Смоленск','Смоленская область','Мурманск','Мурманская область','Архангельск','Архангельская область','Сыктывкар','Коми','Йошкар-Ола','Марий Эл','Саранск','Мордовия','Улан-Удэ','Бурятия','Петропавловск-Камчатский','Камчатский край','Южно-Сахалинск','Сахалинская область','Благовещенск','Амурская область'];
 
 function acLoad(f) {
-  try { return JSON.parse(localStorage.getItem(ACP+f) || '[]'); } catch(e) { return []; }
+  var key = ACP + f;
+  if (Object.prototype.hasOwnProperty.call(_acMemory, key)) return _acMemory[key].slice();
+  var raw = '';
+  try { raw = sessionStorage.getItem(key) || ''; } catch(e) {}
+  if (!raw) {
+    try { raw = localStorage.getItem(key) || ''; } catch(e) {}
+  }
+  try {
+    var parsed = JSON.parse(raw || '[]');
+    var list = Array.isArray(parsed) ? parsed : [];
+    _acMemory[key] = list.slice();
+    return list;
+  } catch(e) { return []; }
+}
+
+function acStore(f, list) {
+  var key = ACP + f;
+  var saved = Array.isArray(list) ? list.slice(-50) : [];
+  var raw = JSON.stringify(saved);
+  _acMemory[key] = saved.slice();
+  try {
+    localStorage.setItem(key, raw);
+    try { sessionStorage.removeItem(key); } catch(e) {}
+  } catch(e) {
+    // Keep non-critical suggestions in this tab when localStorage is full.
+    try { sessionStorage.setItem(key, raw); } catch(ignore) {}
+  }
 }
 
 function acSim(a, b) {
@@ -3705,7 +3733,7 @@ function acSave(f, v) {
   var l = acLoad(f).filter(function(x) { return !acSim(x,val); });
   l.push(val);
   l.sort(function(a,b) { return a.localeCompare(b,'ru'); });
-  localStorage.setItem(ACP+f, JSON.stringify(l.slice(-50)));
+  acStore(f, l);
 }
 
 function acSaveAll() {
@@ -3764,7 +3792,7 @@ function setupAC(el, fn) {
         e.preventDefault(); e.stopPropagation();
         var val = e.target.getAttribute('data-val');
         var saved = acLoad(fn).filter(function(v) { return v !== val; });
-        localStorage.setItem(ACP+fn, JSON.stringify(saved));
+        acStore(fn, saved);
         show(el.value);
       });
       item.querySelector('.ac-t').addEventListener('mousedown', function(e) {
