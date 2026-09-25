@@ -1569,29 +1569,37 @@
     setTimeout(function(){ if (el.parentNode) el.parentNode.removeChild(el); }, 2600);
   }
 
-  /** Успехи: накопительная сумма продаж за месяц (CRM). Пороги 50k … 500k; иконки — только файлы в assets/achievements/milestone-*.png */
+  /** Успехи: накопительная сумма продаж за месяц (CRM). Иконки — только файлы в assets/achievements/milestone-*.png */
   var MONTHLY_TOTAL_THRESHOLD_50K = 50000;
   var MONTHLY_TOTAL_THRESHOLD_100K = 100000;
   var MONTHLY_TOTAL_THRESHOLD_200K = 200000;
   var MONTHLY_TOTAL_THRESHOLD_300K = 300000;
   var MONTHLY_TOTAL_THRESHOLD_500K = 500000;
+  var MONTHLY_TOTAL_THRESHOLD_666K = 666000;
+  var MONTHLY_TOTAL_THRESHOLD_777K = 777000;
   var ACHIEVEMENT_50K_ICON_BASE = 'assets/achievements/milestone-50k';
   var ACHIEVEMENT_100K_ICON_BASE = 'assets/achievements/milestone-100k';
   var ACHIEVEMENT_200K_ICON_BASE = 'assets/achievements/milestone-200k';
   var ACHIEVEMENT_300K_ICON_BASE = 'assets/achievements/milestone-300k';
   var ACHIEVEMENT_500K_ICON_BASE = 'assets/achievements/milestone-500k';
-  var ACHIEVEMENT_ASSETS_VER = '14';
+  var ACHIEVEMENT_666K_ICON_BASE = 'assets/achievements/milestone-666k';
+  var ACHIEVEMENT_777K_ICON_BASE = 'assets/achievements/milestone-777k';
+  var ACHIEVEMENT_ASSETS_VER = '15';
   var MONTHLY_ACHIEVEMENT_50K = { key: '50k', label: 'Разгон месяца', short: '50k', iconBase: ACHIEVEMENT_50K_ICON_BASE };
   var MONTHLY_ACHIEVEMENT_100K = { key: '100k', label: 'Продано на 100к', short: '100k', iconBase: ACHIEVEMENT_100K_ICON_BASE };
   var MONTHLY_ACHIEVEMENT_200K = { key: '200k', label: 'Продано на 200к', short: '200k', iconBase: ACHIEVEMENT_200K_ICON_BASE };
   var MONTHLY_ACHIEVEMENT_300K = { key: '300k', label: 'Продано на 300к', short: '300k', iconBase: ACHIEVEMENT_300K_ICON_BASE };
   var MONTHLY_ACHIEVEMENT_500K = { key: '500k', label: 'Продано на 500к', short: '500k', iconBase: ACHIEVEMENT_500K_ICON_BASE };
+  var MONTHLY_ACHIEVEMENT_666K = { key: '666k', label: 'Продано на 666к', short: '666k', iconBase: ACHIEVEMENT_666K_ICON_BASE };
+  var MONTHLY_ACHIEVEMENT_777K = { key: '777k', label: 'Продано на 777к', short: '777k', iconBase: ACHIEVEMENT_777K_ICON_BASE };
   var MONTHLY_ACHIEVEMENT_TIERS_ASC = [
     { achievement: MONTHLY_ACHIEVEMENT_50K, threshold: MONTHLY_TOTAL_THRESHOLD_50K },
     { achievement: MONTHLY_ACHIEVEMENT_100K, threshold: MONTHLY_TOTAL_THRESHOLD_100K },
     { achievement: MONTHLY_ACHIEVEMENT_200K, threshold: MONTHLY_TOTAL_THRESHOLD_200K },
     { achievement: MONTHLY_ACHIEVEMENT_300K, threshold: MONTHLY_TOTAL_THRESHOLD_300K },
-    { achievement: MONTHLY_ACHIEVEMENT_500K, threshold: MONTHLY_TOTAL_THRESHOLD_500K }
+    { achievement: MONTHLY_ACHIEVEMENT_500K, threshold: MONTHLY_TOTAL_THRESHOLD_500K },
+    { achievement: MONTHLY_ACHIEVEMENT_666K, threshold: MONTHLY_TOTAL_THRESHOLD_666K },
+    { achievement: MONTHLY_ACHIEVEMENT_777K, threshold: MONTHLY_TOTAL_THRESHOLD_777K }
   ];
   /** PNG в assets/achievements/; при отсутствии — fallback .svg с тем же базовым именем. */
   function achievementIconImgHtml(iconBase, imgClass) {
@@ -1690,6 +1698,57 @@
     if (meta && meta.totalAtUnlock) lines.push('Сумма на момент получения: ' + fmtNumAch(meta.totalAtUnlock) + ' ₽');
     return lines.join('\n');
   }
+  var achievementHoverHideTimer = 0;
+  function achievementHoverPopup() {
+    var popup = document.getElementById('goalAchievementHoverPopup');
+    if (popup) return popup;
+    popup = document.createElement('div');
+    popup.id = 'goalAchievementHoverPopup';
+    popup.className = 'goal-achievement-hover-popup';
+    popup.setAttribute('role', 'tooltip');
+    popup.hidden = true;
+    document.body.appendChild(popup);
+    return popup;
+  }
+  function showAchievementHoverPopup(badge) {
+    clearTimeout(achievementHoverHideTimer);
+    var popup = achievementHoverPopup();
+    var iconBase = badge.getAttribute('data-achievement-icon') || ACHIEVEMENT_50K_ICON_BASE;
+    var name = badge.getAttribute('data-achievement-name') || 'Награда';
+    var details = badge.getAttribute('data-achievement-details') || '';
+    popup.innerHTML = '<div class="goal-achievement-hover-picture">' + achievementIconImgHtml(iconBase, 'goal-achievement-hover-img') + '</div>' +
+      '<div class="goal-achievement-hover-name">' + esc(name) + '</div>' +
+      '<div class="goal-achievement-hover-details">' + esc(details) + '</div>';
+    popup.hidden = false;
+    popup.classList.remove('goal-achievement-hover-popup--open');
+    var badgeRect = badge.getBoundingClientRect();
+    var popupRect = popup.getBoundingClientRect();
+    var left = badgeRect.left - popupRect.width - 14;
+    if (left < 12) left = Math.min(window.innerWidth - popupRect.width - 12, badgeRect.right + 14);
+    var top = badgeRect.top + (badgeRect.height - popupRect.height) / 2;
+    top = Math.max(12, Math.min(top, window.innerHeight - popupRect.height - 12));
+    popup.style.left = Math.max(12, left) + 'px';
+    popup.style.top = top + 'px';
+    requestAnimationFrame(function() { popup.classList.add('goal-achievement-hover-popup--open'); });
+  }
+  function hideAchievementHoverPopup() {
+    clearTimeout(achievementHoverHideTimer);
+    achievementHoverHideTimer = setTimeout(function() {
+      var popup = document.getElementById('goalAchievementHoverPopup');
+      if (!popup) return;
+      popup.classList.remove('goal-achievement-hover-popup--open');
+      setTimeout(function() { if (!popup.classList.contains('goal-achievement-hover-popup--open')) popup.hidden = true; }, 140);
+    }, 70);
+  }
+  function setupAchievementHoverCards(root) {
+    if (!root) return;
+    root.querySelectorAll('.goal-achievement-badge[data-achievement-icon]').forEach(function(badge) {
+      badge.addEventListener('mouseenter', function() { showAchievementHoverPopup(badge); });
+      badge.addEventListener('mouseleave', hideAchievementHoverPopup);
+      badge.addEventListener('focus', function() { showAchievementHoverPopup(badge); });
+      badge.addEventListener('blur', hideAchievementHoverPopup);
+    });
+  }
   function showGoalAchievementToast(tier, highlightAmount, projectName, customSubLine) {
     var ex = document.getElementById('goalAchievementToast');
     if (ex) ex.remove();
@@ -1730,7 +1789,22 @@
     if (!o.monthMilestones[monthKey]) o.monthMilestones[monthKey] = {};
     var m = o.monthMilestones[monthKey];
     var ch = false;
-    if (totalMonthRub >= MONTHLY_TOTAL_THRESHOLD_500K) {
+    if (totalMonthRub >= MONTHLY_TOTAL_THRESHOLD_777K) {
+      if (!m['777k']) { m['777k'] = true; ch = true; }
+      if (!m['666k']) { m['666k'] = true; ch = true; }
+      if (!m['500k']) { m['500k'] = true; ch = true; }
+      if (!m['300k']) { m['300k'] = true; ch = true; }
+      if (!m['200k']) { m['200k'] = true; ch = true; }
+      if (!m['100k']) { m['100k'] = true; ch = true; }
+      if (!m['50k']) { m['50k'] = true; ch = true; }
+    } else if (totalMonthRub >= MONTHLY_TOTAL_THRESHOLD_666K) {
+      if (!m['666k']) { m['666k'] = true; ch = true; }
+      if (!m['500k']) { m['500k'] = true; ch = true; }
+      if (!m['300k']) { m['300k'] = true; ch = true; }
+      if (!m['200k']) { m['200k'] = true; ch = true; }
+      if (!m['100k']) { m['100k'] = true; ch = true; }
+      if (!m['50k']) { m['50k'] = true; ch = true; }
+    } else if (totalMonthRub >= MONTHLY_TOTAL_THRESHOLD_500K) {
       if (!m['500k']) { m['500k'] = true; ch = true; }
       if (!m['300k']) { m['300k'] = true; ch = true; }
       if (!m['200k']) { m['200k'] = true; ch = true; }
@@ -1753,7 +1827,7 @@
     }
     if (ch) saveAchievements(o);
   }
-  /** После продажи: впервые ≥500k … ≥50k — запись + тост (за раз одна «верхняя» награда). */
+  /** После продажи: впервые ≥777k … ≥50k — запись + тост (за раз одна «верхняя» награда). */
   function checkMonthlyTotalAchievements(dataAfterSave, saleDateIso, projectName) {
     var dt = dateFromSaleYMD(saleDateIso);
     var monthKey = dt.getFullYear() + '-' + pad2(dt.getMonth() + 1);
@@ -1762,7 +1836,42 @@
     if (!o.monthMilestones[monthKey]) o.monthMilestones[monthKey] = {};
     var m = o.monthMilestones[monthKey];
     var tierForToast = null;
-    if (totalAfter >= MONTHLY_TOTAL_THRESHOLD_500K && !m['500k']) {
+    if (totalAfter >= MONTHLY_TOTAL_THRESHOLD_777K && !m['777k']) {
+      m['777k'] = true;
+      if (!m['666k']) m['666k'] = true;
+      if (!m['500k']) m['500k'] = true;
+      if (!m['300k']) m['300k'] = true;
+      if (!m['200k']) m['200k'] = true;
+      if (!m['100k']) m['100k'] = true;
+      if (!m['50k']) m['50k'] = true;
+      o.events.push({
+        type: 'month_total_milestone',
+        tier: '777k',
+        monthKey: monthKey,
+        totalAtUnlock: totalAfter,
+        saleDate: saleDateIso || '',
+        projectName: projectName || '',
+        at: Date.now()
+      });
+      tierForToast = MONTHLY_ACHIEVEMENT_777K;
+    } else if (totalAfter >= MONTHLY_TOTAL_THRESHOLD_666K && !m['666k']) {
+      m['666k'] = true;
+      if (!m['500k']) m['500k'] = true;
+      if (!m['300k']) m['300k'] = true;
+      if (!m['200k']) m['200k'] = true;
+      if (!m['100k']) m['100k'] = true;
+      if (!m['50k']) m['50k'] = true;
+      o.events.push({
+        type: 'month_total_milestone',
+        tier: '666k',
+        monthKey: monthKey,
+        totalAtUnlock: totalAfter,
+        saleDate: saleDateIso || '',
+        projectName: projectName || '',
+        at: Date.now()
+      });
+      tierForToast = MONTHLY_ACHIEVEMENT_666K;
+    } else if (totalAfter >= MONTHLY_TOTAL_THRESHOLD_500K && !m['500k']) {
       m['500k'] = true;
       if (!m['300k']) m['300k'] = true;
       if (!m['200k']) m['200k'] = true;
@@ -1848,14 +1957,16 @@
     var unlocked200 = !!mm['200k'] || totalRevenueMonth >= MONTHLY_TOTAL_THRESHOLD_200K;
     var unlocked300 = !!mm['300k'] || totalRevenueMonth >= MONTHLY_TOTAL_THRESHOLD_300K;
     var unlocked500 = !!mm['500k'] || totalRevenueMonth >= MONTHLY_TOTAL_THRESHOLD_500K;
-    var railUnlocked = unlocked50 || unlocked100 || unlocked200 || unlocked300 || unlocked500;
+    var unlocked666 = !!mm['666k'] || totalRevenueMonth >= MONTHLY_TOTAL_THRESHOLD_666K;
+    var unlocked777 = !!mm['777k'] || totalRevenueMonth >= MONTHLY_TOTAL_THRESHOLD_777K;
+    var railUnlocked = unlocked50 || unlocked100 || unlocked200 || unlocked300 || unlocked500 || unlocked666 || unlocked777;
     /** Пока ни одна награда за месяц не открыта — колонку не показываем (без «замка» и превью). */
     if (!railUnlocked) return '';
     var badges = '';
     if (railUnlocked) {
       var badgeCls = 'goal-achievement-badge goal-achievement-badge--unlocked';
       var badgeParts = [];
-      var unlockedByKey = { '50k': unlocked50, '100k': unlocked100, '200k': unlocked200, '300k': unlocked300, '500k': unlocked500 };
+      var unlockedByKey = { '50k': unlocked50, '100k': unlocked100, '200k': unlocked200, '300k': unlocked300, '500k': unlocked500, '666k': unlocked666, '777k': unlocked777 };
       var unlockMeta = achievementUnlockMetaForMonth(soldProjects, viewYM, o.events);
       MONTHLY_ACHIEVEMENT_TIERS_ASC.slice().reverse().forEach(function(tierInfo) {
         var tier = tierInfo.achievement;
@@ -1863,13 +1974,13 @@
         var suffix = tier.key.replace('k', '');
         var title = achievementBadgeTitle({ threshold: tierInfo.threshold }, unlockMeta[tier.key], periodLabel);
         var caption = tier.key === '50k' ? 'Продано на 50к' : tier.label;
-        badgeParts.push('<div class="' + badgeCls + '" title="' + esc(title) + '" aria-label="' + esc(title) + '">' +
+        badgeParts.push('<div class="' + badgeCls + '" tabindex="0" aria-label="' + esc(caption + '. ' + title) + '" data-achievement-icon="' + esc(tier.iconBase) + '" data-achievement-name="' + esc(caption) + '" data-achievement-details="' + esc(title) + '">' +
           '<span class="goal-achievement-badge-coin goal-achievement-badge-coin--pic goal-achievement-badge-coin--rail' + suffix + '">' + achievementIconImgHtml(tier.iconBase, 'goal-achievement-badge-img goal-achievement-badge-img--rail' + suffix) + '</span>' +
           '<span class="goal-achievement-badge-caption">' + esc(caption) + '</span></div>');
       });
       badges = '<div class="goals-achievements-badges">' + badgeParts.join('') + '</div>';
     }
-    var openAchievementsCount = (unlocked50 ? 1 : 0) + (unlocked100 ? 1 : 0) + (unlocked200 ? 1 : 0) + (unlocked300 ? 1 : 0) + (unlocked500 ? 1 : 0);
+    var openAchievementsCount = (unlocked50 ? 1 : 0) + (unlocked100 ? 1 : 0) + (unlocked200 ? 1 : 0) + (unlocked300 ? 1 : 0) + (unlocked500 ? 1 : 0) + (unlocked666 ? 1 : 0) + (unlocked777 ? 1 : 0);
     return '<aside class="goals-achievements-rail" aria-label="Награды по продажам">' +
       '<div class="goals-achievements-rail-head-row">' +
       '<span class="goals-achievements-rail-head">НАГРАДЫ</span>' +
@@ -2266,6 +2377,7 @@
     var main = document.getElementById('mainContent');
     if (main) {
       main.innerHTML = html;
+      setupAchievementHoverCards(main);
       main.querySelectorAll('.goal-week-add-client').forEach(function(btn) {
         btn.onclick = function(e) {
           if (e) {
