@@ -808,16 +808,40 @@
     }
     return bestValue;
   }
-  async function applyRemoteRows(rows) {
+  async function applyRemoteRows(rows, options) {
+    options = options || {};
     var remoteKeys = {};
     var appliedKeys = [];
     var fallbackKeys = [];
     var mergedWrites = [];
-    var shadowRows = await readShadowLiveAll();
+    // The first server-only pull is the source of truth. Reading the whole
+    // IndexedDB shadow and replaying old dirty markers here used to delay the
+    // ready event and could leave CRM/cash on an obsolete browser copy.
+    var authoritativeInitial = !!options.authoritativeInitial;
+    var authoritativeDirtyKeys = authoritativeInitial ? readDirtyKeys() : [];
+    var authoritativeDirtyMap = {};
+    authoritativeDirtyKeys.forEach(function(key) { authoritativeDirtyMap[key] = true; });
+    var shadowRows = authoritativeInitial ? null : await readShadowLiveAll();
     (rows || []).forEach(function (row) {
       if (!isAllowed(row.storage_key)) return;
       remoteKeys[row.storage_key] = true;
       appliedKeys.push(row.storage_key);
+      if (authoritativeInitial) {
+        try { clearTimeout(timers[row.storage_key]); } catch (eInitialTimer) {}
+        delete timers[row.storage_key];
+        delete pendingWrites[row.storage_key];
+        if (authoritativeDirtyMap[row.storage_key] || isRecentlyDirty(row.storage_key)) {
+          try { localStorage.removeItem(dirtyStorageKey(row.storage_key)); } catch (eInitialDirtyLocal) {}
+          try { sessionStorage.removeItem(dirtyStorageKey(row.storage_key)); } catch (eInitialDirtySession) {}
+          var initialPendingKey = pendingPayloadKey(row.storage_key);
+          try { localStorage.removeItem(initialPendingKey); } catch (eInitialPendingLocal) {}
+          try { sessionStorage.removeItem(initialPendingKey); } catch (eInitialPendingSession) {}
+          shadowWriteRaw(initialPendingKey, '');
+        }
+        rememberRevision(row.storage_key, row.revision);
+        if (!applyStorageValue(row.storage_key, row.value_text || '')) fallbackKeys.push(row.storage_key);
+        return;
+      }
       var localBeforeApply = '';
       try { localBeforeApply = localStorage.getItem(row.storage_key) || ''; } catch (localReadError) {}
       localBeforeApply = pickLocalApplyCandidate(row, localBeforeApply, shadowRows);
@@ -868,6 +892,9 @@
       if (mergedState.changed) mergedWrites.push({ key: row.storage_key, value: valueToApply });
       if (!applyStorageValue(row.storage_key, valueToApply)) fallbackKeys.push(row.storage_key);
     });
+    if (authoritativeInitial && authoritativeDirtyKeys.length) {
+      writeDirtyKeys(authoritativeDirtyKeys.filter(function(key) { return !remoteKeys[key]; }));
+    }
     refreshOpenScreensAfterRemoteApply(appliedKeys, fallbackKeys);
     try {
       document.dispatchEvent(new CustomEvent('avitolog:backend-remote-applied', {
@@ -1453,16 +1480,19 @@
       // before this read can roll a complete cash ledger back to an older copy.
       if (!serverOnlyMode) { phase = 'pre-dirty'; await retryDirtyLocalWrites(); }
       phase = 'read'; var rows = await readRemote();
-      phase = 'apply'; var applied = await applyRemoteRows(rows); var remoteKeys = applied.remoteKeys; var appliedKeys = applied.appliedKeys;
+      phase = 'apply'; var applied = await applyRemoteRows(rows, { authoritativeInitial: serverOnlyMode }); var remoteKeys = applied.remoteKeys; var appliedKeys = applied.appliedKeys;
       initialSyncReady = true;
       window.AVITOLOG_BACKEND_INITIAL_SYNC_READY = true;
+      window.AVITOLOG_BACKEND_INITIAL_SYNC_ERROR = '';
       try {
         document.dispatchEvent(new CustomEvent('avitolog:backend-initial-ready', {
           detail: { keys: appliedKeys.slice() }
         }));
       } catch (readyEventError) {}
       phase = 'pending'; flushDeferredPendingWrites();
-      phase = 'dirty'; await retryDirtyLocalWrites();
+      // A server-only startup has just applied the authoritative snapshot.
+      // Replaying the browser's old shadow queue here would undo that snapshot.
+      if (!serverOnlyMode) { phase = 'dirty'; await retryDirtyLocalWrites(); }
       phase = 'seed';
       if (await seedCurrentProfile(remoteKeys)) {
         sessionStorage.removeItem(revisionSignatureStorageKey());
@@ -1503,6 +1533,16 @@
         }
       }
     } catch (error) {
+      window.AVITOLOG_BACKEND_INITIAL_SYNC_ERROR = 'Ошибка загрузки Supabase (' + phase + '): ' + (error && error.message ? error.message : String(error));
+      try {
+        document.dispatchEvent(new CustomEvent('avitolog:backend-initial-error', {
+          detail: { phase: phase, message: window.AVITOLOG_BACKEND_INITIAL_SYNC_ERROR }
+        }));
+      } catch (initialErrorEventError) {}
+      try {
+        if (window.assetsMode && typeof window.__renderAssetsPage === 'function') window.__renderAssetsPage();
+        if (window.goalsMode && window.AVITOLOG_GOALS && typeof window.AVITOLOG_GOALS.render === 'function') window.AVITOLOG_GOALS.render();
+      } catch (initialErrorRenderError) {}
       if (isSessionExpiredError(error)) { showReauthStatus('Supabase ' + phase); return; }
       setStatus('Ошибка Supabase (' + phase + '): ' + error.message, true);
     }
