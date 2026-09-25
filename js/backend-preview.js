@@ -13,10 +13,31 @@
   var returnToApp = params.get('return') === 'app';
 
   function setStatus(text) { status.textContent = text; }
-  function session() {
+  function parseSession(raw) {
+    try { return JSON.parse(raw || 'null'); } catch (e) { return null; }
+  }
+  function jwtExpiry(accessToken) {
     try {
-      return JSON.parse(sessionStorage.getItem(SESSION_KEY) || sessionStorage.getItem('avitolog_backend_app_session') || localStorage.getItem(PERSISTENT_SESSION_KEY) || 'null');
-    } catch (e) { return null; }
+      var payload = String(accessToken || '').split('.')[1] || '';
+      payload = payload.replace(/-/g, '+').replace(/_/g, '/');
+      while (payload.length % 4) payload += '=';
+      return Number(JSON.parse(atob(payload)).exp || 0);
+    } catch (e) { return 0; }
+  }
+  function session() {
+    var candidates = [];
+    try {
+      [sessionStorage.getItem(SESSION_KEY), sessionStorage.getItem('avitolog_backend_app_session'), localStorage.getItem(PERSISTENT_SESSION_KEY)].forEach(function(raw) {
+        var data = parseSession(raw);
+        if (!data || !data.access_token) return;
+        var expiresAt = Number(data.expires_at || jwtExpiry(data.access_token) || 0);
+        var active = !expiresAt || expiresAt > Math.floor(Date.now() / 1000) + 60;
+        var score = (active ? 20000000000000 : 0) + (data.refresh_token ? 10000000000000 : 0) + expiresAt;
+        candidates.push({ data: data, score: score });
+      });
+    } catch (e) {}
+    candidates.sort(function(a, b) { return b.score - a.score; });
+    return candidates.length ? candidates[0].data : null;
   }
   function saveSession(data) {
     var previous = session() || {};
@@ -24,12 +45,15 @@
     if (!expiresAt && data.expires_in) expiresAt = Math.floor(Date.now() / 1000) + Number(data.expires_in);
     var value = {
       access_token: data.access_token,
-      refresh_token: data.refresh_token || '',
-      expires_at: expiresAt,
+      refresh_token: data.refresh_token || previous.refresh_token || '',
+      expires_at: expiresAt || jwtExpiry(data.access_token),
       email: String((data.user && data.user.email) || data.email || previous.email || '').toLowerCase()
     };
     var packed = JSON.stringify(value);
-    sessionStorage.setItem(SESSION_KEY, packed);
+    try {
+      sessionStorage.setItem(SESSION_KEY, packed);
+      if (sessionStorage.getItem('avitolog_backend_app_session')) sessionStorage.setItem('avitolog_backend_app_session', packed);
+    } catch (sessionError) {}
     try {
       localStorage.removeItem(PERSISTENT_SESSION_KEY);
       localStorage.setItem(PERSISTENT_SESSION_KEY, packed);
@@ -42,7 +66,8 @@
   async function activeSession() {
     var current = session();
     if (!current || !current.access_token) return null;
-    if (!current.expires_at || Number(current.expires_at) > Math.floor(Date.now() / 1000) + 60) return current;
+    var expiresAt = Number(current.expires_at || jwtExpiry(current.access_token) || 0);
+    if (!expiresAt || expiresAt > Math.floor(Date.now() / 1000) + 60) return current;
     if (!current.refresh_token) return null;
     var response = await fetch(cfg.url + '/auth/v1/token?grant_type=refresh_token', {
       method: 'POST',
@@ -66,7 +91,7 @@
   function openMainAppSoon(current) {
     markPrimaryMode(current || session() || {});
     setTimeout(function () {
-      window.location.href = 'index.html?v=20260824-main-link-primary-session-1';
+      window.location.href = 'index.html?v=20260925-session-renewal-1';
     }, 450);
   }
 
@@ -202,7 +227,21 @@
   })();
 
   if (!inviteTokens && session() && session().access_token) {
-    showReady();
-    if (returnToApp) { setStatus('Авторизация есть. Открываю рабочий AVITOLOG...'); openMainAppSoon(session()); }
+    (async function resumeSavedSession() {
+      setStatus('Проверяю и обновляю сохранённую сессию...');
+      var current = null;
+      try { current = await activeSession(); } catch (sessionRefreshError) {}
+      if (current && current.access_token) {
+        showReady();
+        if (returnToApp) { setStatus('Подключение восстановлено. Открываю рабочий AVITOLOG...'); openMainAppSoon(current); }
+        return;
+      }
+      try { sessionStorage.removeItem(SESSION_KEY); } catch (e1) {}
+      try { sessionStorage.removeItem('avitolog_backend_app_session'); } catch (e2) {}
+      try { localStorage.removeItem(PERSISTENT_SESSION_KEY); } catch (e3) {}
+      loginCard.classList.remove('off');
+      loadCard.classList.add('off');
+      setStatus('Сохранённая сессия устарела. Войдите один раз, после этого подключение будет обновляться автоматически.');
+    })();
   }
 })();

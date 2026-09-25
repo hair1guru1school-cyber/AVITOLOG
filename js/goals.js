@@ -1997,7 +1997,7 @@
       var waitingMain = document.getElementById('mainContent');
       var syncError = String(window.AVITOLOG_BACKEND_INITIAL_SYNC_ERROR || '');
       if (waitingMain) waitingMain.innerHTML = syncError
-        ? '<div class="empty-st"><p style="color:#ff8da3">' + esc(syncError) + '</p><button type="button" class="btn" onclick="location.reload()">Повторить загрузку</button></div>'
+        ? '<div class="empty-st"><p style="color:#ff8da3">' + esc(syncError) + '</p><button type="button" class="btn" onclick="window.__avitologBackendReconnect ? window.__avitologBackendReconnect() : location.reload()">Восстановить подключение</button></div>'
         : '<div class="empty-st"><p>Загружаю актуальные данные CRM из Supabase...</p></div>';
       return;
     }

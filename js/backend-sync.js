@@ -20,6 +20,7 @@
   var pullTimer = null;
   var lastLocalWriteAt = 0;
   var initialSyncReady = !serverOnlyMode;
+  var refreshPromise = null;
   if (serverOnlyMode) window.AVITOLOG_BACKEND_INITIAL_SYNC_READY = false;
   var DIRTY_RETRY_TTL_MS = 14 * 24 * 60 * 60 * 1000;
   var DIRTY_QUEUE_KEY = 'avitolog_backend_dirty_keys_v1';
@@ -239,15 +240,37 @@
     if (isContentKey(key)) return !sashaProfile;
     return sashaProfile ? isSashaScopedKey(key) : !isSashaScopedKey(key);
   }
-  function sessionData() {
+  function parseSession(raw) {
+    try { return JSON.parse(raw || 'null'); } catch (e) { return null; }
+  }
+  function jwtExpiry(accessToken) {
     try {
-      var temporary = sessionStorage.getItem('avitolog_backend_preview_session') || sessionStorage.getItem('avitolog_backend_app_session');
-      var raw = temporary || localStorage.getItem(persistentSessionKey) || 'null';
-      if (temporary && !localStorage.getItem(persistentSessionKey)) {
-        try { localStorage.setItem(persistentSessionKey, temporary); } catch (persistError) {}
-      }
-      return JSON.parse(raw);
-    } catch (e) { return null; }
+      var payload = String(accessToken || '').split('.')[1] || '';
+      payload = payload.replace(/-/g, '+').replace(/_/g, '/');
+      while (payload.length % 4) payload += '=';
+      return Number(JSON.parse(atob(payload)).exp || 0);
+    } catch (e) { return 0; }
+  }
+  function sessionData() {
+    var candidates = [];
+    try {
+      [
+        sessionStorage.getItem('avitolog_backend_preview_session'),
+        sessionStorage.getItem('avitolog_backend_app_session'),
+        localStorage.getItem(persistentSessionKey)
+      ].forEach(function(raw) {
+        var data = parseSession(raw);
+        if (!data || !data.access_token) return;
+        var expiresAt = Number(data.expires_at || jwtExpiry(data.access_token) || 0);
+        var active = !expiresAt || expiresAt > Math.floor(Date.now() / 1000) + 60;
+        // Prefer a currently usable token, then a renewable session. This keeps
+        // an obsolete sessionStorage record from hiding the persistent token.
+        var score = (active ? 20000000000000 : 0) + (data.refresh_token ? 10000000000000 : 0) + expiresAt;
+        candidates.push({ data: data, score: score });
+      });
+    } catch (e) {}
+    candidates.sort(function(a, b) { return b.score - a.score; });
+    return candidates.length ? candidates[0].data : null;
   }
   function clearBackendSession() {
     try { sessionStorage.removeItem('avitolog_backend_preview_session'); } catch (e1) {}
@@ -268,47 +291,72 @@
     btn.textContent = 'Войти';
     btn.style.cssText = 'margin-left:8px;padding:3px 8px;border:0;border-radius:6px;background:#ffd0dc;color:#24050b;font:800 11px Segoe UI,Arial,sans-serif;cursor:pointer';
     btn.onclick = function () {
-      clearBackendSession();
-      window.location.href = 'backend-preview.html?v=20260801-no-auto-backend-1';
+      window.location.href = 'backend-preview.html?return=app&reauth=1&v=20260925-session-renewal-1';
     };
     statusEl.appendChild(text);
     statusEl.appendChild(btn);
   }
   function saveSession(data) {
     var previous = sessionData() || {};
-    var key = sessionStorage.getItem('avitolog_backend_preview_session') ? 'avitolog_backend_preview_session' : 'avitolog_backend_app_session';
     var expiresAt = Number(data.expires_at || 0);
     if (!expiresAt && data.expires_in) expiresAt = Math.floor(Date.now() / 1000) + Number(data.expires_in);
     var value = {
       access_token: data.access_token,
-      refresh_token: data.refresh_token || '',
-      expires_at: expiresAt,
+      refresh_token: data.refresh_token || previous.refresh_token || '',
+      expires_at: expiresAt || jwtExpiry(data.access_token),
       email: String((data.user && data.user.email) || data.email || previous.email || '').toLowerCase()
     };
-    sessionStorage.setItem(key, JSON.stringify(value));
-    try { localStorage.setItem(persistentSessionKey, JSON.stringify(value)); } catch (persistError) {}
+    var packed = JSON.stringify(value);
+    try {
+      if (sessionStorage.getItem('avitolog_backend_preview_session')) sessionStorage.setItem('avitolog_backend_preview_session', packed);
+      if (sessionStorage.getItem('avitolog_backend_app_session')) sessionStorage.setItem('avitolog_backend_app_session', packed);
+      if (!sessionStorage.getItem('avitolog_backend_preview_session') && !sessionStorage.getItem('avitolog_backend_app_session')) {
+        sessionStorage.setItem('avitolog_backend_app_session', packed);
+      }
+    } catch (sessionPersistError) {}
+    try { localStorage.setItem(persistentSessionKey, packed); } catch (persistError) {}
     return value;
   }
-  async function token() {
+  async function token(forceRefresh) {
     var data = sessionData();
     if (!data || !data.access_token) return null;
-    if (!data.expires_at || Number(data.expires_at) > Math.floor(Date.now() / 1000) + 60) return data.access_token;
+    var expiresAt = Number(data.expires_at || jwtExpiry(data.access_token) || 0);
+    if (!forceRefresh && (!expiresAt || expiresAt > Math.floor(Date.now() / 1000) + 60)) return data.access_token;
     if (!data.refresh_token) return null;
-    var response = await fetch(cfg.url + '/auth/v1/token?grant_type=refresh_token', {
-      method: 'POST', headers: { apikey: cfg.publishableKey, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ refresh_token: data.refresh_token })
-    });
-    var refreshed = await response.json();
-    if (!response.ok || !refreshed.access_token) {
-      return null;
-    }
-    return saveSession(refreshed).access_token;
+    if (refreshPromise) return refreshPromise;
+    refreshPromise = (async function() {
+      try {
+        var response = await fetch(cfg.url + '/auth/v1/token?grant_type=refresh_token', {
+          method: 'POST', headers: { apikey: cfg.publishableKey, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ refresh_token: data.refresh_token })
+        });
+        var refreshed = await response.json();
+        if (!response.ok || !refreshed.access_token) return null;
+        return saveSession(refreshed).access_token;
+      } finally {
+        refreshPromise = null;
+      }
+    })();
+    return refreshPromise;
   }
   async function headers(extra) {
     var accessToken = await token();
     if (!accessToken) throw new Error('Supabase session expired');
     return Object.assign({ apikey: cfg.publishableKey, Authorization: 'Bearer ' + accessToken }, extra || {});
   }
+  async function authFetch(url, options) {
+    options = options || {};
+    var requestOptions = Object.assign({}, options, { headers: await headers(options.headers || {}) });
+    var response = await fetch(url, requestOptions);
+    if (response.status !== 401) return response;
+    var refreshed = await token(true);
+    if (!refreshed) return response;
+    requestOptions.headers = Object.assign({}, requestOptions.headers, { Authorization: 'Bearer ' + refreshed });
+    return fetch(url, requestOptions);
+  }
+  window.__avitologBackendReconnect = function () {
+    window.location.href = 'backend-preview.html?return=app&reauth=1&v=20260925-session-renewal-1';
+  };
   function setStatus(text, error) {
     if (!statusEl && !error && !window.AVITOLOG_BACKEND_PREVIEW) return;
     ensureStatus();
@@ -326,8 +374,8 @@
     return !!rev && !!known && rev <= known;
   }
   async function writeKey(key, value) {
-    var response = await fetch(cfg.url + '/rest/v1/rpc/upsert_frontend_state', {
-      method: 'POST', headers: await headers({ 'Content-Type': 'application/json' }),
+    var response = await authFetch(cfg.url + '/rest/v1/rpc/upsert_frontend_state', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ p_key: key, p_value: String(value == null ? '' : value) })
     });
     if (!response.ok) throw new Error('[' + key + '] ' + ((await response.text()) || 'Supabase write failed'));
@@ -740,13 +788,13 @@
   window.addEventListener('beforeunload', flushPendingWritesKeepalive);
   async function readRemote() {
     var sashaProfile = typeof window !== 'undefined' && window.AVITOLOG_KEY_SUFFIX === '_sasha';
-    var response = await fetch(cfg.url + '/rest/v1/rpc/read_frontend_state', {
+    var response = await authFetch(cfg.url + '/rest/v1/rpc/read_frontend_state', {
       method: 'POST',
-      headers: await headers({ 'Content-Type': 'application/json' }),
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ p_sasha: !!sashaProfile })
     });
     if (!response.ok && response.status === 404) {
-      response = await fetch(cfg.url + '/rest/v1/frontend_state_records?select=storage_key,value_text,revision,updated_at&order=storage_key', { headers: await headers() });
+      response = await authFetch(cfg.url + '/rest/v1/frontend_state_records?select=storage_key,value_text,revision,updated_at&order=storage_key');
     }
     if (!response.ok) throw new Error((await response.text()) || 'frontend_state_records read failed');
     return response.json();
