@@ -1993,6 +1993,11 @@
   }
 
   function render() {
+    if (window.AVITOLOG_BACKEND_SERVER_ONLY && window.AVITOLOG_BACKEND_INITIAL_SYNC_READY !== true) {
+      var waitingMain = document.getElementById('mainContent');
+      if (waitingMain) waitingMain.innerHTML = '<div class="empty-st"><p>Загружаю актуальные данные CRM из Supabase...</p></div>';
+      return;
+    }
     /** Авто-переход месяца + постоянная сверка переноса на каждый render():
      *  • при первой загрузке нового месяца: фиксируем снимок прошлого месяца как историю,
      *    обнуляем «общая сумма КП» override;
@@ -3946,7 +3951,19 @@
    *  а в новом месяце «продано», «недели», «КП» и «новые проекты» начинаются с нуля.
    *  Все weekly-лиды старого месяца, которые не дошли до продажи, автоматически уходят в «В работе».
    *  Сверка переноса (reconcileWeeklyCarryOver) теперь повторяется на каждый render(). */
-  try { checkAndApplyMonthTransition(); } catch (eAutoMT) {}
+  function startGoalsAfterBackendReady() {
+    try { checkAndApplyMonthTransition(); } catch (eAutoMT) {}
+    try {
+      if (window.goalsMode && window.AVITOLOG_GOALS && typeof window.AVITOLOG_GOALS.render === 'function') {
+        window.AVITOLOG_GOALS.render();
+      }
+    } catch (eReadyRender) {}
+  }
+  if (window.AVITOLOG_BACKEND_SERVER_ONLY && window.AVITOLOG_BACKEND_INITIAL_SYNC_READY !== true) {
+    document.addEventListener('avitolog:backend-initial-ready', startGoalsAfterBackendReady, { once: true });
+  } else {
+    startGoalsAfterBackendReady();
+  }
   window.__goalsAddClientToWeek = addClientToWeek;
   window.__goalsClientDragStart = startClientDrag;
   window.__goalsClientDragEnd = endClientDrag;

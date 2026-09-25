@@ -20,6 +20,7 @@
   var pullTimer = null;
   var lastLocalWriteAt = 0;
   var initialSyncReady = !serverOnlyMode;
+  if (serverOnlyMode) window.AVITOLOG_BACKEND_INITIAL_SYNC_READY = false;
   var DIRTY_RETRY_TTL_MS = 14 * 24 * 60 * 60 * 1000;
   var DIRTY_QUEUE_KEY = 'avitolog_backend_dirty_keys_v1';
   var PENDING_PAYLOAD_PREFIX = 'avitolog_backend_pending_payload_';
@@ -828,7 +829,7 @@
       }
       var pendingPayload = readPendingPayloadCached(row.storage_key, shadowRows);
       var hasDirtyCandidate = isRecentlyDirty(row.storage_key) || pendingPayload;
-      if (serverOnlyMode && hasDirtyCandidate && /^avitolog_assets_/.test(row.storage_key)) {
+      if (serverOnlyMode && hasDirtyCandidate && (isFinanceKey(row.storage_key) || coreKeys[row.storage_key])) {
         var dirtyValue = pendingPayload ? pendingPayload.value : localBeforeApply;
         var dirtyScore = profileValueScore(row.storage_key, dirtyValue || '');
         var remoteScore = profileValueScore(row.storage_key, row.value_text || '');
@@ -1454,6 +1455,12 @@
       phase = 'read'; var rows = await readRemote();
       phase = 'apply'; var applied = await applyRemoteRows(rows); var remoteKeys = applied.remoteKeys; var appliedKeys = applied.appliedKeys;
       initialSyncReady = true;
+      window.AVITOLOG_BACKEND_INITIAL_SYNC_READY = true;
+      try {
+        document.dispatchEvent(new CustomEvent('avitolog:backend-initial-ready', {
+          detail: { keys: appliedKeys.slice() }
+        }));
+      } catch (readyEventError) {}
       phase = 'pending'; flushDeferredPendingWrites();
       phase = 'dirty'; await retryDirtyLocalWrites();
       phase = 'seed';

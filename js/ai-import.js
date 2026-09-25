@@ -1674,6 +1674,10 @@
   function renderAssetsPage() {
     var mc = document.getElementById('mainContent');
     if (!mc) return;
+    if (window.AVITOLOG_BACKEND_SERVER_ONLY && window.AVITOLOG_BACKEND_INITIAL_SYNC_READY !== true) {
+      mc.innerHTML = '<div class="empty-st"><p>Загружаю актуальные данные кассы из Supabase...</p></div>';
+      return;
+    }
     /** Авто-переход месяца: апрель консервируем как архив, май = «всё с нуля» по суммам. */
     try { assetsCheckMonthTransition(); } catch(eMT) {}
     try { assetsAutoRepairIfSnapshotBetter(); } catch(eRepairMonth) {}
