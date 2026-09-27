@@ -225,6 +225,55 @@ function applyKnownProjectFolderFixes(data) {
   return changed;
 }
 
+function applyProjectMarkerClearTombstones(data) {
+  if (!data || !Array.isArray(data.projects)) return false;
+  var changed = false;
+  data.projects.forEach(function(p) {
+    if (!p || typeof p !== 'object') return;
+    if (String(p.mustLaunchManualClearedAt || '').trim()) {
+      if (p.mustLaunchRequired) { p.mustLaunchRequired = false; changed = true; }
+      if (p.mustLaunchDate) { p.mustLaunchDate = ''; changed = true; }
+      if (p.mustLaunchSetSince) { p.mustLaunchSetSince = ''; changed = true; }
+      if (p.mustLaunchAutoFromLaunch) { p.mustLaunchAutoFromLaunch = false; changed = true; }
+      var eventsBefore = Array.isArray(p.events) ? p.events.length : 0;
+      p.events = (p.events || []).filter(function(ev) {
+        return ev && ev.type !== 'launch_range' && ev.type !== 'not_launched_project_marker';
+      });
+      if (p.events.length !== eventsBefore) changed = true;
+    }
+    if (String(p.cardsActiveManualClearedAt || '').trim()) {
+      if (String(p.cardsActive || '').trim()) { p.cardsActive = ''; changed = true; }
+      if (p.cardsActiveDate) { p.cardsActiveDate = ''; changed = true; }
+      if (Array.isArray(p.childLineCardsActive)) {
+        p.childLineCardsActive = p.childLineCardsActive.map(function(value) {
+          if (String(value || '').trim()) changed = true;
+          return '';
+        });
+      }
+      if (Array.isArray(p.childLineCardsActiveDate)) {
+        p.childLineCardsActiveDate = p.childLineCardsActiveDate.map(function(value) {
+          if (String(value || '').trim()) changed = true;
+          return '';
+        });
+      }
+    } else if (Array.isArray(p.childLineCardsActiveManualClearedAt)) {
+      ensureChildLineCardsActive(p);
+      p.childLineCardsActiveManualClearedAt.forEach(function(clearedAt, childIdx) {
+        if (!String(clearedAt || '').trim()) return;
+        if (String(p.childLineCardsActive[childIdx] || '').trim()) {
+          p.childLineCardsActive[childIdx] = '';
+          changed = true;
+        }
+        if (String(p.childLineCardsActiveDate[childIdx] || '').trim()) {
+          p.childLineCardsActiveDate[childIdx] = '';
+          changed = true;
+        }
+      });
+    }
+  });
+  return changed;
+}
+
 function stopProjectsSheetPullTimer() {
   if (_projectsSheetPullTimer) {
     clearInterval(_projectsSheetPullTimer);
@@ -302,6 +351,7 @@ function loadProjectsData(forceReload) {
       _projectsDataMem = null;
       _projectsDataMemKey = null;
     } else if (_projectsDataMem && _projectsDataMemKey === storageKey) {
+      if (applyProjectMarkerClearTombstones(_projectsDataMem)) saveProjectsData(_projectsDataMem);
       return _projectsDataMem;
     }
     if (typeof window.__projectsMergeCardsFromStorageBackups === 'function') {
@@ -330,6 +380,7 @@ function loadProjectsData(forceReload) {
     if (data.projects.length < 10 && !isSasha) {
       return getDefaultProjectsData();
     }
+    if (applyProjectMarkerClearTombstones(data)) saveProjectsData(data);
     if (serverOnly) {
       if (!Array.isArray(data.hiddenProjects)) data.hiddenProjects = [];
       if (!Array.isArray(data.tasks)) data.tasks = [];
@@ -649,7 +700,8 @@ async function hydrateProjectsFromActiveSheet(forceMerge) {
       }
       // Не затираем локальные «Актив карточек» пустой ячейкой таблицы — иначе метки пропадают после pull
       var sheetCardsStale = isProjectSheetRowStaleForCards(ts, p);
-      if (hasCardsCol && !sheetCardsStale && (p.cardsActive || '') !== cardsActive) {
+      var cardsWereManuallyCleared = !!String(p.cardsActiveManualClearedAt || '').trim();
+      if (hasCardsCol && !sheetCardsStale && (p.cardsActive || '') !== cardsActive && !(cardsActive !== '' && cardsWereManuallyCleared)) {
         if (cardsActive !== '' || String(p.cardsActive || '').trim() === '') {
           p.cardsActive = cardsActive;
           p.cardsActiveUpdatedAt = ts || p.cardsActiveUpdatedAt || new Date().toISOString();
@@ -667,7 +719,7 @@ async function hydrateProjectsFromActiveSheet(forceMerge) {
         changed = true;
       }
       var sheetMustLaunchStale = isProjectSheetRowStaleForMustLaunch(ts, p);
-      var mustLaunchWasManuallyCleared = !p.mustLaunchRequired && !!String(p.mustLaunchManualClearedAt || '').trim();
+      var mustLaunchWasManuallyCleared = !!String(p.mustLaunchManualClearedAt || '').trim();
       if (hasMustLaunchCol && !sheetMustLaunchStale && !!p.mustLaunchRequired !== !!mustLaunchRequired && !(mustLaunchRequired && mustLaunchWasManuallyCleared)) {
         p.mustLaunchRequired = !!mustLaunchRequired;
         p.mustLaunchUpdatedAt = ts || p.mustLaunchUpdatedAt || new Date().toISOString();
@@ -4818,6 +4870,7 @@ function setProjectCardsActiveWithDate(projectId, value, date, childLineIdx) {
   var p = data.projects.find(function(x){ return x.id===projectId; });
   if (!p) return;
   var clIdx = (childLineIdx != null && childLineIdx >= 0) ? parseInt(childLineIdx, 10) : -1;
+  var updatedAt = new Date().toISOString();
   if (clIdx < 0) p.events = (p.events || []).filter(function(e){ return e && e.type !== 'cards_count_without_active_upload'; });
   var n = parseInt(String(value || '').trim(), 10);
   if (!isFinite(n) || n <= 0) {
@@ -4825,21 +4878,26 @@ function setProjectCardsActiveWithDate(projectId, value, date, childLineIdx) {
       ensureChildLineCardsActive(p);
       p.childLineCardsActive[clIdx] = '';
       p.childLineCardsActiveDate[clIdx] = '';
+      if (!Array.isArray(p.childLineCardsActiveManualClearedAt)) p.childLineCardsActiveManualClearedAt = [];
+      p.childLineCardsActiveManualClearedAt[clIdx] = updatedAt;
     } else {
       p.cardsActive = '';
       p.cardsActiveDate = '';
+      p.cardsActiveManualClearedAt = updatedAt;
     }
   } else {
+    p.cardsActiveManualClearedAt = '';
     if (clIdx >= 0) {
       ensureChildLineCardsActive(p);
       p.childLineCardsActive[clIdx] = String(n);
       p.childLineCardsActiveDate[clIdx] = date || '';
+      if (Array.isArray(p.childLineCardsActiveManualClearedAt)) p.childLineCardsActiveManualClearedAt[clIdx] = '';
     } else {
       p.cardsActive = String(n);
       p.cardsActiveDate = date || '';
     }
   }
-  p.cardsActiveUpdatedAt = new Date().toISOString();
+  p.cardsActiveUpdatedAt = updatedAt;
   _projectJokerDetachArmedId = null;
   saveProjectsData(data);
   rerenderProjectsPreserveScroll();
@@ -4907,17 +4965,21 @@ function removeProjectCardsActive(projectId, childLineIdx) {
   var p = data.projects.find(function(x){ return x.id===projectId; });
   if (!p) return;
   var clIdx = (childLineIdx != null && childLineIdx >= 0) ? parseInt(childLineIdx, 10) : -1;
+  var updatedAt = new Date().toISOString();
   if (clIdx >= 0) {
     ensureChildLineCardsActive(p);
     p.childLineCardsActive[clIdx] = '';
     p.childLineCardsActiveDate[clIdx] = '';
+    if (!Array.isArray(p.childLineCardsActiveManualClearedAt)) p.childLineCardsActiveManualClearedAt = [];
+    p.childLineCardsActiveManualClearedAt[clIdx] = updatedAt;
   } else {
     p.cardsActive = '';
     p.cardsActiveDate = '';
     if (Array.isArray(p.childLineCardsActive)) p.childLineCardsActive = p.childLineCardsActive.map(function(){ return ''; });
     if (Array.isArray(p.childLineCardsActiveDate)) p.childLineCardsActiveDate = p.childLineCardsActiveDate.map(function(){ return ''; });
+    p.cardsActiveManualClearedAt = updatedAt;
   }
-  p.cardsActiveUpdatedAt = new Date().toISOString();
+  p.cardsActiveUpdatedAt = updatedAt;
   _projectJokerDetachArmedId = null;
   saveProjectsData(data);
   rerenderProjectsPreserveScroll();
