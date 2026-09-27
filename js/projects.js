@@ -667,7 +667,8 @@ async function hydrateProjectsFromActiveSheet(forceMerge) {
         changed = true;
       }
       var sheetMustLaunchStale = isProjectSheetRowStaleForMustLaunch(ts, p);
-      if (hasMustLaunchCol && !sheetMustLaunchStale && !!p.mustLaunchRequired !== !!mustLaunchRequired) {
+      var mustLaunchWasManuallyCleared = !p.mustLaunchRequired && !!String(p.mustLaunchManualClearedAt || '').trim();
+      if (hasMustLaunchCol && !sheetMustLaunchStale && !!p.mustLaunchRequired !== !!mustLaunchRequired && !(mustLaunchRequired && mustLaunchWasManuallyCleared)) {
         p.mustLaunchRequired = !!mustLaunchRequired;
         p.mustLaunchUpdatedAt = ts || p.mustLaunchUpdatedAt || new Date().toISOString();
         changed = true;
@@ -4405,7 +4406,16 @@ function renderProjectsScreen(opts) {
   var html = '<div class="projects-board' + fitRowsCls + zoneCls + '" style="transform:scale(' + projectsZoom + ');transform-origin:0 0;width:' + boardWidthPct + '%;height:' + boardHeightPct + '%"><div class="projects-table-wrap"><div class="projects-table" style="' + tableStyle + '">';
   var tasksCount = visibleProjects.reduce(function(sum,p){ return sum + (typeof getTasksForProject === 'function' ? getTasksForProject(p.id) : []).length; }, 0);
   var tasksLabel = '<button type="button" class="projects-zone-tab projects-tasks-tab' + (_projectsTasksSortOn ? ' on' : '') + '" data-zone="tasks" onclick="event.stopPropagation();toggleTasksSortFilter()" title="' + (_projectsTasksSortOn ? 'Сбросить сортировку по задачам' : 'Сортировать: больше задач — выше') + '"><span class="proj-tasks-count-badge">' + tasksCount + '</span></button>';
-  var zoneLabels = { active:'&#9889; Актив', second_chance:'&#128164; Zzz', archive:'&#128230; Архив' };
+  var zoneCounts = { active:0, second_chance:0, archive:0 };
+  (data.projects || []).forEach(function(project) {
+    var zone = project && project.zone ? project.zone : 'active';
+    if (Object.prototype.hasOwnProperty.call(zoneCounts, zone)) zoneCounts[zone]++;
+  });
+  var zoneLabels = {
+    active:'<span class="projects-zone-count">' + zoneCounts.active + '</span> &#9889; Актив',
+    second_chance:'<span class="projects-zone-count">' + zoneCounts.second_chance + '</span> &#128164; Zzz',
+    archive:'<span class="projects-zone-count">' + zoneCounts.archive + '</span> &#128230; Архив'
+  };
   var tabsBtns = _projectsZoneTabOrder.map(function(z){
     return '<button type="button" class="projects-zone-tab projects-zone-tab-zone' + (_projectsZoneTab===z ? ' on' : '') + '" data-zone="' + z + '" draggable="true" onclick="event.stopPropagation();setProjectsZoneTab(\'' + z + '\')" ondragstart="zoneTabDragStart(event,\'' + z + '\')" ondragover="zoneTabDragOver(event)" ondragleave="zoneTabDragLeave(event)" ondrop="zoneTabDrop(event,\'' + z + '\')" ondragend="zoneTabDragEnd(event)">' + (zoneLabels[z]||z) + '</button>';
   }).join('');
@@ -5057,6 +5067,7 @@ function setProjectMustLaunchWithDate(projectId, enabled, date) {
   p.mustLaunchDate = (enabled && date) ? date : '';
   p.mustLaunchUpdatedAt = new Date().toISOString();
   if (enabled) {
+    p.mustLaunchManualClearedAt = '';
     /** Точка отсчёта ожидания: ставится один раз при включении и не сбрасывается
      *  при ежедневных авто-переносах mustLaunchDate. */
     if (!wasEnabled || !prevSetSince) {
@@ -5069,18 +5080,17 @@ function setProjectMustLaunchWithDate(projectId, enabled, date) {
     /** Сброс: запомнить дату пропущенного запуска, чтобы авто-логика не воткнула
      *  ‼ обратно сразу на следующем рендере. Также убираем launch_range и ракету
      *  из календаря — пользователь сказал «я разобрался». */
-    if (wasAutoFromLaunch) {
-      var lastLrEnd = '';
-      (p.events || []).forEach(function(ev){
-        if (ev && ev.type === 'launch_range' && ev.endDate && (!lastLrEnd || ev.endDate > lastLrEnd)) {
-          lastLrEnd = ev.endDate;
-        }
-      });
-      if (lastLrEnd) p.mustLaunchAutoDismissedAt = lastLrEnd;
-      p.events = (p.events || []).filter(function(ev){
-        return ev && ev.type !== 'launch_range' && ev.type !== 'not_launched_project_marker';
-      });
-    }
+    var lastLrEnd = '';
+    (p.events || []).forEach(function(ev){
+      if (ev && ev.type === 'launch_range' && ev.endDate && (!lastLrEnd || ev.endDate > lastLrEnd)) {
+        lastLrEnd = ev.endDate;
+      }
+    });
+    if (lastLrEnd) p.mustLaunchAutoDismissedAt = lastLrEnd;
+    p.events = (p.events || []).filter(function(ev){
+      return ev && ev.type !== 'launch_range' && ev.type !== 'not_launched_project_marker';
+    });
+    p.mustLaunchManualClearedAt = p.mustLaunchUpdatedAt;
     p.mustLaunchSetSince = '';
     p.mustLaunchAutoFromLaunch = false;
   }
