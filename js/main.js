@@ -4235,7 +4235,7 @@ function buildFolderClientPayload(folderId, folderName, categoryFolderId) {
 }
 function fillClientFormFromData(data) {
   data = data || {};
-  var ids = ['company','contact_name','phone','tg','avito_account','category','city','notes','kp_count','client_type'];
+  var ids = ['company','contact_name','phone','tg','avito_account','category','city','source_account_id','notes','kp_count','client_type'];
   var map = { tg: 'telegram' };
   ids.forEach(function(id) {
     var el = document.getElementById(id);
@@ -4247,6 +4247,7 @@ function fillClientFormFromData(data) {
   document.querySelectorAll('.ctype-btn').forEach(function(b) {
     b.classList.toggle('on', b.textContent.trim() === (data.client_type || ''));
   });
+  if (typeof window.__goalsRefreshSidebarSourceAccount === 'function') window.__goalsRefreshSidebarSourceAccount();
 }
 function compactActiveClientForStorage(client) {
   client = client || {};
@@ -4273,7 +4274,8 @@ function compactActiveClientForStorage(client) {
     'city',
     'notes',
     'kp_count',
-    'client_type'
+    'client_type',
+    'source_account_id'
   ].forEach(function(key) {
     if (client[key] !== undefined && client[key] !== null && client[key] !== '') {
       var value = client[key];
@@ -4435,6 +4437,46 @@ window.__goalsGetActiveClientAvatar = function() {
     return '';
   }
 };
+window.__goalsPinLinkedFolder = function(goalData) {
+  goalData = goalData || {};
+  var folderId = String(goalData.folderId || '').trim();
+  if (!folderId && goalData.folderLink) {
+    var match = String(goalData.folderLink).match(/\/folders\/([a-zA-Z0-9_-]+)/) || String(goalData.folderLink).match(/[?&]id=([a-zA-Z0-9_-]+)/);
+    if (match) folderId = match[1];
+  }
+  var crmRef = String(goalData.crmClientId || '').trim();
+  var crmRecordRef = String(goalData.crmClientRecordId || '').trim();
+  var clients = getCrmClients();
+  var found = clients.find(function(c) {
+    return (folderId && String(c.folderId || '') === folderId) ||
+      (crmRef && (String(c.client_id || '') === crmRef || String(c.folderId || '') === crmRef)) ||
+      (crmRecordRef && String(c.client_id || '') === crmRecordRef);
+  }) || null;
+  if (!folderId && found && found.folderId) folderId = String(found.folderId);
+  if (!folderId && found && found.folderLink) {
+    var foundLinkMatch = String(found.folderLink).match(/\/folders\/([a-zA-Z0-9_-]+)/) || String(found.folderLink).match(/[?&]id=([a-zA-Z0-9_-]+)/);
+    if (foundLinkMatch) folderId = foundLinkMatch[1];
+  }
+  if (!folderId && crmRef && !/^cid_/i.test(crmRef) && !/^[0-9a-f]{8}-[0-9a-f-]{27,}$/i.test(crmRef)) folderId = crmRef;
+  if (!folderId) return false;
+  var folderLink = String(goalData.folderLink || (found && found.folderLink) || ('https://drive.google.com/drive/folders/' + folderId));
+  var payload = found || buildFolderClientPayload(folderId, goalData.name || goalData.company || 'Клиент', goalData.categoryFolderId || '');
+  payload = Object.assign({}, payload, {
+    folderId: folderId,
+    folderLink: folderLink,
+    company: payload.company || goalData.company || goalData.name || 'Клиент',
+    source_account_id: goalData.sourceAccountId || goalData.source_account_id || payload.source_account_id || ''
+  });
+  fillClientFormFromData(payload);
+  setActiveClient(payload);
+  var st = document.getElementById('crmSt');
+  if (st) {
+    st.style.display = 'block';
+    st.className = 'crm-st ok';
+    st.textContent = 'Папка проекта выбрана';
+  }
+  return true;
+};
 function clearActiveClient() {
   _activeClient = null;
   localStorage.removeItem(_ck('avitolog_active_client'));
@@ -4448,13 +4490,14 @@ function clearActiveClient() {
     }
   }
   // Очищаем форму
-  ['company','contact_name','phone','tg','avito_account','category','city','notes','kp_count'].forEach(function(id) {
+  ['company','contact_name','phone','tg','avito_account','category','city','source_account_id','notes','kp_count'].forEach(function(id) {
     var el = document.getElementById(id);
     if (el) el.value = '';
   });
   document.getElementById('client_type').value = '';
   document.querySelectorAll('.ctype-btn').forEach(function(b) { b.classList.remove('on'); });
   document.querySelectorAll('.kp-tag').forEach(function(b) { b.classList.remove('on'); });
+  if (typeof window.__goalsRefreshSidebarSourceAccount === 'function') window.__goalsRefreshSidebarSourceAccount();
 }
 
 var _browseStack = []; // [{id, name}]
@@ -4476,6 +4519,8 @@ function toggleClientMenu() {
 function closeClientMenu() {
   document.getElementById('clientMenu').classList.remove('show');
   _projectFolderBindTargetId = null;
+  window._assetsFolderBindTarget = null;
+  if (typeof window.__goalsCancelFolderBind === 'function') window.__goalsCancelFolderBind();
 }
 var SIDEBAR_HIDE_KEY = 'avitolog_sidebar_hidden_v1';
 function syncSidebarToggleBtn() {
@@ -4746,18 +4791,83 @@ function showBrowseCreateCategoryPicker() {
   }
   if (foot) foot.innerHTML = '<button type="button" onclick="browseFolder(_browseCurrentId,_browseCurrentName)">Отмена</button>';
 }
+function openCrmFolderCreateModal(catName) {
+  return new Promise(function(resolve) {
+    var old = document.getElementById('crmFolderCreateModal');
+    if (old) old.remove();
+    var company = v('company');
+    var contact = v('contact_name');
+    var phone = v('phone');
+    var telegram = v('tg');
+    var avitoAccount = v('avito_account');
+    var clientType = v('client_type');
+    var niche = v('category');
+    var geo = v('city');
+    var notes = v('notes');
+    var kpCount = v('kp_count');
+    var sourceId = v('source_account_id');
+    var sourceLabel = sourceId && typeof window.__goalsGetSourceAccountLabel === 'function' ? window.__goalsGetSourceAccountLabel(sourceId) : '';
+    var dateLabel = new Date().toLocaleDateString('ru');
+    var defaultName = [company, contact].filter(Boolean).join(' - ') || 'Новая папка';
+    defaultName += ' (' + dateLabel + ')';
+    var overlay = document.createElement('div');
+    overlay.id = 'crmFolderCreateModal';
+    overlay.className = 'crm-folder-create-overlay';
+    function infoRow(label, value) {
+      return '<div class="crm-folder-create-info-row"><span>' + cmEscapeHtml(label) + '</span><b>' + cmEscapeHtml(value || '—') + '</b></div>';
+    }
+    overlay.innerHTML = '<div class="crm-folder-create-card" role="dialog" aria-modal="true" aria-labelledby="crmFolderCreateTitle">' +
+      '<div class="crm-folder-create-head" id="crmFolderCreateTitle">Новая папка клиента</div>' +
+      '<label class="crm-folder-create-label">Название папки<input type="text" id="crmFolderCreateName" value="' + cmEscapeHtml(defaultName) + '" maxlength="140"></label>' +
+      '<div class="crm-folder-create-summary">' +
+        infoRow('Категория Drive', catName) + infoRow('Компания', company) + infoRow('Контакт', contact) +
+        infoRow('Телефон', phone) + infoRow('Telegram', telegram) + infoRow('Avito', avitoAccount) + infoRow('Тип', clientType) +
+        infoRow('Ниша', niche) + infoRow('ГЕО', geo) + infoRow('Аккаунт заявки', sourceLabel) + infoRow('УТП / инфо', notes) + infoRow('КП', kpCount) +
+      '</div>' +
+      '<div class="crm-folder-create-actions"><button type="button" data-cancel>Отмена</button><button type="button" class="primary" data-confirm>Создать папку</button></div>' +
+    '</div>';
+    document.body.appendChild(overlay);
+    var input = overlay.querySelector('#crmFolderCreateName');
+    var settled = false;
+    function finish(value) {
+      if (settled) return;
+      settled = true;
+      document.removeEventListener('keydown', onKey, true);
+      overlay.remove();
+      resolve(value);
+    }
+    function onKey(e) {
+      if (e.key === 'Escape') finish('');
+      if (e.key === 'Enter' && e.target === input) {
+        e.preventDefault();
+        var value = String(input.value || '').trim();
+        if (value) finish(value);
+      }
+    }
+    overlay.querySelector('[data-cancel]').onclick = function() { finish(''); };
+    overlay.querySelector('[data-confirm]').onclick = function() {
+      var value = String(input.value || '').trim();
+      if (!value) { input.focus(); return; }
+      finish(value);
+    };
+    overlay.onclick = function(e) { if (e.target === overlay) finish(''); };
+    document.addEventListener('keydown', onKey, true);
+    setTimeout(function() { input.focus(); input.select(); }, 0);
+  });
+}
 async function createBrowseFolderInCategory(categoryId) {
   var cat = CRM_CATEGORY_OPTIONS.find(function(o) { return String(o.v || '') === String(categoryId || ''); });
   if (!cat) return;
   var catName = String(cat.n || '').replace(/^[^\s]+\s*/, '').trim() || cat.n || 'категории';
-  var name = prompt('Название новой папки в категории "' + catName + '":');
+  var name = await openCrmFolderCreateModal(catName);
   if (!name) return;
   var clean = String(name).trim();
   if (!clean) return;
   try {
     var folderId = await driveCreateClientFolder(clean, categoryId);
     if (!folderId) throw new Error('Drive не вернул ID новой папки');
-    await selectBrowseFolderBy(folderId, clean, categoryId);
+    var selected = await selectBrowseFolderBy(folderId, clean, categoryId);
+    if (selected === false) throw new Error('Папка создана, но привязка проекта не сохранилась. Выберите папку ещё раз.');
     var st = document.getElementById('crmSt');
     if (st) { st.style.display = 'block'; st.className = 'crm-st ok'; st.textContent = 'Папка создана и выбрана: ' + clean; }
   } catch(e) {
@@ -4806,7 +4916,9 @@ function selectBrowseFolderBy(folderId, folderName, categoryFolderId) {
   else if (typeof setCrmCategoryByFolderId === 'function') setCrmCategoryByFolderId(folderId);
   fillClientFormFromData(activePayload);
   setActiveClient(activePayload);
+  var folderBindHandled = false;
   if (_projectFolderBindTargetId) {
+    folderBindHandled = true;
     var pd = loadProjectsData();
     var p = pd.projects.find(function(x){ return x.id === _projectFolderBindTargetId; });
     if (p) {
@@ -4839,11 +4951,17 @@ function selectBrowseFolderBy(folderId, folderName, categoryFolderId) {
     }
     _projectFolderBindTargetId = null;
   }
-  if (window._assetsFolderBindTarget && typeof window.__assetsApplyFolderBind === 'function') {
+  if (!folderBindHandled && window._assetsFolderBindTarget && typeof window.__assetsApplyFolderBind === 'function') {
     window.__assetsApplyFolderBind(folderId, folderLink, found);
     window._assetsFolderBindTarget = null;
+    folderBindHandled = true;
+  }
+  if (!folderBindHandled && typeof window.__goalsHasFolderBindTarget === 'function' && window.__goalsHasFolderBindTarget() && typeof window.__goalsApplyFolderBind === 'function') {
+    if (!window.__goalsApplyFolderBind(folderId, folderLink, found || activePayload)) return false;
+    folderBindHandled = true;
   }
   closeClientMenu();
+  return true;
 }
 
 function loadClient(idx) {
@@ -4855,15 +4973,19 @@ function loadClient(idx) {
     c = clients[idx];
   }
   if (!c) return;
-  if (window._assetsFolderBindTarget && c && (c.folderId || c.folderLink) && typeof window.__assetsApplyFolderBind === 'function') {
-    window.__assetsApplyFolderBind(c.folderId || '', c.folderLink || ('https://drive.google.com/drive/folders/' + (c.folderId || '')), c);
-    window._assetsFolderBindTarget = null;
-    document.getElementById('clientMenu').classList.remove('show');
+  var bindFolderId = String(c.folderId || '');
+  if (!bindFolderId && c.folderLink) {
+    var bindMatch = String(c.folderLink).match(/\/folders\/([a-zA-Z0-9_-]+)/) || String(c.folderLink).match(/[?&]id=([a-zA-Z0-9_-]+)/);
+    if (bindMatch) bindFolderId = bindMatch[1];
+  }
+  var hasGoalBind = typeof window.__goalsHasFolderBindTarget === 'function' && window.__goalsHasFolderBindTarget();
+  if (bindFolderId && (_projectFolderBindTargetId || window._assetsFolderBindTarget || hasGoalBind)) {
+    selectBrowseFolderBy(bindFolderId, c.folder_name || c.company || c.contact_name || 'Client', c.categoryFolderId || '');
     return;
   }
   fillClientForm(c);
   if (idx !== -1) setActiveClient(c);
-  document.getElementById('clientMenu').classList.remove('show');
+  closeClientMenu();
 }
 
 async function saveClient() {
@@ -4877,7 +4999,7 @@ async function saveClient() {
     var d = {
       company: v('company'), contact_name: v('contact_name'), phone: v('phone'),
       telegram: v('tg'), avito_account: v('avito_account'), client_type: v('client_type'),
-      category: v('category'), city: cityVal, notes: v('notes'),
+      category: v('category'), city: cityVal, source_account_id: v('source_account_id'), notes: v('notes'),
       positions: getPos().join(', '), kp_count: v('kp_count'),
       createdAt: new Date().toLocaleDateString('ru')
     };
@@ -4915,6 +5037,10 @@ async function saveClient() {
     if (d.client_type) lines.push('Тип: ' + d.client_type);
     if (d.category) lines.push('Ниша: ' + d.category);
     if (d.city) lines.push('Гео: ' + d.city);
+    if (d.source_account_id) {
+      var sourceLabel = typeof window.__goalsGetSourceAccountLabel === 'function' ? window.__goalsGetSourceAccountLabel(d.source_account_id) : d.source_account_id;
+      lines.push('Аккаунт заявки: ' + (sourceLabel || d.source_account_id));
+    }
     if (d.notes) lines.push('УТП/инфо: ' + d.notes);
     if (d.kp_count) lines.push('КП: ' + d.kp_count);
     if (d.positions) lines.push('Позиции: ' + d.positions);
@@ -4962,6 +5088,7 @@ async function saveClient() {
         sp.folderLink = d.folderLink || sp.folderLink || '';
         sp.categoryFolderId = catId;
         sp.crmData = makeProjectCrmSnapshot(d);
+        sp.sourceAccountId = d.source_account_id || '';
         saveProjectsData(pd);
         syncProjectToActiveSheet(sp.id, 'crm_save');
         rerenderProjectsPreserveScroll();
@@ -5206,8 +5333,8 @@ document.addEventListener('DOMContentLoaded', function() {
     });
     document.addEventListener('click', function(e) {
       var menu = document.getElementById('clientMenu');
-      if (menu && menu.classList.contains('show') && !e.target.closest('.client-menu') && !e.target.closest('.crm-row')) {
-        menu.classList.remove('show');
+      if (menu && menu.classList.contains('show') && !e.target.closest('.client-menu') && !e.target.closest('.crm-row') && !e.target.closest('.crm-folder-create-overlay')) {
+        closeClientMenu();
       }
     });
     var crmMenu = document.getElementById('clientMenu');

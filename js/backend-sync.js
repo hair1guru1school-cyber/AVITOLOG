@@ -632,6 +632,40 @@
     });
     return JSON.stringify(out);
   }
+  function mergeGoalWeekOrderByChanges(remoteOrder, previousOrder, nextOrder) {
+    var remote = remoteOrder && typeof remoteOrder === 'object' && !Array.isArray(remoteOrder) ? remoteOrder : {};
+    var previous = previousOrder && typeof previousOrder === 'object' && !Array.isArray(previousOrder) ? previousOrder : {};
+    var next = nextOrder && typeof nextOrder === 'object' && !Array.isArray(nextOrder) ? nextOrder : {};
+    var out = {};
+    Object.keys(remote).forEach(function(month) {
+      var value = remote[month];
+      out[month] = value && typeof value === 'object' && !Array.isArray(value) ? Object.assign({}, value) : value;
+    });
+    var months = {};
+    Object.keys(previous).forEach(function(month) { months[month] = true; });
+    Object.keys(next).forEach(function(month) { months[month] = true; });
+    Object.keys(months).forEach(function(month) {
+      var prevMonth = previous[month] && typeof previous[month] === 'object' && !Array.isArray(previous[month]) ? previous[month] : {};
+      var nextMonth = next[month] && typeof next[month] === 'object' && !Array.isArray(next[month]) ? next[month] : null;
+      var remoteMonth = remote[month] && typeof remote[month] === 'object' && !Array.isArray(remote[month]) ? remote[month] : {};
+      if (!nextMonth) {
+        if (Object.prototype.hasOwnProperty.call(previous, month) && stableJson(remoteMonth) === stableJson(prevMonth)) delete out[month];
+        return;
+      }
+      var mergedMonth = Object.assign({}, remoteMonth);
+      Object.keys(nextMonth).forEach(function(week) {
+        if (!Object.prototype.hasOwnProperty.call(prevMonth, week) || stableJson(prevMonth[week]) !== stableJson(nextMonth[week])) {
+          mergedMonth[week] = nextMonth[week];
+        }
+      });
+      Object.keys(prevMonth).forEach(function(week) {
+        if (Object.prototype.hasOwnProperty.call(nextMonth, week)) return;
+        if (stableJson(remoteMonth[week]) === stableJson(prevMonth[week])) delete mergedMonth[week];
+      });
+      out[month] = mergedMonth;
+    });
+    return out;
+  }
   function mergeGoalsValue(remoteValue, previousValue, nextValue) {
     var remote = parseJsonValue(remoteValue);
     var previous = parseJsonValue(previousValue);
@@ -640,10 +674,18 @@
     var out = Object.assign({}, remote);
     Object.keys(next).forEach(function(field) {
       if (field === 'projects') return;
+      if (field === 'weekOrderByMonth') {
+        out.weekOrderByMonth = mergeGoalWeekOrderByChanges(remote.weekOrderByMonth, previous.weekOrderByMonth, next.weekOrderByMonth);
+        return;
+      }
+      if (field === 'sourceAccounts') {
+        out.sourceAccounts = mergeArrayByChangedIds(remote.sourceAccounts, previous.sourceAccounts, next.sourceAccounts);
+        return;
+      }
       if (!Object.prototype.hasOwnProperty.call(previous, field) || stableJson(previous[field]) !== stableJson(next[field])) out[field] = next[field];
     });
     Object.keys(previous).forEach(function(field) {
-      if (field === 'projects' || Object.prototype.hasOwnProperty.call(next, field)) return;
+      if (field === 'projects' || field === 'weekOrderByMonth' || field === 'sourceAccounts' || Object.prototype.hasOwnProperty.call(next, field)) return;
       if (stableJson(remote[field]) === stableJson(previous[field])) delete out[field];
     });
     var deletedMap = {};
@@ -666,6 +708,8 @@
     var local = parseJsonValue(localValue);
     if (!remote || !local || !Array.isArray(remote.projects) || !Array.isArray(local.projects)) return localValue;
     var out = Object.assign({}, remote, local);
+    out.weekOrderByMonth = mergeGoalWeekOrderByChanges(remote.weekOrderByMonth, {}, local.weekOrderByMonth);
+    out.sourceAccounts = mergeArrayByChangedIds(remote.sourceAccounts, [], local.sourceAccounts);
     var deletedMap = {};
     var deletedIds = [];
     [remote.deletedProjectIds, local.deletedProjectIds].forEach(function(list) {

@@ -1991,6 +1991,9 @@ function fillClientForm(c) {
   document.getElementById('category').value = c.category || '';
   document.getElementById('city').value = c.city || '';
   if (typeof syncGeoFromValue === 'function') syncGeoFromValue();
+  var sourceEl = document.getElementById('source_account_id');
+  if (sourceEl) sourceEl.value = c.source_account_id || c.sourceAccountId || '';
+  if (typeof window.__goalsRefreshSidebarSourceAccount === 'function') window.__goalsRefreshSidebarSourceAccount();
   document.getElementById('notes').value = c.notes || '';
   document.getElementById('kp_count').value = c.kp_count || '';
   if (typeof syncKpFromValue === 'function') syncKpFromValue();
@@ -2030,6 +2033,7 @@ window.fillClientFormFromGoal = function(goalData) {
     phone: goalData.phone || '',
     category: goalData.category || '',
     city: goalData.city || '',
+    source_account_id: goalData.source_account_id || goalData.sourceAccountId || '',
     notes: goalData.notes || '',
     kp_count: goalData.kp_count || '',
     positions: goalData.positions || '',
@@ -2039,17 +2043,23 @@ window.fillClientFormFromGoal = function(goalData) {
   };
   fillClientForm(c);
   if (folderId || goalData.folderLink) {
-    setActiveClient({ folderId: folderId, folderLink: goalData.folderLink || '', company: c.company || 'Цель' });
+    setActiveClient({
+      folderId: folderId,
+      folderLink: goalData.folderLink || '',
+      company: c.company || 'Цель',
+      source_account_id: c.source_account_id || ''
+    });
   }
   if (folderId && typeof setCrmCategoryByFolderId === 'function') setCrmCategoryByFolderId(folderId);
 };
 
 function clearClientForm() {
-  ['company','contact_name','phone','tg','avito_account','category','city','notes','kp_count'].forEach(function(id) {
+  ['company','contact_name','phone','tg','avito_account','category','city','source_account_id','notes','kp_count'].forEach(function(id) {
     var el = document.getElementById(id);
     if (el) el.value = '';
   });
   if (typeof syncGeoFromValue === 'function') syncGeoFromValue();
+  if (typeof window.__goalsRefreshSidebarSourceAccount === 'function') window.__goalsRefreshSidebarSourceAccount();
   document.getElementById('client_type').value = '';
   document.querySelectorAll('.ctype-btn').forEach(function(b) { b.classList.remove('on'); });
 }
@@ -2070,7 +2080,7 @@ function findClientForProject(project) {
 function hasProjectCrmData(project) {
   if (!project || !project.crmData) return false;
   var d = project.crmData;
-  return !!(d.company || d.contact_name || d.phone || d.telegram || d.avito_account || d.category || d.city || d.notes || d.kp_count || d.client_type);
+  return !!(d.company || d.contact_name || d.phone || d.telegram || d.avito_account || d.category || d.city || d.source_account_id || d.notes || d.kp_count || d.client_type);
 }
 function getProjectPreferredFolder(project) {
   var p = project || {};
@@ -2091,6 +2101,7 @@ function makeProjectCrmSnapshot(d) {
     client_type: d.client_type || '',
     category: d.category || '',
     city: d.city || '',
+    source_account_id: d.source_account_id || '',
     notes: d.notes || '',
     kp_count: d.kp_count || '',
     positions: d.positions || '',
@@ -2193,7 +2204,8 @@ function selectProjectRow(projectId) {
       client_id: mergedCrm.client_id || p.crmClientId || '',
       folderId: prefFolder.folderId,
       folderLink: prefFolder.folderLink,
-      company: mergedCrm.company || p.title || 'Клиент'
+      company: mergedCrm.company || p.title || 'Клиент',
+      source_account_id: p.sourceAccountId || mergedCrm.source_account_id || ''
     });
     return;
   }
@@ -2206,6 +2218,7 @@ function selectProjectRow(projectId) {
     var prefFolderFound = getProjectPreferredFolder(p);
     foundWithProjectFolder.folderId = prefFolderFound.folderId || '';
     foundWithProjectFolder.folderLink = prefFolderFound.folderLink || '';
+    foundWithProjectFolder.source_account_id = p.sourceAccountId || foundWithProjectFolder.source_account_id || '';
     setActiveClient(foundWithProjectFolder);
   } else {
     clearClientForm();
@@ -2215,7 +2228,8 @@ function selectProjectRow(projectId) {
         client_id: p.crmClientId || '',
         folderId: p.folderId || '',
         folderLink: p.folderLink || '',
-        company: p.title || 'Клиент'
+        company: p.title || 'Клиент',
+        source_account_id: p.sourceAccountId || (p.crmData && p.crmData.source_account_id) || ''
       });
       var st = document.getElementById('crmSt');
       if (st) {
@@ -2232,6 +2246,8 @@ function selectProjectRow(projectId) {
 }
 function startProjectFolderBind(projectId, e) {
   if (e) { e.preventDefault(); e.stopPropagation(); }
+  if (typeof window.__goalsCancelFolderBind === 'function') window.__goalsCancelFolderBind();
+  window._assetsFolderBindTarget = null;
   _projectFolderBindTargetId = projectId;
   var st = document.getElementById('crmSt');
   if (st) {

@@ -11,6 +11,15 @@
   }
   var MONTH_NAMES_RU = ['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'];
   var _goalsViewMonth = null;
+  var _goalsWorkSearch = '';
+  var _goalsWorkSearchTimer = 0;
+  var _goalsWorkSearchComposing = false;
+  var _goalsWeekDrag = null;
+  var _goalsWeekDragJustHappened = false;
+  var _goalsFolderBindTargetId = '';
+  var _goalSourceOutsideHandler = null;
+  var GOALS_WEEK_DRAG_MIME = 'application/x-avitolog-goal-row';
+  var SOURCE_ACCOUNT_ICONS = ['👤','🟢','🔵','🟣','🟠','🟡','🔴','⚫','💼','📱'];
   var BUSINESS_DAY_START_HOUR = 5;
 
   function getBusinessNow() {
@@ -722,7 +731,25 @@
     if (!d.pinnedMetricsMain) d.pinnedMetricsMain = [];
     if (d.totalKpFullOverride === undefined) d.totalKpFullOverride = 0;
     if (!Array.isArray(d.workOrderWork)) d.workOrderWork = [];
+    if (!d.weekOrderByMonth || typeof d.weekOrderByMonth !== 'object' || Array.isArray(d.weekOrderByMonth)) d.weekOrderByMonth = {};
     if (d.workTargetFilter === undefined) d.workTargetFilter = false;
+    if (!Array.isArray(d.sourceAccounts)) {
+      d.sourceAccounts = [
+        { id: 'src_account_1', name: 'Аккаунт 1', icon: '👤' },
+        { id: 'src_account_2', name: 'Аккаунт 2', icon: '🟢' },
+        { id: 'src_account_3', name: 'Аккаунт 3', icon: '🔵' },
+        { id: 'src_account_4', name: 'Аккаунт 4', icon: '🟣' }
+      ];
+    }
+    d.sourceAccounts = d.sourceAccounts.map(function(a, i) {
+      a = (a && typeof a === 'object') ? a : {};
+      return {
+        id: String(a.id || ('src_account_' + (i + 1))),
+        name: String(a.name || ('Аккаунт ' + (i + 1))),
+        icon: String(a.icon || SOURCE_ACCOUNT_ICONS[i % SOURCE_ACCOUNT_ICONS.length] || '👤'),
+        hidden: !!a.hidden
+      };
+    });
     return d;
   }
   function markGoalProjectsDeleted(data, ids) {
@@ -774,6 +801,17 @@
     } catch (e) {
       console.warn('Goals save failed', e);
       try { showGoalsSmallToast('Ошибка сохранения CRM: ' + (e && e.message ? e.message : String(e))); } catch(eToast) {}
+      return false;
+    }
+  }
+
+  function saveLiveData(data) {
+    try {
+      if (!setGoalsStorageValue(goalsStorageKey(), JSON.stringify(data))) return false;
+      snapshotCurrentMonth(data);
+      return true;
+    } catch (e) {
+      console.warn('Goals live save failed', e);
       return false;
     }
   }
@@ -1185,7 +1223,7 @@
     });
   }
 
-  function renderWeekSection(weekNum, projects, soldAll, activeClient, currentWeekNum, year, month) {
+  function renderWeekSection(weekNum, projects, soldAll, activeClient, currentWeekNum, year, month, sourceAccounts) {
     var selectedProjectNameNorm = '';
     if (typeof window.__goalsGetSelectedProjectName === 'function') {
       selectedProjectNameNorm = String(window.__goalsGetSelectedProjectName() || '').trim().toLowerCase();
@@ -1223,24 +1261,30 @@
         ? ''
         : '<button type="button" class="goal-move-btn" onclick="event.stopPropagation();window.__goalsSetStage&&window.__goalsSetStage(\'' + esc(p.id) + '\',\'archive\')" title="В архив CRM (строка на неделе останется с 💀)">🗂</button>';
       var actionsBtns = '<span class="goal-actions goal-actions-inline">' +
-        '<button type="button" class="goal-more-btn" onclick="event.stopPropagation();window.__goalsSelectRow&&window.__goalsSelectRow(\'' + esc(p.id) + '\')" title="Полное редактирование">⋯</button>' +
+        sourceAccountButtonHtml(p, sourceAccounts) +
+        '<button type="button" class="goal-more-btn" onclick="event.stopPropagation();window.__goalsSelectFolder&&window.__goalsSelectFolder(\'' + esc(p.id) + '\')" title="Открыть или привязать папку проекта">⋯</button>' +
         '<button type="button" class="goal-move-btn" data-goal-action="sold" data-id="' + esc(p.id) + '" onclick="event.preventDefault();event.stopPropagation();window.__goalsQuickSetSold&&window.__goalsQuickSetSold(\'' + esc(p.id) + '\')" title="В Продано">✓</button>' +
         '<button type="button" class="goal-move-btn" onclick="event.stopPropagation();window.__goalsSetStage&&window.__goalsSetStage(\'' + esc(p.id) + '\',\'working\')" title="В работу (копия; строка на неделе остаётся)">🔥</button>' +
         archToCrmBtn +
         '<button type="button" class="goal-del-btn" onclick="event.stopPropagation();window.__goalsDelete&&window.__goalsDelete(\'' + esc(p.id) + '\',' + weekNum + ')" title="Удалить из недели">×</button>' +
         '</span>';
       var dispName = String(p.name || '').replace(/\s+/g, ' ').trim();
-      var nameCell = '<span class="goal-name-cell" onclick="event.stopPropagation();window.__goalsEditNameCell&&window.__goalsEditNameCell(this)">' +
+      var nameCell = '<span class="goal-name-cell" onclick="event.stopPropagation();window.__goalsEditWeekNameCell&&window.__goalsEditWeekNameCell(this)">' +
         '<button type="button" class="goal-emoji-btn' + (p.crmArchived ? ' goal-emoji-crm-archived' : '') + '" onclick="event.stopPropagation();window.__goalsShowEmojiPicker&&window.__goalsShowEmojiPicker(this,\'' + esc(p.id) + '\')" title="' + (p.crmArchived ? 'В архиве CRM' : 'Изменить иконку') + '">' + emoji + '</button>' +
         (folderIcon ? folderIcon + ' ' : '') +
         '<span class="goal-name-inline goal-name-display" data-id="' + esc(p.id) + '" title="' + esc(p.name || '') + '">' + esc(dispName) + '</span>' +
         actionsBtns +
         '</span>';
       var activeClientId = activeClient && activeClient.folderId ? String(activeClient.folderId) : '';
+      var activeClientRecordId = activeClient && activeClient.client_id ? String(activeClient.client_id) : '';
       var activeClientName = activeClient && (activeClient.company || activeClient.contact_name || activeClient.name) ? String(activeClient.company || activeClient.contact_name || activeClient.name).trim().toLowerCase() : '';
       var projectNameNorm = String(p.name || '').trim().toLowerCase();
       var projectCompanyNorm = String(p.company || '').trim().toLowerCase();
-      var isActiveClientRow = !!(activeClient && ((activeClientId && String(p.crmClientId || '') === activeClientId) || (activeClientName && (projectNameNorm === activeClientName || projectCompanyNorm === activeClientName))));
+      var isActiveClientRow = !!(activeClient && (
+        (activeClientId && (String(p.folderId || '') === activeClientId || String(p.crmClientId || '') === activeClientId)) ||
+        (activeClientRecordId && (String(p.crmClientRecordId || '') === activeClientRecordId || String(p.crmClientId || '') === activeClientRecordId)) ||
+        (activeClientName && (projectNameNorm === activeClientName || projectCompanyNorm === activeClientName))
+      ));
       if (!isActiveClientRow && selectedProjectNameNorm) {
         isActiveClientRow = (projectNameNorm === selectedProjectNameNorm || projectCompanyNorm === selectedProjectNameNorm);
       }
@@ -1249,7 +1293,7 @@
         (isActiveClientRow ? ' goal-row-client-active' : '') +
         (p.crmArchived ? ' goal-row-crm-archived' : '') +
         (hasSoldCopy ? ' goal-row-week-sold' : '');
-      return '<div class="' + rowClass + '" data-id="' + esc(p.id) + '" data-week="' + weekNum + '" data-week-sold="' + (hasSoldCopy ? '1' : '0') + '" onclick="window.__goalsQuickAddClientToRow && window.__goalsQuickAddClientToRow(' + weekNum + ',\'' + esc(p.id) + '\',event)" ondragover="window.__goalsClientDragOver && window.__goalsClientDragOver(event)" ondrop="window.__goalsClientDropOnRow && window.__goalsClientDropOnRow(' + weekNum + ',\'' + esc(p.id) + '\',event)">' +
+      return '<div class="' + rowClass + '" data-id="' + esc(p.id) + '" data-week="' + weekNum + '" data-week-sold="' + (hasSoldCopy ? '1' : '0') + '" draggable="true" onclick="window.__goalsQuickAddClientToRow && window.__goalsQuickAddClientToRow(' + weekNum + ',\'' + esc(p.id) + '\',event)" ondragstart="window.__goalsWeekRowDragStart&&window.__goalsWeekRowDragStart(event)" ondragover="window.__goalsWeekRowDragOver&&window.__goalsWeekRowDragOver(' + weekNum + ',\'' + esc(p.id) + '\',event)" ondragleave="window.__goalsWeekRowDragLeave&&window.__goalsWeekRowDragLeave(event)" ondrop="window.__goalsWeekRowDrop&&window.__goalsWeekRowDrop(' + weekNum + ',\'' + esc(p.id) + '\',event)" ondragend="window.__goalsWeekRowDragEnd&&window.__goalsWeekRowDragEnd(event)">' +
         '<span class="goal-date">' + esc(formatDateShort(p.date)) + '</span>' +
         '<span class="goal-name">' + nameCell + '</span>' +
         '<span class="goal-price-wrap">' + priceHtml + '</span>' +
@@ -1301,7 +1345,7 @@
     var activeCls = (currentWeekNum === weekNum) ? ' goal-week-active' : '';
     return '<div class="goal-week' + activeCls + '" data-week="' + weekNum + '">' +
       '<div class="goal-week-title">' + titleText + '<span class="goal-block-project-count">Проектов: ' + rows.length + '</span></div>' +
-      '<div class="goal-week-rows" onclick="window.__goalsQuickAddClientToWeek && window.__goalsQuickAddClientToWeek(' + weekNum + ',event)" ondragover="window.__goalsClientDragOver && window.__goalsClientDragOver(event)" ondrop="window.__goalsClientDropOnWeek && window.__goalsClientDropOnWeek(' + weekNum + ',event)">' + header + (rows.length ? rows.join('') : '<div class="goal-empty">Нет проектов</div>') + '</div>' +
+      '<div class="goal-week-rows" onclick="window.__goalsQuickAddClientToWeek && window.__goalsQuickAddClientToWeek(' + weekNum + ',event)" ondragover="window.__goalsWeekContainerDragOver&&window.__goalsWeekContainerDragOver(' + weekNum + ',event)" ondrop="window.__goalsWeekContainerDrop&&window.__goalsWeekContainerDrop(' + weekNum + ',event)">' + header + (rows.length ? rows.join('') : '<div class="goal-empty">Нет проектов</div>') + '</div>' +
       weekIndicators +
       '<div class="goal-week-add-row">' +
       '<button type="button" class="goal-week-add" onclick="window.__goalsOpenModalForWeek && window.__goalsOpenModalForWeek(event,' + weekNum + ')">+ Добавить проект</button>' +
@@ -1362,13 +1406,14 @@
           '">&#8634;</button>'
         : '';
       var toActiveBtn = (blockType === 'sold') ? '<button type="button" class="goal-to-work-btn goal-to-active-btn" onclick="event.stopPropagation();window.__goalsCreateActiveFromSold&&window.__goalsCreateActiveFromSold(\'' + esc(p.id) + '\')" title="Создать активный проект в ПРОЕКТАХ">🅰️</button>' : '';
-      var workEditBtn = (blockType === 'work') ? '<button type="button" class="goal-more-btn" onclick="event.stopPropagation();window.__goalsSelectRow&&window.__goalsSelectRow(\'' + esc(p.id) + '\')" title="Редактировать">⋯</button>' : '';
+      var projectLinkBtns = sourceAccountButtonHtml(p, blockOpts.sourceAccounts || []) +
+        '<button type="button" class="goal-more-btn" onclick="event.stopPropagation();window.__goalsSelectFolder&&window.__goalsSelectFolder(\'' + esc(p.id) + '\')" title="Открыть или привязать папку проекта">⋯</button>';
       var workToWeekBtn = (blockType === 'work') ? '<button type="button" class="goal-move-btn goal-to-week-btn" onclick="event.stopPropagation();window.__goalsShowSendToWeek&&window.__goalsShowSendToWeek(\'' + esc(p.id) + '\',this)" title="Отправить в неделю">📅</button>' : '';
       var workToSoldBtn = (blockType === 'work') ? '<button type="button" class="goal-move-btn" data-goal-action="sold" data-id="' + esc(p.id) + '" onclick="event.preventDefault();event.stopPropagation();window.__goalsQuickSetSold&&window.__goalsQuickSetSold(\'' + esc(p.id) + '\')" title="В продано">✓</button>' : '';
       var workToArchiveBtn = (blockType === 'work') ? '<button type="button" class="goal-move-btn" onclick="event.stopPropagation();window.__goalsSetStage&&window.__goalsSetStage(\'' + esc(p.id) + '\',\'archive\')" title="В архив">🗂</button>' : '';
       var delBtn = (blockType === 'sold' || blockType === 'work') ? '<button type="button" class="goal-del-btn" onclick="event.stopPropagation();window.__goalsDeletePermanent&&window.__goalsDeletePermanent(\'' + esc(p.id) + '\')" title="Удалить">×</button>' : '';
       var dispName = String(p.name || '').replace(/\s+/g, ' ').trim();
-      var actionsHtml = (archBtn || '') + (toActiveBtn || '') + (workEditBtn || '') + (workToWeekBtn || '') + (workToSoldBtn || '') + (workToArchiveBtn || '') + (delBtn || '');
+      var actionsHtml = (archBtn || '') + (toActiveBtn || '') + projectLinkBtns + (workToWeekBtn || '') + (workToSoldBtn || '') + (workToArchiveBtn || '') + (delBtn || '');
       var actionsInName = (blockType === 'sold' || blockType === 'work') ? actionsHtml : '';
       var nameCell = '<span class="goal-name-cell" onclick="event.stopPropagation();window.__goalsEditNameCell&&window.__goalsEditNameCell(this)">' +
         targetBtn +
@@ -1400,6 +1445,10 @@
     var titleHtml = (blockType === 'work')
       ? '<div class="goal-block-title goal-block-title-work">' +
         '<span class="goal-block-title-txt">' + icon + ' ' + title + '</span>' +
+        '<div class="goal-work-header-tools">' +
+          '<input type="search" class="goal-work-header-search" value="' + esc(blockOpts.workSearch || '') + '" placeholder="Поиск проекта..." aria-label="Поиск проектов в работе" oninput="window.__goalsSetWorkSearch&&window.__goalsSetWorkSearch(this.value)" oncompositionstart="window.__goalsWorkSearchComposition&&window.__goalsWorkSearchComposition(true,this.value)" oncompositionend="window.__goalsWorkSearchComposition&&window.__goalsWorkSearchComposition(false,this.value)">' +
+          '<span class="goal-work-header-counts">Всего: <b>' + Number(blockOpts.workTotalCount || 0) + '</b> · с прошлого месяца: <b>' + Number(blockOpts.workPreviousMonthCount || 0) + '</b></span>' +
+        '</div>' +
         '<button type="button" class="goal-work-header-filter' + (blockOpts.workTargetFilter ? ' on' : '') + '" onclick="event.stopPropagation();window.__goalsToggleWorkTargetFilter&&window.__goalsToggleWorkTargetFilter()" title="🎯 Приоритетные проекты — всегда сверху (системное правило). Тумблер включает дополнительную подсветку.">🎯</button>' +
         '</div>'
       : '<div class="goal-block-title">' + icon + ' ' + title + '</div>';
@@ -1518,6 +1567,60 @@
       }
     });
     return out;
+  }
+  function sortProjectsBySavedIds(projects, savedIds) {
+    var list = (projects || []).slice();
+    if (!Array.isArray(savedIds) || !savedIds.length) return list;
+    var byId = {};
+    list.forEach(function(p) { if (p && p.id) byId[String(p.id)] = p; });
+    var seen = {};
+    var out = [];
+    savedIds.forEach(function(id) {
+      id = String(id || '');
+      if (id && byId[id] && !seen[id]) {
+        out.push(byId[id]);
+        seen[id] = true;
+      }
+    });
+    list.forEach(function(p, listIndex) {
+      var id = p && p.id ? String(p.id) : '';
+      if (id && seen[id]) return;
+      var insertAt = out.length;
+      var followingAt = out.length;
+      for (var nextIndex = listIndex + 1; nextIndex < list.length; nextIndex++) {
+        var nextId = list[nextIndex] && list[nextIndex].id ? String(list[nextIndex].id) : '';
+        if (nextId && seen[nextId]) {
+          var nextOutIndex = out.findIndex(function(item) { return item && String(item.id || '') === nextId; });
+          if (nextOutIndex >= 0) followingAt = Math.min(followingAt, nextOutIndex);
+        }
+      }
+      if (followingAt < out.length) {
+        insertAt = followingAt;
+      } else {
+        var precedingAt = -1;
+        for (var prevIndex = 0; prevIndex < listIndex; prevIndex++) {
+          var prevId = list[prevIndex] && list[prevIndex].id ? String(list[prevIndex].id) : '';
+          if (prevId && seen[prevId]) {
+            var prevOutIndex = out.findIndex(function(item) { return item && String(item.id || '') === prevId; });
+            if (prevOutIndex >= 0) precedingAt = Math.max(precedingAt, prevOutIndex);
+          }
+        }
+        if (precedingAt >= 0) insertAt = precedingAt + 1;
+      }
+      out.splice(insertAt, 0, p);
+      if (id) seen[id] = true;
+    });
+    return out;
+  }
+  function sourceAccountById(accounts, id) {
+    id = String(id || '');
+    return (accounts || []).find(function(a) { return a && String(a.id || '') === id; }) || null;
+  }
+  function sourceAccountButtonHtml(project, accounts) {
+    var account = sourceAccountById(accounts, project && project.sourceAccountId);
+    var icon = account ? (account.icon || '👤') : '👤';
+    var title = account ? ('Источник: ' + (account.name || 'Аккаунт')) : 'Выбрать аккаунт, с которого пришла заявка';
+    return '<button type="button" class="goal-source-btn' + (account ? ' on' : '') + '" onclick="event.stopPropagation();window.__goalsShowSourceAccountPicker&&window.__goalsShowSourceAccountPicker(\'' + esc(project.id) + '\',this)" title="' + esc(title) + '">' + esc(icon) + '</button>';
   }
   function getProjectYM(p) {
     if (!p || !p.date) return '';
@@ -2010,6 +2113,7 @@
     var isArchiveView = !!_goalsViewMonth;
     var viewYM = _goalsViewMonth || getCurrentMonthKey();
     var liveData = loadLiveData();
+    var sourceAccountsForUi = liveData.sourceAccounts || [];
     snapshotCurrentMonth(liveData);
     var curYM = getCurrentMonthKey();
     var ccp = curYM.split('-');
@@ -2110,6 +2214,12 @@
       });
     }
 
+    var savedWeekOrder = (data.weekOrderByMonth && data.weekOrderByMonth[viewYM]) || {};
+    week1 = sortProjectsBySavedIds(week1, savedWeekOrder['1']);
+    week2 = sortProjectsBySavedIds(week2, savedWeekOrder['2']);
+    week3 = sortProjectsBySavedIds(week3, savedWeekOrder['3']);
+    week4 = sortProjectsBySavedIds(week4, savedWeekOrder['4']);
+
     /** ── Системная логика блока «В РАБОТЕ» ──
      *   1) Фильтр: исключаем тех, кто УЖЕ ОПЛАТИЛ — проекты, которые есть в кассе
      *      (любая колонка «Мои клиенты» / «Клиенты Саши»), либо в стадии sold,
@@ -2124,7 +2234,13 @@
       return !goalProjectIsAlreadyPaidOrInKassa(p, kassaActiveNamesSet);
     });
     working = sortWorkingForDisplay(working);
-    var workingForList = working;
+    var workingTotalCount = working.length;
+    var previousMonthKey = goalsPrevMonthKey(viewYM);
+    var workingPreviousMonthCount = working.filter(function(p) { return getProjectYM(p) === previousMonthKey; }).length;
+    var workSearchNorm = String(_goalsWorkSearch || '').trim().toLowerCase();
+    var workingForList = workSearchNorm ? working.filter(function(p) {
+      return (String((p && p.name) || '') + ' ' + String((p && p.company) || '')).toLowerCase().indexOf(workSearchNorm) >= 0;
+    }) : working.slice();
     var workExpanded = !!data.workExpanded;
     var WORK_LIMIT = 20;
     var workingVisible = workExpanded ? workingForList.slice() : workingForList.slice(0, WORK_LIMIT);
@@ -2172,7 +2288,7 @@
     var funnelTotal = totalRevenue + totalPotentialAll;
     var kpCount = allWithKp.length;
     var totalCount = projects.length;
-    var workingCount = working.length;
+    var workingCount = workingTotalCount;
     var soldCount = sold.length;
     var newCount = week1.length + week2.length + week3.length + week4.length;
     window.__goalsDebugFunnel = function() {
@@ -2354,14 +2470,14 @@
         '</span>' +
       '</div>' +
       '<div class="goals-sold-wrap">' +
-          renderSection('ПРОДАНО <span class="goal-sold-total">' + fmtNum(totalRevenue) + ' ₽</span> ' + monthName + '<span class="goal-block-project-count">Проектов: ' + sold.length + '</span>', '☑', sold, '', true, true, 'sold') +
+          renderSection('ПРОДАНО <span class="goal-sold-total">' + fmtNum(totalRevenue) + ' ₽</span> ' + monthName + '<span class="goal-block-project-count">Проектов: ' + sold.length + '</span>', '☑', sold, '', true, true, 'sold', { sourceAccounts: sourceAccountsForUi }) +
       '</div>' +
       '<div class="goals-weeks-wrap">' +
         '<div class="goals-weeks">' +
-          ((isArchiveView || hasWeekStarted(4, now.getDate())) ? renderWeekSection(4, week4, sold, activeClient, currentWeekNum, y, m) : '') +
-          ((isArchiveView || hasWeekStarted(3, now.getDate())) ? renderWeekSection(3, week3, sold, activeClient, currentWeekNum, y, m) : '') +
-          ((isArchiveView || hasWeekStarted(2, now.getDate())) ? renderWeekSection(2, week2, sold, activeClient, currentWeekNum, y, m) : '') +
-          ((isArchiveView || hasWeekStarted(1, now.getDate())) ? renderWeekSection(1, week1, sold, activeClient, currentWeekNum, y, m) : '') +
+          ((isArchiveView || hasWeekStarted(4, now.getDate())) ? renderWeekSection(4, week4, sold, activeClient, currentWeekNum, y, m, sourceAccountsForUi) : '') +
+          ((isArchiveView || hasWeekStarted(3, now.getDate())) ? renderWeekSection(3, week3, sold, activeClient, currentWeekNum, y, m, sourceAccountsForUi) : '') +
+          ((isArchiveView || hasWeekStarted(2, now.getDate())) ? renderWeekSection(2, week2, sold, activeClient, currentWeekNum, y, m, sourceAccountsForUi) : '') +
+          ((isArchiveView || hasWeekStarted(1, now.getDate())) ? renderWeekSection(1, week1, sold, activeClient, currentWeekNum, y, m, sourceAccountsForUi) : '') +
         '</div>' +
       '</div>' +
       (!isArchiveView ? '<div class="goals-work-wrap">' +
@@ -2375,11 +2491,17 @@
             true,
             true,
             'work',
-            { workTargetFilter: !!data.workTargetFilter }
+            {
+              workTargetFilter: !!data.workTargetFilter,
+              workSearch: _goalsWorkSearch,
+              workTotalCount: workingTotalCount,
+              workPreviousMonthCount: workingPreviousMonthCount,
+              sourceAccounts: sourceAccountsForUi
+            }
           ) +
       '</div>' : '') +
       '<div class="goals-archive-wrap">' +
-        renderSection('АРХИВ', '📁', archive, '', true, false, 'archive') +
+        renderSection('АРХИВ', '📁', archive, '', true, false, 'archive', { sourceAccounts: sourceAccountsForUi }) +
       '</div></div>' + buildGoalsAchievementsRail(viewYM, viewMonthLabel, totalRevenue, sold) + '</div>';
 
     var main = document.getElementById('mainContent');
@@ -3348,6 +3470,229 @@
     inp.onkeydown = function(e) { if (e.key === 'Enter') { e.preventDefault(); inp.blur(); } };
   }
 
+  function closeGoalSourcePicker() {
+    var popup = document.getElementById('goalSourceAccountPicker');
+    if (popup) popup.remove();
+    if (_goalSourceOutsideHandler) {
+      document.removeEventListener('mousedown', _goalSourceOutsideHandler, true);
+      _goalSourceOutsideHandler = null;
+    }
+  }
+
+  function saveProjectSourceAccount(projectId, sourceAccountId) {
+    var sourceId = String(sourceAccountId || '');
+    var live = loadLiveData();
+    var liveProject = (live.projects || []).find(function(p) { return p && p.id === projectId; });
+    if (!_goalsViewMonth) {
+      if (!liveProject) return false;
+      liveProject.sourceAccountId = sourceId;
+      return saveLiveData(live);
+    }
+    var changed = false;
+    if (liveProject) {
+      liveProject.sourceAccountId = sourceId;
+      if (!saveLiveData(live)) return false;
+      changed = true;
+    }
+    var archive = loadData();
+    var archiveProject = (archive.projects || []).find(function(p) { return p && p.id === projectId; });
+    if (archiveProject) {
+      archiveProject.sourceAccountId = sourceId;
+      archive.sourceAccounts = live.sourceAccounts || [];
+      if (!saveData(archive)) return false;
+      changed = true;
+    }
+    return changed;
+  }
+
+  function showSourceSaveError() {
+    try { showGoalsSmallToast('Не удалось сохранить аккаунт заявки'); } catch(e) {}
+  }
+
+  function showSourceAccountPicker(projectId, anchorEl) {
+    closeGoalSourcePicker();
+    var projectData = loadData();
+    var liveData = loadLiveData();
+    var archiveProject = (projectData.projects || []).find(function(p) { return p && p.id === projectId; });
+    var liveProject = (liveData.projects || []).find(function(p) { return p && p.id === projectId; });
+    var project = (_goalsViewMonth && liveProject) || archiveProject || liveProject;
+    if (!project) return;
+    var accounts = liveData.sourceAccounts || [];
+    var visible = accounts.filter(function(a) { return a && (!a.hidden || String(a.id) === String(project.sourceAccountId || '')); });
+    var popup = document.createElement('div');
+    popup.id = 'goalSourceAccountPicker';
+    popup.className = 'goal-source-picker';
+    var iconOptions = SOURCE_ACCOUNT_ICONS.map(function(icon) {
+      return '<option value="' + esc(icon) + '">' + esc(icon) + '</option>';
+    }).join('');
+    popup.innerHTML = '<div class="goal-source-picker-head"><b>Аккаунт заявки</b><button type="button" data-source-close>×</button></div>' +
+      '<div class="goal-source-picker-list">' + visible.map(function(a) {
+        return '<div class="goal-source-picker-row' + (String(a.id) === String(project.sourceAccountId || '') ? ' selected' : '') + '" data-source-id="' + esc(a.id) + '">' +
+          '<select class="goal-source-icon-select" title="Иконка">' + iconOptions + '</select>' +
+          '<input type="text" class="goal-source-name-input" value="' + esc(a.name || '') + '" maxlength="60" aria-label="Название аккаунта">' +
+          '<button type="button" class="goal-source-select-btn">Выбрать</button>' +
+          '<button type="button" class="goal-source-delete-btn" title="Удалить аккаунт">×</button>' +
+        '</div>';
+      }).join('') + '</div>' +
+      '<div class="goal-source-picker-foot"><button type="button" data-source-clear>Без аккаунта</button><button type="button" data-source-add>+ Добавить</button></div>';
+    document.body.appendChild(popup);
+    var rect = anchorEl && anchorEl.getBoundingClientRect ? anchorEl.getBoundingClientRect() : { left: 16, bottom: 16 };
+    var left = Math.min(Math.max(8, rect.left), Math.max(8, window.innerWidth - 430));
+    var top = rect.bottom + 7;
+    if (top + popup.offsetHeight > window.innerHeight - 8) top = Math.max(8, rect.top - popup.offsetHeight - 7);
+    popup.style.left = left + 'px';
+    popup.style.top = top + 'px';
+    popup.querySelectorAll('.goal-source-picker-row').forEach(function(row) {
+      var id = row.getAttribute('data-source-id');
+      var account = sourceAccountById(accounts, id);
+      var iconSel = row.querySelector('.goal-source-icon-select');
+      var nameInp = row.querySelector('.goal-source-name-input');
+      if (iconSel && account) iconSel.value = account.icon || '👤';
+      if (iconSel) iconSel.onchange = function() {
+        var d = loadLiveData();
+        var a = sourceAccountById(d.sourceAccounts, id);
+        if (!a) return;
+        a.icon = iconSel.value || '👤';
+        if (!saveLiveData(d)) { showSourceSaveError(); return; }
+        if (String(project.sourceAccountId || '') === String(id) && anchorEl) anchorEl.textContent = a.icon;
+        refreshSidebarSourceAccount();
+      };
+      if (nameInp) nameInp.onchange = function() {
+        var d = loadLiveData();
+        var a = sourceAccountById(d.sourceAccounts, id);
+        if (!a) return;
+        a.name = String(nameInp.value || '').trim() || 'Аккаунт';
+        nameInp.value = a.name;
+        if (!saveLiveData(d)) { showSourceSaveError(); return; }
+        refreshSidebarSourceAccount();
+      };
+      var choose = row.querySelector('.goal-source-select-btn');
+      if (choose) choose.onclick = function() {
+        if (!saveProjectSourceAccount(projectId, id)) { showSourceSaveError(); return; }
+        closeGoalSourcePicker();
+        render();
+      };
+      var del = row.querySelector('.goal-source-delete-btn');
+      if (del) del.onclick = function() {
+        var live = loadLiveData();
+        var a = sourceAccountById(live.sourceAccounts, id);
+        if (a) a.hidden = true;
+        if (!saveLiveData(live)) { showSourceSaveError(); return; }
+        if (String(project.sourceAccountId || '') === String(id) && !saveProjectSourceAccount(projectId, '')) { showSourceSaveError(); return; }
+        closeGoalSourcePicker();
+        render();
+      };
+    });
+    var closeBtn = popup.querySelector('[data-source-close]');
+    if (closeBtn) closeBtn.onclick = closeGoalSourcePicker;
+    var clearBtn = popup.querySelector('[data-source-clear]');
+    if (clearBtn) clearBtn.onclick = function() {
+      if (!saveProjectSourceAccount(projectId, '')) { showSourceSaveError(); return; }
+      closeGoalSourcePicker();
+      render();
+    };
+    var addBtn = popup.querySelector('[data-source-add]');
+    if (addBtn) addBtn.onclick = function() {
+      var d = loadLiveData();
+      d.sourceAccounts = d.sourceAccounts || [];
+      d.sourceAccounts.push({ id: 'src_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7), name: 'Новый аккаунт', icon: '👤' });
+      if (!saveLiveData(d)) { showSourceSaveError(); return; }
+      showSourceAccountPicker(projectId, anchorEl);
+    };
+    setTimeout(function() {
+      _goalSourceOutsideHandler = function(e) {
+        if (!popup.contains(e.target) && e.target !== anchorEl) closeGoalSourcePicker();
+      };
+      document.addEventListener('mousedown', _goalSourceOutsideHandler, true);
+    }, 0);
+  }
+
+  function refreshSidebarSourceAccount() {
+    var btn = document.getElementById('crmSourceAccountBtn');
+    var input = document.getElementById('source_account_id');
+    if (!btn || !input) return;
+    var data = loadLiveData();
+    var account = sourceAccountById(data.sourceAccounts, input.value);
+    btn.textContent = account ? ((account.icon || '👤') + ' ' + (account.name || 'Аккаунт')) : '👤 Не выбран';
+    btn.classList.toggle('on', !!account);
+  }
+
+  function showSidebarSourceAccountPicker(anchorEl) {
+    closeGoalSourcePicker();
+    var data = loadLiveData();
+    var accounts = (data.sourceAccounts || []).filter(function(a) { return a && !a.hidden; });
+    var input = document.getElementById('source_account_id');
+    var currentId = input ? String(input.value || '') : '';
+    var popup = document.createElement('div');
+    popup.id = 'goalSourceAccountPicker';
+    popup.className = 'goal-source-picker goal-source-picker-sidebar';
+    popup.innerHTML = '<div class="goal-source-picker-head"><b>Аккаунт заявки</b><button type="button" data-source-close>×</button></div><div class="goal-source-sidebar-list">' +
+      accounts.map(function(a) {
+        return '<button type="button" class="goal-source-sidebar-option' + (String(a.id) === currentId ? ' selected' : '') + '" data-source-id="' + esc(a.id) + '"><span>' + esc(a.icon || '👤') + '</span>' + esc(a.name || 'Аккаунт') + '</button>';
+      }).join('') +
+      '</div><div class="goal-source-picker-foot"><button type="button" data-source-clear>Без аккаунта</button></div>';
+    document.body.appendChild(popup);
+    var rect = anchorEl.getBoundingClientRect();
+    popup.style.left = Math.min(Math.max(8, rect.left), Math.max(8, window.innerWidth - 330)) + 'px';
+    var top = rect.bottom + 6;
+    if (top + popup.offsetHeight > window.innerHeight - 8) top = Math.max(8, rect.top - popup.offsetHeight - 6);
+    popup.style.top = top + 'px';
+    popup.querySelectorAll('.goal-source-sidebar-option').forEach(function(btn) {
+      btn.onclick = function() {
+        if (input) input.value = btn.getAttribute('data-source-id') || '';
+        closeGoalSourcePicker();
+        refreshSidebarSourceAccount();
+      };
+    });
+    var clearBtn = popup.querySelector('[data-source-clear]');
+    if (clearBtn) clearBtn.onclick = function() {
+      if (input) input.value = '';
+      closeGoalSourcePicker();
+      refreshSidebarSourceAccount();
+    };
+    var closeBtn = popup.querySelector('[data-source-close]');
+    if (closeBtn) closeBtn.onclick = closeGoalSourcePicker;
+    setTimeout(function() {
+      _goalSourceOutsideHandler = function(e) {
+        if (!popup.contains(e.target) && e.target !== anchorEl) closeGoalSourcePicker();
+      };
+      document.addEventListener('mousedown', _goalSourceOutsideHandler, true);
+    }, 0);
+  }
+
+  function selectGoalFolder(projectId) {
+    var data = loadData();
+    var p = (data.projects || []).find(function(x) { return x && x.id === projectId; });
+    if (!p) return;
+    var linked = !!(p.folderId || p.folderLink || p.crmClientId);
+    if (linked && typeof window.__goalsPinLinkedFolder === 'function' && window.__goalsPinLinkedFolder(p)) return;
+    try { window._projectFolderBindTargetId = null; } catch(eProjectBind) {}
+    try { window._assetsFolderBindTarget = null; } catch(eAssetsBind) {}
+    _goalsFolderBindTargetId = projectId;
+    if (typeof window.toggleClientMenu === 'function') window.toggleClientMenu();
+    else if (typeof toggleClientMenu === 'function') toggleClientMenu();
+  }
+
+  function applyGoalFolderBind(folderId, folderLink, found) {
+    if (!_goalsFolderBindTargetId) return false;
+    var data = loadData();
+    var p = (data.projects || []).find(function(x) { return x && x.id === _goalsFolderBindTargetId; });
+    if (!p) { _goalsFolderBindTargetId = ''; return false; }
+    p.folderId = String(folderId || '');
+    p.folderLink = String(folderLink || (folderId ? ('https://drive.google.com/drive/folders/' + folderId) : ''));
+    p.crmClientId = String(folderId || p.crmClientId || '');
+    if (found && found.client_id) p.crmClientRecordId = String(found.client_id);
+    if (found && !p.sourceAccountId && found.source_account_id) p.sourceAccountId = found.source_account_id;
+    if (!saveData(data)) {
+      showGoalsSmallToast('Не удалось сохранить привязку папки');
+      return false;
+    }
+    _goalsFolderBindTargetId = '';
+    if (typeof window.__goalsPinLinkedFolder === 'function') window.__goalsPinLinkedFolder(p);
+    render();
+    return true;
+  }
+
   function selectGoalRow(projectId) {
     var row = document.querySelector('.goal-row[data-id="' + projectId + '"], .goal-row-alt[data-id="' + projectId + '"]');
     if (!row) return;
@@ -3711,7 +4056,8 @@
         touchDates: touchDates,
         tags: newTags.slice(),
         note: (document.getElementById('goalInpNote') || {}).value || '',
-        stage: modalStage
+        stage: modalStage,
+        sourceAccountId: ((document.getElementById('source_account_id') || {}).value || '').trim()
       };
       if (statusListHasPaid(status)) {
         project.stage = 'sold';
@@ -3737,19 +4083,22 @@
     var byCategory = '';
     var byCity = '';
     var byKp = '';
+    var bySourceAccount = '';
     try {
       var cEl = document.getElementById('company');
       var pEl = document.getElementById('phone');
       var catEl = document.getElementById('category');
       var cityEl = document.getElementById('city');
       var kpEl = document.getElementById('kp_count');
+      var sourceEl = document.getElementById('source_account_id');
       byCompany = cEl ? String(cEl.value || '').trim() : '';
       byPhone = pEl ? String(pEl.value || '').trim() : '';
       byCategory = catEl ? String(catEl.value || '').trim() : '';
       byCity = cityEl ? String(cityEl.value || '').trim() : '';
       byKp = kpEl ? String(kpEl.value || '').trim() : '';
+      bySourceAccount = sourceEl ? String(sourceEl.value || '').trim() : '';
     } catch (e) {}
-    var payload = active || {};
+    var payload = Object.assign({}, active || {});
     payload.company = payload.company || byCompany || byName || 'Проект';
     payload.contact_name = payload.contact_name || '';
     payload.name = payload.name || byName || payload.company;
@@ -3757,6 +4106,7 @@
     payload.category = payload.category || byCategory || '';
     payload.city = payload.city || byCity || '';
     payload.kp_count = payload.kp_count || byKp || '';
+    payload.source_account_id = bySourceAccount || payload.source_account_id || '';
     return payload;
   }
 
@@ -3806,6 +4156,7 @@
       city: client.city || '',
       kp_count: client.kp_count || ''
     };
+    project.sourceAccountId = client.source_account_id || client.sourceAccountId || '';
     if (targetStage === 'sold') {
       project.saleAmount = detectedPrice || '';
       project.status = ['paid'];
@@ -3890,6 +4241,118 @@
     setTimeout(function() { window.__clientDragJustHappened = false; }, 220);
   }
 
+  function isWeekRowDrag() {
+    return !!(_goalsWeekDrag && _goalsWeekDrag.id && _goalsWeekDrag.week);
+  }
+
+  function isWeekDragBlockedTarget(t) {
+    if (!t || !t.closest) return false;
+    return !!t.closest('button,input,textarea,select,a,.goal-status-badge,.goal-touch-badge,.goal-custom-tag,.goal-badge-rm,.goal-custom-tag-rm,.goal-designations,.goal-price-wrap');
+  }
+
+  function startWeekRowDrag(e) {
+    if (!e || isWeekDragBlockedTarget(e.target)) { if (e) e.preventDefault(); return false; }
+    var row = e.currentTarget;
+    var id = row && row.getAttribute('data-id');
+    var week = parseInt(row && row.getAttribute('data-week'), 10);
+    if (!id || week < 1 || week > 4) return false;
+    _goalsWeekDrag = { id: id, week: week };
+    _goalsWeekDragJustHappened = true;
+    if (e.dataTransfer) {
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData(GOALS_WEEK_DRAG_MIME, JSON.stringify(_goalsWeekDrag));
+      e.dataTransfer.setData('text/plain', 'goals-week-row');
+    }
+    row.classList.add('goal-week-row-dragging');
+    return true;
+  }
+
+  function currentWeekRowIds(week) {
+    return Array.prototype.map.call(document.querySelectorAll('.goal-week[data-week="' + week + '"] .goal-row[data-id]'), function(row) {
+      return row.getAttribute('data-id');
+    }).filter(Boolean);
+  }
+
+  function saveWeekRowOrder(week, dragId, dropId, placeAfter) {
+    var ids = currentWeekRowIds(week);
+    var from = ids.indexOf(dragId);
+    if (from < 0) return;
+    ids.splice(from, 1);
+    if (dropId) {
+      var to = ids.indexOf(dropId);
+      if (to < 0) to = ids.length;
+      if (placeAfter) to++;
+      ids.splice(Math.min(to, ids.length), 0, dragId);
+    } else {
+      ids.push(dragId);
+    }
+    var data = loadData();
+    var ym = _goalsViewMonth || getCurrentMonthKey();
+    data.weekOrderByMonth = data.weekOrderByMonth || {};
+    data.weekOrderByMonth[ym] = data.weekOrderByMonth[ym] || {};
+    data.weekOrderByMonth[ym][String(week)] = ids;
+    _goalsWeekDrag = null;
+    setTimeout(function() { _goalsWeekDragJustHappened = false; }, 180);
+    if (!saveData(data)) {
+      showGoalsSmallToast('Не удалось сохранить порядок строк');
+      return;
+    }
+    render();
+  }
+
+  function weekRowDragOver(week, projectId, e) {
+    if (!isWeekRowDrag()) { allowClientDrop(e); return; }
+    if (_goalsWeekDrag.week !== week) return;
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
+    var row = e.currentTarget;
+    if (row) row.classList.add('goal-week-row-drag-over');
+  }
+
+  function weekRowDragLeave(e) {
+    var row = e && e.currentTarget;
+    if (row) row.classList.remove('goal-week-row-drag-over');
+  }
+
+  function weekRowDrop(week, projectId, e) {
+    if (!isWeekRowDrag()) {
+      if (e) e.stopPropagation();
+      dropClientOnRow(week, projectId, e);
+      return;
+    }
+    e.preventDefault();
+    e.stopPropagation();
+    var row = e.currentTarget;
+    if (row) row.classList.remove('goal-week-row-drag-over');
+    if (_goalsWeekDrag.week !== week || _goalsWeekDrag.id === projectId) return;
+    var rect = row.getBoundingClientRect();
+    saveWeekRowOrder(week, _goalsWeekDrag.id, projectId, e.clientY > rect.top + rect.height / 2);
+  }
+
+  function weekContainerDragOver(week, e) {
+    if (!isWeekRowDrag()) { allowClientDrop(e); return; }
+    if (_goalsWeekDrag.week !== week) return;
+    e.preventDefault();
+    if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
+  }
+
+  function weekContainerDrop(week, e) {
+    if (!isWeekRowDrag()) { dropClientOnWeek(week, e); return; }
+    if (e.target && e.target.closest && e.target.closest('.goal-row[data-id]')) return;
+    e.preventDefault();
+    e.stopPropagation();
+    if (_goalsWeekDrag.week === week) saveWeekRowOrder(week, _goalsWeekDrag.id, '', true);
+  }
+
+  function endWeekRowDrag(e) {
+    var row = e && e.currentTarget;
+    if (row) row.classList.remove('goal-week-row-dragging');
+    document.querySelectorAll('.goal-week-row-drag-over').forEach(function(el) { el.classList.remove('goal-week-row-drag-over'); });
+    _goalsWeekDrag = null;
+    setTimeout(function() { _goalsWeekDragJustHappened = false; }, 180);
+  }
+
   function allowClientDrop(e) {
     var client = typeof window.__goalsGetActiveClient === 'function' ? window.__goalsGetActiveClient() : null;
     if (!client) return;
@@ -3924,20 +4387,58 @@
     return !!t.closest('button,input,textarea,a,.goal-name-cell,.goal-status-badge,.goal-touch-badge,.goal-custom-tag,.goal-badge-rm,.goal-custom-tag-rm');
   }
 
+  function editWeekNameCell(cellEl) {
+    if (_goalsWeekDragJustHappened) return;
+    editGoalNameCell(cellEl);
+  }
+
   function quickAddClientToRow(weekNum, beforeProjectId, e) {
     if (!e) return;
+    if (_goalsWeekDragJustHappened) return;
     if (isInteractiveTarget(e.target)) return;
     insertClientToWeekAt(weekNum, beforeProjectId);
   }
 
   function quickAddClientToWeek(weekNum, e) {
     if (!e) return;
+    if (_goalsWeekDragJustHappened) return;
     if (isInteractiveTarget(e.target)) return;
     if (e.target && e.target.closest && e.target.closest('.goal-row')) return;
     insertClientToWeekAt(weekNum, '');
   }
 
-  window.AVITOLOG_GOALS = { render: render, __externalVersion: 'goals-js-v2' };
+  function setWorkSearch(value) {
+    _goalsWorkSearch = String(value || '');
+    if (_goalsWorkSearchTimer) clearTimeout(_goalsWorkSearchTimer);
+    if (_goalsWorkSearchComposing) return;
+    _goalsWorkSearchTimer = setTimeout(function() {
+      _goalsWorkSearchTimer = 0;
+      render();
+      var input = document.querySelector('.goal-work-header-search');
+      if (input) {
+        input.focus();
+        try { input.setSelectionRange(input.value.length, input.value.length); } catch(e) {}
+      }
+    }, 120);
+  }
+  function setWorkSearchComposition(active, value) {
+    _goalsWorkSearchComposing = !!active;
+    _goalsWorkSearch = String(value || '');
+    if (!active) setWorkSearch(value);
+  }
+  function getSourceAccountLabel(id) {
+    var data = loadLiveData();
+    var account = sourceAccountById(data.sourceAccounts, id);
+    return account ? ((account.icon || '👤') + ' ' + (account.name || 'Аккаунт')) : '';
+  }
+
+  window.AVITOLOG_GOALS = {
+    render: render,
+    applyGoalFolderBind: applyGoalFolderBind,
+    cancelGoalFolderBind: function() { _goalsFolderBindTargetId = ''; },
+    getSourceAccountLabel: getSourceAccountLabel,
+    __externalVersion: 'goals-js-v3'
+  };
   window.__AVITOLOG_GOALS_LEGACY = window.AVITOLOG_GOALS;
 
   /** Сначала разово вычищаем «нелегальные» sold-записи из CRM
@@ -3976,4 +4477,22 @@
   window.__goalsClientDropToSold = dropClientToSold;
   window.__goalsQuickAddClientToRow = quickAddClientToRow;
   window.__goalsQuickAddClientToWeek = quickAddClientToWeek;
+  window.__goalsWeekRowDragStart = startWeekRowDrag;
+  window.__goalsWeekRowDragOver = weekRowDragOver;
+  window.__goalsWeekRowDragLeave = weekRowDragLeave;
+  window.__goalsWeekRowDrop = weekRowDrop;
+  window.__goalsWeekContainerDragOver = weekContainerDragOver;
+  window.__goalsWeekContainerDrop = weekContainerDrop;
+  window.__goalsWeekRowDragEnd = endWeekRowDrag;
+  window.__goalsEditWeekNameCell = editWeekNameCell;
+  window.__goalsShowSourceAccountPicker = showSourceAccountPicker;
+  window.__goalsShowSidebarSourcePicker = showSidebarSourceAccountPicker;
+  window.__goalsRefreshSidebarSourceAccount = refreshSidebarSourceAccount;
+  window.__goalsGetSourceAccountLabel = getSourceAccountLabel;
+  window.__goalsSelectFolder = selectGoalFolder;
+  window.__goalsApplyFolderBind = applyGoalFolderBind;
+  window.__goalsCancelFolderBind = function() { _goalsFolderBindTargetId = ''; };
+  window.__goalsHasFolderBindTarget = function() { return !!_goalsFolderBindTargetId; };
+  window.__goalsSetWorkSearch = setWorkSearch;
+  window.__goalsWorkSearchComposition = setWorkSearchComposition;
 })();
