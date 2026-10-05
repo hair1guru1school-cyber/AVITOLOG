@@ -1987,6 +1987,7 @@ function fillClientForm(c) {
   document.getElementById('contact_name').value = c.contact_name || '';
   document.getElementById('phone').value = c.phone || '';
   document.getElementById('tg').value = c.telegram || '';
+  document.getElementById('vk').value = c.vk || '';
   document.getElementById('avito_account').value = c.avito_account || '';
   document.getElementById('category').value = c.category || '';
   document.getElementById('city').value = c.city || '';
@@ -2031,6 +2032,9 @@ window.fillClientFormFromGoal = function(goalData) {
     company: goalData.company || goalData.name || '',
     contact_name: goalData.name || goalData.company || '',
     phone: goalData.phone || '',
+    telegram: goalData.telegram || goalData.tg || '',
+    vk: goalData.vk || '',
+    avito_account: goalData.avito_account || '',
     category: goalData.category || '',
     city: goalData.city || '',
     source_account_id: goalData.source_account_id || goalData.sourceAccountId || '',
@@ -2043,18 +2047,18 @@ window.fillClientFormFromGoal = function(goalData) {
   };
   fillClientForm(c);
   if (folderId || goalData.folderLink) {
-    setActiveClient({
+    setActiveClient(Object.assign({}, c, {
       folderId: folderId,
       folderLink: goalData.folderLink || '',
       company: c.company || 'Цель',
       source_account_id: c.source_account_id || ''
-    });
+    }));
   }
   if (folderId && typeof setCrmCategoryByFolderId === 'function') setCrmCategoryByFolderId(folderId);
 };
 
 function clearClientForm() {
-  ['company','contact_name','phone','tg','avito_account','category','city','source_account_id','notes','kp_count'].forEach(function(id) {
+  ['company','contact_name','phone','tg','vk','avito_account','category','city','source_account_id','notes','kp_count'].forEach(function(id) {
     var el = document.getElementById(id);
     if (el) el.value = '';
   });
@@ -2080,7 +2084,7 @@ function findClientForProject(project) {
 function hasProjectCrmData(project) {
   if (!project || !project.crmData) return false;
   var d = project.crmData;
-  return !!(d.company || d.contact_name || d.phone || d.telegram || d.avito_account || d.category || d.city || d.source_account_id || d.notes || d.kp_count || d.client_type);
+  return !!(d.company || d.contact_name || d.phone || d.telegram || d.vk || d.avito_account || d.category || d.city || d.source_account_id || d.notes || d.kp_count || d.client_type);
 }
 function getProjectPreferredFolder(project) {
   var p = project || {};
@@ -2097,6 +2101,7 @@ function makeProjectCrmSnapshot(d) {
     contact_name: d.contact_name || '',
     phone: d.phone || '',
     telegram: d.telegram || '',
+    vk: d.vk || '',
     avito_account: d.avito_account || '',
     client_type: d.client_type || '',
     category: d.category || '',
@@ -2200,13 +2205,13 @@ function selectProjectRow(projectId) {
     mergedCrm.folderLink = prefFolder.folderLink;
     mergedCrm.categoryFolderId = mergedCrm.categoryFolderId || p.categoryFolderId;
     fillClientForm(mergedCrm);
-    setActiveClient({
+    setActiveClient(Object.assign({}, mergedCrm, {
       client_id: mergedCrm.client_id || p.crmClientId || '',
       folderId: prefFolder.folderId,
       folderLink: prefFolder.folderLink,
       company: mergedCrm.company || p.title || 'Клиент',
       source_account_id: p.sourceAccountId || mergedCrm.source_account_id || ''
-    });
+    }));
     return;
   }
   var found = findClientForProject(p);
@@ -2229,6 +2234,10 @@ function selectProjectRow(projectId) {
         folderId: p.folderId || '',
         folderLink: p.folderLink || '',
         company: p.title || 'Клиент',
+        phone: p.phone || '',
+        telegram: p.telegram || p.tg || '',
+        vk: p.vk || '',
+        avito_account: p.avito_account || '',
         source_account_id: p.sourceAccountId || (p.crmData && p.crmData.source_account_id) || ''
       });
       var st = document.getElementById('crmSt');

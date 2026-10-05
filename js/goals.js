@@ -1261,6 +1261,7 @@
         ? ''
         : '<button type="button" class="goal-move-btn" onclick="event.stopPropagation();window.__goalsSetStage&&window.__goalsSetStage(\'' + esc(p.id) + '\',\'archive\')" title="В архив CRM (строка на неделе останется с 💀)">🗂</button>';
       var actionsBtns = '<span class="goal-actions goal-actions-inline">' +
+        contactButtonHtml(p) +
         sourceAccountButtonHtml(p, sourceAccounts) +
         '<button type="button" class="goal-more-btn" onclick="event.stopPropagation();window.__goalsSelectFolder&&window.__goalsSelectFolder(\'' + esc(p.id) + '\')" title="Открыть или привязать папку проекта">⋯</button>' +
         '<button type="button" class="goal-move-btn" data-goal-action="sold" data-id="' + esc(p.id) + '" onclick="event.preventDefault();event.stopPropagation();window.__goalsQuickSetSold&&window.__goalsQuickSetSold(\'' + esc(p.id) + '\')" title="В Продано">✓</button>' +
@@ -1406,7 +1407,7 @@
           '">&#8634;</button>'
         : '';
       var toActiveBtn = (blockType === 'sold') ? '<button type="button" class="goal-to-work-btn goal-to-active-btn" onclick="event.stopPropagation();window.__goalsCreateActiveFromSold&&window.__goalsCreateActiveFromSold(\'' + esc(p.id) + '\')" title="Создать активный проект в ПРОЕКТАХ">🅰️</button>' : '';
-      var projectLinkBtns = sourceAccountButtonHtml(p, blockOpts.sourceAccounts || []) +
+      var projectLinkBtns = contactButtonHtml(p) + sourceAccountButtonHtml(p, blockOpts.sourceAccounts || []) +
         '<button type="button" class="goal-more-btn" onclick="event.stopPropagation();window.__goalsSelectFolder&&window.__goalsSelectFolder(\'' + esc(p.id) + '\')" title="Открыть или привязать папку проекта">⋯</button>';
       var workToWeekBtn = (blockType === 'work') ? '<button type="button" class="goal-move-btn goal-to-week-btn" onclick="event.stopPropagation();window.__goalsShowSendToWeek&&window.__goalsShowSendToWeek(\'' + esc(p.id) + '\',this)" title="Отправить в неделю">📅</button>' : '';
       var workToSoldBtn = (blockType === 'work') ? '<button type="button" class="goal-move-btn" data-goal-action="sold" data-id="' + esc(p.id) + '" onclick="event.preventDefault();event.stopPropagation();window.__goalsQuickSetSold&&window.__goalsQuickSetSold(\'' + esc(p.id) + '\')" title="В продано">✓</button>' : '';
@@ -1621,6 +1622,10 @@
     var icon = account ? (account.icon || '👤') : '👤';
     var title = account ? ('Источник: ' + (account.name || 'Аккаунт')) : 'Выбрать аккаунт, с которого пришла заявка';
     return '<button type="button" class="goal-source-btn' + (account ? ' on' : '') + '" onclick="event.stopPropagation();window.__goalsShowSourceAccountPicker&&window.__goalsShowSourceAccountPicker(\'' + esc(project.id) + '\',this)" title="' + esc(title) + '">' + esc(icon) + '</button>';
+  }
+  function contactButtonHtml(project) {
+    var hasContact = !!(project && (project.phone || project.telegram || project.tg || project.vk));
+    return '<button type="button" class="goal-contact-btn' + (hasContact ? ' on' : '') + '" onclick="event.preventDefault();event.stopPropagation();window.__goalsShowContactMenu&&window.__goalsShowContactMenu(\'' + esc(project.id) + '\',this,event)" title="Связаться с клиентом">📲</button>';
   }
   function getProjectYM(p) {
     if (!p || !p.date) return '';
@@ -3660,6 +3665,18 @@
     }, 0);
   }
 
+  function showProjectContactMenu(projectId, anchorEl, event) {
+    if (event) { event.preventDefault(); event.stopPropagation(); }
+    var data = loadData();
+    var project = (data.projects || []).find(function(p) { return p && p.id === projectId; });
+    if (!project && _goalsViewMonth) {
+      var live = loadLiveData();
+      project = (live.projects || []).find(function(p) { return p && p.id === projectId; });
+    }
+    if (!project) return;
+    if (typeof window.__openCrmContactMenu === 'function') window.__openCrmContactMenu(anchorEl, project, event);
+  }
+
   function selectGoalFolder(projectId) {
     var data = loadData();
     var p = (data.projects || []).find(function(x) { return x && x.id === projectId; });
@@ -3725,6 +3742,8 @@
         '<div class="fg"><label>Название</label><input type="text" id="goalEditName" value="' + esc(p.name || '') + '"></div>' +
         '<div class="fg"><label>Компания / контакт</label><input type="text" id="goalEditCompany" placeholder="Компания" value="' + esc(p.company || '') + '"></div>' +
         '<div class="fg"><label>Телефон</label><input type="text" id="goalEditPhone" placeholder="+7..." value="' + esc(p.phone || '') + '"></div>' +
+        '<div class="fg"><label>Telegram</label><input type="text" id="goalEditTelegram" placeholder="@username или t.me/..." value="' + esc(p.telegram || p.tg || '') + '"></div>' +
+        '<div class="fg"><label>VK</label><input type="text" id="goalEditVk" placeholder="vk.com/..." value="' + esc(p.vk || '') + '"></div>' +
         '<div class="fg"><label>Ссылка на папку Google</label><input type="text" id="goalEditFolder" placeholder="https://drive.google.com/..." value="' + esc(p.folderLink || '') + '"></div>' +
         '<div class="fg"><label>Дата</label><input type="text" id="goalEditDate" value="' + esc(p.date || '') + '"></div>' +
         '<div class="fg"><label>4 цены КП</label><div class="goal-price-bars"><input type="number" id="goalEditPrice1" class="goal-price-bar" value="' + esc(String((p.priceOptions||[])[0]||'')) + '"><input type="number" id="goalEditPrice2" class="goal-price-bar" value="' + esc(String((p.priceOptions||[])[1]||'')) + '"><input type="number" id="goalEditPrice3" class="goal-price-bar" value="' + esc(String((p.priceOptions||[])[2]||'')) + '"><input type="number" id="goalEditPrice4" class="goal-price-bar" value="' + esc(String((p.priceOptions||[])[3]||'')) + '"></div></div>' +
@@ -3771,6 +3790,9 @@
       p.emoji = emoji;
       p.company = ((document.getElementById('goalEditCompany') || {}).value || '').trim();
       p.phone = ((document.getElementById('goalEditPhone') || {}).value || '').trim();
+      p.telegram = ((document.getElementById('goalEditTelegram') || {}).value || '').trim();
+      p.tg = p.telegram;
+      p.vk = ((document.getElementById('goalEditVk') || {}).value || '').trim();
       p.folderLink = ((document.getElementById('goalEditFolder') || {}).value || '').trim();
       p.date = ((document.getElementById('goalEditDate') || {}).value || '').trim() || p.date;
       var editPrices = [1,2,3,4].map(function(i) { return ((document.getElementById('goalEditPrice' + i) || {}).value || '').trim(); }).filter(Boolean);
@@ -4079,33 +4101,48 @@
     var active = (typeof window.__goalsGetActiveClient === 'function' && window.__goalsGetActiveClient()) || null;
     var byName = (typeof window.__goalsGetSelectedProjectName === 'function' ? String(window.__goalsGetSelectedProjectName() || '').trim() : '');
     var byCompany = '';
+    var byContactName = '';
     var byPhone = '';
+    var byTelegram = '';
+    var byVk = '';
+    var byAvito = '';
     var byCategory = '';
     var byCity = '';
     var byKp = '';
     var bySourceAccount = '';
     try {
       var cEl = document.getElementById('company');
+      var nEl = document.getElementById('contact_name');
       var pEl = document.getElementById('phone');
+      var tgEl = document.getElementById('tg');
+      var vkEl = document.getElementById('vk');
+      var avitoEl = document.getElementById('avito_account');
       var catEl = document.getElementById('category');
       var cityEl = document.getElementById('city');
       var kpEl = document.getElementById('kp_count');
       var sourceEl = document.getElementById('source_account_id');
       byCompany = cEl ? String(cEl.value || '').trim() : '';
+      byContactName = nEl ? String(nEl.value || '').trim() : '';
       byPhone = pEl ? String(pEl.value || '').trim() : '';
+      byTelegram = tgEl ? String(tgEl.value || '').trim() : '';
+      byVk = vkEl ? String(vkEl.value || '').trim() : '';
+      byAvito = avitoEl ? String(avitoEl.value || '').trim() : '';
       byCategory = catEl ? String(catEl.value || '').trim() : '';
       byCity = cityEl ? String(cityEl.value || '').trim() : '';
       byKp = kpEl ? String(kpEl.value || '').trim() : '';
       bySourceAccount = sourceEl ? String(sourceEl.value || '').trim() : '';
     } catch (e) {}
     var payload = Object.assign({}, active || {});
-    payload.company = payload.company || byCompany || byName || 'Проект';
-    payload.contact_name = payload.contact_name || '';
+    payload.company = byCompany || payload.company || byName || 'Проект';
+    payload.contact_name = byContactName || payload.contact_name || '';
     payload.name = payload.name || byName || payload.company;
-    payload.phone = payload.phone || byPhone || '';
-    payload.category = payload.category || byCategory || '';
-    payload.city = payload.city || byCity || '';
-    payload.kp_count = payload.kp_count || byKp || '';
+    payload.phone = byPhone || payload.phone || '';
+    payload.telegram = byTelegram || payload.telegram || payload.tg || '';
+    payload.vk = byVk || payload.vk || '';
+    payload.avito_account = byAvito || payload.avito_account || '';
+    payload.category = byCategory || payload.category || '';
+    payload.city = byCity || payload.city || '';
+    payload.kp_count = byKp || payload.kp_count || '';
     payload.source_account_id = bySourceAccount || payload.source_account_id || '';
     return payload;
   }
@@ -4151,7 +4188,11 @@
       note: '',
       stage: stage,
       company: client.company || '',
+      contact_name: client.contact_name || '',
       phone: client.phone || '',
+      telegram: client.telegram || client.tg || '',
+      vk: client.vk || '',
+      avito_account: client.avito_account || '',
       category: client.category || '',
       city: client.city || '',
       kp_count: client.kp_count || ''
@@ -4162,7 +4203,12 @@
       project.status = ['paid'];
       project.statusDates = { paid: getTodayISO() };
     }
-    if (client.folderId) project.crmClientId = client.folderId;
+    if (client.folderId) {
+      project.folderId = client.folderId;
+      project.crmClientId = client.folderId;
+    }
+    if (client.client_id) project.crmClientRecordId = client.client_id;
+    if (client.categoryFolderId) project.categoryFolderId = client.categoryFolderId;
     return project;
   }
 
@@ -4185,6 +4231,10 @@
     if (existing) {
       existing.weekIndex = weekNum;
       existing.stage = targetStage || 'weekly';
+      ['company','contact_name','phone','telegram','vk','avito_account','category','city','kp_count','folderId','folderLink','crmClientId','crmClientRecordId','categoryFolderId'].forEach(function(field) {
+        if (project[field]) existing[field] = project[field];
+      });
+      if (project.sourceAccountId) existing.sourceAccountId = project.sourceAccountId;
       if (existing.stage === 'weekly') {
         existing.status = existing.status ? existing.status.slice() : [];
         if (existing.status.indexOf('kp') < 0) existing.status.unshift('kp');
@@ -4197,7 +4247,7 @@
         existing.statusDates = Object.assign({}, existing.statusDates || {});
         existing.statusDates.paid = getTodayISO();
       }
-      saveData(data);
+      if (!saveData(data)) return;
       syncGoalToKassaIfReady(existing);
       render();
       return;
@@ -4209,7 +4259,7 @@
     } else {
       data.projects.unshift(project);
     }
-    saveData(data);
+    if (!saveData(data)) return;
     syncGoalToKassaIfReady(project);
     render();
   }
@@ -4487,6 +4537,7 @@
   window.__goalsEditWeekNameCell = editWeekNameCell;
   window.__goalsShowSourceAccountPicker = showSourceAccountPicker;
   window.__goalsShowSidebarSourcePicker = showSidebarSourceAccountPicker;
+  window.__goalsShowContactMenu = showProjectContactMenu;
   window.__goalsRefreshSidebarSourceAccount = refreshSidebarSourceAccount;
   window.__goalsGetSourceAccountLabel = getSourceAccountLabel;
   window.__goalsSelectFolder = selectGoalFolder;

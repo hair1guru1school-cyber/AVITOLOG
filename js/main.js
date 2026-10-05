@@ -676,6 +676,7 @@ function getAnalyticsRecentProjects() {
         projectTitle: ac.company || ac.contact_name || ac.name || 'Клиент',
         phone: ac.phone || '',
         telegram: ac.telegram || ac.tg || '',
+        vk: ac.vk || '',
         avito_account: ac.avito_account || '',
         category: ac.category || '',
         city: ac.city || '',
@@ -716,6 +717,7 @@ function getAnalyticsRecentProjects() {
         projectTitle: c.company || c.contact_name || c.name || 'Клиент',
         phone: c.phone || '',
         telegram: c.telegram || c.tg || '',
+        vk: c.vk || '',
         avito_account: c.avito_account || '',
         category: c.category || '',
         city: c.city || '',
@@ -1506,6 +1508,7 @@ function buildClientInfoBlock(ac) {
   var items = [];
   var phone = ac.phone || (typeof v === 'function' ? v('phone') : '');
   var tg = ac.telegram || ac.tg || (typeof v === 'function' ? v('tg') : '');
+  var vk = ac.vk || (typeof v === 'function' ? v('vk') : '');
   var avito = ac.avito_account || (typeof v === 'function' ? v('avito_account') : '');
   var cat = ac.category || (typeof v === 'function' ? v('category') : '');
   var city = ac.city || (typeof getGeoValues === 'function' ? getGeoValues().join(', ') : '') || (typeof v === 'function' ? v('city') : '');
@@ -1519,6 +1522,10 @@ function buildClientInfoBlock(ac) {
     var tgHref = 'https://t.me/' + tgUser;
     var tgDisplay = tgUser.length > 18 ? 't.me/' + tgUser.slice(0,12) + '…' : (tgUser.indexOf('/')>=0 ? 't.me/'+tgUser : tgUser);
     items.push('<span class="ci-item">💬 <a class="ci-link" href="' + esc(tgHref) + '" target="_blank" title="' + esc(tg) + '">' + esc(tgDisplay) + '</a></span>');
+  }
+  if (vk) {
+    var vkHref = crmVkUrl(vk);
+    if (vkHref) items.push('<span class="ci-item">VK <a class="ci-link" href="' + esc(vkHref) + '" target="_blank" rel="noopener" title="' + esc(vk) + '">Открыть профиль</a></span>');
   }
   if (avito) {
     var avitoUrl = avito.indexOf('http')===0 ? avito : 'https://www.avito.ru/' + avito.replace(/^\/+/,'');
@@ -1683,6 +1690,7 @@ function generate() {
     company:   v('company'),
     name:      v('contact_name'),
     tg:        v('tg'),
+    vk:        v('vk'),
     phone:     v('phone'),
     category:  v('category'),
     city:      cityVal,
@@ -1723,6 +1731,7 @@ function generate() {
           projectTitle: (sp && (sp.company || sp.title)) || currentData.company || '',
           phone: currentData.phone || ac.phone || '',
           telegram: currentData.tg || ac.telegram || ac.tg || '',
+          vk: currentData.vk || ac.vk || '',
           avito_account: currentData.avito_account || ac.avito_account || '',
           category: currentData.category || ac.category || '',
           city: currentData.city || ac.city || '',
@@ -3983,6 +3992,23 @@ function addKPTag(val) {
     updateKPValue();
   });
   wrap.appendChild(btn);
+  sortKPTags();
+}
+
+function sortKPTags() {
+  var wrap = document.querySelector('.kp-wrap');
+  if (!wrap) return;
+  var tags = Array.prototype.slice.call(wrap.querySelectorAll('.kp-tag'));
+  tags.sort(function(a, b) {
+    var av = a.getAttribute('data-kp');
+    var bv = b.getAttribute('data-kp');
+    var an = av === '∞' ? Infinity : parseFloat(String(av || '').replace(',', '.'));
+    var bn = bv === '∞' ? Infinity : parseFloat(String(bv || '').replace(',', '.'));
+    if (!isFinite(an) && av !== '∞') an = Number.MAX_VALUE;
+    if (!isFinite(bn) && bv !== '∞') bn = Number.MAX_VALUE;
+    return an - bn;
+  });
+  tags.forEach(function(tag) { wrap.appendChild(tag); });
 }
 
 function removeKPTag(btn, e) {
@@ -4037,6 +4063,167 @@ function toggleClientType(btn, val) {
 var SHEETS_ID = '1gUV4mWX4ob0NkjJTpP15N9dBKfIOO2NdJQDKXCooVA8';
 var SHEETS_NAME = 'Лист1';
 var _activeClient = null;
+var _crmContactMenuOutsideHandler = null;
+function crmContactEscape(value) {
+  return String(value || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+function crmContactPhone(raw) {
+  var digits = String(raw || '').replace(/\D/g, '');
+  if (digits.length === 11 && digits.charAt(0) === '8') digits = '7' + digits.slice(1);
+  else if (digits.length === 10) digits = '7' + digits;
+  if (digits.length < 10 || digits.length > 15) return '';
+  return '+' + digits;
+}
+function crmTelegramUrl(raw, phone) {
+  var value = String(raw || '').trim();
+  if (/^tg:\/\//i.test(value)) return value;
+  if (/^(?:https?:\/\/)?(?:www\.)?(?:t\.me|telegram\.me)\//i.test(value)) {
+    return /^https?:\/\//i.test(value) ? value : ('https://' + value.replace(/^\/+/, ''));
+  }
+  var username = value.replace(/^@/, '').trim();
+  if (username && /^[a-zA-Z0-9_]+$/.test(username)) return 'https://t.me/' + username;
+  var normalizedPhone = crmContactPhone(phone);
+  return normalizedPhone ? ('https://t.me/+' + normalizedPhone.replace(/\D/g, '')) : '';
+}
+function crmVkUrl(raw) {
+  var value = String(raw || '').trim();
+  if (!value) return '';
+  if (/^https?:\/\//i.test(value)) return value;
+  if (/^(?:www\.)?vk\.(?:com|ru)\//i.test(value)) return 'https://' + value.replace(/^\/+/, '');
+  value = value.replace(/^@/, '').replace(/^\/+/, '');
+  return value && !/\s/.test(value) ? ('https://vk.com/' + value) : '';
+}
+function crmLinkedClientForContact(payload) {
+  payload = payload || {};
+  var folderId = String(payload.folderId || '').trim();
+  if (!folderId && payload.folderLink) {
+    var folderMatch = String(payload.folderLink).match(/\/folders\/([a-zA-Z0-9_-]+)/) || String(payload.folderLink).match(/[?&]id=([a-zA-Z0-9_-]+)/);
+    if (folderMatch) folderId = folderMatch[1];
+  }
+  var crmId = String(payload.crmClientId || '').trim();
+  var recordId = String(payload.crmClientRecordId || payload.client_id || '').trim();
+  return getCrmClients().find(function(c) {
+    return (folderId && String(c.folderId || '') === folderId) ||
+      (crmId && (String(c.folderId || '') === crmId || String(c.client_id || '') === crmId)) ||
+      (recordId && String(c.client_id || '') === recordId);
+  }) || null;
+}
+function crmResolveContact(payload) {
+  payload = payload || {};
+  var linked = crmLinkedClientForContact(payload) || {};
+  return {
+    name: payload.company || payload.name || payload.contact_name || linked.company || linked.contact_name || 'Клиент',
+    phone: payload.phone || linked.phone || '',
+    telegram: payload.telegram || payload.tg || linked.telegram || linked.tg || '',
+    vk: payload.vk || payload.vk_url || linked.vk || linked.vk_url || ''
+  };
+}
+function closeCrmContactMenu() {
+  var menu = document.getElementById('crmContactMenu');
+  if (menu) menu.remove();
+  if (_crmContactMenuOutsideHandler) {
+    document.removeEventListener('mousedown', _crmContactMenuOutsideHandler, true);
+    _crmContactMenuOutsideHandler = null;
+  }
+}
+function copyCrmContactText(text) {
+  function fallbackCopy() {
+    var area = document.createElement('textarea');
+    area.value = text;
+    area.style.position = 'fixed';
+    area.style.opacity = '0';
+    document.body.appendChild(area);
+    area.select();
+    var ok = false;
+    try { ok = document.execCommand('copy'); } catch (e) {}
+    area.remove();
+    if (!ok) throw new Error('copy failed');
+  }
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    return navigator.clipboard.writeText(text).catch(function() { fallbackCopy(); });
+  }
+  return new Promise(function(resolve, reject) {
+    try { fallbackCopy(); resolve(); } catch (e) { reject(e); }
+  });
+}
+window.__openCrmContactMenu = function(anchorEl, payload, event) {
+  if (event) { event.preventDefault(); event.stopPropagation(); }
+  closeCrmContactMenu();
+  var contact = crmResolveContact(payload);
+  var phone = crmContactPhone(contact.phone);
+  var phoneDigits = phone.replace(/\D/g, '');
+  var telegramUrl = crmTelegramUrl(contact.telegram, phone);
+  var whatsappUrl = phoneDigits ? ('https://wa.me/' + phoneDigits) : '';
+  var vkUrl = crmVkUrl(contact.vk);
+  var menu = document.createElement('div');
+  menu.id = 'crmContactMenu';
+  menu.className = 'crm-contact-menu';
+  function actionHtml(action, icon, label, value, enabled) {
+    return '<button type="button" class="crm-contact-action" data-contact-action="' + action + '"' + (enabled ? '' : ' disabled') + '>' +
+      '<span class="crm-contact-action-icon">' + icon + '</span><span class="crm-contact-action-main"><span class="crm-contact-action-label">' + crmContactEscape(label) + '</span><span class="crm-contact-action-value">' + crmContactEscape(value || 'Не указан') + '</span></span></button>';
+  }
+  menu.innerHTML = '<div class="crm-contact-menu-head"><span>📲 ' + crmContactEscape(contact.name) + '</span><button type="button" class="crm-contact-menu-close" data-contact-close>×</button></div>' +
+    '<div class="crm-contact-menu-list">' +
+      actionHtml('telegram', '✈', 'Открыть Telegram', contact.telegram || phone, !!telegramUrl) +
+      actionHtml('whatsapp', '◉', 'Открыть WhatsApp Web', phone, !!whatsappUrl) +
+      actionHtml('copy', '📋', 'Скопировать номер', phone, !!phone) +
+      (vkUrl ? actionHtml('vk', 'VK', 'Открыть ВКонтакте', contact.vk, true) : '') +
+      ((!telegramUrl && !whatsappUrl && !phone && !vkUrl) ? '<div class="crm-contact-empty">У этого проекта пока нет контактных данных.</div>' : '') +
+    '</div>';
+  document.body.appendChild(menu);
+  var rect = anchorEl && anchorEl.getBoundingClientRect ? anchorEl.getBoundingClientRect() : { left: 12, right: 34, top: 12, bottom: 34 };
+  var left = Math.min(Math.max(8, rect.left), Math.max(8, window.innerWidth - menu.offsetWidth - 8));
+  var top = rect.bottom + 7;
+  if (top + menu.offsetHeight > window.innerHeight - 8) top = Math.max(8, rect.top - menu.offsetHeight - 7);
+  menu.style.left = left + 'px';
+  menu.style.top = top + 'px';
+  var urls = { telegram: telegramUrl, whatsapp: whatsappUrl, vk: vkUrl };
+  menu.querySelectorAll('[data-contact-action]').forEach(function(btn) {
+    btn.onclick = function(e) {
+      e.preventDefault();
+      e.stopPropagation();
+      var action = btn.getAttribute('data-contact-action');
+      if (action === 'copy') {
+        if (!phone) return;
+        copyCrmContactText(phone).then(function() {
+          var label = btn.querySelector('.crm-contact-action-label');
+          if (label) label.textContent = 'Номер скопирован';
+          setTimeout(closeCrmContactMenu, 450);
+        }).catch(function() {
+          var label = btn.querySelector('.crm-contact-action-label');
+          if (label) label.textContent = 'Не удалось скопировать';
+        });
+        return;
+      }
+      if (urls[action]) window.open(urls[action], '_blank', 'noopener');
+      closeCrmContactMenu();
+    };
+  });
+  var closeBtn = menu.querySelector('[data-contact-close]');
+  if (closeBtn) closeBtn.onclick = function(e) { e.stopPropagation(); closeCrmContactMenu(); };
+  setTimeout(function() {
+    _crmContactMenuOutsideHandler = function(e) {
+      if (!menu.contains(e.target) && e.target !== anchorEl) closeCrmContactMenu();
+    };
+    document.addEventListener('mousedown', _crmContactMenuOutsideHandler, true);
+  }, 0);
+};
+window.__openSidebarCrmContactMenu = function(anchorEl, event) {
+  var active = getActiveClient() || {};
+  var phoneEl = document.getElementById('phone');
+  var telegramEl = document.getElementById('tg');
+  var vkEl = document.getElementById('vk');
+  var companyEl = document.getElementById('company');
+  var contactEl = document.getElementById('contact_name');
+  var payload = Object.assign({}, active, {
+    company: (companyEl ? companyEl.value : '') || active.company || '',
+    contact_name: (contactEl ? contactEl.value : '') || active.contact_name || '',
+    phone: phoneEl ? phoneEl.value : (active.phone || ''),
+    telegram: telegramEl ? telegramEl.value : (active.telegram || active.tg || ''),
+    vk: vkEl ? vkEl.value : (active.vk || '')
+  });
+  window.__openCrmContactMenu(anchorEl, payload, event);
+};
 function normClientField(v) {
   return String(v || '').trim().toLowerCase();
 }
@@ -4235,7 +4422,7 @@ function buildFolderClientPayload(folderId, folderName, categoryFolderId) {
 }
 function fillClientFormFromData(data) {
   data = data || {};
-  var ids = ['company','contact_name','phone','tg','avito_account','category','city','source_account_id','notes','kp_count','client_type'];
+  var ids = ['company','contact_name','phone','tg','vk','avito_account','category','city','source_account_id','notes','kp_count','client_type'];
   var map = { tg: 'telegram' };
   ids.forEach(function(id) {
     var el = document.getElementById(id);
@@ -4269,6 +4456,7 @@ function compactActiveClientForStorage(client) {
     'phone',
     'telegram',
     'tg',
+    'vk',
     'avito_account',
     'category',
     'city',
@@ -4465,6 +4653,10 @@ window.__goalsPinLinkedFolder = function(goalData) {
     folderId: folderId,
     folderLink: folderLink,
     company: payload.company || goalData.company || goalData.name || 'Клиент',
+    phone: goalData.phone || payload.phone || '',
+    telegram: goalData.telegram || goalData.tg || payload.telegram || payload.tg || '',
+    vk: goalData.vk || payload.vk || '',
+    avito_account: goalData.avito_account || payload.avito_account || '',
     source_account_id: goalData.sourceAccountId || goalData.source_account_id || payload.source_account_id || ''
   });
   fillClientFormFromData(payload);
@@ -4490,7 +4682,7 @@ function clearActiveClient() {
     }
   }
   // Очищаем форму
-  ['company','contact_name','phone','tg','avito_account','category','city','source_account_id','notes','kp_count'].forEach(function(id) {
+  ['company','contact_name','phone','tg','vk','avito_account','category','city','source_account_id','notes','kp_count'].forEach(function(id) {
     var el = document.getElementById(id);
     if (el) el.value = '';
   });
@@ -4799,6 +4991,7 @@ function openCrmFolderCreateModal(catName) {
     var contact = v('contact_name');
     var phone = v('phone');
     var telegram = v('tg');
+    var vk = v('vk');
     var avitoAccount = v('avito_account');
     var clientType = v('client_type');
     var niche = v('category');
@@ -4821,7 +5014,7 @@ function openCrmFolderCreateModal(catName) {
       '<label class="crm-folder-create-label">Название папки<input type="text" id="crmFolderCreateName" value="' + cmEscapeHtml(defaultName) + '" maxlength="140"></label>' +
       '<div class="crm-folder-create-summary">' +
         infoRow('Категория Drive', catName) + infoRow('Компания', company) + infoRow('Контакт', contact) +
-        infoRow('Телефон', phone) + infoRow('Telegram', telegram) + infoRow('Avito', avitoAccount) + infoRow('Тип', clientType) +
+        infoRow('Телефон', phone) + infoRow('Telegram', telegram) + infoRow('VK', vk) + infoRow('Avito', avitoAccount) + infoRow('Тип', clientType) +
         infoRow('Ниша', niche) + infoRow('ГЕО', geo) + infoRow('Аккаунт заявки', sourceLabel) + infoRow('УТП / инфо', notes) + infoRow('КП', kpCount) +
       '</div>' +
       '<div class="crm-folder-create-actions"><button type="button" data-cancel>Отмена</button><button type="button" class="primary" data-confirm>Создать папку</button></div>' +
@@ -4998,7 +5191,7 @@ async function saveClient() {
     var cityVal = (typeof getGeoValues === 'function' ? getGeoValues().join(', ') : '') || v('city');
     var d = {
       company: v('company'), contact_name: v('contact_name'), phone: v('phone'),
-      telegram: v('tg'), avito_account: v('avito_account'), client_type: v('client_type'),
+      telegram: v('tg'), vk: v('vk'), avito_account: v('avito_account'), client_type: v('client_type'),
       category: v('category'), city: cityVal, source_account_id: v('source_account_id'), notes: v('notes'),
       positions: getPos().join(', '), kp_count: v('kp_count'),
       createdAt: new Date().toLocaleDateString('ru')
@@ -5033,6 +5226,7 @@ async function saveClient() {
     if (d.contact_name) lines.push('Имя: ' + d.contact_name);
     if (d.phone) lines.push('Телефон: ' + d.phone);
     if (d.telegram) lines.push('Телеграм: ' + d.telegram);
+    if (d.vk) lines.push('VK: ' + d.vk);
     if (d.avito_account) lines.push('Avito: ' + d.avito_account);
     if (d.client_type) lines.push('Тип: ' + d.client_type);
     if (d.category) lines.push('Ниша: ' + d.category);
@@ -5252,7 +5446,7 @@ document.addEventListener('DOMContentLoaded', function() {
   if (banner && /github\.io$/i.test(window.location.hostname) && !localStorage.getItem('avito_hide_gh_banner')) {
     banner.style.display = 'flex';
   }
-  ['company','contact_name','tg','phone'].forEach(function(id) {
+  ['company','contact_name','tg','vk','phone'].forEach(function(id) {
     var el = document.getElementById(id);
     if (el) el.setAttribute('name', 'f_' + Math.random().toString(36).slice(2));
   });

@@ -724,6 +724,22 @@ body.projects-mode .gen-extra-prompt,body.projects-mode .gen-buttons-row{display
 .header-sidebar-toggle:hover{background:rgba(0,217,126,0.15);border-color:var(--accent);color:var(--accent)}
 .sidebar-top-row{display:flex;align-items:center;gap:10px;margin-bottom:8px;min-width:0}
 .sidebar-top-row .sec.sidebar-sec-first{margin:0!important;margin-top:0!important;flex:1;min-width:0}
+.sidebar-contact-btn,.goal-contact-btn{display:inline-flex;align-items:center;justify-content:center;border:1px solid rgba(53,208,255,.3);background:rgba(53,208,255,.07);color:#aeeeff;cursor:pointer;transition:.15s}
+.sidebar-contact-btn{width:32px;height:30px;border-radius:8px;font-size:15px;flex:0 0 auto}
+.goal-contact-btn{width:22px;height:22px;min-width:22px;border-radius:6px;padding:0;font-size:12px;line-height:1}
+.sidebar-contact-btn:hover,.goal-contact-btn:hover,.goal-contact-btn.on{border-color:rgba(0,217,126,.65);background:rgba(0,217,126,.12);color:#d9fff0}
+.crm-contact-menu{position:fixed;z-index:14000;width:min(310px,calc(100vw - 16px));padding:10px;border:1px solid rgba(53,208,255,.45);border-radius:12px;background:linear-gradient(180deg,#151b24,#0b1118);box-shadow:0 18px 55px rgba(0,0,0,.68);color:var(--text)}
+.crm-contact-menu-head{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:2px 2px 9px;font-size:12px;font-weight:900}
+.crm-contact-menu-close{border:0;background:transparent;color:var(--muted);cursor:pointer;font-size:18px;line-height:1;padding:2px 4px}
+.crm-contact-menu-list{display:flex;flex-direction:column;gap:6px}
+.crm-contact-action{width:100%;min-height:36px;display:flex;align-items:center;gap:9px;border:1px solid rgba(255,255,255,.09);border-radius:8px;background:rgba(255,255,255,.035);color:var(--text);padding:7px 10px;text-align:left;cursor:pointer;font-family:inherit;font-size:12px;font-weight:700}
+.crm-contact-action:hover:not(:disabled){border-color:rgba(0,217,126,.5);background:rgba(0,217,126,.09)}
+.crm-contact-action:disabled{opacity:.42;cursor:default}
+.crm-contact-action-icon{width:21px;text-align:center;font-size:15px;flex:0 0 auto}
+.crm-contact-action-main{min-width:0;display:flex;flex-direction:column;gap:1px}
+.crm-contact-action-label{font-size:11px;color:var(--muted)}
+.crm-contact-action-value{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.crm-contact-empty{padding:9px;color:var(--muted);font-size:11px;line-height:1.4;text-align:center}
 .sidebar-inner-toggle{width:38px;height:38px;flex-shrink:0;border:1px solid var(--border);background:var(--surface2);color:var(--text);border-radius:10px;cursor:pointer;font-size:15px;display:flex;align-items:center;justify-content:center;transition:all .2s}
 .sidebar-inner-toggle:hover{background:rgba(0,217,126,0.15);border-color:var(--accent);color:var(--accent)}
 .sidebar-toggle-peek{display:none;position:fixed;left:0;top:50%;transform:translateY(-50%);z-index:500;width:28px;min-height:52px;padding:0 2px 0 0;border:1px solid var(--border);border-left:none;border-radius:0 12px 12px 0;background:var(--surface2);color:var(--text);font-size:14px;cursor:pointer;align-items:center;justify-content:center;box-shadow:4px 0 18px rgba(0,0,0,0.28);transition:background .2s,border-color .2s}
@@ -2980,7 +2996,7 @@ body.day-mode .assets-col-sasha-hint{color:var(--accent)}
 </script>
 <script src="js/backend-sync.js?v=20261003-crm-workflow-1"></script>
 <script src="js/user-config.js?v=20260824-server-truth-no-local-recover-1"></script>
-<script src="js/goals.js?v=20261003-crm-workflow-1"></script>
+<script src="js/goals.js?v=20261004-crm-contact-actions-1"></script>
 <script>
 if (!window.AVITOLOG_GOALS) {
   window.AVITOLOG_GOALS = window.__AVITOLOG_GOALS_LEGACY = { render: function() {
@@ -3044,6 +3060,7 @@ if (!window.AVITOLOG_GOALS) {
   <div class="sidebar-top-row">
     <button type="button" id="sidebarToggleBtn" class="sidebar-inner-toggle" onclick="toggleSidebarVisibility()" title="Скрыть левое меню" aria-label="Скрыть левое меню">◀</button>
     <div class="sec sidebar-sec-first">&#129309; Клиент</div>
+    <button type="button" id="sidebarContactBtn" class="sidebar-contact-btn" onclick="event.stopPropagation();window.__openSidebarCrmContactMenu&&window.__openSidebarCrmContactMenu(this,event)" title="Связаться с клиентом" aria-label="Связаться с клиентом">📲</button>
   </div>
 
   <div id="crmToggleWrap" style="position:absolute;width:0;height:0;overflow:hidden;opacity:0;pointer-events:none">
@@ -3066,8 +3083,11 @@ if (!window.AVITOLOG_GOALS) {
     <div class="fg"><label>&#128483; Имя</label><input type="search" id="contact_name" autocomplete="new-password" placeholder="Иван..."></div>
     <div class="fg"><label>&#128222; Телефон</label><input type="search" id="phone" autocomplete="new-password" placeholder="+7 999..."></div>
   </div>
-  <div class="row3">
+  <div class="row2">
     <div class="fg"><label>&#9992; Телеграм</label><input type="search" id="tg" autocomplete="new-password" placeholder="@username"></div>
+    <div class="fg"><label>VK</label><input type="search" id="vk" autocomplete="new-password" placeholder="vk.com/..."></div>
+  </div>
+  <div class="row2">
     <div class="fg"><label>📦 Avito</label><input type="search" id="avito_account" autocomplete="new-password" placeholder="avito.ru/..."></div>
     <div class="fg"><label>👤 Тип</label>
       <div class="ctype-wrap" style="height:32px">
@@ -3249,13 +3269,13 @@ if (!window.AVITOLOG_GOALS) {
 <script src="https://unpkg.com/mammoth@1.6.0/mammoth.min.js"></script>
 <script src="js/hero-asset.js?v=20260404-1"></script>
 <script src="js/core.js?v=20260627-paid-date-1"></script>
-<script src="js/projects.js?v=20261003-crm-workflow-1"></script>
+<script src="js/projects.js?v=20261004-crm-contact-actions-1"></script>
 <script src="js/ai-import.js?v=20260925-session-renewal-1"></script>
 <script src="js/contract-generator.js?v=20260905-contract-editor-parser-1"></script>
 <script src="js/ads.js?v=20260404-1"></script>
 <script charset="UTF-8" src="js/kp-generator.js?v=20260822-kp-contract-reload-1"></script>
 <script src="js/scripts-panel.js?v=20260426-1"></script>
-<script src="js/main.js?v=20261003-crm-workflow-1"></script>
+<script src="js/main.js?v=20261004-crm-contact-actions-1"></script>
 <script src="js/sasha-team-sync.js?v=20260622-backend-auto-sync-1"></script>
 <script src="js/fil-backup.js?v=20260911-cash-authoritative-1"></script>
 <script src="js/manual-save.js?v=20260916-project-calendar-save-1"></script>
