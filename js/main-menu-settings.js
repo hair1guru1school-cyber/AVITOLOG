@@ -567,7 +567,9 @@
       '.main-menu-settings-option input{width:17px;height:17px;min-height:0;margin:0;accent-color:var(--accent,#00d97e)}',
       '.main-menu-settings-note,.main-menu-settings-status{margin:8px 0 0;font-size:10px;line-height:1.45;color:var(--muted,#91a0b8)}',
       '.main-menu-settings-status[data-mode="memory"]{color:#ffabb3}',
+      '#analyticsTopRow{overflow-x:auto;overscroll-behavior-x:contain;scrollbar-width:thin}',
       '#analyticsTopRow .btn-projects[hidden]{display:none!important}',
+      '@media(min-width:769px){#analyticsTopRow>.btn-projects{min-width:128px;padding:0 12px;flex:1 0 auto;font-size:14px;white-space:nowrap}}',
       '#btnAvitoAccounts.is-on{background:linear-gradient(180deg,#123247,#102033);color:#7cf5ff;box-shadow:0 0 22px rgba(53,208,255,.42)}',
       '#avitoAccountsPanel[hidden]{display:none!important}',
       '#avitoAccountsPanel{min-height:0;flex:1;padding:10px 12px 14px;background:#070c14;color:#edf7ff}',
@@ -647,8 +649,9 @@
   }
 
   function addAccountsTab(row) {
-    var button = element('button', 'btnAvitoAccounts', 'btn-projects', '🔗 АККАУНТЫ AVITO');
+    var button = element('button', 'btnAvitoAccounts', 'btn-projects', '🔗 АККАУНТЫ');
     button.type = 'button';
+    button.title = 'Аккаунты Avito';
     button.dataset.tab = 'accounts';
     button.draggable = true;
     button.addEventListener('click', openAccounts);
