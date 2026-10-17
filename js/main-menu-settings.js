@@ -18,6 +18,9 @@
     { key: 'ads', buttonId: 'btnAds', label: 'ADS' },
     { key: 'accounts', buttonId: 'btnAvitoAccounts', label: 'Аккаунты Avito' }
   ];
+  var REQUIRED_ORDER_KEYS = ['goals', 'analytics', 'projects', 'assets', 'tasks', 'ads', 'accounts'];
+  var KNOWN_ORDER_KEYS = REQUIRED_ORDER_KEYS.concat(['strategy', 'agency']);
+  var MAX_ORDER_ITEMS = 16;
   var NAVIGATION_FUNCTIONS = [
     'openGoalsTab',
     'openAnalyticsTab',
@@ -34,6 +37,7 @@
     initialized: false,
     profile: profileId(),
     visible: defaultVisibility(),
+    order: [],
     menuOpen: false,
     accountsOpen: false,
     storageMode: 'loading',
@@ -69,6 +73,55 @@
       if (result[tab.key]) shown += 1;
     });
     return shown ? result : null;
+  }
+
+  function normalizeOrder(value, fallback) {
+    var source = Array.isArray(value) && value.length <= MAX_ORDER_ITEMS ? value : fallback;
+    if (!Array.isArray(source) || source.length > MAX_ORDER_ITEMS) source = [];
+    var result = [];
+    source.forEach(function (key) {
+      if (typeof key !== 'string' || KNOWN_ORDER_KEYS.indexOf(key) === -1 || result.indexOf(key) !== -1) return;
+      result.push(key);
+    });
+    REQUIRED_ORDER_KEYS.forEach(function (key) {
+      if (result.indexOf(key) === -1) result.push(key);
+    });
+    return result;
+  }
+
+  function sameOrder(left, right) {
+    if (!Array.isArray(left) || !Array.isArray(right) || left.length !== right.length) return false;
+    for (var index = 0; index < left.length; index += 1) {
+      if (left[index] !== right[index]) return false;
+    }
+    return true;
+  }
+
+  function currentTopTabOrder() {
+    var order = null;
+    try { order = window._topTabOrder; } catch (error) {}
+    return normalizeOrder(order, []);
+  }
+
+  function normalizePreferences(value, fallbackOrder) {
+    var visible = normalizeVisibility(value);
+    if (!visible) return null;
+    var order = value && typeof value === 'object' ? value.order : null;
+    return { visible: visible, order: normalizeOrder(order, fallbackOrder) };
+  }
+
+  function copyPreferences(value) {
+    return {
+      visible: copyVisibility(value.visible),
+      order: normalizeOrder(value.order, []).slice()
+    };
+  }
+
+  function preferenceSnapshot() {
+    return copyPreferences({
+      visible: state.visible,
+      order: state.order.length ? state.order : currentTopTabOrder()
+    });
   }
 
   function profileId() {
@@ -118,19 +171,24 @@
     }
   }
 
-  function localRead(profile) {
+  function localRead(profile, fallbackOrder) {
     try {
       var raw = window.localStorage.getItem(fallbackKey(profile));
-      if (!raw) return { available: true, visibility: null };
-      return { available: true, visibility: normalizeVisibility(JSON.parse(raw)) };
+      if (!raw) return { available: true, preferences: null };
+      return { available: true, preferences: normalizePreferences(JSON.parse(raw), fallbackOrder) };
     } catch (error) {
-      return { available: false, visibility: null };
+      return { available: false, preferences: null };
     }
   }
 
-  function localWrite(profile, visibility) {
+  function localWrite(profile, preferences) {
     try {
-      window.localStorage.setItem(fallbackKey(profile), JSON.stringify({ visible: copyVisibility(visibility) }));
+      var snapshot = copyPreferences(preferences);
+      window.localStorage.setItem(fallbackKey(profile), JSON.stringify({
+        profile: profile,
+        visible: snapshot.visible,
+        order: snapshot.order
+      }));
       return true;
     } catch (error) {
       return false;
@@ -198,7 +256,7 @@
     });
   }
 
-  function idbRead(profile) {
+  function idbRead(profile, fallbackOrder) {
     return openDatabase().then(function (db) {
       return new Promise(function (resolve, reject) {
         var settled = false;
@@ -218,7 +276,7 @@
         try {
           var transaction = db.transaction(STORE_NAME, 'readonly');
           var request = transaction.objectStore(STORE_NAME).get(profile);
-          request.onsuccess = function () { result = normalizeVisibility(request.result); };
+          request.onsuccess = function () { result = normalizePreferences(request.result, fallbackOrder); };
           request.onerror = function () { finish(new Error('indexeddb_read_failed')); };
           transaction.oncomplete = function () { finish(); };
           transaction.onerror = function () { finish(new Error('indexeddb_read_failed')); };
@@ -230,7 +288,7 @@
     });
   }
 
-  function idbWrite(profile, visibility) {
+  function idbWrite(profile, preferences) {
     return openDatabase().then(function (db) {
       return new Promise(function (resolve, reject) {
         var settled = false;
@@ -248,7 +306,12 @@
         }
         try {
           var transaction = db.transaction(STORE_NAME, 'readwrite');
-          transaction.objectStore(STORE_NAME).put({ profile: profile, visible: copyVisibility(visibility) });
+          var snapshot = copyPreferences(preferences);
+          transaction.objectStore(STORE_NAME).put({
+            profile: profile,
+            visible: snapshot.visible,
+            order: snapshot.order
+          });
           transaction.oncomplete = function () { finish(); };
           transaction.onerror = function () { finish(new Error('indexeddb_write_failed')); };
           transaction.onabort = function () { finish(new Error('indexeddb_write_failed')); };
@@ -259,30 +322,30 @@
     });
   }
 
-  function readPreferences(profile) {
-    return idbRead(profile).then(function (visibility) {
-      if (visibility) return { visibility: visibility, mode: 'indexeddb' };
-      var fallback = localRead(profile);
-      if (!fallback.available || !fallback.visibility) return { visibility: null, mode: 'indexeddb' };
-      return idbWrite(profile, fallback.visibility).then(function () {
+  function readPreferences(profile, fallbackOrder) {
+    return idbRead(profile, fallbackOrder).then(function (preferences) {
+      if (preferences) return { preferences: preferences, mode: 'indexeddb' };
+      var fallback = localRead(profile, fallbackOrder);
+      if (!fallback.available || !fallback.preferences) return { preferences: null, mode: 'indexeddb' };
+      return idbWrite(profile, fallback.preferences).then(function () {
         localRemove(profile);
-        return { visibility: fallback.visibility, mode: 'indexeddb' };
+        return { preferences: fallback.preferences, mode: 'indexeddb' };
       }, function () {
-        return { visibility: fallback.visibility, mode: 'localStorage' };
+        return { preferences: fallback.preferences, mode: 'localStorage' };
       });
     }, function () {
-      var fallback = localRead(profile);
-      if (fallback.available) return { visibility: fallback.visibility, mode: 'localStorage' };
-      return { visibility: null, mode: 'memory' };
+      var fallback = localRead(profile, fallbackOrder);
+      if (fallback.available) return { preferences: fallback.preferences, mode: 'localStorage' };
+      return { preferences: null, mode: 'memory' };
     });
   }
 
-  function persistPreferences(profile, visibility) {
-    return idbWrite(profile, visibility).then(function () {
+  function persistPreferences(profile, preferences) {
+    return idbWrite(profile, preferences).then(function () {
       localRemove(profile);
       return { saved: true, mode: 'indexeddb' };
     }, function () {
-      if (localWrite(profile, visibility)) return { saved: true, mode: 'localStorage' };
+      if (localWrite(profile, preferences)) return { saved: true, mode: 'localStorage' };
       return { saved: false, mode: 'memory' };
     });
   }
@@ -383,11 +446,44 @@
   function registerTopTabOrder() {
     var order = null;
     try { order = window._topTabOrder; } catch (error) {}
-    if (!Array.isArray(order) || order.indexOf('accounts') !== -1) return;
-    var afterAds = order.indexOf('ads');
-    var beforeHidden = order.indexOf('strategy');
-    var index = afterAds >= 0 ? afterAds + 1 : beforeHidden >= 0 ? beforeHidden : order.length;
-    order.splice(index, 0, 'accounts');
+    var normalized = normalizeOrder(order, []);
+    if (Array.isArray(order) && !sameOrder(order, normalized)) {
+      order.splice(0, order.length);
+      Array.prototype.push.apply(order, normalized);
+    }
+    state.order = normalized.slice();
+  }
+
+  function applyStoredOrder(order) {
+    var current = null;
+    try { current = window._topTabOrder; } catch (error) {}
+    var normalized = normalizeOrder(order, currentTopTabOrder());
+    if (Array.isArray(current) && !sameOrder(current, normalized)) {
+      current.splice(0, current.length);
+      Array.prototype.push.apply(current, normalized);
+    }
+    state.order = normalized.slice();
+    if (typeof window.applyTopTabOrder === 'function') window.applyTopTabOrder();
+  }
+
+  function wrapTopTabDrop() {
+    var original = window.topTabDrop;
+    if (typeof original !== 'function' || original.__avitologMainMenuOrder) return;
+    function wrappedTopTabDrop() {
+      ensureProfile();
+      var before = currentTopTabOrder();
+      var result = original.apply(this, arguments);
+      var after = currentTopTabOrder();
+      applyStoredOrder(after);
+      if (!sameOrder(before, after)) {
+        state.mutationVersion += 1;
+        queuePersist(state.profile, preferenceSnapshot(), state.mutationVersion);
+      }
+      return result;
+    }
+    wrappedTopTabDrop.__avitologMainMenuOrder = true;
+    wrappedTopTabDrop.__avitologMainMenuOriginal = original;
+    window.topTabDrop = wrappedTopTabDrop;
   }
 
   function wrapNavigation(name) {
@@ -433,6 +529,7 @@
     wrapUpdateTopRowButtons();
     wrapSashaVisibility();
     registerTopTabOrder();
+    wrapTopTabDrop();
     if (typeof window.applyTopTabOrder === 'function') window.applyTopTabOrder();
     applyVisibility();
   }
@@ -460,12 +557,13 @@
     return true;
   }
 
-  function queuePersist(profile, visibility, mutationVersion) {
+  function queuePersist(profile, preferences, mutationVersion) {
+    var snapshot = copyPreferences(preferences);
     state.pendingWrites += 1;
     var task = state.writeTail.then(function () {
-      return persistPreferences(profile, visibility);
+      return persistPreferences(profile, snapshot);
     }, function () {
-      return persistPreferences(profile, visibility);
+      return persistPreferences(profile, snapshot);
     });
     state.writeTail = task.then(function () {}, function () {});
     return task.then(function (result) {
@@ -503,7 +601,7 @@
     var version = state.mutationVersion;
     var profile = state.profile;
     applyVisibility();
-    return queuePersist(profile, copyVisibility(next), version);
+    return queuePersist(profile, preferenceSnapshot(), version);
   }
 
   function refreshProfile() {
@@ -511,22 +609,26 @@
     if (nextProfile !== state.profile) {
       state.profile = nextProfile;
       state.visible = defaultVisibility();
+      state.order = currentTopTabOrder();
       state.mutationVersion = 0;
       applyVisibility();
     }
     var profile = state.profile;
     var startMutation = state.mutationVersion;
     var loadVersion = ++state.loadVersion;
+    var fallbackOrder = currentTopTabOrder();
+    state.order = fallbackOrder.slice();
     setStatus('Проверяем хранилище настроек меню...', 'loading');
-    return readPreferences(profile).then(function (result) {
+    return readPreferences(profile, fallbackOrder).then(function (result) {
       if (loadVersion !== state.loadVersion || profile !== state.profile) return getState();
-      if (state.mutationVersion === startMutation && result.visibility) {
-        state.visible = result.visibility;
+      if (state.mutationVersion === startMutation && result.preferences) {
+        state.visible = result.preferences.visible;
+        applyStoredOrder(result.preferences.order);
         applyVisibility();
       }
       setStatus(storageCopy(result.mode, true), result.mode);
       if (state.mutationVersion !== startMutation) {
-        queuePersist(profile, copyVisibility(state.visible), state.mutationVersion);
+        queuePersist(profile, preferenceSnapshot(), state.mutationVersion);
       }
       return getState();
     }, function () {
@@ -544,6 +646,7 @@
       initialized: state.initialized,
       profile: state.profile,
       visible: copyVisibility(state.visible),
+      order: state.order.slice(),
       menuOpen: state.menuOpen,
       accountsOpen: state.accountsOpen,
       storageMode: state.storageMode,
@@ -569,7 +672,7 @@
       '.main-menu-settings-status[data-mode="memory"]{color:#ffabb3}',
       '#analyticsTopRow{overflow-x:auto;overscroll-behavior-x:contain;scrollbar-width:thin}',
       '#analyticsTopRow .btn-projects[hidden]{display:none!important}',
-      '@media(min-width:769px){#analyticsTopRow>.btn-projects{min-width:128px;padding:0 12px;flex:1 0 auto;font-size:14px;white-space:nowrap}}',
+      '@media(min-width:769px){#analyticsTopRow{justify-content:flex-start}#analyticsTopRow>.btn-projects{min-width:0;width:auto;padding:0 14px;flex:0 0 auto;font-size:14px;white-space:nowrap}}',
       '#btnAvitoAccounts.is-on{background:linear-gradient(180deg,#123247,#102033);color:#7cf5ff;box-shadow:0 0 22px rgba(53,208,255,.42)}',
       '#avitoAccountsPanel[hidden]{display:none!important}',
       '#avitoAccountsPanel{min-height:0;flex:1;padding:10px 12px 14px;background:#070c14;color:#edf7ff}',
