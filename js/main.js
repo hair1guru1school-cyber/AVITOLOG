@@ -2209,8 +2209,7 @@ async function downloadDrivePdf() {
     });
     if (!exportResp.ok) {
       if (exportResp.status === 401) {
-        _driveToken = null;
-        clearStoredDriveAuth();
+        invalidateDriveToken(token);
         updateDriveUI();
       }
       var errTxt = await exportResp.text().catch(function() { return ''; });
@@ -2254,6 +2253,14 @@ var OAUTH_CLIENT_ID = window.AVITOLOG_GOOGLE_CLIENT_ID || '98192715547-1a7jrfa6a
 var OAUTH_REDIRECT_URI = window.AVITOLOG_GOOGLE_REDIRECT || 'https://hair1guru1school-cyber.github.io/AVITOLOG/index.html';
 var OAUTH_SCOPE = window.AVITOLOG_GOOGLE_SCOPE || 'https://www.googleapis.com/auth/drive https://www.googleapis.com/auth/spreadsheets';
 var _driveToken = null;
+var _driveTokenExp = 0;
+var _driveAuthRevision = 0;
+var _driveAuthWriteTail = Promise.resolve();
+var _driveHasConnected = false;
+var _driveExplicitLogout = false;
+var _driveRejectedTokens = [];
+var _driveCacheSeededToken = null;
+try { _driveHasConnected = localStorage.getItem('avitolog_drive_app_open_v1') === '1'; } catch (error) {}
 var _driveUserEmail = null;
 var DRIVE_AUTH_KEY = (typeof window.AVITOLOG_KEY === 'function') ? window.AVITOLOG_KEY('avitolog_drive_auth_v1') : 'avitolog_drive_auth_v1';
 function buildDriveAuthStorageKeyByEmail(email) {
@@ -2281,14 +2288,87 @@ function getStoredDriveAuth() {
   getAllDriveAuthKeys().forEach(function(key) {
     try {
       var s = JSON.parse(localStorage.getItem(key) || 'null');
-      if (!s || !s.token) return;
+      if (!s || typeof s.token !== 'string' || !s.token || s.token.length > 32768 || _driveRejectedTokens.indexOf(s.token) !== -1) return;
       var exp = Number(s.exp) || 0;
+      if (!Number.isFinite(exp) || exp <= 0) return;
       if (!best || exp > (Number(best.exp) || 0)) {
         best = { token: s.token, exp: exp, key: key };
       }
     } catch (e) {}
   });
   return best;
+}
+function driveAuthCache(action, value) {
+  return new Promise(function (resolve) {
+    var db, transaction, settled = false, result = null;
+    var timer = setTimeout(function () { finish(null); }, 1800);
+    function finish(answer) {
+      if (settled) return;
+      settled = true; clearTimeout(timer);
+      if (answer === null && transaction) { try { transaction.abort(); } catch (error) {} }
+      if (db) { try { db.close(); } catch (error) {} }
+      resolve(answer);
+    }
+    try {
+      if (!window.indexedDB) return finish(null);
+      var open = window.indexedDB.open('avitolog_drive_auth', 1);
+      open.onupgradeneeded = function () { open.result.createObjectStore('session'); };
+      open.onerror = open.onblocked = function () { finish(null); };
+      open.onsuccess = function () {
+        db = open.result;
+        if (settled) { db.close(); return; }
+        try {
+          transaction = db.transaction('session', action === 'read' ? 'readonly' : 'readwrite');
+          var store = transaction.objectStore('session');
+          var request = action === 'read' || action === 'invalidate' || action === 'seed' ? store.get('current') : store.put(value, 'current');
+          request.onsuccess = function () {
+            result = request.result;
+            if (action === 'invalidate' && result && result.token === value) store.put({ used: true, email: result.email || '' }, 'current');
+            if (action === 'seed' && (!result || (result.used === true && Number(result.exp || 0) < value.exp))) store.put(value, 'current');
+          };
+          transaction.oncomplete = function () { finish(action === 'read' ? result : true); };
+          transaction.onerror = transaction.onabort = function () { finish(null); };
+        } catch (error) { finish(null); }
+      };
+    } catch (error) { finish(null); }
+  });
+}
+function queueDriveAuthCache(action, value) {
+  var write = _driveAuthWriteTail.then(function () { return driveAuthCache(action, value); });
+  _driveAuthWriteTail = write.then(function () {}, function () {});
+  return write;
+}
+function rememberDriveAppOpen() {
+  _driveHasConnected = true;
+  try { localStorage.setItem('avitolog_drive_app_open_v1', '1'); } catch (error) {}
+}
+function restoreDriveAuthCache() {
+  if (_driveExplicitLogout) return Promise.resolve(false);
+  var revision = _driveAuthRevision;
+  return driveAuthCache('read').then(function (value) {
+    if (revision === _driveAuthRevision && value && value.used === false) {
+      _driveExplicitLogout = true;
+      _driveHasConnected = false;
+      _driveToken = null;
+      _driveTokenExp = 0;
+      try { localStorage.removeItem('avitolog_drive_app_open_v1'); } catch (error) {}
+      updateDriveUI();
+      return false;
+    }
+    if (revision !== _driveAuthRevision || _driveExplicitLogout || !value || value.used !== true) return false;
+    rememberDriveAppOpen();
+    if (typeof value.email === 'string') _driveUserEmail = value.email;
+    if (typeof value.email === 'string' && value.email && !getCurrentDriveEmail()) {
+      try { localStorage.setItem('avitolog_drive_email', value.email); } catch (error) {}
+    }
+    var exp = Number(value.exp);
+    if (typeof value.token === 'string' && value.token && value.token.length <= 32768 && _driveRejectedTokens.indexOf(value.token) === -1 && Number.isFinite(exp) && exp > Date.now() && (!_driveToken || exp > _driveTokenExp)) {
+      _driveToken = value.token;
+      _driveTokenExp = exp;
+    }
+    updateDriveUI();
+    return !!_driveToken;
+  });
 }
 function migratePreviewDriveAuth() {
   if (window.AVITOLOG_BACKEND_PREVIEW) return;
@@ -2306,16 +2386,40 @@ function migratePreviewDriveAuth() {
   } catch (e) {}
 }
 function clearStoredDriveAuth() {
+  _driveAuthRevision += 1;
+  _driveExplicitLogout = true;
   try { getAllDriveAuthKeys().forEach(function(k){ localStorage.removeItem(k); }); } catch(e) {}
+  queueDriveAuthCache('write', { used: false });
+}
+function invalidateDriveToken(token) {
+  if (!token) return;
+  _driveAuthRevision += 1;
+  if (_driveRejectedTokens.indexOf(token) === -1) _driveRejectedTokens.push(token);
+  if (_driveRejectedTokens.length > 16) _driveRejectedTokens.shift();
+  if (_driveToken === token) { _driveToken = null; _driveTokenExp = 0; }
+  getAllDriveAuthKeys().forEach(function (key) {
+    try {
+      var value = JSON.parse(localStorage.getItem(key) || 'null');
+      if (value && value.token === token) localStorage.removeItem(key);
+    } catch (error) {}
+  });
+  queueDriveAuthCache('invalidate', token);
 }
 function restoreDriveTokenFromStorage() {
+  if (_driveExplicitLogout) return false;
   var s = getStoredDriveAuth();
   if (!s || !s.token) return false;
+  rememberDriveAppOpen();
   if (s.exp && Date.now() >= Number(s.exp)) {
     try { localStorage.removeItem(s.key || DRIVE_AUTH_KEY); } catch(e0) {}
     return false;
   }
   _driveToken = s.token;
+  _driveTokenExp = Number(s.exp);
+  if (_driveCacheSeededToken !== s.token) {
+    _driveCacheSeededToken = s.token;
+    queueDriveAuthCache('seed', { token: s.token, exp: _driveTokenExp, used: true, email: getCurrentDriveEmail() });
+  }
   // Держим текущий ключ в синхроне, чтобы приложение стабильно заходило
   if (s.key && s.key !== DRIVE_AUTH_KEY) {
     try { localStorage.setItem(DRIVE_AUTH_KEY, JSON.stringify({ token: s.token, exp: s.exp })); } catch(e1) {}
@@ -2324,12 +2428,26 @@ function restoreDriveTokenFromStorage() {
 }
 function persistDriveToken(token, expiresInSec, storageKey) {
   if (!token) return;
+  _driveAuthRevision += 1;
+  _driveExplicitLogout = false;
   var key = storageKey || DRIVE_AUTH_KEY;
-  var exp = Date.now() + (Math.max(60, Number(expiresInSec) || 3600) - 60) * 1000;
+  var seconds = Number(expiresInSec);
+  if (!Number.isFinite(seconds) || seconds <= 0) seconds = 3600;
+  var exp = _driveToken === token && _driveTokenExp > Date.now() ? _driveTokenExp : Date.now() + Math.max(0, seconds - 60) * 1000;
   var payload = JSON.stringify({token: token, exp: exp});
+  _driveToken = token;
+  _driveTokenExp = exp;
+  rememberDriveAppOpen();
   try { localStorage.setItem(key, payload); } catch(e) {}
   try { localStorage.setItem(DRIVE_AUTH_KEY, payload); } catch(e2) {}
   try { localStorage.setItem('avitolog_drive_auth_v1', payload); } catch(e3) {}
+  var email = _driveUserEmail || getCurrentDriveEmail();
+  queueDriveAuthCache('write', { token: token, exp: exp, used: true, email: email }).then(function (saved) {
+    if (!saved && !getStoredDriveAuth()) {
+      var button = document.getElementById('authBtn');
+      if (button) button.title = 'Drive подключён только в этой вкладке: хранилище браузера недоступно.';
+    }
+  });
 }
 function fetchDriveUserEmail(token) {
   return fetch('https://www.googleapis.com/oauth2/v2/userinfo', { headers: { Authorization: 'Bearer ' + token } })
@@ -2351,11 +2469,12 @@ function applyOAuthHash(hash) {
   var token = m[1];
   var ex = hash.match(/expires_in=([^&]+)/);
   var expiresIn = ex ? parseInt(ex[1], 10) : 3600;
-  _driveToken = token;
   persistDriveToken(token, expiresIn, 'avitolog_drive_auth_v1');
   history.replaceState(null, '', location.pathname + (location.search || ''));
   fetchDriveUserEmail(token).then(function(email) {
+    if (_driveToken !== token) return;
     var normalizedEmail = String(email || '').toLowerCase();
+    _driveUserEmail = normalizedEmail || null;
     if (normalizedEmail) {
       try { localStorage.setItem('avitolog_drive_email', normalizedEmail); } catch(e) {}
       addKnownEmployeeEmail(normalizedEmail);
@@ -2386,6 +2505,7 @@ function buildAuthUrl() {
 (function() {
   migratePreviewDriveAuth();
   restoreDriveTokenFromStorage();
+  restoreDriveAuthCache();
   var hash = window.location.hash;
   if (applyOAuthHash(hash)) {
     history.replaceState(null, '', window.location.pathname + (window.location.search || ''));
@@ -2408,16 +2528,13 @@ function updateDriveUI() {
   // Если токен протух — сбрасываем, чтобы не было "ложного подключено".
   if (!_driveToken) restoreDriveTokenFromStorage();
   if (_driveToken) {
-    var s = getStoredDriveAuth();
-    if (s && s.exp && Date.now() >= Number(s.exp)) {
-      _driveToken = null;
-      clearStoredDriveAuth();
-    }
+    if (!_driveTokenExp || Date.now() >= _driveTokenExp) invalidateDriveToken(_driveToken);
   }
   var splash = document.getElementById('driveSplash');
   var mainApp = document.getElementById('mainApp');
   var bypass = false;
-  try { bypass = !!window.AVITOLOG_BACKEND_MODE || localStorage.getItem('avitolog_drive_bypass') === '1'; } catch(e0) {}
+  bypass = !!window.AVITOLOG_BACKEND_MODE || _driveHasConnected;
+  try { bypass = bypass || localStorage.getItem('avitolog_drive_bypass') === '1'; } catch(e0) {}
   if (_driveToken) {
     if (splash) splash.style.display = 'none';
     if (mainApp) mainApp.style.display = 'block';
@@ -2449,9 +2566,12 @@ function refreshDriveAuthButton() {
 }
 function disconnectDriveAuth(keepBypass) {
   _driveToken = null;
+  _driveTokenExp = 0;
   clearStoredDriveAuth();
   try { localStorage.removeItem('avitolog_drive_email'); } catch (e0) {}
   if (!keepBypass) {
+    _driveHasConnected = false;
+    try { localStorage.removeItem('avitolog_drive_app_open_v1'); } catch (error) {}
     try { localStorage.removeItem('avitolog_drive_bypass'); } catch (e1) {}
   }
   updateDriveUI();
@@ -2504,8 +2624,9 @@ function startAuthGIS() {
   if (_driveToken) { setDriveConnectedUiState(); return; }
   var cid = OAUTH_CLIENT_ID;
   var scp = OAUTH_SCOPE;
-  // Пользователь нажал кнопку — сразу показываем выбор аккаунта. 'none' даёт interaction_required.
-  var promptMode = _authPromptForce ? 'select_account' : 'select_account';
+  // Renewal still requires a user gesture; do not open Google popups on startup.
+  var promptMode = _authPromptForce ? 'select_account' : '';
+  var loginHint = _authPromptForce ? '' : (getCurrentDriveEmail() || _driveUserEmail || '');
   function run() {
     if (typeof google !== 'undefined' && google.accounts && google.accounts.oauth2) {
       try {
@@ -2517,11 +2638,12 @@ function startAuthGIS() {
               if (r && r.access_token) {
                 var token = r.access_token;
                 var expiresIn = r.expires_in ? parseInt(r.expires_in, 10) : 3600;
-                _driveToken = token;
                 persistDriveToken(token, expiresIn, 'avitolog_drive_auth_v1');
                 setDriveConnectedUiState();
                 fetchDriveUserEmail(token).then(function(email) {
+                  if (_driveToken !== token) return;
                   var normalizedEmail = String(email || '').toLowerCase();
+                  _driveUserEmail = normalizedEmail || null;
                   if (normalizedEmail) {
                     try { localStorage.setItem('avitolog_drive_email', normalizedEmail); } catch(e) {}
                     addKnownEmployeeEmail(normalizedEmail);
@@ -2547,7 +2669,8 @@ function startAuthGIS() {
             }
           });
         }
-        _tokenClient.requestAccessToken({ prompt: promptMode });
+        _tokenClient.requestAccessToken({ prompt: promptMode, login_hint: loginHint });
+        _authPromptForce = false;
       } catch (err) { alert('GIS ошибка: ' + err.message); }
     } else {
       alert('Google Sign-In не загрузился. Подожди пару секунд и нажми снова.');
@@ -2582,9 +2705,14 @@ function showRedirectDiagnostic() {
 }
 
 function getDriveToken() {
+  if (_driveToken && (!_driveTokenExp || Date.now() >= _driveTokenExp)) invalidateDriveToken(_driveToken);
   if (!_driveToken) restoreDriveTokenFromStorage();
   if (_driveToken) return Promise.resolve(_driveToken);
-  return Promise.reject(new Error('Нажмите 🔑 Drive'));
+  return restoreDriveAuthCache().then(function () {
+    if (_driveToken) return _driveToken;
+    updateDriveUI();
+    throw new Error('Нажмите 🔑 Drive');
+  });
 }
 
 function drivePersonalFolderMapStorageKey() {
@@ -2618,8 +2746,7 @@ async function driveCanWriteFolder(folderId) {
     headers: {'Authorization': 'Bearer ' + token}
   });
   if (resp.status === 401) {
-    _driveToken = null;
-    clearStoredDriveAuth();
+    invalidateDriveToken(token);
     updateDriveUI();
     throw new Error('Сессия Drive истекла. Нажмите 🔑 Drive и войдите снова.');
   }
@@ -2637,8 +2764,7 @@ async function driveEnsureNamedFolder(name, parentId) {
   });
   var listData = await listResp.json().catch(function(){ return {}; });
   if (listResp.status === 401) {
-    _driveToken = null;
-    clearStoredDriveAuth();
+    invalidateDriveToken(token);
     updateDriveUI();
     throw new Error('Сессия Drive истекла. Нажмите 🔑 Drive и войдите снова.');
   }
@@ -2683,8 +2809,7 @@ async function driveCreateClientFolder(name, parentId) {
   });
   var sd = await sr.json();
   if (!sr.ok && (sr.status === 401 || (sd.error && sd.error.code === 401))) {
-    _driveToken = null;
-    clearStoredDriveAuth();
+    invalidateDriveToken(token);
     updateDriveUI();
     throw new Error('Сессия истекла. Нажмите 🔑 Drive для повторного входа, затем сохраните снова.');
   }
@@ -2698,8 +2823,7 @@ async function driveCreateClientFolder(name, parentId) {
   var cd = await cr.json();
   if (!cd.id) {
     if (cr.status === 401 || (cd.error && cd.error.code === 401)) {
-      _driveToken = null;
-      clearStoredDriveAuth();
+      invalidateDriveToken(token);
       updateDriveUI();
       throw new Error('Сессия истекла. Нажмите 🔑 Drive для повторного входа, затем сохраните снова.');
     }
@@ -2821,8 +2945,7 @@ async function driveGetOrCreateFolder(name, parentId) {
   if (!sr.ok) {
     var em = (sd.error && sd.error.message) ? sd.error.message : ('HTTP ' + sr.status);
     if (sr.status === 401 || (sd.error && sd.error.code === 401)) {
-      _driveToken = null;
-      clearStoredDriveAuth();
+      invalidateDriveToken(token);
       updateDriveUI();
     }
     throw new Error('Drive (поиск папки): ' + em);
@@ -2837,8 +2960,7 @@ async function driveGetOrCreateFolder(name, parentId) {
   if (!cr.ok || !cd.id) {
     var em2 = (cd.error && cd.error.message) ? cd.error.message : ('HTTP ' + cr.status);
     if (cr.status === 401 || (cd.error && cd.error.code === 401)) {
-      _driveToken = null;
-      clearStoredDriveAuth();
+      invalidateDriveToken(token);
       updateDriveUI();
     }
     var is403 = (cr.status === 403 || (cd.error && cd.error.code === 403));
@@ -2871,7 +2993,7 @@ async function driveGetFileContent(fileId, mimeType) {
           headers: {'Authorization': 'Bearer ' + token}
         });
         if (!resp.ok) {
-          if (resp.status === 401) { _driveToken = null; clearStoredDriveAuth(); updateDriveUI(); return null; }
+          if (resp.status === 401) { invalidateDriveToken(token); updateDriveUI(); return null; }
           lastErr = 'HTTP ' + resp.status;
           if (attempt < 2) { await new Promise(function(r){ setTimeout(r, 800 + attempt * 400); }); continue; }
           console.warn('Drive export error:', resp.status, await resp.text());
@@ -2884,7 +3006,7 @@ async function driveGetFileContent(fileId, mimeType) {
         headers: {'Authorization': 'Bearer ' + token}
       });
       if (!r2.ok) {
-        if (r2.status === 401) { _driveToken = null; clearStoredDriveAuth(); updateDriveUI(); return null; }
+        if (r2.status === 401) { invalidateDriveToken(token); updateDriveUI(); return null; }
         lastErr = 'HTTP ' + r2.status;
         if (attempt < 2) { await new Promise(function(r){ setTimeout(r, 800 + attempt * 400); }); continue; }
         return null;
@@ -2953,7 +3075,7 @@ async function driveListFolderItems(folderId) {
     if (tmr) clearTimeout(tmr);
     var data = await resp.json();
     if (!resp.ok || data.error) {
-      if (resp.status === 401) { _driveToken = null; clearStoredDriveAuth(); updateDriveUI(); }
+      if (resp.status === 401) { invalidateDriveToken(token); updateDriveUI(); }
       var errMsg = (data.error && data.error.message) ? data.error.message : ('HTTP ' + resp.status);
       throw new Error(errMsg);
     }
@@ -2986,7 +3108,7 @@ async function driveListClientFolderFiles(folderId) {
     if (tmr) clearTimeout(tmr);
     var data = await resp.json();
     if (!resp.ok || data.error) {
-      if (resp.status === 401) { _driveToken = null; clearStoredDriveAuth(); updateDriveUI(); }
+      if (resp.status === 401) { invalidateDriveToken(token); updateDriveUI(); }
       var errMsg = (data.error && data.error.message) ? data.error.message : ('HTTP ' + resp.status);
       throw new Error(errMsg);
     }
@@ -3359,7 +3481,7 @@ async function refreshDriveDoc() {
       : buildWordHtml(currentHtml);
     
     // Удаляем старый док и создаём новый в той же папке
-    var token = _driveToken;
+    var token = await getDriveToken();
     // Получаем parents старого дока
     var infoResp = await fetch('https://www.googleapis.com/drive/v3/files/' + lastDocId + '?fields=parents,name', {
       headers: {'Authorization': 'Bearer ' + token}
@@ -4896,8 +5018,7 @@ async function browseFolder(folderId, folderName) {
       if (!resp.ok || data.error) {
         var errMsg = (data.error && data.error.message) ? data.error.message : ('Ошибка ' + (resp.status || ''));
         if (resp.status === 401) {
-          _driveToken = null;
-          clearStoredDriveAuth();
+          invalidateDriveToken(token);
           updateDriveUI();
           errMsg = 'Сессия истекла. Нажмите 🔑 Drive для повторного входа.';
         }

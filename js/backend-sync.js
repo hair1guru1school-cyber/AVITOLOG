@@ -21,6 +21,42 @@
   var lastLocalWriteAt = 0;
   var initialSyncReady = !serverOnlyMode;
   var refreshPromise = null;
+  var authWriteTail = Promise.resolve();
+  var authRevision = 0;
+  function authCache(action, value) {
+    return new Promise(function (resolve) {
+      var db, transaction, settled = false, result = null;
+      var timer = setTimeout(function () { finish(null); }, 1800);
+      function finish(answer) {
+        if (settled) return;
+        settled = true; clearTimeout(timer);
+        if (answer === null && transaction) { try { transaction.abort(); } catch (error) {} }
+        if (db) { try { db.close(); } catch (error) {} }
+        resolve(answer);
+      }
+      try {
+        if (!window.indexedDB) return finish(null);
+        var open = window.indexedDB.open('avitolog_backend_auth', 1);
+        open.onupgradeneeded = function () { open.result.createObjectStore('session'); };
+        open.onerror = open.onblocked = function () { finish(null); };
+        open.onsuccess = function () {
+          db = open.result;
+          if (settled) { db.close(); return; }
+          try {
+            transaction = db.transaction('session', action === 'read' ? 'readonly' : 'readwrite');
+            var store = transaction.objectStore('session');
+            var request = action === 'read' || action === 'invalidate' ? store.get('current') : store.put(value, 'current');
+            request.onsuccess = function () {
+              result = request.result;
+              if (action === 'invalidate' && result && result.access_token === value.access_token && String(result.refresh_token || '') === String(value.refresh_token || '')) store.put(null, 'current');
+            };
+            transaction.oncomplete = function () { finish(action === 'read' ? result : true); };
+            transaction.onerror = transaction.onabort = function () { finish(null); };
+          } catch (error) { finish(null); }
+        };
+      } catch (error) { finish(null); }
+    });
+  }
   if (serverOnlyMode) window.AVITOLOG_BACKEND_INITIAL_SYNC_READY = false;
   var DIRTY_RETRY_TTL_MS = 14 * 24 * 60 * 60 * 1000;
   var DIRTY_QUEUE_KEY = 'avitolog_backend_dirty_keys_v1';
@@ -273,9 +309,11 @@
     return candidates.length ? candidates[0].data : null;
   }
   function clearBackendSession() {
+    authRevision += 1;
     try { sessionStorage.removeItem('avitolog_backend_preview_session'); } catch (e1) {}
     try { sessionStorage.removeItem('avitolog_backend_app_session'); } catch (e2) {}
     try { localStorage.removeItem(persistentSessionKey); } catch (e3) {}
+    authWriteTail = authWriteTail.then(function () { return authCache('write', null); });
   }
   function isSessionExpiredError(error) {
     return /session expired|jwt expired|invalid refresh token|refresh_token/i.test(String((error && error.message) || error || ''));
@@ -296,7 +334,8 @@
     statusEl.appendChild(text);
     statusEl.appendChild(btn);
   }
-  function saveSession(data) {
+  async function saveSession(data) {
+    authRevision += 1;
     var previous = sessionData() || {};
     var expiresAt = Number(data.expires_at || 0);
     if (!expiresAt && data.expires_in) expiresAt = Math.floor(Date.now() / 1000) + Number(data.expires_in);
@@ -315,6 +354,9 @@
       }
     } catch (sessionPersistError) {}
     try { localStorage.setItem(persistentSessionKey, packed); } catch (persistError) {}
+    var write = authWriteTail.then(function () { return authCache('write', value); });
+    authWriteTail = write.then(function () {}, function () {});
+    await write;
     return value;
   }
   async function token(forceRefresh) {
@@ -324,15 +366,45 @@
     if (!forceRefresh && (!expiresAt || expiresAt > Math.floor(Date.now() / 1000) + 60)) return data.access_token;
     if (!data.refresh_token) return null;
     if (refreshPromise) return refreshPromise;
+    var revision = authRevision;
     refreshPromise = (async function() {
       try {
-        var response = await fetch(cfg.url + '/auth/v1/token?grant_type=refresh_token', {
-          method: 'POST', headers: { apikey: cfg.publishableKey, 'Content-Type': 'application/json' },
-          body: JSON.stringify({ refresh_token: data.refresh_token })
-        });
+        var latest = sessionData();
+        if (latest && latest.access_token !== data.access_token && Number(latest.expires_at || jwtExpiry(latest.access_token)) > Math.floor(Date.now() / 1000) + 60) return latest.access_token;
+        var controller = typeof AbortController === 'function' ? new AbortController() : null;
+        var timer = controller ? setTimeout(function () { controller.abort(); }, 12000) : null;
+        var response;
+        try {
+          response = await fetch(cfg.url + '/auth/v1/token?grant_type=refresh_token', {
+            method: 'POST', headers: { apikey: cfg.publishableKey, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ refresh_token: data.refresh_token }),
+            signal: controller ? controller.signal : undefined
+          });
+        } finally { if (timer) clearTimeout(timer); }
         var refreshed = await response.json();
-        if (!response.ok || !refreshed.access_token) return null;
-        return saveSession(refreshed).access_token;
+        if (revision !== authRevision) {
+          var current = sessionData();
+          return current && Number(current.expires_at || jwtExpiry(current.access_token)) > Math.floor(Date.now() / 1000) + 60 ? current.access_token : null;
+        }
+        if (!response.ok || !refreshed.access_token) {
+          var recovered = sessionData();
+          if (recovered && recovered.access_token !== data.access_token && Number(recovered.expires_at || jwtExpiry(recovered.access_token)) > Math.floor(Date.now() / 1000) + 60) return recovered.access_token;
+          var rejected = /invalid.refresh.token|refresh_token_not_found|refresh_token_already_used|invalid_grant|session_not_found|refresh token.*not found/i.test(String(refreshed.error_code || refreshed.code || '') + ' ' + String(refreshed.msg || refreshed.message || refreshed.error_description || refreshed.error || ''));
+          if ((response.status === 400 || response.status === 401) && rejected) {
+            [[sessionStorage, 'avitolog_backend_preview_session'], [sessionStorage, 'avitolog_backend_app_session'], [localStorage, persistentSessionKey]].forEach(function (entry) {
+              try {
+                var value = parseSession(entry[0].getItem(entry[1]));
+                if (value && value.access_token === data.access_token && String(value.refresh_token || '') === String(data.refresh_token || '')) entry[0].removeItem(entry[1]);
+              } catch (error) {}
+            });
+            var invalidation = authWriteTail.then(function () { return authCache('invalidate', data); });
+            authWriteTail = invalidation.then(function () {}, function () {});
+            await invalidation;
+          }
+          return null;
+        }
+        var saved = await saveSession(refreshed);
+        return authRevision === revision + 1 ? saved.access_token : null;
       } finally {
         refreshPromise = null;
       }

@@ -11,6 +11,43 @@
   var inviteTokens = null;
   var params = new URLSearchParams(window.location.search);
   var returnToApp = params.get('return') === 'app';
+  var authRevision = 0;
+  var authWriteTail = Promise.resolve();
+
+  function authCache(action, value) {
+    return new Promise(function (resolve) {
+      var db, transaction, settled = false, result = null;
+      var timer = setTimeout(function () { finish(null); }, 1800);
+      function finish(answer) {
+        if (settled) return;
+        settled = true; clearTimeout(timer);
+        if (answer === null && transaction) { try { transaction.abort(); } catch (error) {} }
+        if (db) { try { db.close(); } catch (error) {} }
+        resolve(answer);
+      }
+      try {
+        if (!window.indexedDB) return finish(null);
+        var open = window.indexedDB.open('avitolog_backend_auth', 1);
+        open.onupgradeneeded = function () { open.result.createObjectStore('session'); };
+        open.onerror = open.onblocked = function () { finish(null); };
+        open.onsuccess = function () {
+          db = open.result;
+          if (settled) { db.close(); return; }
+          try {
+            transaction = db.transaction('session', action === 'read' ? 'readonly' : 'readwrite');
+            var store = transaction.objectStore('session');
+            var request = action === 'read' || action === 'invalidate' ? store.get('current') : store.put(value, 'current');
+            request.onsuccess = function () {
+              result = request.result;
+              if (action === 'invalidate' && result && result.access_token === value.access_token && String(result.refresh_token || '') === String(value.refresh_token || '')) store.put(null, 'current');
+            };
+            transaction.oncomplete = function () { finish(action === 'read' ? result : true); };
+            transaction.onerror = transaction.onabort = function () { finish(null); };
+          } catch (error) { finish(null); }
+        };
+      } catch (error) { finish(null); }
+    });
+  }
 
   function setStatus(text) { status.textContent = text; }
   function parseSession(raw) {
@@ -39,7 +76,8 @@
     candidates.sort(function(a, b) { return b.score - a.score; });
     return candidates.length ? candidates[0].data : null;
   }
-  function saveSession(data) {
+  async function saveSession(data) {
+    authRevision += 1;
     var previous = session() || {};
     var expiresAt = Number(data.expires_at || 0);
     if (!expiresAt && data.expires_in) expiresAt = Math.floor(Date.now() / 1000) + Number(data.expires_in);
@@ -54,14 +92,41 @@
       sessionStorage.setItem(SESSION_KEY, packed);
       if (sessionStorage.getItem('avitolog_backend_app_session')) sessionStorage.setItem('avitolog_backend_app_session', packed);
     } catch (sessionError) {}
-    try {
-      localStorage.removeItem(PERSISTENT_SESSION_KEY);
-      localStorage.setItem(PERSISTENT_SESSION_KEY, packed);
-    } catch (e) {
-      try { localStorage.removeItem(PERSISTENT_SESSION_KEY); } catch (e2) {}
-      setStatus('Вход выполнен. Постоянная сессия не сохранилась из-за переполненного браузерного хранилища; на этой вкладке работать можно.');
-    }
+    var localSaved = false;
+    try { localStorage.setItem(PERSISTENT_SESSION_KEY, packed); localSaved = true; } catch (error) {}
+    var write = authWriteTail.then(function () { return authCache('write', value); });
+    authWriteTail = write.then(function () {}, function () {});
+    var idbSaved = await write;
+    if (!localSaved && !idbSaved) setStatus('Вход выполнен. Постоянное хранилище недоступно; не закрывайте эту вкладку до восстановления хранилища.');
     return value;
+  }
+  async function restoreCachedSession() {
+    var revision = authRevision;
+    var cached = await authCache('read');
+    if (revision !== authRevision || !cached || typeof cached.access_token !== 'string' || !cached.access_token || cached.access_token.length > 32768) return;
+    var current = session();
+    var currentExpiry = Number(current && (current.expires_at || jwtExpiry(current.access_token)) || 0);
+    var cachedExpiry = Number(cached.expires_at || jwtExpiry(cached.access_token) || 0);
+    if (current && (currentExpiry > cachedExpiry || (currentExpiry === cachedExpiry && current.access_token === cached.access_token))) return;
+    var value = {
+      access_token: cached.access_token,
+      refresh_token: typeof cached.refresh_token === 'string' ? cached.refresh_token : '',
+      expires_at: cachedExpiry,
+      email: String(cached.email || '').toLowerCase()
+    };
+    try { sessionStorage.setItem(SESSION_KEY, JSON.stringify(value)); } catch (error) {}
+  }
+  async function invalidateSession(rejected) {
+    authRevision += 1;
+    [[sessionStorage, SESSION_KEY], [sessionStorage, 'avitolog_backend_app_session'], [localStorage, PERSISTENT_SESSION_KEY]].forEach(function (entry) {
+      try {
+        var value = parseSession(entry[0].getItem(entry[1]));
+        if (value && value.access_token === rejected.access_token && String(value.refresh_token || '') === String(rejected.refresh_token || '')) entry[0].removeItem(entry[1]);
+      } catch (error) {}
+    });
+    var write = authWriteTail.then(function () { return authCache('invalidate', rejected); });
+    authWriteTail = write.then(function () {}, function () {});
+    await write;
   }
   async function activeSession() {
     var current = session();
@@ -69,14 +134,30 @@
     var expiresAt = Number(current.expires_at || jwtExpiry(current.access_token) || 0);
     if (!expiresAt || expiresAt > Math.floor(Date.now() / 1000) + 60) return current;
     if (!current.refresh_token) return null;
-    var response = await fetch(cfg.url + '/auth/v1/token?grant_type=refresh_token', {
-      method: 'POST',
-      headers: { apikey: cfg.publishableKey, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ refresh_token: current.refresh_token })
-    });
+    var revision = authRevision;
+    var controller = typeof AbortController === 'function' ? new AbortController() : null;
+    var timer = controller ? setTimeout(function () { controller.abort(); }, 12000) : null;
+    var response;
+    try {
+      response = await fetch(cfg.url + '/auth/v1/token?grant_type=refresh_token', {
+        method: 'POST',
+        headers: { apikey: cfg.publishableKey, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ refresh_token: current.refresh_token }),
+        signal: controller ? controller.signal : undefined
+      });
+    } finally { if (timer) clearTimeout(timer); }
     var data = await response.json();
-    if (!response.ok || !data.access_token) return null;
-    return saveSession(data);
+    if (revision !== authRevision) {
+      var latest = session();
+      return latest && Number(latest.expires_at || jwtExpiry(latest.access_token)) > Math.floor(Date.now() / 1000) + 60 ? latest : null;
+    }
+    if (!response.ok || !data.access_token) {
+      var rejected = /invalid.refresh.token|refresh_token_not_found|refresh_token_already_used|invalid_grant|session_not_found|refresh token.*not found/i.test(String(data.error_code || data.code || '') + ' ' + String(data.msg || data.message || data.error_description || data.error || ''));
+      if ((response.status === 400 || response.status === 401) && rejected) { await invalidateSession(current); return null; }
+      throw new Error('session_refresh_unavailable');
+    }
+    var saved = await saveSession(data);
+    return authRevision === revision + 1 ? saved : null;
   }
   function showReady() { loginCard.classList.add('off'); loadCard.classList.remove('off'); }
   function markPrimaryMode(current) {
@@ -89,6 +170,7 @@
     }
   }
   function openMainAppSoon(current) {
+    if (!session()) { setStatus('Браузер блокирует хранилище входа. Разрешите локальное хранилище для сайта и повторите вход.'); return; }
     markPrimaryMode(current || session() || {});
     setTimeout(function () {
       window.location.href = 'index.html?v=20260925-session-renewal-1';
@@ -105,7 +187,7 @@
       var data = await response.json();
       if (!response.ok || !data.access_token) throw new Error(data.error_description || data.msg || 'Ошибка входа');
       document.getElementById('previewPassword').value = '';
-      var saved = saveSession(data);
+      var saved = await saveSession(data);
       showReady(); setStatus('Вход выполнен. Автоматически ничего не загружаю.');
       if (returnToApp) { setStatus('Вход выполнен. Открываю рабочий AVITOLOG...'); openMainAppSoon(saved); }
     } catch (error) { setStatus('Ошибка: ' + error.message); }
@@ -128,7 +210,7 @@
       });
       var user = await response.json();
       if (!response.ok) throw new Error(user.msg || user.message || ('HTTP ' + response.status));
-      saveSession({
+      await saveSession({
         access_token: inviteTokens.access_token,
         refresh_token: inviteTokens.refresh_token,
         expires_in: inviteTokens.expires_in,
@@ -226,22 +308,22 @@
     setStatus('Приглашение подтверждено. Придумайте личный пароль Саши.');
   })();
 
-  if (!inviteTokens && session() && session().access_token) {
+  if (!inviteTokens) {
     (async function resumeSavedSession() {
+      await restoreCachedSession();
+      if (!session() || !session().access_token) return;
       setStatus('Проверяю и обновляю сохранённую сессию...');
       var current = null;
-      try { current = await activeSession(); } catch (sessionRefreshError) {}
+      var unavailable = false;
+      try { current = await activeSession(); } catch (sessionRefreshError) { unavailable = true; }
       if (current && current.access_token) {
         showReady();
         if (returnToApp) { setStatus('Подключение восстановлено. Открываю рабочий AVITOLOG...'); openMainAppSoon(current); }
         return;
       }
-      try { sessionStorage.removeItem(SESSION_KEY); } catch (e1) {}
-      try { sessionStorage.removeItem('avitolog_backend_app_session'); } catch (e2) {}
-      try { localStorage.removeItem(PERSISTENT_SESSION_KEY); } catch (e3) {}
       loginCard.classList.remove('off');
       loadCard.classList.add('off');
-      setStatus('Сохранённая сессия устарела. Войдите один раз, после этого подключение будет обновляться автоматически.');
+      setStatus(unavailable ? 'Сервер входа временно недоступен. Сохранённая сессия не удалена; повторите загрузку после восстановления сети.' : 'Сохранённую сессию не удалось обновить. Войдите снова; данные в системе не изменены.');
     })();
   }
 })();
