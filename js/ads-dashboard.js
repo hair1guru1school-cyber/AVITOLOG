@@ -9,7 +9,7 @@
   var UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
   var ACCOUNT_ID = /^[1-9][0-9]{0,19}$/;
   var PREF_PREFIX = 'avitolog_ads_dashboard_v1:';
-  var DEFAULT_ACCOUNTS = ['филпродвижение', 'filaiмаркетинг'];
+  var DEFAULT_ACCOUNTS = [['филпродвижение', 'филproдвижение'], ['filaiмаркетинг']];
   var METRICS = [
     { key: 'earned', name: 'Заработано', icon: '₽', money: true, color: '#00d49a' },
     { key: 'contacts', name: 'Контакты', icon: '☏', color: '#b18aff' },
@@ -189,8 +189,8 @@
       state.accounts = safeAccounts(response.accounts);
       if (state.preferences.selectedAccountIds === null) {
         state.preferences.selectedAccountIds = [];
-        DEFAULT_ACCOUNTS.forEach(function (name) {
-          var matches = state.accounts.filter(function (account) { return normalizedName(account.name) === name; });
+        DEFAULT_ACCOUNTS.forEach(function (names) {
+          var matches = state.accounts.filter(function (account) { return names.indexOf(normalizedName(account.name)) !== -1; });
           if (matches.length === 1) state.preferences.selectedAccountIds.push(matches[0].avitoUserId);
         });
         savePreferences(state);
