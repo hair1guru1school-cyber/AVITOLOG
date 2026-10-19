@@ -347,11 +347,12 @@ function tryPromoteLegacyProjectsIntoSashaProfile() {
 function loadProjectsData(forceReload) {
   try {
     var storageKey = projectsDataKey();
+    var initialPending = isProjectsServerOnlyMode() && window.AVITOLOG_BACKEND_INITIAL_SYNC_READY !== true;
     if (forceReload) {
       _projectsDataMem = null;
       _projectsDataMemKey = null;
     } else if (_projectsDataMem && _projectsDataMemKey === storageKey) {
-      if (applyProjectMarkerClearTombstones(_projectsDataMem)) saveProjectsData(_projectsDataMem);
+      if (!initialPending && applyProjectMarkerClearTombstones(_projectsDataMem)) saveProjectsData(_projectsDataMem);
       return _projectsDataMem;
     }
     if (typeof window.__projectsMergeCardsFromStorageBackups === 'function') {
@@ -366,27 +367,27 @@ function loadProjectsData(forceReload) {
     } catch (eParse) {
       data = null;
     }
-    if (isSasha && (!data || !Array.isArray(data.projects) || data.projects.length === 0)) {
+    if (!serverOnly && isSasha && (!data || !Array.isArray(data.projects) || data.projects.length === 0)) {
       if (tryPromoteLegacyProjectsIntoSashaProfile()) {
         s = localStorage.getItem(projectsDataKey());
         try { data = s ? JSON.parse(s) : null; } catch (e2) { data = null; }
       }
     }
     if (!data || !Array.isArray(data.projects)) {
-      if (isSasha) return { projects: [], hiddenProjects: [], tasks: [], taskLog: [] };
+      if (serverOnly || isSasha) return { projects: [], hiddenProjects: [], tasks: [], taskLog: [] };
       return getDefaultProjectsData();
     }
     /** У Саши нет демо-списка Фила: при <10 проектах раньше подставлялся getDefaultProjectsData() (30 строк). */
-    if (data.projects.length < 10 && !isSasha) {
+    if (!serverOnly && data.projects.length < 10 && !isSasha) {
       return getDefaultProjectsData();
     }
-    if (applyProjectMarkerClearTombstones(data)) saveProjectsData(data);
+    if (!initialPending && applyProjectMarkerClearTombstones(data)) saveProjectsData(data);
     if (serverOnly) {
       if (!Array.isArray(data.hiddenProjects)) data.hiddenProjects = [];
       if (!Array.isArray(data.tasks)) data.tasks = [];
       if (!Array.isArray(data.taskLog)) data.taskLog = [];
-      if (applyAoaxAutoloadState(data)) saveProjectsData(data);
-      if (applyProjectsAutoStatuses(data)) saveProjectsData(data);
+      if (!initialPending && applyAoaxAutoloadState(data)) saveProjectsData(data);
+      if (!initialPending && applyProjectsAutoStatuses(data)) saveProjectsData(data);
       _projectsDataMem = data;
       _projectsDataMemKey = storageKey;
       return data;
@@ -506,6 +507,7 @@ function loadProjectsData(forceReload) {
     _projectsDataMemKey = storageKey;
     return data;
   } catch (e) {
+    if (isProjectsServerOnlyMode()) return { projects: [], hiddenProjects: [], tasks: [], taskLog: [] };
     if (typeof window !== 'undefined' && window.AVITOLOG_IS_SASHA) {
       if (tryPromoteLegacyProjectsIntoSashaProfile()) return loadProjectsData(true);
       return { projects: [], hiddenProjects: [], tasks: [], taskLog: [] };
@@ -604,9 +606,10 @@ async function hydrateProjectsFromActiveSheet(forceMerge) {
     }
   } catch(e) {}
   try {
+    var token = await getDriveToken();
     var range = PROJECTS_ACTIVE_SHEET_NAME + '!A2:Q';
     var url = 'https://sheets.googleapis.com/v4/spreadsheets/' + SHEETS_ID + '/values/' + encodeURIComponent(range);
-    var resp = await fetch(url, { headers: {'Authorization': 'Bearer ' + _driveToken} });
+    var resp = await fetch(url, { headers: {'Authorization': 'Bearer ' + token} });
     if (!resp.ok) return false;
     var json = await resp.json();
     var rows = json.values || [];
@@ -1911,13 +1914,15 @@ function getProjectsStickyWidthPx(projects) {
   return Math.max(420, Math.min(2200, w));
 }
 async function ensureActiveProjectsSheet() {
+  var token = await getDriveToken();
   var readUrl = 'https://sheets.googleapis.com/v4/spreadsheets/' + SHEETS_ID + '/values/' + encodeURIComponent(PROJECTS_ACTIVE_SHEET_NAME + '!A1:A1');
-  var readResp = await fetch(readUrl, { headers: {'Authorization': 'Bearer ' + _driveToken} });
+  var readResp = await fetch(readUrl, { headers: {'Authorization': 'Bearer ' + token} });
   if (readResp.ok) return;
+  token = await getDriveToken();
   var createUrl = 'https://sheets.googleapis.com/v4/spreadsheets/' + SHEETS_ID + ':batchUpdate';
   await fetch(createUrl, {
     method: 'POST',
-    headers: {'Authorization': 'Bearer ' + _driveToken, 'Content-Type': 'application/json'},
+    headers: {'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json'},
     body: JSON.stringify({requests:[{addSheet:{properties:{title:PROJECTS_ACTIVE_SHEET_NAME}}}]})
   }).catch(function(){});
 }
@@ -1946,23 +1951,26 @@ function buildActiveProjectRow(p, reason) {
 }
 async function syncActiveProjectsSheetExact(reason) {
   if (!_driveToken) return;
+  await getDriveToken();
   await ensureActiveProjectsSheet();
   var data = loadProjectsData();
   var active = (data.projects || [])
     .filter(function(p){ return (p.zone || 'active') === 'active'; })
     .sort(function(a,b){ return (a.sortOrder||0) - (b.sortOrder||0); });
   var rows = active.map(function(p){ return buildActiveProjectRow(p, reason || 'sync'); });
+  var token = await getDriveToken();
   var clearUrl = 'https://sheets.googleapis.com/v4/spreadsheets/' + SHEETS_ID + '/values/' + encodeURIComponent(PROJECTS_ACTIVE_SHEET_NAME + '!A2:Q') + ':clear';
   await fetch(clearUrl, {
     method: 'POST',
-    headers: {'Authorization': 'Bearer ' + _driveToken, 'Content-Type': 'application/json'},
+    headers: {'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json'},
     body: '{}'
   });
   if (!rows.length) return;
+  token = await getDriveToken();
   var setUrl = 'https://sheets.googleapis.com/v4/spreadsheets/' + SHEETS_ID + '/values/' + encodeURIComponent(PROJECTS_ACTIVE_SHEET_NAME + '!A2:Q' + (rows.length + 1)) + '?valueInputOption=USER_ENTERED';
   var resp = await fetch(setUrl, {
     method: 'PUT',
-    headers: {'Authorization': 'Bearer ' + _driveToken, 'Content-Type': 'application/json'},
+    headers: {'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json'},
     body: JSON.stringify({values: rows})
   });
   if (!resp.ok) {

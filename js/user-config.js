@@ -16,6 +16,13 @@
    *  Добавь &sync=1 — страница автоматически запустит полный синк после загрузки:
    *  index.html?u=sasha&sync=1 */
   var PROFILE_BOOKMARK_KEY = 'avitolog_profile_bookmark';
+  var backendIdentity = window.AVITOLOG_BACKEND_MODE && typeof window.__avitologBackendIdentity === 'function'
+    ? window.__avitologBackendIdentity() : null;
+  // This only selects the UI namespace; Supabase RLS remains the authority.
+  var lockedSasha = !!(backendIdentity && (backendIdentity.id
+    ? backendIdentity.id !== 'aa63f3cd-73bc-40c0-9b5f-ce62f3d28e49'
+    : backendIdentity.email === 'cyplakovaleksandr153@gmail.com'));
+  window.AVITOLOG_PROFILE_LOCKED = lockedSasha;
   var profileFromUrl = '';
   try {
     var sp = new URLSearchParams(window.location.search);
@@ -42,6 +49,7 @@
   try {
     legacyUser = String(localStorage.getItem('avitolog_current_user') || '').trim().toLowerCase();
   } catch(e2) {}
+  if (lockedSasha) profileFromUrl = 'sasha';
   if (profileFromUrl === 'sasha') {
     legacyUser = 'sasha';
     try {
@@ -77,7 +85,7 @@
     var storedSasha = String(localStorage.getItem('avitolog_sasha_email') || '').trim().toLowerCase();
     if (storedSasha) sashaEmail = storedSasha;
   } catch (eSasha) {}
-  if (sashaEmail && email) {
+  if (!window.AVITOLOG_BACKEND_MODE && sashaEmail && email) {
     if (email === sashaEmail && legacyUser !== 'sasha') {
       legacyUser = 'sasha';
       try { localStorage.setItem('avitolog_current_user', 'sasha'); } catch (eSet) {}
@@ -112,6 +120,7 @@
   /** Разово: на устройстве, где в Drive залогинен email Саши, копируем live-данные из ключей без суффикса в *_sasha,
    *  если *_sasha пусты. Иначе у него всё жило в avitolog_goals_v1 / avitolog_clients, а профиль «Саша» и ☁️ читали только *_sasha — «пусто». У Фила (другой email) не выполняется. */
   (function migrateSashaNamespaceFromLegacyIfOwnAccount() {
+    if (window.AVITOLOG_BACKEND_MODE) return;
     try {
       var em = String(localStorage.getItem('avitolog_drive_email') || '').trim().toLowerCase();
       if (!em || em !== sashaEmail) return;
@@ -285,10 +294,10 @@
     return 0;
   }
   function recoverBaseKey(baseKey) {
+    if (window.AVITOLOG_BACKEND_MODE) return;
     var targetKey = window.AVITOLOG_KEY(baseKey);
     var targetParsed = safeParse(localStorage.getItem(targetKey) || 'null');
     var targetScore = scoreByBase(baseKey, targetParsed);
-    if (window.AVITOLOG_BACKEND_MODE && targetScore > 0) return;
     var bestKey = targetKey;
     var bestParsed = targetParsed;
     var bestScore = targetScore;
@@ -346,6 +355,7 @@
   }
   /** По каждому project.id подтягиваем лучший cardsActive из любого ключа (в т.ч. старые копии и _month_). */
   function mergeProjectsFloatMarkersFromAllCandidates() {
+    if (window.AVITOLOG_BACKEND_MODE) return;
     var baseKey = 'avitolog_projects';
     var targetKey = window.AVITOLOG_KEY(baseKey);
     var base = safeParse(localStorage.getItem(targetKey) || 'null');

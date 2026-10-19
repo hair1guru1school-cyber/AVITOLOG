@@ -61,14 +61,48 @@
   var DIRTY_RETRY_TTL_MS = 14 * 24 * 60 * 60 * 1000;
   var DIRTY_QUEUE_KEY = 'avitolog_backend_dirty_keys_v1';
   var PENDING_PAYLOAD_PREFIX = 'avitolog_backend_pending_payload_';
+  function tokenUserId(accessToken) {
+    try {
+      var encoded = String(accessToken || '').split('.')[1] || '';
+      encoded = encoded.replace(/-/g, '+').replace(/_/g, '/');
+      while (encoded.length % 4) encoded += '=';
+      var uid = String(JSON.parse(atob(encoded)).sub || '').toLowerCase();
+      if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(uid)) return uid;
+    } catch (e) {}
+    return '';
+  }
+  function backendIdentity() {
+    var data = sessionData();
+    return { id: tokenUserId(data && data.access_token), email: String((data && data.email) || '').trim().toLowerCase() };
+  }
+  window.__avitologBackendIdentity = backendIdentity;
+  function pendingWriteScope() {
+    if (!serverOnlyMode) return '';
+    var uid = backendIdentity().id;
+    return uid ? uid + '_' + (window.AVITOLOG_KEY_SUFFIX === '_sasha' ? 'sasha' : 'fil') : '';
+  }
+  function dirtyQueueKey() {
+    return DIRTY_QUEUE_KEY + (serverOnlyMode ? '_v2_' + pendingWriteScope() : '');
+  }
+  function pendingPayloadPrefix() {
+    return PENDING_PAYLOAD_PREFIX + (serverOnlyMode ? 'v2_' + pendingWriteScope() + '_' : '');
+  }
+  function pendingWriteMatchesScope(pending) {
+    return !serverOnlyMode || !!(pending && pending.scope && pending.scope === pendingWriteScope());
+  }
+  function assertPendingWriteScope(scope, accessToken) {
+    if (!scope) return;
+    var tokenScope = tokenUserId(accessToken) + '_' + (window.AVITOLOG_KEY_SUFFIX === '_sasha' ? 'sasha' : 'fil');
+    if (scope !== pendingWriteScope() || scope !== tokenScope) throw new Error('Account changed; the unsaved draft is retained');
+  }
   function revisionSignatureStorageKey() {
     return 'avitolog_backend_revision_signature_' + (window.AVITOLOG_KEY_SUFFIX === '_sasha' ? 'sasha' : 'fil');
   }
   function dirtyStorageKey(key) {
-    return 'avitolog_backend_dirty_' + String(key || '').replace(/[^\w.-]+/g, '_');
+    return 'avitolog_backend_dirty_' + (serverOnlyMode ? 'v2_' + pendingWriteScope() + '_' : '') + String(key || '').replace(/[^\w.-]+/g, '_');
   }
   function pendingPayloadKey(key) {
-    return PENDING_PAYLOAD_PREFIX + String(key || '').replace(/[^\w.-]+/g, '_');
+    return pendingPayloadPrefix() + String(key || '').replace(/[^\w.-]+/g, '_');
   }
   function parseStoredJson(raw) {
     try { return JSON.parse(raw || 'null'); } catch (e) { return null; }
@@ -91,16 +125,31 @@
   function pendingPayloadFromRaw(key, raw) {
     var data = parseStoredJson(raw);
     if (!data || String(data.key || '') !== String(key || '')) return null;
+    if (!pendingWriteMatchesScope(data)) return null;
     var ts = Number(data.ts || 0);
     if (!ts || (Date.now() - ts) > DIRTY_RETRY_TTL_MS) return null;
     return {
       key: String(data.key),
       value: String(data.value == null ? '' : data.value),
       previousValue: String(data.previousValue == null ? '' : data.previousValue),
+      scope: String(data.scope || ''),
       ts: ts
     };
   }
   function readPendingPayloadCached(key, shadowRows) {
+    if (serverOnlyMode) {
+      var newest = null;
+      var pKey = pendingPayloadKey(key);
+      var candidates = [];
+      try { candidates.push(localStorage.getItem(pKey)); } catch (eLocal) {}
+      try { candidates.push(sessionStorage.getItem(pKey)); } catch (eSession) {}
+      candidates.push(shadowRows && shadowRows[pKey] && shadowRows[pKey].value);
+      candidates.forEach(function(raw) {
+        var payload = pendingPayloadFromRaw(key, raw);
+        if (payload && (!newest || payload.ts >= newest.ts)) newest = payload;
+      });
+      return newest;
+    }
     var raw = storageGetAny(pendingPayloadKey(key));
     if (!raw && shadowRows && shadowRows[pendingPayloadKey(key)]) {
       raw = String(shadowRows[pendingPayloadKey(key)].value || '');
@@ -119,6 +168,7 @@
       key: String(key),
       value: String(value == null ? '' : value),
       previousValue: String(previousValue == null ? '' : previousValue),
+      scope: pendingWriteScope(),
       ts: Date.now()
     });
     var pKey = pendingPayloadKey(key);
@@ -141,7 +191,9 @@
   function readDirtyKeys() {
     var out = [];
     var seen = {};
-    [storageGetAny(DIRTY_QUEUE_KEY)].forEach(function(raw) {
+    var rawQueues = [storageGetAny(dirtyQueueKey())];
+    if (serverOnlyMode) { try { rawQueues.push(sessionStorage.getItem(dirtyQueueKey())); } catch (eSession) {} }
+    rawQueues.forEach(function(raw) {
       try {
         JSON.parse(raw || '[]').forEach(function(key) {
           if (key && !seen[key]) { seen[key] = true; out.push(key); }
@@ -152,9 +204,9 @@
   }
   function writeDirtyKeys(keys) {
     var raw = JSON.stringify((keys || []).filter(Boolean));
-    try { localStorage.setItem(DIRTY_QUEUE_KEY, raw); } catch (eLocal) {}
-    try { sessionStorage.setItem(DIRTY_QUEUE_KEY, raw); } catch (eSession) {}
-    shadowWriteRaw(DIRTY_QUEUE_KEY, raw);
+    try { localStorage.setItem(dirtyQueueKey(), raw); } catch (eLocal) {}
+    try { sessionStorage.setItem(dirtyQueueKey(), raw); } catch (eSession) {}
+    shadowWriteRaw(dirtyQueueKey(), raw);
   }
   async function readDirtyKeysWithShadow(shadowRows) {
     var out = readDirtyKeys();
@@ -162,16 +214,17 @@
     out.forEach(function(key) { if (key) seen[key] = true; });
     var rows = shadowRows || await readShadowLiveAll();
     if (rows) {
-      var dirtyRow = rows[DIRTY_QUEUE_KEY];
+      var dirtyRow = rows[dirtyQueueKey()];
       try {
         JSON.parse((dirtyRow && dirtyRow.value) || '[]').forEach(function(key) {
           if (key && !seen[key]) { seen[key] = true; out.push(key); }
         });
       } catch (e) {}
       Object.keys(rows).forEach(function(rowKey) {
-        if (rowKey.indexOf(PENDING_PAYLOAD_PREFIX) !== 0) return;
+        if (rowKey.indexOf(pendingPayloadPrefix()) !== 0) return;
         var data = parseStoredJson(rows[rowKey] && rows[rowKey].value);
         var key = data && data.key;
+        if (serverOnlyMode && !pendingPayloadFromRaw(key, rows[rowKey].value)) return;
         if (key && !seen[key]) { seen[key] = true; out.push(key); }
       });
     }
@@ -416,13 +469,15 @@
     if (!accessToken) throw new Error('Supabase session expired');
     return Object.assign({ apikey: cfg.publishableKey, Authorization: 'Bearer ' + accessToken }, extra || {});
   }
-  async function authFetch(url, options) {
+  async function authFetch(url, options, scope) {
     options = options || {};
     var requestOptions = Object.assign({}, options, { headers: await headers(options.headers || {}) });
+    assertPendingWriteScope(scope, String(requestOptions.headers.Authorization || '').replace(/^Bearer\s+/i, ''));
     var response = await fetch(url, requestOptions);
     if (response.status !== 401) return response;
     var refreshed = await token(true);
     if (!refreshed) return response;
+    assertPendingWriteScope(scope, refreshed);
     requestOptions.headers = Object.assign({}, requestOptions.headers, { Authorization: 'Bearer ' + refreshed });
     return fetch(url, requestOptions);
   }
@@ -445,11 +500,11 @@
     var known = Number(appliedRevisions[key] || 0);
     return !!rev && !!known && rev <= known;
   }
-  async function writeKey(key, value) {
+  async function writeKey(key, value, scope) {
     var response = await authFetch(cfg.url + '/rest/v1/rpc/upsert_frontend_state', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ p_key: key, p_value: String(value == null ? '' : value) })
-    });
+    }, scope);
     if (!response.ok) throw new Error('[' + key + '] ' + ((await response.text()) || 'Supabase write failed'));
     var result = await response.json();
     rememberRevision(key, result && result.revision);
@@ -812,12 +867,19 @@
     });
     return JSON.stringify(out);
   }
-  async function prepareValueForWrite(key, value, previousValue) {
-    if (!isProjectsStorageKey(key) && !isClientsStorageKey(key) && !isGoalsStorageKey(key)) return value;
+  async function prepareValueForWrite(key, value, previousValue, scope) {
+    var scopedCash = serverOnlyMode && scope && /^avitolog_assets_/.test(key);
+    if (!isProjectsStorageKey(key) && !isClientsStorageKey(key) && !isGoalsStorageKey(key) && !scopedCash) return value;
     try {
       var rows = await readRemote();
       var row = (rows || []).find(function (item) { return item && item.storage_key === key; });
       if (!row || !row.value_text) return value;
+      if (scopedCash) {
+        if (String(row.value_text) !== String(previousValue || '') && String(row.value_text) !== String(value)) {
+          throw new Error('Cash changed on the server; the unsaved draft is retained');
+        }
+        return value;
+      }
       if (isClientsStorageKey(key)) {
         return previousValue ? mergeClientsValue(row.value_text, previousValue, value) : mergeClientsWithoutLoss(row.value_text, value);
       }
@@ -827,6 +889,7 @@
       if (!previousValue) return mergeProjectsWithoutLoss(row.value_text, value);
       return mergeProjectsValue(row.value_text, previousValue, value);
     } catch (e) {
+      if (scope) throw e;
       return value;
     }
   }
@@ -841,13 +904,17 @@
     }
     var pending = pendingWrites[key];
     if (!pending) return;
+    if (!pendingWriteMatchesScope(pending)) { delete pendingWrites[key]; return; }
     writeInFlight[key] = true;
     var shouldWriteNext = false;
-    prepareValueForWrite(key, pending.value, pending.previousValue).then(function (prepared) {
-      return writeKey(key, prepared).then(function (result) {
+    var retryDelay = 0;
+    prepareValueForWrite(key, pending.value, pending.previousValue, pending.scope).then(function (prepared) {
+      if (!pendingWriteMatchesScope(pending)) return null;
+      return writeKey(key, prepared, pending.scope).then(function (result) {
         return { result: result, prepared: prepared };
       });
     }).then(function (payload) {
+      if (!payload || !pendingWriteMatchesScope(pending)) return;
       if (pendingWrites[key] === pending) {
         applyStorageValue(key, payload.prepared);
         delete pendingWrites[key];
@@ -855,15 +922,21 @@
         clearPendingPayload(key);
         setStatus('Supabase: сохранено · версия ' + payload.result.revision);
       } else {
+        var nextPending = pendingWrites[key];
+        if (nextPending && pendingWriteMatchesScope(nextPending)) {
+          nextPending.previousValue = payload.prepared;
+          rememberPendingPayload(key, nextPending.value, nextPending.previousValue);
+        }
         shouldWriteNext = true;
         setStatus('Supabase: дописываю свежую версию...');
       }
     }).catch(function (error) {
+      retryDelay = 5000;
       if (isSessionExpiredError(error)) { showReauthStatus('Supabase write'); return; }
       setStatus('Ошибка записи: ' + error.message, true);
     }).finally(function () {
       writeInFlight[key] = false;
-      if (shouldWriteNext || pendingWrites[key]) schedulePendingWrite(key, 0);
+      if (shouldWriteNext || pendingWrites[key]) schedulePendingWrite(key, retryDelay);
     });
   }
   function schedulePendingWrite(key, delay) {
@@ -878,13 +951,32 @@
       if (!timers[key]) schedulePendingWrite(key, 0);
     });
   }
+  async function restoreScopedPendingWrites() {
+    if (!serverOnlyMode) return;
+    var scope = pendingWriteScope();
+    if (!scope) return;
+    var shadowRows = await readShadowLiveAll();
+    if (scope !== pendingWriteScope()) return;
+    var keys = await readDirtyKeysWithShadow(shadowRows);
+    if (scope !== pendingWriteScope()) return;
+    keys.forEach(function(key) {
+      if (!isAllowed(key) || !isCurrentProfileWritableKey(key) || pendingWrites[key]) return;
+      var payload = readPendingPayloadCached(key, shadowRows);
+      if (payload) pendingWrites[key] = payload;
+    });
+  }
   function queueWrite(key, value, previousValue) {
     if (!isAllowed(key)) return;
     if (!isCurrentProfileWritableKey(key)) return;
+    if (String(value == null ? '' : value) === String(previousValue == null ? '' : previousValue)) return;
+    var scope = pendingWriteScope();
+    if (serverOnlyMode && !scope) return;
     lastLocalWriteAt = Date.now();
     var enabled = coreKeys[key] ? coreEnabled : (isFinanceKey(key) ? financeEnabled : (isContentKey(key) && contentEnabled));
     if (!enabled && !serverOnlyMode) return;
-    pendingWrites[key] = { value: String(value == null ? '' : value), previousValue: String(previousValue == null ? '' : previousValue), ts: Date.now() };
+    var earlierPending = pendingWrites[key];
+    if (earlierPending && pendingWriteMatchesScope(earlierPending)) previousValue = earlierPending.previousValue;
+    pendingWrites[key] = { value: String(value == null ? '' : value), previousValue: String(previousValue == null ? '' : previousValue), scope: scope, ts: Date.now() };
     rememberPendingPayload(key, value, previousValue);
     markDirty(key);
     setStatus('Supabase: сохраняю ' + writeLabelForKey(key) + '...');
@@ -893,9 +985,11 @@
     schedulePendingWrite(key, delay);
   }
   function flushPendingWritesKeepalive() {
+    // Scoped drafts survive reload; an unchecked unload write could bypass merging.
+    if (serverOnlyMode) return;
     Object.keys(pendingWrites).forEach(function (key) {
       var pending = pendingWrites[key];
-      if (!pending) return;
+      if (!pending || !pendingWriteMatchesScope(pending)) return;
       try { clearTimeout(timers[key]); } catch (e0) {}
       writeKeyKeepalive(key, pending.value);
     });
@@ -904,16 +998,19 @@
   window.addEventListener('beforeunload', flushPendingWritesKeepalive);
   async function readRemote() {
     var sashaProfile = typeof window !== 'undefined' && window.AVITOLOG_KEY_SUFFIX === '_sasha';
+    var scope = pendingWriteScope();
     var response = await authFetch(cfg.url + '/rest/v1/rpc/read_frontend_state', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ p_sasha: !!sashaProfile })
-    });
+    }, scope);
     if (!response.ok && response.status === 404) {
-      response = await authFetch(cfg.url + '/rest/v1/frontend_state_records?select=storage_key,value_text,revision,updated_at&order=storage_key');
+      response = await authFetch(cfg.url + '/rest/v1/frontend_state_records?select=storage_key,value_text,revision,updated_at&order=storage_key', {}, scope);
     }
     if (!response.ok) throw new Error((await response.text()) || 'frontend_state_records read failed');
-    return response.json();
+    var rows = await response.json();
+    if (scope && scope !== pendingWriteScope()) throw new Error('Account changed during server read');
+    return rows;
   }
   async function ensureSashaTeamMember() {
     if (window.AVITOLOG_BACKEND_PREVIEW) return;
@@ -978,30 +1075,20 @@
     var appliedKeys = [];
     var fallbackKeys = [];
     var mergedWrites = [];
-    // The first server-only pull is the source of truth. Reading the whole
-    // IndexedDB shadow and replaying old dirty markers here used to delay the
-    // ready event and could leave CRM/cash on an obsolete browser copy.
+    // The first server-only pull replaces plain cache. Owner-scoped unsent
+    // drafts are restored separately, after this authoritative baseline.
     var authoritativeInitial = !!options.authoritativeInitial;
-    var authoritativeDirtyKeys = authoritativeInitial ? readDirtyKeys() : [];
-    var authoritativeDirtyMap = {};
-    authoritativeDirtyKeys.forEach(function(key) { authoritativeDirtyMap[key] = true; });
     var shadowRows = authoritativeInitial ? null : await readShadowLiveAll();
     (rows || []).forEach(function (row) {
       if (!isAllowed(row.storage_key)) return;
       remoteKeys[row.storage_key] = true;
       appliedKeys.push(row.storage_key);
       if (authoritativeInitial) {
+        // Live edits are scoped intents, not the stale browser cache being replaced.
+        if (pendingWrites[row.storage_key] && pendingWriteMatchesScope(pendingWrites[row.storage_key])) return;
         try { clearTimeout(timers[row.storage_key]); } catch (eInitialTimer) {}
         delete timers[row.storage_key];
         delete pendingWrites[row.storage_key];
-        if (authoritativeDirtyMap[row.storage_key] || isRecentlyDirty(row.storage_key)) {
-          try { localStorage.removeItem(dirtyStorageKey(row.storage_key)); } catch (eInitialDirtyLocal) {}
-          try { sessionStorage.removeItem(dirtyStorageKey(row.storage_key)); } catch (eInitialDirtySession) {}
-          var initialPendingKey = pendingPayloadKey(row.storage_key);
-          try { localStorage.removeItem(initialPendingKey); } catch (eInitialPendingLocal) {}
-          try { sessionStorage.removeItem(initialPendingKey); } catch (eInitialPendingSession) {}
-          shadowWriteRaw(initialPendingKey, '');
-        }
         rememberRevision(row.storage_key, row.revision);
         if (!applyStorageValue(row.storage_key, row.value_text || '')) fallbackKeys.push(row.storage_key);
         return;
@@ -1017,7 +1104,7 @@
       }
       var pendingPayload = readPendingPayloadCached(row.storage_key, shadowRows);
       var hasDirtyCandidate = isRecentlyDirty(row.storage_key) || pendingPayload;
-      if (serverOnlyMode && hasDirtyCandidate && (isFinanceKey(row.storage_key) || coreKeys[row.storage_key])) {
+      if (serverOnlyMode && hasDirtyCandidate && !pendingPayload && (isFinanceKey(row.storage_key) || coreKeys[row.storage_key])) {
         var dirtyValue = pendingPayload ? pendingPayload.value : localBeforeApply;
         var dirtyScore = profileValueScore(row.storage_key, dirtyValue || '');
         var remoteScore = profileValueScore(row.storage_key, row.value_text || '');
@@ -1043,6 +1130,7 @@
           key: row.storage_key,
           value: pendingPayload ? pendingPayload.value : localBeforeApply,
           previousValue: pendingPayload ? pendingPayload.previousValue : '',
+          scope: pendingPayload ? pendingPayload.scope : '',
           dirtyRetry: true
         });
         return;
@@ -1056,9 +1144,6 @@
       if (mergedState.changed) mergedWrites.push({ key: row.storage_key, value: valueToApply });
       if (!applyStorageValue(row.storage_key, valueToApply)) fallbackKeys.push(row.storage_key);
     });
-    if (authoritativeInitial && authoritativeDirtyKeys.length) {
-      writeDirtyKeys(authoritativeDirtyKeys.filter(function(key) { return !remoteKeys[key]; }));
-    }
     refreshOpenScreensAfterRemoteApply(appliedKeys, fallbackKeys);
     try {
       document.dispatchEvent(new CustomEvent('avitolog:backend-remote-applied', {
@@ -1069,8 +1154,8 @@
       var mergedAppliedKeys = [];
       var mergedFallbackKeys = [];
       for (var mw = 0; mw < mergedWrites.length; mw++) {
-        var preparedMerged = await prepareValueForWrite(mergedWrites[mw].key, mergedWrites[mw].value, mergedWrites[mw].previousValue || '');
-        await writeKey(mergedWrites[mw].key, preparedMerged);
+        var preparedMerged = await prepareValueForWrite(mergedWrites[mw].key, mergedWrites[mw].value, mergedWrites[mw].previousValue || '', mergedWrites[mw].scope);
+        await writeKey(mergedWrites[mw].key, preparedMerged, mergedWrites[mw].scope);
         mergedAppliedKeys.push(mergedWrites[mw].key);
         if (!applyStorageValue(mergedWrites[mw].key, preparedMerged)) mergedFallbackKeys.push(mergedWrites[mw].key);
         clearDirty(mergedWrites[mw].key);
@@ -1645,6 +1730,7 @@
       if (!serverOnlyMode) { phase = 'pre-dirty'; await retryDirtyLocalWrites(); }
       phase = 'read'; var rows = await readRemote();
       phase = 'apply'; var applied = await applyRemoteRows(rows, { authoritativeInitial: serverOnlyMode }); var remoteKeys = applied.remoteKeys; var appliedKeys = applied.appliedKeys;
+      phase = 'restore-pending'; await restoreScopedPendingWrites();
       initialSyncReady = true;
       window.AVITOLOG_BACKEND_INITIAL_SYNC_READY = true;
       window.AVITOLOG_BACKEND_INITIAL_SYNC_ERROR = '';

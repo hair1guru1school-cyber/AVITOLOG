@@ -1,6 +1,6 @@
 /**
  * Автобэкап всех данных профиля САША в Google Drive.
- * Сохраняет ВСЕ ключи _sasha (включая _sasha_month_ снапшоты).
+ * Сохраняет только ключи бизнес-данных Саши, включая месячные снимки.
  * Триггеры: любая запись в localStorage + каждые 60с + старт приложения.
  * Папка на Drive: AVITOLOG_SASHA_BACKUP (внутри CRM_ROOT).
  * Файлы: sasha-crm-backup-latest.json + ежедневные sasha-crm-backup-YYYY-MM-DD-HHmm.json
@@ -30,6 +30,36 @@
       window.AVITOLOG_KEY_SUFFIX === '_sasha';
   }
 
+  function backupUserAllowed() {
+    if (!isSashaProfile()) return false;
+    if (!window.AVITOLOG_BACKEND_MODE) return true;
+    if (window.AVITOLOG_BACKEND_INITIAL_SYNC_READY !== true) return false;
+    try {
+      var identity = window.__avitologBackendIdentity();
+      return !!identity && identity.email === 'cyplakovaleksandr153@gmail.com';
+    } catch (error) { return false; }
+  }
+
+  function backupContext() {
+    if (!backupUserAllowed()) return null;
+    if (!window.AVITOLOG_BACKEND_MODE) return { scope: '', id: '' };
+    try {
+      var identity = window.__avitologBackendIdentity();
+      var verified = window.__avitologVerifiedDriveIdentity();
+      if (!verified || verified.id !== identity.id || verified.email !== identity.email) return null;
+      return { scope: 'v2_' + verified.id + '_' + encodeURIComponent(verified.email), id: verified.id };
+    } catch (error) { return null; }
+  }
+
+  function assertBackupContext(context) {
+    var current = backupContext();
+    if (!current || current.scope !== context.scope) throw new Error('Пользователь бэкапа изменился. Повторите после подключения своего Drive.');
+  }
+
+  function metadataKey(key, context) {
+    return context.scope ? key + '__' + context.scope : key;
+  }
+
   /* ─── Сбор ключей ──────────────────────────────────── */
 
   function collectKeys() {
@@ -38,23 +68,26 @@
       for (var i = 0; i < localStorage.length; i++) {
         var k = localStorage.key(i);
         if (!k) continue;
-        // Берём только Сашины ключи: *_sasha или *_sasha_*
-        var isSashaKey = (/_sasha$/.test(k) || k.indexOf('_sasha_') >= 0);
-        if (!isSashaKey) continue;
-        // Исключаем служебные
-        if (k.indexOf('avitolog_drive_auth') === 0) continue;
-        if (k.indexOf('avitolog_sasha_backup_') === 0) continue;
-        if (k.indexOf('avitolog_sasha_team_sync_') === 0) continue;
+        if (!isBackupDataKey(k)) continue;
         result[k] = localStorage.getItem(k);
       }
     } catch (e) {}
     return result;
   }
 
+  function isBackupDataKey(key) {
+    return /^(avitolog_clients|avitolog_projects|crm_tasks_v1)_sasha$/.test(key) ||
+      /^avitolog_goals_v1_sasha(?:_month_\d{4}-\d{2})?$/.test(key) ||
+      /^avitolog_goal_achievements_v1_sasha$/.test(key) ||
+      /^avitolog_assets_(?:my|sasha|base)_v2_sasha(?:_month_\d{4}-\d{2})?$/.test(key);
+  }
+
   function quickHash(keys) {
-    var s = JSON.stringify(keys);
+    var ordered = {};
+    Object.keys(keys).sort().forEach(function (key) { ordered[key] = keys[key]; });
+    var s = JSON.stringify(ordered);
     var h = 0;
-    for (var i = 0; i < Math.min(s.length, 2000); i++) {
+    for (var i = 0; i < s.length; i++) {
       h = ((h << 5) - h) + s.charCodeAt(i);
       h |= 0;
     }
@@ -63,9 +96,11 @@
 
   /* ─── Drive helpers ───────────────────────────────── */
 
-  function driveTokenSafe() {
-    if (typeof getDriveToken === 'function') return getDriveToken();
-    return Promise.reject(new Error('getDriveToken не доступен'));
+  async function driveTokenSafe(context) {
+    if (typeof getDriveToken !== 'function') throw new Error('getDriveToken не доступен');
+    var token = await getDriveToken();
+    if (context) assertBackupContext(context);
+    return token;
   }
 
   function crmRoot() {
@@ -73,21 +108,24 @@
     return null;
   }
 
-  async function ensureFolder() {
+  async function ensureFolder(context) {
+    assertBackupContext(context);
     try {
-      var cached = localStorage.getItem(LS_FOLDER_ID);
+      var cached = localStorage.getItem(metadataKey(LS_FOLDER_ID, context));
       if (cached) return cached;
     } catch (e) {}
     if (typeof driveGetOrCreateFolder !== 'function') throw new Error('Drive API не загружен');
-    var root = crmRoot();
-    var id = await driveGetOrCreateFolder(BACKUP_FOLDER_NAME, root);
+    var root = context.scope ? 'root' : crmRoot();
+    var folderName = context.scope ? BACKUP_FOLDER_NAME + '_' + context.id : BACKUP_FOLDER_NAME;
+    var id = await driveGetOrCreateFolder(folderName, root);
+    assertBackupContext(context);
     if (!id) throw new Error('Не удалось создать папку ' + BACKUP_FOLDER_NAME);
-    try { localStorage.setItem(LS_FOLDER_ID, id); } catch (e2) {}
+    try { localStorage.setItem(metadataKey(LS_FOLDER_ID, context), id); } catch (e2) {}
     return id;
   }
 
-  async function findFileInFolder(folderId, name) {
-    var token = await driveTokenSafe();
+  async function findFileInFolder(folderId, name, context) {
+    var token = await driveTokenSafe(context);
     var q = "name='" + name.replace(/'/g, "\\'") + "' and '" + folderId + "' in parents and trashed=false";
     var r = await fetch(
       'https://www.googleapis.com/drive/v3/files?q=' + encodeURIComponent(q) + '&fields=files(id)',
@@ -98,8 +136,8 @@
     return d.files[0].id;
   }
 
-  async function uploadFile(folderId, fileName, bodyText, existingId) {
-    var token = await driveTokenSafe();
+  async function uploadFile(folderId, fileName, bodyText, existingId, context) {
+    var token = await driveTokenSafe(context);
     if (existingId) {
       var resp = await fetch(
         'https://www.googleapis.com/upload/drive/v3/files/' + encodeURIComponent(existingId) + '?uploadType=media',
@@ -147,23 +185,26 @@
 
   async function runBackup(force) {
     if (_running) return;
-    if (!isSashaProfile()) return;
+    if (!backupUserAllowed()) return;
 
     var token;
     try { token = await driveTokenSafe(); } catch (e) { return; }
     if (!token) return;
+    var context = backupContext();
+    if (!context) return;
+    if (_running) return;
 
     var keys = collectKeys();
     var keyCount = Object.keys(keys).length;
     if (keyCount === 0) return;
 
-    var hash = quickHash(keys);
+    var hash = context.scope + '|' + quickHash(keys);
     if (!force && hash === _lastBackupHash) return;
 
     _running = true;
     var folderId;
     try {
-      folderId = await ensureFolder();
+      folderId = await ensureFolder(context);
     } catch (e) {
       showToast('⚠️ Саша-бэкап: не удалось получить папку Drive. ' + (e.message || ''), true);
       _running = false;
@@ -187,21 +228,23 @@
 
       // 1. Latest-файл
       var latestId = null;
-      try { latestId = localStorage.getItem(LS_LATEST_FILE_ID); } catch (e) {}
-      if (!latestId) latestId = await findFileInFolder(folderId, LATEST_FILENAME);
-      var newId = await uploadFile(folderId, LATEST_FILENAME, payload, latestId);
+      try { latestId = localStorage.getItem(metadataKey(LS_LATEST_FILE_ID, context)); } catch (e) {}
+      if (!latestId) latestId = await findFileInFolder(folderId, LATEST_FILENAME, context);
+      var newId = await uploadFile(folderId, LATEST_FILENAME, payload, latestId, context);
       if (!newId) {
-        newId = await uploadFile(folderId, LATEST_FILENAME, payload, null);
+        newId = await uploadFile(folderId, LATEST_FILENAME, payload, null, context);
       }
-      try { localStorage.setItem(LS_LATEST_FILE_ID, newId); } catch (e) {}
+      assertBackupContext(context);
+      try { localStorage.setItem(metadataKey(LS_LATEST_FILE_ID, context), newId); } catch (e) {}
 
       // 2. Ежедневный снапшот
-      var dailyFlagKey = 'avitolog_sasha_backup_daily_' + dateStr;
+      var dailyFlagKey = metadataKey('avitolog_sasha_backup_daily_' + dateStr, context);
       var dailyDone = false;
       try { dailyDone = localStorage.getItem(dailyFlagKey) === '1'; } catch (e) {}
       if (!dailyDone) {
         var dailyName = 'sasha-crm-backup-' + dateStr + '-' + timeStr + '.json';
-        await uploadFile(folderId, dailyName, payload, null);
+        await uploadFile(folderId, dailyName, payload, null, context);
+        assertBackupContext(context);
         try { localStorage.setItem(dailyFlagKey, '1'); } catch (e) {}
       }
 
@@ -218,7 +261,7 @@
   /* ─── Планировщик ─────────────────────────────────── */
 
   function scheduleBackup() {
-    if (!isSashaProfile()) return;
+    if (!backupUserAllowed()) return;
     if (_debounceTimer) clearTimeout(_debounceTimer);
     _debounceTimer = setTimeout(function () {
       _debounceTimer = null;
@@ -269,7 +312,7 @@
     var prev = localStorage.setItem.bind(localStorage);
     localStorage.setItem = function (k, v) {
       prev.call(localStorage, k, v);
-      if (k && (/_sasha/.test(k)) && k.indexOf('avitolog_sasha_backup_') !== 0) {
+      if (k && isBackupDataKey(String(k))) {
         scheduleBackup();
       }
     };

@@ -476,6 +476,7 @@
   function assetsMonthStorageKey(ym) { return ASSETS_MY_KEY + '_month_' + ym; }
   function assetsSashaMonthStorageKey(ym) { return ASSETS_SASHA_KEY + '_month_' + ym; }
   function assetsSnapshotCurrentMonth() {
+    if (window.AVITOLOG_BACKEND_MODE) return;
     try {
       var ym = assetsCurrentMonthKey();
       setAssetsStorageValue(assetsMonthStorageKey(ym), JSON.stringify(getAssetsMy()));
@@ -895,7 +896,7 @@
   }
   function setAssetsStorageValue(key, value) {
     var previousValue = null;
-    try { previousValue = localStorage.getItem(key); } catch(eRead) {}
+    try { previousValue = readAssetsStorageValue(key); } catch(eRead) {}
     var stringValue = String(value == null ? '' : value);
     _assetsStorageMemoryByKey[key] = stringValue;
     writeAssetsShadow(key, stringValue);
@@ -1151,6 +1152,7 @@
 
   /** Пустой профиль «Саша» в кассе: подтягиваем записи из колонки «Клиенты Саши», иначе переключатель показывает пусто, хотя данные есть в avitolog_assets_sasha_v2. */
   function tryPromoteFilSashaColumnIntoSashaMy() {
+    if (window.AVITOLOG_BACKEND_MODE) return;
     try {
       if (!isSashaKassaProfile()) return;
       var rawMy = localStorage.getItem(ASSETS_MY_KEY);
@@ -1184,6 +1186,7 @@
   }
 
   function getAssetsMy() {
+    if (window.AVITOLOG_BACKEND_MODE) return readAssetsArrayByKey(ASSETS_MY_KEY) || [];
     try {
       var isSasha = isSashaKassaProfile();
       if (isSasha) tryPromoteFilSashaColumnIntoSashaMy();
@@ -1232,6 +1235,7 @@
 
   function getAssetsSasha() {
     if (isSashaKassaProfile()) return [];
+    if (window.AVITOLOG_BACKEND_MODE) return readAssetsArrayByKey(ASSETS_SASHA_KEY) || [];
     try {
       var arrExisting = bootstrapAssetsArray(ASSETS_SASHA_KEY, []);
       if (arrExisting !== null) return arrExisting;
@@ -1621,6 +1625,7 @@
     return (typeof window.AVITOLOG_KEY === 'function') ? window.AVITOLOG_KEY('avitolog_goal_kassa_pending_v1') : 'avitolog_goal_kassa_pending_v1';
   }
   function drainPendingGoalKassaSync() {
+    if (window.AVITOLOG_BACKEND_MODE) return 0;
     try {
       var key = goalKassaPendingKey();
       var arr = JSON.parse(localStorage.getItem(key) || '[]');
@@ -2771,6 +2776,7 @@
   }
 
   function backfillAssetsPaymentDatesFromGoals() {
+    if (window.AVITOLOG_BACKEND_MODE) return 0;
     try {
       var goalsKey = (typeof window.AVITOLOG_KEY === 'function') ? window.AVITOLOG_KEY('avitolog_goals_v1') : 'avitolog_goals_v1';
       var goalsData = JSON.parse(localStorage.getItem(goalsKey) || '{"projects":[]}');

@@ -186,12 +186,13 @@ function updateUserSwitchBtn() {
   var btn = document.getElementById('userSwitchBtn');
   if (!btn) return;
   var isSasha = !!(window.AVITOLOG_PROFILE_SASHA);
+  btn.disabled = !!window.AVITOLOG_PROFILE_LOCKED;
   if (isSasha) {
     btn.textContent = '👤 Саша';
     btn.style.background = 'rgba(255,165,0,0.15)';
     btn.style.borderColor = 'rgba(255,165,0,0.5)';
     btn.style.color = '#ffa500';
-    btn.title = 'Профиль: Саша. Нажмите чтобы переключиться.';
+    btn.title = window.AVITOLOG_PROFILE_LOCKED ? 'Профиль вашего входа: Саша' : 'Профиль: Саша. Нажмите чтобы переключиться.';
   } else {
     btn.textContent = '👤 Фил';
     btn.style.background = '';
@@ -204,6 +205,7 @@ function updateUserSwitchBtn() {
 window.updateUserSwitchBtn = updateUserSwitchBtn;
 
 function switchUserProfile() {
+  if (window.AVITOLOG_PROFILE_LOCKED) return;
   var isSasha = !!(window.AVITOLOG_PROFILE_SASHA);
   if (isSasha) {
     if (!confirm('Переключиться на профиль Фила?\n\nДанные Саши сохранятся — можно вернуться обратно.')) return;
@@ -2260,6 +2262,9 @@ var _driveHasConnected = false;
 var _driveExplicitLogout = false;
 var _driveRejectedTokens = [];
 var _driveCacheSeededToken = null;
+var _driveVerifiedIdentity = null;
+var _driveVerificationPending = null;
+var _driveIdentityError = '';
 try { _driveHasConnected = localStorage.getItem('avitolog_drive_app_open_v1') === '1'; } catch (error) {}
 var _driveUserEmail = null;
 var DRIVE_AUTH_KEY = (typeof window.AVITOLOG_KEY === 'function') ? window.AVITOLOG_KEY('avitolog_drive_auth_v1') : 'avitolog_drive_auth_v1';
@@ -2552,6 +2557,13 @@ function updateDriveUI() {
 function refreshDriveAuthButton() {
   var btn = document.getElementById('authBtn');
   if (!btn) return;
+  if (window.AVITOLOG_BACKEND_MODE && _driveToken && _driveIdentityError) {
+    btn.textContent = '🔑 Drive';
+    btn.style.borderColor = '#ffb020';
+    btn.style.color = '#ffb020';
+    btn.title = _driveIdentityError;
+    return;
+  }
   if (_driveToken) {
     btn.textContent = '✓ Drive';
     btn.style.borderColor = '#00d97e';
@@ -2704,12 +2716,67 @@ function showRedirectDiagnostic() {
   alert(msg);
 }
 
+function backendDriveIdentity() {
+  try {
+    var identity = typeof window.__avitologBackendIdentity === 'function' ? window.__avitologBackendIdentity() : null;
+    var id = String(identity && identity.id || '').toLowerCase();
+    var email = String(identity && identity.email || '').trim().toLowerCase();
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(id) || !/^[^\s@]+@[^\s@]+$/.test(email)) return null;
+    return { id: id, email: email, key: id + '|' + email };
+  } catch (error) { return null; }
+}
+function driveIdentityFailure(token, identity) {
+  var message = 'Не удалось подтвердить Drive для текущего пользователя CRM. Нажмите Drive и подключите свой Google-аккаунт.';
+  if (!token || !identity || driveVerificationCurrent(token, identity)) {
+    _driveIdentityError = message;
+    refreshDriveAuthButton();
+  }
+  return new Error(message);
+}
+function driveVerificationCurrent(token, identity) {
+  var current = backendDriveIdentity();
+  return !!current && current.key === identity.key && _driveToken === token && !_driveExplicitLogout && _driveTokenExp > Date.now();
+}
+async function verifyDriveTokenIdentity(token) {
+  if (!window.AVITOLOG_BACKEND_MODE) return token;
+  var identity = backendDriveIdentity();
+  if (!identity) throw driveIdentityFailure();
+  if (_driveVerifiedIdentity && _driveVerifiedIdentity.token === token && _driveVerifiedIdentity.key === identity.key && driveVerificationCurrent(token, identity)) return token;
+  if (_driveVerificationPending && _driveVerificationPending.token === token && _driveVerificationPending.key === identity.key) return _driveVerificationPending.promise;
+  var pending = { token: token, key: identity.key, promise: null };
+  pending.promise = (async function () {
+    var controller = typeof AbortController === 'function' ? new AbortController() : null;
+    var timeout = controller ? setTimeout(function () { controller.abort(); }, 8000) : null;
+    try {
+      var response = await fetch('https://www.googleapis.com/drive/v3/about?fields=user(emailAddress)', { headers: { Authorization: 'Bearer ' + token }, signal: controller ? controller.signal : undefined });
+      var data = response.ok ? await response.json() : null;
+      var email = String(data && data.user && data.user.emailAddress || '').trim().toLowerCase();
+      if (!email || email !== identity.email || !driveVerificationCurrent(token, identity)) throw driveIdentityFailure(token, identity);
+      _driveVerifiedIdentity = { token: token, key: identity.key, id: identity.id, email: email };
+      _driveIdentityError = '';
+      refreshDriveAuthButton();
+      return token;
+    } catch (error) {
+      throw driveIdentityFailure(token, identity);
+    } finally {
+      if (timeout) clearTimeout(timeout);
+      if (_driveVerificationPending === pending) _driveVerificationPending = null;
+    }
+  }());
+  _driveVerificationPending = pending;
+  return pending.promise;
+}
+window.__avitologVerifiedDriveIdentity = function () {
+  var identity = backendDriveIdentity();
+  if (!window.AVITOLOG_BACKEND_MODE || !identity || !_driveVerifiedIdentity || _driveVerifiedIdentity.key !== identity.key || !driveVerificationCurrent(_driveVerifiedIdentity.token, identity)) return null;
+  return { id: identity.id, email: _driveVerifiedIdentity.email };
+};
 function getDriveToken() {
   if (_driveToken && (!_driveTokenExp || Date.now() >= _driveTokenExp)) invalidateDriveToken(_driveToken);
   if (!_driveToken) restoreDriveTokenFromStorage();
-  if (_driveToken) return Promise.resolve(_driveToken);
+  if (_driveToken) return verifyDriveTokenIdentity(_driveToken);
   return restoreDriveAuthCache().then(function () {
-    if (_driveToken) return _driveToken;
+    if (_driveToken) return verifyDriveTokenIdentity(_driveToken);
     updateDriveUI();
     throw new Error('Нажмите 🔑 Drive');
   });
@@ -2834,10 +2901,11 @@ async function driveCreateClientFolder(name, parentId) {
 }
 
 async function driveGetFolderParent(folderId) {
-  if (!folderId || !_driveToken) return null;
+  if (!folderId) return null;
   try {
+    var token = await getDriveToken();
     var resp = await fetch('https://www.googleapis.com/drive/v3/files/' + encodeURIComponent(folderId) + '?fields=parents', {
-      headers: {'Authorization': 'Bearer ' + _driveToken}
+      headers: {'Authorization': 'Bearer ' + token}
     });
     if (!resp.ok) return null;
     var data = await resp.json().catch(function(){ return {}; });
@@ -5003,8 +5071,7 @@ async function browseFolder(folderId, folderName) {
   bindBrowseCreateButtons(menu);
 
   try {
-    var token = _driveToken;
-    if (!token) throw new Error('Drive не подключён. Нажмите 🔑 Drive для входа.');
+    var token = await getDriveToken();
     var q = encodeURIComponent("'" + folderId + "' in parents and trashed=false");
     var folders = [];
     var nextPageToken = '';
@@ -5438,8 +5505,7 @@ async function saveClient() {
 }
 
 async function writeToSheets(d) {
-  var token = _driveToken;
-  if (!token) return;
+  var token = await getDriveToken();
   var row = [
     d.client_id || String(Date.now()),
     d.company || '',
