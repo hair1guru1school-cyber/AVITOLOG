@@ -40,6 +40,7 @@
   }
   function adsExpensesMonthKey(ym) { return ADS_EXPENSES_MONTH_PREFIX + ym; }
   function adsSnapshotCurrentMonth() {
+    if (window.AVITOLOG_BACKEND_MODE) return;
     try {
       var state = loadExpenses();
       localStorage.setItem(adsExpensesMonthKey(adsCurrentMonthKey()), JSON.stringify(state));
@@ -690,7 +691,7 @@
 
   function renderExpensesTable(container, state, onChange, readOnly) {
     recomputeBothRow(state);
-    if (!readOnly) saveExpenses(state);
+    if (!readOnly && !window.AVITOLOG_BACKEND_MODE) saveExpenses(state);
     var days = 31;
     var todayDay = readOnly ? 0 : getTodayDayForState(state);
     var html = '<div class="ads-expenses-wrap"><table class="ads-expenses-table"><thead><tr><th class="ads-th-label">Ряд</th>';
@@ -811,6 +812,7 @@
           '<div class="ads-posts-head-actions">' +
             '<span class="ads-posts-month-chip">' + escapeHtml(monthTitle) + "</span>" +
             '<button type="button" class="ads-posts-source-btn" id="adsPostSourceBtn">Источник</button>' +
+            '<button type="button" class="ads-posts-source-btn" id="adsPostsRefreshBtn">Обновить из Sheets</button>' +
           "</div>" +
         "</div>" +
         '<div class="ads-posts-sync-status" id="adsPostsSyncStatus">Синк с Google Sheets: готово</div>' +
@@ -847,6 +849,10 @@
         openPostsSourceSheet();
       });
     }
+    var refreshBtn = container.querySelector("#adsPostsRefreshBtn");
+    if (refreshBtn) refreshBtn.addEventListener("click", function() {
+      if (typeof viewOpts.onSync === "function") viewOpts.onSync();
+    });
     bindPostsScrollSync(container);
     autoScrollPostsTableToToday(container);
   }
@@ -1461,7 +1467,7 @@
         if (url) window.open(url, "_blank", "noopener");
       });
     });
-    saveLinks(links);
+    if (!window.AVITOLOG_BACKEND_MODE) saveLinks(links);
   }
 
   function setupAdsSubtabs(root) {
@@ -1554,9 +1560,16 @@
   }
 
   function renderAdsPage(mainContentEl) {
-    adsRestoreFromBackup();
-    adsMaybeRecoverMisarchivedData();
-    adsCheckMonthTransition();
+    if (window.AVITOLOG_BACKEND_MODE && window.AVITOLOG_BACKEND_INITIAL_SYNC_READY !== true) {
+      var syncError = String(window.AVITOLOG_BACKEND_INITIAL_SYNC_ERROR || "");
+      mainContentEl.innerHTML = '<div class="empty-st"><p>' + escapeHtml(syncError || "Загружаю актуальные данные ADS из Supabase...") + '</p></div>';
+      return;
+    }
+    if (!window.AVITOLOG_BACKEND_MODE) {
+      adsRestoreFromBackup();
+      adsMaybeRecoverMisarchivedData();
+      adsCheckMonthTransition();
+    }
     var isAdsArchive = !!_adsViewMonth;
     var adsViewYM = _adsViewMonth || adsCurrentMonthKey();
     var state;
@@ -1644,12 +1657,13 @@
       for (var i = 0; i < blocks; i++) arr.push(postsMonthOffset + i);
       return arr;
     }
-    function syncPostsFromSheetsIfNeeded() {
+    function syncPostsFromSheetsIfNeeded(manual) {
+      if (window.AVITOLOG_BACKEND_MODE && manual !== true) return;
       var offsets = getVisibleMonthOffsets();
       var hasWork = false;
       for (var i = 0; i < offsets.length; i++) {
         var id = getPostsMonthMeta(offsets[i]).monthId;
-        if (!postsSheetPulledByMonth[id]) { hasWork = true; break; }
+        if (manual === true || !postsSheetPulledByMonth[id]) { hasWork = true; break; }
       }
       if (!hasWork || postsSheetPullInFlight) return;
       postsSheetPullInFlight = true;
@@ -1660,7 +1674,7 @@
         chain = chain.then(function() {
           var st = loadPostsPlan(off);
           var id = String(st.monthId || getPostsMonthMeta(off).monthId);
-          if (postsSheetPulledByMonth[id]) return;
+            if (postsSheetPulledByMonth[id] && manual !== true) return;
           return pullPostsPlanFromGoogleSheets(st).then(function(changed) {
             postsSheetPulledByMonth[id] = true;
             if (changed) changedAny = true;
@@ -1685,13 +1699,14 @@
       postsState = loadPostsPlan(postsMonthOffset);
       renderPostsPlanTable(postsPlanContainer, postsState, sourcesState, {
         onRefresh: rerenderPostsPlan,
+        onSync: function() { syncPostsFromSheetsIfNeeded(true); },
         days: postsVisibleDays
       });
       syncPostsFromSheetsIfNeeded();
     }
     renderExpensesTable(expensesContainer, state, refreshTotals, isAdsArchive);
     rerenderPostsPlan();
-    setTimeout(function() {
+    if (!window.AVITOLOG_BACKEND_MODE) setTimeout(function() {
       var queued = loadPostsSyncQueue().length;
       if (queued > 0) {
         setPostsSyncStatus("Найдена очередь синка: " + queued + ". Пробую отправить...", false);

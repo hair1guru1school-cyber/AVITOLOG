@@ -46,6 +46,24 @@
     if (Object.prototype.hasOwnProperty.call(_goalsStorageMemoryByKey, key)) return _goalsStorageMemoryByKey[key];
     return readGoalsLocalStorageValue(key);
   }
+  window.__avitologAdsGoalsRead = function(months) {
+    function read(key) {
+      try {
+        var raw = readGoalsStorageValue(key);
+        if (!raw) return null;
+        var value = JSON.parse(raw);
+        return value && typeof value === 'object' && !Array.isArray(value) && Array.isArray(value.projects) ? value : null;
+      } catch(e) { return null; }
+    }
+    var base = goalsStorageKey();
+    var result = { live: read(base), months: {} };
+    (Array.isArray(months) ? months : []).forEach(function(ym) {
+      if (!/^\d{4}-(?:0[1-9]|1[0-2])$/.test(String(ym))) return;
+      var value = read(base + '_month_' + ym);
+      if (value) result.months[ym] = value;
+    });
+    return result;
+  };
   function notifyGoalsStorageWrite(key, value, previousValue) {
     if (String(value == null ? '' : value) === String(previousValue == null ? '' : previousValue)) return;
     try {

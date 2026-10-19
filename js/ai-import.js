@@ -869,6 +869,24 @@
     if (Object.prototype.hasOwnProperty.call(_assetsStorageMemoryByKey, key)) return _assetsStorageMemoryByKey[key];
     try { return localStorage.getItem(key); } catch(e) { return null; }
   }
+  window.__avitologAdsCashRead = function(months) {
+    function read(key) {
+      try {
+        var raw = readAssetsStorageValue(key);
+        if (!raw) return null;
+        var value = JSON.parse(raw);
+        return Array.isArray(value) ? value : null;
+      } catch(e) { return null; }
+    }
+    var base = typeof window.AVITOLOG_KEY === 'function' ? window.AVITOLOG_KEY('avitolog_assets_my_v2') : 'avitolog_assets_my_v2';
+    var result = { live: read(base), months: {} };
+    (Array.isArray(months) ? months : []).forEach(function(ym) {
+      if (!/^\d{4}-(?:0[1-9]|1[0-2])$/.test(String(ym))) return;
+      var value = read(base + '_month_' + ym);
+      if (value) result.months[ym] = value;
+    });
+    return result;
+  };
   function notifyAssetsStorageWrite(key, value, previousValue) {
     if (String(value == null ? '' : value) === String(previousValue == null ? '' : previousValue)) return;
     try {
