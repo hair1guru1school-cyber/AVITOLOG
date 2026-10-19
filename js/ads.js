@@ -1595,6 +1595,7 @@
     var undoBanner = "";
     try {
       if (
+        !window.AVITOLOG_BACKEND_MODE &&
         !isAdsArchive &&
         localStorage.getItem(ADS_UNDO_DONE_FLAG) === "1" &&
         adsExpensesTotal(loadExpenses().data) === 0
