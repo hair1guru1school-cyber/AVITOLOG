@@ -10,6 +10,8 @@
   var ACCOUNT_ID = /^[1-9][0-9]{0,19}$/;
   var PREF_PREFIX = 'avitolog_ads_dashboard_v1:';
   var DEFAULT_ACCOUNTS = [['филпродвижение', 'филproдвижение'], ['filaiмаркетинг']];
+  var COMPACT_NUMBERS = ['earned', 'bought', 'cpl', 'cpv', 'crm', 'kp', 'phones', 'messages'];
+  var COMPACT_CHARTS = ['contacts', 'views', 'spending'];
   var METRICS = [
     { key: 'earned', name: 'Заработано', icon: '₽', money: true, color: '#00d49a' },
     { key: 'contacts', name: 'Контакты', icon: '☏', color: '#b18aff' },
@@ -53,7 +55,7 @@
   function defaults() {
     var visible = {};
     METRICS.forEach(function (metric) { visible[metric.key] = true; });
-    return { period: 'month', metrics: visible, calendar: profile() === 'fil', expenses: false, links: false, selectedAccountIds: null, sourceMap: Object.create(null) };
+    return { period: 'month', viewMode: 'charts', metrics: visible, calendar: profile() === 'fil', expenses: false, links: false, selectedAccountIds: null, sourceMap: Object.create(null) };
   }
   function readPreferences() {
     var result = defaults();
@@ -65,6 +67,7 @@
       var saved = JSON.parse(raw);
       if (!saved || typeof saved !== 'object' || Array.isArray(saved)) return result;
       result.period = saved.period === 'today' ? 'today' : 'month';
+      result.viewMode = saved.viewMode === 'compact' ? 'compact' : 'charts';
       METRICS.forEach(function (metric) { result.metrics[metric.key] = !(saved.metrics && saved.metrics[metric.key] === false); });
       ['calendar', 'expenses', 'links'].forEach(function (key) { if (typeof saved[key] === 'boolean') result[key] = saved[key]; });
       if (Array.isArray(saved.selectedAccountIds)) result.selectedAccountIds = accountIds(saved.selectedAccountIds);
@@ -241,6 +244,17 @@
   }
   function renderSettings(state) {
     empty(state.settingsContent);
+    state.settingsContent.appendChild(element('h3', '', 'Режим отображения'));
+    var modeLabel = element('label', 'ads-dashboard-view-mode');
+    modeLabel.appendChild(element('span', '', 'Вид ADS'));
+    var modeSelect = element('select'); modeSelect.setAttribute('aria-label', 'Режим отображения');
+    [['charts', 'Все графики (текущий)'], ['compact', 'Компактный обзор (цифры + графики)']].forEach(function (mode) {
+      var option = element('option', '', mode[1]); option.value = mode[0]; modeSelect.appendChild(option);
+    });
+    modeSelect.value = state.preferences.viewMode;
+    modeSelect.addEventListener('change', function () { state.preferences.viewMode = modeSelect.value === 'compact' ? 'compact' : 'charts'; savePreferences(state); render(state); });
+    modeLabel.appendChild(modeSelect); state.settingsContent.appendChild(modeLabel);
+    state.settingsContent.appendChild(element('p', 'ads-dashboard-muted', 'Компактный обзор: итоги цифрами, динамика контактов, просмотров и расходов — графиками. Переключение не меняет данные.'));
     state.settingsContent.appendChild(element('h3', '', 'Показатели'));
     var grid = element('div', 'ads-dashboard-settings-grid');
     METRICS.forEach(function (metric) { grid.appendChild(toggle(state, metric.icon + ' ' + metric.name, state.preferences.metrics[metric.key], function (checked) { state.preferences.metrics[metric.key] = checked; render(state); })); });
@@ -305,11 +319,12 @@
     state.authButton.hidden = !state.apiWarning;
     state.note.textContent = [state.localWarning || '', state.profile === 'sasha' ? 'Старый контент-календарь Фила в режиме Саши не открывается.' : '', '«Заработано» — поступления кассы. «Показали телефон» — действие в Авито, не подтверждённый звонок. Общие контакты не складываются повторно с телефоном и чатом. Расходы — рекламные расходы API, не только списания аванса.'].filter(Boolean).join(' ');
   }
-  function metricCard(state, metric, data, days) {
-    var card = element('article', 'ads-dashboard-metric'); card.style.setProperty('--ads-metric-color', metric.color);
+  function metricCard(state, metric, data, days, numberOnly) {
+    var card = element('article', 'ads-dashboard-metric' + (numberOnly ? ' ads-dashboard-number' : '')); card.style.setProperty('--ads-metric-color', metric.color);
     var header = element('div', 'ads-dashboard-metric-heading');
     header.appendChild(element('span', '', metric.icon + ' ' + metric.name));
     header.appendChild(element('strong', '', number(data[metric.key], metric.money))); card.appendChild(header);
+    if (numberOnly) return card;
     var chart = element('div', 'ads-dashboard-chart'); chart.setAttribute('role', 'img'); chart.setAttribute('aria-label', metric.name + ': ' + number(data[metric.key], metric.money));
     var max = days.reduce(function (value, day) { var n = day[metric.key]; return typeof n === 'number' && isFinite(n) ? Math.max(value, n) : value; }, 0);
     days.forEach(function (day) {
@@ -366,7 +381,21 @@
       var days = today ? model.days.filter(function (day) { return day.date === model.range.today; }) : model.days;
       state.rangeLabel.textContent = today ? 'Сегодня · ' + model.range.today + ' (МСК)' : model.range.dateFrom + ' — ' + model.range.today + ' · 30 дней (МСК)';
       empty(state.metrics);
-      METRICS.forEach(function (metric) { if (state.preferences.metrics[metric.key]) state.metrics.appendChild(metricCard(state, metric, data, days)); });
+      var compact = state.preferences.viewMode === 'compact';
+      state.metrics.className = 'ads-dashboard-metrics' + (compact ? ' is-compact' : '');
+      if (compact) {
+        var numbers = element('div', 'ads-dashboard-number-grid'); numbers.setAttribute('aria-label', 'Итоги цифрами');
+        var charts = element('div', 'ads-dashboard-compact-charts'); charts.setAttribute('aria-label', 'Динамика по дням');
+        [[COMPACT_NUMBERS, numbers, true], [COMPACT_CHARTS, charts, false]].forEach(function (group) {
+          group[0].forEach(function (key) {
+            var metric = METRICS.filter(function (item) { return item.key === key; })[0];
+            if (state.preferences.metrics[key]) group[1].appendChild(metricCard(state, metric, data, days, group[2]));
+          });
+          if (group[1].firstChild) state.metrics.appendChild(group[1]);
+        });
+      } else {
+        METRICS.forEach(function (metric) { if (state.preferences.metrics[metric.key]) state.metrics.appendChild(metricCard(state, metric, data, days)); });
+      }
       renderFunnel(state, data); renderSources(state);
       state.warnings.textContent = (model.warnings || []).join(' ');
       mountLegacy(state);
