@@ -880,10 +880,17 @@
     }
     var base = typeof window.AVITOLOG_KEY === 'function' ? window.AVITOLOG_KEY('avitolog_assets_my_v2') : 'avitolog_assets_my_v2';
     var result = { live: read(base), months: {} };
+    var isSasha = window.AVITOLOG_KEY_SUFFIX === '_sasha' || window.AVITOLOG_USER === 'sasha';
+    var agencyBase = !isSasha && (typeof window.AVITOLOG_KEY === 'function' ? window.AVITOLOG_KEY('avitolog_assets_sasha_v2') : 'avitolog_assets_sasha_v2');
+    if (agencyBase) result.sasha = { live: read(agencyBase), months: {} };
     (Array.isArray(months) ? months : []).forEach(function(ym) {
       if (!/^\d{4}-(?:0[1-9]|1[0-2])$/.test(String(ym))) return;
       var value = read(base + '_month_' + ym);
       if (value) result.months[ym] = value;
+      if (agencyBase) {
+        var agency = read(agencyBase + '_month_' + ym);
+        if (agency) result.sasha.months[ym] = agency;
+      }
     });
     return result;
   };

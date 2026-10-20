@@ -1,4 +1,5 @@
 .ads-dashboard-metrics.is-daily{display:block}
+.ads-daily-revenue-detail{display:block;margin-top:8px;color:#9ac9b9;font-size:11px;line-height:1.5}
 .ads-daily-layout{--ads-daily-line:#24394b;--ads-daily-muted:#93abbd;display:flex;flex-direction:column;gap:18px;width:100%;min-width:0;color:#e9f4ff}
 body.ads-mode:has(.ads-daily-layout) .layout{grid-template-columns:0 minmax(0,1fr)}
 body.ads-mode:has(.ads-daily-layout) .sidebar{min-width:0;width:0;padding:0;overflow:hidden;border-right:none;visibility:hidden}

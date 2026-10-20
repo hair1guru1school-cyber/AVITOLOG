@@ -1,7 +1,7 @@
 (function(root) {
   'use strict';
 
-  var METRICS = ['earned', 'contacts', 'phones', 'messages', 'crm', 'kp', 'bought', 'spending', 'cpl', 'cpv', 'views'];
+  var METRICS = ['earned', 'earnedOwn', 'earnedSasha', 'contacts', 'phones', 'messages', 'crm', 'kp', 'bought', 'spending', 'cpl', 'cpv', 'views'];
   var API_METRICS = ['contacts', 'phones', 'messages', 'spending', 'views'];
   var DAY = 86400000;
   function map() { return Object.create(null); }
@@ -60,7 +60,7 @@
   function numericId(value) { var id = String(value == null ? '' : value); return /^[1-9]\d*$/.test(id) ? id : ''; }
   function ratio(numerator, denominator) { return numerator !== null && denominator !== null && denominator > 0 ? numerator / denominator : null; }
   function emptyDay(date) {
-    return { date: date, earned: 0, contacts: null, phones: null, messages: null, crm: 0, kp: 0, bought: 0, spending: null, cpl: null, cpv: null, views: null };
+    return { date: date, earned: 0, earnedOwn: 0, earnedSasha: 0, contacts: null, phones: null, messages: null, crm: 0, kp: 0, bought: 0, spending: null, cpl: null, cpv: null, views: null };
   }
   function compute(input) {
     input = input || {};
@@ -163,7 +163,7 @@
     span.months.forEach(function(ym) {
       var ledger = Array.isArray(cashMonths[ym]) ? cashMonths[ym] : Array.isArray(cash.live) ? cash.live : null;
       if (!ledger) {
-        days.forEach(function(day) { if (day.date.slice(0, 7) === ym) day.earned = null; });
+        days.forEach(function(day) { if (day.date.slice(0, 7) === ym) day.earnedOwn = null; });
         warn('Часть данных кассы ещё не загружена.');
         return;
       }
@@ -185,7 +185,7 @@
           if (date.slice(0, 7) !== ym || !byDay[date]) return;
           if (!groupId || !groups[groupId]) { warn('В кассе есть оплаты без однозначной связи с CRM; они не включены в заработанное.'); return; }
           var group = groups[groupId], bucket = source(group.sourceId);
-          byDay[date].earned += amount;
+          byDay[date].earnedOwn += amount;
           bucket.earned += amount;
           if (date === span.today) { bucket.today.earned += amount; todayClient(bucket, group, 'earned'); }
           if (!bucket.clients.some(function(client) { return client.name === group.name && client.date === (group.created || group.kp || group.paid); })) {
@@ -194,6 +194,45 @@
         });
       });
     });
+    var sashaCash = object(cash.sasha) ? cash.sasha : null;
+    if (sashaCash) span.months.forEach(function(ym) {
+      var snapshots = object(sashaCash.months) ? sashaCash.months : {};
+      var ledger = Array.isArray(snapshots[ym]) ? snapshots[ym] : Array.isArray(sashaCash.live) ? sashaCash.live : null;
+      if (!ledger) {
+        days.forEach(function(day) { if (day.date.slice(0, 7) === ym) day.earnedSasha = null; });
+        warn('Часть данных агентской прибыли Саши ещё не загружена.');
+        return;
+      }
+      ledger.forEach(function(row) {
+        if (!object(row)) return;
+        var amount = money(row.aoaPercent);
+        if (amount === null) {
+          if (String(row.aoaPercent == null ? '' : row.aoaPercent).trim()) warn('В кассе Саши есть некорректные суммы агентству; они не включены в выручку.');
+          return;
+        }
+        if (amount === 0) return;
+        // aoaPercent is the agency's ruble share; payment history contains gross sales, not this share.
+        var date = dateValue(row.paymentDate);
+        if (!String(row.paymentDate == null ? '' : row.paymentDate).trim() && Array.isArray(row.paymentHistory)) {
+          var paymentDates = [];
+          var datedHistory = row.paymentHistory.every(function(payment) {
+            if (!object(payment)) return false;
+            var paid = money(payment.amount);
+            if (paid === null) return false;
+            if (paid === 0) return true;
+            var paidDate = dateValue(payment.date);
+            if (!paidDate) return false;
+            if (paymentDates.indexOf(paidDate) < 0) paymentDates.push(paidDate);
+            return true;
+          });
+          if (datedHistory && paymentDates.length === 1) date = paymentDates[0];
+        }
+        if (!date) { warn('В кассе Саши есть прибыль агентству без достоверной даты; она не включена в выручку.'); return; }
+        if (date.slice(0, 7) !== ym || !byDay[date]) return;
+        byDay[date].earnedSasha += amount;
+      });
+    });
+    days.forEach(function(day) { day.earned = day.earnedOwn === null || day.earnedSasha === null ? null : day.earnedOwn + day.earnedSasha; });
     var selected = [], accountStats = map(), duplicateStats = map();
     (Array.isArray(input.selectedAccountIds) ? input.selectedAccountIds : []).forEach(function(value) { var id = numericId(value); if (id && selected.indexOf(id) < 0) selected.push(id); });
     (Array.isArray(input.statistics) ? input.statistics : []).forEach(function(stat) {

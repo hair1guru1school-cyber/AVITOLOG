@@ -44,7 +44,7 @@
     card.style.setProperty('--ads-daily-color', INFO[key].color);
     card.appendChild(node('span', 'ads-daily-label', INFO[key].name));
     card.appendChild(node('strong', 'ads-daily-value', format(value, key)));
-    if (key === 'earned') card.title = 'Датированные оплаты из кассы с однозначной связью с CRM; не сумма выставленных КП.';
+    if (key === 'earned') card.title = 'Датированные оплаты из кассы и доля агентства от Саши; не сумма выставленных КП и не личная доля Саши.';
     if (key === 'phones') card.title = 'Показали телефон / нажали кнопку звонка. Это не число подтверждённых разговоров.';
     return card;
   }
@@ -224,7 +224,11 @@
       main.appendChild(node('p', 'ads-daily-funnel-note', 'Проценты — отношение событий за выбранный период, не когортная конверсия.'));
     }
     var finance = node('section', 'ads-daily-finance'); finance.setAttribute('aria-label', 'Финансы за выбранный период');
-    enabled(['earned', 'spending', 'cpl', 'bought'], settings).forEach(function (key) { finance.appendChild(metricCard(key, totals[key])); });
+    enabled(['earned', 'spending', 'cpl', 'bought'], settings).forEach(function (key) {
+      var card = metricCard(key, totals[key]);
+      if (key === 'earned' && options.showSashaRevenue && typeof totals.earnedSasha === 'number') card.appendChild(node('small', 'ads-daily-revenue-detail', 'В т. ч. от Саши агентству: ' + format(totals.earnedSasha, 'earned')));
+      finance.appendChild(card);
+    });
     if (finance.firstChild) main.appendChild(finance);
     var available = enabled(CHARTS, settings), sides = enabled(['views', 'phones', 'messages', 'cpv'], settings), analytics = node('section', 'ads-daily-analytics');
     if (available.length) {

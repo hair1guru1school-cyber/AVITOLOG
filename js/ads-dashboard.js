@@ -56,6 +56,18 @@
     return id && UUID.test(org) ? SNAPSHOT_PREFIX + id + ':' + profile() + ':' + org : '';
   }
   function safeMetric(value) { return typeof value === 'number' && isFinite(value) && value >= 0 && value <= Number.MAX_SAFE_INTEGER ? value : null; }
+  function cachedRaw(key) {
+    var cache = window.AVITOLOG_ADS_CACHE;
+    return cache ? cache.get(key) : localStorage.getItem(key);
+  }
+  function persistRaw(state, key, raw, warning) {
+    var cache = window.AVITOLOG_ADS_CACHE;
+    if (cache) {
+      cache.write(key, raw).then(function (saved) {
+        if (!saved && current(state)) { state.localWarning = warning; renderStatus(state); }
+      });
+    } else localStorage.setItem(key, raw);
+  }
   function cleanStatistics(values) {
     var helper = window.AVITOLOG_ADS_FUNNEL;
     if (!helper || !Array.isArray(values) || values.length > 200) return [];
@@ -76,16 +88,15 @@
     });
   }
   function hasStatistics(statistics) { return statistics.some(function (entry) { return API_METRICS.some(function (key) { return entry.today[key] !== null || entry.history.days.some(function (day) { return day[key] !== null; }); }); }); }
-  function restoreSnapshot(state) {
-    if (state.cacheAttempted || !ready() || !current(state)) return;
-    state.cacheAttempted = true;
-      var key = state.snapshotKey;
+  function restoreSnapshot(state, raw) {
+    if (!ready() || !current(state)) return;
+    var key = state.snapshotKey;
     if (!key) return;
     try {
-      var raw = localStorage.getItem(key);
+      if (raw === undefined) raw = cachedRaw(key);
       if (!raw || raw.length > 500000) return;
       var saved = JSON.parse(raw), span = window.AVITOLOG_ADS_FUNNEL.range(new Date());
-      if (!saved || saved.version !== 1 || saved.date !== span.today || typeof saved.savedAt !== 'number' || !isFinite(saved.savedAt) || saved.savedAt > Date.now() + 60000 || Date.now() - saved.savedAt > 12 * 3600000) return;
+      if (!saved || saved.version !== 1 || saved.date !== span.today || typeof saved.savedAt !== 'number' || !isFinite(saved.savedAt) || saved.savedAt > Date.now() + 60000 || Date.now() - saved.savedAt > 24 * 3600000) return;
       var selected = state.preferences.selectedAccountIds || [];
       state.statistics = cleanStatistics(saved.statistics).filter(function (entry) { return selected.indexOf(entry.avitoUserId) !== -1; });
       if (!hasStatistics(state.statistics)) { state.statistics = []; return; }
@@ -101,14 +112,14 @@
       var stamp = state.showingPrevious && state.previousUpdatedAt || state.updatedAt;
       var data = { version: 1, date: window.AVITOLOG_ADS_FUNNEL.range(new Date()).today, savedAt: stamp ? stamp.getTime() : Date.now(), accounts: safeAccounts(state.accounts).filter(function (account) { return selected.indexOf(account.avitoUserId) !== -1; }), statistics: cleanStatistics(state.statistics).filter(function (entry) { return selected.indexOf(entry.avitoUserId) !== -1; }) };
       var raw = JSON.stringify(data);
-      if (raw.length <= 500000) localStorage.setItem(key, raw);
+      if (raw.length <= 500000) persistRaw(state, key, raw, 'Кэш статистики не сохранён; рабочие данные не изменены.');
     } catch (error) { state.localWarning = 'Кэш статистики не сохранён; рабочие данные не изменены.'; }
   }
   function handleApiError(state, error) {
     if (!current(state)) return;
     if (/^(auth_required|subject_mismatch|organization_forbidden|account_forbidden)$/.test(error && error.message || '')) {
       state.statistics = []; state.accounts = []; state.accountsLoaded = false; state.updatedAt = null; state.showingPrevious = false;
-      try { if (state.snapshotKey) localStorage.removeItem(state.snapshotKey); } catch (ignore) {}
+      try { if (state.snapshotKey) { if (window.AVITOLOG_ADS_CACHE) window.AVITOLOG_ADS_CACHE.remove(state.snapshotKey); else localStorage.removeItem(state.snapshotKey); } } catch (ignore) {}
       renderSettings(state);
     }
     state.apiWarning = bridgeError(error);
@@ -142,12 +153,12 @@
     METRICS.forEach(function (metric) { visible[metric.key] = true; });
     return { period: 'month', viewMode: 'charts', dailyMetric: 'contacts', metrics: visible, calendar: profile() === 'fil', expenses: false, links: false, selectedAccountIds: null, sourceMap: Object.create(null) };
   }
-  function readPreferences() {
+  function readPreferences(raw) {
     var result = defaults();
     var key = preferenceKey();
     if (!key) return result;
     try {
-      var raw = localStorage.getItem(key);
+      if (raw === undefined) raw = cachedRaw(key);
       if (!raw || raw.length > 64000) return result;
       var saved = JSON.parse(raw);
       if (!saved || typeof saved !== 'object' || Array.isArray(saved)) return result;
@@ -168,8 +179,27 @@
   }
   function savePreferences(state) {
     if (!state.key || state.key !== preferenceKey()) return;
-    try { localStorage.setItem(state.key, JSON.stringify(state.preferences)); }
+    state.preferenceRevision = (state.preferenceRevision || 0) + 1;
+    try { persistRaw(state, state.key, JSON.stringify(state.preferences), 'Настройки не удалось сохранить в этом браузере.'); }
     catch (error) { state.localWarning = 'Настройки не удалось сохранить в этом браузере.'; }
+  }
+  function hydrateCache(state) {
+    if (state.cacheAttempted || !ready() || !current(state)) return;
+    state.cacheAttempted = true;
+    restoreSnapshot(state);
+    var cache = window.AVITOLOG_ADS_CACHE;
+    if (!cache) { state.cacheReady = true; return; }
+    var revision = state.preferenceRevision || 0;
+    Promise.all([cache.read(state.key), cache.read(state.snapshotKey)]).then(function (values) {
+      if (!current(state)) return;
+      if (values[0] && revision === (state.preferenceRevision || 0)) state.preferences = readPreferences(values[0]);
+      if (!state.loadVersion) restoreSnapshot(state, values[1]);
+    }).catch(function () {}).then(function () {
+      if (!current(state)) return;
+      state.cacheReady = true;
+      applyLegacyVisibility(state); render(state); renderSettings(state);
+      if (!state.frame) setupBridge(state);
+    });
   }
   function ready() { return !window.AVITOLOG_BACKEND_MODE || window.AVITOLOG_BACKEND_INITIAL_SYNC_READY === true; }
   function number(value, money) {
@@ -190,6 +220,7 @@
   }
   function destroy(state) {
     if (!state || state.destroyed) return;
+    saveSnapshot(state);
     state.destroyed = true;
     state.unlisten.forEach(function (remove) { remove(); });
     if (state.observer) state.observer.disconnect();
@@ -226,7 +257,7 @@
     else window.open(ACCOUNTS_URL, '_blank', 'noopener');
   }
   function setupBridge(state) {
-    if (!current(state)) return;
+    if (!current(state) || !state.cacheReady) return;
     (state.bridgeCleanup || []).forEach(function (remove) { remove(); });
     state.bridgeCleanup = [];
     clearTimeout(state.frameTimer);
@@ -414,13 +445,14 @@
     state.status.className = 'ads-dashboard-status' + (state.apiWarning ? ' is-warning' : '');
     state.refresh.disabled = state.loading || waiting;
     state.authButton.hidden = !state.apiWarning;
-    state.note.textContent = [state.localWarning || '', state.profile === 'sasha' ? 'Старый контент-календарь Фила в режиме Саши не открывается.' : '', '«Заработано» — поступления кассы. «Показали телефон» — действие в Авито, не подтверждённый звонок. Общие контакты не складываются повторно с телефоном и чатом. Расходы — рекламные расходы API, не только списания аванса.'].filter(Boolean).join(' ');
+    state.note.textContent = [state.localWarning || '', state.profile === 'sasha' ? 'Старый контент-календарь Фила в режиме Саши не открывается.' : '', '«Заработано» — датированные поступления кассы' + (state.profile === 'fil' ? ', включая долю «Агентству» от Саши' : '') + '. «Показали телефон» — действие в Авито, не подтверждённый звонок. Общие контакты не складываются повторно с телефоном и чатом. Расходы — рекламные расходы API, не только списания аванса.'].filter(Boolean).join(' ');
   }
   function metricCard(state, metric, data, days, numberOnly) {
     var card = element('article', 'ads-dashboard-metric' + (numberOnly ? ' ads-dashboard-number' : '')); card.style.setProperty('--ads-metric-color', metric.color);
     var header = element('div', 'ads-dashboard-metric-heading');
     header.appendChild(element('span', '', metric.icon + ' ' + metric.name));
     header.appendChild(element('strong', '', number(data[metric.key], metric.money))); card.appendChild(header);
+    if (metric.key === 'earned' && state.profile === 'fil' && typeof data.earnedSasha === 'number') card.appendChild(element('small', 'ads-dashboard-revenue-detail', 'В т. ч. от Саши агентству: ' + number(data.earnedSasha, true)));
     if (numberOnly) return card;
     var chart = element('div', 'ads-dashboard-chart'); chart.setAttribute('role', 'img'); chart.setAttribute('aria-label', metric.name + ': ' + number(data[metric.key], metric.money));
     var max = days.reduce(function (value, day) { var n = day[metric.key]; return typeof n === 'number' && isFinite(n) ? Math.max(value, n) : value; }, 0);
@@ -487,7 +519,7 @@
       if (state.preferences.viewMode === 'daily' && window.AVITOLOG_ADS_DAILY_LAYOUT) {
         state.metrics.className = 'ads-dashboard-metrics is-daily';
         state.funnel.hidden = true; state.sources.hidden = true;
-        state.metrics.appendChild(window.AVITOLOG_ADS_DAILY_LAYOUT.render({ model: model, statistics: state.statistics, accounts: state.accounts, selectedAccountIds: state.preferences.selectedAccountIds || [], sourceMap: state.preferences.sourceMap, period: state.preferences.period, metric: state.preferences.dailyMetric, metrics: state.preferences.metrics, onMetricChange: function (key) { state.preferences.dailyMetric = key; savePreferences(state); render(state); } }));
+        state.metrics.appendChild(window.AVITOLOG_ADS_DAILY_LAYOUT.render({ model: model, statistics: state.statistics, accounts: state.accounts, selectedAccountIds: state.preferences.selectedAccountIds || [], sourceMap: state.preferences.sourceMap, period: state.preferences.period, metric: state.preferences.dailyMetric, metrics: state.preferences.metrics, showSashaRevenue: state.profile === 'fil', onMetricChange: function (key) { state.preferences.dailyMetric = key; savePreferences(state); render(state); } }));
         state.warnings.textContent = (model.warnings || []).join(' '); mountLegacy(state); return;
       }
       state.funnel.hidden = false; state.sources.hidden = false;
@@ -543,10 +575,10 @@
     state.note = element('p', 'ads-dashboard-note'); state.root.appendChild(state.note);
     state.legacy = element('div', 'ads-dashboard-legacy'); state.root.appendChild(state.legacy);
     empty(host); host.appendChild(state.root);
-    restoreSnapshot(state);
+    hydrateCache(state);
     listen(state, document, 'keydown', function (event) { if (event.key === 'Escape' && !state.settings.hidden) { state.settings.hidden = true; state.gear.setAttribute('aria-expanded', 'false'); state.gear.focus(); } });
     listen(state, document, 'click', function (event) { if (!state.settings.hidden && !state.settings.contains(event.target) && !state.gear.contains(event.target)) { state.settings.hidden = true; state.gear.setAttribute('aria-expanded', 'false'); } });
-    listen(state, document, 'avitolog:backend-initial-ready', function () { restoreSnapshot(state); render(state); if (!state.frame) setupBridge(state); });
+    listen(state, document, 'avitolog:backend-initial-ready', function () { hydrateCache(state); render(state); if (!state.frame) setupBridge(state); });
     listen(state, document, 'avitolog:backend-remote-applied', function () { render(state); });
     listen(state, document, 'avitolog:storage-write', function () { render(state); });
     listen(state, document, 'avitolog:backend-initial-error', function () { renderStatus(state); state.status.textContent = window.AVITOLOG_BACKEND_INITIAL_SYNC_ERROR || 'Не удалось загрузить данные Supabase.'; });
