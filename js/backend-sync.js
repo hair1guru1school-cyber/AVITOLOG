@@ -20,6 +20,10 @@
   var pullTimer = null;
   var lastLocalWriteAt = 0;
   var initialSyncReady = !serverOnlyMode;
+  var finishInitialRead;
+  var initialReadDone = new Promise(function (resolve) { finishInitialRead = resolve; });
+  var currentPull = null;
+  var currentPullScope = '';
   var refreshPromise = null;
   var authWriteTail = Promise.resolve();
   var authRevision = 0;
@@ -1004,12 +1008,19 @@
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ p_sasha: !!sashaProfile })
     }, scope);
-    if (!response.ok && response.status === 404) {
+    if (!serverOnlyMode && !response.ok && response.status === 404) {
       response = await authFetch(cfg.url + '/rest/v1/frontend_state_records?select=storage_key,value_text,revision,updated_at&order=storage_key', {}, scope);
     }
     if (!response.ok) throw new Error((await response.text()) || 'frontend_state_records read failed');
     var rows = await response.json();
     if (scope && scope !== pendingWriteScope()) throw new Error('Account changed during server read');
+    if (!Array.isArray(rows)) throw new Error('Server did not confirm the profile snapshot');
+    var seen = Object.create(null);
+    rows.forEach(function (row) {
+      if (!row || typeof row.storage_key !== 'string' || typeof row.value_text !== 'string') throw new Error('Invalid profile snapshot');
+      if (seen[row.storage_key]) throw new Error('Ambiguous profile snapshot: duplicate storage key');
+      seen[row.storage_key] = true;
+    });
     return rows;
   }
   async function ensureSashaTeamMember() {
@@ -1078,11 +1089,10 @@
     // The first server-only pull replaces plain cache. Owner-scoped unsent
     // drafts are restored separately, after this authoritative baseline.
     var authoritativeInitial = !!options.authoritativeInitial;
-    var shadowRows = authoritativeInitial ? null : await readShadowLiveAll();
+    var shadowRows = serverOnlyMode || authoritativeInitial ? null : await readShadowLiveAll();
     (rows || []).forEach(function (row) {
       if (!isAllowed(row.storage_key)) return;
       remoteKeys[row.storage_key] = true;
-      appliedKeys.push(row.storage_key);
       if (authoritativeInitial) {
         // Live edits are scoped intents, not the stale browser cache being replaced.
         if (pendingWrites[row.storage_key] && pendingWriteMatchesScope(pendingWrites[row.storage_key])) return;
@@ -1090,20 +1100,30 @@
         delete timers[row.storage_key];
         delete pendingWrites[row.storage_key];
         rememberRevision(row.storage_key, row.revision);
+        appliedKeys.push(row.storage_key);
         if (!applyStorageValue(row.storage_key, row.value_text || '')) fallbackKeys.push(row.storage_key);
         return;
       }
       var localBeforeApply = '';
       try { localBeforeApply = localStorage.getItem(row.storage_key) || ''; } catch (localReadError) {}
-      localBeforeApply = pickLocalApplyCandidate(row, localBeforeApply, shadowRows);
-      if (shouldKeepLocalOverOlderLowerRemote(row, localBeforeApply, shadowRows) || shouldKeepLocalOverStaleRemote(row, localBeforeApply)) {
+      // Background reads must never promote a fuller browser cache into business data.
+      if (!serverOnlyMode) localBeforeApply = pickLocalApplyCandidate(row, localBeforeApply, shadowRows);
+      if (!serverOnlyMode && (shouldKeepLocalOverOlderLowerRemote(row, localBeforeApply, shadowRows) || shouldKeepLocalOverStaleRemote(row, localBeforeApply))) {
         markDirty(row.storage_key);
         rememberPendingPayload(row.storage_key, localBeforeApply, row.value_text || '');
         mergedWrites.push({ key: row.storage_key, value: localBeforeApply, previousValue: row.value_text || '', staleLocalRecovery: true });
         return;
       }
       var pendingPayload = readPendingPayloadCached(row.storage_key, shadowRows);
-      var hasDirtyCandidate = isRecentlyDirty(row.storage_key) || pendingPayload;
+      var hasDirtyCandidate = serverOnlyMode ? !!pendingPayload && pendingWriteMatchesScope(pendingPayload) : isRecentlyDirty(row.storage_key) || pendingPayload;
+      if (serverOnlyMode && hasDirtyCandidate) {
+        // One write queue owns draft retries, including edits made during a save.
+        if (!pendingWrites[row.storage_key]) {
+          pendingWrites[row.storage_key] = pendingPayload;
+          schedulePendingWrite(row.storage_key, 0);
+        }
+        return;
+      }
       if (serverOnlyMode && hasDirtyCandidate && !pendingPayload && (isFinanceKey(row.storage_key) || coreKeys[row.storage_key])) {
         var dirtyValue = pendingPayload ? pendingPayload.value : localBeforeApply;
         var dirtyScore = profileValueScore(row.storage_key, dirtyValue || '');
@@ -1136,8 +1156,9 @@
         return;
       }
       if (pendingWrites[row.storage_key]) return;
-      if (isOlderOrSameRevision(row.storage_key, row.revision)) return;
+      if (isOlderOrSameRevision(row.storage_key, row.revision) && (Number(row.revision) < Number(appliedRevisions[row.storage_key]) || localBeforeApply === row.value_text)) return;
       rememberRevision(row.storage_key, row.revision);
+      appliedKeys.push(row.storage_key);
       var shouldMerge = false;
       var mergedState = shouldMerge ? mergeRemoteWithLocalValue(row.storage_key, row.value_text || '', localBeforeApply) : { value: row.value_text, changed: false };
       var valueToApply = mergedState.value;
@@ -1166,9 +1187,22 @@
     return { remoteKeys: remoteKeys, appliedKeys: appliedKeys, mergedWrites: mergedWrites };
   }
   window.__avitologBackendPullNow = async function () {
-    var rows = await readRemote();
-    var res = await applyRemoteRows(rows);
-    return { ok: true, applied: res.appliedKeys.length, keys: res.appliedKeys };
+    if (serverOnlyMode && !initialSyncReady) {
+      var initial = await initialReadDone;
+      if (!initial.ok) throw new Error(initial.message);
+      return initial;
+    }
+    var scope = pendingWriteScope();
+    if (currentPull && currentPullScope === scope) return currentPull;
+    var task = (async function () {
+      var rows = await readRemote();
+      if (scope !== pendingWriteScope()) throw new Error('Account changed during server read');
+      var res = await applyRemoteRows(rows);
+      return { ok: true, applied: res.appliedKeys.length, keys: res.appliedKeys };
+    })();
+    currentPull = task;
+    currentPullScope = scope;
+    try { return await task; } finally { if (currentPull === task) { currentPull = null; currentPullScope = ''; } }
   };
   window.__avitologBackendHistory = async function (key, limit) {
     var storageKey = String(key || 'avitolog_clients_sasha');
@@ -1708,7 +1742,7 @@
       ensureStatus();
       statusEl.textContent = 'Supabase: проверка записи...';
     }
-    if (!sessionData()) { showReauthStatus('Supabase'); return; }
+    if (!sessionData()) { finishInitialRead({ ok: false, message: 'Supabase: требуется вход' }); showReauthStatus('Supabase'); return; }
     try {
       phase = 'team'; await ensureSashaTeamMember();
       var forceLocalToServer = false;
@@ -1732,6 +1766,7 @@
       phase = 'apply'; var applied = await applyRemoteRows(rows, { authoritativeInitial: serverOnlyMode }); var remoteKeys = applied.remoteKeys; var appliedKeys = applied.appliedKeys;
       phase = 'restore-pending'; await restoreScopedPendingWrites();
       initialSyncReady = true;
+      finishInitialRead({ ok: true, applied: appliedKeys.length, keys: appliedKeys.slice() });
       window.AVITOLOG_BACKEND_INITIAL_SYNC_READY = true;
       window.AVITOLOG_BACKEND_INITIAL_SYNC_ERROR = '';
       try {
@@ -1783,6 +1818,7 @@
         }
       }
     } catch (error) {
+      finishInitialRead({ ok: false, message: error && error.message ? error.message : 'Ошибка загрузки профиля' });
       window.AVITOLOG_BACKEND_INITIAL_SYNC_ERROR = 'Ошибка загрузки Supabase (' + phase + '): ' + (error && error.message ? error.message : String(error));
       try {
         document.dispatchEvent(new CustomEvent('avitolog:backend-initial-error', {
