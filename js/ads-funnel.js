@@ -195,7 +195,7 @@
       });
     });
     var sashaCash = object(cash.sasha) ? cash.sasha : null;
-    if (sashaCash) span.months.forEach(function(ym) {
+    if (sashaCash) [span.today.slice(0, 7)].forEach(function(ym) {
       var snapshots = object(sashaCash.months) ? sashaCash.months : {};
       var ledger = Array.isArray(snapshots[ym]) ? snapshots[ym] : Array.isArray(sashaCash.live) ? sashaCash.live : null;
       if (!ledger) {

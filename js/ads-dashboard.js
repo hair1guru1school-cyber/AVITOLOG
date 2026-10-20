@@ -452,7 +452,7 @@
     var header = element('div', 'ads-dashboard-metric-heading');
     header.appendChild(element('span', '', metric.icon + ' ' + metric.name));
     header.appendChild(element('strong', '', number(data[metric.key], metric.money))); card.appendChild(header);
-    if (metric.key === 'earned' && state.profile === 'fil' && typeof data.earnedSasha === 'number') card.appendChild(element('small', 'ads-dashboard-revenue-detail', 'В т. ч. от Саши агентству: ' + number(data.earnedSasha, true)));
+    if (metric.key === 'earned' && state.profile === 'fil' && typeof data.earnedSasha === 'number') card.appendChild(element('small', 'ads-dashboard-revenue-detail', 'От Саши агентству ' + (state.preferences.period === 'today' ? 'сегодня' : 'за месяц') + ': ' + number(data.earnedSasha, true)));
     if (numberOnly) return card;
     var chart = element('div', 'ads-dashboard-chart'); chart.setAttribute('role', 'img'); chart.setAttribute('aria-label', metric.name + ': ' + number(data[metric.key], metric.money));
     var max = days.reduce(function (value, day) { var n = day[metric.key]; return typeof n === 'number' && isFinite(n) ? Math.max(value, n) : value; }, 0);

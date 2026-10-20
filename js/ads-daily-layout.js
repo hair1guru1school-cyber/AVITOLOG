@@ -226,7 +226,7 @@
     var finance = node('section', 'ads-daily-finance'); finance.setAttribute('aria-label', 'Финансы за выбранный период');
     enabled(['earned', 'spending', 'cpl', 'bought'], settings).forEach(function (key) {
       var card = metricCard(key, totals[key]);
-      if (key === 'earned' && options.showSashaRevenue && typeof totals.earnedSasha === 'number') card.appendChild(node('small', 'ads-daily-revenue-detail', 'В т. ч. от Саши агентству: ' + format(totals.earnedSasha, 'earned')));
+      if (key === 'earned' && options.showSashaRevenue && typeof totals.earnedSasha === 'number') card.appendChild(node('small', 'ads-daily-revenue-detail', 'От Саши агентству ' + (options.period === 'today' ? 'сегодня' : 'за месяц') + ': ' + format(totals.earnedSasha, 'earned')));
       finance.appendChild(card);
     });
     if (finance.firstChild) main.appendChild(finance);
