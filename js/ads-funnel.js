@@ -90,13 +90,18 @@
     function source(id) {
       id = String(id || '');
       if (!sources[id]) {
-        sources[id] = { sourceId: id, name: registry[id] ? registry[id].name : id ? 'Аккаунт не найден: ' + id : 'Аккаунт не указан', crm: 0, kp: 0, bought: 0, earned: 0, clients: [] };
+        sources[id] = { sourceId: id, name: registry[id] ? registry[id].name : id ? 'Аккаунт не найден: ' + id : 'Аккаунт не указан', crm: 0, kp: 0, bought: 0, earned: 0, clients: [], today: { crm: 0, kp: 0, bought: 0, earned: 0, clients: [] } };
         var mapped = object(input.sourceMap) && Object.prototype.hasOwnProperty.call(input.sourceMap, id) ? numericId(input.sourceMap[id]) : '';
         if (mapped) sources[id].avitoUserId = mapped;
       }
       return sources[id];
     }
     sourceAccounts.forEach(function(account) { source(account.id); });
+    function todayClient(bucket, group, event) {
+      var client = bucket.today.clients.filter(function(item) { return item.id === group.id; })[0];
+      if (!client) { client = { id: group.id, name: group.name, date: span.today, events: [] }; bucket.today.clients.push(client); }
+      if (client.events.indexOf(event) < 0) client.events.push(event);
+    }
     function parentId(row) { return String(row.soldFromId || row.workCopyOfWeekId || row.archiveCopyOfWeekId || ''); }
     function rootId(id) {
       var visited = map(), current = id;
@@ -145,6 +150,7 @@
         if (!byDay[pair[1]]) return;
         byDay[pair[1]][pair[0]]++;
         bucket[pair[0]]++;
+        if (pair[1] === span.today) { bucket.today[pair[0]]++; todayClient(bucket, group, pair[0]); }
         touched = true;
       });
       if (touched) bucket.clients.push({ name: group.name, date: group.created || group.kp || group.paid, stage: group.sold ? 'sold' : String(chosen.stage || 'weekly') });
@@ -181,6 +187,7 @@
           var group = groups[groupId], bucket = source(group.sourceId);
           byDay[date].earned += amount;
           bucket.earned += amount;
+          if (date === span.today) { bucket.today.earned += amount; todayClient(bucket, group, 'earned'); }
           if (!bucket.clients.some(function(client) { return client.name === group.name && client.date === (group.created || group.kp || group.paid); })) {
             bucket.clients.push({ name: group.name, date: group.created || group.kp || group.paid, stage: group.sold ? 'sold' : String((rows[group.id] || group.rows[0]).stage || 'weekly') });
           }

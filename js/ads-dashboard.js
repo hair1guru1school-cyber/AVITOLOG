@@ -9,6 +9,8 @@
   var UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
   var ACCOUNT_ID = /^[1-9][0-9]{0,19}$/;
   var PREF_PREFIX = 'avitolog_ads_dashboard_v1:';
+  var SNAPSHOT_PREFIX = 'avitolog_ads_snapshot_v1:';
+  var API_METRICS = ['views', 'contacts', 'contactsShowPhone', 'contactsMessenger', 'favorites', 'spending'];
   var DEFAULT_ACCOUNTS = [['филпродвижение', 'филproдвижение'], ['filaiмаркетинг']];
   var COMPACT_NUMBERS = ['earned', 'bought', 'cpl', 'cpv', 'crm', 'kp', 'phones', 'messages'];
   var COMPACT_CHARTS = ['contacts', 'views', 'spending'];
@@ -48,6 +50,89 @@
     } catch (error) { return ''; }
   }
   function preferenceKey() { var id = userId(); return id ? PREF_PREFIX + id + ':' + profile() : ''; }
+  function snapshotKey() {
+    var config = window.AVITOLOG_SUPABASE || {}, id = userId();
+    var org = String(config.profileOrganizations && config.profileOrganizations[profile()] || '').toLowerCase();
+    return id && UUID.test(org) ? SNAPSHOT_PREFIX + id + ':' + profile() + ':' + org : '';
+  }
+  function safeMetric(value) { return typeof value === 'number' && isFinite(value) && value >= 0 && value <= Number.MAX_SAFE_INTEGER ? value : null; }
+  function cleanStatistics(values) {
+    var helper = window.AVITOLOG_ADS_FUNNEL;
+    if (!helper || !Array.isArray(values) || values.length > 200) return [];
+    var span = helper.range(new Date()), seen = Object.create(null);
+    function metrics(value) { var result = {}; API_METRICS.forEach(function (key) { result[key] = safeMetric(value && value[key]); }); return result; }
+    return values.filter(function (value) {
+      var id = String(value && value.avitoUserId || '');
+      if (!ACCOUNT_ID.test(id) || seen[id]) return false;
+      seen[id] = true; return true;
+    }).map(function (value) {
+      var today = value.today || {}, history = value.history || {};
+      var validToday = today.available === true && today.date === span.today;
+      var validHistory = history.available === true && history.dateFrom === span.dateFrom && history.dateTo === span.today && Array.isArray(history.days) && history.days.length === span.days.length && history.days.every(function (day, index) { return day && day.date === span.days[index]; });
+      var days = span.days.map(function (date, index) { return Object.assign({ date: date }, metrics(validHistory ? history.days[index] : null)); });
+      var totals = {};
+      API_METRICS.forEach(function (key) { totals[key] = days.every(function (day) { return day[key] !== null; }) ? days.reduce(function (sum, day) { return sum + day[key]; }, 0) : null; });
+      return { avitoUserId: String(value.avitoUserId), name: typeof value.name === 'string' ? value.name.slice(0, 200) : 'Avito', today: Object.assign({ available: validToday, date: span.today }, metrics(validToday ? today : null)), history: { available: validHistory, dateFrom: span.dateFrom, dateTo: span.today, days: days, totals: totals } };
+    });
+  }
+  function hasStatistics(statistics) { return statistics.some(function (entry) { return API_METRICS.some(function (key) { return entry.today[key] !== null || entry.history.days.some(function (day) { return day[key] !== null; }); }); }); }
+  function restoreSnapshot(state) {
+    if (state.cacheAttempted || !ready() || !current(state)) return;
+    state.cacheAttempted = true;
+      var key = state.snapshotKey;
+    if (!key) return;
+    try {
+      var raw = localStorage.getItem(key);
+      if (!raw || raw.length > 500000) return;
+      var saved = JSON.parse(raw), span = window.AVITOLOG_ADS_FUNNEL.range(new Date());
+      if (!saved || saved.version !== 1 || saved.date !== span.today || typeof saved.savedAt !== 'number' || !isFinite(saved.savedAt) || saved.savedAt > Date.now() + 60000 || Date.now() - saved.savedAt > 12 * 3600000) return;
+      var selected = state.preferences.selectedAccountIds || [];
+      state.statistics = cleanStatistics(saved.statistics).filter(function (entry) { return selected.indexOf(entry.avitoUserId) !== -1; });
+      if (!hasStatistics(state.statistics)) { state.statistics = []; return; }
+      state.accounts = safeAccounts(saved.accounts).filter(function (account) { return selected.indexOf(account.avitoUserId) !== -1; });
+      state.statisticsDate = span.today; state.updatedAt = new Date(saved.savedAt); state.showingPrevious = true;
+    } catch (error) {}
+  }
+  function saveSnapshot(state) {
+    if (!current(state) || !ready() || !hasStatistics(state.statistics)) return;
+    var key = state.snapshotKey, selected = state.preferences.selectedAccountIds || [];
+    if (!key) return;
+    try {
+      var stamp = state.showingPrevious && state.previousUpdatedAt || state.updatedAt;
+      var data = { version: 1, date: window.AVITOLOG_ADS_FUNNEL.range(new Date()).today, savedAt: stamp ? stamp.getTime() : Date.now(), accounts: safeAccounts(state.accounts).filter(function (account) { return selected.indexOf(account.avitoUserId) !== -1; }), statistics: cleanStatistics(state.statistics).filter(function (entry) { return selected.indexOf(entry.avitoUserId) !== -1; }) };
+      var raw = JSON.stringify(data);
+      if (raw.length <= 500000) localStorage.setItem(key, raw);
+    } catch (error) { state.localWarning = 'Кэш статистики не сохранён; рабочие данные не изменены.'; }
+  }
+  function handleApiError(state, error) {
+    if (!current(state)) return;
+    if (/^(auth_required|subject_mismatch|organization_forbidden|account_forbidden)$/.test(error && error.message || '')) {
+      state.statistics = []; state.accounts = []; state.accountsLoaded = false; state.updatedAt = null; state.showingPrevious = false;
+      try { if (state.snapshotKey) localStorage.removeItem(state.snapshotKey); } catch (ignore) {}
+      renderSettings(state);
+    }
+    state.apiWarning = bridgeError(error);
+  }
+  function mergeStatistics(state, fresh) {
+    var cleaned = cleanStatistics(fresh), changed = false;
+    cleaned.forEach(function (next) {
+      var previous = state.statistics.filter(function (entry) { return entry.avitoUserId === next.avitoUserId; })[0];
+      if (!hasStatistics([next])) { if (previous) state.refreshRetained = true; return; }
+      changed = true;
+      if (previous) {
+        function retain(old, value) {
+          API_METRICS.forEach(function (key) { if (value[key] === null && old[key] !== null) { value[key] = old[key]; state.refreshRetained = true; } });
+        }
+        retain(previous.today, next.today);
+        if (previous.today.available) next.today.available = true;
+        next.history.days.forEach(function (day, index) { retain(previous.history.days[index], day); });
+        if (previous.history.available) next.history.available = true;
+        API_METRICS.forEach(function (key) { next.history.totals[key] = next.history.days.every(function (day) { return day[key] !== null; }) ? next.history.days.reduce(function (sum, day) { return sum + day[key]; }, 0) : null; });
+      }
+      state.statistics = state.statistics.filter(function (entry) { return entry.avitoUserId !== next.avitoUserId; }).concat([next]);
+    });
+    return changed;
+  }
   function accountIds(value) {
     if (!Array.isArray(value) || value.length > 200) return [];
     return value.map(String).filter(function (id, index, all) { return ACCOUNT_ID.test(id) && all.indexOf(id) === index; });
@@ -55,7 +140,7 @@
   function defaults() {
     var visible = {};
     METRICS.forEach(function (metric) { visible[metric.key] = true; });
-    return { period: 'month', viewMode: 'charts', metrics: visible, calendar: profile() === 'fil', expenses: false, links: false, selectedAccountIds: null, sourceMap: Object.create(null) };
+    return { period: 'month', viewMode: 'charts', dailyMetric: 'contacts', metrics: visible, calendar: profile() === 'fil', expenses: false, links: false, selectedAccountIds: null, sourceMap: Object.create(null) };
   }
   function readPreferences() {
     var result = defaults();
@@ -67,7 +152,8 @@
       var saved = JSON.parse(raw);
       if (!saved || typeof saved !== 'object' || Array.isArray(saved)) return result;
       result.period = saved.period === 'today' ? 'today' : 'month';
-      result.viewMode = saved.viewMode === 'compact' ? 'compact' : 'charts';
+      result.viewMode = ['compact', 'daily'].indexOf(saved.viewMode) !== -1 ? saved.viewMode : 'charts';
+      result.dailyMetric = ['contacts', 'spending', 'earned', 'bought', 'views'].indexOf(saved.dailyMetric) !== -1 ? saved.dailyMetric : 'contacts';
       METRICS.forEach(function (metric) { result.metrics[metric.key] = !(saved.metrics && saved.metrics[metric.key] === false); });
       ['calendar', 'expenses', 'links'].forEach(function (key) { if (typeof saved[key] === 'boolean') result[key] = saved[key]; });
       if (Array.isArray(saved.selectedAccountIds)) result.selectedAccountIds = accountIds(saved.selectedAccountIds);
@@ -97,7 +183,7 @@
     window.crypto.getRandomValues(data);
     return Array.prototype.map.call(data, function (value) { return ('0' + value.toString(16)).slice(-2); }).join('');
   }
-  function current(state) { return active === state && !state.destroyed && state.root.isConnected !== false && state.key === preferenceKey() && state.profile === profile(); }
+  function current(state) { return active === state && !state.destroyed && state.root.isConnected !== false && state.key === preferenceKey() && state.profile === profile() && state.snapshotKey === snapshotKey(); }
   function listen(state, target, type, callback) {
     target.addEventListener(type, callback);
     state.unlisten.push(function () { target.removeEventListener(type, callback); });
@@ -140,6 +226,7 @@
     else window.open(ACCOUNTS_URL, '_blank', 'noopener');
   }
   function setupBridge(state) {
+    if (!current(state)) return;
     (state.bridgeCleanup || []).forEach(function (remove) { remove(); });
     state.bridgeCleanup = [];
     clearTimeout(state.frameTimer);
@@ -185,11 +272,12 @@
   }
   async function loadAccounts(state) {
     if (!current(state) || state.loading) return;
-    state.loading = true; state.apiWarning = ''; render(state);
+    state.loading = true; state.apiWarning = ''; renderStatus(state);
     try {
       var response = await request(state, 'accounts');
       if (!current(state)) return;
       state.accounts = safeAccounts(response.accounts);
+      state.statistics = state.statistics.filter(function (entry) { return state.accounts.some(function (account) { return account.avitoUserId === entry.avitoUserId; }); });
       if (state.preferences.selectedAccountIds === null) {
         state.preferences.selectedAccountIds = [];
         DEFAULT_ACCOUNTS.forEach(function (names) {
@@ -200,7 +288,7 @@
       }
       state.accountsLoaded = true;
       renderSettings(state);
-    } catch (error) { state.apiWarning = bridgeError(error); }
+    } catch (error) { handleApiError(state, error); }
     finally { state.loading = false; if (current(state)) { render(state); if (state.accountsLoaded) loadMetrics(state); } }
   }
   async function loadMetrics(state) {
@@ -209,7 +297,10 @@
     state.metricsQueued = false;
     var selected = (state.preferences.selectedAccountIds || []).filter(function (id) { return state.accounts.some(function (account) { return account.avitoUserId === id; }); });
     var version = ++state.loadVersion;
-    state.statistics = [];
+    state.statistics = cleanStatistics(state.statistics).filter(function (entry) { return selected.indexOf(entry.avitoUserId) !== -1; });
+    state.showingPrevious = hasStatistics(state.statistics); state.refreshRetained = false;
+    state.previousUpdatedAt = state.updatedAt;
+    var received = [];
     state.loading = selected.length > 0;
     state.apiWarning = selected.length ? '' : 'Выберите свои рекламные аккаунты в настройках ADS. Клиентские аккаунты автоматически не включаются.';
     render(state);
@@ -221,16 +312,19 @@
         var response = await request(state, 'metrics', selected.slice(offset, offset + 4));
         if (!current(state) || version !== state.loadVersion) return;
         var allowed = selected.slice(offset, offset + 4);
-        (Array.isArray(response.statistics) ? response.statistics : []).forEach(function (statistic) {
-          if (statistic && allowed.indexOf(String(statistic.avitoUserId)) !== -1 && !state.statistics.some(function (entry) { return String(entry.avitoUserId) === String(statistic.avitoUserId); })) state.statistics.push(statistic);
-        });
+        var fresh = (Array.isArray(response.statistics) ? response.statistics : []).filter(function (statistic) { return statistic && allowed.indexOf(String(statistic.avitoUserId)) !== -1; });
+        cleanStatistics(fresh).forEach(function (entry) { if (hasStatistics([entry])) received.push(entry.avitoUserId); });
+        if (mergeStatistics(state, fresh)) state.updatedAt = new Date();
+        state.statisticsDate = window.AVITOLOG_ADS_FUNNEL.range(new Date()).today;
+        state.showingPrevious = state.refreshRetained || selected.some(function (id) { return received.indexOf(id) === -1; });
+        saveSnapshot(state);
         render(state);
         if (state.metricsQueued) break;
       }
-    } catch (error) { if (version === state.loadVersion) state.apiWarning = bridgeError(error); }
+    } catch (error) { if (version === state.loadVersion) handleApiError(state, error); }
     finally {
       if (current(state) && version === state.loadVersion) {
-        state.loading = false; state.progress = ''; state.updatedAt = new Date(); render(state);
+        state.loading = false; state.progress = ''; if (state.showingPrevious && state.previousUpdatedAt) state.updatedAt = state.previousUpdatedAt; render(state);
         if (state.metricsQueued) { state.metricsQueued = false; loadMetrics(state); }
       }
     }
@@ -248,11 +342,11 @@
     var modeLabel = element('label', 'ads-dashboard-view-mode');
     modeLabel.appendChild(element('span', '', 'Вид ADS'));
     var modeSelect = element('select'); modeSelect.setAttribute('aria-label', 'Режим отображения');
-    [['charts', 'Все графики (текущий)'], ['compact', 'Компактный обзор (цифры + графики)']].forEach(function (mode) {
+    [['charts', 'Все графики (текущий)'], ['compact', 'Компактный обзор (цифры + графики)'], ['daily', 'Ежедневный анализ (по макету)']].forEach(function (mode) {
       var option = element('option', '', mode[1]); option.value = mode[0]; modeSelect.appendChild(option);
     });
     modeSelect.value = state.preferences.viewMode;
-    modeSelect.addEventListener('change', function () { state.preferences.viewMode = modeSelect.value === 'compact' ? 'compact' : 'charts'; savePreferences(state); render(state); });
+    modeSelect.addEventListener('change', function () { state.preferences.viewMode = ['compact', 'daily'].indexOf(modeSelect.value) !== -1 ? modeSelect.value : 'charts'; savePreferences(state); render(state); });
     modeLabel.appendChild(modeSelect); state.settingsContent.appendChild(modeLabel);
     state.settingsContent.appendChild(element('p', 'ads-dashboard-muted', 'Компактный обзор: итоги цифрами, динамика контактов, просмотров и расходов — графиками. Переключение не меняет данные.'));
     state.settingsContent.appendChild(element('h3', '', 'Показатели'));
@@ -313,7 +407,10 @@
   }
   function renderStatus(state) {
     var waiting = !ready();
-    state.status.textContent = waiting ? 'Загружаем подтверждённые данные Supabase…' : state.loading ? 'Загружаем статистику Avito' + (state.progress ? ' · ' + state.progress : '') + '…' : state.apiWarning || (state.updatedAt ? 'Обновлено ' + state.updatedAt.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }) : 'CRM и касса загружены. Подключаем статистику Avito…');
+    var stamp = state.showingPrevious && state.previousUpdatedAt || state.updatedAt;
+    var saved = stamp ? stamp.toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '';
+    var retained = state.showingPrevious && hasStatistics(state.statistics);
+    state.status.textContent = waiting ? 'Загружаем подтверждённые данные Supabase…' : state.loading ? (retained ? 'Предыдущие данные от ' + saved + ' · обновляем в фоне' : 'Загружаем статистику Avito') + (state.progress ? ' · ' + state.progress : '') + '…' : state.apiWarning ? state.apiWarning + (retained ? ' Предыдущие данные от ' + saved + ' оставлены на экране.' : '') : state.updatedAt ? (retained ? 'Часть показателей — предыдущие данные · ' : 'Обновлено ') + saved : 'CRM и касса загружены. Подключаем статистику Avito…';
     state.status.className = 'ads-dashboard-status' + (state.apiWarning ? ' is-warning' : '');
     state.refresh.disabled = state.loading || waiting;
     state.authButton.hidden = !state.apiWarning;
@@ -367,6 +464,9 @@
   }
   function render(state) {
     if (!current(state)) return;
+    if (ready() && state.statisticsDate && state.statisticsDate !== window.AVITOLOG_ADS_FUNNEL.range(new Date()).today) {
+      state.statistics = []; state.statisticsDate = ''; state.updatedAt = null; state.showingPrevious = false;
+    }
     renderStatus(state);
     state.todayButton.setAttribute('aria-pressed', state.preferences.period === 'today' ? 'true' : 'false');
     state.monthButton.setAttribute('aria-pressed', state.preferences.period === 'month' ? 'true' : 'false');
@@ -380,7 +480,17 @@
       var data = today ? model.today : model.month;
       var days = today ? model.days.filter(function (day) { return day.date === model.range.today; }) : model.days;
       state.rangeLabel.textContent = today ? 'Сегодня · ' + model.range.today + ' (МСК)' : model.range.dateFrom + ' — ' + model.range.today + ' · 30 дней (МСК)';
+      var signature = JSON.stringify({ data: data, days: days, sources: model.sources, warnings: model.warnings, period: state.preferences.period, mode: state.preferences.viewMode, metrics: state.preferences.metrics, sourceMap: state.preferences.sourceMap, accounts: state.accounts, dailyMetric: state.preferences.dailyMetric, selected: state.preferences.selectedAccountIds, statistics: state.preferences.viewMode === 'daily' ? state.statistics : null });
+      if (signature === state.renderSignature) { mountLegacy(state); return; }
+      state.renderSignature = signature;
       empty(state.metrics);
+      if (state.preferences.viewMode === 'daily' && window.AVITOLOG_ADS_DAILY_LAYOUT) {
+        state.metrics.className = 'ads-dashboard-metrics is-daily';
+        state.funnel.hidden = true; state.sources.hidden = true;
+        state.metrics.appendChild(window.AVITOLOG_ADS_DAILY_LAYOUT.render({ model: model, statistics: state.statistics, accounts: state.accounts, selectedAccountIds: state.preferences.selectedAccountIds || [], sourceMap: state.preferences.sourceMap, period: state.preferences.period, metric: state.preferences.dailyMetric, metrics: state.preferences.metrics, onMetricChange: function (key) { state.preferences.dailyMetric = key; savePreferences(state); render(state); } }));
+        state.warnings.textContent = (model.warnings || []).join(' '); mountLegacy(state); return;
+      }
+      state.funnel.hidden = false; state.sources.hidden = false;
       var compact = state.preferences.viewMode === 'compact';
       state.metrics.className = 'ads-dashboard-metrics' + (compact ? ' is-compact' : '');
       if (compact) {
@@ -408,7 +518,7 @@
       render(active); return;
     }
     if (active) destroy(active);
-    var state = { host: host, profile: profile(), key: preferenceKey(), preferences: readPreferences(), accounts: [], statistics: [], pending: {}, unlisten: [], loadVersion: 0, accountsLoaded: false, loading: false };
+    var state = { host: host, profile: profile(), key: preferenceKey(), snapshotKey: snapshotKey(), preferences: readPreferences(), accounts: [], statistics: [], pending: {}, unlisten: [], loadVersion: 0, accountsLoaded: false, loading: false };
     active = state;
     state.root = element('section', 'ads-dashboard');
     state.root.setAttribute('aria-label', 'ADS: воронка услуг авитолога');
@@ -418,7 +528,7 @@
     var controls = element('div', 'ads-dashboard-controls');
     state.todayButton = button('Сегодня', 'ads-dashboard-button', function () { state.preferences.period = 'today'; savePreferences(state); render(state); });
     state.monthButton = button('30 дней', 'ads-dashboard-button', function () { state.preferences.period = 'month'; savePreferences(state); render(state); });
-    state.refresh = button('Обновить', 'ads-dashboard-button', function () { if (state.frameLoaded) loadAccounts(state); else { if (state.frame && state.frame.parentNode) state.frame.parentNode.removeChild(state.frame); setupBridge(state); } });
+    state.refresh = button('Обновить', 'ads-dashboard-button', function () { if (state.frameLoaded) { if (state.accountsLoaded) loadMetrics(state); else loadAccounts(state); } else { if (state.frame && state.frame.parentNode) state.frame.parentNode.removeChild(state.frame); setupBridge(state); } });
     state.gear = button('⚙', 'ads-dashboard-button ads-dashboard-gear', function () { state.settings.hidden = !state.settings.hidden; state.gear.setAttribute('aria-expanded', state.settings.hidden ? 'false' : 'true'); if (!state.settings.hidden) renderSettings(state); });
     state.gear.setAttribute('aria-label', 'Настройки ADS'); state.gear.setAttribute('aria-expanded', 'false');
     [state.todayButton, state.monthButton, state.refresh, state.gear].forEach(function (node) { controls.appendChild(node); }); heading.appendChild(controls); state.root.appendChild(heading);
@@ -433,14 +543,15 @@
     state.note = element('p', 'ads-dashboard-note'); state.root.appendChild(state.note);
     state.legacy = element('div', 'ads-dashboard-legacy'); state.root.appendChild(state.legacy);
     empty(host); host.appendChild(state.root);
+    restoreSnapshot(state);
     listen(state, document, 'keydown', function (event) { if (event.key === 'Escape' && !state.settings.hidden) { state.settings.hidden = true; state.gear.setAttribute('aria-expanded', 'false'); state.gear.focus(); } });
     listen(state, document, 'click', function (event) { if (!state.settings.hidden && !state.settings.contains(event.target) && !state.gear.contains(event.target)) { state.settings.hidden = true; state.gear.setAttribute('aria-expanded', 'false'); } });
-    listen(state, document, 'avitolog:backend-initial-ready', function () { render(state); if (!state.frame) setupBridge(state); });
+    listen(state, document, 'avitolog:backend-initial-ready', function () { restoreSnapshot(state); render(state); if (!state.frame) setupBridge(state); });
     listen(state, document, 'avitolog:backend-remote-applied', function () { render(state); });
     listen(state, document, 'avitolog:storage-write', function () { render(state); });
     listen(state, document, 'avitolog:backend-initial-error', function () { renderStatus(state); state.status.textContent = window.AVITOLOG_BACKEND_INITIAL_SYNC_ERROR || 'Не удалось загрузить данные Supabase.'; });
     listen(state, window, 'storage', function () { render(state); });
-    if (window.MutationObserver) { state.observer = new window.MutationObserver(function () { if (state.root.isConnected === false || state.key !== preferenceKey() || state.profile !== profile()) destroy(state); }); state.observer.observe(document.documentElement, { childList: true, subtree: true }); }
+    if (window.MutationObserver) { state.observer = new window.MutationObserver(function () { if (state.key !== preferenceKey() || state.profile !== profile() || state.snapshotKey !== snapshotKey()) { state.root.hidden = true; destroy(state); } else if (state.root.isConnected === false) destroy(state); }); state.observer.observe(document.documentElement, { childList: true, subtree: true }); }
     render(state); renderSettings(state); if (ready()) setupBridge(state);
   }
   window.__showAdsPage = show;
