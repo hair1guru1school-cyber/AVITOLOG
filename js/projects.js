@@ -1505,8 +1505,15 @@ function showProjectZoneMenu(btn, projectId) {
   };
   document.body.appendChild(picker);
   var r = btn.getBoundingClientRect();
-  picker.style.left = Math.max(8, r.left - 6) + 'px';
-  picker.style.top = (r.bottom + 4) + 'px';
+  picker.style.boxSizing = 'border-box';
+  picker.style.maxWidth = Math.max(0, window.innerWidth - 16) + 'px';
+  picker.style.maxHeight = Math.max(0, window.innerHeight - 16) + 'px';
+  picker.style.overflowY = 'auto';
+  var pr = picker.getBoundingClientRect();
+  var top = r.bottom + 4;
+  if (top + pr.height > window.innerHeight - 8) top = r.top - pr.height - 4;
+  picker.style.left = Math.max(8, Math.min(r.left - 6, window.innerWidth - pr.width - 8)) + 'px';
+  picker.style.top = Math.max(8, Math.min(top, window.innerHeight - pr.height - 8)) + 'px';
   setTimeout(function(){
     document.addEventListener('click', function close(ev){
       if (!picker.parentNode) { document.removeEventListener('click', close); return; }
