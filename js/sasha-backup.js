@@ -108,6 +108,24 @@
     return null;
   }
 
+  async function driveFetchWithRetry(url, init, context) {
+    for (var attempt = 0; attempt < 3; attempt++) {
+      assertBackupContext(context);
+      var response = null;
+      try {
+        response = await fetch(url, init);
+      } catch (error) {
+        if (!error || error.name !== 'TypeError' || attempt === 2) throw error;
+      }
+      if (response && ([429, 500, 502, 503, 504].indexOf(response.status) < 0 || attempt === 2)) return response;
+      assertBackupContext(context);
+      var delay = attempt === 0 ? 500 : 1500;
+      var retryAfter = response && response.headers && response.headers.get('Retry-After');
+      if (retryAfter && /^\d+(?:\.\d+)?$/.test(retryAfter)) delay = Math.max(delay, Math.min(10000, Number(retryAfter) * 1000));
+      await new Promise(function (resolve) { setTimeout(resolve, delay); });
+    }
+  }
+
   async function ensureFolder(context) {
     assertBackupContext(context);
     try {
@@ -127,25 +145,27 @@
   async function findFileInFolder(folderId, name, context) {
     var token = await driveTokenSafe(context);
     var q = "name='" + name.replace(/'/g, "\\'") + "' and '" + folderId + "' in parents and trashed=false";
-    var r = await fetch(
+    var r = await driveFetchWithRetry(
       'https://www.googleapis.com/drive/v3/files?q=' + encodeURIComponent(q) + '&fields=files(id)',
-      { headers: { Authorization: 'Bearer ' + token } }
+      { headers: { Authorization: 'Bearer ' + token } }, context
     );
+    if (!r.ok) throw new Error('Drive LIST ' + r.status + ': ' + (await r.text()).slice(0, 120));
     var d = await r.json();
-    if (!r.ok || !d.files || !d.files.length) return null;
+    if (!Array.isArray(d.files)) throw new Error('Drive LIST: некорректный ответ');
+    if (!d.files.length) return null;
     return d.files[0].id;
   }
 
   async function uploadFile(folderId, fileName, bodyText, existingId, context) {
     var token = await driveTokenSafe(context);
     if (existingId) {
-      var resp = await fetch(
+      var resp = await driveFetchWithRetry(
         'https://www.googleapis.com/upload/drive/v3/files/' + encodeURIComponent(existingId) + '?uploadType=media',
         {
           method: 'PATCH',
           headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
           body: new Blob([bodyText], { type: 'application/json' })
-        }
+        }, context
       );
       if (!resp.ok) {
         var et = await resp.text().catch(function () { return ''; });
