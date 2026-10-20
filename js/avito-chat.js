@@ -1,0 +1,231 @@
+(function () {
+  'use strict';
+  if (window.AvitoChat) return;
+  var bridge = window.AvitoWorkspaceBridge, state = { scope: '', mode: 'closed', accounts: [], selected: [], chats: [], chat: null, loading: false, sending: false, generation: 0, lastPoll: 0 };
+  var ui = {}, messages = Object.create(null), chatPages = Object.create(null);
+  function el(tag, className, text) { var n = document.createElement(tag); if (className) n.className = className; if (text !== undefined) n.textContent = text; return n; }
+  function btn(text, title, action) { var n = el('button', '', text); n.type = 'button'; n.title = title || text; n.addEventListener('click', action); return n; }
+  function empty(n) { while (n.firstChild) n.removeChild(n.firstChild); }
+  function scope() { return bridge && bridge.context(); }
+  function current(generation) { return state.scope === scope() && generation === state.generation; }
+  function key(row) { return row.account.id + '|' + row.chat.id; }
+  function name(row) { return row.chat.counterparty && row.chat.counterparty.name || row.chat.item && row.chat.item.title || 'Собеседник Avito'; }
+  function norm(s) { return String(s || '').toLowerCase().replace(/[^а-яёa-z0-9]/g, ''); }
+  function safeUrl(raw) { try { var u = new URL(raw); return u.protocol === 'https:' && !u.username && !u.password && /(^|\.)avito\.(ru|st)$/.test(u.hostname) ? u.href : ''; } catch (e) { return ''; } }
+  function link(label, raw) { var href = safeUrl(raw); if (!href) return el('span', '', label); var n = el('a', '', label); n.href = href; n.target = '_blank'; n.rel = 'noopener noreferrer'; return n; }
+  function errorText(error) {
+    var code = error && error.message || '';
+    return ({ auth_required: 'Войдите в CRM и модуль «Аккаунты» под одним пользователем.', subject_mismatch: 'В CRM и аккаунтах выполнен вход разными пользователями.', organization_forbidden: 'Нет доступа к аккаунтам этого режима.', messenger_read_required: 'У аккаунта нет права messenger:read. Переподключите его с этим правом.', messenger_write_required: 'Нет права отправки messenger:write.', permission_denied: 'Avito не разрешил это действие для аккаунта.', try_later: 'Слишком частые запросы. Подождите немного.', send_unknown: 'Ответ Avito об отправке не получен. Не отправляйте повторно, сначала обновите историю.', context_changed: 'Режим изменился. Откройте чат заново.' })[code] || 'Не удалось получить ответ. Уже загруженные сообщения сохранены в этом окне; попробуйте обновить.';
+  }
+  function notice(text, bad) { ui.status.textContent = text || ''; ui.status.dataset.error = bad ? 'true' : 'false'; }
+  function setMode(mode) { state.mode = mode; ui.panel.hidden = mode === 'closed'; ui.launch.hidden = mode !== 'closed'; ui.panel.dataset.mode = mode; if (mode !== 'closed') refresh(false); }
+  function reset() {
+    state.generation += 1; state.scope = ''; state.accounts = []; state.selected = []; state.chats = []; state.chat = null; state.loading = false; state.sending = false; state.lastPoll = 0;
+    messages = Object.create(null); chatPages = Object.create(null); if (ui.list) { empty(ui.list); empty(ui.history); empty(ui.accounts); ui.text.value = ''; ui.compose.hidden = true; ui.import.hidden = true; ui.refresh.disabled = false; ui.send.disabled = false; ui.toCrm.disabled = true; notice(''); setMode('closed'); }
+  }
+  function renderAccounts() {
+    empty(ui.accounts);
+    state.accounts.forEach(function (account) {
+      var label = el('label'), input = el('input'); input.type = 'checkbox'; input.checked = state.selected.indexOf(account.id) !== -1;
+      input.addEventListener('change', function () {
+        state.selected = input.checked ? state.selected.concat([account.id]) : state.selected.filter(function (id) { return id !== account.id; });
+        if (state.chat && state.selected.indexOf(state.chat.account.id) === -1) { state.chat = null; empty(ui.history); ui.compose.hidden = true; }
+        saveSelection(); renderChats(); refresh(true);
+      });
+      label.append(input, el('span', '', account.display_name)); ui.accounts.appendChild(label);
+    });
+  }
+  function selectionKey() { return 'avitolog_chat_accounts_v1:' + state.scope; }
+  function saveSelection() { try { localStorage.setItem(selectionKey(), JSON.stringify(state.selected)); } catch (e) {} }
+  function chooseAccounts() {
+    var saved = null; try { saved = JSON.parse(localStorage.getItem(selectionKey()) || 'null'); } catch (e) {}
+    state.selected = Array.isArray(saved) ? state.accounts.filter(function (a) { return saved.indexOf(a.id) !== -1; }).map(function (a) { return a.id; }) : state.accounts.filter(function (a) { return /филproдвижение|филпродвижение|filaiмаркетинг/.test(norm(a.display_name)); }).map(function (a) { return a.id; });
+  }
+  function renderChats() {
+    empty(ui.list); var rows = state.chats.filter(function (row) { return state.selected.indexOf(row.account.id) !== -1; }).sort(function (a, b) { return (b.chat.updated || b.chat.created || 0) - (a.chat.updated || a.chat.created || 0); });
+    ui.count.textContent = String(rows.length);
+    rows.forEach(function (row) {
+      var button = btn('', name(row), function () { openChat(row); }); button.className = 'avchat-row'; button.dataset.active = state.chat && key(state.chat) === key(row) ? 'true' : 'false';
+      button.append(el('strong', '', (row.chat.unread ? '● ' : '') + name(row)), el('small', '', row.account.display_name), el('span', '', row.chat.last_message && row.chat.last_message.text || row.chat.item && row.chat.item.title || 'Открыть переписку'));
+      ui.list.appendChild(button);
+    });
+    if (!rows.length) ui.list.appendChild(el('p', 'avchat-empty', state.selected.length ? 'Чаты ещё не загружены или отсутствуют.' : 'Выберите аккаунты в настройках чата.'));
+    state.accounts.filter(function (a) { return state.selected.indexOf(a.id) !== -1 && chatPages[a.id] && chatPages[a.id].hasMore; }).forEach(function (a) { ui.list.appendChild(btn('Ещё · ' + a.display_name, 'Загрузить следующую страницу чатов', function () { loadMoreChats(a); })); });
+  }
+  function mergeChats(account, result, offset) {
+    var byId = Object.create(null);
+    state.chats.filter(function (r) { return r.account.id === account.id; }).forEach(function (r) { byId[r.chat.id] = r; });
+    (result.chats || []).forEach(function (chat) { byId[chat.id] = { chat: chat, account: account }; });
+    state.chats = state.chats.filter(function (r) { return r.account.id !== account.id; }).concat(Object.keys(byId).map(function (id) { return byId[id]; }));
+    if (offset || !chatPages[account.id]) chatPages[account.id] = { offset: offset, hasMore: !!(result.pagination && result.pagination.has_more) && offset < 1000 };
+  }
+  async function loadMoreChats(account) {
+    var page = chatPages[account.id], generation = state.generation;
+    if (!page || !page.hasMore || page.loading) return;
+    page.loading = true;
+    try { var result = await bridge.getChats(account.id, page.offset + 50); if (current(generation)) { mergeChats(account, result, page.offset + 50); renderChats(); } }
+    catch (error) { if (current(generation)) notice(errorText(error), true); }
+    finally { page.loading = false; }
+  }
+  async function refresh(force) {
+    if (!bridge || state.loading || state.mode === 'closed' || document.visibilityState === 'hidden') return;
+    var next = scope();
+    if (!next) { notice('Для чата нужен вход в CRM и доступ к организации аккаунтов.', true); return; }
+    if (state.scope && state.scope !== next) reset();
+    state.scope = next;
+    if (!force && Date.now() - state.lastPoll < 30000) return;
+    var generation = state.generation; state.loading = true; ui.refresh.disabled = true; notice('Обновление чатов…');
+    try {
+      if (!state.accounts.length || force) {
+        var catalog = await bridge.listAccounts(force); if (!current(generation)) return;
+        state.accounts = catalog; chooseAccounts(); renderAccounts();
+      }
+      var selected = state.accounts.filter(function (a) { return state.selected.indexOf(a.id) !== -1; }), failed = [];
+      for (var i = 0; i < selected.length; i += 2) {
+        await Promise.all(selected.slice(i, i + 2).map(async function (account) {
+          try {
+            var result = await bridge.getChats(account.id); if (!current(generation)) return;
+            mergeChats(account, result, 0);
+          } catch (error) { failed.push(account.display_name + ': ' + errorText(error)); }
+        }));
+      }
+      if (!current(generation)) return;
+      state.lastPoll = Date.now(); renderChats(); notice(failed.join(' · ') || 'Чаты обновлены. Новые сообщения проверяются, пока окно открыто.', !!failed.length);
+      if (state.chat) await loadMessages(state.chat, false);
+    } catch (error) { if (current(generation)) notice(errorText(error), true); }
+    finally { if (current(generation)) { state.loading = false; ui.refresh.disabled = false; } }
+  }
+  function renderMessages(row, scroll) {
+    if (!state.chat || key(row) !== key(state.chat)) return;
+    var previousTop = ui.history.scrollTop, pinned = ui.history.scrollHeight - ui.history.scrollTop - ui.history.clientHeight < 50;
+    empty(ui.history);
+    var entry = messages[key(row)], list = entry && entry.messages || [];
+    list.slice().sort(function (a, b) { return (a.created || 0) - (b.created || 0); }).forEach(function (message) {
+      var bubble = el('div', 'avchat-message'); bubble.dataset.direction = message.direction || 'in';
+      bubble.appendChild(el('div', '', message.text || (message.type === 'image' ? 'Фото' : 'Сообщение: ' + message.type)));
+      if (message.image_url) bubble.appendChild(link('Открыть изображение', message.image_url));
+      if (message.link_url) bubble.appendChild(link('Открыть ссылку', message.link_url));
+      if (message.created) bubble.appendChild(el('small', '', new Date(message.created * 1000).toLocaleString('ru-RU', { timeZone: 'Europe/Moscow', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })));
+      ui.history.appendChild(bubble);
+    });
+    if (!list.length) ui.history.appendChild(el('p', 'avchat-empty', 'Сообщения ещё не получены.'));
+    ui.older.hidden = !(entry && entry.hasMore);
+    ui.history.scrollTop = scroll || pinned ? ui.history.scrollHeight : previousTop;
+  }
+  async function loadMessages(row, older) {
+    var owner = key(row), generation = state.generation, entry = messages[owner];
+    if (entry && entry.loading) return;
+    messages[owner] = Object.assign({ messages: [], offset: 0 }, entry, { loading: true });
+    var offset = older && entry ? entry.offset + 50 : 0;
+    try {
+      var result = await bridge.getMessages(row.account.id, row.chat.id, offset);
+      if (!current(generation)) return;
+      var byId = Object.create(null), combined = (entry ? entry.messages : []).concat(result.messages || []);
+      combined.forEach(function (message) { byId[message.id] = message; });
+      messages[owner] = { messages: Object.keys(byId).map(function (id) { return byId[id]; }), offset: older ? offset : entry && entry.offset || 0, hasMore: older || !entry ? !!(result.pagination && result.pagination.has_more) && offset < 1000 : entry.hasMore, loading: false }; renderMessages(row);
+      if (state.chat && key(state.chat) === owner && state.mode !== 'closed' && row.chat.unread === true && document.visibilityState !== 'hidden') {
+        bridge.markRead(row.account.id, row.chat.id).then(function () { if (current(generation) && state.chat && key(state.chat) === owner) { row.chat.unread = false; renderChats(); } }).catch(function () {});
+      }
+    } catch (error) { if (current(generation)) { messages[owner].loading = false; notice(errorText(error), true); } }
+  }
+  function openChat(row) {
+    if (state.sending) return;
+    state.chat = row; ui.text.value = ''; empty(ui.chatTitle); ui.chatTitle.append(el('strong', '', name(row)), el('small', '', row.account.display_name), link('Профиль Avito ↗', row.chat.counterparty && row.chat.counterparty.profile_url));
+    ui.compose.hidden = false; ui.toCrm.disabled = false; ui.import.hidden = true; renderChats(); renderMessages(row, true); loadMessages(row, false);
+  }
+  async function send(event) {
+    event.preventDefault(); if (!state.chat || state.sending || !ui.text.value.trim()) return;
+    var row = state.chat, text = ui.text.value, generation = state.generation;
+    if (Array.from(text).length > 1000) { notice('В сообщении не больше 1000 символов.', true); return; }
+    state.sending = true; ui.send.disabled = true; notice('Отправка…');
+    try {
+      var sent = await bridge.sendMessage(row.account.id, row.chat.id, text);
+      if (!current(generation)) return;
+      if (ui.text.value === text) ui.text.value = '';
+      if (sent && sent.message) {
+        var entry = messages[key(row)] || { messages: [], offset: 0, hasMore: false, loading: false };
+        entry.messages = entry.messages.filter(function (message) { return message.id !== sent.message.id; }).concat([sent.message]);
+        messages[key(row)] = entry; renderMessages(row, true);
+      }
+      notice('Отправлено'); await loadMessages(row, false);
+    } catch (error) { if (current(generation)) notice(errorText(error), true); }
+    finally { if (current(generation)) { state.sending = false; ui.send.disabled = false; } }
+  }
+  function dataKey(base) { return typeof window.AVITOLOG_KEY === 'function' ? window.AVITOLOG_KEY(base) : base; }
+  function loadGoals() {
+    var live = typeof window.__avitologAdsGoalsRead === 'function' && window.__avitologAdsGoalsRead([]);
+    var value = live && live.live ? JSON.parse(JSON.stringify(live.live)) : JSON.parse(localStorage.getItem(dataKey('avitolog_goals_v1')) || '{"projects":[]}');
+    if (!value || typeof value !== 'object' || Array.isArray(value) || !Array.isArray(value.projects)) throw new Error('invalid_goals');
+    return value;
+  }
+  function saveGoals(value) {
+    var keyName = dataKey('avitolog_goals_v1'), old = localStorage.getItem(keyName), raw = JSON.stringify(value), written = false;
+    try { localStorage.setItem(keyName, raw); written = true; } catch (error) { if (!/quota/i.test(String(error.name) + ' ' + String(error.message))) throw error; }
+    var memory = typeof window.__goalsApplyBackendValue === 'function' && window.__goalsApplyBackendValue(keyName, raw);
+    if (!written && !memory) throw new Error('storage_unavailable');
+    document.dispatchEvent(new CustomEvent('avitolog:storage-write', { detail: { key: keyName, value: raw, previousValue: old } }));
+  }
+  function importClient(row, title, category, week, selectedClientId) {
+    if (!scope() || state.scope !== scope() || !title.trim() || title.length > 200 || typeof window.getCrmClients !== 'function' || typeof window.saveCrmClients !== 'function') throw new Error('context_changed');
+    var capturedScope = scope();
+    var categories = typeof CRM_CATEGORY_OPTIONS !== 'undefined' ? CRM_CATEGORY_OPTIONS : [];
+    if (!categories.some(function (c) { return String(c.v) === category; }) || !Number.isInteger(week) || week < 0 || week > 4) throw new Error('invalid_request');
+    var identity = row.account.avito_user_id + ':' + row.chat.id, clients = window.getCrmClients().slice(), index = clients.findIndex(function (c) { return c && (c.avito_chat_key === identity || Array.isArray(c.avito_chat_keys) && c.avito_chat_keys.indexOf(identity) !== -1); });
+    if (selectedClientId) {
+      var selectedIndex = clients.findIndex(function (c) { return c && String(c.client_id) === selectedClientId; });
+      if (selectedIndex < 0 || index >= 0 && index !== selectedIndex) throw new Error('chat_already_linked');
+      index = selectedIndex;
+    }
+    var existing = index >= 0 ? clients[index] : null;
+    var client = Object.assign({}, existing || {}, { client_id: existing && existing.client_id || 'avito_' + crypto.randomUUID(), company: title.trim(), contact_name: existing && existing.contact_name || row.chat.counterparty && row.chat.counterparty.name || '', avito_account: existing && existing.avito_account || safeUrl(row.chat.counterparty && row.chat.counterparty.profile_url), categoryFolderId: category, avito_chat_key: existing && existing.avito_chat_key || identity, avito_chat_keys: Array.from(new Set((existing && existing.avito_chat_keys || []).concat(existing && existing.avito_chat_key || [], identity))), avito_chat_id: existing && existing.avito_chat_id || row.chat.id, avito_origin_account_id: existing && existing.avito_origin_account_id || row.account.id, avito_origin_user_id: existing && existing.avito_origin_user_id || row.account.avito_user_id, createdAt: existing && existing.createdAt || new Date().toLocaleDateString('ru-RU', { timeZone: 'Europe/Moscow' }) });
+    if (index >= 0) clients[index] = client; else clients.unshift(client);
+    window.saveCrmClients(clients);
+    if (scope() !== capturedScope || state.scope !== capturedScope) throw new Error('context_changed');
+    if (week) {
+      var goals = loadGoals(), goal = goals.projects.find(function (p) { return p && (p.crmClientRecordId === client.client_id || p.avitoChatKey === identity); });
+      if (!goal) {
+        var today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Moscow', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+        var sources = goals.sourceAccounts = Array.isArray(goals.sourceAccounts) ? goals.sourceAccounts : [];
+        var source = sources.find(function (s) { return s.avitoUserId === row.account.avito_user_id || norm(s.name) === norm(row.account.display_name); });
+        if (!source) { source = { id: 'avito_' + row.account.avito_user_id, name: row.account.display_name, icon: '👤', avitoUserId: row.account.avito_user_id }; sources.push(source); }
+        goal = { id: 'g_' + crypto.randomUUID(), name: title.trim(), company: title.trim(), contact_name: client.contact_name, avito_account: client.avito_account, categoryFolderId: category, crmClientRecordId: client.client_id, avitoChatKey: identity, sourceAccountId: source.id, date: today, weekIndex: week, stage: 'weekly', status: [], statusDates: {}, touchMarkers: [], tags: [], mainPrice: '', priceOptions: ['—'], note: '' };
+        goals.projects.unshift(goal);
+      } else goal.weekIndex = week;
+      if (scope() !== capturedScope || state.scope !== capturedScope) throw new Error('context_changed');
+      saveGoals(goals);
+      if (window.AVITOLOG_GOALS && typeof window.AVITOLOG_GOALS.render === 'function' && window.goalsMode) window.AVITOLOG_GOALS.render();
+    }
+    if (scope() === capturedScope && typeof window.setActiveClient === 'function') window.setActiveClient(client);
+    return { client: client, existing: !!existing };
+  }
+  function showImport() {
+    if (!state.chat) return; ui.import.hidden = false; ui.clientName.value = name(state.chat); empty(ui.category);
+    empty(ui.existing); var create = el('option', '', 'Создать нового клиента'); create.value = ''; ui.existing.appendChild(create);
+    var clients = typeof window.getCrmClients === 'function' ? window.getCrmClients() : [];
+    clients.forEach(function (client) { if (!client || !client.client_id) return; var option = el('option', '', client.company || client.contact_name || client.client_id); option.value = client.client_id; ui.existing.appendChild(option); });
+    var categories = typeof CRM_CATEGORY_OPTIONS !== 'undefined' ? CRM_CATEGORY_OPTIONS : [];
+    categories.forEach(function (c) { var option = el('option', '', c.n); option.value = c.v; ui.category.appendChild(option); });
+    if (typeof CRM_DEFAULT_CATEGORY_ID !== 'undefined') ui.category.value = CRM_DEFAULT_CATEGORY_ID;
+    ui.clientName.focus();
+  }
+  function mount() {
+    if (!bridge || document.getElementById('avitoChatLauncher')) return;
+    var style = el('style'); style.textContent = '.avchat-launch{position:fixed;right:22px;bottom:22px;z-index:3500;width:56px;height:56px;border-radius:50%;font-size:27px;background:#093b42;border:1px solid #29d4c4;color:white;box-shadow:0 6px 25px #0008;cursor:pointer}.avchat-panel{position:fixed;right:18px;bottom:18px;z-index:3501;width:min(440px,calc(100vw - 24px));height:min(680px,calc(100dvh - 32px));display:flex;flex-direction:column;background:#0a1420;color:#e8f4ff;border:1px solid #29485e;border-radius:15px;box-shadow:0 15px 70px #000a;overflow:hidden;font:13px/1.4 Arial,sans-serif}.avchat-panel[hidden],.avchat-panel [hidden]{display:none!important}.avchat-panel[data-mode=web]{inset:30px 35px;width:auto;height:auto}.avchat-head,.avchat-tools,.avchat-chat-title{display:flex;gap:8px;align-items:center;padding:10px 12px;border-bottom:1px solid #25394b}.avchat-head strong{flex:1}.avchat-panel button,.avchat-panel select,.avchat-panel input,.avchat-panel textarea{color:inherit;background:#122639;border:1px solid #35546a;border-radius:7px;padding:7px;font:inherit}.avchat-panel button{cursor:pointer}.avchat-panel button:disabled{opacity:.5;cursor:wait}.avchat-panel a{color:#64dcff}.avchat-body{display:flex;flex:1;min-height:0}.avchat-conversations{width:42%;overflow:auto;border-right:1px solid #25394b}.avchat-row{display:flex;width:100%;flex-direction:column;gap:3px;text-align:left;border-radius:0!important;border:0!important;border-bottom:1px solid #25394b!important;background:transparent!important;min-width:0}.avchat-row strong,.avchat-row span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%}.avchat-row small{font-size:10px;color:#89adca}.avchat-row[data-active=true]{background:#154052!important}.avchat-dialog{flex:1;min-width:0;display:flex;flex-direction:column}.avchat-chat-title{align-items:flex-start;flex-direction:column;gap:2px}.avchat-chat-title small{color:#89adca}.avchat-history{flex:1;overflow:auto;padding:12px;display:flex;flex-direction:column;gap:8px;align-items:flex-start}.avchat-message{max-width:92%;background:#19354b;padding:8px 10px;border-radius:9px;white-space:pre-wrap;overflow-wrap:anywhere}.avchat-message[data-direction=out]{align-self:flex-end;background:#104a44}.avchat-message small{display:block;font-size:10px;color:#a2c2d3;margin-top:5px}.avchat-compose{display:flex;gap:6px;padding:8px}.avchat-compose textarea{resize:vertical;min-height:52px;width:100%;box-sizing:border-box}.avchat-compose button{align-self:flex-end}.avchat-status{padding:6px 12px;font-size:11px;color:#9bbace;max-height:65px;overflow:auto}.avchat-status[data-error=true]{color:#ffb0a8}.avchat-empty{padding:12px;color:#91aec6}.avchat-settings{padding:0 12px;max-height:150px;overflow:auto}.avchat-settings label{display:flex;align-items:center;gap:6px;padding:4px}.avchat-import{display:grid;gap:6px;padding:8px;border-top:1px solid #35546a}.avchat-import input{min-width:0}.avchat-panel[data-mode=mini] .avchat-conversations{width:35%}.avchat-panel[data-mode=web] .avchat-conversations{width:300px}.avchat-panel[data-mode=web] .avchat-dialog{max-width:none}@media(max-width:650px){.avchat-panel[data-mode=web]{inset:8px}.avchat-panel[data-mode=web] .avchat-conversations{width:35%}}'; document.head.appendChild(style);
+    ui.launch = btn('💬', 'Чаты Avito. Shift + нажатие: большой вид', function (event) { setMode(event.shiftKey ? 'web' : 'mini'); }); ui.launch.id = 'avitoChatLauncher'; ui.launch.className = 'avchat-launch';
+    ui.panel = el('section', 'avchat-panel'); ui.panel.id = 'avitoChatPanel'; ui.panel.hidden = true; ui.panel.setAttribute('aria-label', 'Чаты Avito');
+    var head = el('header', 'avchat-head'); ui.count = el('span', '', '0'); head.append(el('strong', '', 'Avito · Чаты'), ui.count, btn('↗', 'Мини / большой вид (Shift + нажатие)', function () { setMode(state.mode === 'web' ? 'mini' : 'web'); }), btn('—', 'Свернуть чат', function () { setMode('closed'); })); head.addEventListener('click', function (event) { if (event.shiftKey) setMode(state.mode === 'web' ? 'mini' : 'web'); });
+    var tools = el('div', 'avchat-tools'); ui.refresh = btn('Обновить', '', function () { refresh(true); }); var settings = el('details'); settings.appendChild(el('summary', '', 'Аккаунты')); ui.accounts = el('div', 'avchat-settings'); settings.appendChild(ui.accounts); tools.append(ui.refresh, settings);
+    var body = el('div', 'avchat-body'); ui.list = el('nav', 'avchat-conversations'); var dialog = el('div', 'avchat-dialog'); ui.chatTitle = el('div', 'avchat-chat-title'); ui.chatTitle.appendChild(el('strong', '', 'Выберите переписку'));
+    ui.toCrm = btn('+ В CRM', 'Добавить клиента в базу или неделю', showImport); ui.toCrm.disabled = true;
+    ui.older = btn('Ранние сообщения', '', function () { if (state.chat) loadMessages(state.chat, true); }); ui.older.hidden = true;
+    ui.history = el('div', 'avchat-history'); ui.compose = el('form', 'avchat-compose'); ui.compose.hidden = true; ui.text = el('textarea'); ui.text.setAttribute('aria-label', 'Сообщение Avito'); ui.text.maxLength = 2000; ui.text.placeholder = 'Сообщение…'; ui.send = btn('➤', 'Отправить сообщение', function () {}); ui.send.type = 'submit'; ui.compose.append(ui.text, ui.send); ui.compose.addEventListener('submit', send);
+    ui.text.addEventListener('keydown', function (event) { if (event.key === 'Enter' && !event.shiftKey && !event.isComposing) { event.preventDefault(); ui.compose.requestSubmit(); } });
+    ui.import = el('form', 'avchat-import'); ui.import.hidden = true; ui.existing = el('select'); ui.existing.setAttribute('aria-label', 'Новый или существующий клиент'); ui.existing.addEventListener('change', function () { var client = window.getCrmClients().find(function (c) { return c && c.client_id === ui.existing.value; }); ui.clientName.value = client && (client.company || client.contact_name) || name(state.chat); if (client && client.categoryFolderId) ui.category.value = client.categoryFolderId; }); ui.clientName = el('input'); ui.clientName.placeholder = 'Название клиента / проекта'; ui.clientName.setAttribute('aria-label', 'Название клиента'); ui.clientName.maxLength = 200; ui.clientName.required = true; ui.category = el('select'); ui.category.setAttribute('aria-label', 'Категория CRM'); ui.week = el('select'); ui.week.setAttribute('aria-label', 'Неделя CRM'); ['Только в базу', 'Неделя 1', 'Неделя 2', 'Неделя 3', 'Неделя 4'].forEach(function (name, i) { var option = el('option', '', name); option.value = String(i); ui.week.appendChild(option); }); var importSubmit = btn('Добавить / привязать', '', function () {}); importSubmit.type = 'submit'; ui.import.append(ui.existing, ui.clientName, ui.category, ui.week, importSubmit, btn('Отмена', '', function () { ui.import.hidden = true; }));
+    ui.import.addEventListener('submit', function (event) { event.preventDefault(); if (!state.chat) return; try { var result = importClient(state.chat, ui.clientName.value, ui.category.value, Number(ui.week.value), ui.existing.value); ui.import.hidden = true; notice((result.existing ? 'Привязка обновлена.' : 'Клиент добавлен.') + ' Сохранение идёт через обычную синхронизацию CRM.'); } catch (error) { notice('Не удалось завершить добавление. Проверьте базу перед повтором; данные не удалялись.', true); } });
+    dialog.append(ui.chatTitle, ui.toCrm, ui.older, ui.history, ui.import, ui.compose); body.append(ui.list, dialog); ui.status = el('div', 'avchat-status'); ui.status.setAttribute('role', 'status'); ui.panel.append(head, tools, body, ui.status); document.body.append(ui.launch, ui.panel);
+    document.addEventListener('avitolog:workspace-reset', reset);
+    setInterval(function () { if (state.scope && state.scope !== scope()) reset(); else if (state.mode !== 'closed' && document.visibilityState !== 'hidden') { if (state.chat) loadMessages(state.chat, false); if (Date.now() - state.lastPoll > 45000) refresh(false); } }, 15000);
+  }
+  window.AvitoChat = Object.freeze({ open: function (large) { setMode(large ? 'web' : 'mini'); } });
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', mount); else mount();
+})();

@@ -2009,6 +2009,8 @@ function fillClientForm(c) {
   if (typeof syncGeoFromValue === 'function') syncGeoFromValue();
   var sourceEl = document.getElementById('source_account_id');
   if (sourceEl) sourceEl.value = c.source_account_id || c.sourceAccountId || '';
+  var connectionEl = document.getElementById('avito_connection_id');
+  if (connectionEl) connectionEl.value = c.avito_connection_id || '';
   if (typeof window.__goalsRefreshSidebarSourceAccount === 'function') window.__goalsRefreshSidebarSourceAccount();
   document.getElementById('notes').value = c.notes || '';
   document.getElementById('kp_count').value = c.kp_count || '';
@@ -2035,6 +2037,7 @@ function fillClientForm(c) {
       list.appendChild(empty);
     }
   }
+  if (window.ProjectCard && typeof window.ProjectCard.refreshSidebar === 'function') window.ProjectCard.refreshSidebar();
 }
 window.fillClientFormFromGoal = function(goalData) {
   if (!goalData) return;
@@ -2073,7 +2076,7 @@ window.fillClientFormFromGoal = function(goalData) {
 };
 
 function clearClientForm() {
-  ['company','contact_name','phone','tg','vk','avito_account','category','city','source_account_id','notes','kp_count'].forEach(function(id) {
+  ['company','contact_name','phone','tg','vk','avito_account','category','city','source_account_id','avito_connection_id','notes','kp_count'].forEach(function(id) {
     var el = document.getElementById(id);
     if (el) el.value = '';
   });
@@ -2081,6 +2084,7 @@ function clearClientForm() {
   if (typeof window.__goalsRefreshSidebarSourceAccount === 'function') window.__goalsRefreshSidebarSourceAccount();
   document.getElementById('client_type').value = '';
   document.querySelectorAll('.ctype-btn').forEach(function(b) { b.classList.remove('on'); });
+  if (window.ProjectCard && typeof window.ProjectCard.refreshSidebar === 'function') window.ProjectCard.refreshSidebar();
 }
 function findClientForProject(project) {
   var clients = getCrmClients();
@@ -2122,6 +2126,12 @@ function makeProjectCrmSnapshot(d) {
     category: d.category || '',
     city: d.city || '',
     source_account_id: d.source_account_id || '',
+    avito_connection_id: d.avito_connection_id || '',
+    avito_chat_keys: Array.isArray(d.avito_chat_keys) ? d.avito_chat_keys.slice() : [],
+    avito_chat_key: d.avito_chat_key || '',
+    avito_chat_id: d.avito_chat_id || '',
+    avito_origin_account_id: d.avito_origin_account_id || '',
+    avito_origin_user_id: d.avito_origin_user_id || '',
     notes: d.notes || '',
     kp_count: d.kp_count || '',
     positions: d.positions || '',

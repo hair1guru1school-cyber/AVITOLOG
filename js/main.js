@@ -4612,7 +4612,7 @@ function buildFolderClientPayload(folderId, folderName, categoryFolderId) {
 }
 function fillClientFormFromData(data) {
   data = data || {};
-  var ids = ['company','contact_name','phone','tg','vk','avito_account','category','city','source_account_id','notes','kp_count','client_type'];
+  var ids = ['company','contact_name','phone','tg','vk','avito_account','category','city','source_account_id','avito_connection_id','notes','kp_count','client_type'];
   var map = { tg: 'telegram' };
   ids.forEach(function(id) {
     var el = document.getElementById(id);
@@ -4625,6 +4625,7 @@ function fillClientFormFromData(data) {
     b.classList.toggle('on', b.textContent.trim() === (data.client_type || ''));
   });
   if (typeof window.__goalsRefreshSidebarSourceAccount === 'function') window.__goalsRefreshSidebarSourceAccount();
+  if (window.ProjectCard && typeof window.ProjectCard.refreshSidebar === 'function') window.ProjectCard.refreshSidebar();
 }
 function compactActiveClientForStorage(client) {
   client = client || {};
@@ -4653,7 +4654,13 @@ function compactActiveClientForStorage(client) {
     'notes',
     'kp_count',
     'client_type',
-    'source_account_id'
+    'source_account_id',
+    'avito_connection_id',
+    'avito_chat_keys',
+    'avito_chat_key',
+    'avito_chat_id',
+    'avito_origin_account_id',
+    'avito_origin_user_id'
   ].forEach(function(key) {
     if (client[key] !== undefined && client[key] !== null && client[key] !== '') {
       var value = client[key];
@@ -4872,7 +4879,7 @@ function clearActiveClient() {
     }
   }
   // Очищаем форму
-  ['company','contact_name','phone','tg','vk','avito_account','category','city','source_account_id','notes','kp_count'].forEach(function(id) {
+  ['company','contact_name','phone','tg','vk','avito_account','category','city','source_account_id','avito_connection_id','notes','kp_count'].forEach(function(id) {
     var el = document.getElementById(id);
     if (el) el.value = '';
   });
@@ -5369,6 +5376,15 @@ function loadClient(idx) {
   closeClientMenu();
 }
 
+function preserveClientAvitoChatMetadata(target, previous) {
+  if (previous && Array.isArray(previous.avito_chat_keys)) {
+    target.avito_chat_keys = Array.from(new Set((Array.isArray(target.avito_chat_keys) ? target.avito_chat_keys : []).concat(previous.avito_chat_keys).filter(function(key) { return typeof key === 'string' && key.length > 0 && key.length <= 240; })));
+  }
+  ['avito_chat_key', 'avito_chat_id', 'avito_origin_account_id', 'avito_origin_user_id'].forEach(function(key) {
+    if (previous && previous[key] != null && previous[key] !== '') target[key] = String(previous[key]).slice(0, 180);
+  });
+  return target;
+}
 async function saveClient() {
   var btn = document.getElementById('saveClientBtn');
   var btnDisc = document.getElementById('crmSaveDriveBtn');
@@ -5380,7 +5396,7 @@ async function saveClient() {
     var d = {
       company: v('company'), contact_name: v('contact_name'), phone: v('phone'),
       telegram: v('tg'), vk: v('vk'), avito_account: v('avito_account'), client_type: v('client_type'),
-      category: v('category'), city: cityVal, source_account_id: v('source_account_id'), notes: v('notes'),
+      category: v('category'), city: cityVal, source_account_id: v('source_account_id'), avito_connection_id: v('avito_connection_id'), notes: v('notes'),
       positions: getPos().join(', '), kp_count: v('kp_count'),
       createdAt: new Date().toLocaleDateString('ru')
     };
@@ -5436,6 +5452,8 @@ async function saveClient() {
     var clients = getCrmClients();
     if (selectedProject) {
       // Строгая привязка: только у выбранного проекта — всегда свой уникальный клиент
+      preserveClientAvitoChatMetadata(d, selectedProject.crmData);
+      if (typeof findClientForProject === 'function') preserveClientAvitoChatMetadata(d, findClientForProject(selectedProject));
       d.client_id = generateClientId();
       clients.unshift(d);
     } else {
@@ -5448,6 +5466,7 @@ async function saveClient() {
       if (!d.client_id && existing >= 0 && clients[existing].client_id) d.client_id = clients[existing].client_id;
       if (!d.client_id) d.client_id = generateClientId();
       if (existing >= 0) {
+        preserveClientAvitoChatMetadata(d, clients[existing]);
         if (clients[existing].client_id) d.client_id = clients[existing].client_id;
         clients[existing] = d;
       } else {
@@ -5471,6 +5490,7 @@ async function saveClient() {
         sp.categoryFolderId = catId;
         sp.crmData = makeProjectCrmSnapshot(d);
         sp.sourceAccountId = d.source_account_id || '';
+        sp.avitoConnectionId = d.avito_connection_id || '';
         saveProjectsData(pd);
         syncProjectToActiveSheet(sp.id, 'crm_save');
         rerenderProjectsPreserveScroll();
