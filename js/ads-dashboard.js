@@ -149,10 +149,12 @@
     if (!Array.isArray(value) || value.length > 200) return [];
     return value.map(String).filter(function (id, index, all) { return ACCOUNT_ID.test(id) && all.indexOf(id) === index; });
   }
+  function dashboardScale(value) { return typeof value === 'number' && isFinite(value) ? Math.max(75, Math.min(110, Math.round(value))) : 100; }
+  function applyScale(state) { state.root.style.zoom = dashboardScale(state.preferences.scale) / 100; }
   function defaults() {
     var visible = {};
     METRICS.forEach(function (metric) { visible[metric.key] = true; });
-    return { period: 'month', viewMode: 'charts', dailyMetric: 'contacts', metrics: visible, calendar: profile() === 'fil', expenses: false, links: false, selectedAccountIds: null, sourceMap: Object.create(null) };
+    return { period: 'month', viewMode: 'charts', dailyMetric: 'contacts', scale: 100, metrics: visible, calendar: profile() === 'fil', expenses: false, links: false, selectedAccountIds: null, sourceMap: Object.create(null) };
   }
   function readPreferences(raw) {
     var result = defaults();
@@ -166,6 +168,7 @@
       result.period = saved.period === 'today' ? 'today' : 'month';
       result.viewMode = ['compact', 'daily'].indexOf(saved.viewMode) !== -1 ? saved.viewMode : 'charts';
       result.dailyMetric = ['contacts', 'spending', 'earned', 'bought', 'views'].indexOf(saved.dailyMetric) !== -1 ? saved.dailyMetric : 'contacts';
+      result.scale = dashboardScale(saved.scale);
       METRICS.forEach(function (metric) { result.metrics[metric.key] = !(saved.metrics && saved.metrics[metric.key] === false); });
       ['calendar', 'expenses', 'links'].forEach(function (key) { if (typeof saved[key] === 'boolean') result[key] = saved[key]; });
       if (Array.isArray(saved.selectedAccountIds)) result.selectedAccountIds = accountIds(saved.selectedAccountIds);
@@ -374,6 +377,14 @@
   function renderSettings(state) {
     if (!mounted(state)) return;
     empty(state.settingsContent);
+    var scaleLabel = element('label', 'ads-dashboard-scale');
+    scaleLabel.style.display = 'flex'; scaleLabel.style.alignItems = 'center'; scaleLabel.style.gap = '12px'; scaleLabel.style.marginBottom = '16px';
+    scaleLabel.appendChild(element('span', '', 'Масштаб ADS'));
+    var scaleInput = element('input'); scaleInput.type = 'range'; scaleInput.min = '75'; scaleInput.max = '110'; scaleInput.step = '1'; scaleInput.value = String(dashboardScale(state.preferences.scale)); scaleInput.setAttribute('aria-label', 'Масштаб ADS');
+    scaleInput.style.width = '180px'; scaleInput.style.maxWidth = '45vw';
+    var scaleValue = element('output', '', scaleInput.value + '%');
+    scaleInput.addEventListener('input', function () { state.preferences.scale = dashboardScale(Number(scaleInput.value)); scaleValue.textContent = state.preferences.scale + '%'; applyScale(state); savePreferences(state); });
+    scaleLabel.appendChild(scaleInput); scaleLabel.appendChild(scaleValue); state.settingsContent.appendChild(scaleLabel);
     state.settingsContent.appendChild(element('h3', '', 'Режим отображения'));
     var modeLabel = element('label', 'ads-dashboard-view-mode');
     modeLabel.appendChild(element('span', '', 'Вид ADS'));
@@ -505,6 +516,7 @@
       state.statistics = []; state.statisticsDate = ''; state.updatedAt = null; state.showingPrevious = false;
     }
     if (!mounted(state)) return;
+    applyScale(state);
     renderStatus(state);
     state.todayButton.setAttribute('aria-pressed', state.preferences.period === 'today' ? 'true' : 'false');
     state.monthButton.setAttribute('aria-pressed', state.preferences.period === 'month' ? 'true' : 'false');

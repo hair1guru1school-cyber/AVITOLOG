@@ -8,6 +8,9 @@
   var STORE_NAME = 'profiles';
   var FALLBACK_PREFIX = 'avitolog_main_menu_visibility_v1:';
   var IDB_TIMEOUT_MS = 1200;
+  var TAB_SCALE_DEFAULT = 100;
+  var TAB_SCALE_MIN = 80;
+  var TAB_SCALE_MAX = 140;
   var ACCOUNTS_URL = 'https://avitoboss.online/integrations/avito-accounts/?embedded=1';
   var TAB_DEFINITIONS = [
     { key: 'goals', buttonId: 'btnGoals', label: 'CRM' },
@@ -38,6 +41,7 @@
     profile: profileId(),
     visible: defaultVisibility(),
     order: [],
+    tabScale: TAB_SCALE_DEFAULT,
     menuOpen: false,
     accountsOpen: false,
     storageMode: 'loading',
@@ -107,20 +111,27 @@
     var visible = normalizeVisibility(value);
     if (!visible) return null;
     var order = value && typeof value === 'object' ? value.order : null;
-    return { visible: visible, order: normalizeOrder(order, fallbackOrder) };
+    return { visible: visible, order: normalizeOrder(order, fallbackOrder), tabScale: normalizeTabScale(value && value.tabScale) };
+  }
+
+  function normalizeTabScale(value) {
+    if (typeof value !== 'number' || !isFinite(value)) return TAB_SCALE_DEFAULT;
+    return Math.max(TAB_SCALE_MIN, Math.min(TAB_SCALE_MAX, Math.round(value / 5) * 5));
   }
 
   function copyPreferences(value) {
     return {
       visible: copyVisibility(value.visible),
-      order: normalizeOrder(value.order, []).slice()
+      order: normalizeOrder(value.order, []).slice(),
+      tabScale: normalizeTabScale(value.tabScale)
     };
   }
 
   function preferenceSnapshot() {
     return copyPreferences({
       visible: state.visible,
-      order: state.order.length ? state.order : currentTopTabOrder()
+      order: state.order.length ? state.order : currentTopTabOrder(),
+      tabScale: state.tabScale
     });
   }
 
@@ -187,7 +198,8 @@
       window.localStorage.setItem(fallbackKey(profile), JSON.stringify({
         profile: profile,
         visible: snapshot.visible,
-        order: snapshot.order
+        order: snapshot.order,
+        tabScale: snapshot.tabScale
       }));
       return true;
     } catch (error) {
@@ -310,7 +322,8 @@
           transaction.objectStore(STORE_NAME).put({
             profile: profile,
             visible: snapshot.visible,
-            order: snapshot.order
+            order: snapshot.order,
+            tabScale: snapshot.tabScale
           });
           transaction.oncomplete = function () { finish(); };
           transaction.onerror = function () { finish(new Error('indexeddb_write_failed')); };
@@ -365,6 +378,33 @@
     });
   }
 
+  function applyTabScale() {
+    var row = document.getElementById('analyticsTopRow');
+    if (row) row.style.setProperty('--main-menu-tab-scale', String(state.tabScale / 100));
+    var input = document.getElementById('mainMenuTabScale');
+    if (input) {
+      input.value = String(state.tabScale);
+      input.setAttribute('aria-valuetext', state.tabScale + '%');
+    }
+    var output = document.getElementById('mainMenuTabScaleValue');
+    if (output) output.textContent = state.tabScale + '%';
+  }
+
+  function previewTabScale(value) {
+    ensureProfile();
+    var next = normalizeTabScale(value);
+    if (next !== state.tabScale) {
+      state.tabScale = next;
+      state.mutationVersion += 1;
+    }
+    applyTabScale();
+  }
+
+  function setTabScale(value) {
+    previewTabScale(value);
+    return queuePersist(state.profile, preferenceSnapshot(), state.mutationVersion);
+  }
+
   function syncActiveButtons() {
     var row = document.getElementById('analyticsTopRow');
     var accountButton = document.getElementById('btnAvitoAccounts');
@@ -409,6 +449,7 @@
     });
     if (state.visible.accounts === false && state.accountsOpen) closeAccounts();
     syncCheckboxes();
+    applyTabScale();
     syncActiveButtons();
   }
 
@@ -610,6 +651,7 @@
       state.profile = nextProfile;
       state.visible = defaultVisibility();
       state.order = currentTopTabOrder();
+      state.tabScale = TAB_SCALE_DEFAULT;
       state.mutationVersion = 0;
       applyVisibility();
     }
@@ -623,6 +665,7 @@
       if (loadVersion !== state.loadVersion || profile !== state.profile) return getState();
       if (state.mutationVersion === startMutation && result.preferences) {
         state.visible = result.preferences.visible;
+        state.tabScale = result.preferences.tabScale;
         applyStoredOrder(result.preferences.order);
         applyVisibility();
       }
@@ -647,6 +690,7 @@
       profile: state.profile,
       visible: copyVisibility(state.visible),
       order: state.order.slice(),
+      tabScale: state.tabScale,
       menuOpen: state.menuOpen,
       accountsOpen: state.accountsOpen,
       storageMode: state.storageMode,
@@ -668,11 +712,17 @@
       '.main-menu-settings-list{display:grid;gap:6px;border:0;margin:8px 0;padding:0}',
       '.main-menu-settings-option{display:flex;flex-direction:row;align-items:center;gap:9px;padding:7px 8px;border-radius:8px;background:rgba(255,255,255,.035);font-size:12px;font-weight:700;cursor:pointer}',
       '.main-menu-settings-option input{width:17px;height:17px;min-height:0;margin:0;accent-color:var(--accent,#00d97e)}',
+      '.main-menu-tab-scale{margin:10px 0 12px;padding-bottom:12px;border-bottom:1px solid var(--border,#314052)}',
+      '.main-menu-tab-scale-head{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:12px;font-weight:700}',
+      '.main-menu-tab-scale-head output{font-variant-numeric:tabular-nums;color:var(--accent,#00d97e)}',
+      '#mainMenuTabScale{display:block;width:100%;height:24px;min-height:0;margin:8px 0;accent-color:var(--accent,#00d97e);cursor:pointer}',
+      '.main-menu-tab-scale-reset{padding:4px 8px;border:1px solid var(--border,#314052);border-radius:6px;background:transparent;color:inherit;font:inherit;font-size:11px;cursor:pointer}',
       '.main-menu-settings-note,.main-menu-settings-status{margin:8px 0 0;font-size:10px;line-height:1.45;color:var(--muted,#91a0b8)}',
       '.main-menu-settings-status[data-mode="memory"]{color:#ffabb3}',
       '#analyticsTopRow{overflow-x:auto;overscroll-behavior-x:contain;scrollbar-width:thin}',
       '#analyticsTopRow .btn-projects[hidden]{display:none!important}',
-      '@media(min-width:769px){#analyticsTopRow{justify-content:flex-start}#analyticsTopRow>.btn-projects{min-width:0;width:auto;padding:0 14px;flex:0 0 auto;font-size:14px;white-space:nowrap}}',
+      '@media(min-width:769px){#analyticsTopRow{justify-content:flex-start;gap:calc(8px * var(--main-menu-tab-scale,1))}#analyticsTopRow>.btn-projects{min-width:0;width:auto;padding:0 calc(14px * var(--main-menu-tab-scale,1));flex:0 0 auto;font-size:calc(14px * var(--main-menu-tab-scale,1));height:calc(46px * var(--main-menu-tab-scale,1));min-height:calc(46px * var(--main-menu-tab-scale,1));gap:calc(8px * var(--main-menu-tab-scale,1));border-radius:calc(16px * var(--main-menu-tab-scale,1)) calc(16px * var(--main-menu-tab-scale,1)) 0 0;white-space:nowrap}}',
+      '@media(max-width:768px){#analyticsTopRow{gap:calc(6px * var(--main-menu-tab-scale,1))}#analyticsTopRow>.btn-projects{font-size:calc(12px * var(--main-menu-tab-scale,1));height:calc(42px * var(--main-menu-tab-scale,1));min-height:calc(42px * var(--main-menu-tab-scale,1));padding:0 calc(6px * var(--main-menu-tab-scale,1));gap:calc(4px * var(--main-menu-tab-scale,1))}}',
       '#btnAvitoAccounts.is-on{background:linear-gradient(180deg,#123247,#102033);color:#7cf5ff;box-shadow:0 0 22px rgba(53,208,255,.42)}',
       '#avitoAccountsPanel[hidden]{display:none!important}',
       '#avitoAccountsPanel{min-height:0;flex:1;padding:10px 12px 14px;background:#070c14;color:#edf7ff}',
@@ -711,6 +761,30 @@
     close.setAttribute('aria-label', 'Закрыть настройки меню');
     head.appendChild(close);
     menu.appendChild(head);
+    var scale = element('div', '', 'main-menu-tab-scale');
+    var scaleHead = element('div', '', 'main-menu-tab-scale-head');
+    var scaleLabel = element('label', 'mainMenuTabScaleLabel', '', 'Размер вкладок');
+    scaleLabel.setAttribute('for', 'mainMenuTabScale');
+    scaleHead.appendChild(scaleLabel);
+    var scaleValue = element('output', 'mainMenuTabScaleValue', '', '100%');
+    scaleValue.setAttribute('for', 'mainMenuTabScale');
+    scaleHead.appendChild(scaleValue);
+    scale.appendChild(scaleHead);
+    var scaleInput = element('input', 'mainMenuTabScale');
+    scaleInput.type = 'range';
+    scaleInput.min = String(TAB_SCALE_MIN);
+    scaleInput.max = String(TAB_SCALE_MAX);
+    scaleInput.step = '5';
+    scaleInput.value = String(state.tabScale);
+    scaleInput.setAttribute('aria-labelledby', 'mainMenuTabScaleLabel');
+    scaleInput.addEventListener('input', function () { previewTabScale(Number(scaleInput.value)); });
+    scaleInput.addEventListener('change', function () { setTabScale(Number(scaleInput.value)); });
+    scale.appendChild(scaleInput);
+    var scaleReset = element('button', 'mainMenuTabScaleReset', 'main-menu-tab-scale-reset', 'Сбросить до 100%');
+    scaleReset.type = 'button';
+    scaleReset.addEventListener('click', function () { setTabScale(TAB_SCALE_DEFAULT); });
+    scale.appendChild(scaleReset);
+    menu.appendChild(scale);
     var list = element('fieldset', '', 'main-menu-settings-list');
     list.setAttribute('aria-label', 'Видимые разделы');
     TAB_DEFINITIONS.forEach(function (tab) {
@@ -824,6 +898,7 @@
     closeAccounts: closeAccounts,
     refreshProfile: refreshProfile,
     setTabVisible: setTabVisible,
+    setTabScale: setTabScale,
     getState: getState
   };
 

@@ -68,7 +68,35 @@
     });
     return panel;
   }
-  function chart(days, metric) {
+  function accountSeries(options) {
+    var selected = [], names = Object.create(null), stats = Object.create(null), duplicate = Object.create(null), used = Object.create(null);
+    (Array.isArray(options.selectedAccountIds) ? options.selectedAccountIds : []).forEach(function (value) {
+      var id = String(value); if (/^[1-9]\d{0,19}$/.test(id) && selected.indexOf(id) < 0) selected.push(id);
+    });
+    (Array.isArray(options.accounts) ? options.accounts : []).forEach(function (account) { if (account) names[String(account.avitoUserId)] = String(account.name || ''); });
+    (Array.isArray(options.statistics) ? options.statistics : []).forEach(function (stat) {
+      if (!stat) return; var id = String(stat.avitoUserId);
+      if (stats[id]) duplicate[id] = true; else stats[id] = stat;
+    });
+    return selected.sort().map(function (id) {
+      var hash = 2166136261;
+      for (var index = 0; index < id.length; index++) { hash ^= id.charCodeAt(index); hash = Math.imul(hash, 16777619); }
+      var hue = (hash >>> 0) % 360;
+      while (used[hue] || selected.length === 2 && Object.keys(used).some(function (other) { var distance = Math.abs(Number(other) - hue); return Math.min(distance, 360 - distance) < 60; })) hue = (hue + 137) % 360;
+      used[hue] = true;
+      return { id: id, name: names[id] || stats[id] && String(stats[id].name || '') || 'Avito ID ' + id, color: 'hsl(' + hue + ', 82%, 65%)', statistic: duplicate[id] ? null : stats[id] };
+    });
+  }
+  function chartLegend(series) {
+    var legend = node('div', 'ads-daily-chart-legend'); legend.setAttribute('aria-label', 'Цвета аккаунтов на графике');
+    legend.style.display = 'flex'; legend.style.flexWrap = 'wrap'; legend.style.gap = '8px 20px'; legend.style.margin = '6px 0 12px'; legend.style.fontSize = '12px';
+    series.forEach(function (entry) {
+      var label = node('span', 'ads-daily-chart-account', entry.name); label.style.color = entry.color;
+      label.style.borderLeft = '8px solid ' + entry.color; label.style.paddingLeft = '7px'; legend.appendChild(label);
+    });
+    return legend;
+  }
+  function chart(days, metric, options, series) {
     var container = node('div', 'ads-daily-chart');
     container.setAttribute('aria-label', INFO[metric].name + ' по дням');
     container.style.setProperty('--ads-daily-color', INFO[metric].color);
@@ -78,10 +106,30 @@
       var column = node('div', 'ads-daily-column');
       column.tabIndex = 0;
       var label = dateLabel(day.date) + ' · ' + INFO[metric].name + ': ' + format(value, metric);
+      var parts = series.map(function (entry) {
+        var date = accountDay(entry.statistic, day.date, options.model.range && options.model.range.today);
+        var contribution = date ? finite(date[metric]) : null;
+        label += '\n' + entry.name + ': ' + format(contribution, metric);
+        return { color: entry.color, value: contribution };
+      });
+      var partTotal = sum(parts.map(function (part) { return part.value; }));
+      var complete = parts.length && value !== null && partTotal !== null && Math.abs(partTotal - value) <= Math.max(0.0000001, value * 0.000000001);
+      if (parts.length && !complete) label += '\nРазбивка по аккаунтам неполная; показан общий итог.';
       column.setAttribute('aria-label', label);
       column.title = label;
       var bar = node('span', 'ads-daily-bar' + (value === null ? ' is-missing' : ''));
       bar.style.height = value === null ? '3px' : (max > 0 ? 100 * value / max : 0) + '%';
+      if (complete && value > 0) {
+        var segments = parts.filter(function (part) { return part.value > 0; }), stops = [], offset = 0;
+        segments.forEach(function (part, index) {
+          var start = offset; offset += 100 * part.value / value;
+          var fade = Math.min(2, (offset - start) / 4);
+          stops.push(part.color + ' ' + (index ? start + fade : 0) + '%');
+          stops.push(part.color + ' ' + (index < segments.length - 1 ? offset - fade : 100) + '%');
+        });
+        bar.style.background = 'linear-gradient(to top, ' + stops.join(', ') + ')';
+        bar.setAttribute('data-account-count', String(segments.length));
+      }
       var track = node('div', 'ads-daily-track'); track.appendChild(bar);
       column.appendChild(track);
       column.appendChild(node('span', 'ads-daily-date', dateLabel(day.date)));
@@ -243,7 +291,10 @@
       heading.appendChild(tabs); panel.appendChild(heading);
       var summary = node('div', 'ads-daily-chart-summary'); summary.appendChild(node('span', '', INFO[key].name)); summary.appendChild(node('strong', '', format(totals[key], key))); panel.appendChild(summary);
       var days = (Array.isArray(model.days) ? model.days : []).filter(function (day) { return day && (options.period !== 'today' || day.date === (model.range && model.range.today)); });
-      panel.appendChild(chart(days, key));
+      var series = ['contacts', 'spending', 'views'].indexOf(key) !== -1 ? accountSeries(options) : [];
+      if (series.length) panel.appendChild(chartLegend(series));
+      panel.appendChild(chart(days, key, options, series));
+      if (series.length) panel.appendChild(node('p', 'ads-daily-note', 'Цвета — вклад аккаунтов в общий итог. При неполной разбивке свеча остаётся одноцветной; значения доступны при наведении.'));
       if (!days.length) panel.appendChild(node('p', 'ads-daily-note', 'Дневные данные ещё не загружены.'));
       analytics.appendChild(panel);
     }
