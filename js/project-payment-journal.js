@@ -212,7 +212,7 @@
   }
   function install(win) {
     var doc = win.document, timer = null, timerContext = '', scheduledSyncFiles = false, busy = false, again = false;
-    var pendingFiles = {}, fileJobs = {}, fileRetries = {}, fileDrainRunning = false, knownSourceKeys = {};
+    var pendingFiles = {}, fileJobs = {}, fileRetries = {}, fileDrainRunning = false, knownSourceKeys = {}, deferredLiveContext = '';
     function profile() { return win.AVITOLOG_KEY_SUFFIX === '_sasha' ? 'sasha' : 'fil'; }
     function scoped(base) { return typeof win.AVITOLOG_KEY === 'function' ? win.AVITOLOG_KEY(base) : base + (profile() === 'sasha' ? '_sasha' : ''); }
     function identity() {
@@ -244,7 +244,8 @@
     }
     function projects() {
       if (!ready()) return { projects: [], hiddenProjects: [] };
-      try { if (typeof win.loadProjectsData === 'function') return win.loadProjectsData(); } catch (error) {}
+      var memory = win._projectsDataMem;
+      if (memory && Array.isArray(memory.projects) && win._projectsDataMemKey === scoped('avitolog_projects')) return memory;
       return read(scoped('avitolog_projects'), { projects: [], hiddenProjects: [] });
     }
     function allProjects(data) { return list(data.projects).concat(list(data.hiddenProjects)); }
@@ -305,28 +306,77 @@
     function notify(name, detail) {
       try { doc.dispatchEvent(new win.CustomEvent(name, { detail: detail })); } catch (error) {}
     }
-    function persist(data) {
-      if (typeof win.saveProjectsData !== 'function') return false;
-      win.saveProjectsData(data);
+    function businessShape(data) {
+      var projectRows = new Set(allProjects(data)), shaped = Object.assign({}, data);
+      ['hiddenProjects', 'tasks', 'taskLog'].forEach(function (field) { if (shaped[field] === undefined) shaped[field] = []; });
+      return JSON.stringify(shaped, function (key, value) { return key === 'paymentJournalV1' && projectRows.has(this) ? undefined : value; });
+    }
+    function journalValue(value) { return JSON.stringify(value == null ? null : value); }
+    function journalPatch(index, project, next) {
+      return { index: index, id: text(project.id), before: project.paymentJournalV1, beforeValue: journalValue(project.paymentJournalV1), hadBefore: Object.prototype.hasOwnProperty.call(project, 'paymentJournalV1'), after: next };
+    }
+    function rollbackPatches(data, patches) {
+      var rows = allProjects(data);
+      patches.forEach(function (patch) {
+        var project = rows[patch.index];
+        if (!project || project.paymentJournalV1 !== patch.after) return;
+        if (patch.hadBefore) project.paymentJournalV1 = patch.before;
+        else delete project.paymentJournalV1;
+      });
+    }
+    function snapshotBaseline(data) {
+      try {
+        var raw = win.localStorage.getItem(scoped('avitolog_projects')), baseline = JSON.parse(raw || 'null');
+        if (!baseline || !Array.isArray(baseline.projects) || businessShape(data) !== businessShape(baseline) || businessShape(projects()) !== businessShape(baseline)) return null;
+        return { raw: raw, data: baseline };
+      } catch (error) { return null; }
+    }
+    function persist(data, patches) {
+      var captured = context(), baseline = snapshotBaseline(data);
+      if (!canWrite() || !baseline || typeof win.flushProjectsDataToStorage !== 'function') return false;
+      var rows = allProjects(baseline.data);
+      for (var i = 0; i < patches.length; i++) {
+        var patch = patches[i], project = rows[patch.index];
+        if (!project || text(project.id) !== patch.id || journalValue(project.paymentJournalV1) !== patch.beforeValue || !patch.after || patch.after.format !== FORMAT || patch.after.profile !== profile()) return false;
+        project.paymentJournalV1 = clone(patch.after);
+      }
+      // Never flush a captured business snapshot or run project migrations here.
+      // The only allowed delta is this journal field on already-existing rows.
+      if (businessShape(baseline.data) !== businessShape(data) || captured !== context() || !canWrite()) return false;
+      try { if (win.localStorage.getItem(scoped('avitolog_projects')) !== baseline.raw) return false; }
+      catch (error) { return false; }
+      win.flushProjectsDataToStorage(baseline.data);
       return true;
     }
     function materialize(syncFiles) {
       if (!canWrite()) return false;
       if (busy) { again = true; return false; }
-      var captured = context(), data = projects(), dataSources = prepareSources(sources()), changed = false;
+      var captured = context(), data = projects(), dataSources = prepareSources(sources()), changed = false, patches = [];
+      syncFiles = !!(syncFiles || deferredLiveContext === captured);
       busy = true;
       try {
-        allProjects(data).forEach(function (project) {
+        allProjects(data).forEach(function (project, index) {
           var entries = entriesFor(project, dataSources), old = project.paymentJournalV1;
           if (old && (old.format !== FORMAT || old.profile !== profile())) return;
           if (!entries.length && !old) return;
           if (old && old.format === FORMAT && old.profile === profile() && JSON.stringify(old.entries) === JSON.stringify(entries)) return;
-          project.paymentJournalV1 = { format: FORMAT, profile: profile(), entries: entries, updatedAt: new Date().toISOString(), drivePending: true, driveAutoSync: !!(syncFiles || old && old.driveAutoSync === true) };
-          if (old && old.driveFileId) project.paymentJournalV1.driveFileId = text(old.driveFileId);
+          var next = { format: FORMAT, profile: profile(), entries: entries, updatedAt: new Date().toISOString(), drivePending: true, driveAutoSync: !!(syncFiles || old && old.driveAutoSync === true) };
+          if (old && old.driveFileId) next.driveFileId = text(old.driveFileId);
+          patches.push(journalPatch(index, project, next));
+          project.paymentJournalV1 = next;
           if (syncFiles && folderId(project.folderId || project.folderLink || project.crmData && (project.crmData.folderId || project.crmData.folderLink))) pendingFiles[captured + '|' + text(project.id)] = { context: captured, id: text(project.id) };
           changed = true;
         });
-        if (changed && context() === captured && canWrite() && persist(data)) notify('avitolog:project-payments-changed', { profile: profile() });
+        if (changed) {
+          if (context() === captured && canWrite() && persist(data, patches)) {
+            if (deferredLiveContext === captured) deferredLiveContext = '';
+            notify('avitolog:project-payments-changed', { profile: profile() });
+          } else {
+            rollbackPatches(data, patches);
+            if (syncFiles) deferredLiveContext = captured;
+            changed = false;
+          }
+        }
       } finally { busy = false; }
       if (again) { again = false; schedule(false); }
       if (syncFiles) void drainFiles();
@@ -355,6 +405,7 @@
       if (!canWrite()) return { ok: false, reason: 'read_only_profile' };
       var captured = context(), data = projects(), project = resolve(target, data);
       if (!project) return { ok: false, reason: 'project_not_found' };
+      if (!snapshotBaseline(data)) return { ok: false, reason: 'project_snapshot_changed' };
       if (project.paymentJournalV1 && (project.paymentJournalV1.format !== FORMAT || project.paymentJournalV1.profile !== profile())) return { ok: false, reason: 'journal_file_conflict' };
       var folder = folderId(project.folderId || project.folderLink || project.crmData && (project.crmData.folderId || project.crmData.folderLink));
       if (!folder) return { ok: false, reason: 'folder_not_linked' };
@@ -430,14 +481,20 @@
             var latestSources = prepareSources(sources()), latestCurrent = derive(project, latestSources);
             var latestEntries = mergeEntries(entriesFor(project, latestSources), entries, latestCurrent.observed);
             var caughtUp = JSON.stringify(latestEntries) === JSON.stringify(entries);
-            project.paymentJournalV1 = { format: FORMAT, profile: profile(), entries: latestEntries, updatedAt: new Date().toISOString(), drivePending: !caughtUp, driveAutoSync: !caughtUp && !!(project.paymentJournalV1 && project.paymentJournalV1.driveAutoSync === true), driveFileId: text(saved.id) };
-            persist(data);
+            var nextJournal = { format: FORMAT, profile: profile(), entries: latestEntries, updatedAt: new Date().toISOString(), drivePending: !caughtUp, driveAutoSync: !caughtUp && !!(project.paymentJournalV1 && project.paymentJournalV1.driveAutoSync === true), driveFileId: text(saved.id) };
+            var patch = journalPatch(allProjects(data).indexOf(project), project, nextJournal);
+            project.paymentJournalV1 = nextJournal;
+            if (!persist(data, [patch])) {
+              rollbackPatches(data, [patch]);
+              if (patch.before && patch.before.driveAutoSync === true || nextJournal.driveAutoSync) deferredLiveContext = captured;
+              throw new Error('project_snapshot_changed');
+            }
           }
           notify('avitolog:project-payments-file', { projectId: text(project && project.id), ok: true });
           return { ok: true, fileId: text(saved.id), fileName: FILE_NAME, pending: !!(project.paymentJournalV1 && project.paymentJournalV1.drivePending) };
         } catch (error) {
           var reason = text(error && error.message);
-          if (!/^(context_changed|drive_not_connected|folder_not_writable|journal_file_conflict|drive_http_\d+|drive_unconfirmed)$/.test(reason)) reason = 'drive_unavailable';
+          if (!/^(context_changed|drive_not_connected|folder_not_writable|journal_file_conflict|project_snapshot_changed|drive_http_\d+|drive_unconfirmed)$/.test(reason)) reason = 'drive_unavailable';
           return { ok: false, reason: reason };
         } finally { delete fileJobs[jobKey]; }
       }());
@@ -467,6 +524,7 @@
       } finally { fileDrainRunning = false; }
     }
     function retryPendingFiles() {
+      if (canWrite() && deferredLiveContext === context()) materialize(true);
       if (!ownDriveVerified()) return Promise.resolve();
       var captured = context();
       allProjects(projects()).forEach(function (project) {

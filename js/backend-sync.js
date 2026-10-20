@@ -295,6 +295,12 @@
     try {
       if (target) Storage.prototype.setItem.call(target, prefix + key, value);
       else localStorage.setItem(key, value);
+      // A merged server snapshot must replace the cached project objects too.
+      try {
+        if (isProjectsStorageKey(key) && typeof window.__projectsApplyBackendValue === 'function') {
+          window.__projectsApplyBackendValue(key, value);
+        }
+      } catch (projectMemoryError) {}
       return true;
     } catch (error) {
       if (isQuotaStorageError(error) && (isContentKey(key) || isFinanceKey(key) || isProjectsStorageKey(key) || isClientsStorageKey(key))) {
@@ -612,6 +618,12 @@
     });
     return out;
   }
+  function isProjectJournalOnlyChange(previousItem, nextItem) {
+    if (!previousItem || !nextItem || stableJson(previousItem.paymentJournalV1) === stableJson(nextItem.paymentJournalV1)) return false;
+    return Object.keys(previousItem).concat(Object.keys(nextItem)).every(function(field) {
+      return field === 'paymentJournalV1' || stableJson(previousItem[field]) === stableJson(nextItem[field]);
+    });
+  }
   function mergeProjectArrayByChanges(remoteArr, previousArr, nextArr) {
     remoteArr = Array.isArray(remoteArr) ? remoteArr : [];
     previousArr = Array.isArray(previousArr) ? previousArr : [];
@@ -653,12 +665,29 @@
     });
     nextArr.forEach(function(nextItem) {
       var id = backendItemId(nextItem);
-      if (id && !seen[id] && (!previousById[id] || stableJson(previousById[id]) !== stableJson(nextItem))) {
+      if (id && !seen[id] && !isProjectJournalOnlyChange(previousById[id], nextItem) &&
+          (!previousById[id] || stableJson(previousById[id]) !== stableJson(nextItem))) {
         out.push(nextItem);
         seen[id] = true;
       }
     });
     return out;
+  }
+  function mergeHiddenProjectsByChanges(remoteArr, previousArr, nextArr) {
+    var remoteById = {}, previousById = {}, journalOnlyById = {};
+    (Array.isArray(remoteArr) ? remoteArr : []).forEach(function(item) { remoteById[backendItemId(item)] = item; });
+    (Array.isArray(previousArr) ? previousArr : []).forEach(function(item) { previousById[backendItemId(item)] = item; });
+    (Array.isArray(nextArr) ? nextArr : []).forEach(function(item) {
+      var id = backendItemId(item);
+      if (id && isProjectJournalOnlyChange(previousById[id], item)) journalOnlyById[id] = item;
+    });
+    return mergeArrayByChangedIds(remoteArr, previousArr, nextArr).filter(function(item) {
+      var id = backendItemId(item);
+      return !journalOnlyById[id] || !!remoteById[id];
+    }).map(function(item) {
+      var id = backendItemId(item);
+      return journalOnlyById[id] ? mergeProjectRecordByChanges(remoteById[id], previousById[id], journalOnlyById[id]) : item;
+    });
   }
   function mergeProjectsValue(remoteValue, previousValue, nextValue) {
     var remote = parseJsonValue(remoteValue);
@@ -670,7 +699,9 @@
       if (Array.isArray(next[field]) || Array.isArray(previous[field]) || Array.isArray(remote[field])) {
         out[field] = field === 'projects'
           ? mergeProjectArrayByChanges(remote[field], previous[field], next[field])
-          : mergeArrayByChangedIds(remote[field], previous[field], next[field]);
+          : field === 'hiddenProjects'
+            ? mergeHiddenProjectsByChanges(remote[field], previous[field], next[field])
+            : mergeArrayByChangedIds(remote[field], previous[field], next[field]);
       }
     });
     return JSON.stringify(out);
