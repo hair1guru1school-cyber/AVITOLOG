@@ -31,7 +31,7 @@
     var parts = next.split('|');
     frame = document.createElement('iframe'); frame.hidden = true;
     frame.title = 'Защищённая связь CRM с Avito'; frame.setAttribute('aria-hidden', 'true');
-    frame.src = ORIGIN + '/integrations/avito-accounts/?workspaceBridge=1&expected_user_id=' + encodeURIComponent(parts[0]) + '&organization_id=' + encodeURIComponent(parts[2]) + '&v=20261020-workspace1';
+    frame.src = ORIGIN + '/integrations/avito-accounts/?workspaceBridge=1&expected_user_id=' + encodeURIComponent(parts[0]) + '&organization_id=' + encodeURIComponent(parts[2]) + '&v=20261020-workspace2';
     readyTask = new Promise(function (resolve, reject) {
       var owner = frame; readyReject = reject;
       readyTimer = setTimeout(function () { if (owner === frame) { readyReject = null; reject(new Error('timeout')); clear(); } }, 25000);

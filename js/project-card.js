@@ -16,6 +16,9 @@
     ['notes', 'Примечания', 20000], ['avito_connection_id', 'Аккаунт проекта', 100]
   ];
   function text(value) { return value == null ? '' : String(value); }
+  function hasId(value) { return value != null && String(value) !== ''; }
+  function sameId(left, right) { return hasId(left) && hasId(right) && String(left) === String(right); }
+  function findById(list, key, id) { return hasId(id) ? (list || []).find(function (item) { return item && sameId(item[key], id); }) || null : null; }
   function escape(value) { return text(value).replace(/[&<>"']/g, function (c) { return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]; }); }
   function clone(value) { return JSON.parse(JSON.stringify(value)); }
   function normalize(value) { return text(value).toLowerCase().replace(/ё/g, 'е').replace(/[^a-zа-я0-9]+/g, ' ').trim(); }
@@ -39,11 +42,11 @@
   }
   function linkedClient(project, clients) {
     if (!project) return null;
-    if (project.crmClientId) {
-      var byId = (clients || []).find(function (c) { return c && c.client_id === project.crmClientId; });
+    if (hasId(project.crmClientId)) {
+      var byId = findById(clients, 'client_id', project.crmClientId);
       if (byId) return byId;
     }
-    return project.folderId ? (clients || []).find(function (c) { return c && c.folderId === project.folderId; }) || null : null;
+    return findById(clients, 'folderId', project.folderId);
   }
   function model(project, client) {
     var data = Object.assign({}, client || {}, project && project.crmData || {});
@@ -138,12 +141,14 @@
   function projectForCurrent() {
     var selected = typeof root.getSelectedProject === 'function' ? root.getSelectedProject() : null;
     if (selected) return selected;
+    selected = findById(getProjects().projects, 'id', root._selectedProjectId);
+    if (selected) return selected;
     var client = typeof root.getActiveClient === 'function' ? root.getActiveClient() : null;
     return client && (getProjects().projects || []).find(function (p) { return linkedClient(p, [client]); }) || null;
   }
   function sidebarIdentity() {
     var p = projectForCurrent(), c = typeof root.getActiveClient === 'function' ? root.getActiveClient() : null;
-    return scope() + '|' + (p && p.id || '') + '|' + (c && (c.client_id || c.folderId) || '');
+    return scope() + '|' + (p ? text(p.id) : '') + '|' + (c ? text(hasId(c.client_id) ? c.client_id : c.folderId) : '');
   }
   function refreshSidebar() {
     if (!document) return;
@@ -160,7 +165,7 @@
     fillAccountSelect(select, input.value, name);
     var expected = scope();
     loadAccounts().then(function () {
-      if (expected === scope() && identity === sidebarIdentity()) fillAccountSelect(select, input.value, name);
+      if (expected === scope() && identity === sidebarIdentity()) { fillAccountSelect(select, input.value, name); select.title = ''; }
     }).catch(function () { select.title = 'Список аккаунтов временно недоступен. Текущая привязка сохранена.'; });
   }
   function sidebarAccountChanged(select) {
@@ -203,7 +208,7 @@
     return '<p class="project-card-note">Подтверждённых оплат: ' + valid.length + ' · Всего ' + escape(formatMoney(valid.reduce(function (sum, e) { return sum + e.amount; }, 0))) + '. Только записи, явно связанные с этим проектом.</p>' + (valid.length ? '<table class="project-card-table"><thead><tr><th>Дата</th><th>Сумма</th><th>Источник</th></tr></thead><tbody>' + valid.slice().reverse().map(function (entry) { return '<tr><td>' + escape(entry.date || 'Дата не указана') + '</td><td>' + escape(formatMoney(entry.amount)) + '</td><td>' + escape((entry.sources || [entry.source]).map(function (v) { return ({ cash: 'Касса', crm: 'CRM', journal: 'Журнал' })[v] || 'Журнал'; }).join(' + ')) + '</td></tr>'; }).join('') + '</tbody></table>' : '<p class="project-card-note">Связанных записей об оплате пока нет.</p>') + (safeFolder(project) ? '<button type="button" data-payment-sync class="project-card-sidebar">Сохранить журнал в папку проекта</button>' : '') + '<div class="project-card-note" data-payment-file></div>';
   }
   function activityHtml(project, data) {
-    var tasks = (data.tasks || []).filter(function (task) { return project && task.projectId === project.id; });
+    var tasks = (data.tasks || []).filter(function (task) { return project && sameId(task.projectId, project.id); });
     var events = (project && project.events || []).filter(Boolean);
     var tasksHtml = tasks.slice(0, 30).map(function (task) { return '<li>' + escape(task.title || 'Задача') + ' · ' + escape(task.status || '') + (task.dueDate ? ' · ' + escape(task.dueDate) : '') + '</li>'; }).join('');
     var eventsHtml = events.slice().sort(function (a, b) { return text(b.date || b.startDate).localeCompare(text(a.date || a.startDate)); }).slice(0, 15).map(function (event) { return '<li>' + escape(event.date || event.startDate || '') + (event.endDate ? ' — ' + escape(event.endDate) : '') + ' · ' + escape(event.title || event.label || event.text || event.type || 'Отметка') + '</li>'; }).join('');
@@ -252,9 +257,9 @@
       FIELDS.forEach(function (field) { var input = state.overlay.querySelector('[name="' + field[0] + '"]'); next[field[0]] = input ? input.value : state.before[field[0]]; });
       var changes = changedFields(state.before, next);
       var clients = getClients().map(clone), data = clone(getProjects());
-      var project = state.projectId ? (data.projects || []).find(function (p) { return p.id === state.projectId; }) : null;
-      var client = state.clientId ? clients.find(function (c) { return c.client_id === state.clientId; }) : state.folderId ? clients.find(function (c) { return c.folderId === state.folderId; }) : null;
-      if (state.projectId && !project || !state.projectId && !client) throw new Error('Проект или клиент больше не найден. Откройте карту заново.');
+      var project = findById(data.projects, 'id', state.projectId);
+      var client = hasId(state.clientId) ? findById(clients, 'client_id', state.clientId) : findById(clients, 'folderId', state.folderId);
+      if (hasId(state.projectId) && !project || !hasId(state.projectId) && !client) throw new Error('Проект или клиент больше не найден. Откройте карту заново.');
       assertNoConflict(state.before, model(project, client), changes);
       if (changes.avito_connection_id && !accounts.some(function (account) { return account.id === changes.avito_connection_id; })) throw new Error('Этот аккаунт недоступен в текущем режиме. Выберите доступный аккаунт.');
       var crmPatch = Object.assign({}, changes); delete crmPatch.title;
@@ -269,10 +274,12 @@
       }
       ensureScope(state.scope);
       if (client && Object.keys(changes).length) { if (typeof root.saveCrmClients !== 'function') throw new Error('Сохранение CRM недоступно.'); root.saveCrmClients(clients); }
+      ensureScope(state.scope);
       if (project && Object.keys(changes).length) { if (typeof root.saveProjectsData !== 'function') throw new Error('Сохранение проектов недоступно.'); root.saveProjectsData(data); }
+      ensureScope(state.scope);
       if (project && typeof root.rerenderProjectsPreserveScroll === 'function' && root.projectsMode) root.rerenderProjectsPreserveScroll();
       if (project && typeof root.syncProjectToActiveSheet === 'function') root.syncProjectToActiveSheet(project.id, 'project_card_save');
-      if (typeof root.fillClientForm === 'function' && (projectForCurrent() || {}).id === state.projectId) root.fillClientForm(Object.assign({}, project && project.crmData || client || {}, { avito_connection_id: project && project.avitoConnectionId || (client || {}).avito_connection_id || '' }));
+      if (typeof root.fillClientForm === 'function' && sameId((projectForCurrent() || {}).id, state.projectId)) root.fillClientForm(Object.assign({}, project && project.crmData || client || {}, { avito_connection_id: project && project.avitoConnectionId || (client || {}).avito_connection_id || '' }));
       state.before = model(project, client); state.dirty = false;
       notice.textContent = 'Сохранено в текущем режиме. Серверная синхронизация выполняется как обычно.';
       refreshSidebar();
@@ -281,14 +288,15 @@
   function open(projectId) {
     if (!ready()) return;
     if (!close(false)) return;
-    var data = getProjects(), project = projectId ? (data.projects || []).find(function (p) { return p.id === projectId; }) : projectForCurrent();
+    var data = getProjects(), project = hasId(projectId) ? findById(data.projects, 'id', projectId) : projectForCurrent();
+    if (hasId(projectId) && !project) { root.alert('Проект больше не найден. Обновите список проектов.'); return; }
     var client = project ? linkedClient(project, getClients()) : typeof root.getActiveClient === 'function' ? root.getActiveClient() : null;
     if (!project && !client) { root.alert('Сначала выберите проект или клиента CRM.'); return; }
     style();
     var values = model(project, client), folder = safeFolder(project || client);
     var overlay = document.createElement('div'); overlay.className = 'project-card-overlay';
     overlay.innerHTML = '<section class="project-card-dialog" role="dialog" aria-modal="true" aria-labelledby="projectCardTitle"><header class="project-card-head"><h2 id="projectCardTitle">Карта проекта · ' + escape(values.title || values.company || 'Клиент') + '</h2><button type="button" data-action="close" aria-label="Закрыть карту проекта">✕</button></header><div class="project-card-body"><section class="project-card-section"><div class="project-card-meta">' + (project ? '<span>Статус: ' + escape(project.status || 'Не указан') + '</span><span>Раздел: ' + escape(({ active: 'Активные', sleep: 'Zzz', second_chance: 'Zzz', archive: 'Архив' })[project.zone] || project.zone || 'Активные') + '</span>' : '<span>Клиент CRM</span>') + (folder ? '<a target="_blank" rel="noopener noreferrer" href="' + escape(folder) + '">Папка проекта в Drive ↗</a>' : '<span>Папка Drive ещё не привязана</span>') + '</div><div class="project-card-fields">' + FIELDS.map(function (field) { return fieldHtml(field, values); }).join('') + '</div></section><section class="project-card-section"><h3>Статистика привязанного аккаунта</h3><div data-account-metrics></div></section><section class="project-card-section"><h3>История оплат</h3>' + paymentsHtml(project || client) + '</section><section class="project-card-section">' + activityHtml(project, data) + '</section></div><footer class="project-card-foot"><span class="project-card-note" data-notice role="status"></span><button type="button" data-action="save">Сохранить изменения</button></footer></section>';
-    var state = { overlay: overlay, scope: scope(), projectId: project && project.id || '', clientId: client && client.client_id || '', folderId: client && client.folderId || '', before: values, dirty: false, metricsRequest: 0, previousFocus: document.activeElement };
+    var state = { overlay: overlay, scope: scope(), projectId: project ? project.id : '', clientId: client ? client.client_id : '', folderId: client ? client.folderId : '', before: values, dirty: false, metricsRequest: 0, previousFocus: document.activeElement };
     current = state;
     document.body.appendChild(overlay);
     overlay.querySelector('[data-action="close"]').onclick = function () { close(false); };
@@ -339,6 +347,8 @@
       var row = line.closest('.projects-table-row[data-id]'), id = row.getAttribute('data-id');
       var button = document.createElement('button'); button.type = 'button'; button.className = 'project-card-row-button';
       button.dataset.projectCard = id; button.title = 'Карта проекта'; button.setAttribute('aria-label', 'Карта проекта'); button.textContent = '▣';
+      button.onpointerdown = function (event) { if (event.button === 0) { event.preventDefault(); event.stopPropagation(); } };
+      button.onmousedown = function (event) { if (event.button === 0) { event.preventDefault(); event.stopPropagation(); } };
       button.onclick = function (event) { event.stopPropagation(); open(id); };
       line.appendChild(button);
     });
@@ -373,6 +383,6 @@
   }
   var api = { open: open, close: close, refreshSidebar: refreshSidebar };
   root.ProjectCard = api;
-  if (typeof module !== 'undefined' && module.exports) module.exports = { normalize: normalize, safeAvitoUrl: safeAvitoUrl, linkedClient: linkedClient, model: model, accountScore: accountScore, rankedAccounts: rankedAccounts, changedFields: changedFields, assertNoConflict: assertNoConflict, paymentsHtml: paymentsHtml, save: save, scope: scope, ready: ready, readOnly: readOnly };
+  if (typeof module !== 'undefined' && module.exports) module.exports = { normalize: normalize, safeAvitoUrl: safeAvitoUrl, linkedClient: linkedClient, model: model, accountScore: accountScore, rankedAccounts: rankedAccounts, changedFields: changedFields, assertNoConflict: assertNoConflict, paymentsHtml: paymentsHtml, save: save, scope: scope, ready: ready, readOnly: readOnly, sameId: sameId, findById: findById, projectForCurrent: projectForCurrent, activityHtml: activityHtml };
   if (document) { if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init(); }
 })(typeof window !== 'undefined' ? window : globalThis);

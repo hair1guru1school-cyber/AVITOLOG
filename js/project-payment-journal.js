@@ -160,7 +160,8 @@
     return Object.keys(result).map(function (id) { return result[id]; }).sort(function (a, b) { return a.date.localeCompare(b.date) || a.id.localeCompare(b.id); });
   }
   function install(win) {
-    var doc = win.document, timer = null, busy = false, again = false, pendingFiles = {}, fileJobs = {}, knownSourceKeys = {};
+    var doc = win.document, timer = null, timerContext = '', scheduledSyncFiles = false, busy = false, again = false;
+    var pendingFiles = {}, fileJobs = {}, fileRetries = {}, fileDrainRunning = false, knownSourceKeys = {};
     function profile() { return win.AVITOLOG_KEY_SUFFIX === '_sasha' ? 'sasha' : 'fil'; }
     function scoped(base) { return typeof win.AVITOLOG_KEY === 'function' ? win.AVITOLOG_KEY(base) : base + (profile() === 'sasha' ? '_sasha' : ''); }
     function identity() {
@@ -178,6 +179,14 @@
       var user = identity();
       return !!(user && text(user.id) && ((profile() === 'fil') === (text(user.id) === OWNER_ID)));
     }
+    function ownDriveVerified() {
+      if (!canWrite()) return false;
+      try {
+        var user = identity(), verified = typeof win.__avitologVerifiedDriveIdentity === 'function' && win.__avitologVerifiedDriveIdentity();
+        return !!(user && text(user.id) && text(user.email) && verified && verified.id === user.id && verified.email === user.email);
+      } catch (error) { return false; }
+    }
+    function retryNow() { return win.Date && typeof win.Date.now === 'function' ? win.Date.now() : Date.now(); }
     function read(key, fallback) {
       try { var value = JSON.parse(win.localStorage.getItem(key) || 'null'); return value == null ? fallback : value; }
       catch (error) { return fallback; }
@@ -261,7 +270,7 @@
           if (old && (old.format !== FORMAT || old.profile !== profile())) return;
           if (!entries.length && !old) return;
           if (old && old.format === FORMAT && old.profile === profile() && JSON.stringify(old.entries) === JSON.stringify(entries)) return;
-          project.paymentJournalV1 = { format: FORMAT, profile: profile(), entries: entries, updatedAt: new Date().toISOString(), drivePending: true };
+          project.paymentJournalV1 = { format: FORMAT, profile: profile(), entries: entries, updatedAt: new Date().toISOString(), drivePending: true, driveAutoSync: !!(syncFiles || old && old.driveAutoSync === true) };
           if (old && old.driveFileId) project.paymentJournalV1.driveFileId = text(old.driveFileId);
           if (syncFiles && folderId(project.folderId || project.folderLink || project.crmData && (project.crmData.folderId || project.crmData.folderLink))) pendingFiles[captured + '|' + text(project.id)] = { context: captured, id: text(project.id) };
           changed = true;
@@ -274,8 +283,15 @@
     }
     function schedule(syncFiles) {
       var captured = context();
+      if (timerContext !== captured) scheduledSyncFiles = false;
+      timerContext = captured;
+      scheduledSyncFiles = scheduledSyncFiles || !!syncFiles;
       if (timer) win.clearTimeout(timer);
-      timer = win.setTimeout(function () { timer = null; if (captured === context()) materialize(syncFiles); }, 250);
+      timer = win.setTimeout(function () {
+        var sync = scheduledSyncFiles;
+        timer = null; timerContext = ''; scheduledSyncFiles = false;
+        if (captured === context()) materialize(sync);
+      }, 250);
     }
     function assertContext(captured) {
       if (captured !== context() || !canWrite()) throw new Error('context_changed');
@@ -360,11 +376,14 @@
           if (!project || folderId(project.folderId || project.folderLink || project.crmData && (project.crmData.folderId || project.crmData.folderLink)) !== folder) throw new Error('context_changed');
           if (project.paymentJournalV1 && (project.paymentJournalV1.format !== FORMAT || project.paymentJournalV1.profile !== profile())) throw new Error('journal_file_conflict');
           if (project && list(data.projects).concat(list(data.hiddenProjects)).indexOf(project) >= 0) {
-            project.paymentJournalV1 = { format: FORMAT, profile: profile(), entries: entries, updatedAt: new Date().toISOString(), drivePending: false, driveFileId: text(saved.id) };
+            var latestSources = sources(), latestCurrent = derive(project, latestSources);
+            var latestEntries = mergeEntries(entriesFor(project, latestSources), entries, latestCurrent.observed);
+            var caughtUp = JSON.stringify(latestEntries) === JSON.stringify(entries);
+            project.paymentJournalV1 = { format: FORMAT, profile: profile(), entries: latestEntries, updatedAt: new Date().toISOString(), drivePending: !caughtUp, driveAutoSync: !caughtUp && !!(project.paymentJournalV1 && project.paymentJournalV1.driveAutoSync === true), driveFileId: text(saved.id) };
             persist(data);
           }
           notify('avitolog:project-payments-file', { projectId: text(project && project.id), ok: true });
-          return { ok: true, fileId: text(saved.id), fileName: FILE_NAME };
+          return { ok: true, fileId: text(saved.id), fileName: FILE_NAME, pending: !!(project.paymentJournalV1 && project.paymentJournalV1.drivePending) };
         } catch (error) {
           var reason = text(error && error.message);
           if (!/^(context_changed|drive_not_connected|folder_not_writable|journal_file_conflict|drive_http_\d+|drive_unconfirmed)$/.test(reason)) reason = 'drive_unavailable';
@@ -374,12 +393,38 @@
       return fileJobs[jobKey];
     }
     async function drainFiles() {
-      var items = Object.keys(pendingFiles);
-      for (var i = 0; i < items.length; i++) {
-        var item = pendingFiles[items[i]]; delete pendingFiles[items[i]];
-        if (item.context !== context() || !canWrite()) continue;
-        await syncProjectFile(item.id);
-      }
+      if (fileDrainRunning || !ownDriveVerified()) return;
+      fileDrainRunning = true;
+      try {
+        var items = Object.keys(pendingFiles);
+        for (var i = 0; i < items.length; i++) {
+          var queueKey = items[i], item = pendingFiles[queueKey];
+          if (!item || item.context !== context()) { delete pendingFiles[queueKey]; delete fileRetries[queueKey]; continue; }
+          if (!ownDriveVerified()) break;
+          var retry = fileRetries[queueKey];
+          if (retry && retry.at > retryNow()) continue;
+          var project = resolve(item.id, projects()), journal = project && project.paymentJournalV1;
+          if (!journal || journal.format !== FORMAT || journal.profile !== profile() || journal.drivePending !== true || journal.driveAutoSync !== true) { delete pendingFiles[queueKey]; delete fileRetries[queueKey]; continue; }
+          var result = await syncProjectFile(item.id);
+          if (item.context !== context()) { delete pendingFiles[queueKey]; delete fileRetries[queueKey]; break; }
+          if (result.ok && !result.pending) { delete pendingFiles[queueKey]; delete fileRetries[queueKey]; }
+          else {
+            var attempts = Math.min((retry && retry.attempts || 0) + 1, 6);
+            fileRetries[queueKey] = { attempts: attempts, at: retryNow() + Math.min(900000, 45000 * Math.pow(2, attempts - 1)) };
+          }
+        }
+      } finally { fileDrainRunning = false; }
+    }
+    function retryPendingFiles() {
+      if (!ownDriveVerified()) return Promise.resolve();
+      var captured = context();
+      allProjects(projects()).forEach(function (project) {
+        var journal = project.paymentJournalV1;
+        if (!journal || journal.format !== FORMAT || journal.profile !== profile() || journal.drivePending !== true || journal.driveAutoSync !== true || !text(project.id)) return;
+        if (!folderId(project.folderId || project.folderLink || project.crmData && (project.crmData.folderId || project.crmData.folderLink))) return;
+        pendingFiles[captured + '|' + text(project.id)] = { context: captured, id: text(project.id) };
+      });
+      return drainFiles();
     }
     function isSourceKey(key) {
       var ownCash = scoped('avitolog_assets_my_v2'), agencyCash = scoped('avitolog_assets_sasha_v2'), goalsKey = scoped('avitolog_goals_v1');
@@ -387,7 +432,7 @@
     }
     doc.addEventListener('avitolog:storage-write', function (event) {
       var detail = event.detail || {};
-      if (isSourceKey(text(detail.key))) {
+      if (canWrite() && isSourceKey(text(detail.key))) {
         var keyList = knownSourceKeys[context()] || (knownSourceKeys[context()] = []);
         if (keyList.indexOf(text(detail.key)) < 0) keyList.push(text(detail.key));
         schedule(true);
@@ -397,6 +442,7 @@
     doc.addEventListener('avitolog:backend-remote-applied', function () { schedule(false); });
     if (doc.readyState === 'loading') doc.addEventListener('DOMContentLoaded', function () { schedule(false); });
     else schedule(false);
+    if (typeof win.setInterval === 'function') win.setInterval(retryPendingFiles, 45000);
     return { getEntries: getEntries, getSummary: getSummary, syncProjectFile: syncProjectFile, refresh: materialize, fileName: FILE_NAME };
   }
   return { derive: derive, mergeEntries: mergeEntries, normalizeEntry: normalizeEntry, install: install, format: FORMAT, fileName: FILE_NAME };
