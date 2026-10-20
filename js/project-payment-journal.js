@@ -9,7 +9,9 @@
   var FORMAT = 'avitolog-project-payments-v1';
   var FILE_NAME = 'AVITOBOSS-payments.json';
   var OWNER_ID = 'aa63f3cd-73bc-40c0-9b5f-ce62f3d28e49';
+  var PREPARED = {};
   function text(value) { return String(value == null ? '' : value).trim(); }
+  function firstValue(values) { for (var i = 0; i < values.length; i++) if (text(values[i])) return values[i]; return ''; }
   function list(value) { return Array.isArray(value) ? value : []; }
   function clone(value) { return JSON.parse(JSON.stringify(value)); }
   function date(value) {
@@ -31,7 +33,9 @@
   }
   function folderId(value) {
     var raw = text(value);
+    if (!raw) return '';
     if (/^[a-zA-Z0-9_-]{1,200}$/.test(raw)) return raw;
+    if (!/^https:\/\/drive\.google\.com(?::443)?\//i.test(raw)) return '';
     try {
       var url = new URL(raw);
       if (url.protocol !== 'https:' || url.hostname !== 'drive.google.com') return '';
@@ -48,9 +52,9 @@
     }
     add('folder', folderId(item.folderId) || folderId(item.folderLink) || folderId(item.folderUrl));
     add('project', item.projectId);
-    add('goal', item.goalsSourceId || item.goalProjectId);
-    add('client', item.client_id || item.clientId || item.crmClientRecordId);
-    if (item.crmClientId) { add('client', item.crmClientId); add('folder', folderId(item.crmClientId)); }
+    add('goal', firstValue([item.goalsSourceId, item.goalProjectId]));
+    add('client', firstValue([item.client_id, item.clientId, item.crmClientRecordId]));
+    if (text(item.crmClientId)) { add('client', item.crmClientId); add('folder', folderId(item.crmClientId)); }
     if (kind === 'goal') add('goal', item.id);
     if (kind === 'project') add('project', item.id);
     if (item.crmData && typeof item.crmData === 'object') {
@@ -59,23 +63,76 @@
     return result;
   }
   function intersects(a, b) { return a.some(function (item) { return b.indexOf(item) >= 0; }); }
-  function targetReferences(target, sources) {
-    var refs = references(target, target && (Array.isArray(target.status) || target.stage) ? 'goal' : 'project');
-    var relatives = list(sources.clients).map(function (item) { return { item: item, kind: 'client' }; })
-      .concat(list(sources.projects).map(function (item) { return { item: item, kind: 'project' }; }));
-    list(sources.goals).forEach(function (pack) {
-      list(pack.projects).forEach(function (item) { relatives.push({ item: item, kind: 'goal' }); });
+  function referenceIdentity(refs) {
+    var folder = '', client = '', other = '';
+    refs.forEach(function (ref) {
+      if (!other || ref < other) other = ref;
+      if (ref.indexOf('folder:') === 0 && (!folder || ref < folder)) folder = ref;
+      if (ref.indexOf('client:') === 0 && (!client || ref < client)) client = ref;
     });
-    // Follow explicit CRM/folder/goal links only, never a similar client name.
-    for (var pass = 0; pass < 4; pass++) {
-      var before = refs.length;
-      relatives.forEach(function (relative) {
-        var more = references(relative.item, relative.kind);
-        if (intersects(refs, more)) more.forEach(function (ref) { if (refs.indexOf(ref) < 0) refs.push(ref); });
+    return folder || client || other;
+  }
+  function prepareSources(sources) {
+    if (sources && sources.prepared === PREPARED) return sources;
+    sources = sources || {};
+    var graph = new Map(), components = new Map(), order = 0;
+    function relative(item, kind, key) {
+      if (!item || typeof item !== 'object') return;
+      var node = { item: item, kind: kind, refs: references(item, kind), key: text(key), order: order++ };
+      node.refs.forEach(function (ref) {
+        var nodes = graph.get(ref);
+        if (!nodes) graph.set(ref, nodes = []);
+        nodes.push(node);
       });
-      if (before === refs.length) break;
     }
-    return refs;
+    list(sources.clients).forEach(function (item) { relative(item, 'client'); });
+    list(sources.projects).forEach(function (item) { relative(item, 'project'); });
+    list(sources.goals).forEach(function (pack) {
+      list(pack.projects).forEach(function (item) { relative(item, 'goal', pack.key); });
+    });
+    // Build explicit-link components once for this immutable read snapshot.
+    // Cash rows attach to components but do not join otherwise unrelated clients.
+    graph.forEach(function (nodes, seed) {
+      if (components.has(seed)) return;
+      var component = { refs: [], cash: [], goals: [], identity: '' }, queue = [seed], seenNodes = new Set();
+      components.set(seed, component);
+      for (var cursor = 0; cursor < queue.length; cursor++) {
+        var ref = queue[cursor]; component.refs.push(ref);
+        list(graph.get(ref)).forEach(function (node) {
+          if (seenNodes.has(node)) return;
+          seenNodes.add(node);
+          if (node.kind === 'goal') component.goals.push(node);
+          node.refs.forEach(function (next) { if (!components.has(next)) { components.set(next, component); queue.push(next); } });
+        });
+      }
+      component.identity = referenceIdentity(component.refs);
+      component.goals.sort(function (a, b) { return a.order - b.order; });
+    });
+    list(sources.cash).forEach(function (pack) {
+      list(pack.rows).forEach(function (item, index) {
+        if (!item || typeof item !== 'object') return;
+        var node = { item: item, key: text(pack.key), column: pack.column, index: index, order: order++ }, attached = new Set();
+        references(item, 'cash').forEach(function (ref) {
+          var component = components.get(ref);
+          if (!component) { component = { refs: [ref], cash: [], goals: [], identity: ref }; components.set(ref, component); }
+          if (!attached.has(component)) { attached.add(component); component.cash.push(node); }
+        });
+      });
+    });
+    return { prepared: PREPARED, components: components };
+  }
+  function targetSources(target, index) {
+    var refs = references(target, target && (Array.isArray(target.status) || target.stage) ? 'goal' : 'project');
+    var components = new Set(), unknown = [];
+    refs.forEach(function (ref) { var component = index.components.get(ref); if (component) components.add(component); else unknown.push(ref); });
+    if (components.size === 1 && !unknown.length) return components.values().next().value;
+    var joinedRefs = new Set(unknown), cash = new Set(), goals = new Set();
+    components.forEach(function (component) {
+      component.refs.forEach(function (ref) { joinedRefs.add(ref); });
+      component.cash.forEach(function (node) { cash.add(node); });
+      component.goals.forEach(function (node) { goals.add(node); });
+    });
+    return { identity: referenceIdentity(Array.from(joinedRefs)), cash: Array.from(cash).sort(function (a, b) { return a.order - b.order; }), goals: Array.from(goals).sort(function (a, b) { return a.order - b.order; }) };
   }
   function normalizeEntry(entry) {
     if (!entry || typeof entry !== 'object') return null;
@@ -89,10 +146,8 @@
     };
   }
   function derive(target, sources) {
-    sources = sources || {};
-    var refs = targetReferences(target, sources), entries = {}, observed = [], cashGoals = {};
-    var identity = refs.filter(function (ref) { return ref.indexOf('folder:') === 0; }).sort()[0] ||
-      refs.filter(function (ref) { return ref.indexOf('client:') === 0; }).sort()[0] || refs.slice().sort()[0];
+    var matched = targetSources(target, prepareSources(sources)), entries = {}, observed = [], cashGoals = {};
+    var identity = matched.identity;
     if (!identity) return { entries: [], observed: [] };
     function add(source, paidDate, amount, occurrence, evidence, paymentId) {
       paidDate = date(paidDate); amount = money(amount);
@@ -106,36 +161,32 @@
       if (entry.sources.indexOf(source) < 0) entry.sources.push(source);
       if (entry.evidence.indexOf(evidence) < 0) entry.evidence.push(evidence);
     }
-    list(sources.cash).forEach(function (pack) {
-      list(pack.rows).forEach(function (row, index) {
-        if (!row || !intersects(refs, references(row, 'cash'))) return;
-        var sourceRef = 'cash:' + text(pack.key) + '#' + encodeURIComponent(text(row.id || row.paymentId || row.goalProjectId || row.crmClientId || row.folderId) || String(index));
+    matched.cash.forEach(function (node) {
+        var row = node.item;
+        var sourceRef = 'cash:' + node.key + '#' + encodeURIComponent(text(firstValue([row.id, row.paymentId, row.goalProjectId, row.crmClientId, row.folderId])) || String(node.index));
         observed.push(sourceRef);
         var payments = Array.isArray(row.paymentHistory) && row.paymentHistory.length
-          ? row.paymentHistory : [{ date: row.paymentDate, amount: pack.column === 'agency' ? row.soldFor : row.paid }];
+          ? row.paymentHistory : [{ date: row.paymentDate, amount: node.column === 'agency' ? row.soldFor : row.paid }];
         var occurrences = {}, valid = false;
         payments.forEach(function (payment) {
           var paidDate = date(payment && payment.date), amount = money(payment && payment.amount);
           if (!paidDate || !amount) return;
           var occurrenceKey = paidDate + '|' + amount;
           occurrences[occurrenceKey] = (occurrences[occurrenceKey] || 0) + 1;
-          add('cash', paidDate, amount, occurrences[occurrenceKey], sourceRef, payment && (payment.id || payment.paymentId || payment.transactionId));
+          add('cash', paidDate, amount, occurrences[occurrenceKey], sourceRef, payment && firstValue([payment.id, payment.paymentId, payment.transactionId]));
           valid = true;
         });
         if (valid && text(row.goalProjectId)) cashGoals[text(row.goalProjectId)] = true;
-      });
     });
-    list(sources.goals).forEach(function (pack) {
-      list(pack.projects).forEach(function (goal) {
-        if (!goal || !intersects(refs, references(goal, 'goal'))) return;
-        var sourceRef = 'crm:' + text(pack.key) + '#' + encodeURIComponent(text(goal.id));
+    matched.goals.forEach(function (node) {
+        var goal = node.item;
+        var sourceRef = 'crm:' + node.key + '#' + encodeURIComponent(text(goal.id));
         observed.push(sourceRef);
         var paid = list(goal.status).some(function (status) { return status === 'paid' || status === 'oplacheno'; });
         var paidDate = date(goal.statusDates && (goal.statusDates.paid || goal.statusDates.oplacheno)) || date(goal.paymentDate) || date(goal.paidAt);
         // Cash is authoritative when CRM already generated that cash row.
         if (cashGoals[text(goal.id)] || (!paid && goal.stage !== 'sold')) return;
-        add('crm', paidDate, goal.saleAmount || goal.mainPrice, 1, sourceRef, goal.paymentId || goal.transactionId);
-      });
+        add('crm', paidDate, firstValue([goal.saleAmount, goal.mainPrice]), 1, sourceRef, firstValue([goal.paymentId, goal.transactionId]));
     });
     return { entries: Object.keys(entries).map(function (id) { return entries[id]; }), observed: observed };
   }
@@ -231,7 +282,7 @@
       return result;
     }
     function resolve(target, data) {
-      if (typeof target === 'string') return allProjects(data).find(function (project) { return text(project.id) === target; }) || null;
+      if (typeof target === 'string' || typeof target === 'number') return allProjects(data).find(function (project) { return text(project.id) === text(target); }) || null;
       if (!target || typeof target !== 'object') return null;
       var found = allProjects(data).find(function (project) { return text(target.id) && text(project.id) === text(target.id); });
       return found || target;
@@ -262,7 +313,7 @@
     function materialize(syncFiles) {
       if (!canWrite()) return false;
       if (busy) { again = true; return false; }
-      var captured = context(), data = projects(), dataSources = sources(), changed = false;
+      var captured = context(), data = projects(), dataSources = prepareSources(sources()), changed = false;
       busy = true;
       try {
         allProjects(data).forEach(function (project) {
@@ -356,7 +407,7 @@
           data = projects(); project = resolve(target, data);
           if (!project || folderId(project.folderId || project.folderLink || project.crmData && (project.crmData.folderId || project.crmData.folderLink)) !== folder) throw new Error('context_changed');
           if (project.paymentJournalV1 && (project.paymentJournalV1.format !== FORMAT || project.paymentJournalV1.profile !== profile())) throw new Error('journal_file_conflict');
-          var dataSources = sources(), current = derive(project, dataSources);
+          var dataSources = prepareSources(sources()), current = derive(project, dataSources);
           var entries = mergeEntries(entriesFor(project, dataSources), remoteEntries, current.observed);
           var payload = JSON.stringify({ format: FORMAT, profile: profile(), folderId: folder, project: text(project.title || project.company || project.name), currency: 'RUB', count: entries.length, total: Math.round(entries.reduce(function (sum, entry) { return sum + entry.amount; }, 0) * 100) / 100, entries: entries }, null, 2);
           var saved;
@@ -376,7 +427,7 @@
           if (!project || folderId(project.folderId || project.folderLink || project.crmData && (project.crmData.folderId || project.crmData.folderLink)) !== folder) throw new Error('context_changed');
           if (project.paymentJournalV1 && (project.paymentJournalV1.format !== FORMAT || project.paymentJournalV1.profile !== profile())) throw new Error('journal_file_conflict');
           if (project && list(data.projects).concat(list(data.hiddenProjects)).indexOf(project) >= 0) {
-            var latestSources = sources(), latestCurrent = derive(project, latestSources);
+            var latestSources = prepareSources(sources()), latestCurrent = derive(project, latestSources);
             var latestEntries = mergeEntries(entriesFor(project, latestSources), entries, latestCurrent.observed);
             var caughtUp = JSON.stringify(latestEntries) === JSON.stringify(entries);
             project.paymentJournalV1 = { format: FORMAT, profile: profile(), entries: latestEntries, updatedAt: new Date().toISOString(), drivePending: !caughtUp, driveAutoSync: !caughtUp && !!(project.paymentJournalV1 && project.paymentJournalV1.driveAutoSync === true), driveFileId: text(saved.id) };
