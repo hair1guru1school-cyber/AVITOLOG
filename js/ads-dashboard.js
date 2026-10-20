@@ -117,11 +117,12 @@
   }
   function handleApiError(state, error) {
     if (!current(state)) return;
-    if (/^(auth_required|subject_mismatch|organization_forbidden|account_forbidden)$/.test(error && error.message || '')) {
+    if (/^(subject_mismatch|organization_forbidden|account_forbidden)$/.test(error && error.message || '')) {
       state.statistics = []; state.accounts = []; state.accountsLoaded = false; state.updatedAt = null; state.showingPrevious = false;
       try { if (state.snapshotKey) { if (window.AVITOLOG_ADS_CACHE) window.AVITOLOG_ADS_CACHE.remove(state.snapshotKey); else localStorage.removeItem(state.snapshotKey); } } catch (ignore) {}
       renderSettings(state);
     }
+    if (error && error.message === 'auth_required') state.showingPrevious = hasStatistics(state.statistics);
     state.apiWarning = bridgeError(error);
   }
   function mergeStatistics(state, fresh) {
@@ -213,7 +214,8 @@
     window.crypto.getRandomValues(data);
     return Array.prototype.map.call(data, function (value) { return ('0' + value.toString(16)).slice(-2); }).join('');
   }
-  function current(state) { return active === state && !state.destroyed && state.root.isConnected !== false && state.key === preferenceKey() && state.profile === profile() && state.snapshotKey === snapshotKey(); }
+  function current(state) { return active === state && !state.destroyed && state.key === preferenceKey() && state.profile === profile() && state.snapshotKey === snapshotKey(); }
+  function mounted(state) { return state.host && state.root.isConnected !== false && state.root.parentNode === state.host; }
   function listen(state, target, type, callback) {
     target.addEventListener(type, callback);
     state.unlisten.push(function () { target.removeEventListener(type, callback); });
@@ -273,7 +275,7 @@
     frame.hidden = true;
     frame.title = 'Защищённое чтение статистики Avito';
     frame.setAttribute('aria-hidden', 'true');
-    frame.src = ACCOUNTS_URL + '?adsBridge=1&expected_user_id=' + encodeURIComponent(uid) + '&organization_id=' + encodeURIComponent(organization);
+    frame.src = ACCOUNTS_URL + '?adsBridge=1&expected_user_id=' + encodeURIComponent(uid) + '&organization_id=' + encodeURIComponent(organization) + '&ads_v=20261020-ready1';
     state.frame = frame;
     var receive = function (event) {
       if (!current(state) || event.origin !== ORIGIN || event.source !== frame.contentWindow) return;
@@ -290,7 +292,8 @@
     state.frameLoaded = false;
     listen(state, frame, 'load', function () { clearTimeout(state.frameTimer); state.frameLoaded = true; loadAccounts(state); });
     state.frameTimer = setTimeout(function () { if (current(state) && !state.frameLoaded) { state.apiWarning = bridgeError(new Error('timeout')); render(state); } }, 20000);
-    state.root.appendChild(frame);
+    // Navigation replaces the page host; keep authorized reads outside it.
+    document.body.appendChild(frame);
   }
   function safeAccounts(value) {
     if (!Array.isArray(value) || value.length > 10000) return [];
@@ -326,6 +329,7 @@
     if (!current(state)) return;
     if (state.loading) { state.metricsQueued = true; return; }
     state.metricsQueued = false;
+    state.refreshStartedAt = Date.now();
     var selected = (state.preferences.selectedAccountIds || []).filter(function (id) { return state.accounts.some(function (account) { return account.avitoUserId === id; }); });
     var version = ++state.loadVersion;
     state.statistics = cleanStatistics(state.statistics).filter(function (entry) { return selected.indexOf(entry.avitoUserId) !== -1; });
@@ -368,6 +372,7 @@
     return wrap;
   }
   function renderSettings(state) {
+    if (!mounted(state)) return;
     empty(state.settingsContent);
     state.settingsContent.appendChild(element('h3', '', 'Режим отображения'));
     var modeLabel = element('label', 'ads-dashboard-view-mode');
@@ -431,7 +436,7 @@
     state.legacy.hidden = !(state.preferences.calendar || state.preferences.expenses || state.preferences.links);
   }
   function mountLegacy(state) {
-    if (state.legacyMounted || state.profile === 'sasha' || !ready() || typeof legacyRender !== 'function') return;
+    if (!mounted(state) || state.legacyMounted || state.profile === 'sasha' || !ready() || typeof legacyRender !== 'function') return;
     legacyRender(state.legacy);
     state.legacyMounted = true;
     applyLegacyVisibility(state);
@@ -499,6 +504,7 @@
     if (ready() && state.statisticsDate && state.statisticsDate !== window.AVITOLOG_ADS_FUNNEL.range(new Date()).today) {
       state.statistics = []; state.statisticsDate = ''; state.updatedAt = null; state.showingPrevious = false;
     }
+    if (!mounted(state)) return;
     renderStatus(state);
     state.todayButton.setAttribute('aria-pressed', state.preferences.period === 'today' ? 'true' : 'false');
     state.monthButton.setAttribute('aria-pressed', state.preferences.period === 'month' ? 'true' : 'false');
@@ -543,13 +549,7 @@
       mountLegacy(state);
     } catch (error) { state.status.textContent = 'Не удалось собрать воронку. Исходные данные не изменены.'; }
   }
-  function show(host) {
-    if (!host) return;
-    if (active && active.host === host && active.root.parentNode === host && active.key === preferenceKey() && active.profile === profile()) {
-      if (active.legacyMounted && typeof legacyRender === 'function') { legacyRender(active.legacy); applyLegacyVisibility(active); }
-      render(active); return;
-    }
-    if (active) destroy(active);
+  function createState(host) {
     var state = { host: host, profile: profile(), key: preferenceKey(), snapshotKey: snapshotKey(), preferences: readPreferences(), accounts: [], statistics: [], pending: {}, unlisten: [], loadVersion: 0, accountsLoaded: false, loading: false };
     active = state;
     state.root = element('section', 'ads-dashboard');
@@ -574,7 +574,7 @@
     state.warnings = element('p', 'ads-dashboard-muted'); state.root.appendChild(state.warnings);
     state.note = element('p', 'ads-dashboard-note'); state.root.appendChild(state.note);
     state.legacy = element('div', 'ads-dashboard-legacy'); state.root.appendChild(state.legacy);
-    empty(host); host.appendChild(state.root);
+    if (host) { empty(host); host.appendChild(state.root); }
     hydrateCache(state);
     listen(state, document, 'keydown', function (event) { if (event.key === 'Escape' && !state.settings.hidden) { state.settings.hidden = true; state.gear.setAttribute('aria-expanded', 'false'); state.gear.focus(); } });
     listen(state, document, 'click', function (event) { if (!state.settings.hidden && !state.settings.contains(event.target) && !state.gear.contains(event.target)) { state.settings.hidden = true; state.gear.setAttribute('aria-expanded', 'false'); } });
@@ -583,9 +583,40 @@
     listen(state, document, 'avitolog:storage-write', function () { render(state); });
     listen(state, document, 'avitolog:backend-initial-error', function () { renderStatus(state); state.status.textContent = window.AVITOLOG_BACKEND_INITIAL_SYNC_ERROR || 'Не удалось загрузить данные Supabase.'; });
     listen(state, window, 'storage', function () { render(state); });
-    if (window.MutationObserver) { state.observer = new window.MutationObserver(function () { if (state.key !== preferenceKey() || state.profile !== profile() || state.snapshotKey !== snapshotKey()) { state.root.hidden = true; destroy(state); } else if (state.root.isConnected === false) destroy(state); }); state.observer.observe(document.documentElement, { childList: true, subtree: true }); }
+    if (window.MutationObserver) { state.observer = new window.MutationObserver(function () { if (!current(state)) { state.root.hidden = true; destroy(state); } }); state.observer.observe(document.documentElement, { childList: true, subtree: true }); }
     render(state); renderSettings(state); if (ready()) setupBridge(state);
+    return state;
+  }
+  function show(host) {
+    if (!host) return;
+    if (active && current(active)) {
+      if (mounted(active) && active.host === host) {
+        if (active.legacyMounted && typeof legacyRender === 'function') { legacyRender(active.legacy); applyLegacyVisibility(active); }
+      } else {
+        active.host = host; empty(host); host.appendChild(active.root);
+      }
+      render(active); renderSettings(active);
+      if (!active.loading && active.frameLoaded) {
+        if (!active.accountsLoaded) loadAccounts(active);
+        else if (active.apiWarning || Date.now() - (active.refreshStartedAt || 0) >= 60000) loadMetrics(active);
+      } else if (!active.loading && active.apiWarning && !active.frameLoaded) {
+        if (active.frame && active.frame.parentNode) active.frame.parentNode.removeChild(active.frame);
+        setupBridge(active);
+      }
+      return;
+    }
+    if (active) destroy(active);
+    createState(host);
+  }
+  function prefetch() {
+    if (!ready() || !snapshotKey()) return;
+    if (active && current(active)) return;
+    if (active) destroy(active);
+    createState(null);
   }
   window.__showAdsPage = show;
-  window.AVITOLOG_ADS_DASHBOARD = { show: show, destroy: function () { destroy(active); } };
+  window.AVITOLOG_ADS_DASHBOARD = { show: show, prefetch: prefetch, destroy: function () { destroy(active); } };
+  document.addEventListener('avitolog:backend-initial-ready', prefetch);
+  document.addEventListener('DOMContentLoaded', prefetch);
+  if (document.readyState && document.readyState !== 'loading') setTimeout(prefetch, 0);
 })();
