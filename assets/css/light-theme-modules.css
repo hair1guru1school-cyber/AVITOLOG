@@ -37,10 +37,10 @@ body.day-mode :is(.ads-dashboard-number .ads-dashboard-metric-heading > span, .a
   color: #354f62;
 }
 body.day-mode .ads-dashboard-metric-heading strong {
-  color: color-mix(in srgb, var(--ads-metric-color) 52%, #153047);
+  color: color-mix(in srgb, var(--ads-metric-color) 38%, #153047);
 }
 body.day-mode :is(.ads-daily-value, .ads-daily-table-value) {
-  color: color-mix(in srgb, var(--ads-daily-color) 52%, #153047);
+  color: color-mix(in srgb, var(--ads-daily-color) 38%, #153047);
 }
 body.day-mode :is(.ads-daily-stage .ads-daily-value, .ads-daily-chart-summary strong) {
   color: #172c3d;
@@ -90,6 +90,9 @@ body.day-mode :is(.ads-dashboard-day:hover, .ads-daily-column:hover, .ads-daily-
 }
 body.day-mode .ads-daily-chart {
   background: repeating-linear-gradient(to top, transparent 0, transparent 24%, #395c7720 24.5%, transparent 25%);
+}
+body.day-mode .ads-daily-chart-account {
+  color: #354f62 !important;
 }
 body.day-mode :is(.ads-dashboard-tooltip, .ads-daily-tooltip) {
   color: #172c3d;
