@@ -1,0 +1,215 @@
+/* Editor chrome only. The canvas artwork and exported proposal keep their colors. */
+body.day-mode {
+  --bg: #eef4f8;
+  --panel: #fff;
+  --panel2: #f3f7fa;
+  --line: #c6d7e2;
+  --text: #183145;
+  --muted: #526b7e;
+  --cyan: #126a88;
+  --green: #087a62;
+  --gold: #94650e;
+  --orange: #a75917;
+  --red: #b83350;
+  --shadow: 0 10px 32px #23476116;
+  color-scheme: light;
+  color: var(--text);
+  background: linear-gradient(180deg, #f6f9fc, #edf3f7);
+}
+body.day-mode.embedded {
+  background: #eef4f8;
+}
+body.day-mode .top {
+  background: #fff;
+  border-bottom-color: #cbd9e3;
+}
+body.day-mode .logo {
+  color: #087a62;
+}
+body.day-mode .logo-mark {
+  color: #086b55;
+  background: #e3f4eb;
+}
+body.day-mode .status {
+  color: #086b55;
+  background: #e5f5ed;
+  border-color: #99ccb6;
+}
+body.day-mode .panel {
+  background: #fff;
+}
+body.day-mode .head {
+  background: #f3f7fa;
+  border-bottom-color: #d2e0e9;
+}
+body.day-mode h2 {
+  color: #354f64;
+}
+body.day-mode .btn,
+body.day-mode .tab,
+body.day-mode .group-chip,
+body.day-mode .cover-arrow {
+  color: #2e526a;
+  background: #edf4f9;
+  border-color: #b9cedc;
+}
+body.day-mode :is(.btn, .tab, .group-chip, .cover-arrow):hover {
+  background: #e1eef6;
+  border-color: #80abc3;
+}
+body.day-mode .btn.primary,
+body.day-mode .group-chip.active {
+  color: #fff;
+  background: #087a62;
+  border-color: #087a62;
+}
+body.day-mode .btn.primary:hover,
+body.day-mode .group-chip.active:hover {
+  background: #076951;
+}
+body.day-mode .btn.gold {
+  color: #6e470c;
+  background: #ffefc5;
+  border: 1px solid #d9bc77;
+}
+body.day-mode .btn.gold:hover {
+  background: #ffe7ad;
+}
+body.day-mode .btn.danger,
+body.day-mode .archive-menu button.danger {
+  color: #ad304b;
+  background: #fcecf0;
+  border-color: #dba7b3;
+}
+body.day-mode .btn.danger:hover,
+body.day-mode .archive-menu button.danger:hover {
+  background: #f8dfe6;
+}
+body.day-mode .stage-wrap {
+  background: radial-gradient(circle at 50% 0, #d7eaf48c, transparent 35%), #e7eef3;
+}
+body.day-mode .resize-handle {
+  background: #e1ecf3;
+  border-color: #bbd0df;
+}
+body.day-mode .resize-handle::before {
+  background: #7b9bae;
+  box-shadow: none;
+}
+body.day-mode .resize-handle:hover,
+body.day-mode .layout.resizing .resize-handle {
+  background: #d9eee8;
+  border-color: #6da992;
+}
+body.day-mode .niche-panel,
+body.day-mode .modal,
+body.day-mode .archive-menu,
+body.day-mode .emoji-picker {
+  color: #183145;
+  background: #fff;
+  border-color: #bad0dd;
+  box-shadow: 0 18px 54px #2347612b;
+}
+body.day-mode .niche-title,
+body.day-mode .modal-title {
+  color: #183145;
+}
+body.day-mode .niche-card {
+  color: #183145;
+  background: #f4f8fb;
+  border-color: #cedce5;
+}
+body.day-mode .niche-card:hover,
+body.day-mode .niche-card.active {
+  background: #e7f4ed;
+  border-color: #85bba4;
+}
+body.day-mode :is(.niche-path, .mini-note) {
+  color: #526b7e;
+}
+body.day-mode .tab.active {
+  color: #086b55;
+  background: #e0f3e9;
+  border-color: #82bda4;
+}
+body.day-mode label,
+body.day-mode .switch {
+  color: #3a5367;
+}
+body.day-mode :is(input, textarea, select) {
+  color: #183145;
+  background: #fff;
+  border-color: #b9cedc;
+  accent-color: #087a62;
+}
+body.day-mode :is(input, textarea)::placeholder {
+  color: #698092;
+  opacity: 1;
+}
+body.day-mode :is(input, textarea, select):focus {
+  border-color: #178099;
+  box-shadow: 0 0 0 3px #1780991a;
+}
+body.day-mode :is(button, input, textarea, select):focus-visible {
+  outline: 2px solid #178099;
+  outline-offset: 2px;
+}
+body.day-mode input[type=file]::file-selector-button {
+  color: #2e526a;
+  background: #edf4f9;
+  border: 1px solid #b9cedc;
+  border-radius: 5px;
+  padding: 4px 8px;
+}
+body.day-mode .card {
+  background: #f6f9fb;
+  border-color: #d2e0e9;
+}
+body.day-mode .preset-card {
+  color: #65450a;
+  background: linear-gradient(135deg, #fff0c7, #fff9e6);
+  border: 1px solid #e2ca92;
+}
+body.day-mode .preset-card label {
+  color: #705019;
+}
+body.day-mode .preset-card :is(select, input) {
+  color: #65450a;
+  background: #fffdf7;
+  border-color: #d9c694;
+}
+body.day-mode .pill,
+body.day-mode .pkg-unlimited-check {
+  color: #245b72;
+  background: #e8f3f8;
+  border-color: #b3cfdd;
+}
+body.day-mode .modal-backdrop {
+  background: #304a6266;
+}
+/* Archive previews retain their dark photo scrim and white captions. */
+body.day-mode .archive-card {
+  border-color: #8fabbf;
+  box-shadow: 0 3px 12px #23476115;
+}
+body.day-mode .archive-menu button,
+body.day-mode .emoji-picker button,
+body.day-mode .emoji-pick-btn {
+  color: #183145;
+  background: #edf4f9;
+  border-color: #b9cedc;
+}
+body.day-mode .archive-menu button:hover,
+body.day-mode .emoji-picker button:hover {
+  background: #dfeef6;
+}
+body.day-mode .cover-card {
+  color: #183145;
+  background: #f6f9fb;
+  border-color: #c6d8e4;
+}
+body.day-mode .cover-card.active {
+  background: #eef8f3;
+  border-color: #58a98a;
+  box-shadow: 0 0 0 2px #16815d1c;
+}

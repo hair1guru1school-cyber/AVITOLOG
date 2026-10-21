@@ -1,0 +1,453 @@
+/* Optional module surfaces. No dark-mode or data behavior is changed here. */
+body.day-mode :is(.ads-dashboard, .ads-daily-layout, .ads-page, .ads-post-editor-pop, .ads-source-modal, .avchat-panel, .project-card-dialog) {
+  --light-module-text: #172c3d;
+  --light-module-muted: #52697b;
+  --light-module-line: #cbd9e2;
+  --light-module-soft: #f2f7fa;
+  --light-module-accent: #087a62;
+  color: var(--light-module-text);
+  color-scheme: light;
+}
+
+/* ADS: the chart, number-card and daily-analysis layouts share one palette. */
+body.day-mode.ads-mode .content {
+  background: linear-gradient(180deg, #f4f8fb, #edf3f7);
+}
+body.day-mode .ads-dashboard {
+  --ads-line: #cbd9e2;
+  --ads-muted: #52697b;
+}
+body.day-mode .ads-daily-layout {
+  --ads-daily-line: #cbd9e2;
+  --ads-daily-muted: #52697b;
+}
+body.day-mode :is(.ads-dashboard-metric, .ads-dashboard-settings, .ads-dashboard-funnel, .ads-daily-panel) {
+  background: #fff;
+  border-color: #cbd9e2;
+  box-shadow: 0 3px 12px #24445c06;
+}
+body.day-mode .ads-dashboard .ads-dashboard-number {
+  background: linear-gradient(145deg, #fff, #f4f8fa);
+}
+body.day-mode :is(.ads-daily-stage, .ads-daily-finance-card) {
+  background: linear-gradient(130deg, color-mix(in srgb, var(--ads-daily-color) 9%, #fff), #fff);
+  border-color: color-mix(in srgb, var(--ads-daily-color) 32%, #bdcedb);
+}
+body.day-mode :is(.ads-dashboard-number .ads-dashboard-metric-heading > span, .ads-dashboard-funnel-step span, .ads-daily-label) {
+  color: #354f62;
+}
+body.day-mode .ads-dashboard-metric-heading strong {
+  color: color-mix(in srgb, var(--ads-metric-color) 52%, #153047);
+}
+body.day-mode :is(.ads-daily-value, .ads-daily-table-value) {
+  color: color-mix(in srgb, var(--ads-daily-color) 52%, #153047);
+}
+body.day-mode :is(.ads-daily-stage .ads-daily-value, .ads-daily-chart-summary strong) {
+  color: #172c3d;
+}
+body.day-mode :is(.ads-dashboard-funnel-step strong, .ads-dashboard-revenue-detail, .ads-daily-revenue-detail) {
+  color: #087a62;
+}
+body.day-mode :is(.ads-dashboard-funnel-arrow, .ads-daily-conversion, .ads-dashboard-status) {
+  color: #116b8a;
+}
+body.day-mode .ads-dashboard-status.is-warning {
+  color: #995a0a;
+}
+body.day-mode :is(.ads-dashboard-button, .ads-dashboard-view-mode select, .ads-dashboard-source-map select, .ads-daily-chart-tab, .ads-daily-search) {
+  color: #284a60;
+  border-color: #b9cdd9;
+  background: #f5f9fc;
+}
+body.day-mode .ads-dashboard-button[aria-pressed=true] {
+  color: #08664e;
+  background: #dff5eb;
+  border-color: #62bda1;
+}
+body.day-mode .ads-daily-chart-tab[aria-pressed=true] {
+  color: #075773;
+  background: #dcf2fa;
+  border-color: #68afcb;
+}
+body.day-mode :is(.ads-dashboard-button, .ads-daily-chart-tab):hover {
+  background: #eaf3f8;
+  border-color: #6d9db5;
+}
+body.day-mode :is(.ads-dashboard-button, .ads-dashboard-view-mode select, .ads-dashboard-source-map select, .ads-daily-chart-tab, .ads-daily-search, .ads-daily-account-name, .ads-daily-sort):focus-visible {
+  outline-color: #087c96;
+}
+body.day-mode .ads-dashboard-check input {
+  accent-color: #087a62;
+}
+body.day-mode :is(.ads-dashboard-day > span:not(.ads-dashboard-tooltip), .ads-daily-date, .ads-daily-table th, .ads-dashboard-source ul) {
+  color: #52697b;
+}
+body.day-mode .ads-dashboard-source summary {
+  color: #284e68;
+}
+body.day-mode :is(.ads-dashboard-day:hover, .ads-daily-column:hover, .ads-daily-column:focus) {
+  background: #17678a09;
+}
+body.day-mode .ads-daily-chart {
+  background: repeating-linear-gradient(to top, transparent 0, transparent 24%, #395c7720 24.5%, transparent 25%);
+}
+body.day-mode :is(.ads-dashboard-tooltip, .ads-daily-tooltip) {
+  color: #172c3d;
+  background: #fff;
+  border-color: #b9cdd9;
+  box-shadow: 0 8px 24px #18344a24;
+}
+body.day-mode :is(.ads-dashboard-candle.is-missing, .ads-daily-bar.is-missing) {
+  background: #91a4b2;
+  opacity: .5;
+}
+body.day-mode .ads-daily-side-metric {
+  background: #f2f7fa;
+  border-color: #d1dfe8;
+}
+body.day-mode :is(.ads-daily-table th, .ads-daily-table td) {
+  border-bottom-color: #d6e1e9;
+}
+body.day-mode .ads-daily-unmapped {
+  background: #f6f8fa;
+  color: #52697b;
+}
+body.day-mode .ads-daily-detail-row td {
+  background: #edf5f9;
+}
+body.day-mode .ads-daily-account-name:hover {
+  color: #086e89;
+}
+
+/* Legacy ADS content calendar and its detached editors. */
+body.day-mode :is(.ads-card, .ads-posts-window, .ads-snippet-col, .ads-source-modal, .ads-post-editor-pop) {
+  color: #172c3d;
+  background: #fff;
+  border-color: #cbd9e2;
+  box-shadow: 0 3px 12px #24445c08;
+}
+body.day-mode :is(.ads-summary-card, .ads-summary-card.ads-summary-all) {
+  background: #e9f6f1;
+  border-color: #a5d5c2;
+  box-shadow: none;
+}
+body.day-mode .ads-summary-card.ads-summary-all {
+  background: #e8f4fa;
+  border-color: #aacedd;
+}
+body.day-mode :is(.ads-header, .ads-summary-val, .ads-total-all, .ads-card-title, .ads-links-title, .ads-totals-card .ads-totals-title) {
+  color: #087a62;
+}
+body.day-mode :is(.ads-summary-card.ads-summary-all .ads-summary-val, .ads-posts-planner-head, .ads-posts-window-head, .ads-posts-window-learn .ads-posts-window-head, .ads-posts-window-agency .ads-posts-window-head, .ads-post-editor-title, .ads-source-modal-title, .ads-snippet-group-title) {
+  color: #126888;
+}
+body.day-mode :is(.ads-summary-label, .ads-total-label, .ads-snippet-empty, .ads-snippet-sub, .ads-api-field span) {
+  color: #52697b;
+}
+body.day-mode :is(.ads-th-label, .ads-td-label, .ads-th-day, .ads-td-cell, .ads-post-td) {
+  color: #2a4355;
+  background: #f0f5f8;
+}
+body.day-mode :is(.ads-th-total, .ads-td-row-total) {
+  color: #087a62;
+  background: #eaf6f0;
+}
+body.day-mode :is(.ads-th-day.ads-day-past, .ads-post-td.ads-day-past) {
+  background: #f7f9fb;
+}
+body.day-mode :is(.ads-th-day.ads-day-future, .ads-post-td.ads-day-future) {
+  background: #edf5fa;
+}
+body.day-mode :is(.ads-th-day.ads-day-today, .ads-td-cell.ads-day-today, .ads-post-td.ads-day-today) {
+  color: #17546d;
+  background: #dff1f9;
+  box-shadow: inset 0 0 0 1px #83b6ce;
+}
+body.day-mode :is(.ads-td-cell-auto, .ads-cell-inline-editor, .ads-cell-inline-editor:empty::after) {
+  color: #126888;
+}
+body.day-mode .ads-td-cell-editable:hover {
+  background: #e7f4ee;
+}
+body.day-mode .ads-td-cell-editing {
+  background: #dff3e9 !important;
+}
+body.day-mode :is(.ads-posts-month-chip, .ads-posts-source-btn, .ads-snippet-add-btn, .ads-editor-upload) {
+  color: #126888;
+  background: #e9f4fa;
+  border-color: #adcddb;
+}
+body.day-mode :is(.ads-posts-source-btn, .ads-snippet-add-btn):hover {
+  background: #dceef7;
+  border-color: #7fadc2;
+}
+body.day-mode :is(.ads-posts-sync-status, .ads-api-status) {
+  color: #126888;
+}
+body.day-mode :is(.ads-posts-sync-status.is-error, .ads-api-status.is-error) {
+  color: #b02f37;
+}
+body.day-mode .ads-post-cell {
+  background: #f5f8fa;
+  border-color: #d0dce4;
+  color: #52697b;
+}
+body.day-mode .ads-post-cell.is-filled {
+  color: #135f7d;
+  background: #e4f1f8;
+  border-color: #8db9cf;
+}
+body.day-mode .ads-post-cell.is-published {
+  color: #805510;
+  background: #fff3d3;
+  border-color: #d7b765;
+  box-shadow: none;
+}
+body.day-mode .ads-post-cell.is-queued {
+  color: #914b18;
+  background: #fff0e2;
+  border-color: #d6a375;
+  box-shadow: none;
+}
+body.day-mode :is(.ads-post-editor-status-label, .ads-post-editor-published) {
+  color: #354f62;
+}
+body.day-mode :is(.ads-post-editor-status, .ads-post-editor-text, .ads-editor-input, .ads-api-field input, .ads-api-field textarea, .ads-api-result) {
+  color: #172c3d;
+  background: #f7fafc;
+  border-color: #bdcfdc;
+}
+body.day-mode :is(.ads-post-editor-btn, .ads-source-modal-close, .ads-snippet-edit-btn, .ads-editor-save, .ads-editor-cancel, .ads-api-btn-ghost, .ads-subtab-btn) {
+  color: #354f62;
+  background: #f1f6f9;
+  border-color: #bdcfdc;
+}
+body.day-mode :is(.ads-post-editor-btn.save, .ads-api-btn, .ads-subtab-btn.on) {
+  color: #08724f;
+  background: #e3f4eb;
+  border-color: #8cc7ac;
+}
+body.day-mode :is(.ads-post-editor-btn.clear, .ads-source-modal-close:hover, .ads-editor-cancel:hover) {
+  color: #b02f37;
+  border-color: #d7a0a5;
+  background: #fff0f1;
+}
+body.day-mode .ads-source-modal-overlay {
+  background: #304a6259;
+}
+body.day-mode .ads-source-modal-head {
+  border-bottom-color: #cbd9e2;
+}
+body.day-mode .ads-snippet-card {
+  color: #172c3d;
+  background: #f3f8fb;
+  border-color: #c4dbe6;
+}
+body.day-mode .ads-snippet-card:hover {
+  background: #eaf4f9;
+  border-color: #92bed1;
+  box-shadow: 0 3px 12px #24445c0c;
+}
+body.day-mode :is(.ads-snippet-main, .ads-total-val) {
+  color: #172c3d;
+}
+body.day-mode .ads-snippet-avatar {
+  background: #e9f1f6;
+  border-color: #cbd9e2;
+}
+/* The legacy month controls and recovery notice are rendered with inline colors. */
+body.day-mode .ads-month-nav :is(button, span) {
+  color: #354f62 !important;
+  border-color: #bdcfdc !important;
+  background: #f1f6f9 !important;
+}
+body.day-mode .ads-archive-banner {
+  color: #8a5a0e !important;
+  background: #fff4d9 !important;
+  border-color: #dfc28b !important;
+}
+body.day-mode #adsUndoBanner {
+  color: #a22e37 !important;
+  background: #fff0f1 !important;
+  border-color: #d7a0a5 !important;
+}
+body.day-mode #adsUndoBanner code {
+  color: #172c3d;
+  background: #edf3f7 !important;
+}
+
+/* Avito chat is injected after page load, so selectors deliberately out-rank it. */
+body.day-mode .avchat-launch {
+  background: #e4f5ee;
+  color: #08765c;
+  border-color: #70bda3;
+  box-shadow: 0 6px 25px #24445c26;
+}
+body.day-mode .avchat-panel {
+  color: #172c3d;
+  background: #fff;
+  border-color: #a9c1d1;
+  box-shadow: 0 15px 70px #18344a33;
+}
+body.day-mode :is(.avchat-head, .avchat-tools, .avchat-chat-title) {
+  background: #f4f8fb;
+  border-bottom-color: #d0dfe9;
+}
+body.day-mode .avchat-panel :is(button, select, input, textarea) {
+  color: #233e52;
+  background: #f4f8fb;
+  border-color: #b9cedc;
+  accent-color: #087a62;
+}
+body.day-mode .avchat-panel :is(input, textarea) {
+  background: #fff;
+}
+body.day-mode .avchat-panel :is(input, textarea)::placeholder {
+  color: #657b8c;
+  opacity: 1;
+}
+body.day-mode .avchat-panel :is(button, select, input, textarea, summary):focus-visible {
+  outline: 2px solid #087c96;
+  outline-offset: 2px;
+}
+body.day-mode .avchat-panel button:not(:disabled):hover {
+  border-color: #6c9eb9;
+}
+body.day-mode .avchat-panel a {
+  color: #086b8e;
+}
+body.day-mode .avchat-conversations {
+  border-right-color: #d0dfe9;
+  background: #f8fbfd;
+}
+body.day-mode .avchat-panel .avchat-row {
+  color: #172c3d;
+  border-bottom-color: #dce6ed !important;
+}
+body.day-mode .avchat-panel .avchat-row[data-active=true] {
+  background: #dceef5 !important;
+  box-shadow: inset 3px 0 #1582a1;
+}
+body.day-mode .avchat-panel .avchat-row:not([data-active=true]):hover {
+  background: #edf4f9 !important;
+}
+body.day-mode .avchat-avatar {
+  background: #e1edf4;
+}
+body.day-mode :is(.avchat-row small, .avchat-chat-title small, .avchat-message small, .avchat-status, .avchat-empty, .avchat-options-menu small, .avchat-replies-hint, .avchat-replies-status) {
+  color: #52697b;
+}
+body.day-mode .avchat-history {
+  background: #f1f6f9;
+}
+body.day-mode .avchat-message {
+  color: #19374b;
+  background: #fff;
+  border: 1px solid #d5e2ea;
+}
+body.day-mode .avchat-message[data-direction=out] {
+  color: #154d3d;
+  background: #e1f3e9;
+  border-color: #b9dccb;
+}
+body.day-mode :is(.avchat-compose, .avchat-status) {
+  background: #fff;
+}
+body.day-mode :is(.avchat-status[data-error=true], .avchat-replies-status[data-error=true]) {
+  color: #b02f37;
+}
+body.day-mode :is(.avchat-import, .avchat-options summary, .avchat-options-menu, .avchat-replies, .avchat-replies-entry) {
+  border-color: #bfd1dd;
+}
+body.day-mode :is(.avchat-options-menu, .avchat-replies) {
+  color: #172c3d;
+  background: #f6fafc;
+  box-shadow: 0 10px 30px #18344a20;
+}
+body.day-mode .avchat-replies {
+  box-shadow: none;
+}
+body.day-mode .avchat-panel :is(.avchat-crm, .avchat-import-add) {
+  color: #086548 !important;
+  background: #def3e8 !important;
+  border-color: #7cbea2 !important;
+}
+body.day-mode .avchat-panel .avchat-import-link {
+  color: #125e86 !important;
+  background: #e1f0fc !important;
+  border-color: #92badd !important;
+}
+body.day-mode .avchat-panel .avchat-import-cancel {
+  color: #a63243 !important;
+  background: #fcecef !important;
+  border-color: #d7a0aa !important;
+}
+body.day-mode .avchat-panel .avchat-niche {
+  color: #52697b !important;
+  background: #edf4f8;
+}
+body.day-mode .avchat-replies-bar button,
+body.day-mode .avchat-replies-actions button[data-action=save] {
+  color: #086548;
+  background: #e3f4eb;
+  border-color: #8cc7ac;
+}
+body.day-mode .avchat-replies-entry button {
+  color: #a63243;
+}
+body.day-mode .avchat-resize-split {
+  border-left-color: #c5d6e1;
+  background: #e6f0f6;
+}
+body.day-mode .avchat-resize-split::after {
+  background: #7f9bac;
+}
+body.day-mode :is(.avchat-resize:hover, .avchat-resize:focus-visible) {
+  background: #168a7330;
+  outline-color: #168a73;
+}
+
+/* Project detail and its payment journal use the same light dialog surfaces. */
+body.day-mode .project-card-overlay {
+  background: #304a6266;
+}
+body.day-mode .project-card-dialog {
+  color: #172c3d;
+  background: #fff;
+  border-color: #b9cedc;
+  box-shadow: 0 24px 90px #18344a33;
+}
+body.day-mode :is(.project-card-head, .project-card-foot, .project-card-metric) {
+  color: #172c3d;
+  background: #f1f6f9;
+  border-color: #cbd9e2;
+}
+body.day-mode :is(.project-card-section, .project-card-table th, .project-card-table td) {
+  border-color: #cbd9e2;
+}
+body.day-mode :is(.project-card-field input, .project-card-field textarea, .project-card-field select, .project-card-account-field select) {
+  color: #172c3d;
+  background: #fff;
+  border-color: #b9cedc;
+  color-scheme: light;
+}
+body.day-mode :is(.project-card-head button, .project-card-foot button, .project-card-row-button, .project-card-sidebar) {
+  color: #245169;
+  background: #edf5f9;
+  border-color: #b9cedc;
+}
+body.day-mode .project-card-foot [data-action=save] {
+  color: #fff;
+  background: #087a62;
+  border-color: #087a62;
+}
+body.day-mode :is(.project-card-note, .project-card-meta) {
+  color: #52697b;
+}
+body.day-mode .project-card-meta a {
+  color: #086b8e;
+}
+body.day-mode .project-card-dialog :is(button, input, select, textarea):focus-visible {
+  outline: 2px solid #087c96;
+  outline-offset: 2px;
+}
