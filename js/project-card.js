@@ -5,6 +5,7 @@
   var accounts = [];
   var accountScope = '';
   var accountRequest = null;
+  var sidebarRefreshRequest = null;
   var refreshTimer = null;
   var FIELDS = [
     ['title', 'Название проекта', 300], ['company', 'Компания', 300],
@@ -90,19 +91,24 @@
   function getProjects() { return typeof root.loadProjectsData === 'function' ? root.loadProjectsData() : { projects: [], tasks: [] }; }
   function getClients() { return typeof root.getCrmClients === 'function' ? root.getCrmClients() : []; }
   function ensureScope(expected) { if (expected !== scope() || !ready()) throw new Error('Режим пользователя изменился или ещё загружается. Откройте карту заново.'); }
-  async function loadAccounts() {
+  async function loadAccounts(force) {
     var expected = scope();
-    if (accountScope === expected) return accounts;
-    if (accountRequest && accountRequest.scope === expected) return accountRequest.promise;
+    if (accountRequest && accountRequest.scope === expected) {
+      if (!force || accountRequest.force) return accountRequest.promise;
+      return accountRequest.promise.catch(function () {}).then(function () { ensureScope(expected); return loadAccounts(true); });
+    }
+    if (!force && accountScope === expected) return accounts;
     var bridge = root.AvitoWorkspaceBridge;
-    if (!bridge || typeof bridge.listAccounts !== 'function') return [];
-    var promise = Promise.resolve().then(function () { return bridge.listAccounts(); }).then(function (list) {
+    if (!bridge || typeof bridge.listAccounts !== 'function') throw new Error('Список аккаунтов недоступен. Откройте модуль «Аккаунты».');
+    var request = { scope: expected, force: force === true, promise: null };
+    var promise = Promise.resolve().then(function () { return bridge.listAccounts(force === true); }).then(function (list) {
       ensureScope(expected);
+      if (accountRequest !== request) throw new Error('Запрос списка аккаунтов устарел.');
       accounts = (Array.isArray(list) ? list : list && list.accounts || []).filter(function (a) { return a && /^(personal|oauth):[a-zA-Z0-9-]{1,80}$/.test(text(a.id)); });
       accountScope = expected;
       return accounts;
-    }).finally(function () { if (accountRequest && accountRequest.promise === promise) accountRequest = null; });
-    accountRequest = { scope: expected, promise: promise };
+    }).finally(function () { if (accountRequest === request) accountRequest = null; });
+    request.promise = promise; accountRequest = request;
     return promise;
   }
   function fillAccountSelect(select, selected, name) {
@@ -154,6 +160,8 @@
     if (!document) return;
     var select = document.getElementById('projectAccountSelect'), input = document.getElementById('avito_connection_id');
     if (!select || !input) return;
+    var refreshButton = document.getElementById('projectAccountRefreshBtn');
+    if (refreshButton) { var loading = !!(sidebarRefreshRequest && sidebarRefreshRequest.scope === scope()); refreshButton.disabled = !ready() || loading; refreshButton.textContent = loading ? 'Обновляем…' : 'Обновить'; refreshButton.setAttribute('aria-busy', loading ? 'true' : 'false'); }
     var identity = sidebarIdentity();
     select.disabled = readOnly() || !ready();
     var p = projectForCurrent(), c = typeof root.getActiveClient === 'function' ? root.getActiveClient() : null;
@@ -166,7 +174,24 @@
     var expected = scope();
     loadAccounts().then(function () {
       if (expected === scope() && identity === sidebarIdentity()) { fillAccountSelect(select, input.value, name); select.title = ''; }
-    }).catch(function () { select.title = 'Список аккаунтов временно недоступен. Текущая привязка сохранена.'; });
+    }).catch(function () { if (expected === scope() && identity === sidebarIdentity()) select.title = 'Список аккаунтов временно недоступен. Текущая привязка сохранена.'; });
+  }
+  async function refreshSidebarAccounts() {
+    if (!document || !ready()) return false;
+    var expected = scope(), request = { scope: expected };
+    if (sidebarRefreshRequest && sidebarRefreshRequest.scope === expected) return false;
+    sidebarRefreshRequest = request;
+    var status = document.getElementById('projectAccountRefreshStatus');
+    if (status) status.textContent = 'Обновляем список аккаунтов…';
+    try {
+      var task = loadAccounts(true); refreshSidebar(); await task; ensureScope(expected);
+      if (sidebarRefreshRequest !== request) return false;
+      refreshSidebar(); if (status) status.textContent = 'Список аккаунтов обновлён.';
+      return true;
+    } catch (_) {
+      if (expected === scope() && sidebarRefreshRequest === request && status) status.textContent = 'Не удалось обновить список. Текущая привязка сохранена; повторите попытку.';
+      return false;
+    } finally { if (sidebarRefreshRequest === request) { sidebarRefreshRequest = null; if (expected !== scope() && status) status.textContent = ''; refreshSidebar(); } }
   }
   function sidebarAccountChanged(select) {
     if (readOnly() || !ready()) return;
@@ -189,6 +214,7 @@
     if (document.getElementById('projectCardStyle')) return;
     var element = document.createElement('style'); element.id = 'projectCardStyle';
     element.textContent = '.project-card-overlay{position:fixed;inset:0;z-index:18000;background:#020810b8;display:flex;align-items:center;justify-content:center;padding:22px}.project-card-dialog{width:min(1120px,100%);max-height:92vh;overflow:auto;background:var(--surface,#101b2b);color:var(--text,#eaf2ff);border:1px solid var(--border,#31445b);border-radius:15px;box-shadow:0 24px 90px #0009}.project-card-head,.project-card-foot{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:17px 22px;background:var(--surface2,#132132);position:sticky;z-index:2}.project-card-head{top:0;border-bottom:1px solid var(--border,#31445b)}.project-card-head h2{font-size:21px;margin:0}.project-card-head button,.project-card-foot button,.project-card-row-button{cursor:pointer;border:1px solid var(--border,#31445b);border-radius:7px;background:var(--surface2,#132132);color:var(--text,#eaf2ff);padding:7px 11px}.project-card-body{padding:20px 22px;display:grid;gap:20px}.project-card-section{border:1px solid var(--border,#31445b);border-radius:11px;padding:15px}.project-card-section h3{margin:0 0 13px;font-size:15px}.project-card-fields{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:13px}.project-card-field{display:flex;flex-direction:column;gap:6px;font-size:12px;min-width:0}.project-card-field input,.project-card-field textarea,.project-card-field select{width:100%;box-sizing:border-box;color:var(--text,#eaf2ff);background:var(--bg,#09111d);border:1px solid var(--border,#31445b);border-radius:7px;padding:9px;font:inherit}.project-card-field-wide{grid-column:1/-1}.project-card-meta{display:flex;flex-wrap:wrap;gap:12px;font-size:12px;color:var(--muted,#9ab0c9);margin:0 0 14px}.project-card-meta a{color:var(--accent,#59d8ff)}.project-card-metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px}.project-card-metric{padding:12px;background:var(--surface2,#132132);border-radius:8px;font-size:12px}.project-card-metric strong{display:block;font-size:24px;margin-top:6px}.project-card-note{font-size:12px;color:var(--muted,#9ab0c9);line-height:1.6}.project-card-list{margin:8px 0;padding-left:20px;font-size:13px;line-height:1.8}.project-card-table{width:100%;border-collapse:collapse;font-size:13px}.project-card-table td,.project-card-table th{text-align:left;padding:9px;border-bottom:1px solid var(--border,#31445b)}.project-card-foot{bottom:0;border-top:1px solid var(--border,#31445b)}.project-card-foot [data-action="save"]{background:var(--accent,#09bcaa);color:#031518;font-weight:bold}.project-card-row-button{padding:1px 4px;font-size:11px;line-height:16px;flex:none}.project-card-sidebar{display:block;width:100%;margin-top:9px;padding:12px;border:1px solid var(--border,#31445b);background:var(--surface2,#132132);color:var(--accent,#59d8ff);border-radius:8px;font-weight:700;cursor:pointer}.project-card-account-field select{width:100%;padding:8px;background:var(--surface2,#132132);border:1px solid var(--border,#31445b);border-radius:7px;color:var(--text,#eaf2ff);font-size:12px}@media(max-width:720px){.project-card-overlay{padding:5px}.project-card-dialog{max-height:98vh}.project-card-fields{grid-template-columns:1fr 1fr}.project-card-metrics{grid-template-columns:1fr 1fr}.project-card-head,.project-card-foot,.project-card-body{padding:12px}}';
+    element.textContent += '.project-card-account-controls{display:flex;gap:6px;align-items:center}.project-card-account-controls select{flex:1;min-width:0}.project-card-account-refresh{flex:none;padding:8px;border:1px solid var(--border,#31445b);border-radius:7px;background:var(--surface2,#132132);color:var(--text,#eaf2ff);font:inherit;font-size:11px;cursor:pointer}.project-card-account-refresh:disabled{opacity:.6;cursor:wait}.project-card-account-status{display:block;font-size:10px;line-height:1.4;color:var(--muted,#9ab0c9)}.project-card-account-status:empty{display:none}';
     document.head.appendChild(element);
   }
   function fieldHtml(field, values) {
@@ -369,10 +395,11 @@
       contactButton.after(topButton);
     }
     if (document.getElementById('projectAccountSelect')) return;
-    var field = document.createElement('div'); field.className = 'fg project-card-account-field'; field.innerHTML = '<label for="projectAccountSelect">Аккаунт проекта · Avito API</label><select id="projectAccountSelect" aria-label="Привязать аккаунт Avito к проекту"><option value="">Не привязан</option></select><input type="hidden" id="avito_connection_id" value="">';
+    var field = document.createElement('div'); field.className = 'fg project-card-account-field'; field.innerHTML = '<label for="projectAccountSelect">Аккаунт проекта · Avito API</label><div class="project-card-account-controls"><select id="projectAccountSelect" aria-label="Привязать аккаунт Avito к проекту"><option value="">Не привязан</option></select><button type="button" id="projectAccountRefreshBtn" class="project-card-account-refresh" title="Обновить список аккаунтов Avito" aria-label="Обновить список аккаунтов Avito">Обновить</button></div><input type="hidden" id="avito_connection_id" value=""><small id="projectAccountRefreshStatus" class="project-card-account-status" role="status" aria-live="polite"></small>';
     var avito = document.getElementById('avito_account');
     if (avito && avito.closest('.row2')) avito.closest('.row2').after(field); else saveButton.before(field);
     var select = document.getElementById('projectAccountSelect'); select.onchange = function () { sidebarAccountChanged(select); };
+    document.getElementById('projectAccountRefreshBtn').onclick = refreshSidebarAccounts;
     var company = document.getElementById('company'); if (company) company.addEventListener('change', refreshSidebar);
     document.addEventListener('avitolog:active-client-changed', refreshSidebar);
     document.addEventListener('avitolog:backend-initial-ready', refreshSidebar);
@@ -393,6 +420,6 @@
   }
   var api = { open: open, close: close, refreshSidebar: refreshSidebar };
   root.ProjectCard = api;
-  if (typeof module !== 'undefined' && module.exports) module.exports = { normalize: normalize, safeAvitoUrl: safeAvitoUrl, linkedClient: linkedClient, model: model, accountScore: accountScore, rankedAccounts: rankedAccounts, changedFields: changedFields, assertNoConflict: assertNoConflict, paymentsHtml: paymentsHtml, save: save, scope: scope, ready: ready, readOnly: readOnly, sameId: sameId, findById: findById, projectForCurrent: projectForCurrent, activityHtml: activityHtml };
+  if (typeof module !== 'undefined' && module.exports) module.exports = { normalize: normalize, safeAvitoUrl: safeAvitoUrl, linkedClient: linkedClient, model: model, accountScore: accountScore, rankedAccounts: rankedAccounts, changedFields: changedFields, assertNoConflict: assertNoConflict, paymentsHtml: paymentsHtml, save: save, scope: scope, ready: ready, readOnly: readOnly, sameId: sameId, findById: findById, projectForCurrent: projectForCurrent, activityHtml: activityHtml, loadAccounts: loadAccounts, refreshSidebarAccounts: refreshSidebarAccounts };
   if (document) { if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init(); }
 })(typeof window !== 'undefined' ? window : globalThis);
