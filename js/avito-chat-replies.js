@@ -40,7 +40,7 @@
     styles();
     var host = options.container, root = el('section', 'avchat-replies'), head = el('div', 'avchat-replies-head');
     var bar = el('div', 'avchat-replies-bar'), editor = el('div', 'avchat-replies-editor'), status = el('p', 'avchat-replies-status');
-    var activeScope = '', items = [], draft = [], draftScope = '', editing = false, sending = false, enabled = true, destroyed = false;
+    var activeScope = '', items = [], draft = [], draftScope = '', editing = false, sending = false, saving = false, viewGeneration = 0, enabled = true, destroyed = false;
     root.hidden = true; root.setAttribute('aria-label', 'Быстрые ответы Avito'); status.setAttribute('role', 'status');
     var editButton = button('✎ Изменить', 'Изменить быстрые ответы', beginEdit);
     head.appendChild(el('strong', '', '⚡ Быстрые ответы')); head.appendChild(editButton);
@@ -53,7 +53,8 @@
     function read(value) {
       if (!value) return [];
       try {
-        var raw = localStorage.getItem(key(value));
+        var storage = window.AvitoChatStore;
+        var raw = storage ? storage.getItem(key(value)) : localStorage.getItem(key(value));
         if (raw === null) return copy(DEFAULTS);
         if (raw.length > 32000) return copy(DEFAULTS);
         var saved = JSON.parse(raw);
@@ -61,12 +62,18 @@
       } catch (_) { return copy(DEFAULTS); }
     }
     function canSend() {
-      if (!enabled || sending || destroyed || !activeScope || activeScope !== scope()) return false;
+      if (!enabled || sending || saving || destroyed || !activeScope || activeScope !== scope()) return false;
       try { return typeof options.canSend !== 'function' || options.canSend() === true; } catch (_) { return false; }
     }
     function controls() {
       Array.prototype.forEach.call(bar.querySelectorAll('button'), function (node) { node.disabled = !canSend(); });
-      editButton.disabled = !activeScope || sending;
+      editButton.disabled = !activeScope || sending || saving;
+      ['input', 'textarea', 'button'].forEach(function (tag) {
+        Array.prototype.forEach.call(editor.querySelectorAll(tag), function (node) {
+          node.disabled = saving || (node.dataset.action === 'add' && draft.length >= 20);
+          if (node.dataset.action === 'save') node.textContent = saving ? 'Сохраняем…' : '💾 Сохранить';
+        });
+      });
     }
     function renderBar() {
       clear(bar);
@@ -81,13 +88,14 @@
       if (destroyed) return;
       var next = scope();
       if (next !== activeScope) {
+        viewGeneration += 1;
         activeScope = next; items = read(next); draft = []; draftScope = ''; editing = false; clear(editor); notice(''); renderBar();
       } else controls();
     }
     function toggle(force) {
       if (destroyed) return false;
       refresh(); root.hidden = typeof force === 'boolean' ? !force : !root.hidden;
-      if (root.hidden && editing) { editing = false; draft = []; draftScope = ''; clear(editor); renderBar(); }
+      if (root.hidden && editing && !saving) { editing = false; draft = []; draftScope = ''; clear(editor); renderBar(); }
       return !root.hidden;
     }
     function expand(text) {
@@ -118,7 +126,7 @@
     }
     function beginEdit() {
       refresh();
-      if (!activeScope || sending) return;
+      if (!activeScope || sending || saving) return;
       draft = copy(items); draftScope = activeScope; editing = true; notice(''); renderEditor(); renderBar();
     }
     function renderEditor() {
@@ -127,24 +135,42 @@
         var row = el('div', 'avchat-replies-entry'), label = el('input'), text = el('textarea');
         label.value = item.label; label.maxLength = 40; label.placeholder = 'Название кнопки'; label.setAttribute('aria-label', 'Название ответа ' + (index + 1));
         text.value = item.text; text.maxLength = 1000; text.placeholder = 'Текст ответа'; text.setAttribute('aria-label', 'Текст ответа ' + (index + 1));
-        label.addEventListener('input', function () { item.label = label.value; }); text.addEventListener('input', function () { item.text = text.value; });
-        row.appendChild(label); row.appendChild(button('×', 'Удалить ответ ' + (index + 1), function () { draft.splice(index, 1); renderEditor(); })); row.appendChild(text); editor.appendChild(row);
+        label.addEventListener('input', function () { if (!saving) item.label = label.value; }); text.addEventListener('input', function () { if (!saving) item.text = text.value; });
+        row.appendChild(label); row.appendChild(button('×', 'Удалить ответ ' + (index + 1), function () { if (!saving) { draft.splice(index, 1); renderEditor(); } })); row.appendChild(text); editor.appendChild(row);
       });
       editor.appendChild(el('p', 'avchat-replies-hint', 'Нажатие кнопки сразу отправляет ответ. Можно использовать {имя}, {аккаунт}, {объявление}. Изменения сохраняются только кнопкой «Сохранить».'));
       var actions = el('div', 'avchat-replies-actions');
-      var add = button('＋ Добавить', 'Добавить быстрый ответ', function () { if (draft.length < 20) { draft.push({ label: '', text: '' }); renderEditor(); } }); add.disabled = draft.length >= 20;
+      var add = button('＋ Добавить', 'Добавить быстрый ответ', function () { if (!saving && draft.length < 20) { draft.push({ label: '', text: '' }); renderEditor(); } }); add.dataset.action = 'add'; add.disabled = draft.length >= 20;
       var save = button('💾 Сохранить', 'Сохранить быстрые ответы', saveDraft); save.dataset.action = 'save';
-      actions.appendChild(add); actions.appendChild(save); actions.appendChild(button('Отмена', 'Отменить изменения быстрых ответов', function () { editing = false; draft = []; draftScope = ''; clear(editor); notice(''); renderBar(); })); editor.appendChild(actions);
+      actions.appendChild(add); actions.appendChild(save); actions.appendChild(button('Отмена', 'Отменить изменения быстрых ответов', function () { if (!saving) { editing = false; draft = []; draftScope = ''; clear(editor); notice(''); renderBar(); } })); editor.appendChild(actions); controls();
     }
-    function saveDraft() {
+    async function saveDraft() {
+      if (saving) return;
       if (destroyed || !draftScope || draftScope !== activeScope || draftScope !== scope()) { refresh(); return; }
       if (!valid(draft)) { notice('Не более 20 ответов. Название: 1–40 знаков, текст: 1–1000 знаков.', true); return; }
       var normalized = draft.map(function (item) { return { label: item.label.trim(), text: item.text.trim() }; });
-      try { localStorage.setItem(key(draftScope), JSON.stringify({ version: 1, items: normalized })); }
-      catch (_) { notice('Браузер не сохранил ответы. Проверьте доступ к хранилищу.', true); return; }
-      items = normalized; draft = []; draftScope = ''; editing = false; clear(editor); renderBar(); notice('Быстрые ответы сохранены.');
+      var capturedScope = draftScope, capturedGeneration = viewGeneration, committed = false;
+      saving = true; controls(); notice('Сохраняем…');
+      try {
+        var storage = window.AvitoChatStore, raw = JSON.stringify({ version: 1, items: normalized });
+        if (storage) await storage.setItem(key(capturedScope), raw);
+        else localStorage.setItem(key(capturedScope), raw);
+        committed = true;
+        if (!destroyed && capturedGeneration === viewGeneration && capturedScope === activeScope && capturedScope === scope()) {
+          items = normalized; draft = []; draftScope = ''; editing = false; clear(editor); renderBar(); notice('Быстрые ответы сохранены.');
+        }
+      } catch (_) {
+        if (!destroyed && capturedGeneration === viewGeneration && capturedScope === activeScope && capturedScope === scope()) notice('Браузер не сохранил ответы. Проверьте доступ к хранилищу.', true);
+      } finally {
+        saving = false;
+        if (!destroyed) {
+          refresh();
+          if (committed && capturedGeneration !== viewGeneration && capturedScope === activeScope && capturedScope === scope() && !editing) { items = read(activeScope); renderBar(); }
+        }
+      }
     }
     function reset() {
+      viewGeneration += 1;
       root.hidden = true; activeScope = ''; items = []; draft = []; draftScope = ''; editing = false; clear(editor); notice(''); renderBar();
     }
     refresh();

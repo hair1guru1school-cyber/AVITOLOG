@@ -2,7 +2,7 @@
   'use strict';
   if (window.AvitoChat) return;
   var bridge = window.AvitoWorkspaceBridge, state = { scope: '', mode: 'closed', accounts: [], selected: [], chats: [], chat: null, loading: false, sending: false, generation: 0, lastPoll: 0 };
-  var ui = {}, messages = Object.create(null), chatPages = Object.create(null), layoutOwner = '', layout = {}, activeResize = null;
+  var ui = {}, messages = Object.create(null), chatPages = Object.create(null), layoutOwner = '', layout = {}, activeResize = null, selectionVersion = 0, pendingOpen = false, pendingMode;
   function el(tag, className, text) { var n = document.createElement(tag); if (className) n.className = className; if (text !== undefined) n.textContent = text; return n; }
   function btn(text, title, action) { var n = el('button', '', text); n.type = 'button'; n.title = title || text; n.addEventListener('click', action); return n; }
   function empty(n) { while (n.firstChild) n.removeChild(n.firstChild); }
@@ -37,14 +37,20 @@
   function chatPreferences() {
     if (!scope()) return { niche: false, niches: {} };
     try {
-      var value = JSON.parse(localStorage.getItem('avitolog_chat_preferences_v1:' + scope()) || '{}');
+      var value = JSON.parse(settingRead('avitolog_chat_preferences_v1:' + scope()) || '{}');
       if (value && typeof value === 'object' && !Array.isArray(value)) return { niche: value.niche === true, niches: value.niches && typeof value.niches === 'object' && !Array.isArray(value.niches) ? value.niches : {} };
     } catch (e) {}
     return { niche: false, niches: {} };
   }
-  function saveChatPreferences(value, owner) {
+  async function saveChatPreferences(value, owner) {
     if (!owner || scope() !== owner) return false;
-    try { localStorage.setItem('avitolog_chat_preferences_v1:' + owner, JSON.stringify(value)); return true; } catch (e) { notice('Настройки не сохранились: недостаточно места в браузере.', true); return false; }
+    ui.nicheSetting.disabled = true; notice('Сохраняем настройки…');
+    try {
+      await settingWrite('avitolog_chat_preferences_v1:' + owner, JSON.stringify(value));
+      if (scope() !== owner) return false;
+      ui.nicheSetting.checked = value.niche === true; notice('Настройки сохранены.'); updateStorageInfo(); return true;
+    } catch (e) { if (scope() === owner) notice('Браузер не подтвердил сохранение настроек. Изменение не применено; попробуйте ещё раз.', true); return false; }
+    finally { if (scope() === owner) ui.nicheSetting.disabled = false; }
   }
   function renderChatTitle() {
     empty(ui.chatTitle);
@@ -56,22 +62,33 @@
     var owner = scope(), saved = preferences.niches[key(row)], guessed = clientTopics(row.chat.counterparty && row.chat.counterparty.name), niche = btn('Ниша: ' + (typeof saved === 'string' && saved.trim() ? saved : guessed || 'не определена') + (saved ? '' : guessed ? ' · по имени, предположение' : ''), 'Изменить нишу вручную. Объявления и архив чужого аккаунта API не предоставляет.', function () {
       var input = el('input'); input.type = 'text'; input.maxLength = 120; input.value = typeof saved === 'string' ? saved : guessed; input.setAttribute('aria-label', 'Ниша клиента');
       var form = el('form', 'avchat-niche-editor'), save = btn('Сохранить', '', function () {}); save.type = 'submit'; form.append(input, save, btn('Отмена', '', renderChatTitle));
-      form.addEventListener('submit', function (event) { event.preventDefault(); if (!state.chat || key(state.chat) !== key(row) || scope() !== owner) return; var next = chatPreferences(); next.niches[key(row)] = input.value.trim().slice(0, 120); if (saveChatPreferences(next, owner)) renderChatTitle(); });
+      form.addEventListener('submit', async function (event) { event.preventDefault(); if (!state.chat || key(state.chat) !== key(row) || scope() !== owner || ui.nicheSetting.disabled) return; var next = chatPreferences(); next.niches[key(row)] = input.value.trim().slice(0, 120); save.disabled = true; var saved = await saveChatPreferences(next, owner); if (scope() === owner && state.chat && key(state.chat) === key(row)) { if (saved) renderChatTitle(); else save.disabled = false; } });
       ui.chatTitle.appendChild(form); niche.hidden = true; input.focus();
     }); niche.className = 'avchat-niche'; ui.chatTitle.appendChild(niche);
   }
   function layoutKey() { return 'avitolog_chat_layout_v1:' + (scope() || 'local'); }
+  function settingRead(key) { return window.AvitoChatStore ? window.AvitoChatStore.getItem(key) : localStorage.getItem(key); }
+  function settingWrite(key, raw) {
+    if (window.AvitoChatStore) return window.AvitoChatStore.setItem(key, raw);
+    try { localStorage.setItem(key, raw); return Promise.resolve(); } catch (error) { return Promise.reject(error); }
+  }
+  function updateStorageInfo() {
+    if (!ui.storageInfo || !window.AvitoChatStore) return;
+    var info = window.AvitoChatStore.stats(), mib = function (value) { return (value / 1048576).toLocaleString('ru-RU', { maximumFractionDigits: 2 }); };
+    ui.storageInfo.textContent = (info.backend === 'indexeddb' ? 'Настройки: IndexedDB.' : info.backend === 'localstorage' ? 'Настройки: резервное хранилище браузера.' : 'Хранилище настроек недоступно.') + ' LocalStorage: ' + mib(info.localBytes) + ' МБ.';
+    ui.storageInfo.title = 'Объём в LocalStorage: CRM ' + mib(info.categories.crm) + ' МБ; проекты ' + mib(info.categories.projects) + ' МБ; финансы ' + mib(info.categories.finance) + ' МБ; кэш картинок ' + mib(info.categories.imageCache) + ' МБ; другое ' + mib(info.categories.other) + ' МБ. Пользовательские данные не очищаются.';
+  }
   function layoutSettings() {
     var owner = layoutKey();
     if (owner !== layoutOwner) {
       layoutOwner = owner; layout = {};
-      try { var saved = JSON.parse(localStorage.getItem(owner) || '{}'); if (saved && typeof saved === 'object' && !Array.isArray(saved)) layout = saved; } catch (e) {}
+      try { var saved = JSON.parse(settingRead(owner) || '{}'); if (saved && typeof saved === 'object' && !Array.isArray(saved)) layout = saved; } catch (e) {}
     }
     var mode = state.mode === 'closed' ? layout.lastMode === 'web' ? 'web' : 'mini' : state.mode;
     if (!layout[mode] || typeof layout[mode] !== 'object' || Array.isArray(layout[mode])) layout[mode] = {};
     return layout[mode];
   }
-  function saveLayout() { try { localStorage.setItem(layoutOwner, JSON.stringify(layout)); } catch (e) {} }
+  function saveLayout() { var owner = scope(); if (!owner) return; settingWrite(layoutOwner, JSON.stringify(layout)).catch(function () { if (scope() === owner) notice('Положение окна не сохранилось. Браузер не подтвердил запись.', true); }); }
   function bounded(value, fallback, min, max) { return Math.max(min, Math.min(max, typeof value === 'number' && Number.isFinite(value) ? value : fallback)); }
   function chatGeometry(mode, saved, viewportWidth, viewportHeight) {
     var small = viewportWidth <= 650, marginX = small ? 8 : mode === 'web' ? 35 : 18, marginY = small ? 8 : mode === 'web' ? 30 : 18;
@@ -192,25 +209,30 @@
     if (mode !== 'closed') { applyChatLayout(); refresh(false); }
   }
   function reset() {
+    state.selectionRefresh = false; state.selectionSaving = false; selectionVersion += 1;
     state.generation += 1; state.scope = ''; state.accounts = []; state.selected = []; state.chats = []; state.chat = null; state.loading = false; state.sending = false; state.lastPoll = 0;
-    messages = Object.create(null); chatPages = Object.create(null); if (ui.list) { empty(ui.list); empty(ui.history); empty(ui.accounts); ui.text.value = ''; ui.compose.hidden = true; ui.import.hidden = true; ui.refresh.disabled = false; ui.send.disabled = false; ui.toCrm.disabled = true; if (ui.replies) ui.replies.reset(); ui.nicheSetting.checked = false; renderChatTitle(); notice(''); setMode('closed'); }
+    messages = Object.create(null); chatPages = Object.create(null); if (ui.list) { empty(ui.list); empty(ui.history); empty(ui.accounts); ui.text.value = ''; ui.compose.hidden = true; ui.import.hidden = true; ui.refresh.disabled = false; ui.send.disabled = false; ui.toCrm.disabled = true; if (ui.replies) ui.replies.reset(); ui.nicheSetting.checked = false; ui.nicheSetting.disabled = false; renderChatTitle(); notice(''); setMode('closed'); }
   }
   function renderAccounts() {
     empty(ui.accounts);
     state.accounts.forEach(function (account) {
       var label = el('label'), input = el('input'); input.type = 'checkbox'; input.checked = state.selected.indexOf(account.id) !== -1;
-      input.addEventListener('change', function () {
+      input.addEventListener('change', async function () {
+        var owner = state.scope, version = ++selectionVersion; state.selectionSaving = true;
         state.selected = input.checked ? state.selected.concat([account.id]) : state.selected.filter(function (id) { return id !== account.id; });
         if (state.chat && state.selected.indexOf(state.chat.account.id) === -1) { state.chat = null; empty(ui.history); ui.compose.hidden = true; ui.import.hidden = true; if (ui.replies) ui.replies.reset(); renderChatTitle(); }
-        saveSelection(); renderChats(); refresh(true);
+        renderChats(); var saved = await saveSelection();
+        if (owner !== scope() || version !== selectionVersion) return;
+        state.selectionSaving = false; if (!saved) return;
+        state.lastPoll = 0; if (state.loading) state.selectionRefresh = true; else refresh(false);
       });
       label.append(input, el('span', '', account.display_name)); ui.accounts.appendChild(label);
     });
   }
   function selectionKey() { return 'avitolog_chat_accounts_v1:' + state.scope; }
-  function saveSelection() { try { localStorage.setItem(selectionKey(), JSON.stringify(state.selected)); } catch (e) {} }
+  function saveSelection() { var owner = state.scope; return settingWrite(selectionKey(), JSON.stringify(state.selected)).then(function () { return true; }, function () { if (scope() === owner) notice('Выбор аккаунтов не сохранился. Браузер не подтвердил запись.', true); return false; }); }
   function chooseAccounts() {
-    var saved = null; try { saved = JSON.parse(localStorage.getItem(selectionKey()) || 'null'); } catch (e) {}
+    var saved = null; try { saved = JSON.parse(settingRead(selectionKey()) || 'null'); } catch (e) {}
     state.selected = Array.isArray(saved) ? state.accounts.filter(function (a) { return saved.indexOf(a.id) !== -1; }).map(function (a) { return a.id; }) : state.accounts.filter(function (a) { return /филproдвижение|филпродвижение|filaiмаркетинг/.test(norm(a.display_name)); }).map(function (a) { return a.id; });
   }
   function renderChats() {
@@ -251,8 +273,11 @@
     try {
       if (!state.accounts.length || force) {
         var catalog = await bridge.listAccounts(force); if (!current(generation)) return;
-        state.accounts = catalog; chooseAccounts(); renderAccounts();
-        ui.nicheSetting.checked = chatPreferences().niche; renderChatTitle();
+        state.accounts = catalog;
+        if (state.selectionSaving) state.selected = state.selected.filter(function (id) { return catalog.some(function (account) { return account.id === id; }); }); else chooseAccounts();
+        renderAccounts();
+        if (!ui.nicheSetting.disabled) ui.nicheSetting.checked = chatPreferences().niche;
+        renderChatTitle();
       }
       var selected = state.accounts.filter(function (a) { return state.selected.indexOf(a.id) !== -1; }), failed = [];
       for (var i = 0; i < selected.length; i += 2) {
@@ -267,7 +292,7 @@
       state.lastPoll = Date.now(); renderChats(); notice(failed.join(' · ') || 'Чаты обновлены. Новые сообщения проверяются, пока окно открыто.', !!failed.length);
       if (state.chat) await loadMessages(state.chat, false);
     } catch (error) { if (current(generation)) notice(errorText(error), true); }
-    finally { if (current(generation)) { state.loading = false; ui.refresh.disabled = false; } }
+    finally { if (current(generation)) { state.loading = false; ui.refresh.disabled = false; if (state.selectionRefresh) { state.selectionRefresh = false; state.lastPoll = 0; refresh(false); } } }
   }
   function renderMessages(row, scroll) {
     if (!state.chat || key(row) !== key(state.chat)) return;
@@ -394,7 +419,7 @@
     ui.launch = btn('💬', 'Чаты Avito. Shift + нажатие: большой вид', function (event) { setMode(event.shiftKey ? 'web' : undefined); }); ui.launch.id = 'avitoChatLauncher'; ui.launch.className = 'avchat-launch';
     ui.panel = el('section', 'avchat-panel'); ui.panel.id = 'avitoChatPanel'; ui.panel.hidden = true; ui.panel.setAttribute('aria-label', 'Чаты Avito');
     var head = chatMoveHandle(el('header', 'avchat-head')); head.append(el('strong', '', 'Avito · Чаты'), btn('↗', 'Мини / большой вид (Shift + нажатие)', function (event) { event.stopPropagation(); setMode(state.mode === 'web' ? 'mini' : 'web'); }), btn('—', 'Свернуть чат', function (event) { event.stopPropagation(); setMode('closed'); })); head.addEventListener('click', function (event) { if (event.shiftKey && event.target === head) setMode(state.mode === 'web' ? 'mini' : 'web'); });
-    var tools = el('div', 'avchat-tools'); ui.refresh = btn('Обновить', '', function () { refresh(true); }); var settings = el('details', 'avchat-options'), settingsTitle = el('summary', '', '⚙'); settingsTitle.setAttribute('aria-label', 'Настройки чата'); settings.appendChild(settingsTitle); var settingsMenu = el('div', 'avchat-options-menu'); settingsMenu.appendChild(el('strong', '', 'Аккаунты чата')); ui.accounts = el('div', 'avchat-settings'); settingsMenu.appendChild(ui.accounts); var nicheLabel = el('label'); ui.nicheSetting = el('input'); ui.nicheSetting.type = 'checkbox'; ui.nicheSetting.checked = chatPreferences().niche; ui.nicheSetting.addEventListener('change', function () { var owner = scope(), value = chatPreferences(); value.niche = ui.nicheSetting.checked; if (saveChatPreferences(value, owner)) renderChatTitle(); }); nicheLabel.append(ui.nicheSetting, el('span', '', 'Подсказка ниши · эксперимент')); settingsMenu.append(nicheLabel, el('small', '', 'Предположение по имени собеседника, можно исправить. Чужие объявления и архив через API недоступны.')); settings.appendChild(settingsMenu); tools.append(ui.refresh, settings);
+    var tools = el('div', 'avchat-tools'); ui.refresh = btn('Обновить', '', function () { refresh(true); }); var settings = el('details', 'avchat-options'), settingsTitle = el('summary', '', '⚙'); settingsTitle.setAttribute('aria-label', 'Настройки чата'); settings.appendChild(settingsTitle); var settingsMenu = el('div', 'avchat-options-menu'); settingsMenu.appendChild(el('strong', '', 'Аккаунты чата')); ui.accounts = el('div', 'avchat-settings'); settingsMenu.appendChild(ui.accounts); var nicheLabel = el('label'); ui.nicheSetting = el('input'); ui.nicheSetting.type = 'checkbox'; ui.nicheSetting.checked = chatPreferences().niche; ui.nicheSetting.addEventListener('change', async function () { var owner = scope(), value = chatPreferences(); value.niche = ui.nicheSetting.checked; if (await saveChatPreferences(value, owner)) renderChatTitle(); else if (scope() === owner) ui.nicheSetting.checked = chatPreferences().niche; }); nicheLabel.append(ui.nicheSetting, el('span', '', 'Подсказка ниши · эксперимент')); ui.storageInfo = el('small', 'avchat-storage-info'); settings.addEventListener('toggle', updateStorageInfo); settingsMenu.append(nicheLabel, el('small', '', 'Предположение по имени собеседника, можно исправить. Чужие объявления и архив через API недоступны.'), ui.storageInfo); settings.appendChild(settingsMenu); tools.append(ui.refresh, settings); updateStorageInfo();
     var body = el('div', 'avchat-body'); ui.list = el('nav', 'avchat-conversations'); ui.split = chatResizeHandle('split', 'Ширина списка переписок', 'vertical'); var dialog = el('div', 'avchat-dialog'); ui.chatTitle = el('div', 'avchat-chat-title'); ui.chatTitle.appendChild(el('strong', '', 'Выберите переписку'));
     ui.toCrm = btn('+ В CRM', 'Добавить клиента в базу или неделю', showImport); ui.toCrm.className = 'avchat-crm'; ui.toCrm.disabled = true;
     ui.older = btn('Ранние сообщения', '', function () { if (state.chat) loadMessages(state.chat, true); }); ui.older.hidden = true;
@@ -411,7 +436,9 @@
     window.addEventListener('resize', function () { finishResize(false); applyChatLayout(); });
     document.addEventListener('avitolog:workspace-reset', reset);
     setInterval(function () { if (state.scope && state.scope !== scope()) reset(); else if (state.mode !== 'closed' && document.visibilityState !== 'hidden') { if (state.chat) loadMessages(state.chat, false); if (Date.now() - state.lastPoll > 45000) refresh(false); } }, 15000);
+    if (pendingOpen) { pendingOpen = false; setMode(pendingMode); }
   }
-  window.AvitoChat = Object.freeze({ open: function (large) { setMode(arguments.length ? large ? 'web' : 'mini' : undefined); } });
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', mount); else mount();
+  window.AvitoChat = Object.freeze({ open: function (large) { var mode = arguments.length ? large ? 'web' : 'mini' : undefined; if (ui.panel) setMode(mode); else { pendingOpen = true; pendingMode = mode; } } });
+  function start() { if (window.AvitoChatStore) window.AvitoChatStore.ready().then(mount); else mount(); }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start); else start();
 })();

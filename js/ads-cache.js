@@ -61,6 +61,22 @@
     } catch (error) { return false; }
   }
 
+  function retireLocalSnapshot(record) {
+    if (record.key.indexOf('avitolog_ads_snapshot_v1:') !== 0) return;
+    try {
+      if (window.localStorage.getItem(record.key) !== record.raw) return;
+      var metaKey = record.key + ':cache-meta';
+      var rawMeta = window.localStorage.getItem(metaKey);
+      if (rawMeta !== null) {
+        var meta = JSON.parse(rawMeta);
+        if (!meta || meta.updatedAt !== record.updatedAt || meta.fingerprint !== fingerprint(record.raw)) return;
+      } else if (record.updatedAt !== 0) return;
+      // Retire only the exact fallback that has already committed to IndexedDB.
+      window.localStorage.removeItem(record.key);
+      if (rawMeta !== null) window.localStorage.removeItem(metaKey);
+    } catch (error) {}
+  }
+
   function get(key) {
     if (!limit(key)) return null;
     if (Object.prototype.hasOwnProperty.call(memory, key)) return memory[key];
@@ -154,6 +170,9 @@
     var pending = writeTail.then(function () {
       if (expectedVersion !== undefined && (versions[key] || 0) !== expectedVersion) return { ok: false };
       return operate(mode, key, record);
+    }).then(function (result) {
+      if (result.ok) retireLocalSnapshot(record);
+      return result;
     });
     writeTail = pending.catch(function () { return { ok: false }; });
     return writeTail;
@@ -175,7 +194,8 @@
         record.updatedAt = recordStamp;
         lastStamp = Math.max(lastStamp, recordStamp);
         memory[key] = record.raw;
-        localWrite(record);
+        if (key.indexOf('avitolog_ads_snapshot_v1:') === 0) retireLocalSnapshot(record);
+        else localWrite(record);
         return record.raw;
       }
       if (fallback) {
