@@ -2,7 +2,7 @@
   'use strict';
   if (window.AvitoChat) return;
   var bridge = window.AvitoWorkspaceBridge, state = { scope: '', mode: 'closed', accounts: [], selected: [], chats: [], chat: null, loading: false, sending: false, generation: 0, lastPoll: 0 };
-  var ui = {}, messages = Object.create(null), chatPages = Object.create(null);
+  var ui = {}, messages = Object.create(null), chatPages = Object.create(null), layoutOwner = '', layout = {}, activeResize = null;
   function el(tag, className, text) { var n = document.createElement(tag); if (className) n.className = className; if (text !== undefined) n.textContent = text; return n; }
   function btn(text, title, action) { var n = el('button', '', text); n.type = 'button'; n.title = title || text; n.addEventListener('click', action); return n; }
   function empty(n) { while (n.firstChild) n.removeChild(n.firstChild); }
@@ -15,10 +15,99 @@
   function link(label, raw) { var href = safeUrl(raw); if (!href) return el('span', '', label); var n = el('a', '', label); n.href = href; n.target = '_blank'; n.rel = 'noopener noreferrer'; return n; }
   function errorText(error) {
     var code = error && error.message || '';
+    var transport = { timeout: 'Сервер не ответил вовремя. Уже загруженные сообщения сохранены; обновите чат.', busy: 'Другой запрос ещё выполняется. Обновите чат через несколько секунд.', invalid_request: 'Запрос чата отклонён: неверный формат.', chat_unavailable: 'Avito временно не вернул список чатов.', messages_unavailable: 'Avito временно не вернул историю переписки.', account_forbidden: 'Этот аккаунт больше недоступен в текущем режиме.', unavailable: 'Сервис чатов сейчас недоступен. Уже загруженные сообщения сохранены.' };
+    if (transport[code]) return transport[code];
     return ({ auth_required: 'Войдите в CRM и модуль «Аккаунты» под одним пользователем.', subject_mismatch: 'В CRM и аккаунтах выполнен вход разными пользователями.', organization_forbidden: 'Нет доступа к аккаунтам этого режима.', messenger_read_required: 'У аккаунта нет права messenger:read. Переподключите его с этим правом.', messenger_write_required: 'Нет права отправки messenger:write.', permission_denied: 'Avito не разрешил это действие для аккаунта.', try_later: 'Слишком частые запросы. Подождите немного.', send_unknown: 'Ответ Avito об отправке не получен. Не отправляйте повторно, сначала обновите историю.', context_changed: 'Режим изменился. Откройте чат заново.' })[code] || 'Не удалось получить ответ. Уже загруженные сообщения сохранены в этом окне; попробуйте обновить.';
   }
   function notice(text, bad) { ui.status.textContent = text || ''; ui.status.dataset.error = bad ? 'true' : 'false'; }
-  function setMode(mode) { state.mode = mode; ui.panel.hidden = mode === 'closed'; ui.launch.hidden = mode !== 'closed'; ui.panel.dataset.mode = mode; if (mode !== 'closed') refresh(false); }
+  function layoutKey() { return 'avitolog_chat_layout_v1:' + (scope() || 'local'); }
+  function layoutSettings() {
+    var owner = layoutKey();
+    if (owner !== layoutOwner) {
+      layoutOwner = owner; layout = {};
+      try { var saved = JSON.parse(localStorage.getItem(owner) || '{}'); if (saved && typeof saved === 'object' && !Array.isArray(saved)) layout = saved; } catch (e) {}
+    }
+    if (!layout[state.mode] || typeof layout[state.mode] !== 'object' || Array.isArray(layout[state.mode])) layout[state.mode] = {};
+    return layout[state.mode];
+  }
+  function saveLayout() { try { localStorage.setItem(layoutOwner, JSON.stringify(layout)); } catch (e) {} }
+  function bounded(value, fallback, min, max) { return Math.max(min, Math.min(max, typeof value === 'number' && Number.isFinite(value) ? value : fallback)); }
+  function chatGeometry(mode, saved, viewportWidth, viewportHeight) {
+    var small = viewportWidth <= 650, right = small ? 8 : mode === 'web' ? 35 : 18, bottom = small ? 8 : mode === 'web' ? 30 : 18;
+    var maxWidth = Math.max(1, viewportWidth - right * 2), maxHeight = Math.max(1, viewportHeight - bottom * 2);
+    var width = bounded(saved.width, mode === 'web' ? maxWidth : 440, Math.min(360, maxWidth), maxWidth);
+    var height = bounded(saved.height, mode === 'web' ? maxHeight : 680, Math.min(320, maxHeight), maxHeight);
+    var minSplit = Math.min(140, Math.floor(width * .38)), maxSplit = Math.max(minSplit, width - 10 - Math.min(280, Math.floor(width * .5)));
+    var split = bounded(saved.split, mode === 'web' && !small ? 300 : width * .35, minSplit, maxSplit);
+    return { width: width, height: height, split: split, minSplit: minSplit, maxSplit: maxSplit, maxWidth: maxWidth, maxHeight: maxHeight, right: right, bottom: bottom };
+  }
+  function applyChatLayout() {
+    if (!ui.panel || state.mode === 'closed') return null;
+    var geometry = chatGeometry(state.mode, layoutSettings(), window.innerWidth, window.innerHeight);
+    ui.panel.style.width = geometry.width + 'px'; ui.panel.style.height = geometry.height + 'px';
+    ui.panel.style.right = geometry.right + 'px'; ui.panel.style.bottom = geometry.bottom + 'px';
+    ui.list.style.width = geometry.split + 'px';
+    ui.split.setAttribute('aria-valuemin', String(Math.round(geometry.minSplit))); ui.split.setAttribute('aria-valuemax', String(Math.round(geometry.maxSplit))); ui.split.setAttribute('aria-valuenow', String(Math.round(geometry.split)));
+    return geometry;
+  }
+  function finishResize(commit) {
+    if (!activeResize) return;
+    var resize = activeResize; activeResize = null;
+    window.removeEventListener('pointermove', moveResize); window.removeEventListener('pointerup', endResize); window.removeEventListener('pointercancel', cancelResize); window.removeEventListener('keydown', resizeEscape);
+    delete ui.panel.dataset.resizing;
+    if (!commit) { layout[resize.mode] = resize.before; applyChatLayout(); } else saveLayout();
+    try { resize.handle.releasePointerCapture(resize.pointerId); } catch (e) {}
+  }
+  function moveResize(event) {
+    if (!activeResize || event.pointerId !== activeResize.pointerId) return;
+    if (state.mode !== activeResize.mode || layoutKey() !== activeResize.owner) { finishResize(false); return; }
+    event.preventDefault();
+    var resize = activeResize, saved = layoutSettings(), dx = event.clientX - resize.x, dy = event.clientY - resize.y;
+    if (resize.kind === 'left' || resize.kind === 'corner') saved.width = resize.geometry.width - dx;
+    if (resize.kind === 'top' || resize.kind === 'corner') saved.height = resize.geometry.height - dy;
+    if (resize.kind === 'split') saved.split = resize.geometry.split + dx;
+    var actual = applyChatLayout();
+    if (resize.kind === 'left' || resize.kind === 'corner') saved.width = actual.width;
+    if (resize.kind === 'top' || resize.kind === 'corner') saved.height = actual.height;
+    if (resize.kind === 'split') saved.split = actual.split;
+  }
+  function endResize(event) { if (activeResize && event.pointerId === activeResize.pointerId) finishResize(true); }
+  function cancelResize(event) { if (activeResize && event.pointerId === activeResize.pointerId) finishResize(false); }
+  function resizeEscape(event) { if (event.key === 'Escape' && activeResize) { event.preventDefault(); finishResize(false); } }
+  function chatResizeHandle(kind, label, orientation) {
+    var handle = el('div', 'avchat-resize avchat-resize-' + kind); handle.tabIndex = 0; handle.title = label + '. Двойное нажатие: исходный размер'; handle.setAttribute('aria-label', label);
+    handle.setAttribute('role', kind === 'corner' ? 'button' : 'separator'); if (orientation) handle.setAttribute('aria-orientation', orientation);
+    handle.addEventListener('pointerdown', function (event) {
+      if (activeResize || event.button !== 0 || event.isPrimary === false) return;
+      event.preventDefault(); var saved = layoutSettings(), geometry = applyChatLayout();
+      activeResize = { kind: kind, handle: handle, pointerId: event.pointerId, x: event.clientX, y: event.clientY, geometry: geometry, before: Object.assign({}, saved), mode: state.mode, owner: layoutOwner };
+      ui.panel.dataset.resizing = kind === 'split' || kind === 'left' ? 'horizontal' : kind === 'top' ? 'vertical' : 'corner';
+      try { handle.setPointerCapture(event.pointerId); } catch (e) {}
+      window.addEventListener('pointermove', moveResize); window.addEventListener('pointerup', endResize); window.addEventListener('pointercancel', cancelResize); window.addEventListener('keydown', resizeEscape);
+    });
+    handle.addEventListener('dblclick', function () {
+      finishResize(false); var saved = layoutSettings();
+      if (kind === 'left' || kind === 'corner') delete saved.width;
+      if (kind === 'top' || kind === 'corner') delete saved.height;
+      if (kind === 'split') delete saved.split;
+      applyChatLayout(); saveLayout();
+    });
+    handle.addEventListener('keydown', function (event) {
+      var dx = event.key === 'ArrowLeft' ? -1 : event.key === 'ArrowRight' ? 1 : 0, dy = event.key === 'ArrowUp' ? -1 : event.key === 'ArrowDown' ? 1 : 0;
+      if ((!dx || kind === 'top') && (!dy || kind === 'left' || kind === 'split')) return;
+      event.preventDefault(); var saved = layoutSettings(), geometry = applyChatLayout(), step = event.shiftKey ? 50 : 20;
+      if (kind === 'left' || kind === 'corner') saved.width = geometry.width - dx * step;
+      if (kind === 'top' || kind === 'corner') saved.height = geometry.height - dy * step;
+      if (kind === 'split') saved.split = geometry.split + dx * step;
+      var actual = applyChatLayout();
+      if (kind === 'left' || kind === 'corner') saved.width = actual.width;
+      if (kind === 'top' || kind === 'corner') saved.height = actual.height;
+      if (kind === 'split') saved.split = actual.split;
+      saveLayout();
+    });
+    return handle;
+  }
+  function setMode(mode) { finishResize(false); state.mode = mode; ui.panel.hidden = mode === 'closed'; ui.launch.hidden = mode !== 'closed'; ui.panel.dataset.mode = mode; if (mode !== 'closed') { applyChatLayout(); refresh(false); } }
   function reset() {
     state.generation += 1; state.scope = ''; state.accounts = []; state.selected = []; state.chats = []; state.chat = null; state.loading = false; state.sending = false; state.lastPoll = 0;
     messages = Object.create(null); chatPages = Object.create(null); if (ui.list) { empty(ui.list); empty(ui.history); empty(ui.accounts); ui.text.value = ''; ui.compose.hidden = true; ui.import.hidden = true; ui.refresh.disabled = false; ui.send.disabled = false; ui.toCrm.disabled = true; notice(''); setMode('closed'); }
@@ -211,18 +300,21 @@
   function mount() {
     if (!bridge || document.getElementById('avitoChatLauncher')) return;
     var style = el('style'); style.textContent = '.avchat-launch{position:fixed;right:22px;bottom:22px;z-index:3500;width:56px;height:56px;border-radius:50%;font-size:27px;background:#093b42;border:1px solid #29d4c4;color:white;box-shadow:0 6px 25px #0008;cursor:pointer}.avchat-panel{position:fixed;right:18px;bottom:18px;z-index:3501;width:min(440px,calc(100vw - 24px));height:min(680px,calc(100dvh - 32px));display:flex;flex-direction:column;background:#0a1420;color:#e8f4ff;border:1px solid #29485e;border-radius:15px;box-shadow:0 15px 70px #000a;overflow:hidden;font:13px/1.4 Arial,sans-serif}.avchat-panel[hidden],.avchat-panel [hidden]{display:none!important}.avchat-panel[data-mode=web]{inset:30px 35px;width:auto;height:auto}.avchat-head,.avchat-tools,.avchat-chat-title{display:flex;gap:8px;align-items:center;padding:10px 12px;border-bottom:1px solid #25394b}.avchat-head strong{flex:1}.avchat-panel button,.avchat-panel select,.avchat-panel input,.avchat-panel textarea{color:inherit;background:#122639;border:1px solid #35546a;border-radius:7px;padding:7px;font:inherit}.avchat-panel button{cursor:pointer}.avchat-panel button:disabled{opacity:.5;cursor:wait}.avchat-panel a{color:#64dcff}.avchat-body{display:flex;flex:1;min-height:0}.avchat-conversations{width:42%;overflow:auto;border-right:1px solid #25394b}.avchat-row{display:flex;width:100%;flex-direction:column;gap:3px;text-align:left;border-radius:0!important;border:0!important;border-bottom:1px solid #25394b!important;background:transparent!important;min-width:0}.avchat-row strong,.avchat-row span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%}.avchat-row small{font-size:10px;color:#89adca}.avchat-row[data-active=true]{background:#154052!important}.avchat-dialog{flex:1;min-width:0;display:flex;flex-direction:column}.avchat-chat-title{align-items:flex-start;flex-direction:column;gap:2px}.avchat-chat-title small{color:#89adca}.avchat-history{flex:1;overflow:auto;padding:12px;display:flex;flex-direction:column;gap:8px;align-items:flex-start}.avchat-message{max-width:92%;background:#19354b;padding:8px 10px;border-radius:9px;white-space:pre-wrap;overflow-wrap:anywhere}.avchat-message[data-direction=out]{align-self:flex-end;background:#104a44}.avchat-message small{display:block;font-size:10px;color:#a2c2d3;margin-top:5px}.avchat-compose{display:flex;gap:6px;padding:8px}.avchat-compose textarea{resize:vertical;min-height:52px;width:100%;box-sizing:border-box}.avchat-compose button{align-self:flex-end}.avchat-status{padding:6px 12px;font-size:11px;color:#9bbace;max-height:65px;overflow:auto}.avchat-status[data-error=true]{color:#ffb0a8}.avchat-empty{padding:12px;color:#91aec6}.avchat-settings{padding:0 12px;max-height:150px;overflow:auto}.avchat-settings label{display:flex;align-items:center;gap:6px;padding:4px}.avchat-import{display:grid;gap:6px;padding:8px;border-top:1px solid #35546a}.avchat-import input{min-width:0}.avchat-panel[data-mode=mini] .avchat-conversations{width:35%}.avchat-panel[data-mode=web] .avchat-conversations{width:300px}.avchat-panel[data-mode=web] .avchat-dialog{max-width:none}@media(max-width:650px){.avchat-panel[data-mode=web]{inset:8px}.avchat-panel[data-mode=web] .avchat-conversations{width:35%}}'; document.head.appendChild(style);
+    style.textContent += '.avchat-panel{box-sizing:border-box;min-width:0;min-height:0}.avchat-panel[data-mode=web]{inset:auto}.avchat-conversations{flex:0 0 auto;min-width:0}.avchat-resize{touch-action:none;user-select:none;-webkit-user-select:none}.avchat-resize-left,.avchat-resize-top,.avchat-resize-corner{position:absolute;z-index:4}.avchat-resize-left{left:0;top:12px;bottom:0;width:8px;cursor:ew-resize}.avchat-resize-top{top:0;left:12px;right:0;height:8px;cursor:ns-resize}.avchat-resize-corner{left:0;top:0;width:16px;height:16px;cursor:nwse-resize}.avchat-resize-split{flex:0 0 8px;cursor:col-resize;border-left:1px solid #25394b;background:#0d1d2b;position:relative}.avchat-resize-split:after{content:"";position:absolute;left:2px;top:45%;width:2px;height:28px;border-radius:3px;background:#496678}.avchat-resize:hover,.avchat-resize:focus-visible{background:#29d4c430;outline:1px solid #29d4c4;outline-offset:-1px}.avchat-panel[data-resizing]{user-select:none;-webkit-user-select:none}.avchat-panel[data-resizing=horizontal],.avchat-panel[data-resizing=horizontal] *{cursor:ew-resize!important}.avchat-panel[data-resizing=vertical],.avchat-panel[data-resizing=vertical] *{cursor:ns-resize!important}.avchat-panel[data-resizing=corner],.avchat-panel[data-resizing=corner] *{cursor:nwse-resize!important}';
+    style.textContent += '.avchat-conversations,.avchat-resize-split{box-sizing:border-box}';
     ui.launch = btn('💬', 'Чаты Avito. Shift + нажатие: большой вид', function (event) { setMode(event.shiftKey ? 'web' : 'mini'); }); ui.launch.id = 'avitoChatLauncher'; ui.launch.className = 'avchat-launch';
     ui.panel = el('section', 'avchat-panel'); ui.panel.id = 'avitoChatPanel'; ui.panel.hidden = true; ui.panel.setAttribute('aria-label', 'Чаты Avito');
     var head = el('header', 'avchat-head'); ui.count = el('span', '', '0'); head.append(el('strong', '', 'Avito · Чаты'), ui.count, btn('↗', 'Мини / большой вид (Shift + нажатие)', function () { setMode(state.mode === 'web' ? 'mini' : 'web'); }), btn('—', 'Свернуть чат', function () { setMode('closed'); })); head.addEventListener('click', function (event) { if (event.shiftKey) setMode(state.mode === 'web' ? 'mini' : 'web'); });
     var tools = el('div', 'avchat-tools'); ui.refresh = btn('Обновить', '', function () { refresh(true); }); var settings = el('details'); settings.appendChild(el('summary', '', 'Аккаунты')); ui.accounts = el('div', 'avchat-settings'); settings.appendChild(ui.accounts); tools.append(ui.refresh, settings);
-    var body = el('div', 'avchat-body'); ui.list = el('nav', 'avchat-conversations'); var dialog = el('div', 'avchat-dialog'); ui.chatTitle = el('div', 'avchat-chat-title'); ui.chatTitle.appendChild(el('strong', '', 'Выберите переписку'));
+    var body = el('div', 'avchat-body'); ui.list = el('nav', 'avchat-conversations'); ui.split = chatResizeHandle('split', 'Ширина списка переписок', 'vertical'); var dialog = el('div', 'avchat-dialog'); ui.chatTitle = el('div', 'avchat-chat-title'); ui.chatTitle.appendChild(el('strong', '', 'Выберите переписку'));
     ui.toCrm = btn('+ В CRM', 'Добавить клиента в базу или неделю', showImport); ui.toCrm.disabled = true;
     ui.older = btn('Ранние сообщения', '', function () { if (state.chat) loadMessages(state.chat, true); }); ui.older.hidden = true;
     ui.history = el('div', 'avchat-history'); ui.compose = el('form', 'avchat-compose'); ui.compose.hidden = true; ui.text = el('textarea'); ui.text.setAttribute('aria-label', 'Сообщение Avito'); ui.text.maxLength = 2000; ui.text.placeholder = 'Сообщение…'; ui.send = btn('➤', 'Отправить сообщение', function () {}); ui.send.type = 'submit'; ui.compose.append(ui.text, ui.send); ui.compose.addEventListener('submit', send);
     ui.text.addEventListener('keydown', function (event) { if (event.key === 'Enter' && !event.shiftKey && !event.isComposing) { event.preventDefault(); ui.compose.requestSubmit(); } });
     ui.import = el('form', 'avchat-import'); ui.import.hidden = true; ui.existing = el('select'); ui.existing.setAttribute('aria-label', 'Новый или существующий клиент'); ui.existing.addEventListener('change', function () { var client = window.getCrmClients().find(function (c) { return c && c.client_id === ui.existing.value; }); ui.clientName.value = client && (client.company || client.contact_name) || name(state.chat); if (client && client.categoryFolderId) ui.category.value = client.categoryFolderId; }); ui.clientName = el('input'); ui.clientName.placeholder = 'Название клиента / проекта'; ui.clientName.setAttribute('aria-label', 'Название клиента'); ui.clientName.maxLength = 200; ui.clientName.required = true; ui.category = el('select'); ui.category.setAttribute('aria-label', 'Категория CRM'); ui.week = el('select'); ui.week.setAttribute('aria-label', 'Неделя CRM'); ['Только в базу', 'Неделя 1', 'Неделя 2', 'Неделя 3', 'Неделя 4'].forEach(function (name, i) { var option = el('option', '', name); option.value = String(i); ui.week.appendChild(option); }); var importSubmit = btn('Добавить / привязать', '', function () {}); importSubmit.type = 'submit'; ui.import.append(ui.existing, ui.clientName, ui.category, ui.week, importSubmit, btn('Отмена', '', function () { ui.import.hidden = true; }));
     ui.import.addEventListener('submit', function (event) { event.preventDefault(); if (!state.chat) return; try { var result = importClient(state.chat, ui.clientName.value, ui.category.value, Number(ui.week.value), ui.existing.value); ui.import.hidden = true; notice((result.existing ? 'Привязка обновлена.' : 'Клиент добавлен.') + ' Сохранение идёт через обычную синхронизацию CRM.'); } catch (error) { notice('Не удалось завершить добавление. Проверьте базу перед повтором; данные не удалялись.', true); } });
-    dialog.append(ui.chatTitle, ui.toCrm, ui.older, ui.history, ui.import, ui.compose); body.append(ui.list, dialog); ui.status = el('div', 'avchat-status'); ui.status.setAttribute('role', 'status'); ui.panel.append(head, tools, body, ui.status); document.body.append(ui.launch, ui.panel);
+    dialog.append(ui.chatTitle, ui.toCrm, ui.older, ui.history, ui.import, ui.compose); body.append(ui.list, ui.split, dialog); ui.status = el('div', 'avchat-status'); ui.status.setAttribute('role', 'status'); ui.panel.append(head, tools, body, ui.status, chatResizeHandle('left', 'Ширина окна чата', 'vertical'), chatResizeHandle('top', 'Высота окна чата', 'horizontal'), chatResizeHandle('corner', 'Размер окна чата')); document.body.append(ui.launch, ui.panel);
+    window.addEventListener('resize', function () { finishResize(false); applyChatLayout(); });
     document.addEventListener('avitolog:workspace-reset', reset);
     setInterval(function () { if (state.scope && state.scope !== scope()) reset(); else if (state.mode !== 'closed' && document.visibilityState !== 'hidden') { if (state.chat) loadMessages(state.chat, false); if (Date.now() - state.lastPoll > 45000) refresh(false); } }, 15000);
   }
