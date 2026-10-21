@@ -53,7 +53,7 @@
     }
     return { advance: metric(advance, advance.balance, false), contacts: metric(today, today.contacts, true), denied: false };
   }
-  function format(value, key) { return number(value) ? (key === 'advance' ? Math.round(value).toLocaleString('ru-RU') + ' \u20bd' : value.toLocaleString('ru-RU')) : '\u2014'; }
+  function format(value, key) { return number(value) ? (key === 'advance' ? Math.round(value).toLocaleString('ru-RU') + ' \u20bd' : value.toLocaleString('ru-RU')) : ''; }
   function staleMetrics(metrics) {
     var out = { advance: null, contacts: null, denied: false };
     ['advance', 'contacts'].forEach(function (key) { if (metrics && metrics[key]) out[key] = Object.assign({}, metrics[key], { stale: true }); });
@@ -139,7 +139,7 @@
     options = options || {};
     var document = env.document, store = options.store || preferenceStore(env), now = options.now || Date.now;
     var scope = '', day = '', epoch = 0, revision = 0, hydrated = false, columns = settings(), widths = columnWidths(), warning = '';
-    var catalog = null, catalogTask = null, catalogNext = 0, catalogError = '', entries = new Map(), queue = [], active = 0;
+    var catalog = null, catalogOwners = new Map(), catalogTask = null, catalogNext = 0, catalogError = '', entries = new Map(), queue = [], active = 0;
     var frame = null, interval = null, observer = null, observed = null, popover = null, stopped = false;
     var writeQueue = Promise.resolve(), resizing = null;
     function bridge() { return env.AvitoWorkspaceBridge; }
@@ -171,7 +171,7 @@
       if (stopped || frame != null) return;
       frame = env.setTimeout(function () { frame = null; tick(); }, 25);
     }
-    function resetMetrics() { epoch++; entries.clear(); queue = []; catalog = null; catalogTask = null; catalogNext = 0; catalogError = ''; }
+    function resetMetrics() { epoch++; entries.clear(); queue = []; catalog = null; catalogOwners.clear(); catalogTask = null; catalogNext = 0; catalogError = ''; }
     function syncContext() {
       var nextScope = context(), nextDay = moscowDay(now());
       if (nextScope !== scope) {
@@ -216,9 +216,12 @@
       catalogNext = now() + TTL;
       var task = Promise.resolve().then(function () { return bridge().listAccounts(true); }).then(function (list) {
         if (owner !== context() || ownerEpoch !== epoch) return;
+        var owners = new Map();
+        (Array.isArray(list) ? list : []).forEach(function (item) { if (item && typeof item.id === 'string' && ACCOUNT.test(item.id) && item.avito_user_id) owners.set(item.id.toLowerCase(), text(item.avito_user_id)); });
         catalog = catalogIds(list); catalogError = '';
-        entries.forEach(function (_, id) { if (!catalog.has(id)) entries.delete(id); });
-        queue = queue.filter(function (job) { return catalog.has(job.id); });
+        entries.forEach(function (_, id) { if (!catalog.has(id) || catalogOwners.has(id) && catalogOwners.get(id) !== owners.get(id)) entries.delete(id); });
+        catalogOwners = owners;
+        queue = queue.filter(function (job) { return catalog.has(job.id) && entries.has(job.id); });
       }).catch(function (error) {
         if (owner !== context() || ownerEpoch !== epoch) return;
         if (denied(error)) invalidateAccess();
@@ -259,7 +262,8 @@
         if (next.denied) { invalidateAccess(); return; }
         ['advance', 'contacts'].forEach(function (key) {
           var data = result && (result.overview || result.snapshot || result) || {}, section = key === 'advance' ? data.advance : data.today;
-          if (!next[key] && /^(provider_unavailable|rate_limited|try_later)$/.test(section && section.error || data.error || '') && entry.metrics && entry.metrics[key]) next[key] = Object.assign({}, entry.metrics[key], { stale: true });
+          // A partial refresh is not a replacement for a confirmed same-day value.
+          if (!next[key] && !denied(section && section.error) && entry.metrics && entry.metrics[key]) next[key] = Object.assign({}, entry.metrics[key], { stale: true });
         });
         entry.metrics = next; entry.error = '';
       } catch (error) {
@@ -372,19 +376,26 @@
         var signature = header ? JSON.stringify([keys, 'header', scope]) : JSON.stringify([keys, primary, id, scope, day, catalog && catalog.has(id), catalogError, entry && entry.pending,
           keys.map(function (key) { return metrics && metrics[key]; })]);
         if (column._pacSignature === signature) return;
-        column._pacSignature = signature; column.replaceChildren();
+        column._pacSignature = signature;
+        var layout = JSON.stringify([keys, header, primary, scope]);
+        var rebuild = column._pacLayout !== layout;
+        if (rebuild) { column._pacLayout = layout; column.replaceChildren(); }
         keys.forEach(function (key) {
           var metric = catalog && catalog.has(id) && metrics && metrics[key];
-          var cell = element('span', 'projects-account-value projects-account-' + key, header ? null : primary ? format(metric && metric.value, key) : '');
-          if (header) {
+          var cell = rebuild ? element('span', 'projects-account-value projects-account-' + key) : column.children[keys.indexOf(key)];
+          if (header && rebuild) {
             cell.classList.add('projects-account-label'); cell.setAttribute('aria-label', LABELS[key]);
             cell.title = key === 'contacts' ? '\u0417\u0430\u044f\u0432\u043a\u0438: \u043a\u043e\u043d\u0442\u0430\u043a\u0442\u044b Avito \u0437\u0430 \u0441\u0435\u0433\u043e\u0434\u043d\u044f (\u041c\u0421\u041a)' : LABELS[key];
             var icon = element('span', 'projects-account-heading-icon', ICONS[key]); icon.setAttribute('aria-hidden', 'true'); cell.appendChild(icon);
-            cell.appendChild(element('span', key === 'advance' ? 'projects-account-sr' : '', LABELS[key]));
+            cell.appendChild(element('span', '', LABELS[key]));
             cell.appendChild(resizeHandle(key));
           }
-          else if (primary) { cell.title = LABELS[key] + ': ' + titleFor(id, metric, entry); cell.dataset.stale = metric && metric.stale ? 'true' : 'false'; }
-          column.appendChild(cell);
+          else if (!header) {
+            var value = primary ? format(metric && metric.value, key) : '';
+            if (cell.textContent !== value) cell.textContent = value;
+            if (primary) { cell.title = LABELS[key] + ': ' + titleFor(id, metric, entry); cell.dataset.stale = metric && metric.stale ? 'true' : 'false'; }
+          }
+          if (rebuild) column.appendChild(cell);
         });
       });
     }
@@ -434,12 +445,14 @@
       } finally { if (observer) { observed = main; observer.observe(main, { childList: true, subtree: true, attributes: true, attributeFilter: ['data-id', 'data-child-line-index'] }); } }
     }
     function tick() { if (stopped) return; syncContext(); requestMetrics(); render(); }
+    function restoreRows() { if (stopped) return; syncContext(); render(); schedule(); }
     function reset() { endResize(true); resetMetrics(); schedule(); }
+    function refresh() { syncContext(); catalogNext = 0; entries.forEach(function (entry) { entry.nextAt = 0; }); schedule(); }
     function outside(event) { if (popover && !popover.contains(event.target) && !(event.target.closest && event.target.closest('#projectsAccountColumnsGear'))) closeMenu(); }
     function escapeMenu(event) { if (event.key === 'Escape' && popover) { closeMenu(); var gear = document.getElementById('projectsAccountColumnsGear'); if (gear) gear.focus(); } }
     function start() {
       if (document) {
-        addStyle(); if (env.MutationObserver) observer = new env.MutationObserver(schedule);
+        addStyle(); if (env.MutationObserver) observer = new env.MutationObserver(restoreRows);
         document.addEventListener('avitolog:workspace-reset', reset); document.addEventListener('visibilitychange', schedule); document.addEventListener('pointerdown', outside); document.addEventListener('keydown', escapeMenu);
         env.addEventListener('resize', menuPosition); env.addEventListener('scroll', menuPosition, true);
       }
@@ -457,15 +470,16 @@
         '.projects-account-value:not(.projects-account-label){font-size:15px;line-height:1;min-height:0}.projects-account-label{position:relative;flex-direction:column;gap:4px;overflow:visible;padding:4px 9px 4px 4px}.projects-account-heading-icon{font-size:19px;line-height:1}.projects-account-sr{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}.projects-account-resize{position:absolute;right:0;top:0;bottom:0;width:8px;cursor:col-resize;touch-action:none;user-select:none}.projects-account-resize::after{content:"";position:absolute;top:22%;bottom:22%;right:2px;width:2px;border-radius:2px;background:#5b8498;opacity:.6}.projects-account-resize:hover,.projects-account-resize:focus-visible{background:#4ec0e92b;outline:1px solid var(--accent,#00d97e);outline-offset:-1px}.projects-account-resize:hover::after,.projects-account-resize:focus-visible::after{opacity:1}' +
         '.projects-account-settings{position:fixed;z-index:15000;width:266px;padding:13px;border:1px solid var(--border,#304156);border-radius:12px;background:#111b28;color:#eaf4ff;box-shadow:0 12px 36px rgba(0,0,0,.35);font:12px/1.45 "Golos Text",sans-serif}.projects-account-settings strong{display:block;margin-bottom:8px}.projects-account-settings label{display:flex;align-items:center;gap:8px;padding:7px 3px;cursor:pointer}.projects-account-settings input{width:16px;height:16px;accent-color:var(--accent,#00d97e)}.projects-account-settings-status{margin:8px 0 0;font-size:10px;color:#9bb1c9}.projects-account-settings-status[data-warning="true"]{color:#ffc2c9}' +
         'body.day-mode .projects-account-columns,body.day-mode .projects-table-header .projects-account-columns{background:#f3f7fb;border-color:#cbd5e1}body.day-mode .projects-account-value{color:#08784f;border-color:#dce5ee}body.day-mode .projects-account-contacts{color:#12689a}body.day-mode .projects-account-label{color:#526277}body.day-mode .projects-account-value[data-stale="true"]{color:#86560a}body.day-mode .projects-account-settings{background:#fff;color:#182638;border-color:#cbd5e1;box-shadow:0 12px 36px rgba(28,48,75,.16)}body.day-mode .projects-account-settings-status{color:#526277}body.day-mode .projects-account-settings-status[data-warning="true"]{color:#b12d41}';
+      style.textContent += '.projects-account-value{border-left:0}.projects-account-resize::after{display:none}';
       document.head.appendChild(style);
     }
-    return { start: start, stop: stopAll, tick: tick, setColumns: setColumns, setColumnWidth: setColumnWidth, reset: reset, flush: function () { return writeQueue; },
+    return { start: start, stop: stopAll, tick: tick, setColumns: setColumns, setColumnWidth: setColumnWidth, reset: reset, refresh: refresh, flush: function () { return writeQueue; },
       inspect: function () { return { scope: scope, day: day, columns: settings(columns), widths: columnWidths(widths), hydrated: hydrated, warning: warning, active: active, queued: queue.length, catalog: catalog && Array.from(catalog), entries: Array.from(entries, function (pair) { return [pair[0], { metrics: pair[1].metrics, pending: pair[1].pending, nextAt: pair[1].nextAt }]; }) }; }, place: place, renderRows: renderRows };
   }
   if (typeof module !== 'undefined' && module.exports) module.exports = { settings: settings, preferences: preferences, columnWidths: columnWidths, resizeWidth: resizeWidth, validScope: validScope, moscowDay: moscowDay, linkedClient: linkedClient, connection: connection, catalogIds: catalogIds, derive: derive, denied: denied, format: format, preferenceStore: preferenceStore, createController: createController, TTL: TTL };
   else if (root.document && !root.ProjectsAccountColumns) {
     var controller = createController(root);
-    root.ProjectsAccountColumns = Object.freeze({ refresh: function () { controller.reset(); controller.tick(); } });
+    root.ProjectsAccountColumns = Object.freeze({ refresh: function () { controller.refresh(); controller.tick(); } });
     if (root.document.readyState === 'loading') root.document.addEventListener('DOMContentLoaded', controller.start, { once: true }); else controller.start();
   }
 })(typeof window !== 'undefined' ? window : globalThis);
