@@ -1953,12 +1953,13 @@
       var statusBadge = getStatusBadge(resolvedType);
       var statusCls = resolvedType === 'old' ? 'assets-status-diamond' : (resolvedType === 'returning' ? 'assets-status-2' : 'assets-status-new');
       var cashLink = resolveCashProject(p, cashSources);
-      var folderLink = cashLink.ambiguous ? '' : cashLink.folderLink;
+      var explicitFolder = cashFolder(p);
+      var folderLink = cashLink.ambiguous ? explicitFolder ? 'https://drive.google.com/drive/folders/' + explicitFolder : '' : cashLink.folderLink;
       var hasFolder = !!folderLink;
       var folderHtml = hasFolder && folderLink
-        ? '<span class="assets-row-folder-inline"><a href="' + esc(folderLink) + '" target="_blank" rel="noopener" class="assets-row-folder-link" onclick="event.stopPropagation()" title="Открыть папку">📁</a></span>'
+        ? '<span class="assets-row-folder-inline"><a href="' + esc(folderLink) + '" target="_blank" rel="noopener" class="assets-row-folder-link" onclick="event.stopPropagation()" title="' + (cashLink.ambiguous ? 'Открыть сохранённую папку; привязка требует проверки' : 'Открыть папку') + '">📁</a></span>'
         : '';
-      folderHtml += '<button type="button" class="assets-row-folder-link" style="border:0;background:transparent;padding:0 3px;cursor:pointer" onclick="event.stopPropagation();window.__assetsStartFolderBind(\'' + owner + '\',' + idx + ')" title="' + (hasFolder ? 'Изменить привязку папки' : 'Привязать папку проекта') + '">🔗</button>';
+      folderHtml += '<button type="button" class="assets-row-folder-link" style="border:0;background:transparent;padding:0 3px;cursor:pointer" onclick="event.stopPropagation();window.__assetsStartFolderBind(\'' + owner + '\',' + idx + ')" title="' + (cashLink.ambiguous ? 'Проверить конфликт привязки папки' : hasFolder ? 'Изменить привязку папки' : 'Привязать папку проекта') + '">🔗</button>';
       var payDays = formatDaysUntilPayment(payDate);
       if (!payDays && p.daysSincePaymentAtMonthSwitch !== undefined && p.daysSincePaymentAtMonthSwitch !== '') {
         payDays = String(p.daysSincePaymentAtMonthSwitch) + ' дн.';
