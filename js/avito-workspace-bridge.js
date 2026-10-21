@@ -13,14 +13,15 @@
     var org = String(config.profileOrganizations && config.profileOrganizations[profile] || '').toLowerCase();
     return UUID.test(user) && UUID.test(org) ? user + '|' + profile + '|' + org : '';
   }
-  function clear() {
+  function clear(reason) {
+    var code = reason === 'transport_unavailable' ? reason : 'context_changed';
     clearTimeout(readyTimer); readyTimer = null;
-    if (readyReject) { var reject = readyReject; readyReject = null; reject(new Error('context_changed')); }
-    Object.keys(pending).forEach(function (id) { clearTimeout(pending[id].timer); pending[id].reject(new Error('context_changed')); });
+    if (readyReject) { var reject = readyReject; readyReject = null; reject(new Error(code)); }
+    Object.keys(pending).forEach(function (id) { clearTimeout(pending[id].timer); pending[id].reject(new Error(code)); });
     pending = Object.create(null);
     if (frame) frame.remove();
     frame = null; scope = ''; loaded = false; readyTask = null; catalog = null;
-    document.dispatchEvent(new CustomEvent('avitolog:workspace-reset'));
+    document.dispatchEvent(new CustomEvent('avitolog:workspace-reset', { detail: { reason: code } }));
   }
   function ensure() {
     var next = context();
@@ -34,7 +35,7 @@
     frame.src = ORIGIN + '/integrations/avito-accounts/?workspaceBridge=1&expected_user_id=' + encodeURIComponent(parts[0]) + '&organization_id=' + encodeURIComponent(parts[2]) + '&v=20261020-workspace2';
     readyTask = new Promise(function (resolve, reject) {
       var owner = frame; readyReject = reject;
-      readyTimer = setTimeout(function () { if (owner === frame) { readyReject = null; reject(new Error('timeout')); clear(); } }, 25000);
+      readyTimer = setTimeout(function () { if (owner === frame) clear(next === context() ? 'transport_unavailable' : undefined); }, 25000);
       owner.addEventListener('load', function () { if (owner !== frame) { reject(new Error('context_changed')); return; } clearTimeout(readyTimer); readyReject = null; if (next === context()) { loaded = true; resolve(); } else { reject(new Error('context_changed')); clear(); } }, { once: true });
     });
     document.body.appendChild(frame);
