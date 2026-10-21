@@ -44,13 +44,13 @@
   }
   async function saveChatPreferences(value, owner) {
     if (!owner || scope() !== owner) return false;
-    ui.nicheSetting.disabled = true; notice('Сохраняем настройки…');
+    var generation = state.generation; state.preferenceSavingOwner = owner; ui.nicheSetting.disabled = true; notice('Сохраняем настройки…');
     try {
       await settingWrite('avitolog_chat_preferences_v1:' + owner, JSON.stringify(value));
-      if (scope() !== owner) return false;
+      if (scope() !== owner || state.generation !== generation) return false;
       ui.nicheSetting.checked = value.niche === true; notice('Настройки сохранены.'); updateStorageInfo(); return true;
-    } catch (e) { if (scope() === owner) notice('Браузер не подтвердил сохранение настроек. Изменение не применено; попробуйте ещё раз.', true); return false; }
-    finally { if (scope() === owner) ui.nicheSetting.disabled = false; }
+    } catch (e) { if (scope() === owner && state.generation === generation) notice('Браузер не подтвердил сохранение настроек. Изменение не применено; попробуйте ещё раз.', true); return false; }
+    finally { if (state.generation === generation) { state.preferenceSavingOwner = ''; if (scope() === owner) ui.nicheSetting.disabled = false; } }
   }
   function renderChatTitle() {
     empty(ui.chatTitle);
@@ -202,14 +202,16 @@
   }
   function setMode(mode) {
     var previous = state.mode, sameOwner = layoutOwner === layoutKey(); finishResize(false); layoutSettings();
+    state.restoreOnReady = mode !== 'closed' && mode !== 'mini' && mode !== 'web' && !scope();
     if (mode !== 'closed' && mode !== 'mini' && mode !== 'web') mode = layout.lastMode === 'web' ? 'web' : 'mini';
     if (mode !== 'closed') { layout.lastMode = mode; saveLayout(); }
     else if (sameOwner && (previous === 'mini' || previous === 'web')) { layout.lastMode = previous; saveLayout(); }
     state.mode = mode; ui.panel.hidden = mode === 'closed'; ui.launch.hidden = mode !== 'closed'; ui.panel.dataset.mode = mode;
+    ui.nicheSetting.disabled = !scope() || state.preferenceSavingOwner === scope();
     if (mode !== 'closed') { applyChatLayout(); refresh(false); }
   }
   function reset() {
-    state.selectionRefresh = false; state.selectionSaving = false; selectionVersion += 1;
+    state.selectionRefresh = false; state.selectionSaving = false; state.preferenceSavingOwner = ''; state.restoreOnReady = false; selectionVersion += 1;
     state.generation += 1; state.scope = ''; state.accounts = []; state.selected = []; state.chats = []; state.chat = null; state.loading = false; state.sending = false; state.lastPoll = 0;
     messages = Object.create(null); chatPages = Object.create(null); if (ui.list) { empty(ui.list); empty(ui.history); empty(ui.accounts); ui.text.value = ''; ui.compose.hidden = true; ui.import.hidden = true; ui.refresh.disabled = false; ui.send.disabled = false; ui.toCrm.disabled = true; if (ui.replies) ui.replies.reset(); ui.nicheSetting.checked = false; ui.nicheSetting.disabled = false; renderChatTitle(); notice(''); setMode('closed'); }
   }
@@ -264,10 +266,15 @@
   async function refresh(force) {
     if (!bridge || state.loading || state.mode === 'closed' || document.visibilityState === 'hidden') return;
     var next = scope();
-    if (!next) { notice('Для чата нужен вход в CRM и доступ к организации аккаунтов.', true); return; }
+    if (!next) { ui.nicheSetting.disabled = true; notice(window.AVITOLOG_BACKEND_MODE && window.AVITOLOG_BACKEND_INITIAL_SYNC_READY !== true ? 'Восстанавливаем вход и режим. Сохранённые настройки появятся автоматически.' : 'Для чата нужен вход в CRM и доступ к организации аккаунтов.', true); return; }
     if (state.scope && state.scope !== next) reset();
     state.scope = next;
-    if (layoutOwner !== layoutKey()) { finishResize(false); applyChatLayout(); }
+    if (state.preferenceSavingOwner !== next) { ui.nicheSetting.checked = chatPreferences().niche; ui.nicheSetting.disabled = false; }
+    if (state.restoreOnReady || layoutOwner !== layoutKey()) {
+      finishResize(false); layoutSettings();
+      if (state.restoreOnReady) state.mode = layout.lastMode === 'web' ? 'web' : 'mini';
+      state.restoreOnReady = false; layout.lastMode = state.mode; ui.panel.dataset.mode = state.mode; applyChatLayout();
+    }
     if (!force && Date.now() - state.lastPoll < 30000) return;
     var generation = state.generation; state.loading = true; ui.refresh.disabled = true; notice('Обновление чатов…');
     try {
@@ -435,6 +442,12 @@
     style.textContent += '.avchat-head{cursor:move;touch-action:none;user-select:none}.avchat-drag-edge{position:absolute;z-index:5;cursor:move;touch-action:none}.avchat-drag-left{left:0;top:16px;bottom:10px;width:4px}.avchat-drag-right{right:0;top:16px;bottom:10px;width:4px}.avchat-drag-top{top:0;left:16px;right:16px;height:4px}.avchat-drag-bottom{bottom:0;left:10px;right:10px;height:4px}.avchat-resize-left{left:4px}.avchat-resize-top{top:4px}.avchat-resize-corner{z-index:6}';
     window.addEventListener('resize', function () { finishResize(false); applyChatLayout(); });
     document.addEventListener('avitolog:workspace-reset', reset);
+    setInterval(function () {
+      var next = scope();
+      if (state.scope && state.scope !== next) { reset(); return; }
+      ui.nicheSetting.disabled = !next || state.preferenceSavingOwner === next;
+      if (next && !state.scope && state.mode !== 'closed' && document.visibilityState !== 'hidden') refresh(false);
+    }, 1000);
     setInterval(function () { if (state.scope && state.scope !== scope()) reset(); else if (state.mode !== 'closed' && document.visibilityState !== 'hidden') { if (state.chat) loadMessages(state.chat, false); if (Date.now() - state.lastPoll > 45000) refresh(false); } }, 15000);
     if (pendingOpen) { pendingOpen = false; setMode(pendingMode); }
   }
