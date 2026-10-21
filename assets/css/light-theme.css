@@ -40,6 +40,12 @@ body.day-mode :is(input, textarea, select) { caret-color: var(--accent); }
 body.day-mode :is(input[type="checkbox"], input[type="radio"], input[type="range"]) { accent-color: var(--accent); }
 body.day-mode select option { background: var(--surface); color: var(--text); }
 body.day-mode :is(input, textarea, select):disabled { color: var(--muted); background-color: #e8edf3; }
+/* This legacy credential field declares its dark palette inline. */
+body.day-mode #apiKeyInput {
+  background: var(--surface2) !important;
+  color: var(--text) !important;
+  border-color: var(--border) !important;
+}
 
 /* Shell and navigation: neutral inactive tabs, visibly distinct selected tabs. */
 body.day-mode :is(header, .sidebar, .content-wrap, .right-tabs) { background: var(--surface); border-color: var(--border); }
