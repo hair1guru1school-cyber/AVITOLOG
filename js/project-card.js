@@ -6,6 +6,7 @@
   var accountScope = '';
   var accountRequest = null;
   var sidebarRefreshRequest = null;
+  var rowClickBound = false;
   var refreshTimer = null;
   var FIELDS = [
     ['title', 'Название проекта', 300], ['company', 'Компания', 300],
@@ -226,12 +227,34 @@
   function metric(value) { return typeof value === 'number' && Number.isFinite(value) ? value.toLocaleString('ru-RU') : '—'; }
   function metricBox(label, value) { return '<div class="project-card-metric">' + escape(label) + '<strong>' + escape(value) + '</strong></div>'; }
   function moscowDay() { return new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Moscow', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date()); }
-  function paymentsHtml(project) {
+  function paymentDateLabel(value) {
+    var parts = /^(\d{4})-(\d{2})-(\d{2})$/.exec(text(value));
+    return parts ? parts[3] + '.' + parts[2] + '.' + parts[1] : '—';
+  }
+  function paymentSummaryHtml(project) {
     var journal = root.ProjectPaymentJournal;
     if (!journal || typeof journal.getEntries !== 'function') return '<p class="project-card-note">История оплат пока недоступна.</p>';
-    var entries = journal.getEntries(project) || [];
+    var summary = typeof journal.getSummary === 'function' ? journal.getSummary(project, moscowDay()) : null;
+    var entries = summary && Array.isArray(summary.entries) ? summary.entries : journal.getEntries(project) || [];
     var valid = entries.filter(function (entry) { return entry && Number.isFinite(entry.amount) && entry.currency === 'RUB'; });
-    return '<p class="project-card-note">Подтверждённых оплат: ' + valid.length + ' · Всего ' + escape(formatMoney(valid.reduce(function (sum, e) { return sum + e.amount; }, 0))) + '. Только записи, явно связанные с этим проектом.</p>' + (valid.length ? '<table class="project-card-table"><thead><tr><th>Дата</th><th>Сумма</th><th>Источник</th></tr></thead><tbody>' + valid.slice().reverse().map(function (entry) { return '<tr><td>' + escape(entry.date || 'Дата не указана') + '</td><td>' + escape(formatMoney(entry.amount)) + '</td><td>' + escape((entry.sources || [entry.source]).map(function (v) { return ({ cash: 'Касса', crm: 'CRM', journal: 'Журнал' })[v] || 'Журнал'; }).join(' + ')) + '</td></tr>'; }).join('') + '</tbody></table>' : '<p class="project-card-note">Связанных записей об оплате пока нет.</p>') + (safeFolder(project) ? '<button type="button" data-payment-sync class="project-card-sidebar">Сохранить журнал в папку проекта</button>' : '') + '<div class="project-card-note" data-payment-file></div>';
+    var total = summary ? summary.total : valid.reduce(function (sum, entry) { return sum + entry.amount; }, 0);
+    var cycles = summary && Number.isSafeInteger(summary.promotionCycles) && summary.promotionCycles >= 0 ? metric(summary.promotionCycles) : 'Не определено';
+    if (summary && summary.unknownCyclePayments > 0 && Number.isSafeInteger(summary.knownPromotionCycles) && summary.knownPromotionCycles > 0) cycles = 'Не менее ' + metric(summary.knownPromotionCycles);
+    var count = summary && Number.isSafeInteger(summary.count) && summary.count >= 0 ? summary.count : valid.length;
+    var cards = '<div class="project-card-metrics">' + metricBox('Последняя оплата', paymentDateLabel(summary && summary.lastPaymentDate)) + metricBox('Дней после оплаты', metric(summary && summary.daysSinceLastPayment)) + metricBox('Всего оплачено', formatMoney(total)) + metricBox('Циклов продвижения', cycles) + '</div>';
+    var cycleNote = summary && summary.unknownCyclePayments > 0 ? ' У части платежей цикл не указан: число переводов не равно числу продвижений.' : '';
+    return cards + '<p class="project-card-note">Подтверждённых платежей: ' + count + '. Только записи, явно связанные с этим проектом.' + cycleNote + '</p>' + (valid.length ? '<table class="project-card-table"><thead><tr><th>Дата</th><th>Сумма</th><th>Источник</th></tr></thead><tbody>' + valid.slice().reverse().map(function (entry) { return '<tr><td>' + escape(entry.date || 'Дата не указана') + '</td><td>' + escape(formatMoney(entry.amount)) + '</td><td>' + escape((entry.sources || [entry.source]).map(function (v) { return ({ cash: 'Касса', crm: 'CRM', journal: 'Журнал' })[v] || 'Журнал'; }).join(' + ')) + '</td></tr>'; }).join('') + '</tbody></table>' : '<p class="project-card-note">Связанных записей об оплате пока нет.</p>');
+  }
+  function paymentsHtml(project) {
+    var journal = root.ProjectPaymentJournal;
+    return '<div data-payment-summary>' + paymentSummaryHtml(project) + '</div>' + (journal && typeof journal.getEntries === 'function' && safeFolder(project) ? '<button type="button" data-payment-sync class="project-card-sidebar">Сохранить журнал в папку проекта</button>' : '') + '<div class="project-card-note" data-payment-file></div>';
+  }
+  function refreshPaymentSummary() {
+    var state = current;
+    if (!state || state.scope !== scope() || !ready()) return;
+    var target = hasId(state.projectId) ? findById(getProjects().projects, 'id', state.projectId) : findById(getClients(), 'client_id', state.clientId) || findById(getClients(), 'folderId', state.folderId);
+    var container = state.overlay.querySelector('[data-payment-summary]');
+    if (target && container) container.innerHTML = paymentSummaryHtml(target);
   }
   function activityHtml(project, data) {
     var tasks = (data.tasks || []).filter(function (task) { return project && sameId(task.projectId, project.id); });
@@ -379,10 +402,23 @@
       line.appendChild(button);
     });
   }
+  function bindRowCardClicks() {
+    if (rowClickBound) return;
+    document.addEventListener('click', function (event) {
+      var button = event.target && event.target.closest && event.target.closest('button[data-project-card]');
+      var row = button && button.closest('.projects-table-row[data-id]');
+      if (!row) return;
+      var id = row.getAttribute('data-id');
+      if (!hasId(id)) return;
+      event.preventDefault(); event.stopPropagation(); open(id);
+    }, true);
+    rowClickBound = true;
+  }
   function init() {
     var saveButton = document.getElementById('saveClientBtn');
     if (!saveButton) return;
     style();
+    bindRowCardClicks();
     if (!document.getElementById('projectCardOpenBtn')) {
       var button = document.createElement('button'); button.type = 'button'; button.id = 'projectCardOpenBtn'; button.className = 'project-card-sidebar'; button.textContent = '🗂️ Карта проекта'; button.title = 'Карта выбранного проекта'; button.setAttribute('aria-label', 'Карта выбранного проекта');
       button.onclick = function (event) { event.stopPropagation(); open(); };
@@ -404,6 +440,8 @@
     document.addEventListener('avitolog:active-client-changed', refreshSidebar);
     document.addEventListener('avitolog:backend-initial-ready', refreshSidebar);
     document.addEventListener('avitolog:backend-remote-applied', function () { refreshSidebar(); });
+    document.addEventListener('avitolog:project-payments-changed', refreshPaymentSummary);
+    document.addEventListener('avitolog:project-payments-file', refreshPaymentSummary);
     if (typeof root.MutationObserver === 'function') {
       new root.MutationObserver(function (records) {
         if (!records.some(function (record) { return !field.contains(record.target) && !(current && current.overlay.contains(record.target)); })) return;

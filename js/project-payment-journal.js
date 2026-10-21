@@ -14,8 +14,18 @@
   function firstValue(values) { for (var i = 0; i < values.length; i++) if (text(values[i])) return values[i]; return ''; }
   function list(value) { return Array.isArray(value) ? value : []; }
   function clone(value) { return JSON.parse(JSON.stringify(value)); }
+  function moscowDay(value) {
+    var parsed = new Date(value == null ? Date.now() : value);
+    if (!isFinite(parsed.getTime())) return '';
+    var parts = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Moscow', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(parsed), values = {};
+    parts.forEach(function (part) { values[part.type] = part.value; });
+    return values.year + '-' + values.month + '-' + values.day;
+  }
   function date(value) {
-    var raw = text(value), match = raw.match(/^(\d{4})-(\d{2})-(\d{2})(?:$|T)/);
+    var raw = text(value), timestamp = raw.indexOf('T') !== -1;
+    var stamp = timestamp && raw.match(/^(\d{4}-\d{2}-\d{2})T(\d{2}):(\d{2})(?::(\d{2})(?:\.\d{1,9})?)?(?:Z|[+-](\d{2}):(\d{2}))$/);
+    if (timestamp && (!stamp || Number(stamp[2]) > 23 || Number(stamp[3]) > 59 || Number(stamp[4] || 0) > 59 || Number(stamp[5] || 0) > 23 || Number(stamp[6] || 0) > 59)) return '';
+    var match = (timestamp ? stamp[1] : raw).match(/^(\d{4})-(\d{2})-(\d{2})$/);
     if (!match) {
       var local = raw.match(/^(\d{2})\.(\d{2})\.(\d{4})$/);
       if (local) match = [local[0], local[3], local[2], local[1]];
@@ -23,7 +33,27 @@
     if (!match) return '';
     var day = match[1] + '-' + match[2] + '-' + match[3];
     var parsed = new Date(day + 'T00:00:00Z');
-    return isFinite(parsed.getTime()) && parsed.toISOString().slice(0, 10) === day ? day : '';
+    if (!isFinite(parsed.getTime()) || parsed.toISOString().slice(0, 10) !== day) return '';
+    return timestamp ? moscowDay(raw) : day;
+  }
+  function cycleId(value) { return typeof value === 'string' && text(value).length <= 500 && !/[\u0000-\u001f\u007f]/.test(value) ? text(value) : ''; }
+  function paidMetadata(value, fallback) {
+    value = value || {}; fallback = fallback || {};
+    var cycle = cycleId(value.paidCycleId) || cycleId(fallback.paidCycleId);
+    var mark = date(value.paidMarkedAt) ? text(value.paidMarkedAt) : date(fallback.paidMarkedAt) ? text(fallback.paidMarkedAt) : '';
+    var result = {};
+    if (value.paidCycleConflict === true || fallback.paidCycleConflict === true) result.paidCycleConflict = true;
+    else if (cycle) result.paidCycleId = cycle;
+    if (mark) result.paidMarkedAt = mark;
+    return result;
+  }
+  function mergePaidMetadata(entry, previous) {
+    if (!previous) return;
+    if (entry.paidCycleConflict || previous.paidCycleConflict || entry.paidCycleId && previous.paidCycleId && entry.paidCycleId !== previous.paidCycleId) {
+      delete entry.paidCycleId;
+      entry.paidCycleConflict = true;
+    } else if (!entry.paidCycleId && previous.paidCycleId) entry.paidCycleId = previous.paidCycleId;
+    if (previous.paidMarkedAt && (!entry.paidMarkedAt || date(previous.paidMarkedAt) > date(entry.paidMarkedAt))) entry.paidMarkedAt = previous.paidMarkedAt;
   }
   function money(value) {
     var raw = text(value).replace(/[\s\u00a0\u202f]/g, '').replace(/(?:руб\.?|₽)$/i, '').replace(',', '.');
@@ -111,6 +141,7 @@
     list(sources.cash).forEach(function (pack) {
       list(pack.rows).forEach(function (item, index) {
         if (!item || typeof item !== 'object') return;
+        if (item.paymentLinkConflict === true) return;
         var node = { item: item, key: text(pack.key), column: pack.column, index: index, order: order++ }, attached = new Set();
         references(item, 'cash').forEach(function (ref) {
           var component = components.get(ref);
@@ -138,18 +169,36 @@
     if (!entry || typeof entry !== 'object') return null;
     var paidDate = date(entry.date), amount = money(entry.amount), id = text(entry.id);
     if (!paidDate || !amount || !id || id.length > 1400) return null;
-    return {
+    return Object.assign({
       id: id, date: paidDate, amount: amount, currency: 'RUB',
       source: entry.source === 'crm' ? 'crm' : entry.source === 'cash' ? 'cash' : 'journal',
       sources: list(entry.sources).filter(function (source) { return source === 'cash' || source === 'crm'; }).filter(function (source, i, arr) { return arr.indexOf(source) === i; }),
       evidence: list(entry.evidence).filter(function (ref) { return typeof ref === 'string' && ref.length <= 1000; }).slice(0, 50)
-    };
+    }, paidMetadata(entry));
+  }
+  function summarize(entries, now) {
+    var normalized = mergeEntries(entries, [], []), asOfDate = typeof now === 'string' ? date(now) : moscowDay(now);
+    var cycles = new Set(), unknown = 0, lastPaymentDate = '', lastPaidMarkDate = '';
+    normalized.forEach(function (entry) {
+      if (entry.date > lastPaymentDate) lastPaymentDate = entry.date;
+      if (entry.paidCycleId) cycles.add(entry.paidCycleId); else unknown++;
+      var markDate = date(entry.paidMarkedAt); if (markDate > lastPaidMarkDate) lastPaidMarkDate = markDate;
+    });
+    var days = lastPaymentDate && asOfDate && lastPaymentDate <= asOfDate ? Math.round((Date.parse(asOfDate + 'T00:00:00Z') - Date.parse(lastPaymentDate + 'T00:00:00Z')) / 86400000) : null;
+    return { entries: normalized, count: normalized.length, total: Math.round(normalized.reduce(function (sum, entry) { return sum + entry.amount; }, 0) * 100) / 100, currency: 'RUB',
+      asOfDate: asOfDate, lastPaymentDate: lastPaymentDate, daysSinceLastPayment: days, lastPaidMarkDate: lastPaidMarkDate,
+      promotionCycles: normalized.length && !unknown ? cycles.size : null, knownPromotionCycles: cycles.size, unknownCyclePayments: unknown };
   }
   function derive(target, sources) {
-    var matched = targetSources(target, prepareSources(sources)), entries = {}, observed = [], cashGoals = {};
+    var matched = targetSources(target, prepareSources(sources)), entries = {}, observed = [], cashGoals = {}, markedCycles = {};
     var identity = matched.identity;
     if (!identity) return { entries: [], observed: [] };
-    function add(source, paidDate, amount, occurrence, evidence, paymentId) {
+    matched.goals.forEach(function (node) {
+      var goal = node.item, mark = goal.statusDates && (goal.statusDates.paid || goal.statusDates.oplacheno), paidDay = date(mark), id = text(goal.id);
+      if (!id || !paidDay || !list(goal.status).some(function (status) { return status === 'paid' || status === 'oplacheno'; })) return;
+      markedCycles[id + '|' + paidDay] = paidMetadata(goal, { paidCycleId: 'crm:' + id + ':' + paidDay, paidMarkedAt: mark });
+    });
+    function add(source, paidDate, amount, occurrence, evidence, paymentId, metadata) {
       paidDate = date(paidDate); amount = money(amount);
       if (!paidDate || !amount) return;
       var id = 'pj1:' + encodeURIComponent(identity) + '|' + (text(paymentId)
@@ -160,6 +209,10 @@
       if (source === 'cash') entry.source = source;
       if (entry.sources.indexOf(source) < 0) entry.sources.push(source);
       if (entry.evidence.indexOf(evidence) < 0) entry.evidence.push(evidence);
+      // Equal legacy amounts/dates can merge transfers, but are not a cycle link.
+      if (source === 'crm' && entry.source === 'cash') return;
+      var explicit = paidMetadata(metadata);
+      mergePaidMetadata(entry, explicit);
     }
     matched.cash.forEach(function (node) {
         var row = node.item;
@@ -173,7 +226,8 @@
           if (!paidDate || !amount) return;
           var occurrenceKey = paidDate + '|' + amount;
           occurrences[occurrenceKey] = (occurrences[occurrenceKey] || 0) + 1;
-          add('cash', paidDate, amount, occurrences[occurrenceKey], sourceRef, payment && firstValue([payment.id, payment.paymentId, payment.transactionId]));
+          var metadata = paidMetadata(payment, paidMetadata(row, markedCycles[text(row.goalProjectId) + '|' + paidDate]));
+          add('cash', paidDate, amount, occurrences[occurrenceKey], sourceRef, payment && firstValue([payment.id, payment.paymentId, payment.transactionId]), metadata);
           valid = true;
         });
         if (valid && text(row.goalProjectId)) cashGoals[text(row.goalProjectId)] = true;
@@ -186,7 +240,7 @@
         var paidDate = date(goal.statusDates && (goal.statusDates.paid || goal.statusDates.oplacheno)) || date(goal.paymentDate) || date(goal.paidAt);
         // Cash is authoritative when CRM already generated that cash row.
         if (cashGoals[text(goal.id)] || (!paid && goal.stage !== 'sold')) return;
-        add('crm', paidDate, firstValue([goal.saleAmount, goal.mainPrice]), 1, sourceRef, firstValue([goal.paymentId, goal.transactionId]));
+        add('crm', paidDate, firstValue([goal.saleAmount, goal.mainPrice]), 1, sourceRef, firstValue([goal.paymentId, goal.transactionId]), paidMetadata(goal, markedCycles[text(goal.id) + '|' + paidDate]));
     });
     return { entries: Object.keys(entries).map(function (id) { return entries[id]; }), observed: observed };
   }
@@ -205,6 +259,7 @@
       if (existing) {
         entry.sources = existing.sources.concat(entry.sources).filter(function (value, i, arr) { return arr.indexOf(value) === i; });
         entry.evidence = existing.evidence.concat(entry.evidence).filter(function (value, i, arr) { return arr.indexOf(value) === i; });
+        mergePaidMetadata(entry, existing);
       }
       result[entry.id] = entry;
     });
@@ -212,7 +267,7 @@
   }
   function install(win) {
     var doc = win.document, timer = null, timerContext = '', scheduledSyncFiles = false, busy = false, again = false;
-    var pendingFiles = {}, fileJobs = {}, fileRetries = {}, fileDrainRunning = false, knownSourceKeys = {}, deferredLiveContext = '';
+    var pendingFiles = {}, fileJobs = {}, fileRetries = {}, initializedFolders = {}, fileDrainRunning = false, knownSourceKeys = {}, deferredLiveContext = '';
     function profile() { return win.AVITOLOG_KEY_SUFFIX === '_sasha' ? 'sasha' : 'fil'; }
     function scoped(base) { return typeof win.AVITOLOG_KEY === 'function' ? win.AVITOLOG_KEY(base) : base + (profile() === 'sasha' ? '_sasha' : ''); }
     function identity() {
@@ -249,6 +304,7 @@
       return read(scoped('avitolog_projects'), { projects: [], hiddenProjects: [] });
     }
     function allProjects(data) { return list(data.projects).concat(list(data.hiddenProjects)); }
+    function projectFolder(project) { return folderId(project && (project.folderId || project.folderLink || project.crmData && (project.crmData.folderId || project.crmData.folderLink))); }
     function sources() {
       var result = { projects: allProjects(projects()), clients: [], goals: [], cash: [] };
       if (!ready()) return result;
@@ -299,9 +355,8 @@
       var resolved = resolve(target, projects());
       return clone(entriesFor(resolved));
     }
-    function getSummary(target) {
-      var entries = getEntries(target);
-      return { entries: entries, count: entries.length, total: Math.round(entries.reduce(function (sum, entry) { return sum + entry.amount; }, 0) * 100) / 100, currency: 'RUB' };
+    function getSummary(target, now) {
+      return summarize(getEntries(target), now === undefined ? retryNow() : now);
     }
     function notify(name, detail) {
       try { doc.dispatchEvent(new win.CustomEvent(name, { detail: detail })); } catch (error) {}
@@ -364,7 +419,8 @@
           if (old && old.driveFileId) next.driveFileId = text(old.driveFileId);
           patches.push(journalPatch(index, project, next));
           project.paymentJournalV1 = next;
-          if (syncFiles && folderId(project.folderId || project.folderLink || project.crmData && (project.crmData.folderId || project.crmData.folderLink))) pendingFiles[captured + '|' + text(project.id)] = { context: captured, id: text(project.id) };
+          var folder = projectFolder(project);
+          if (syncFiles && folder) pendingFiles[captured + '|folder:' + folder] = { context: captured, id: text(project.id), folder: folder };
           changed = true;
         });
         if (changed) {
@@ -391,7 +447,7 @@
       timer = win.setTimeout(function () {
         var sync = scheduledSyncFiles;
         timer = null; timerContext = ''; scheduledSyncFiles = false;
-        if (captured === context()) materialize(sync);
+        if (captured === context()) { materialize(sync); void retryPendingFiles(); }
       }, 250);
     }
     function assertContext(captured) {
@@ -439,6 +495,7 @@
           var query = "name='" + FILE_NAME + "' and '" + escape(folder) + "' in parents and trashed=false";
           var fileResponse = await request('https://www.googleapis.com/drive/v3/files?q=' + encodeURIComponent(query) + '&fields=files(id,appProperties),nextPageToken&pageSize=100&supportsAllDrives=true&includeItemsFromAllDrives=true');
           var fileList = await fileResponse.json(); assertContext(captured);
+          if (!fileList || !Array.isArray(fileList.files)) throw new Error('journal_file_conflict');
           var fileScope = captured.replace(/[^a-zA-Z0-9_|-]/g, '').slice(0, 100);
           var existing = list(fileList.files).filter(function (file) { return file.appProperties && file.appProperties.avitobossPaymentJournal === FORMAT && file.appProperties.profileScope === fileScope; });
           if (fileList.nextPageToken || existing.length > 1 || list(fileList.files).length && !existing.length) throw new Error('journal_file_conflict');
@@ -460,7 +517,10 @@
           if (project.paymentJournalV1 && (project.paymentJournalV1.format !== FORMAT || project.paymentJournalV1.profile !== profile())) throw new Error('journal_file_conflict');
           var dataSources = prepareSources(sources()), current = derive(project, dataSources);
           var entries = mergeEntries(entriesFor(project, dataSources), remoteEntries, current.observed);
-          var payload = JSON.stringify({ format: FORMAT, profile: profile(), folderId: folder, project: text(project.title || project.company || project.name), currency: 'RUB', count: entries.length, total: Math.round(entries.reduce(function (sum, entry) { return sum + entry.amount; }, 0) * 100) / 100, entries: entries }, null, 2);
+          if (!snapshotBaseline(data)) throw new Error('project_snapshot_changed');
+          var summary = summarize(entries, retryNow());
+          var fileSummary = Object.assign({}, summary); delete fileSummary.entries;
+          var payload = JSON.stringify({ format: FORMAT, profile: profile(), folderId: folder, project: text(project.title || project.company || project.name), currency: 'RUB', count: summary.count, total: summary.total, entries: entries, summary: fileSummary }, null, 2);
           var saved;
           if (fileId) {
             var headers = { 'Content-Type': 'application/json; charset=utf-8' };
@@ -490,6 +550,7 @@
               throw new Error('project_snapshot_changed');
             }
           }
+          initializedFolders[jobKey] = 'done';
           notify('avitolog:project-payments-file', { projectId: text(project && project.id), ok: true });
           return { ok: true, fileId: text(saved.id), fileName: FILE_NAME, pending: !!(project.paymentJournalV1 && project.paymentJournalV1.drivePending) };
         } catch (error) {
@@ -507,15 +568,19 @@
         var items = Object.keys(pendingFiles);
         for (var i = 0; i < items.length; i++) {
           var queueKey = items[i], item = pendingFiles[queueKey];
-          if (!item || item.context !== context()) { delete pendingFiles[queueKey]; delete fileRetries[queueKey]; continue; }
+          if (!item || item.context !== context()) { if (item && item.bootstrap && initializedFolders[item.context + '|' + item.folder] !== 'done') delete initializedFolders[item.context + '|' + item.folder]; delete pendingFiles[queueKey]; delete fileRetries[queueKey]; continue; }
           if (!ownDriveVerified()) break;
           var retry = fileRetries[queueKey];
           if (retry && retry.at > retryNow()) continue;
           var project = resolve(item.id, projects()), journal = project && project.paymentJournalV1;
-          if (!journal || journal.format !== FORMAT || journal.profile !== profile() || journal.drivePending !== true || journal.driveAutoSync !== true) { delete pendingFiles[queueKey]; delete fileRetries[queueKey]; continue; }
+          if (item.bootstrap) {
+            if (!project || projectFolder(project) !== item.folder || journal && (journal.format !== FORMAT || journal.profile !== profile())) {
+              delete initializedFolders[item.context + '|' + item.folder]; delete pendingFiles[queueKey]; delete fileRetries[queueKey]; continue;
+            }
+          } else if (!journal || journal.format !== FORMAT || journal.profile !== profile() || journal.drivePending !== true || journal.driveAutoSync !== true) { delete pendingFiles[queueKey]; delete fileRetries[queueKey]; continue; }
           var result = await syncProjectFile(item.id);
-          if (item.context !== context()) { delete pendingFiles[queueKey]; delete fileRetries[queueKey]; break; }
-          if (result.ok && !result.pending) { delete pendingFiles[queueKey]; delete fileRetries[queueKey]; }
+          if (item.context !== context()) { if (item.bootstrap && initializedFolders[item.context + '|' + item.folder] !== 'done') delete initializedFolders[item.context + '|' + item.folder]; delete pendingFiles[queueKey]; delete fileRetries[queueKey]; break; }
+          if (result.ok && !result.pending) { if (item.bootstrap) initializedFolders[item.context + '|' + item.folder] = 'done'; delete pendingFiles[queueKey]; delete fileRetries[queueKey]; }
           else {
             var attempts = Math.min((retry && retry.attempts || 0) + 1, 6);
             fileRetries[queueKey] = { attempts: attempts, at: retryNow() + Math.min(900000, 45000 * Math.pow(2, attempts - 1)) };
@@ -526,12 +591,17 @@
     function retryPendingFiles() {
       if (canWrite() && deferredLiveContext === context()) materialize(true);
       if (!ownDriveVerified()) return Promise.resolve();
-      var captured = context();
-      allProjects(projects()).forEach(function (project) {
+      var captured = context(), data = projects(), baseline = snapshotBaseline(data);
+      allProjects(data).forEach(function (project) {
         var journal = project.paymentJournalV1;
+        var folder = projectFolder(project), folderKey = captured + '|' + folder, queueKey = captured + '|folder:' + folder;
+        if (baseline && folder && text(project.id) && !initializedFolders[folderKey] && !pendingFiles[queueKey] && (!journal || journal.format === FORMAT && journal.profile === profile())) {
+          initializedFolders[folderKey] = 'pending';
+          pendingFiles[queueKey] = { context: captured, id: text(project.id), folder: folder, bootstrap: true };
+        }
         if (!journal || journal.format !== FORMAT || journal.profile !== profile() || journal.drivePending !== true || journal.driveAutoSync !== true || !text(project.id)) return;
-        if (!folderId(project.folderId || project.folderLink || project.crmData && (project.crmData.folderId || project.crmData.folderLink))) return;
-        pendingFiles[captured + '|' + text(project.id)] = { context: captured, id: text(project.id) };
+        if (!folder) return;
+        if (!pendingFiles[queueKey]) pendingFiles[queueKey] = { context: captured, id: text(project.id), folder: folder };
       });
       return drainFiles();
     }
@@ -554,5 +624,5 @@
     if (typeof win.setInterval === 'function') win.setInterval(retryPendingFiles, 45000);
     return { getEntries: getEntries, getSummary: getSummary, syncProjectFile: syncProjectFile, refresh: materialize, fileName: FILE_NAME };
   }
-  return { derive: derive, mergeEntries: mergeEntries, normalizeEntry: normalizeEntry, install: install, format: FORMAT, fileName: FILE_NAME };
+  return { derive: derive, mergeEntries: mergeEntries, normalizeEntry: normalizeEntry, summarize: summarize, install: install, format: FORMAT, fileName: FILE_NAME };
 }));

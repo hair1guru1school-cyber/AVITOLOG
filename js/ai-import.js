@@ -44,13 +44,17 @@
   }
 
   function getProjectsData() {
+    return cashReadProjectsData().projects;
+  }
+  function cashReadProjectsData() {
+    var empty = { projects: [], hiddenProjects: [] };
+    if (!cashReady()) return empty;
     try {
-      if (typeof loadProjectsData === 'function') {
-        var d = loadProjectsData();
-        return (d && d.projects) ? d.projects : [];
-      }
-    } catch (e) {}
-    return [];
+      var key = typeof window.AVITOLOG_KEY === 'function' ? window.AVITOLOG_KEY('avitolog_projects') : 'avitolog_projects';
+      var memory = window._projectsDataMem;
+      var data = memory && Array.isArray(memory.projects) && window._projectsDataMemKey === key ? memory : JSON.parse(localStorage.getItem(key) || 'null');
+      return data && typeof data === 'object' ? { projects: Array.isArray(data.projects) ? data.projects : [], hiddenProjects: Array.isArray(data.hiddenProjects) ? data.hiddenProjects : [] } : empty;
+    } catch (_) { return empty; }
   }
 
   function fuzzyScore(a, b) {
@@ -870,12 +874,22 @@
     try { return localStorage.getItem(key); } catch(e) { return null; }
   }
   window.__avitologAdsCashRead = function(months) {
+    var sources = cashProjectSources();
     function read(key) {
       try {
         var raw = readAssetsStorageValue(key);
         if (!raw) return null;
         var value = JSON.parse(raw);
-        return Array.isArray(value) ? value : null;
+        if (!Array.isArray(value)) return null;
+        value.forEach(function (row) {
+          if (!row || typeof row !== 'object') return;
+          var resolved = resolveCashProject(row, sources);
+          if (resolved.ambiguous) { row.paymentLinkConflict = true; return; }
+          if (resolved.folderId) { row.folderId = resolved.folderId; row.folderLink = resolved.folderLink; }
+          if (resolved.project) row.projectId = resolved.project.id;
+          if (resolved.client && resolved.client.client_id) row.client_id = resolved.client.client_id;
+        });
+        return value;
       } catch(e) { return null; }
     }
     var base = typeof window.AVITOLOG_KEY === 'function' ? window.AVITOLOG_KEY('avitolog_assets_my_v2') : 'avitolog_assets_my_v2';
@@ -1003,7 +1017,7 @@
 
   function resolveAssetsClientType(p) {
     if (p.clientType && p.clientType !== 'new') return p.clientType;
-    var fromProjects = (typeof loadProjectsData === 'function') ? (loadProjectsData().projects || []) : [];
+    var fromProjects = getProjectsData();
     var folderId = '';
     if (p.folderLink) {
       var m = String(p.folderLink).match(/\/folders\/([a-zA-Z0-9_-]+)/);
@@ -1571,7 +1585,7 @@
       if (idx >= 0) {
         var prevS = arr[idx];
         var keepPaid = String(prevS.paid || '').replace(/\s/g, '');
-        arr[idx] = {
+        arr[idx] = Object.assign({}, prevS, {
           emoji: emoji,
           name: name,
           paid: keepPaid,
@@ -1583,7 +1597,7 @@
           crmClientId: crmClientId || prevS.crmClientId || '',
           goalProjectId: p.id,
           paymentHistory: prevS.paymentHistory
-        };
+        });
       } else {
         arr.push({
           emoji: emoji,
@@ -1605,7 +1619,7 @@
     }
     if (idx >= 0) {
       var prev = arr[idx];
-      arr[idx] = {
+      arr[idx] = Object.assign({}, prev, {
         emoji: emoji,
         name: name,
         paid: paidClean,
@@ -1617,7 +1631,7 @@
         crmClientId: crmClientId || prev.crmClientId || '',
         goalProjectId: p.id,
         paymentHistory: prev.paymentHistory
-      };
+      });
     } else {
       arr.push({
         emoji: emoji,
@@ -1921,6 +1935,7 @@
     var paidFirst = myList.filter(myRowHasPaidAmount);
     var notPaid = myList.filter(function(p) { return !myRowHasPaidAmount(p); });
     var mySorted = filterPaid ? paidFirst : (paidFirst.concat(notPaid));
+    var cashSources = cashProjectSources();
     function renderColRow(p, idx, owner) {
       var paidFmt = (p.paid || '') ? fmt(String(p.paid).replace(/\s/g, '')) : '';
       var expectedFmt = (p.expected || '') ? fmt(String(p.expected).replace(/\s/g, '')) : '';
@@ -1936,16 +1951,18 @@
       var resolvedType = resolveAssetsClientType(p);
       var statusBadge = getStatusBadge(resolvedType);
       var statusCls = resolvedType === 'old' ? 'assets-status-diamond' : (resolvedType === 'returning' ? 'assets-status-2' : 'assets-status-new');
-      var hasFolder = !!(p.folderLink || p.crmClientId);
-      var folderLink = p.folderLink || (p.crmClientId ? 'https://drive.google.com/drive/folders/' + p.crmClientId : '');
+      var cashLink = resolveCashProject(p, cashSources);
+      var folderLink = cashLink.ambiguous ? '' : cashLink.folderLink;
+      var hasFolder = !!folderLink;
       var folderHtml = hasFolder && folderLink
         ? '<span class="assets-row-folder-inline"><a href="' + esc(folderLink) + '" target="_blank" rel="noopener" class="assets-row-folder-link" onclick="event.stopPropagation()" title="Открыть папку">📁</a></span>'
         : '';
+      folderHtml += '<button type="button" class="assets-row-folder-link" style="border:0;background:transparent;padding:0 3px;cursor:pointer" onclick="event.stopPropagation();window.__assetsStartFolderBind(\'' + owner + '\',' + idx + ')" title="' + (hasFolder ? 'Изменить привязку папки' : 'Привязать папку проекта') + '">🔗</button>';
       var payDays = formatDaysUntilPayment(payDate);
       if (!payDays && p.daysSincePaymentAtMonthSwitch !== undefined && p.daysSincePaymentAtMonthSwitch !== '') {
         payDays = String(p.daysSincePaymentAtMonthSwitch) + ' дн.';
       }
-      var base = '<div class="' + rowCls + '" data-owner="' + owner + '" data-idx="' + idx + '" data-has-folder="' + (hasFolder ? '1' : '0') + '" onclick="window.__assetsRowClicked(event,\'' + owner + '\',' + idx + ')" title="Клик — выбрать для привязки папки из меню слева">' +
+      var base = '<div class="' + rowCls + '" data-owner="' + owner + '" data-idx="' + idx + '" data-has-folder="' + (hasFolder ? '1' : '0') + '" onclick="window.__assetsRowClicked(event,\'' + owner + '\',' + idx + ')" title="Клик — показать клиента в меню слева. 🔗 — привязать папку">' +
         '<button type="button" class="assets-col-emoji" onclick="window.__assetsShowEmojiPicker(this,\'' + owner + '\',' + idx + ')" title="Выбрать эмодзи">' + (p.emoji || '📦') + '</button>' +
         '<span class="assets-col-name">' +
           '<span class="assets-col-name-row">' +
@@ -2442,8 +2459,180 @@
     }, 0);
   }
 
+  function cashName(value) {
+    return String(value || '').toLowerCase().replace(/ё/g, 'е').replace(/[^a-zа-я0-9]+/g, ' ').trim();
+  }
+  function cashFolder(value) {
+    value = value || {};
+    var id = String(value.folderId || '').trim();
+    if (/^[a-zA-Z0-9_-]{1,200}$/.test(id)) return id;
+    try {
+      var url = new URL(String(value.folderLink || '').trim());
+      if (url.protocol !== 'https:' || url.hostname !== 'drive.google.com' || url.username || url.password || url.port) return '';
+      var match = url.pathname.match(/\/folders\/([a-zA-Z0-9_-]+)\/?$/);
+      id = match ? match[1] : /^\/(?:open|folderview)\/?$/.test(url.pathname) ? url.searchParams.get('id') || '' : '';
+      return /^[a-zA-Z0-9_-]{1,200}$/.test(id) ? id : '';
+    } catch (_) { return ''; }
+  }
+  function cashProjectSources() {
+    var clients = [], projects = [], goals = [];
+    if (!cashReady()) return { clients: [], projects: [], goals: [] };
+    try { clients = typeof window.getCrmClients === 'function' ? window.getCrmClients() : getCrmClients(); } catch (_) {}
+    try { var data = cashReadProjectsData(); projects = data.projects.concat(data.hiddenProjects); } catch (_) {}
+    try {
+      var memory = typeof window.__avitologAdsGoalsRead === 'function' ? window.__avitologAdsGoalsRead([]) : null;
+      goals = memory && memory.live && Array.isArray(memory.live.projects) ? memory.live.projects : getGoalsData().projects;
+    } catch (_) {}
+    return { clients: Array.isArray(clients) ? clients : [], projects: Array.isArray(projects) ? projects : [], goals: Array.isArray(goals) ? goals : [] };
+  }
+  function cashSingle(list, field, id) {
+    if (id == null || String(id) === '') return { item: null, ambiguous: false };
+    var matches = list.filter(function (item) { return item && item[field] != null && String(item[field]) === String(id); });
+    return { item: matches.length === 1 ? matches[0] : null, ambiguous: matches.length > 1 };
+  }
+  function cashSourceFolder(item, clients) {
+    if (!item) return '';
+    var own = cashFolder(item) || cashFolder(item.crmData);
+    if (own) return own;
+    var id = item.crmClientRecordId || item.crmClientId || item.crmData && item.crmData.client_id;
+    var linked = cashSingle(clients, 'client_id', id);
+    if (linked.ambiguous) return '';
+    return cashFolder(linked.item || cashSingle(clients, 'folderId', id).item);
+  }
+  function resolveCashProject(row, sources, noNames) {
+    row = row || {}; sources = sources || { clients: [], projects: [], goals: [] };
+    var clients = sources.clients || [], projects = sources.projects || [], goals = sources.goals || [];
+    var projectMatch = cashSingle(projects, 'id', row.projectId);
+    var goalMatch = cashSingle(goals, 'id', row.goalProjectId);
+    var project = projectMatch.item, goal = goalMatch.item;
+    var ambiguous = projectMatch.ambiguous || goalMatch.ambiguous;
+    if (!project && goal) { var fromGoal = cashSingle(projects, 'goalsSourceId', goal.id); project = fromGoal.item; ambiguous = ambiguous || fromGoal.ambiguous; }
+    var projectData = project && project.crmData || {};
+    var clientId = row.crmClientRecordId || row.client_id || row.clientId || row.crmClientId || project && project.crmClientId || projectData.client_id || goal && (goal.crmClientRecordId || goal.crmClientId) || '';
+    var clientMatch = cashSingle(clients, 'client_id', clientId);
+    var client = clientMatch.item;
+    ambiguous = ambiguous || clientMatch.ambiguous;
+    var ownFolder = cashFolder(row), projectFolder = cashSourceFolder(project, clients), goalFolder = cashSourceFolder(goal, clients);
+    var folder = ownFolder || projectFolder || goalFolder;
+    if (!client && !clientMatch.ambiguous && clientId) {
+      var legacy = cashSingle(clients, 'folderId', clientId);
+      client = legacy.item; ambiguous = ambiguous || legacy.ambiguous;
+      if (!folder && client) folder = cashFolder(client);
+      if (!folder) {
+        var legacyProjects = projects.filter(function (item) { return item && cashFolder(item) === String(clientId); });
+        if (legacyProjects.length === 1) { project = project || legacyProjects[0]; folder = cashFolder(legacyProjects[0]); }
+        else if (legacyProjects.length > 1) ambiguous = true;
+      }
+    }
+    if (!folder && client) folder = cashFolder(client);
+    if (folder && !client && !clientId) {
+      var byFolder = clients.filter(function (item) { return item && cashFolder(item) === folder; });
+      if (byFolder.length === 1) client = byFolder[0];
+      else if (byFolder.length > 1) ambiguous = true;
+    }
+    if (ownFolder && projectFolder && ownFolder !== projectFolder || ownFolder && goalFolder && ownFolder !== goalFolder || projectFolder && goalFolder && projectFolder !== goalFolder || folder && client && cashFolder(client) && folder !== cashFolder(client)) ambiguous = true;
+    if (clientId && folder) {
+      projects.forEach(function (item) {
+        if (item && [item.crmClientId, item.crmData && item.crmData.client_id].some(function (id) { return id != null && String(id) === String(clientId); })) {
+          var linkedFolder = cashSourceFolder(item, clients);
+          if (linkedFolder && linkedFolder !== folder) ambiguous = true;
+        }
+      });
+    }
+    var rowClientIds = [row.crmClientRecordId, row.client_id, row.clientId, row.crmClientId].filter(function (id, index, list) { return id != null && String(id) !== '' && list.findIndex(function (other) { return String(other) === String(id); }) === index; });
+    rowClientIds.forEach(function (id) {
+      if (folder && String(id) === folder) return;
+      var known = cashSingle(clients, 'client_id', id);
+      var knownFolder = cashFolder(known.item);
+      if (known.ambiguous || folder && (!knownFolder || knownFolder !== folder) || !folder && rowClientIds.length > 1) ambiguous = true;
+    });
+    var explicit = !!(row.projectId || row.goalProjectId || row.crmClientRecordId || row.client_id || row.clientId || row.crmClientId || row.folderId || row.folderLink);
+    if (!explicit && !noNames) {
+      var name = cashName(row.name), candidates = [];
+      function offer(item, kind, names) {
+        if (!name || !names.some(function (value) { return cashName(value) === name; })) return;
+        var seed = {}; seed[kind] = item.id || item.client_id;
+        var candidate = resolveCashProject(seed, sources, true);
+        if (candidate.ambiguous) { ambiguous = true; return; }
+        if (candidate.folderId || candidate.client || candidate.project || candidate.goal) candidates.push(candidate);
+      }
+      projects.forEach(function (item) { if (item) offer(item, 'projectId', [item.title, item.company, item.crmData && item.crmData.company]); });
+      clients.forEach(function (item) { if (item) offer(item, 'client_id', [item.company, item.folder_name, item.contact_name]); });
+      goals.forEach(function (item) { if (item) offer(item, 'goalProjectId', [item.name, item.company]); });
+      var identities = new Set(candidates.map(function (item) { return item.folderId ? 'folder:' + item.folderId : item.client && item.client.client_id ? 'client:' + item.client.client_id : item.project ? 'project:' + item.project.id : 'goal:' + item.goal.id; }));
+      var matchedClients = new Set(candidates.filter(function (item) { return item.client && item.client.client_id; }).map(function (item) { return item.client.client_id; }));
+      var matchedProjects = new Set(candidates.filter(function (item) { return item.project; }).map(function (item) { return item.project.id; }));
+      if (matchedClients.size > 1 || matchedProjects.size > 1) ambiguous = true;
+      if (identities.size === 1 && !ambiguous) {
+        var preferred = candidates.find(function (item) { return item.project; }) || candidates[0];
+        return preferred;
+      }
+      if (identities.size > 1) ambiguous = true;
+    }
+    return { folderId: folder, folderLink: folder ? 'https://drive.google.com/drive/folders/' + folder : '', client: client, project: project, goal: goal, ambiguous: ambiguous };
+  }
+  function cashBindingContext() {
+    var identity = typeof window.__avitologBackendIdentity === 'function' ? window.__avitologBackendIdentity() : null;
+    var currentKey = typeof window.AVITOLOG_KEY === 'function' ? window.AVITOLOG_KEY('avitolog_assets_my_v2') : ASSETS_MY_KEY;
+    return [ASSETS_MY_KEY, ASSETS_SASHA_KEY, currentKey, window.AVITOLOG_KEY_SUFFIX || '', window.AVITOLOG_USER || '', identity && identity.id || '', _assetsViewMonth || 'live'].join('|');
+  }
+  function cashReady() {
+    if ((window.AVITOLOG_BACKEND_MODE || window.AVITOLOG_BACKEND_SERVER_ONLY) && window.AVITOLOG_BACKEND_INITIAL_SYNC_READY !== true) return false;
+    try { if (ASSETS_MY_KEY && typeof window.AVITOLOG_KEY === 'function' && window.AVITOLOG_KEY('avitolog_assets_my_v2') !== ASSETS_MY_KEY) return false; }
+    catch (_) { return false; }
+    return true;
+  }
+  function cashFolderStatus(message, error) {
+    var status = document.getElementById('crmSt');
+    if (status) { status.style.display = 'block'; status.className = error ? 'crm-st err' : 'crm-st'; status.textContent = message; }
+  }
+  function clearCashBindTargets() {
+    window._assetsFolderBindTarget = null;
+    if (typeof _projectFolderBindTargetId !== 'undefined') _projectFolderBindTargetId = null;
+    if (typeof window.__goalsCancelFolderBind === 'function') window.__goalsCancelFolderBind();
+  }
+  function selectCashSidebar(row) {
+    clearCashBindTargets();
+    if (!cashReady()) return false;
+    var resolved = resolveCashProject(row, cashProjectSources());
+    if (typeof _selectedProjectId !== 'undefined') _selectedProjectId = resolved.project && !resolved.ambiguous ? resolved.project.id : '';
+    if (resolved.ambiguous || !resolved.folderId && !resolved.client && !resolved.project && !resolved.goal) {
+      if (typeof clearClientForm === 'function') clearClientForm();
+      if (typeof setActiveClient === 'function') setActiveClient(null);
+      cashFolderStatus(resolved.ambiguous ? 'Неоднозначная привязка. Выберите папку кнопкой 🔗 у этой строки.' : 'Папка не привязана. Выберите её кнопкой 🔗 у этой строки.', true);
+      return false;
+    }
+    var payload = Object.assign({}, resolved.goal || {}, resolved.project && resolved.project.crmData || {}, resolved.client || {});
+    payload.company = payload.company || resolved.project && resolved.project.title || resolved.goal && resolved.goal.name || row.name || 'Клиент';
+    payload.folderId = resolved.folderId; payload.folderLink = resolved.folderLink;
+    if (resolved.client) payload.client_id = resolved.client.client_id || '';
+    if (typeof fillClientFormFromData === 'function') fillClientFormFromData(payload);
+    else if (typeof fillClientForm === 'function') fillClientForm(payload);
+    if (typeof setActiveClient === 'function') setActiveClient(payload);
+    if (payload.categoryFolderId && typeof setCrmCategorySelectValue === 'function') setCrmCategorySelectValue(payload.categoryFolderId);
+    return true;
+  }
+  function captureCashTarget(owner, idx) {
+    if (!cashReady() || ['me', 'sasha'].indexOf(owner) < 0) return null;
+    var ref = getAssetsRowRef(owner, idx);
+    if (!ref.row) return null;
+    return { owner: owner, idx: idx, context: cashBindingContext(), rowId: ref.row.id == null ? '' : String(ref.row.id), fingerprint: JSON.stringify(ref.row) };
+  }
+  function currentCashTarget(target) {
+    if (!target || !cashReady() || target.context !== cashBindingContext()) return null;
+    var ref = getAssetsRowRef(target.owner, target.idx), index = target.idx;
+    if (target.rowId) {
+      var matches = [];
+      ref.list.forEach(function (row, i) { if (row && String(row.id) === target.rowId) matches.push(i); });
+      if (matches.length !== 1) return null;
+      index = matches[0];
+    }
+    var row = ref.list[index];
+    return row && JSON.stringify(row) === target.fingerprint ? { row: row, list: ref.list, idx: index, save: ref.save } : null;
+  }
+
   function rowClicked(evt, owner, idx) {
-    if (evt.target.closest('input, button, a')) return;
+    if (evt.target.closest('button, a')) return;
     var row = evt.currentTarget;
     if (!row || !row.classList) return;
     document.querySelectorAll('.assets-col-row.assets-row-bind-selected').forEach(function(r) {
@@ -2453,7 +2642,8 @@
     row.classList.add(row.getAttribute('data-has-folder') === '1' ? 'assets-row-has-folder' : 'assets-row-no-folder');
     window._assetsSelectedProject = { owner: owner, idx: idx };
     updateAssetsDetailPanel(owner, idx);
-    startFolderBind(owner, idx);
+    var ref = getAssetsRowRef(owner, idx);
+    if (ref.row) selectCashSidebar(ref.row);
   }
 
   function getPaymentHistoryEntries(p, owner) {
@@ -2700,14 +2890,7 @@
       return;
     }
     var fmt = function(n) { return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ' '); };
-    var p = null;
-    if (owner === 'me') {
-      var arr = getAssetsMy();
-      p = arr && arr[idx] ? arr[idx] : null;
-    } else {
-      var arr2 = getAssetsSasha();
-      p = arr2 && arr2[idx] ? arr2[idx] : null;
-    }
+    var p = getAssetsRowRef(owner, idx).row;
     if (!p) {
       content.innerHTML = '<div class="ad-placeholder" style="color:var(--muted)">Проект не найден</div>';
       return;
@@ -2746,7 +2929,12 @@
   }
 
   function startFolderBind(owner, idx) {
-    window._assetsFolderBindTarget = { owner: owner, idx: idx };
+    clearCashBindTargets();
+    if (typeof _selectedProjectId !== 'undefined') _selectedProjectId = '';
+    var target = captureCashTarget(owner, idx);
+    if (!target) { cashFolderStatus('Строка ещё не загружена. Повторите после обновления кассы.', true); return false; }
+    window._assetsFolderBindTarget = target;
+    updateAssetsDetailPanel(owner, idx);
     var st = document.getElementById('crmSt');
     if (st) {
       st.style.display = 'block';
@@ -2757,30 +2945,32 @@
     if (menu && !menu.classList.contains('show')) {
       if (typeof toggleClientMenu === 'function') toggleClientMenu();
     }
+    return true;
   }
 
   function applyFolderBind(folderId, folderLink, client) {
     var t = window._assetsFolderBindTarget;
-    if (!t) return;
+    if (!t) return false;
     window._assetsFolderBindTarget = null;
-    if (t.owner === 'me') {
-      var arr = getAssetsMy();
-      if (arr[t.idx]) {
-        arr[t.idx].folderLink = folderLink || '';
-        arr[t.idx].crmClientId = (client && client.client_id) || (client && client.folderId) || '';
-        saveAssetsMy(arr);
-      }
-    } else {
-      var arr2 = getAssetsSasha();
-      if (arr2[t.idx]) {
-        arr2[t.idx].folderLink = folderLink || '';
-        arr2[t.idx].crmClientId = (client && client.client_id) || (client && client.folderId) || '';
-        saveAssetsSasha(arr2);
-      }
-    }
+    var ref = currentCashTarget(t), id = cashFolder({ folderId: folderId, folderLink: folderLink });
+    if (!ref || !id) { cashFolderStatus('Строка или режим изменились. Откройте привязку заново.', true); return false; }
+    var sources = cashProjectSources(), selected = client && client.client_id ? cashSingle(sources.clients, 'client_id', client.client_id).item : null;
+    if (selected && cashFolder(selected) && cashFolder(selected) !== id) { cashFolderStatus('Папка клиента изменилась. Откройте привязку заново.', true); return false; }
+    var goalLink = ref.row.goalProjectId && resolveCashProject({ goalProjectId: ref.row.goalProjectId }, sources);
+    if (goalLink && (goalLink.ambiguous || goalLink.folderId && goalLink.folderId !== id)) { cashFolderStatus('У оплаты есть другая привязка в CRM. Сначала исправьте папку в её карточке.', true); return false; }
+    var linked = sources.projects.filter(function (project) { return project && (cashFolder(project) || cashFolder(project.crmData)) === id; });
+    var next = Object.assign({}, ref.row, { folderId: id, folderLink: 'https://drive.google.com/drive/folders/' + id, crmClientId: selected && selected.client_id || '' });
+    // Explicit rebinding replaces linkage only; payment fields remain untouched.
+    ['projectId', 'client_id', 'clientId', 'crmClientRecordId'].forEach(function (key) { if (Object.prototype.hasOwnProperty.call(next, key)) delete next[key]; });
+    if (linked.length === 1) next.projectId = linked[0].id;
+    ref.list[ref.idx] = next;
+    ref.save(ref.list);
+    window._assetsSelectedProject = { owner: t.owner, idx: ref.idx };
+    selectCashSidebar(next);
     var st = document.getElementById('crmSt');
     if (st) { st.style.display = 'block'; st.className = 'crm-st ok'; st.textContent = '✓ Папка привязана'; }
     if (typeof window.__renderAssetsPage === 'function') window.__renderAssetsPage();
+    return true;
   }
 
   function cycleAssetsClientType(owner, idx) {
@@ -2877,7 +3067,9 @@
   window.__assetsToggleFilterPaid = toggleFilterPaid;
   window.__assetsShowEmojiPicker = showAssetsEmojiPicker;
   window.__assetsRowClicked = rowClicked;
+  window.__assetsResolveProject = function (row) { return resolveCashProject(row, cashProjectSources()); };
   window.__assetsStartFolderBind = startFolderBind;
+  window.__assetsFolderBindIsCurrent = function () { return !!currentCashTarget(window._assetsFolderBindTarget); };
   window.__assetsApplyFolderBind = applyFolderBind;
   window.__assetsAddPayment = function() {
     var sel = window._assetsSelectedProject;

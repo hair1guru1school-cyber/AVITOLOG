@@ -5297,6 +5297,11 @@ function selectBrowseFolder() {
 function selectBrowseFolderBy(folderId, folderName, categoryFolderId) {
   folderId = String(folderId || '').trim();
   if (!folderId) return;
+  if (window._assetsFolderBindTarget) {
+    try {
+      if (typeof window.__assetsFolderBindIsCurrent !== 'function' || window.__assetsFolderBindIsCurrent() !== true) return false;
+    } catch (_) { return false; }
+  }
   var currentFolderName = _browseCurrentName || 'Client';
   folderName = arguments.length > 1 ? (folderName || currentFolderName) : currentFolderName;
   var folderLink = 'https://drive.google.com/drive/folders/' + folderId;
@@ -5305,6 +5310,15 @@ function selectBrowseFolderBy(folderId, folderName, categoryFolderId) {
   var clients = getCrmClients();
   var found = clients.find(function(c) { return String(c.folderId || '') === String(folderId || ''); });
   if (found && !folderNameMatchesClient(folderName, found)) found = null;
+  var folderBindHandled = false;
+  if (window._assetsFolderBindTarget && !_projectFolderBindTargetId) {
+    if (typeof window.__assetsApplyFolderBind !== 'function') return false;
+    var cashBindResult = window.__assetsApplyFolderBind(folderId, folderLink, found);
+    if (cashBindResult === false) return false;
+    window._assetsFolderBindTarget = null;
+    if (cashBindResult === true) { closeClientMenu(); return true; }
+    folderBindHandled = true;
+  }
   var owner = crmBindingContext(), targetId = _projectFolderBindTargetId;
   var pd = targetId ? loadProjectsData() : null;
   var p = pd && pd.projects.find(function (project) { return project.id === targetId; });
@@ -5320,7 +5334,6 @@ function selectBrowseFolderBy(folderId, folderName, categoryFolderId) {
   else if (typeof setCrmCategoryByFolderId === 'function') setCrmCategoryByFolderId(folderId, null, function () { var active = getActiveClient(); return active && active.folderId === folderId; });
   fillClientFormFromData(activePayload);
   setActiveClient(activePayload);
-  var folderBindHandled = false;
   if (targetId) {
     folderBindHandled = true;
     if (p) {
@@ -5355,11 +5368,6 @@ function selectBrowseFolderBy(folderId, folderName, categoryFolderId) {
       }
     }
     _projectFolderBindTargetId = null;
-  }
-  if (!folderBindHandled && window._assetsFolderBindTarget && typeof window.__assetsApplyFolderBind === 'function') {
-    window.__assetsApplyFolderBind(folderId, folderLink, found);
-    window._assetsFolderBindTarget = null;
-    folderBindHandled = true;
   }
   if (!folderBindHandled && typeof window.__goalsHasFolderBindTarget === 'function' && window.__goalsHasFolderBindTarget() && typeof window.__goalsApplyFolderBind === 'function') {
     if (!window.__goalsApplyFolderBind(folderId, folderLink, found || activePayload)) return false;
