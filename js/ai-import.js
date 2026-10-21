@@ -885,6 +885,7 @@
           if (!row || typeof row !== 'object') return;
           var resolved = resolveCashProject(row, sources);
           if (resolved.ambiguous) { row.paymentLinkConflict = true; return; }
+          (resolved.unresolvedClientFields || []).forEach(function (field) { delete row[field]; });
           if (resolved.folderId) { row.folderId = resolved.folderId; row.folderLink = resolved.folderLink; }
           if (resolved.project) row.projectId = resolved.project.id;
           if (resolved.client && resolved.client.client_id) row.client_id = resolved.client.client_id;
@@ -2525,7 +2526,7 @@
       }
     }
     if (!folder && client) folder = cashFolder(client);
-    if (folder && !client && !clientId) {
+    if (folder && !client) {
       var byFolder = clients.filter(function (item) { return item && cashFolder(item) === folder; });
       if (byFolder.length === 1) client = byFolder[0];
       else if (byFolder.length > 1) ambiguous = true;
@@ -2539,13 +2540,32 @@
         }
       });
     }
-    var rowClientIds = [row.crmClientRecordId, row.client_id, row.clientId, row.crmClientId].filter(function (id, index, list) { return id != null && String(id) !== '' && list.findIndex(function (other) { return String(other) === String(id); }) === index; });
-    rowClientIds.forEach(function (id) {
+    var unresolvedClientFields = [], knownClientIds = new Set();
+    ['crmClientRecordId', 'client_id', 'clientId', 'crmClientId'].forEach(function (field) {
+      var id = row[field];
+      if (id == null || String(id) === '') return;
       if (folder && String(id) === folder) return;
       var known = cashSingle(clients, 'client_id', id);
       var knownFolder = cashFolder(known.item);
-      if (known.ambiguous || folder && (!knownFolder || knownFolder !== folder) || !folder && rowClientIds.length > 1) ambiguous = true;
+      if (known.ambiguous) { ambiguous = true; return; }
+      if (known.item) {
+        knownClientIds.add(String(known.item.client_id));
+        if (folder && knownFolder && knownFolder !== folder) ambiguous = true;
+        return;
+      }
+      var provenFolders = new Set();
+      clients.forEach(function (item) { if (item && cashFolder(item) === String(id)) provenFolders.add(String(id)); });
+      projects.forEach(function (item) {
+        if (!item) return;
+        var byClient = [item.crmClientId, item.crmData && item.crmData.client_id].some(function (value) { return value != null && String(value) === String(id); });
+        var sourceFolder = cashSourceFolder(item, clients);
+        if (sourceFolder && (byClient || sourceFolder === String(id))) provenFolders.add(sourceFolder);
+      });
+      if (provenFolders.size) {
+        if (provenFolders.size > 1 || folder && !provenFolders.has(folder)) ambiguous = true;
+      } else unresolvedClientFields.push(field);
     });
+    if (knownClientIds.size > 1) ambiguous = true;
     var explicit = !!(row.projectId || row.goalProjectId || row.crmClientRecordId || row.client_id || row.clientId || row.crmClientId || row.folderId || row.folderLink);
     if (!explicit && !noNames) {
       var name = cashName(row.name), candidates = [];
@@ -2569,7 +2589,7 @@
       }
       if (identities.size > 1) ambiguous = true;
     }
-    return { folderId: folder, folderLink: folder ? 'https://drive.google.com/drive/folders/' + folder : '', client: client, project: project, goal: goal, ambiguous: ambiguous };
+    return { folderId: folder, folderLink: folder ? 'https://drive.google.com/drive/folders/' + folder : '', client: client, project: project, goal: goal, ambiguous: ambiguous, unresolvedClientFields: unresolvedClientFields };
   }
   function cashBindingContext() {
     var identity = typeof window.__avitologBackendIdentity === 'function' ? window.__avitologBackendIdentity() : null;

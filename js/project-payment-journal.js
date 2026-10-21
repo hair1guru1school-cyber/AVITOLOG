@@ -267,7 +267,7 @@
   }
   function install(win) {
     var doc = win.document, timer = null, timerContext = '', scheduledSyncFiles = false, busy = false, again = false;
-    var pendingFiles = {}, fileJobs = {}, fileRetries = {}, initializedFolders = {}, fileDrainRunning = false, knownSourceKeys = {}, deferredLiveContext = '';
+    var pendingFiles = {}, fileJobs = {}, fileRetries = {}, initializedFolders = {}, driveVerificationJobs = {}, driveVerificationRetries = {}, fileDrainRunning = false, knownSourceKeys = {}, deferredLiveContext = '';
     function profile() { return win.AVITOLOG_KEY_SUFFIX === '_sasha' ? 'sasha' : 'fil'; }
     function scoped(base) { return typeof win.AVITOLOG_KEY === 'function' ? win.AVITOLOG_KEY(base) : base + (profile() === 'sasha' ? '_sasha' : ''); }
     function identity() {
@@ -293,6 +293,24 @@
       } catch (error) { return false; }
     }
     function retryNow() { return win.Date && typeof win.Date.now === 'function' ? win.Date.now() : Date.now(); }
+    function verifyExistingDrive(captured) {
+      if (ownDriveVerified()) return Promise.resolve(true);
+      if (driveVerificationJobs[captured]) return driveVerificationJobs[captured];
+      if (typeof win.getDriveToken !== 'function' || driveVerificationRetries[captured] > retryNow()) return Promise.resolve(false);
+      // This helper restores/verifies an existing token; it never opens sign-in.
+      driveVerificationJobs[captured] = Promise.resolve().then(function () {
+        if (captured !== context() || !canWrite() || !snapshotBaseline(projects())) return;
+        return win.getDriveToken();
+      }).then(function () {
+        return captured === context() && ownDriveVerified() && !!snapshotBaseline(projects());
+      }, function () { return false; }).then(function (verified) {
+        delete driveVerificationJobs[captured];
+        if (verified) delete driveVerificationRetries[captured];
+        else driveVerificationRetries[captured] = retryNow() + 45000;
+        return verified;
+      });
+      return driveVerificationJobs[captured];
+    }
     function read(key, fallback) {
       try { var value = JSON.parse(win.localStorage.getItem(key) || 'null'); return value == null ? fallback : value; }
       catch (error) { return fallback; }
@@ -588,10 +606,14 @@
         }
       } finally { fileDrainRunning = false; }
     }
-    function retryPendingFiles() {
+    async function retryPendingFiles() {
       if (canWrite() && deferredLiveContext === context()) materialize(true);
-      if (!ownDriveVerified()) return Promise.resolve();
-      var captured = context(), data = projects(), baseline = snapshotBaseline(data);
+      var captured = context();
+      if (!canWrite() || !snapshotBaseline(projects())) return;
+      if (!ownDriveVerified() && !await verifyExistingDrive(captured)) return;
+      if (captured !== context() || !ownDriveVerified()) return;
+      var data = projects(), baseline = snapshotBaseline(data);
+      if (!baseline) return;
       allProjects(data).forEach(function (project) {
         var journal = project.paymentJournalV1;
         var folder = projectFolder(project), folderKey = captured + '|' + folder, queueKey = captured + '|folder:' + folder;
