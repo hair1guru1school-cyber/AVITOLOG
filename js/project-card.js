@@ -355,10 +355,20 @@
   }
   function init() {
     var saveButton = document.getElementById('saveClientBtn');
-    if (!saveButton || document.getElementById('projectCardOpenBtn')) return;
+    if (!saveButton) return;
     style();
-    var button = document.createElement('button'); button.type = 'button'; button.id = 'projectCardOpenBtn'; button.className = 'project-card-sidebar'; button.textContent = 'Карта проекта'; button.onclick = function () { open(); };
-    saveButton.after(button);
+    if (!document.getElementById('projectCardOpenBtn')) {
+      var button = document.createElement('button'); button.type = 'button'; button.id = 'projectCardOpenBtn'; button.className = 'project-card-sidebar'; button.textContent = '🗂️ Карта проекта'; button.title = 'Карта выбранного проекта'; button.setAttribute('aria-label', 'Карта выбранного проекта');
+      button.onclick = function (event) { event.stopPropagation(); open(); };
+      saveButton.after(button);
+    }
+    var contactButton = document.getElementById('sidebarContactBtn');
+    if (contactButton && !document.getElementById('projectCardTopBtn')) {
+      var topButton = document.createElement('button'); topButton.type = 'button'; topButton.id = 'projectCardTopBtn'; topButton.className = 'sidebar-contact-btn project-card-top-button'; topButton.textContent = '🗂️'; topButton.title = 'Карта выбранного проекта'; topButton.setAttribute('aria-label', 'Карта выбранного проекта');
+      topButton.onclick = function (event) { event.stopPropagation(); open(); };
+      contactButton.after(topButton);
+    }
+    if (document.getElementById('projectAccountSelect')) return;
     var field = document.createElement('div'); field.className = 'fg project-card-account-field'; field.innerHTML = '<label for="projectAccountSelect">Аккаунт проекта · Avito API</label><select id="projectAccountSelect" aria-label="Привязать аккаунт Avito к проекту"><option value="">Не привязан</option></select><input type="hidden" id="avito_connection_id" value="">';
     var avito = document.getElementById('avito_account');
     if (avito && avito.closest('.row2')) avito.closest('.row2').after(field); else saveButton.before(field);

@@ -211,7 +211,7 @@
     if (mode !== 'closed') { applyChatLayout(); refresh(false); }
   }
   function reset() {
-    state.selectionRefresh = false; state.selectionSaving = false; state.preferenceSavingOwner = ''; state.restoreOnReady = false; selectionVersion += 1;
+    state.selectionRefresh = false; state.selectionSaving = false; state.preferenceSavingOwner = ''; state.restoreOnReady = false; state.importing = null; selectionVersion += 1;
     state.generation += 1; state.scope = ''; state.accounts = []; state.selected = []; state.chats = []; state.chat = null; state.loading = false; state.sending = false; state.lastPoll = 0;
     messages = Object.create(null); chatPages = Object.create(null); if (ui.list) { empty(ui.list); empty(ui.history); empty(ui.accounts); ui.text.value = ''; ui.compose.hidden = true; ui.import.hidden = true; ui.refresh.disabled = false; ui.send.disabled = false; ui.toCrm.disabled = true; if (ui.replies) ui.replies.reset(); ui.nicheSetting.checked = false; ui.nicheSetting.disabled = false; renderChatTitle(); notice(''); setMode('closed'); }
   }
@@ -361,6 +361,28 @@
     finally { if (current(generation)) { state.sending = false; ui.send.disabled = false; if (ui.replies) ui.replies.setEnabled(!!state.chat); } }
   }
   function dataKey(base) { return typeof window.AVITOLOG_KEY === 'function' ? window.AVITOLOG_KEY(base) : base; }
+  var importTasks = Object.create(null);
+  function importFolderId(client) {
+    var value = String(client && (client.folderId || client.folder_id || client.drive_folder_id) || '').trim();
+    if (/^[a-zA-Z0-9_-]+$/.test(value)) return value;
+    try { var url = new URL(client && (client.folderLink || client.driveFolderUrl || client.folderUrl) || ''); var match = url.pathname.match(/^\/drive\/folders\/([a-zA-Z0-9_-]+)\/?$/); return url.protocol === 'https:' && url.hostname === 'drive.google.com' && !url.username && !url.password && match ? match[1] : ''; } catch (_) { return ''; }
+  }
+  function assertImportScope(owner, generation) { if (!owner || scope() !== owner || state.scope !== owner || state.generation !== generation) throw new Error('context_changed'); }
+  function sameImportChat(row) { return !!state.chat && state.chat.account.id === row.account.id && state.chat.chat.id === row.chat.id; }
+  function focusImportedClient(client, row, owner, generation) {
+    assertImportScope(owner, generation); if (!sameImportChat(row)) return false;
+    try {
+      window._selectedProjectId = null;
+      if (typeof window.markProjectRowSelection === 'function') window.markProjectRowSelection('');
+      assertImportScope(owner, generation);
+      if (typeof window.setActiveClient === 'function') window.setActiveClient(client);
+      assertImportScope(owner, generation);
+      if (typeof window.fillClientForm === 'function') window.fillClientForm(client);
+      else if (typeof window.fillClientFormFromData === 'function') window.fillClientFormFromData(client);
+      else return false;
+      return true;
+    } catch (error) { if (error.message === 'context_changed') throw error; return false; }
+  }
   function loadGoals() {
     var live = typeof window.__avitologAdsGoalsRead === 'function' && window.__avitologAdsGoalsRead([]);
     var value = live && live.live ? JSON.parse(JSON.stringify(live.live)) : JSON.parse(localStorage.getItem(dataKey('avitolog_goals_v1')) || '{"projects":[]}');
@@ -376,10 +398,13 @@
   }
   function importClient(row, title, category, week, selectedClientId) {
     if (!scope() || state.scope !== scope() || !title.trim() || title.length > 200 || typeof window.getCrmClients !== 'function' || typeof window.saveCrmClients !== 'function') throw new Error('context_changed');
-    var capturedScope = scope();
+    var capturedScope = scope(), generation = state.generation;
     var categories = typeof CRM_CATEGORY_OPTIONS !== 'undefined' ? CRM_CATEGORY_OPTIONS : [];
     if (!categories.some(function (c) { return String(c.v) === category; }) || !Number.isInteger(week) || week < 0 || week > 4) throw new Error('invalid_request');
-    var identity = row.account.avito_user_id + ':' + row.chat.id, clients = window.getCrmClients().slice(), index = clients.findIndex(function (c) { return c && (c.avito_chat_key === identity || Array.isArray(c.avito_chat_keys) && c.avito_chat_keys.indexOf(identity) !== -1); });
+    var identity = row.account.avito_user_id + ':' + row.chat.id, taskKey = capturedScope + '|' + generation + '|' + identity;
+    if (importTasks[taskKey]) return importTasks[taskKey];
+    var task = (async function () {
+    var clients = window.getCrmClients().slice(), index = clients.findIndex(function (c) { return c && (c.avito_chat_key === identity || Array.isArray(c.avito_chat_keys) && c.avito_chat_keys.indexOf(identity) !== -1); });
     if (selectedClientId) {
       var selectedIndex = clients.findIndex(function (c) { return c && String(c.client_id) === selectedClientId; });
       if (selectedIndex < 0 || index >= 0 && index !== selectedIndex) throw new Error('chat_already_linked');
@@ -387,9 +412,13 @@
     }
     var existing = index >= 0 ? clients[index] : null;
     var client = Object.assign({}, existing || {}, { client_id: existing && existing.client_id || 'avito_' + crypto.randomUUID(), company: title.trim(), contact_name: existing && existing.contact_name || row.chat.counterparty && row.chat.counterparty.name || '', avito_account: existing && existing.avito_account || safeUrl(row.chat.counterparty && row.chat.counterparty.profile_url), categoryFolderId: category, avito_chat_key: existing && existing.avito_chat_key || identity, avito_chat_keys: Array.from(new Set((existing && existing.avito_chat_keys || []).concat(existing && existing.avito_chat_key || [], identity))), avito_chat_id: existing && existing.avito_chat_id || row.chat.id, avito_origin_account_id: existing && existing.avito_origin_account_id || row.account.id, avito_origin_user_id: existing && existing.avito_origin_user_id || row.account.avito_user_id, createdAt: existing && existing.createdAt || new Date().toLocaleDateString('ru-RU', { timeZone: 'Europe/Moscow' }) });
+    var folderId = importFolderId(client);
+    if (folderId) { client.folderId = folderId; client.folderLink = client.folderLink || 'https://drive.google.com/drive/folders/' + folderId; }
+    else { client.folder_name = client.folder_name || client.company + ' (' + client.createdAt + ')'; client.avito_drive_parent_id = client.avito_drive_parent_id || category; }
     if (index >= 0) clients[index] = client; else clients.unshift(client);
+    assertImportScope(capturedScope, generation);
     window.saveCrmClients(clients);
-    if (scope() !== capturedScope || state.scope !== capturedScope) throw new Error('context_changed');
+    assertImportScope(capturedScope, generation);
     if (week) {
       var goals = loadGoals(), goal = goals.projects.find(function (p) { return p && (p.crmClientRecordId === client.client_id || p.avitoChatKey === identity); });
       if (!goal) {
@@ -400,12 +429,49 @@
         goal = { id: 'g_' + crypto.randomUUID(), name: title.trim(), company: title.trim(), contact_name: client.contact_name, avito_account: client.avito_account, categoryFolderId: category, crmClientRecordId: client.client_id, avitoChatKey: identity, sourceAccountId: source.id, date: today, weekIndex: week, stage: 'weekly', status: [], statusDates: {}, touchMarkers: [], tags: [], mainPrice: '', priceOptions: ['—'], note: '' };
         goals.projects.unshift(goal);
       } else goal.weekIndex = week;
-      if (scope() !== capturedScope || state.scope !== capturedScope) throw new Error('context_changed');
+      if (folderId && !importFolderId(goal)) { goal.folderId = folderId; goal.folderLink = client.folderLink; goal.folder_name = client.folder_name || client.company; }
+      assertImportScope(capturedScope, generation);
       saveGoals(goals);
       if (window.AVITOLOG_GOALS && typeof window.AVITOLOG_GOALS.render === 'function' && window.goalsMode) window.AVITOLOG_GOALS.render();
     }
-    if (scope() === capturedScope && typeof window.setActiveClient === 'function') window.setActiveClient(client);
-    return { client: client, existing: !!existing };
+    var sidebarReady = focusImportedClient(client, row, capturedScope, generation), drivePending = false, syncPending = false;
+    if (!folderId) {
+      var intendedName = client.folder_name, intendedParent = client.avito_drive_parent_id;
+      try {
+        if (typeof window.driveCreateClientFolder !== 'function') throw new Error('drive_unavailable');
+        folderId = await window.driveCreateClientFolder(intendedName, intendedParent, function () { assertImportScope(capturedScope, generation); });
+        assertImportScope(capturedScope, generation);
+        if (typeof folderId !== 'string' || !/^[a-zA-Z0-9_-]+$/.test(folderId)) throw new Error('drive_unavailable');
+        // Re-read after Drive: a slow request must never overwrite newer CRM edits.
+        var latest = window.getCrmClients().slice(), latestIndex = latest.findIndex(function (c) { return c && String(c.client_id) === String(client.client_id); });
+        if (latestIndex < 0) throw new Error('client_removed');
+        var currentClient = latest[latestIndex], currentFolder = importFolderId(currentClient);
+        if (!currentFolder && (currentClient.folder_name !== intendedName || currentClient.avito_drive_parent_id !== intendedParent)) throw new Error('client_changed');
+        client = Object.assign({}, currentClient);
+        client.folderId = currentFolder || folderId;
+        client.folderLink = client.folderLink || 'https://drive.google.com/drive/folders/' + client.folderId;
+        latest[latestIndex] = client; assertImportScope(capturedScope, generation); window.saveCrmClients(latest); assertImportScope(capturedScope, generation);
+        if (week) {
+          var latestGoals = loadGoals(), changed = false;
+          latestGoals.projects.forEach(function (p) { if (p && (p.crmClientRecordId === client.client_id || p.avitoChatKey === identity) && !importFolderId(p)) { p.folderId = client.folderId; p.folderLink = client.folderLink; p.folder_name = client.folder_name; changed = true; } });
+          if (changed) { assertImportScope(capturedScope, generation); saveGoals(latestGoals); }
+        }
+        sidebarReady = focusImportedClient(client, row, capturedScope, generation);
+      } catch (error) {
+        assertImportScope(capturedScope, generation);
+        if (error.message === 'client_removed' || error.message === 'client_changed') throw error;
+        var savedClient = window.getCrmClients().find(function (c) { return c && String(c.client_id) === String(client.client_id); });
+        if (!savedClient) throw new Error('client_removed');
+        client = Object.assign({}, savedClient);
+        drivePending = !importFolderId(client); syncPending = !drivePending;
+        sidebarReady = focusImportedClient(client, row, capturedScope, generation);
+      }
+    }
+    return { client: client, existing: !!existing, drivePending: drivePending, syncPending: syncPending, folderReady: !!importFolderId(client), sidebarReady: sidebarReady };
+    })();
+    importTasks[taskKey] = task;
+    task.then(function () { if (importTasks[taskKey] === task) delete importTasks[taskKey]; }, function () { if (importTasks[taskKey] === task) delete importTasks[taskKey]; });
+    return task;
   }
   function showImport() {
     if (!state.chat) return; ui.import.hidden = false; ui.clientName.value = name(state.chat); empty(ui.category);
@@ -433,7 +499,22 @@
     ui.history = el('div', 'avchat-history'); ui.compose = el('form', 'avchat-compose'); ui.compose.hidden = true; ui.text = el('textarea'); ui.text.setAttribute('aria-label', 'Сообщение Avito'); ui.text.maxLength = 1000; ui.text.placeholder = 'Сообщение…'; ui.send = btn('➤', 'Отправить сообщение', function () {}); ui.send.type = 'submit'; ui.quick = btn('⚡', 'Быстрые ответы: нажатие на шаблон сразу отправляет его', function () { if (ui.replies) ui.replies.toggle(); }); ui.compose.append(ui.quick, ui.text, ui.send); ui.compose.addEventListener('submit', send);
     ui.text.addEventListener('keydown', function (event) { if (event.key === 'Enter' && !event.shiftKey && !event.isComposing) { event.preventDefault(); ui.compose.requestSubmit(); } });
     ui.import = el('form', 'avchat-import'); ui.import.hidden = true; ui.existing = el('select'); ui.existing.setAttribute('aria-label', 'Новый или существующий клиент'); ui.existing.addEventListener('change', function () { var client = window.getCrmClients().find(function (c) { return c && c.client_id === ui.existing.value; }); ui.clientName.value = client && (client.company || client.contact_name) || name(state.chat); if (client && client.categoryFolderId) ui.category.value = client.categoryFolderId; ui.importAdd.disabled = !!ui.existing.value; ui.importLink.disabled = !ui.existing.value; }); ui.clientName = el('input'); ui.clientName.placeholder = 'Название клиента / проекта'; ui.clientName.setAttribute('aria-label', 'Название клиента'); ui.clientName.maxLength = 200; ui.clientName.required = true; ui.category = el('select'); ui.category.setAttribute('aria-label', 'Категория CRM'); ui.week = el('select'); ui.week.setAttribute('aria-label', 'Неделя CRM'); ['Только в базу', 'Неделя 1', 'Неделя 2', 'Неделя 3', 'Неделя 4'].forEach(function (name, i) { var option = el('option', '', name); option.value = String(i); ui.week.appendChild(option); }); ui.importAdd = btn('➕ Добавить', '', function () {}); ui.importAdd.type = 'submit'; ui.importAdd.className = 'avchat-import-add'; ui.importLink = btn('🔗 Привязать', '', function () {}); ui.importLink.type = 'submit'; ui.importLink.className = 'avchat-import-link'; ui.importLink.disabled = true; var importCancel = btn('✕ Отмена', '', function () { ui.import.hidden = true; }); importCancel.className = 'avchat-import-cancel'; var importActions = el('div', 'avchat-import-actions'); importActions.append(ui.importAdd, ui.importLink, importCancel); ui.import.append(ui.existing, ui.clientName, ui.category, ui.week, importActions);
-    ui.import.addEventListener('submit', function (event) { event.preventDefault(); if (!state.chat) return; try { var result = importClient(state.chat, ui.clientName.value, ui.category.value, Number(ui.week.value), ui.existing.value); ui.import.hidden = true; notice((result.existing ? 'Привязка обновлена.' : 'Клиент добавлен.') + ' Сохранение идёт через обычную синхронизацию CRM.'); } catch (error) { notice('Не удалось завершить добавление. Проверьте базу перед повтором; данные не удалялись.', true); } });
+    ui.import.addEventListener('submit', async function (event) {
+      event.preventDefault(); if (!state.chat || state.importing) return;
+      var row = state.chat, owner = scope(), generation = state.generation, job = {};
+      state.importing = job; ui.importAdd.disabled = true; ui.importLink.disabled = true;
+      notice('Сохраняем клиента и готовим папку Drive…');
+      try {
+        var result = await importClient(row, ui.clientName.value, ui.category.value, Number(ui.week.value), ui.existing.value);
+        if (scope() !== owner || state.scope !== owner || state.generation !== generation || !sameImportChat(row)) return;
+        ui.import.hidden = !(result.drivePending || result.syncPending);
+        notice(result.drivePending ? 'Клиент сохранён в CRM, но папка Drive пока не готова. Войдите через кнопку Drive и повторите добавление: существующий клиент будет использован повторно.' : result.syncPending ? 'Клиент и папка Drive сохранены, но завершение синхронизации не подтверждено. Повторите добавление для проверки: клиент и папка будут использованы повторно.' : (result.existing ? 'Привязка обновлена.' : 'Клиент добавлен.') + ' Папка Drive привязана.' + (result.sidebarReady ? ' Данные открыты слева.' : ' Выберите клиента в базе, чтобы открыть данные слева.'), result.drivePending || result.syncPending);
+      } catch (error) {
+        if (scope() === owner && state.scope === owner && state.generation === generation && sameImportChat(row)) notice(error.message === 'chat_already_linked' ? 'Переписка уже привязана к другому клиенту. Выберите его в списке.' : 'Не удалось завершить добавление. Проверьте клиента в базе перед повтором; сохранённые данные не удалялись.', true);
+      } finally {
+        if (state.importing === job) { state.importing = null; if (scope() === owner && state.generation === generation) { ui.importAdd.disabled = !!ui.existing.value; ui.importLink.disabled = !ui.existing.value; } }
+      }
+    });
     var repliesContainer = el('div', 'avchat-quick-replies');
     if (window.AvitoChatReplies) ui.replies = window.AvitoChatReplies.create({ container: repliesContainer, context: scope, canSend: function () { return !!state.chat && !state.sending && state.scope === scope(); }, variables: function () { return state.chat ? { 'имя': name(state.chat), 'аккаунт': state.chat.account.display_name, 'объявление': state.chat.chat.item && state.chat.chat.item.title || '' } : {}; }, send: function (text, capture) { if (!state.chat || capture.scope !== scope() || state.scope !== scope()) return Promise.reject(new Error('context_changed')); return sendText(text, false); }, onError: function (error) { notice(errorText(error), true); } });
     else ui.quick.disabled = true;

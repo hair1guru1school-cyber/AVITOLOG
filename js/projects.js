@@ -2108,9 +2108,14 @@ function hasProjectCrmData(project) {
 function getProjectPreferredFolder(project) {
   var p = project || {};
   var d = p.crmData || {};
+  var linked = findClientForProject(p) || {};
+  var id = p.folderId || d.folderId || '';
+  var link = p.folderLink || d.folderLink || '';
+  if (!id && !link) { id = linked.folderId || ''; link = linked.folderLink || ''; }
+  if (!id && link) { var match = String(link).match(/\/folders\/([a-zA-Z0-9_-]+)/) || String(link).match(/[?&]id=([a-zA-Z0-9_-]+)/); if (match) id = match[1]; }
   return {
-    folderId: p.folderId || d.folderId || '',
-    folderLink: p.folderLink || d.folderLink || ''
+    folderId: id,
+    folderLink: id ? 'https://drive.google.com/drive/folders/' + id : link
   };
 }
 function makeProjectCrmSnapshot(d) {
@@ -2197,8 +2202,8 @@ function showClientQuestionState(project) {
     st.textContent = 'Нет данных по проекту: ' + (project && project.title ? project.title : '');
   }
 }
-function selectProjectRow(projectId) {
-  if (_projectsRowSuppressClickUntil && Date.now() < _projectsRowSuppressClickUntil) return;
+function selectProjectRow(projectId, force) {
+  if (force !== true && _projectsRowSuppressClickUntil && Date.now() < _projectsRowSuppressClickUntil) return;
   if (typeof loadProjectsData === 'function') {
     var data = loadProjectsData();
     var p = (data.projects || []).find(function(x){ return x.id === projectId; });
@@ -2216,13 +2221,13 @@ function selectProjectRow(projectId) {
   }
   var p = getSelectedProject();
   if (!p) return;
-  var folderIdForCat = (p.folderId || (p.crmData && p.crmData.folderId) || '');
+  var folderIdForCat = getProjectPreferredFolder(p).folderId;
   if (p.categoryFolderId) setCrmCategorySelectValue(p.categoryFolderId);
   else if (folderIdForCat) setCrmCategoryByFolderId(folderIdForCat, function(parentId) {
     var pd = loadProjectsData();
     var sp = pd.projects.find(function(x){ return x.id === p.id; });
-    if (sp && !sp.categoryFolderId) { sp.categoryFolderId = parentId; saveProjectsData(pd); rerenderProjectsPreserveScroll(); }
-  });
+    if (sp && !sp.categoryFolderId && getProjectPreferredFolder(sp).folderId === folderIdForCat) { sp.categoryFolderId = parentId; saveProjectsData(pd); rerenderProjectsPreserveScroll(); }
+  }, function () { return _selectedProjectId === projectId && getProjectPreferredFolder(getSelectedProject()).folderId === folderIdForCat; });
   if (hasProjectCrmData(p)) {
     var prefFolder = getProjectPreferredFolder(p);
     var mergedCrm = Object.assign({}, p.crmData || {});
@@ -2282,6 +2287,7 @@ function startProjectFolderBind(projectId, e) {
   if (e) { e.preventDefault(); e.stopPropagation(); }
   if (typeof window.__goalsCancelFolderBind === 'function') window.__goalsCancelFolderBind();
   window._assetsFolderBindTarget = null;
+  selectProjectRow(projectId, true);
   _projectFolderBindTargetId = projectId;
   var st = document.getElementById('crmSt');
   if (st) {

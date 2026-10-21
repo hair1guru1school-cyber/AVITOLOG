@@ -2866,21 +2866,26 @@ async function resolveWritableDriveFolder(folderId, clientName) {
 }
 window.resolveWritableDriveFolder = resolveWritableDriveFolder;
 
-async function driveCreateClientFolder(name, parentId) {
+async function driveCreateClientFolder(name, parentId, guard) {
+  if (guard) guard();
   // Создаём папку клиента внутри уже существующей папки категории
   var token = await getDriveToken();
+  if (guard) guard();
   // Проверяем нет ли уже такой папки
-  var q = "name='" + name.replace(/'/g,"\'") + "' and '" + parentId + "' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false";
+  var q = "name='" + driveQueryEscape(name) + "' and '" + driveQueryEscape(parentId) + "' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false";
   var sr = await fetch('https://www.googleapis.com/drive/v3/files?q=' + encodeURIComponent(q) + '&fields=files(id)', {
     headers: {'Authorization': 'Bearer ' + token}
   });
   var sd = await sr.json();
+  if (guard) guard();
   if (!sr.ok && (sr.status === 401 || (sd.error && sd.error.code === 401))) {
     invalidateDriveToken(token);
     updateDriveUI();
     throw new Error('Сессия истекла. Нажмите 🔑 Drive для повторного входа, затем сохраните снова.');
   }
-  if (sd.files && sd.files.length > 0) return sd.files[0].id;
+  if (!sr.ok) throw new Error('Не удалось проверить папку Drive: ' + (sd.error && sd.error.message || 'HTTP ' + sr.status));
+  if (!Array.isArray(sd.files)) throw new Error('Drive не подтвердил список папок. Повторите сохранение.');
+  if (sd.files.length > 0 && sd.files[0].id) return sd.files[0].id;
   // Создаём новую папку клиента
   var cr = await fetch('https://www.googleapis.com/drive/v3/files', {
     method: 'POST',
@@ -2888,7 +2893,8 @@ async function driveCreateClientFolder(name, parentId) {
     body: JSON.stringify({name: name, mimeType: 'application/vnd.google-apps.folder', parents: [parentId]})
   });
   var cd = await cr.json();
-  if (!cd.id) {
+  if (guard) guard();
+  if (!cr.ok || !cd.id) {
     if (cr.status === 401 || (cd.error && cd.error.code === 401)) {
       invalidateDriveToken(token);
       updateDriveUI();
@@ -2931,6 +2937,7 @@ function backfillProjectCategoryFromDrive(projects) {
   var need = (projects || []).filter(function(p){ return (p.folderId || p.folderLink) && !p.categoryFolderId; });
   if (!need.length) return;
   var one = need[0];
+  var owner = crmBindingContext();
   if (_backfillCategoryQueue.indexOf(one.id) >= 0) return;
   _backfillCategoryQueue.push(one.id);
   var fid = one.folderId || '';
@@ -2938,15 +2945,17 @@ function backfillProjectCategoryFromDrive(projects) {
   if (!fid) { _backfillCategoryQueue = _backfillCategoryQueue.filter(function(x){ return x !== one.id; }); return; }
   driveGetFolderParent(fid).then(function(parentId) {
     _backfillCategoryQueue = _backfillCategoryQueue.filter(function(x){ return x !== one.id; });
-    if (!parentId) return;
+    if (!parentId || crmBindingContext() !== owner) return;
     var pd = loadProjectsData();
     var sp = pd.projects.find(function(x){ return x.id === one.id; });
-    if (sp && !sp.categoryFolderId) { sp.categoryFolderId = parentId; saveProjectsData(pd); rerenderProjectsPreserveScroll(); }
+    if (sp && !sp.categoryFolderId && getProjectPreferredFolder(sp).folderId === fid) { sp.categoryFolderId = parentId; saveProjectsData(pd); rerenderProjectsPreserveScroll(); }
   }).catch(function(){ _backfillCategoryQueue = _backfillCategoryQueue.filter(function(x){ return x !== one.id; }); });
 }
-function setCrmCategoryByFolderId(folderId, onParent) {
+function setCrmCategoryByFolderId(folderId, onParent, guard) {
   if (!folderId) return;
+  var owner = crmBindingContext();
   driveGetFolderParent(folderId).then(function(parentId) {
+    if (crmBindingContext() !== owner || typeof guard === 'function' && !guard()) return;
     if (parentId) {
       setCrmCategorySelectValue(parentId);
       if (typeof onParent === 'function') onParent(parentId);
@@ -5296,37 +5305,45 @@ function selectBrowseFolderBy(folderId, folderName, categoryFolderId) {
   var clients = getCrmClients();
   var found = clients.find(function(c) { return String(c.folderId || '') === String(folderId || ''); });
   if (found && !folderNameMatchesClient(folderName, found)) found = null;
-  var activePayload = found || buildFolderClientPayload(folderId, folderName, categoryFolderId || '');
-  activePayload.folderId = activePayload.folderId || folderId;
-  activePayload.folderLink = activePayload.folderLink || folderLink;
+  var owner = crmBindingContext(), targetId = _projectFolderBindTargetId;
+  var pd = targetId ? loadProjectsData() : null;
+  var p = pd && pd.projects.find(function (project) { return project.id === targetId; });
+  var linked = p && typeof findClientForProject === 'function' ? findClientForProject(p) : null;
+  var projectPayload = p ? Object.assign({}, linked || {}, p.crmData || {}, { company: p.crmData && p.crmData.company || linked && linked.company || p.title || folderName }) : null;
+  var activePayload = Object.assign({}, found || projectPayload || buildFolderClientPayload(folderId, folderName, categoryFolderId || ''));
+  activePayload.folderId = folderId;
+  activePayload.folderLink = folderLink;
+  activePayload.folder_name = folderName;
+  if (categoryFolderId) activePayload.categoryFolderId = categoryFolderId;
   activePayload.company = activePayload.company || folderName || 'Client';
   if (activePayload.categoryFolderId && typeof setCrmCategorySelectValue === 'function') setCrmCategorySelectValue(activePayload.categoryFolderId);
-  else if (typeof setCrmCategoryByFolderId === 'function') setCrmCategoryByFolderId(folderId);
+  else if (typeof setCrmCategoryByFolderId === 'function') setCrmCategoryByFolderId(folderId, null, function () { var active = getActiveClient(); return active && active.folderId === folderId; });
   fillClientFormFromData(activePayload);
   setActiveClient(activePayload);
   var folderBindHandled = false;
-  if (_projectFolderBindTargetId) {
+  if (targetId) {
     folderBindHandled = true;
-    var pd = loadProjectsData();
-    var p = pd.projects.find(function(x){ return x.id === _projectFolderBindTargetId; });
     if (p) {
       p.folderId = folderId;
       p.folderLink = folderLink;
-      if (found && found.client_id) p.crmClientId = found.client_id;
-      p.crmData = p.crmData || {};
-      p.crmData.folderId = folderId;
-      p.crmData.folderLink = folderLink;
+      p.crmClientId = activePayload.client_id || '';
+      p.crmData = Object.assign({}, p.crmData || {}, makeProjectCrmSnapshot(activePayload));
       if (categoryFolderId) {
         p.categoryFolderId = categoryFolderId;
         if (typeof setCrmCategorySelectValue === 'function') setCrmCategorySelectValue(categoryFolderId);
       } else {
-        if (typeof setCrmCategoryByFolderId === 'function') setCrmCategoryByFolderId(folderId);
-        if (typeof driveGetFolderParent === 'function') driveGetFolderParent(folderId).then(function(parentId) { if (parentId) { p.categoryFolderId = parentId; saveProjectsData(pd); } }).catch(function(){});
+        if (typeof driveGetFolderParent === 'function') driveGetFolderParent(folderId).then(function(parentId) {
+          if (!parentId || crmBindingContext() !== owner) return;
+          var latest = loadProjectsData(), current = latest.projects.find(function (project) { return project.id === targetId; });
+          if (!current || current.folderId !== folderId) return;
+          current.categoryFolderId = parentId; current.crmData = current.crmData || {}; current.crmData.categoryFolderId = parentId;
+          saveProjectsData(latest);
+          if (projectsMode) rerenderProjectsPreserveScroll();
+          if (_selectedProjectId === targetId) { var active = getActiveClient(); if (active && active.folderId === folderId) { active = Object.assign({}, active, { categoryFolderId: parentId }); setActiveClient(active); setCrmCategorySelectValue(parentId); } }
+        }).catch(function(){});
       }
-      if (found) {
-        p.crmData.client_id = found.client_id || p.crmData.client_id || '';
-        if (found.company) p.crmData.company = found.company;
-      }
+      _selectedProjectId = targetId;
+      if (typeof markProjectRowSelection === 'function') markProjectRowSelection(targetId);
       saveProjectsData(pd);
       syncProjectToActiveSheet(p.id, 'folder_bind_from_crm_popup');
       if (projectsMode) rerenderProjectsPreserveScroll();
@@ -5385,12 +5402,19 @@ function preserveClientAvitoChatMetadata(target, previous) {
   });
   return target;
 }
+function crmBindingContext() {
+  var identity = typeof window.__avitologBackendIdentity === 'function' ? window.__avitologBackendIdentity() : null;
+  return _ck('avitolog_clients') + '|' + _ck('avitolog_projects') + '|' + String(identity && identity.id || '');
+}
 async function saveClient() {
   var btn = document.getElementById('saveClientBtn');
   var btnDisc = document.getElementById('crmSaveDriveBtn');
+  if (btn && btn.disabled) return;
   if (btn) { btn.disabled = true; btn.textContent = '💾 Сохраняю...'; }
   if (btnDisc) btnDisc.disabled = true;
   try {
+    var owner = crmBindingContext();
+    function assertOwner() { if (crmBindingContext() !== owner) throw new Error('Режим изменился. Сохраните данные в нужном режиме.'); }
     if (!_driveToken) throw new Error('Нажмите 🔑 Drive');
     var cityVal = (typeof getGeoValues === 'function' ? getGeoValues().join(', ') : '') || v('city');
     var d = {
@@ -5407,21 +5431,22 @@ async function saveClient() {
     var defaultCat = getCrmDefaultCategory();
     var catId = (ac && ac.categoryFolderId) || (selectedProject && selectedProject.categoryFolderId) || '';
     if (!catId && ac && ac.folderId) {
-      catId = await driveGetFolderParent(ac.folderId).catch(function(){ return ''; });
+      catId = await driveGetFolderParent(ac.folderId).catch(function(){ return ''; }); assertOwner();
     }
     catId = catId || defaultCat.id;
     var cat = { id: catId, name: getCategoryNameById(catId) || defaultCat.name };
     d.categoryFolderId = catId;
-    var folderId;
-    if (ac && ac.folderId) {
-      folderId = ac.folderId;
-      folderName = ac.folder_name || folderName;
+    var projectFolder = selectedProject && typeof getProjectPreferredFolder === 'function' ? getProjectPreferredFolder(selectedProject) : {};
+    var folderId = projectFolder.folderId || ac && ac.folderId || '';
+    if (folderId) {
+      folderName = ac && ac.folder_name || selectedProject && selectedProject.crmData && selectedProject.crmData.folder_name || folderName;
     } else if (selectedProject) {
       folderName = (selectedProject.title || 'Проект') + ' (' + d.createdAt + ')';
-      folderId = await driveCreateClientFolder(folderName, catId);
+      folderId = await driveCreateClientFolder(folderName, catId, assertOwner);
     } else {
-      folderId = await driveCreateClientFolder(folderName, catId);
+      folderId = await driveCreateClientFolder(folderName, catId, assertOwner);
     }
+    assertOwner();
     var folderLink = 'https://drive.google.com/drive/folders/' + folderId;
     
     // contacts.txt
@@ -5444,6 +5469,7 @@ async function saveClient() {
     if (d.positions) lines.push('Позиции: ' + d.positions);
     lines.push('Дата: ' + d.createdAt);
     await driveUploadText('contacts.txt', lines.join('\n'), 'text/plain', folderId);
+    assertOwner();
     
     // Сохраняем в localStorage
     d.folderId = folderId;
@@ -5451,11 +5477,14 @@ async function saveClient() {
     d.folder_name = folderName;
     var clients = getCrmClients();
     if (selectedProject) {
-      // Строгая привязка: только у выбранного проекта — всегда свой уникальный клиент
+      // Re-save the explicitly linked CRM record rather than generating duplicates.
+      var linked = typeof findClientForProject === 'function' ? findClientForProject(selectedProject) : null;
       preserveClientAvitoChatMetadata(d, selectedProject.crmData);
-      if (typeof findClientForProject === 'function') preserveClientAvitoChatMetadata(d, findClientForProject(selectedProject));
-      d.client_id = generateClientId();
-      clients.unshift(d);
+      preserveClientAvitoChatMetadata(d, linked);
+      d.client_id = linked && linked.client_id || selectedProject.crmClientId || selectedProject.crmData && selectedProject.crmData.client_id || generateClientId();
+      var linkedIndex = clients.findIndex(function (client) { return String(client.client_id || '') === String(d.client_id); });
+      if (linkedIndex >= 0) { d = Object.assign({}, clients[linkedIndex], d); clients[linkedIndex] = d; }
+      else clients.unshift(d);
     } else {
       d.client_id = d.client_id || '';
       if (!d.client_id) {
@@ -5468,17 +5497,12 @@ async function saveClient() {
       if (existing >= 0) {
         preserveClientAvitoChatMetadata(d, clients[existing]);
         if (clients[existing].client_id) d.client_id = clients[existing].client_id;
-        clients[existing] = d;
+        d = Object.assign({}, clients[existing], d); clients[existing] = d;
       } else {
         clients.unshift(d);
       }
     }
     saveCrmClients(clients);
-    if (selectedProject) {
-      setActiveClient(null);
-    } else {
-      setActiveClient(d);
-    }
     var st = document.getElementById('crmSt');
     if (selectedProject) {
       var pd = loadProjectsData();
@@ -5494,12 +5518,16 @@ async function saveClient() {
         saveProjectsData(pd);
         syncProjectToActiveSheet(sp.id, 'crm_save');
         rerenderProjectsPreserveScroll();
-        if (st) { var cn = (catName && catName.text ? String(catName.text) : '').replace(/^[^\s]+\s*/, '').trim(); st.style.display = 'block'; st.className = 'crm-st ok'; st.textContent = (cn ? cn + ' ++ ' : '') + (sp.title || sp.id); }
+        if (st) { var cn = String(cat.name || '').replace(/^[^\s]+\s*/, '').trim(); st.style.display = 'block'; st.className = 'crm-st ok'; st.textContent = (cn ? cn + ' ++ ' : '') + (sp.title || sp.id); }
       } else if (st) {
         st.style.display = 'block'; st.className = 'crm-st err'; st.textContent = 'Проект не найден в списке.';
       }
     } else if (st) {
       st.style.display = 'block'; st.className = 'crm-st'; st.textContent = 'Сохранено. Для привязки папки к проекту — выберите проект в списке справа и нажмите 💾';
+    }
+    var currentProject = getSelectedProject();
+    if ((!selectedProject && !currentProject) || (selectedProject && currentProject && currentProject.id === selectedProject.id)) {
+      fillClientFormFromData(d); setActiveClient(d);
     }
     try {
       await writeToSheets(d);
