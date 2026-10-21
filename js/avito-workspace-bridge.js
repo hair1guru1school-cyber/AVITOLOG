@@ -50,7 +50,8 @@
     if (!loaded || ownerScope !== context()) throw new Error('context_changed');
     return new Promise(function (resolve, reject) {
       var id = nonce();
-      pending[id] = { resolve: resolve, reject: reject, scope: ownerScope, timer: setTimeout(function () { if (pending[id]) { delete pending[id]; reject(new Error(action === 'send' ? 'send_unknown' : 'timeout')); } }, 45000) };
+      var deadline = action === 'chats' || action === 'messages' ? 90000 : 45000;
+      pending[id] = { resolve: resolve, reject: reject, scope: ownerScope, timer: setTimeout(function () { if (pending[id]) { delete pending[id]; reject(new Error(action === 'send' ? 'send_unknown' : 'timeout')); } }, deadline) };
       owner.contentWindow.postMessage(Object.assign({ type: 'avitolog:workspace:request', requestId: id, action: action }, fields || {}), ORIGIN);
     });
   }
