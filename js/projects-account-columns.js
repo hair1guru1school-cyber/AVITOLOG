@@ -4,10 +4,16 @@
   var ACCOUNT = new RegExp('^(personal|oauth):' + UUID + '$', 'i');
   var SCOPE = new RegExp('^' + UUID + '\\|(fil|sasha)\\|' + UUID + '$', 'i');
   var TTL = 120000, STORAGE_KEY = 'avitolog_projects_account_columns_v1:';
-  var LABELS = { advance: '\u0410\u0432\u0430\u043d\u0441', contacts: '\u041a\u043e\u043d\u0442\u0430\u043a\u0442\u044b \u0441\u0435\u0433\u043e\u0434\u043d\u044f' };
+  var LABELS = { advance: '\u0410\u0432\u0430\u043d\u0441', contacts: '\u0417\u0430\u044f\u0432\u043a\u0438' };
+  var ICONS = { advance: '\ud83d\udc5b', contacts: '\ud83d\udce8' };
+  var DEFAULT_WIDTH = 86, MIN_WIDTH = 54, MAX_WIDTH = 260;
   function text(value) { return value == null ? '' : String(value); }
   function sameId(a, b) { return a != null && b != null && text(a) !== '' && text(a) === text(b); }
   function settings(value) { return { advance: !!(value && value.advance === true), contacts: !!(value && value.contacts === true) }; }
+  function width(value) { return typeof value === 'number' && Number.isFinite(value) ? Math.max(MIN_WIDTH, Math.min(MAX_WIDTH, Math.round(value))) : DEFAULT_WIDTH; }
+  function columnWidths(value) { return { advance: width(value && value.advance), contacts: width(value && value.contacts) }; }
+  function preferences(value) { return Object.assign(settings(value), { widths: columnWidths(value && value.widths) }); }
+  function resizeWidth(initial, delta, scale) { return width(initial + delta / (typeof scale === 'number' && Number.isFinite(scale) && scale > 0 ? scale : 1)); }
   function validScope(value) { return typeof value === 'string' && SCOPE.test(value) ? value.toLowerCase() : ''; }
   function moscowDay(value) {
     var date = new Date(value == null ? Date.now() : value);
@@ -54,13 +60,13 @@
     return out;
   }
 
-  /* Only the two display booleans are durable. Provider responses stay in memory. */
+  /* Only display preferences are durable. Provider responses stay in memory. */
   function preferenceStore(env) {
     var db = null, opening = null;
     function fallback(scope) {
       try {
         var value = JSON.parse(env.localStorage.getItem(STORAGE_KEY + scope) || 'null');
-        return value && !Array.isArray(value) && typeof value.advance === 'boolean' && typeof value.contacts === 'boolean' ? settings(value) : null;
+        return value && !Array.isArray(value) && typeof value.advance === 'boolean' && typeof value.contacts === 'boolean' ? preferences(value) : null;
       } catch (_) { return null; }
     }
     function open() {
@@ -94,7 +100,7 @@
           tx.onabort = tx.onerror = function () { finish(new Error('storage_unavailable')); };
           var store = tx.objectStore('settings');
           if (guard && !guard()) { tx.abort(); return; }
-          var request = write ? store.put(settings(value), scope) : store.get(scope);
+          var request = write ? store.put(preferences(value), scope) : store.get(scope);
           request.onsuccess = function () { result = request.result; };
         } catch (error) { try { if (tx) tx.abort(); } catch (_) {} finish(error); }
       });
@@ -103,9 +109,9 @@
       read: async function (scope) {
         if (!validScope(scope)) throw new Error('invalid_scope');
         var pendingFallback = fallback(scope); if (pendingFallback) return pendingFallback;
-        try { var value = await transaction(scope, null, false); var latestFallback = fallback(scope); if (latestFallback) return latestFallback; if (value) return settings(value); }
+        try { var value = await transaction(scope, null, false); var latestFallback = fallback(scope); if (latestFallback) return latestFallback; if (value) return preferences(value); }
         catch (_) { /* A small legacy fallback must not affect CRM storage. */ }
-        return fallback(scope) || settings();
+        return fallback(scope) || preferences();
       },
       write: async function (scope, value, guard) {
         if (!validScope(scope)) throw new Error('invalid_scope');
@@ -123,7 +129,7 @@
         }
         catch (error) { if (error.message === 'stale_write') throw error; }
         if (guard && !guard()) throw new Error('stale_write');
-        env.localStorage.setItem(key, JSON.stringify(settings(value)));
+        env.localStorage.setItem(key, JSON.stringify(preferences(value)));
         return true;
       }
     };
@@ -132,10 +138,10 @@
   function createController(env, options) {
     options = options || {};
     var document = env.document, store = options.store || preferenceStore(env), now = options.now || Date.now;
-    var scope = '', day = '', epoch = 0, revision = 0, hydrated = false, columns = settings(), warning = '';
+    var scope = '', day = '', epoch = 0, revision = 0, hydrated = false, columns = settings(), widths = columnWidths(), warning = '';
     var catalog = null, catalogTask = null, catalogNext = 0, catalogError = '', entries = new Map(), queue = [], active = 0;
     var frame = null, interval = null, observer = null, observed = null, popover = null, stopped = false;
-    var writeQueue = Promise.resolve();
+    var writeQueue = Promise.resolve(), resizing = null;
     function bridge() { return env.AvitoWorkspaceBridge; }
     function context() { try { return validScope(bridge() && bridge().context()); } catch (_) { return ''; } }
     function records() {
@@ -169,27 +175,37 @@
     function syncContext() {
       var nextScope = context(), nextDay = moscowDay(now());
       if (nextScope !== scope) {
-        resetMetrics(); scope = nextScope; day = nextDay; columns = settings(); hydrated = false; warning = ''; revision++;
+        endResize(true); resetMetrics(); scope = nextScope; day = nextDay; columns = settings(); widths = columnWidths(); hydrated = false; warning = ''; revision++;
         if (popover) closeMenu();
         if (scope) {
           var owner = scope, requestRevision = revision;
           Promise.resolve().then(function () { return store.read(owner); }).then(function (value) {
             if (scope !== owner || context() !== owner || revision !== requestRevision) return;
-            columns = settings(value); hydrated = true; schedule();
+            columns = settings(value); widths = columnWidths(value && value.widths); hydrated = true; schedule();
           }).catch(function () { if (scope === owner && revision === requestRevision) { hydrated = true; warning = '\u041d\u0430\u0441\u0442\u0440\u043e\u0439\u043a\u0438 \u043d\u0435 \u043f\u0440\u043e\u0447\u0438\u0442\u0430\u043d\u044b. \u0412\u044b\u0431\u043e\u0440 \u043f\u043e\u043a\u0430 \u0432\u0440\u0435\u043c\u0435\u043d\u043d\u044b\u0439.'; schedule(); } });
         }
       } else if (nextDay !== day) { resetMetrics(); day = nextDay; }
     }
     function setColumns(next) {
       syncContext(); if (!scope) return;
-      columns = settings(next); hydrated = true; revision++; warning = '';
-      var owner = scope, ownerRevision = revision, value = settings(columns);
+      endResize(true); columns = settings(next); persistPreferences();
+      if (!enabled()) { queue = []; entries.forEach(function (entry) { if (entry.queued) entry.pending = entry.queued = false; }); }
+      schedule();
+    }
+    function persistPreferences() {
+      hydrated = true; revision++; warning = '';
+      var owner = scope, ownerRevision = revision, value = preferences(Object.assign({}, columns, { widths: widths }));
       function guard() { return owner === scope && owner === context() && ownerRevision === revision; }
       writeQueue = writeQueue.catch(function () {}).then(function () { if (guard()) return store.write(owner, value, guard); }).then(function () {
         if (guard()) { warning = ''; schedule(); }
       }).catch(function (error) { if (guard() && error.message !== 'stale_write') { warning = '\u041d\u0435 \u0443\u0434\u0430\u043b\u043e\u0441\u044c \u0441\u043e\u0445\u0440\u0430\u043d\u0438\u0442\u044c \u043d\u0430\u0441\u0442\u0440\u043e\u0439\u043a\u0438. \u0412\u044b\u0431\u043e\u0440 \u0440\u0430\u0431\u043e\u0442\u0430\u0435\u0442 \u0442\u043e\u043b\u044c\u043a\u043e \u0434\u043e \u043f\u0435\u0440\u0435\u0437\u0430\u0433\u0440\u0443\u0437\u043a\u0438.'; schedule(); } });
-      if (!enabled()) { queue = []; entries.forEach(function (entry) { if (entry.queued) entry.pending = entry.queued = false; }); }
       schedule();
+    }
+    function setColumnWidth(key, value, save) {
+      syncContext(); if (!scope || !Object.prototype.hasOwnProperty.call(widths, key)) return;
+      widths[key] = width(value);
+      if (save !== false) persistPreferences();
+      else { hydrated = true; revision++; schedule(); }
     }
     function invalidateAccess() {
       resetMetrics(); catalog = new Set(); catalogNext = now() + TTL; catalogError = 'access_denied';
@@ -258,6 +274,69 @@
     function element(tag, className, value) { var node = document.createElement(tag); if (className) node.className = className; if (value != null) node.textContent = value; return node; }
     function stop(event) { event.stopPropagation(); }
     function isolate(node) { ['pointerdown', 'mousedown', 'click', 'dblclick'].forEach(function (name) { node.addEventListener(name, stop); }); }
+    function moveResize(event) {
+      var drag = resizing;
+      if (!drag || event.pointerId !== drag.pointerId) return;
+      if (drag.scope !== context() || drag.handle.isConnected === false) { endResize(true); return; }
+      event.preventDefault(); event.stopPropagation();
+      setColumnWidth(drag.key, resizeWidth(drag.width, event.clientX - drag.x, drag.scale), false);
+    }
+    function releaseResize(event) {
+      if (!resizing || event.pointerId !== resizing.pointerId) return;
+      event.preventDefault(); event.stopPropagation(); endResize(event.type !== 'pointerup');
+    }
+    function cancelResize() { endResize(true); }
+    function resizeEscape(event) { if (event.key === 'Escape' && resizing) { event.preventDefault(); event.stopPropagation(); endResize(true); } }
+    function endResize(cancelled, discard) {
+      var drag = resizing; if (!drag) return;
+      resizing = null;
+      document.removeEventListener('pointermove', moveResize, true);
+      document.removeEventListener('pointerup', releaseResize, true);
+      document.removeEventListener('pointercancel', releaseResize, true);
+      document.removeEventListener('keydown', resizeEscape, true);
+      drag.handle.removeEventListener('lostpointercapture', cancelResize);
+      env.removeEventListener('blur', cancelResize);
+      try { if (drag.handle.hasPointerCapture(drag.pointerId)) drag.handle.releasePointerCapture(drag.pointerId); } catch (_) {}
+      document.body.style.cursor = drag.cursor; document.body.style.userSelect = drag.userSelect;
+      if (!discard && drag.scope === scope && drag.scope === context()) {
+        if (cancelled) widths[drag.key] = drag.width;
+        persistPreferences();
+      }
+      schedule();
+    }
+    function beginResize(event, key, handle) {
+      if (event.button !== 0 || event.isPrimary === false || !scope) return;
+      event.preventDefault(); event.stopPropagation(); endResize(true);
+      var cell = handle.parentElement, rect = cell.getBoundingClientRect();
+      resizing = { key: key, handle: handle, pointerId: event.pointerId, scope: scope, width: widths[key], x: event.clientX,
+        scale: cell.offsetWidth > 0 ? rect.width / cell.offsetWidth : 1, cursor: document.body.style.cursor, userSelect: document.body.style.userSelect };
+      document.body.style.cursor = 'col-resize'; document.body.style.userSelect = 'none';
+      document.addEventListener('pointermove', moveResize, true);
+      document.addEventListener('pointerup', releaseResize, true);
+      document.addEventListener('pointercancel', releaseResize, true);
+      document.addEventListener('keydown', resizeEscape, true);
+      handle.addEventListener('lostpointercapture', cancelResize); env.addEventListener('blur', cancelResize);
+      try { handle.setPointerCapture(event.pointerId); } catch (_) {}
+    }
+    function resizeHandle(key) {
+      var owner = scope;
+      function owned() { return owner && owner === scope && owner === context(); }
+      var handle = element('span', 'projects-account-resize'); handle.tabIndex = 0;
+      handle.setAttribute('role', 'separator'); handle.setAttribute('aria-orientation', 'vertical');
+      handle.setAttribute('aria-label', '\u0428\u0438\u0440\u0438\u043d\u0430 \u0441\u0442\u043e\u043b\u0431\u0446\u0430 ' + LABELS[key]);
+      handle.setAttribute('aria-valuemin', String(MIN_WIDTH)); handle.setAttribute('aria-valuemax', String(MAX_WIDTH)); handle.setAttribute('aria-valuenow', String(widths[key]));
+      handle.setAttribute('data-projects-column-resize', key);
+      handle.title = '\u041f\u043e\u0442\u044f\u043d\u0438\u0442\u0435 \u0433\u0440\u0430\u043d\u0438\u0446\u0443. \u0421\u0442\u0440\u0435\u043b\u043a\u0438: \u0448\u0438\u0440\u0438\u043d\u0430. \u0414\u0432\u043e\u0439\u043d\u043e\u0439 \u0449\u0435\u043b\u0447\u043e\u043a: \u0441\u0431\u0440\u043e\u0441.';
+      handle.addEventListener('pointerdown', function (event) { if (owned()) beginResize(event, key, handle); else { event.preventDefault(); event.stopPropagation(); } });
+      ['mousedown', 'click'].forEach(function (name) { handle.addEventListener(name, function (event) { event.preventDefault(); event.stopPropagation(); }); });
+      handle.addEventListener('dblclick', function (event) { event.preventDefault(); event.stopPropagation(); if (owned()) setColumnWidth(key, DEFAULT_WIDTH); });
+      handle.addEventListener('keydown', function (event) {
+        if (!owned()) return;
+        var next = event.key === 'ArrowLeft' ? widths[key] - (event.shiftKey ? 16 : 8) : event.key === 'ArrowRight' ? widths[key] + (event.shiftKey ? 16 : 8) : event.key === 'Home' ? MIN_WIDTH : event.key === 'End' ? MAX_WIDTH : null;
+        if (next !== null) { event.preventDefault(); event.stopPropagation(); setColumnWidth(key, next); }
+      });
+      return handle;
+    }
     function place(row, column) {
       var sticky = Array.from(row.children).find(function (node) { return node.classList.contains('projects-sticky'); });
       var scroll = Array.from(row.children).find(function (node) { return node.classList.contains('projects-scroll'); });
@@ -284,18 +363,26 @@
         if (!keys.length) { if (column) column.remove(); return; }
         if (!column) { column = element('div', 'projects-account-columns'); isolate(column); }
         if (!place(row, column)) return;
-        column.style.width = keys.length * 86 + 'px'; column.style.gridTemplateColumns = 'repeat(' + keys.length + ',86px)';
+        column.style.width = keys.reduce(function (total, key) { return total + widths[key]; }, 0) + 'px';
+        column.style.gridTemplateColumns = keys.map(function (key) { return widths[key] + 'px'; }).join(' ');
+        column.querySelectorAll('[data-projects-column-resize]').forEach(function (handle) { handle.setAttribute('aria-valuenow', String(widths[handle.getAttribute('data-projects-column-resize')])); });
         var header = row.classList.contains('projects-table-header'), primary = row.getAttribute('data-child-line-index') === '-1';
         var project = primary ? projects.get(row.getAttribute('data-id')) : null;
         var id = connection(project, data.clients), entry = id && entries.get(id), metrics = entry && entry.metrics;
-        var signature = JSON.stringify([keys, header, primary, id, scope, day, catalog && catalog.has(id), catalogError, entry && entry.pending,
+        var signature = header ? JSON.stringify([keys, 'header', scope]) : JSON.stringify([keys, primary, id, scope, day, catalog && catalog.has(id), catalogError, entry && entry.pending,
           keys.map(function (key) { return metrics && metrics[key]; })]);
         if (column._pacSignature === signature) return;
         column._pacSignature = signature; column.replaceChildren();
         keys.forEach(function (key) {
           var metric = catalog && catalog.has(id) && metrics && metrics[key];
-          var cell = element('span', 'projects-account-value projects-account-' + key, header ? LABELS[key] : primary ? format(metric && metric.value, key) : '');
-          if (header) cell.classList.add('projects-account-label');
+          var cell = element('span', 'projects-account-value projects-account-' + key, header ? null : primary ? format(metric && metric.value, key) : '');
+          if (header) {
+            cell.classList.add('projects-account-label'); cell.setAttribute('aria-label', LABELS[key]);
+            cell.title = key === 'contacts' ? '\u0417\u0430\u044f\u0432\u043a\u0438: \u043a\u043e\u043d\u0442\u0430\u043a\u0442\u044b Avito \u0437\u0430 \u0441\u0435\u0433\u043e\u0434\u043d\u044f (\u041c\u0421\u041a)' : LABELS[key];
+            var icon = element('span', 'projects-account-heading-icon', ICONS[key]); icon.setAttribute('aria-hidden', 'true'); cell.appendChild(icon);
+            cell.appendChild(element('span', key === 'advance' ? 'projects-account-sr' : '', LABELS[key]));
+            cell.appendChild(resizeHandle(key));
+          }
           else if (primary) { cell.title = LABELS[key] + ': ' + titleFor(id, metric, entry); cell.dataset.stale = metric && metric.stale ? 'true' : 'false'; }
           column.appendChild(cell);
         });
@@ -310,11 +397,12 @@
     }
     function openMenu(event) {
       event.stopPropagation(); if (popover) { closeMenu(); return; }
+      var owner = scope;
       popover = element('div', 'projects-account-settings'); popover.setAttribute('role', 'group'); popover.setAttribute('aria-label', '\u0421\u0442\u043e\u043b\u0431\u0446\u044b Avito'); isolate(popover);
       popover.appendChild(element('strong', '', '\u0421\u0442\u043e\u043b\u0431\u0446\u044b Avito'));
       ['advance', 'contacts'].forEach(function (key) {
         var label = element('label'), input = element('input'); input.type = 'checkbox'; input.checked = columns[key]; input.disabled = !scope;
-        input.setAttribute('data-projects-account-setting', key); input.addEventListener('change', function () { var next = settings(columns); next[key] = input.checked; setColumns(next); });
+        input.setAttribute('data-projects-account-setting', key); input.addEventListener('change', function () { if (owner !== scope || owner !== context()) return; var next = settings(columns); next[key] = input.checked; setColumns(next); });
         label.appendChild(input); label.appendChild(element('span', '', LABELS[key])); popover.appendChild(label);
       });
       var status = element('p', 'projects-account-settings-status'); status.setAttribute('role', 'status'); popover.appendChild(status);
@@ -341,11 +429,12 @@
           isolate(gear); gear.addEventListener('click', openMenu); tabs.appendChild(gear);
         }
         var currentGear = document.getElementById('projectsAccountColumnsGear'); if (currentGear) currentGear.title = warning || '\u0421\u0442\u043e\u043b\u0431\u0446\u044b Avito';
+        if (resizing && (!visible() || resizing.handle.isConnected === false)) endResize(true);
         renderRows(main); if (!visible()) closeMenu(); else updateMenu();
       } finally { if (observer) { observed = main; observer.observe(main, { childList: true, subtree: true, attributes: true, attributeFilter: ['data-id', 'data-child-line-index'] }); } }
     }
     function tick() { if (stopped) return; syncContext(); requestMetrics(); render(); }
-    function reset() { resetMetrics(); schedule(); }
+    function reset() { endResize(true); resetMetrics(); schedule(); }
     function outside(event) { if (popover && !popover.contains(event.target) && !(event.target.closest && event.target.closest('#projectsAccountColumnsGear'))) closeMenu(); }
     function escapeMenu(event) { if (event.key === 'Escape' && popover) { closeMenu(); var gear = document.getElementById('projectsAccountColumnsGear'); if (gear) gear.focus(); } }
     function start() {
@@ -357,7 +446,7 @@
       tick(); interval = env.setInterval(tick, 1500);
     }
     function stopAll() {
-      stopped = true; epoch++; env.clearTimeout(frame); env.clearInterval(interval); if (observer) observer.disconnect(); closeMenu();
+      endResize(true, true); stopped = true; epoch++; env.clearTimeout(frame); env.clearInterval(interval); if (observer) observer.disconnect(); closeMenu();
       if (document) { document.removeEventListener('avitolog:workspace-reset', reset); document.removeEventListener('visibilitychange', schedule); document.removeEventListener('pointerdown', outside); document.removeEventListener('keydown', escapeMenu); env.removeEventListener('resize', menuPosition); env.removeEventListener('scroll', menuPosition, true); }
     }
     function addStyle() {
@@ -365,14 +454,15 @@
       var style = element('style'); style.id = 'projectsAccountColumnsStyle';
       style.textContent = '.projects-account-gear{width:32px;min-width:32px;height:32px;margin-left:auto;border:1px solid var(--border,#304156);border-radius:8px;background:var(--surface2,#142033);color:var(--text,#eaf4ff);cursor:pointer;font:inherit;font-size:18px;font-weight:700;line-height:1;align-self:center}.projects-account-gear:hover{border-color:var(--accent,#00d97e)}' +
         '.projects-account-columns{display:grid;position:sticky;left:var(--projects-sticky-width,360px);z-index:3;flex:none;align-self:stretch;background:#101823;border-right:1px solid var(--border,#29384b);box-shadow:3px 0 6px rgba(0,0,0,.08);box-sizing:border-box}.projects-table-header .projects-account-columns{background:#111d2c}.projects-account-value{display:flex;align-items:center;justify-content:center;min-width:0;padding:1px 4px;border-left:1px solid rgba(150,180,220,.1);font-size:12px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#c9f7e0}.projects-account-contacts{color:#c4e8ff}.projects-account-label{font-size:10px;white-space:normal;text-align:center;line-height:1.15;color:#a5bad1}.projects-account-value[data-stale="true"]{color:#e5bd78}' +
+        '.projects-account-value:not(.projects-account-label){font-size:15px;line-height:1;min-height:0}.projects-account-label{position:relative;flex-direction:column;gap:4px;overflow:visible;padding:4px 9px 4px 4px}.projects-account-heading-icon{font-size:19px;line-height:1}.projects-account-sr{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}.projects-account-resize{position:absolute;right:0;top:0;bottom:0;width:8px;cursor:col-resize;touch-action:none;user-select:none}.projects-account-resize::after{content:"";position:absolute;top:22%;bottom:22%;right:2px;width:2px;border-radius:2px;background:#5b8498;opacity:.6}.projects-account-resize:hover,.projects-account-resize:focus-visible{background:#4ec0e92b;outline:1px solid var(--accent,#00d97e);outline-offset:-1px}.projects-account-resize:hover::after,.projects-account-resize:focus-visible::after{opacity:1}' +
         '.projects-account-settings{position:fixed;z-index:15000;width:266px;padding:13px;border:1px solid var(--border,#304156);border-radius:12px;background:#111b28;color:#eaf4ff;box-shadow:0 12px 36px rgba(0,0,0,.35);font:12px/1.45 "Golos Text",sans-serif}.projects-account-settings strong{display:block;margin-bottom:8px}.projects-account-settings label{display:flex;align-items:center;gap:8px;padding:7px 3px;cursor:pointer}.projects-account-settings input{width:16px;height:16px;accent-color:var(--accent,#00d97e)}.projects-account-settings-status{margin:8px 0 0;font-size:10px;color:#9bb1c9}.projects-account-settings-status[data-warning="true"]{color:#ffc2c9}' +
         'body.day-mode .projects-account-columns,body.day-mode .projects-table-header .projects-account-columns{background:#f3f7fb;border-color:#cbd5e1}body.day-mode .projects-account-value{color:#08784f;border-color:#dce5ee}body.day-mode .projects-account-contacts{color:#12689a}body.day-mode .projects-account-label{color:#526277}body.day-mode .projects-account-value[data-stale="true"]{color:#86560a}body.day-mode .projects-account-settings{background:#fff;color:#182638;border-color:#cbd5e1;box-shadow:0 12px 36px rgba(28,48,75,.16)}body.day-mode .projects-account-settings-status{color:#526277}body.day-mode .projects-account-settings-status[data-warning="true"]{color:#b12d41}';
       document.head.appendChild(style);
     }
-    return { start: start, stop: stopAll, tick: tick, setColumns: setColumns, reset: reset, flush: function () { return writeQueue; },
-      inspect: function () { return { scope: scope, day: day, columns: settings(columns), hydrated: hydrated, warning: warning, active: active, queued: queue.length, catalog: catalog && Array.from(catalog), entries: Array.from(entries, function (pair) { return [pair[0], { metrics: pair[1].metrics, pending: pair[1].pending, nextAt: pair[1].nextAt }]; }) }; }, place: place, renderRows: renderRows };
+    return { start: start, stop: stopAll, tick: tick, setColumns: setColumns, setColumnWidth: setColumnWidth, reset: reset, flush: function () { return writeQueue; },
+      inspect: function () { return { scope: scope, day: day, columns: settings(columns), widths: columnWidths(widths), hydrated: hydrated, warning: warning, active: active, queued: queue.length, catalog: catalog && Array.from(catalog), entries: Array.from(entries, function (pair) { return [pair[0], { metrics: pair[1].metrics, pending: pair[1].pending, nextAt: pair[1].nextAt }]; }) }; }, place: place, renderRows: renderRows };
   }
-  if (typeof module !== 'undefined' && module.exports) module.exports = { settings: settings, validScope: validScope, moscowDay: moscowDay, linkedClient: linkedClient, connection: connection, catalogIds: catalogIds, derive: derive, denied: denied, format: format, preferenceStore: preferenceStore, createController: createController, TTL: TTL };
+  if (typeof module !== 'undefined' && module.exports) module.exports = { settings: settings, preferences: preferences, columnWidths: columnWidths, resizeWidth: resizeWidth, validScope: validScope, moscowDay: moscowDay, linkedClient: linkedClient, connection: connection, catalogIds: catalogIds, derive: derive, denied: denied, format: format, preferenceStore: preferenceStore, createController: createController, TTL: TTL };
   else if (root.document && !root.ProjectsAccountColumns) {
     var controller = createController(root);
     root.ProjectsAccountColumns = Object.freeze({ refresh: function () { controller.reset(); controller.tick(); } });
