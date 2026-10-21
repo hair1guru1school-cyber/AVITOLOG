@@ -162,6 +162,7 @@
     if (!next) { notice('Для чата нужен вход в CRM и доступ к организации аккаунтов.', true); return; }
     if (state.scope && state.scope !== next) reset();
     state.scope = next;
+    if (layoutOwner !== layoutKey()) { finishResize(false); applyChatLayout(); }
     if (!force && Date.now() - state.lastPoll < 30000) return;
     var generation = state.generation; state.loading = true; ui.refresh.disabled = true; notice('Обновление чатов…');
     try {
