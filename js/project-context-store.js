@@ -29,8 +29,21 @@
     if (!evidence.trim() || source.indexOf(evidence) < 0) fail('invalid_context_evidence');
     return { kind: 'reported_total', totalPaid: value.totalPaid, currency: 'RUB', promotionCycles: value.promotionCycles, evidence: evidence, confirmed: true };
   }
+  function moscowDay() {
+    var parts = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Moscow', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(new Date()), values = {};
+    parts.forEach(function (part) { values[part.type] = part.value; });
+    return values.year + '-' + values.month + '-' + values.day;
+  }
+  function paymentRecency(value, source) {
+    keys(value, ['kind', 'lastPaymentDate', 'evidence', 'confirmed']);
+    var day = value.lastPaymentDate;
+    if (value.kind !== 'reported_last_payment' || typeof day !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(day) || !isFinite(Date.parse(day + 'T00:00:00Z')) || new Date(day + 'T00:00:00Z').toISOString().slice(0, 10) !== day || day > moscowDay() || value.confirmed !== true) fail('invalid_payment_recency');
+    var evidence = string(value.evidence, 1000);
+    if (!evidence.trim() || source.indexOf(evidence) < 0) fail('invalid_context_evidence');
+    return { kind: 'reported_last_payment', lastPaymentDate: day, evidence: evidence, confirmed: true };
+  }
   function entry(value) {
-    keys(value, ['id', 'createdAt', 'kind', 'text', 'summary', 'facts', 'tasks', 'suggestions', 'provider', 'audioName', 'sourceName', 'financialSummary']);
+    keys(value, ['id', 'createdAt', 'kind', 'text', 'summary', 'facts', 'tasks', 'suggestions', 'provider', 'audioName', 'sourceName', 'financialSummary', 'paymentRecency']);
     var result = { id: string(value.id, 100), createdAt: string(value.createdAt, 40), kind: value.kind, text: string(value.text, 20000), summary: string(value.summary, 4000, true), facts: [], tasks: [], suggestions: [], provider: value.provider || 'manual' };
     if (!result.id || /\s/.test(result.id) || !/^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(?:\.\d{1,3})?Z$/.test(result.createdAt) || !isFinite(Date.parse(result.createdAt)) || new Date(result.createdAt).toISOString().slice(0, 19) !== result.createdAt.slice(0, 19) || ['text', 'audio'].indexOf(result.kind) < 0 || !result.text.trim() || ['manual', 'anthropic'].indexOf(result.provider) < 0) fail('invalid_context_entry');
     ['facts', 'tasks', 'suggestions'].forEach(function (field) {
@@ -47,6 +60,7 @@
     });
     ['audioName', 'sourceName'].forEach(function (field) { if (value[field] !== undefined) result[field] = string(value[field], 300); });
     if (value.financialSummary !== undefined) result.financialSummary = financialSummary(value.financialSummary, result.text);
+    if (value.paymentRecency !== undefined) result.paymentRecency = paymentRecency(value.paymentRecency, result.text);
     if (bytes(JSON.stringify(result)) > 250000) fail('context_operation_too_large');
     return result;
   }
@@ -105,17 +119,47 @@
       var result = clone(saved); result.entries = mergeEntries(saved.entries, []); return result;
     }
     function get(target) { assertScope(target, false); return clone(context(project(target, read()), true)); }
-    function getFinancialSummary(target) {
+    function latestAssertion(target, field) {
       var latest = null;
       get(target).entries.forEach(function (item) {
-        if (!item.financialSummary || item.financialSummary.confirmed !== true) return;
+        if (!item[field] || item[field].confirmed !== true) return;
         if (!latest || Date.parse(item.createdAt) > Date.parse(latest.createdAt) || (Date.parse(item.createdAt) === Date.parse(latest.createdAt) && item.id > latest.id)) latest = item;
       });
-      return latest ? clone(Object.assign({}, latest.financialSummary, { sourceEntryId: latest.id, recordedAt: latest.createdAt })) : null;
+      return latest ? clone(Object.assign({}, latest[field], { sourceEntryId: latest.id, recordedAt: latest.createdAt })) : null;
+    }
+    function getFinancialSummary(target) { return latestAssertion(target, 'financialSummary'); }
+    function getPaymentRecency(target) { return latestAssertion(target, 'paymentRecency'); }
+    function emptyRendererDefault(field, value) {
+      return Array.isArray(value) && value.every(function (item) { return field === 'childLineEvents' ? Array.isArray(item) && item.length === 0 : typeof item === 'string' && item.trim() === ''; });
+    }
+    function sorted(value) {
+      if (Array.isArray(value)) return value.map(sorted);
+      if (!object(value)) return value;
+      var out = Object.create(null);
+      Object.keys(value).sort().forEach(function (name) { out[name] = sorted(value[name]); });
+      return out;
     }
     function businessShape(data) {
-      var set = new Set(rows(data));
-      return JSON.stringify(data, function (name, value) { return name === 'intakeContextV1' && set.has(this) ? undefined : value; });
+      var shaped = clone(data);
+      ['hiddenProjects', 'tasks', 'taskLog'].forEach(function (field) { if (shaped[field] === undefined) shaped[field] = []; });
+      rows(shaped).forEach(function (item) {
+        delete item.intakeContextV1;
+        ['childLineEvents', 'childLineCardsActive', 'childLineCardsActiveDate'].forEach(function (field) { if (emptyRendererDefault(field, item[field])) delete item[field]; });
+      });
+      return JSON.stringify(sorted(shaped));
+    }
+    function preserveRendererDefaults(before, after) {
+      ['hiddenProjects', 'tasks', 'taskLog'].forEach(function (field) {
+        if (after[field] === undefined && Array.isArray(before[field]) && before[field].length === 0) after[field] = [];
+      });
+      var previousRows = rows(before);
+      rows(after).forEach(function (item, index) {
+        var previous = previousRows[index];
+        if (!previous || text(previous.id) !== text(item.id)) return;
+        ['childLineEvents', 'childLineCardsActive', 'childLineCardsActiveDate'].forEach(function (field) {
+          if (emptyRendererDefault(field, previous[field]) && (item[field] === undefined || emptyRendererDefault(field, item[field]))) item[field] = clone(previous[field]);
+        });
+      });
     }
     function snapshot(target) {
       assertScope(target, true);
@@ -123,8 +167,9 @@
       try { baseline = JSON.parse(raw || 'null'); } catch (_) { fail('context_snapshot_changed'); }
       if (!baseline || !Array.isArray(baseline.projects) || businessShape(data) !== businessShape(baseline)) fail('context_snapshot_changed');
       var row = project(target, baseline);
-      if (JSON.stringify(item.intakeContextV1) !== JSON.stringify(row.intakeContextV1)) fail('context_snapshot_changed');
-      return { raw: raw, data: baseline, item: row, before: row.intakeContextV1, scope: scope(), business: businessShape(baseline), key: key('avitolog_projects') };
+      var baselineRows = rows(baseline);
+      if (rows(data).some(function (memoryRow, index) { return JSON.stringify(memoryRow.intakeContextV1) !== JSON.stringify(baselineRows[index].intakeContextV1); })) fail('context_snapshot_changed');
+      return { raw: raw, data: baseline, memory: data, item: row, before: row.intakeContextV1, scope: scope(), business: businessShape(baseline), key: key('avitolog_projects') };
     }
     function notify(target) { try { win.document.dispatchEvent(new win.CustomEvent('avitolog:project-context-changed', { detail: { projectId: text(target.projectId), scope: target.scope } })); } catch (_) {} }
     function persist(target, next) {
@@ -137,12 +182,14 @@
         var flushed = win.flushProjectsDataToStorage(baseline.data);
         if (flushed === false || win.localStorage.getItem(baseline.key) !== JSON.stringify(baseline.data)) fail('context_persist_failed');
         assertScope(target, true);
+        if (win._projectsDataMemKey === baseline.key && win._projectsDataMem === baseline.data) preserveRendererDefaults(baseline.memory, baseline.data);
       } catch (error) {
         // A quota failure in the legacy flush helper must not appear as success.
         var memory = win._projectsDataMem;
         if (win._projectsDataMemKey === baseline.key && memory && Array.isArray(memory.projects)) {
           var same = rows(memory).find(function (item) { return text(item.id) === text(target.projectId); });
           if (same && JSON.stringify(same.intakeContextV1) === JSON.stringify(next)) { if (baseline.before === undefined) delete same.intakeContextV1; else same.intakeContextV1 = clone(baseline.before); }
+          if (memory === baseline.data) preserveRendererDefaults(baseline.memory, memory);
         }
         throw error;
       }
@@ -248,7 +295,7 @@
       if (ownDrive() && folderId(target.folderId)) void syncProjectFile(target).catch(function () {});
       return { ok: true, context: current, drivePending: current.drivePending === true, drive: null };
     }
-    return { scope: scope, get: get, getFinancialSummary: getFinancialSummary, append: append, syncProjectFile: syncProjectFile, fileName: FILE_NAME };
+    return { scope: scope, get: get, getFinancialSummary: getFinancialSummary, getPaymentRecency: getPaymentRecency, append: append, syncProjectFile: syncProjectFile, fileName: FILE_NAME };
   }
   return { install: install, format: FORMAT, fileName: FILE_NAME, validateEntry: entry, mergeEntries: mergeEntries };
 }));
