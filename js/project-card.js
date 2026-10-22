@@ -466,6 +466,21 @@
       if (current === state) { button.disabled = readOnly() || !ready(); button.textContent = 'Сохранить и выйти'; button.setAttribute('aria-busy', 'false'); }
     }
   }
+  function verifyCardWrite(state, base, target, changes) {
+    ensureScope(state.scope);
+    try {
+      var key = typeof root.AVITOLOG_KEY === 'function' ? root.AVITOLOG_KEY(base) : base;
+      var value = JSON.parse(root.localStorage.getItem(key));
+      var rows = base === 'avitolog_projects' ? value && value.projects : value;
+      if (!Array.isArray(rows)) throw new Error('storage_unconfirmed');
+      var saved = base === 'avitolog_projects' ? findById(rows, 'id', target.id) : hasId(target.client_id) ? findById(rows, 'client_id', target.client_id) : findById(rows, 'folderId', target.folderId);
+      if (!saved || Object.keys(changes).some(function (field) {
+        var actual = base !== 'avitolog_projects' || field === 'title' ? saved[field] : field === 'avito_connection_id' ? saved.avitoConnectionId : saved.crmData && saved.crmData[field];
+        return text(actual) !== text(changes[field]) || base === 'avitolog_projects' && field === 'avito_connection_id' && text(saved.crmData && saved.crmData[field]) !== text(changes[field]);
+      })) throw new Error('storage_unconfirmed');
+    } catch (_) { throw new Error('Хранилище не подтвердило сохранение. Черновик оставлен в карте; повторите сохранение.'); }
+    ensureScope(state.scope);
+  }
   async function save(state, onlyFields) {
     var notice = state.overlay.querySelector('[data-notice]');
     try {
@@ -492,9 +507,19 @@
         if (Object.prototype.hasOwnProperty.call(changes, 'title') && !Object.prototype.hasOwnProperty.call(changes, 'company')) client.company = changes.title;
       }
       ensureScope(state.scope);
-      if (client && Object.keys(changes).length) { if (typeof root.saveCrmClients !== 'function') throw new Error('Сохранение CRM недоступно.'); root.saveCrmClients(clients); }
+      if (client && Object.keys(changes).length) {
+        if (typeof root.saveCrmClients !== 'function') throw new Error('Сохранение CRM недоступно.');
+        root.saveCrmClients(clients);
+        var clientChanges = Object.assign({}, crmPatch);
+        if (!project && Object.prototype.hasOwnProperty.call(changes, 'title') && !Object.prototype.hasOwnProperty.call(changes, 'company')) clientChanges.company = changes.title;
+        verifyCardWrite(state, 'avitolog_clients', client, clientChanges);
+      }
       ensureScope(state.scope);
-      if (project && Object.keys(changes).length) { if (typeof root.saveProjectsData !== 'function') throw new Error('Сохранение проектов недоступно.'); root.saveProjectsData(data); }
+      if (project && Object.keys(changes).length) {
+        if (typeof root.saveProjectsData !== 'function') throw new Error('Сохранение проектов недоступно.');
+        root.saveProjectsData(data);
+        verifyCardWrite(state, 'avitolog_projects', project, changes);
+      }
       ensureScope(state.scope);
       if (project && typeof root.rerenderProjectsPreserveScroll === 'function' && root.projectsMode) root.rerenderProjectsPreserveScroll();
       if (project && typeof root.syncProjectToActiveSheet === 'function') root.syncProjectToActiveSheet(project.id, 'project_card_save');
@@ -512,7 +537,11 @@
       notice.textContent = state.dirty ? 'Выбранные поля сохранены. Другие изменения в форме остаются черновиком.' : 'Сохранено в текущем режиме. Серверная синхронизация выполняется как обычно.';
       refreshSidebar();
       return { ok: true };
-    } catch (error) { notice.textContent = error.message || 'Не удалось сохранить изменения.'; return { ok: false, error: notice.textContent }; }
+    } catch (error) {
+      var draft = formValues(state);
+      state.dirty = state.dirty || FIELDS.some(function (field) { return text(draft[field[0]]).trim() !== text(state.before && state.before[field[0]]); });
+      notice.textContent = error.message || 'Не удалось сохранить изменения.'; return { ok: false, error: notice.textContent };
+    }
   }
   function dashboardHtml(project, client, values, data, folder) {
     var title = values.title || values.company || 'Клиент';
