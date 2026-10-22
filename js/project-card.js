@@ -230,7 +230,7 @@
       '.project-card-row-button{padding:1px 4px;font-size:11px;line-height:16px;flex:none}.project-card-sidebar{display:block;width:100%;margin-top:9px;padding:12px;border:1px solid var(--border,#31445b);background:var(--surface2,#132132);color:var(--accent,#59d8ff);border-radius:8px;font-weight:700;cursor:pointer}.project-card-payments .project-card-sidebar{font-size:10px;padding:7px;margin-top:7px}.project-card-account-field select{width:100%;padding:8px;background:var(--surface2,#132132);border:1px solid var(--border,#31445b);border-radius:7px;color:var(--text,#eaf2ff);font-size:12px}',
       '@media(max-width:1100px){.project-card-dialog{width:96vw;max-height:none}.project-card-body{overflow:auto;display:grid;grid-template-columns:1fr 1fr;grid-template-rows:auto;grid-template-areas:"details metrics" "payments activity" "context context";align-content:start}.project-card-section{overflow:visible}.project-card-context{min-height:260px}.project-card-head h2{font-size:16px}}@media(max-width:720px){.project-card-overlay{padding:4px}.project-card-dialog{width:100%;height:calc(100dvh - 8px);border-radius:11px}.project-card-head,.project-card-foot{padding:10px}.project-card-body{padding:8px;gap:8px;grid-template-columns:1fr;grid-template-areas:"details" "metrics" "payments" "activity" "context"}.project-card-section{padding:11px}.project-card-head h2{font-size:14px}.project-card-kicker{font-size:9px}.project-card-avatar{width:34px;height:34px;border-radius:10px;font-size:14px}.project-card-foot{align-items:flex-start}.project-card-foot [data-action="save"]{font-size:11px}.project-card-avito .project-card-metrics{grid-template-columns:repeat(3,minmax(0,1fr))}}@media(max-width:360px){.project-card-avito .project-card-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}}'
     ].join('');
-    element.textContent += '.project-card-context{display:grid;grid-template-columns:minmax(0,1fr) minmax(240px,.82fr);gap:13px;overflow:hidden}.project-card-intake-pane,.project-card-notes-pane{min-width:0;min-height:0;overflow:auto;scrollbar-width:thin}.project-card-intake-pane .project-context{grid-template-columns:1fr}.project-card-notes-pane{border-left:1px solid var(--border,#31445b);padding-left:13px}.project-card-notes-pane .project-card-field{height:calc(100% - 25px)}.project-card-notes-pane textarea{flex:1;min-height:140px;resize:vertical}@media(max-width:1100px){.project-card-context{overflow:visible}.project-card-notes-pane{min-height:220px}}@media(max-width:720px){.project-card-context{grid-template-columns:1fr}.project-card-notes-pane{border-left:0;border-top:1px solid var(--border,#31445b);padding-left:0;padding-top:12px}}';
+    element.textContent += '.project-card-context{display:block}.project-card-notes-pane{height:100%;min-width:0;min-height:0}.project-card-notes-pane .project-card-field{height:calc(100% - 25px)}.project-card-notes-pane textarea{flex:1;min-height:120px;resize:vertical}.project-card-payment-editor{margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--border,#31445b)}.project-card-payment-editor .project-card-fields{grid-template-columns:1fr 1fr}.project-card-payment-editor .project-card-field:last-child{grid-column:1/-1}';
     element.textContent += '@media(max-width:1100px){.project-card-body{grid-template-rows:none;grid-auto-rows:max-content}}';
     element.textContent += '@media(min-width:1101px) and (max-height:820px){.project-card-head{padding:10px 15px}.project-card-foot{padding:8px 15px}.project-card-body{padding:10px;gap:10px}.project-card-section{padding:10px}.project-card-section h3,.project-card-section-title{margin-bottom:8px}.project-card-fields{gap:6px 8px}.project-card-field{gap:3px}.project-card-field input,.project-card-field textarea,.project-card-field select{padding:5px 7px;font-size:11px}.project-card-metric{padding:7px 8px}.project-card-metric strong{font-size:18px;margin-top:4px}.project-card-meta{margin-bottom:8px}.project-card-disclosure{margin-top:8px;padding-top:7px}.project-card-trend{margin:8px 0 5px}.project-card-bars{height:65px;margin-top:5px}.project-card-context .project-context{font-size:11px;gap:7px}.project-card-context .project-context textarea{min-height:64px;padding:6px}.project-card-context .project-context-note{font-size:10px}.project-card-context .project-context-actions{margin:4px 0}.project-card-context .project-context button{padding:4px 7px;font-size:10px}}';
     element.textContent += '.project-card-account-controls{display:flex;gap:6px;align-items:center}.project-card-account-controls select{flex:1;min-width:0}.project-card-account-refresh{flex:none;padding:8px;border:1px solid var(--border,#31445b);border-radius:7px;background:var(--surface2,#132132);color:var(--text,#eaf2ff);font:inherit;font-size:11px;cursor:pointer}.project-card-account-refresh:disabled{opacity:.6;cursor:wait}.project-card-account-status{display:block;font-size:10px;line-height:1.4;color:var(--muted,#9ab0c9)}.project-card-account-status:empty{display:none}';
@@ -306,29 +306,91 @@
       return recency;
     } catch (_) { return null; }
   }
+  function manualPaymentMoney(value) {
+    return typeof value === 'number' && Number.isFinite(value) && value >= 0 && value <= 1e12 && Math.round(value * 100) / 100 === value;
+  }
+  function manualPaymentCycles(value) { return Number.isSafeInteger(value) && value >= 0 && value <= 100000; }
+  function manualPaymentValues(project, asOf) {
+    var source = project && project.manualPaymentsV1, result = {};
+    if (!source || typeof source !== 'object' || Array.isArray(source) || source.version !== 1) return result;
+    if (manualPaymentMoney(source.totalPaid)) result.totalPaid = source.totalPaid;
+    if (manualPaymentCycles(source.promotionCycles)) result.promotionCycles = source.promotionCycles;
+    if (validDay(source.lastPaymentDate) && source.lastPaymentDate <= asOf) result.lastPaymentDate = source.lastPaymentDate;
+    return result;
+  }
+  function paymentEditorValues(project) {
+    var asOf = moscowDay(), manual = manualPaymentValues(project, asOf);
+    var report = reportedFinancialSummary(project), recency = reportedPaymentRecency(project);
+    var journal = root.ProjectPaymentJournal, summary = null, entries = [];
+    try {
+      if (journal && typeof journal.getSummary === 'function') summary = journal.getSummary(project, asOf);
+      entries = summary && Array.isArray(summary.entries) ? summary.entries : journal && typeof journal.getEntries === 'function' ? journal.getEntries(project) || [] : [];
+    } catch (_) { summary = null; entries = []; }
+    var valid = entries.filter(function (entry) { return entry && entry.currency === 'RUB' && Number.isFinite(entry.amount); });
+    var hasLedger = summary && summary.count > 0 || valid.length > 0;
+    var ledgerTotal = summary && Number.isFinite(summary.total) ? summary.total : valid.reduce(function (sum, entry) { return sum + entry.amount; }, 0);
+    var total = Object.prototype.hasOwnProperty.call(manual, 'totalPaid') ? manual.totalPaid : report ? report.totalPaid : hasLedger && manualPaymentMoney(ledgerTotal) ? ledgerTotal : '';
+    var cycles = Object.prototype.hasOwnProperty.call(manual, 'promotionCycles') ? manual.promotionCycles : report ? report.promotionCycles : summary && manualPaymentCycles(summary.promotionCycles) ? summary.promotionCycles : '';
+    var date = manual.lastPaymentDate || recency && recency.lastPaymentDate || summary && summary.lastPaymentDate || '';
+    return { totalPaid: text(total), promotionCycles: text(cycles), lastPaymentDate: validDay(date) && date <= asOf ? date : '' };
+  }
+  function parseManualPaymentField(key, value, asOf) {
+    var raw = text(value).trim();
+    if (!raw) return '';
+    if (key === 'lastPaymentDate') {
+      if (!validDay(raw) || raw > asOf) throw new Error('Укажите корректную дату последней оплаты, не позднее сегодняшней.');
+      return raw;
+    }
+    if (!/^(?:\d+|\d{1,3}(?:[ \u00a0\u202f]\d{3})+)(?:[.,]\d{1,2})?$/.test(raw)) throw new Error(key === 'totalPaid' ? 'Укажите сумму оплаты числом, не более двух знаков после запятой.' : 'Укажите целое число циклов.');
+    var number = Number(raw.replace(/[ \u00a0\u202f]/g, '').replace(',', '.'));
+    if (key === 'totalPaid' ? !manualPaymentMoney(number) : !manualPaymentCycles(number)) throw new Error(key === 'totalPaid' ? 'Сумма должна быть от 0 до 1 000 000 000 000 ₽.' : 'Количество циклов должно быть целым числом от 0 до 100 000.');
+    return number;
+  }
+  function parseManualPayments(before, form, previousOverride, asOf) {
+    var day = asOf === undefined ? moscowDay() : asOf;
+    if (!validDay(day)) throw new Error('Не удалось определить текущую дату.');
+    var result = manualPaymentValues({ manualPaymentsV1: previousOverride }, day), changed = false;
+    ['totalPaid', 'promotionCycles', 'lastPaymentDate'].forEach(function (key) {
+      var next = parseManualPaymentField(key, form && form[key], day);
+      var prior = parseManualPaymentField(key, before && before[key], day);
+      if (next === prior) return;
+      changed = true;
+      if (next === '') delete result[key]; else result[key] = next;
+    });
+    if (!changed) return null;
+    return Object.assign({ version: 1 }, result, { updatedAt: new Date().toISOString() });
+  }
   function paymentSummaryHtml(project) {
     var journal = root.ProjectPaymentJournal;
-    if (!journal || typeof journal.getEntries !== 'function') return '<p class="project-card-note">История оплат пока недоступна.</p>';
-    var summary = typeof journal.getSummary === 'function' ? journal.getSummary(project, moscowDay()) : null;
-    var entries = summary && Array.isArray(summary.entries) ? summary.entries : journal.getEntries(project) || [];
+    var available = journal && typeof journal.getEntries === 'function';
+    var summary = available && typeof journal.getSummary === 'function' ? journal.getSummary(project, moscowDay()) : null;
+    var entries = summary && Array.isArray(summary.entries) ? summary.entries : available ? journal.getEntries(project) || [] : [];
     var valid = entries.filter(function (entry) { return entry && Number.isFinite(entry.amount) && entry.currency === 'RUB'; });
     var ledgerTotal = summary ? summary.total : valid.reduce(function (sum, entry) { return sum + entry.amount; }, 0);
-    var report = reportedFinancialSummary(project), recency = reportedPaymentRecency(project), total = report ? report.totalPaid : ledgerTotal;
-    var lastDate = recency ? recency.lastPaymentDate : summary && summary.lastPaymentDate;
-    var daysSince = recency ? Math.round((Date.parse(moscowDay() + 'T00:00:00Z') - Date.parse(recency.lastPaymentDate + 'T00:00:00Z')) / 86400000) : summary && summary.daysSinceLastPayment;
+    var manual = manualPaymentValues(project, moscowDay()), hasManual = Object.keys(manual).length > 0;
+    var report = reportedFinancialSummary(project), recency = reportedPaymentRecency(project), total = Object.prototype.hasOwnProperty.call(manual, 'totalPaid') ? manual.totalPaid : report ? report.totalPaid : ledgerTotal;
+    var lastDate = manual.lastPaymentDate || (recency ? recency.lastPaymentDate : summary && summary.lastPaymentDate);
+    var manualDate = !!manual.lastPaymentDate || !!recency;
+    var daysSince = manualDate ? Math.round((Date.parse(moscowDay() + 'T00:00:00Z') - Date.parse(lastDate + 'T00:00:00Z')) / 86400000) : summary && summary.daysSinceLastPayment;
     var cycles = summary && Number.isSafeInteger(summary.promotionCycles) && summary.promotionCycles >= 0 ? metric(summary.promotionCycles) : 'Не определено';
     if (summary && summary.unknownCyclePayments > 0 && Number.isSafeInteger(summary.knownPromotionCycles) && summary.knownPromotionCycles > 0) cycles = 'Не менее ' + metric(summary.knownPromotionCycles);
     if (report) cycles = metric(report.promotionCycles);
+    if (Object.prototype.hasOwnProperty.call(manual, 'promotionCycles')) cycles = metric(manual.promotionCycles);
     var count = summary && Number.isSafeInteger(summary.count) && summary.count >= 0 ? summary.count : valid.length;
-    var cards = '<div class="project-card-metrics">' + metricBox(recency ? 'Последняя оплата · вручную' : report ? 'Последняя известная оплата' : 'Последняя оплата', paymentDateLabel(lastDate)) + metricBox(recency ? 'Дней после указанной оплаты' : report ? 'Дней после известной оплаты' : 'Дней после оплаты', metric(daysSince)) + metricBox('Всего оплачено', formatMoney(total)) + metricBox('Циклов продвижения', cycles) + '</div>';
-    if (recency) cards += '<p class="project-card-note">Дата последней оплаты подтверждена вручную · ' + escape(new Date(recency.recordedAt).toLocaleDateString('ru-RU', { timeZone: 'Europe/Moscow' })) + '. Это уточнение даты, не новый платёж.' + (summary && summary.lastPaymentDate && summary.lastPaymentDate !== recency.lastPaymentDate ? ' Последняя известная дата в журнале: ' + escape(paymentDateLabel(summary.lastPaymentDate)) + '.' : '') + '</p>';
-    if (report) cards += '<p class="project-card-note">Общий итог · подтверждено вручную · ' + escape(new Date(report.recordedAt).toLocaleDateString('ru-RU', { timeZone: 'Europe/Moscow' })) + '. Отдельно в журнале датированных оплат: ' + escape(formatMoney(ledgerTotal)) + '. Итог не прибавляется к журналу; даты и график ниже относятся только к его записям.</p>';
+    var cards = '<div class="project-card-metrics">' + metricBox(manualDate ? 'Последняя оплата · вручную' : report ? 'Последняя известная оплата' : 'Последняя оплата', paymentDateLabel(lastDate)) + metricBox(manualDate ? 'Дней после указанной оплаты' : report ? 'Дней после известной оплаты' : 'Дней после оплаты', metric(daysSince)) + metricBox('Всего оплачено', formatMoney(total)) + metricBox('Циклов продвижения', cycles) + '</div>';
+    if (hasManual) cards += '<p class="project-card-note">Ручные значения имеют приоритет. Они не создают платежи и не меняют кассу или журнал.</p>';
+    if (recency && !manual.lastPaymentDate) cards += '<p class="project-card-note">Дата последней оплаты подтверждена вручную · ' + escape(new Date(recency.recordedAt).toLocaleDateString('ru-RU', { timeZone: 'Europe/Moscow' })) + '. Это уточнение даты, не новый платёж.' + (summary && summary.lastPaymentDate && summary.lastPaymentDate !== recency.lastPaymentDate ? ' Последняя известная дата в журнале: ' + escape(paymentDateLabel(summary.lastPaymentDate)) + '.' : '') + '</p>';
+    if (report && (!Object.prototype.hasOwnProperty.call(manual, 'totalPaid') || !Object.prototype.hasOwnProperty.call(manual, 'promotionCycles'))) cards += '<p class="project-card-note">Общий итог · подтверждено вручную · ' + escape(new Date(report.recordedAt).toLocaleDateString('ru-RU', { timeZone: 'Europe/Moscow' })) + '. Отдельно в журнале датированных оплат: ' + escape(formatMoney(ledgerTotal)) + '. Итог не прибавляется к журналу; даты и график ниже относятся только к его записям.</p>';
+    if (!available) cards += '<p class="project-card-note">История оплат пока недоступна.</p>';
     var cycleNote = summary && summary.unknownCyclePayments > 0 ? ' У части платежей цикл не указан: число переводов не равно числу продвижений.' : '';
     return cards + paymentTrendHtml(valid) + '<p class="project-card-note">Подтверждённых платежей: ' + count + '. Только записи, явно связанные с этим проектом.' + cycleNote + '</p>' + (valid.length ? '<details class="project-card-disclosure"><summary>Все платежи · ' + valid.length + '</summary><div class="project-card-table-wrap"><table class="project-card-table"><thead><tr><th>Дата</th><th>Сумма</th><th>Источник</th></tr></thead><tbody>' + valid.slice().reverse().map(function (entry) { return '<tr><td>' + escape(entry.date || 'Дата не указана') + '</td><td>' + escape(formatMoney(entry.amount)) + '</td><td>' + escape((entry.sources || [entry.source]).map(function (v) { return ({ cash: 'Касса', crm: 'CRM', journal: 'Журнал' })[v] || 'Журнал'; }).join(' + ')) + '</td></tr>'; }).join('') + '</tbody></table></div></details>' : '<p class="project-card-note">Связанных записей об оплате пока нет.</p>');
   }
   function paymentsHtml(project) {
     var journal = root.ProjectPaymentJournal;
-    return '<div data-payment-summary>' + paymentSummaryHtml(project) + '</div>' + (journal && typeof journal.getEntries === 'function' && safeFolder(project) ? '<button type="button" data-payment-sync class="project-card-sidebar">Сохранить журнал в папку проекта</button>' : '') + '<div class="project-card-note" data-payment-file></div>';
+    var values = paymentEditorValues(project);
+    var fields = [['totalPaid', 'Всего оплачено, ₽', 'text'], ['promotionCycles', 'Циклов продвижения', 'text'], ['lastPaymentDate', 'Последняя оплата', 'date']];
+    var editor = '<div class="project-card-payment-editor"><div class="project-card-fields">' + fields.map(function (field) { return '<label class="project-card-field"><span>' + field[1] + '</span><input name="payment_' + field[0] + '" data-manual-payment="' + field[0] + '" type="' + field[2] + '"' + (field[2] === 'text' ? ' inputmode="decimal"' : ' max="' + moscowDay() + '"') + ' value="' + escape(values[field[0]]) + '"></label>'; }).join('') + '</div><p class="project-card-note">Ручные итоги сохраняются кнопкой «Сохранить и выйти». Новые переводы в кассе не создаются.</p></div>';
+    return editor + '<div data-payment-summary>' + paymentSummaryHtml(project) + '</div>' + (journal && typeof journal.getEntries === 'function' && safeFolder(project) ? '<button type="button" data-payment-sync class="project-card-sidebar">Сохранить журнал в папку проекта</button>' : '') + '<div class="project-card-note" data-payment-file></div>';
   }
   function refreshPaymentSummary() {
     var state = current;
@@ -525,6 +587,24 @@
     FIELDS.forEach(function (field) { var input = state.overlay.querySelector('[name="' + field[0] + '"]'); values[field[0]] = input ? input.value : state.before[field[0]]; });
     return values;
   }
+  function manualPaymentForm(state) {
+    var values = {};
+    ['totalPaid', 'promotionCycles', 'lastPaymentDate'].forEach(function (key) {
+      var input = state.overlay.querySelector('[name="payment_' + key + '"]');
+      values[key] = input ? input.value : state.manualBefore && state.manualBefore[key] || '';
+    });
+    return values;
+  }
+  function syncPaymentEditor(state, project) {
+    var values = paymentEditorValues(project);
+    state.manualBefore = state.manualBefore || {};
+    Object.keys(values).forEach(function (key) {
+      if (state.manualTouched && state.manualTouched[key]) return;
+      var input = state.overlay.querySelector('[name="payment_' + key + '"]');
+      if (input) input.value = values[key];
+      state.manualBefore[key] = values[key];
+    });
+  }
   function applyContextFields(state, patch) {
     ensureScope(state.scope);
     if (current !== state || readOnly()) throw new Error('Карта больше недоступна для редактирования.');
@@ -540,7 +620,7 @@
     return changes;
   }
   function loadContextModule() {
-    if (root.ProjectContext && typeof root.ProjectContext.mount === 'function') return Promise.resolve();
+    if (root.ProjectContextStore) return Promise.resolve();
     if (contextRequest) return contextRequest;
     function script(file) {
       return new Promise(function (resolve, reject) {
@@ -551,45 +631,19 @@
         document.head.appendChild(element);
       });
     }
-    contextRequest = Promise.resolve().then(function () { return root.ProjectContextStore ? null : script('project-context-store.js?v=20261022-context3'); }).then(function () { return root.ProjectContext && typeof root.ProjectContext.mount === 'function' ? null : script('project-context.js?v=20261022-auto1'); }).then(function () {
-      if (!root.ProjectContext || typeof root.ProjectContext.mount !== 'function') throw new Error('Модуль контекста недоступен.');
+    contextRequest = Promise.resolve().then(function () { return root.ProjectContextStore ? null : script('project-context-store.js?v=20261022-context3'); }).then(function () {
+      if (!root.ProjectContextStore) throw new Error('История ручных итогов недоступна.');
     }).catch(function (error) { contextRequest = null; throw error; });
     return contextRequest;
   }
   async function mountContext(state, title) {
-    var container = state.overlay.querySelector('[data-project-context]');
-    if (!container) return;
     try {
       await loadContextModule();
       if (current !== state || state.scope !== scope() || !ready()) return;
-      container.innerHTML = '<h3>Записи в ИИ</h3>';
-      state.contextPanel = root.ProjectContext.mount(container, {
-        projectId: state.projectId, clientId: state.clientId, folderId: state.folderId,
-        scope: state.scope, readOnly: readOnly(), projectTitle: title,
-        getValues: function () { return formValues(state); },
-        onApply: function (patch) { return applyContextFields(state, patch); },
-        onConfirm: async function (patch, options) {
-          applyContextFields(state, patch);
-          var fields = CONTEXT_FIELDS.filter(function (key) { return patch && Object.prototype.hasOwnProperty.call(patch, key); });
-          var saveAll = options && options.saveAll === true;
-          if (!saveAll && !fields.length) return { ok: true };
-          var result = await save(state, saveAll ? undefined : fields);
-          if (!result.ok) throw new Error(result.error);
-          ensureScope(state.scope);
-          if (current !== state) throw new Error('Карта больше недоступна для редактирования.');
-          refreshPaymentSummary();
-          return result;
-        },
-        onStatus: function (message, bad) {
-          if (current !== state || state.scope !== scope()) return;
-          var notice = state.overlay.querySelector('[data-notice]');
-          notice.textContent = message;
-          notice.setAttribute('data-error', bad ? 'true' : 'false');
-        },
-        isCurrent: function () { return current === state && state.scope === scope() && ready(); }
-      });
+      var project = hasId(state.projectId) ? findById(getProjects().projects, 'id', state.projectId) : findById(getClients(), 'client_id', state.clientId) || findById(getClients(), 'folderId', state.folderId);
+      if (project) syncPaymentEditor(state, project);
       refreshPaymentSummary();
-    } catch (_) { if (current === state && state.scope === scope()) container.innerHTML = '<p class="project-card-note" role="status">Не удалось загрузить AI-контекст. Поля проекта сохранены без изменений. Откройте карту повторно, чтобы повторить загрузку.</p>'; }
+    } catch (_) { /* Existing notes and manual fields remain usable without the legacy summary reader. */ }
   }
   function close(force) {
     if (!current) return true;
@@ -608,13 +662,11 @@
     state.saving = true; button.disabled = true; button.textContent = 'Сохраняем…'; button.setAttribute('aria-busy', 'true');
     try {
       ensureScope(state.scope);
-      var panel = state.contextPanel, contextDirty = panel && typeof panel.isDirty === 'function' && panel.isDirty();
-      if (contextDirty && typeof panel.saveForExit !== 'function') throw new Error('Модуль записей ещё не готов к сохранению. Дождитесь загрузки и повторите.');
-      var result = contextDirty ? await panel.saveForExit() : await save(state);
+      var result = await save(state);
       if (!result || result.ok !== true) throw new Error(result && result.error || 'Не удалось сохранить все изменения. Проверьте записи и повторите.');
       ensureScope(state.scope);
       if (current !== state) throw new Error('Карта больше недоступна для редактирования.');
-      if (state.dirty || panel && typeof panel.isDirty === 'function' && panel.isDirty()) throw new Error('В карте остались несохранённые изменения. Проверьте записи и повторите.');
+      if (state.dirty) throw new Error('В карте остались несохранённые изменения. Проверьте записи и повторите.');
       close(true);
       return { ok: true };
     } catch (error) {
@@ -634,6 +686,7 @@
       if (!Array.isArray(rows)) throw new Error('storage_unconfirmed');
       var saved = base === 'avitolog_projects' ? findById(rows, 'id', target.id) : hasId(target.client_id) ? findById(rows, 'client_id', target.client_id) : findById(rows, 'folderId', target.folderId);
       if (!saved || Object.keys(changes).some(function (field) {
+        if (field === 'manualPaymentsV1') return JSON.stringify(saved.manualPaymentsV1) !== JSON.stringify(changes[field]);
         var actual = base !== 'avitolog_projects' || field === 'title' ? saved[field] : field === 'avito_connection_id' ? saved.avitoConnectionId : saved.crmData && saved.crmData[field];
         return text(actual) !== text(changes[field]) || base === 'avitolog_projects' && field === 'avito_connection_id' && text(saved.crmData && saved.crmData[field]) !== text(changes[field]);
       })) throw new Error('storage_unconfirmed');
@@ -653,6 +706,12 @@
       var project = findById(data.projects, 'id', state.projectId);
       var client = hasId(state.clientId) ? findById(clients, 'client_id', state.clientId) : findById(clients, 'folderId', state.folderId);
       if (hasId(state.projectId) && !project || !hasId(state.projectId) && !client) throw new Error('Проект или клиент больше не найден. Откройте карту заново.');
+      var paymentTarget = project || client, paymentBaseline = Object.assign({}, state.manualBefore || {});
+      Object.keys(state.manualTouched || {}).forEach(function (key) {
+        if (!Object.prototype.hasOwnProperty.call(paymentTarget.manualPaymentsV1 || {}, key)) paymentBaseline[key] = '';
+      });
+      var manual = !selected && state.manualBefore ? parseManualPayments(paymentBaseline, manualPaymentForm(state), paymentTarget.manualPaymentsV1, moscowDay()) : null;
+      if (manual && JSON.stringify(paymentTarget.manualPaymentsV1 || null) !== JSON.stringify(state.manualOverrideBefore || null) && JSON.stringify(paymentTarget.manualPaymentsV1 || null) !== JSON.stringify(state.unconfirmedManual || null)) throw new Error('Итоги оплат изменились в другом окне. Откройте карту заново; ваш черновик пока оставлен здесь.');
       assertNoConflict(Object.assign({}, state.before, state.draftBaselines || {}), model(project, client), changes);
       if (changes.avito_connection_id && !accounts.some(function (account) { return account.id === changes.avito_connection_id; })) throw new Error('Этот аккаунт недоступен в текущем режиме. Выберите доступный аккаунт.');
       var crmPatch = Object.assign({}, changes); delete crmPatch.title;
@@ -665,24 +724,24 @@
         Object.assign(client, crmPatch);
         if (Object.prototype.hasOwnProperty.call(changes, 'title') && !Object.prototype.hasOwnProperty.call(changes, 'company')) client.company = changes.title;
       }
+      if (manual) paymentTarget.manualPaymentsV1 = manual;
       ensureScope(state.scope);
-      if (client && Object.keys(changes).length) {
+      if (client && (Object.keys(changes).length || !project && manual)) {
         if (typeof root.saveCrmClients !== 'function') throw new Error('Сохранение CRM недоступно.');
         root.saveCrmClients(clients);
         var clientChanges = Object.assign({}, crmPatch);
+        if (!project && manual) clientChanges.manualPaymentsV1 = manual;
         if (!project && Object.prototype.hasOwnProperty.call(changes, 'title') && !Object.prototype.hasOwnProperty.call(changes, 'company')) clientChanges.company = changes.title;
         verifyCardWrite(state, 'avitolog_clients', client, clientChanges);
       }
       ensureScope(state.scope);
-      if (project && Object.keys(changes).length) {
+      if (project && (Object.keys(changes).length || manual)) {
         if (typeof root.saveProjectsData !== 'function') throw new Error('Сохранение проектов недоступно.');
+        if (manual) state.unconfirmedManual = clone(manual);
         root.saveProjectsData(data);
-        verifyCardWrite(state, 'avitolog_projects', project, changes);
+        verifyCardWrite(state, 'avitolog_projects', project, Object.assign({}, changes, manual ? { manualPaymentsV1: manual } : {}));
       }
       ensureScope(state.scope);
-      if (project && typeof root.rerenderProjectsPreserveScroll === 'function' && root.projectsMode) root.rerenderProjectsPreserveScroll();
-      if (project && typeof root.syncProjectToActiveSheet === 'function') root.syncProjectToActiveSheet(project.id, 'project_card_save');
-      if (typeof root.fillClientForm === 'function' && sameId((projectForCurrent() || {}).id, state.projectId)) root.fillClientForm(Object.assign({}, project && project.crmData || client || {}, { avito_connection_id: project && project.avitoConnectionId || (client || {}).avito_connection_id || '' }));
       var previousBefore = state.before, previousDraftBaselines = state.draftBaselines || {};
       state.before = model(project, client); state.draftBaselines = {};
       FIELDS.forEach(function (field) {
@@ -692,9 +751,17 @@
         if (input && retained && text(input.value).trim() !== text(state.before[key])) state.draftBaselines[key] = Object.prototype.hasOwnProperty.call(previousDraftBaselines, key) ? previousDraftBaselines[key] : previousBefore[key];
       });
       var remaining = formValues(state);
+      if (!selected && state.manualBefore) {
+        state.manualTouched = {}; state.manualOverrideBefore = clone(paymentTarget.manualPaymentsV1 || null); state.unconfirmedManual = null;
+        syncPaymentEditor(state, paymentTarget);
+      }
       state.dirty = FIELDS.some(function (field) { return text(remaining[field[0]]).trim() !== text(state.before[field[0]]); });
       notice.textContent = state.dirty ? 'Выбранные поля сохранены. Другие изменения в форме остаются черновиком.' : 'Сохранено в текущем режиме. Серверная синхронизация выполняется как обычно.';
-      refreshSidebar();
+      // Optional view refreshes cannot invalidate writes that storage has already confirmed.
+      try { if (project && typeof root.rerenderProjectsPreserveScroll === 'function' && root.projectsMode) root.rerenderProjectsPreserveScroll(); } catch (_) {}
+      try { if (project && typeof root.syncProjectToActiveSheet === 'function') root.syncProjectToActiveSheet(project.id, 'project_card_save'); } catch (_) {}
+      try { if (typeof root.fillClientForm === 'function' && sameId((projectForCurrent() || {}).id, state.projectId)) root.fillClientForm(Object.assign({}, project && project.crmData || client || {}, { avito_connection_id: project && project.avitoConnectionId || (client || {}).avito_connection_id || '' })); } catch (_) {}
+      try { refreshSidebar(); } catch (_) {}
       return { ok: true };
     } catch (error) {
       var draft = formValues(state);
@@ -717,7 +784,7 @@
       '<section class="project-card-section project-card-avito"><div class="project-card-section-title"><h3>Аккаунт Avito</h3><button type="button" class="project-card-tool" data-card-account-refresh>Обновить</button></div><div data-account-metrics></div></section>',
       '<section class="project-card-section project-card-payments"><h3>Оплаты и динамика</h3>' + paymentsHtml(project || client) + '</section>',
       '<section class="project-card-section project-card-activity">' + activityHtml(project, data) + '</section>',
-      '<section class="project-card-section project-card-context"><div class="project-card-intake-pane"><div data-project-context><h3>Записи в ИИ</h3><p class="project-card-note" role="status">Загружаем записи и помощника по заполнению…</p></div></div><div class="project-card-notes-pane"><h3>Заметки к проекту</h3>' + notes + '</div></section></div>',
+      '<section class="project-card-section project-card-context"><div class="project-card-notes-pane"><h3>Заметки к проекту</h3>' + notes + '</div></section></div>',
       '<footer class="project-card-foot"><span class="project-card-note" data-notice role="status"></span><button type="button" data-action="save">Сохранить и выйти</button></footer></section>'
     ].join('');
   }
@@ -732,14 +799,15 @@
     var values = model(project, client), folder = safeFolder(project) || safeFolder(client);
     var overlay = document.createElement('div'); overlay.className = 'project-card-overlay';
     overlay.innerHTML = dashboardHtml(project, client, values, data, folder);
-    var state = { overlay: overlay, scope: scope(), projectId: project ? project.id : '', clientId: client ? client.client_id : '', folderId: project && project.folderId || client && client.folderId || '', before: values, dirty: false, metricsRequest: 0, previousFocus: document.activeElement };
+    var state = { overlay: overlay, scope: scope(), projectId: project ? project.id : '', clientId: client ? client.client_id : '', folderId: project && project.folderId || client && client.folderId || '', before: values, manualBefore: paymentEditorValues(project || client), manualOverrideBefore: clone((project || client).manualPaymentsV1 || null), manualTouched: {}, dirty: false, metricsRequest: 0, previousFocus: document.activeElement };
     current = state;
     document.body.appendChild(overlay);
     overlay.querySelector('[data-action="close"]').onclick = function () { close(false); };
     overlay.querySelector('[data-action="save"]').onclick = function () { return saveAndExit(state); };
     function markDirty(event) {
       var target = event.target, name = target && (target.name || target.getAttribute && target.getAttribute('name'));
-      if (target && target.closest && target.closest('[data-project-context]')) return;
+      var paymentKey = target && target.getAttribute && target.getAttribute('data-manual-payment');
+      if (paymentKey) { state.manualTouched[paymentKey] = true; state.dirty = true; }
       if (FIELDS.some(function (field) { return field[0] === name; })) state.dirty = true;
     }
     overlay.addEventListener('input', markDirty);
@@ -864,6 +932,6 @@
   }
   var api = { open: open, close: close, refreshSidebar: refreshSidebar };
   root.ProjectCard = api;
-  if (typeof module !== 'undefined' && module.exports) module.exports = { normalize: normalize, safeAvitoUrl: safeAvitoUrl, linkedClient: linkedClient, model: model, accountScore: accountScore, rankedAccounts: rankedAccounts, changedFields: changedFields, assertNoConflict: assertNoConflict, paymentsHtml: paymentsHtml, paymentTrend: paymentTrend, dashboardHtml: dashboardHtml, save: save, scope: scope, ready: ready, readOnly: readOnly, sameId: sameId, findById: findById, projectForCurrent: projectForCurrent, activityHtml: activityHtml, loadAccounts: loadAccounts, refreshSidebarAccounts: refreshSidebarAccounts, accountAnalytics: accountAnalytics, accountAnalyticsHtml: accountAnalyticsHtml, accountColumns: accountColumns, loadMetrics: loadMetrics };
+  if (typeof module !== 'undefined' && module.exports) module.exports = { normalize: normalize, safeAvitoUrl: safeAvitoUrl, linkedClient: linkedClient, model: model, accountScore: accountScore, rankedAccounts: rankedAccounts, changedFields: changedFields, assertNoConflict: assertNoConflict, paymentsHtml: paymentsHtml, paymentEditorValues: paymentEditorValues, parseManualPayments: parseManualPayments, paymentTrend: paymentTrend, dashboardHtml: dashboardHtml, save: save, scope: scope, ready: ready, readOnly: readOnly, sameId: sameId, findById: findById, projectForCurrent: projectForCurrent, activityHtml: activityHtml, loadAccounts: loadAccounts, refreshSidebarAccounts: refreshSidebarAccounts, accountAnalytics: accountAnalytics, accountAnalyticsHtml: accountAnalyticsHtml, accountColumns: accountColumns, loadMetrics: loadMetrics };
   if (document) { if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init(); }
 })(typeof window !== 'undefined' ? window : globalThis);
