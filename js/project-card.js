@@ -275,17 +275,28 @@
       return '<div class="project-card-bar-column" title="' + escape(month.month + ': ' + formatMoney(month.amount) + ' · записей: ' + month.count) + '"><span class="project-card-bar' + (month.amount < 0 ? ' project-card-bar-negative' : '') + '" style="height:' + Math.max(2, Math.round(Math.abs(month.amount) / maximum * 54)) + 'px"></span><span>' + escape(label) + '</span></div>';
     }).join('') + '</div></figure>';
   }
+  function reportedFinancialSummary(project) {
+    var store = root.ProjectContextStore;
+    if (!project || !hasId(project.id) || !store || typeof store.getFinancialSummary !== 'function') return null;
+    try {
+      var summary = store.getFinancialSummary({ projectId: project.id, folderId: project.folderId || project.crmData && project.crmData.folderId || '', scope: scope() });
+      return summary && summary.kind === 'reported_total' && summary.confirmed === true && summary.currency === 'RUB' && Number.isFinite(summary.totalPaid) && summary.totalPaid >= 0 && Number.isSafeInteger(summary.promotionCycles) && summary.promotionCycles >= 0 && Number.isFinite(new Date(summary.recordedAt).getTime()) ? summary : null;
+    } catch (_) { return null; }
+  }
   function paymentSummaryHtml(project) {
     var journal = root.ProjectPaymentJournal;
     if (!journal || typeof journal.getEntries !== 'function') return '<p class="project-card-note">История оплат пока недоступна.</p>';
     var summary = typeof journal.getSummary === 'function' ? journal.getSummary(project, moscowDay()) : null;
     var entries = summary && Array.isArray(summary.entries) ? summary.entries : journal.getEntries(project) || [];
     var valid = entries.filter(function (entry) { return entry && Number.isFinite(entry.amount) && entry.currency === 'RUB'; });
-    var total = summary ? summary.total : valid.reduce(function (sum, entry) { return sum + entry.amount; }, 0);
+    var ledgerTotal = summary ? summary.total : valid.reduce(function (sum, entry) { return sum + entry.amount; }, 0);
+    var report = reportedFinancialSummary(project), total = report ? report.totalPaid : ledgerTotal;
     var cycles = summary && Number.isSafeInteger(summary.promotionCycles) && summary.promotionCycles >= 0 ? metric(summary.promotionCycles) : 'Не определено';
     if (summary && summary.unknownCyclePayments > 0 && Number.isSafeInteger(summary.knownPromotionCycles) && summary.knownPromotionCycles > 0) cycles = 'Не менее ' + metric(summary.knownPromotionCycles);
+    if (report) cycles = metric(report.promotionCycles);
     var count = summary && Number.isSafeInteger(summary.count) && summary.count >= 0 ? summary.count : valid.length;
-    var cards = '<div class="project-card-metrics">' + metricBox('Последняя оплата', paymentDateLabel(summary && summary.lastPaymentDate)) + metricBox('Дней после оплаты', metric(summary && summary.daysSinceLastPayment)) + metricBox('Всего оплачено', formatMoney(total)) + metricBox('Циклов продвижения', cycles) + '</div>';
+    var cards = '<div class="project-card-metrics">' + metricBox(report ? 'Последняя известная оплата' : 'Последняя оплата', paymentDateLabel(summary && summary.lastPaymentDate)) + metricBox(report ? 'Дней после известной оплаты' : 'Дней после оплаты', metric(summary && summary.daysSinceLastPayment)) + metricBox('Всего оплачено', formatMoney(total)) + metricBox('Циклов продвижения', cycles) + '</div>';
+    if (report) cards += '<p class="project-card-note">Общий итог · подтверждено вручную · ' + escape(new Date(report.recordedAt).toLocaleDateString('ru-RU', { timeZone: 'Europe/Moscow' })) + '. Отдельно в журнале датированных оплат: ' + escape(formatMoney(ledgerTotal)) + '. Итог не прибавляется к журналу; даты и график ниже относятся только к его записям.</p>';
     var cycleNote = summary && summary.unknownCyclePayments > 0 ? ' У части платежей цикл не указан: число переводов не равно числу продвижений.' : '';
     return cards + paymentTrendHtml(valid) + '<p class="project-card-note">Подтверждённых платежей: ' + count + '. Только записи, явно связанные с этим проектом.' + cycleNote + '</p>' + (valid.length ? '<details class="project-card-disclosure"><summary>Все платежи · ' + valid.length + '</summary><div class="project-card-table-wrap"><table class="project-card-table"><thead><tr><th>Дата</th><th>Сумма</th><th>Источник</th></tr></thead><tbody>' + valid.slice().reverse().map(function (entry) { return '<tr><td>' + escape(entry.date || 'Дата не указана') + '</td><td>' + escape(formatMoney(entry.amount)) + '</td><td>' + escape((entry.sources || [entry.source]).map(function (v) { return ({ cash: 'Касса', crm: 'CRM', journal: 'Журнал' })[v] || 'Журнал'; }).join(' + ')) + '</td></tr>'; }).join('') + '</tbody></table></div></details>' : '<p class="project-card-note">Связанных записей об оплате пока нет.</p>');
   }
@@ -352,9 +363,13 @@
   function applyContextFields(state, patch) {
     ensureScope(state.scope);
     if (current !== state || readOnly()) throw new Error('Карта больше недоступна для редактирования.');
-    var before = formValues(state), proposed = Object.assign({}, before);
+    var before = formValues(state), proposed = {}, baseline = {};
+    FIELDS.forEach(function (field) { baseline[field[0]] = ''; proposed[field[0]] = ''; });
     CONTEXT_FIELDS.forEach(function (key) { if (patch && Object.prototype.hasOwnProperty.call(patch, key)) proposed[key] = text(patch[key]); });
-    var changes = changedFields(before, proposed);
+    changedFields(baseline, proposed);
+    if (patch && Object.prototype.hasOwnProperty.call(patch, 'title') && !proposed.title.trim()) throw new Error('Укажите название проекта.');
+    var changes = {};
+    CONTEXT_FIELDS.forEach(function (key) { if (patch && Object.prototype.hasOwnProperty.call(patch, key) && before[key] !== proposed[key].trim()) changes[key] = proposed[key].trim(); });
     Object.keys(changes).forEach(function (key) { var input = state.overlay.querySelector('[name="' + key + '"]'); if (input) input.value = changes[key]; });
     if (Object.keys(changes).length) { state.dirty = true; state.overlay.querySelector('[data-notice]').textContent = 'Предложения внесены в черновик. Проверьте поля и сохраните изменения.'; }
     return changes;
@@ -371,7 +386,7 @@
         document.head.appendChild(element);
       });
     }
-    contextRequest = Promise.resolve().then(function () { return root.ProjectContextStore ? null : script('project-context-store.js?v=20261022-context1'); }).then(function () { return root.ProjectContext && typeof root.ProjectContext.mount === 'function' ? null : script('project-context.js?v=20261022-context1'); }).then(function () {
+    contextRequest = Promise.resolve().then(function () { return root.ProjectContextStore ? null : script('project-context-store.js?v=20261022-context2'); }).then(function () { return root.ProjectContext && typeof root.ProjectContext.mount === 'function' ? null : script('project-context.js?v=20261022-context2'); }).then(function () {
       if (!root.ProjectContext || typeof root.ProjectContext.mount !== 'function') throw new Error('Модуль контекста недоступен.');
     }).catch(function (error) { contextRequest = null; throw error; });
     return contextRequest;
@@ -388,8 +403,19 @@
         scope: state.scope, readOnly: readOnly(), projectTitle: title,
         getValues: function () { return formValues(state); },
         onApply: function (patch) { return applyContextFields(state, patch); },
+        onConfirm: async function (patch) {
+          applyContextFields(state, patch);
+          var fields = CONTEXT_FIELDS.filter(function (key) { return patch && Object.prototype.hasOwnProperty.call(patch, key); });
+          if (!fields.length) return { ok: true };
+          var result = await save(state, fields);
+          if (!result.ok) throw new Error(result.error);
+          ensureScope(state.scope);
+          if (current !== state) throw new Error('Карта больше недоступна для редактирования.');
+          return result;
+        },
         isCurrent: function () { return current === state && state.scope === scope() && ready(); }
       });
+      refreshPaymentSummary();
     } catch (_) { if (current === state && state.scope === scope()) container.innerHTML = '<p class="project-card-note" role="status">Не удалось загрузить AI-контекст. Поля проекта сохранены без изменений. Откройте карту повторно, чтобы повторить загрузку.</p>'; }
   }
   function close(force) {
@@ -402,19 +428,20 @@
     if (state.previousFocus && state.previousFocus.isConnected) state.previousFocus.focus();
     return true;
   }
-  async function save(state) {
+  async function save(state, onlyFields) {
     var notice = state.overlay.querySelector('[data-notice]');
     try {
       ensureScope(state.scope);
       if (readOnly()) throw new Error('Режим Саши открыт только для просмотра. Сохранение доступно самому Саше.');
-      var next = {};
-      FIELDS.forEach(function (field) { var input = state.overlay.querySelector('[name="' + field[0] + '"]'); next[field[0]] = input ? input.value : state.before[field[0]]; });
+      var form = formValues(state), next = Object.assign({}, state.before), selected = Array.isArray(onlyFields) ? onlyFields : null;
+      FIELDS.forEach(function (field) { if (!selected || selected.indexOf(field[0]) >= 0) next[field[0]] = form[field[0]]; });
       var changes = changedFields(state.before, next);
+      var drafts = FIELDS.filter(function (field) { return text(form[field[0]]).trim() !== text(state.before[field[0]]); }).map(function (field) { return field[0]; });
       var clients = getClients().map(clone), data = clone(getProjects());
       var project = findById(data.projects, 'id', state.projectId);
       var client = hasId(state.clientId) ? findById(clients, 'client_id', state.clientId) : findById(clients, 'folderId', state.folderId);
       if (hasId(state.projectId) && !project || !hasId(state.projectId) && !client) throw new Error('Проект или клиент больше не найден. Откройте карту заново.');
-      assertNoConflict(state.before, model(project, client), changes);
+      assertNoConflict(Object.assign({}, state.before, state.draftBaselines || {}), model(project, client), changes);
       if (changes.avito_connection_id && !accounts.some(function (account) { return account.id === changes.avito_connection_id; })) throw new Error('Этот аккаунт недоступен в текущем режиме. Выберите доступный аккаунт.');
       var crmPatch = Object.assign({}, changes); delete crmPatch.title;
       if (project) {
@@ -434,10 +461,20 @@
       if (project && typeof root.rerenderProjectsPreserveScroll === 'function' && root.projectsMode) root.rerenderProjectsPreserveScroll();
       if (project && typeof root.syncProjectToActiveSheet === 'function') root.syncProjectToActiveSheet(project.id, 'project_card_save');
       if (typeof root.fillClientForm === 'function' && sameId((projectForCurrent() || {}).id, state.projectId)) root.fillClientForm(Object.assign({}, project && project.crmData || client || {}, { avito_connection_id: project && project.avitoConnectionId || (client || {}).avito_connection_id || '' }));
-      state.before = model(project, client); state.dirty = false;
-      notice.textContent = 'Сохранено в текущем режиме. Серверная синхронизация выполняется как обычно.';
+      var previousBefore = state.before, previousDraftBaselines = state.draftBaselines || {};
+      state.before = model(project, client); state.draftBaselines = {};
+      FIELDS.forEach(function (field) {
+        var key = field[0], input = state.overlay.querySelector('[name="' + key + '"]');
+        var retained = selected && selected.indexOf(key) < 0 && drafts.indexOf(key) >= 0;
+        if (input && !retained) input.value = state.before[key];
+        if (input && retained && text(input.value).trim() !== text(state.before[key])) state.draftBaselines[key] = Object.prototype.hasOwnProperty.call(previousDraftBaselines, key) ? previousDraftBaselines[key] : previousBefore[key];
+      });
+      var remaining = formValues(state);
+      state.dirty = FIELDS.some(function (field) { return text(remaining[field[0]]).trim() !== text(state.before[field[0]]); });
+      notice.textContent = state.dirty ? 'Выбранные поля сохранены. Другие изменения в форме остаются черновиком.' : 'Сохранено в текущем режиме. Серверная синхронизация выполняется как обычно.';
       refreshSidebar();
-    } catch (error) { notice.textContent = error.message || 'Не удалось сохранить изменения.'; }
+      return { ok: true };
+    } catch (error) { notice.textContent = error.message || 'Не удалось сохранить изменения.'; return { ok: false, error: notice.textContent }; }
   }
   function dashboardHtml(project, client, values, data, folder) {
     var title = values.title || values.company || 'Клиент';
@@ -574,6 +611,7 @@
     document.addEventListener('avitolog:backend-remote-applied', function () { refreshSidebar(); });
     document.addEventListener('avitolog:project-payments-changed', refreshPaymentSummary);
     document.addEventListener('avitolog:project-payments-file', refreshPaymentSummary);
+    document.addEventListener('avitolog:project-context-changed', refreshPaymentSummary);
     if (typeof root.MutationObserver === 'function') {
       new root.MutationObserver(function (records) {
         if (!records.some(function (record) { return !field.contains(record.target) && !(current && current.overlay.contains(record.target)); })) return;

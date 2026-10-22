@@ -22,8 +22,15 @@
   function keys(value, allowed) {
     if (!object(value) || Object.keys(value).some(function (key) { return allowed.indexOf(key) < 0; })) fail('invalid_context_entry');
   }
+  function financialSummary(value, source) {
+    keys(value, ['kind', 'totalPaid', 'currency', 'promotionCycles', 'evidence', 'confirmed']);
+    if (value.kind !== 'reported_total' || typeof value.totalPaid !== 'number' || !isFinite(value.totalPaid) || value.totalPaid < 0 || value.totalPaid > 1000000000000 || !/^\d+(?:\.\d{1,2})?$/.test(String(value.totalPaid)) || value.currency !== 'RUB' || !Number.isSafeInteger(value.promotionCycles) || value.promotionCycles < 0 || value.promotionCycles > 100000 || value.confirmed !== true) fail('invalid_financial_summary');
+    var evidence = string(value.evidence, 1000);
+    if (!evidence.trim() || source.indexOf(evidence) < 0) fail('invalid_context_evidence');
+    return { kind: 'reported_total', totalPaid: value.totalPaid, currency: 'RUB', promotionCycles: value.promotionCycles, evidence: evidence, confirmed: true };
+  }
   function entry(value) {
-    keys(value, ['id', 'createdAt', 'kind', 'text', 'summary', 'facts', 'tasks', 'suggestions', 'provider', 'audioName', 'sourceName']);
+    keys(value, ['id', 'createdAt', 'kind', 'text', 'summary', 'facts', 'tasks', 'suggestions', 'provider', 'audioName', 'sourceName', 'financialSummary']);
     var result = { id: string(value.id, 100), createdAt: string(value.createdAt, 40), kind: value.kind, text: string(value.text, 20000), summary: string(value.summary, 4000, true), facts: [], tasks: [], suggestions: [], provider: value.provider || 'manual' };
     if (!result.id || /\s/.test(result.id) || !/^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(?:\.\d{1,3})?Z$/.test(result.createdAt) || !isFinite(Date.parse(result.createdAt)) || new Date(result.createdAt).toISOString().slice(0, 19) !== result.createdAt.slice(0, 19) || ['text', 'audio'].indexOf(result.kind) < 0 || !result.text.trim() || ['manual', 'anthropic'].indexOf(result.provider) < 0) fail('invalid_context_entry');
     ['facts', 'tasks', 'suggestions'].forEach(function (field) {
@@ -39,6 +46,7 @@
       });
     });
     ['audioName', 'sourceName'].forEach(function (field) { if (value[field] !== undefined) result[field] = string(value[field], 300); });
+    if (value.financialSummary !== undefined) result.financialSummary = financialSummary(value.financialSummary, result.text);
     if (bytes(JSON.stringify(result)) > 250000) fail('context_operation_too_large');
     return result;
   }
@@ -97,6 +105,14 @@
       var result = clone(saved); result.entries = mergeEntries(saved.entries, []); return result;
     }
     function get(target) { assertScope(target, false); return clone(context(project(target, read()), true)); }
+    function getFinancialSummary(target) {
+      var latest = null;
+      get(target).entries.forEach(function (item) {
+        if (!item.financialSummary || item.financialSummary.confirmed !== true) return;
+        if (!latest || Date.parse(item.createdAt) > Date.parse(latest.createdAt) || (Date.parse(item.createdAt) === Date.parse(latest.createdAt) && item.id > latest.id)) latest = item;
+      });
+      return latest ? clone(Object.assign({}, latest.financialSummary, { sourceEntryId: latest.id, recordedAt: latest.createdAt })) : null;
+    }
     function businessShape(data) {
       var set = new Set(rows(data));
       return JSON.stringify(data, function (name, value) { return name === 'intakeContextV1' && set.has(this) ? undefined : value; });
@@ -228,13 +244,11 @@
       assertScope(target, true);
       var validated = entry(value), current = get(target), entries = mergeEntries(current.entries, [validated]);
       if (JSON.stringify(entries) !== JSON.stringify(current.entries)) current = persist(target, Object.assign({}, current, { entries: entries, updatedAt: new Date().toISOString(), drivePending: true }));
-      var drive = null;
-      if (ownDrive() && folderId(target.folderId)) drive = await syncProjectFile(target);
       assertScope(target, true);
-      current = get(target);
-      return { ok: true, context: current, drivePending: current.drivePending === true, drive: drive };
+      if (ownDrive() && folderId(target.folderId)) void syncProjectFile(target).catch(function () {});
+      return { ok: true, context: current, drivePending: current.drivePending === true, drive: null };
     }
-    return { scope: scope, get: get, append: append, syncProjectFile: syncProjectFile, fileName: FILE_NAME };
+    return { scope: scope, get: get, getFinancialSummary: getFinancialSummary, append: append, syncProjectFile: syncProjectFile, fileName: FILE_NAME };
   }
   return { install: install, format: FORMAT, fileName: FILE_NAME, validateEntry: entry, mergeEntries: mergeEntries };
 }));
