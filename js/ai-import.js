@@ -519,8 +519,8 @@
     var explicit = Object.prototype.hasOwnProperty.call(row, 'nextPaymentDate');
     var due = explicit ? cashValidDay(row.nextPaymentDate) ? row.nextPaymentDate : '' : '';
     var estimated = false;
-    if (!explicit && last) { due = new Date(Date.parse(last + 'T00:00:00Z') + cycle * 86400000).toISOString().slice(0, 10); estimated = true; }
-    if (!explicit && !last && cashValidDay(row.paymentDate) && row.paymentDate > today) due = row.paymentDate;
+    if (!explicit && cashValidDay(row.paymentDate) && row.paymentDate > today) due = row.paymentDate;
+    else if (!explicit && last) { due = new Date(Date.parse(last + 'T00:00:00Z') + cycle * 86400000).toISOString().slice(0, 10); estimated = true; }
     var days = due ? Math.round((Date.parse(due + 'T00:00:00Z') - Date.parse(today + 'T00:00:00Z')) / 86400000) : null;
     var start = last || (due ? new Date(Date.parse(due + 'T00:00:00Z') - cycle * 86400000).toISOString().slice(0, 10) : '');
     if (start && due && start >= due) start = new Date(Date.parse(due + 'T00:00:00Z') - cycle * 86400000).toISOString().slice(0, 10);
