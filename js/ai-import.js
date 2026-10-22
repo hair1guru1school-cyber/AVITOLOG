@@ -535,6 +535,18 @@
     if (schedule.due) for (var i = 0; i < 30; i++) { var day = new Date(Date.parse(schedule.start + 'T00:00:00Z') + Math.floor(i * Math.max(1, Math.round((Date.parse(schedule.due + 'T00:00:00Z') - Date.parse(schedule.start + 'T00:00:00Z')) / 86400000)) / 30) * 86400000).toISOString().slice(0, 10); bars += '<i class="' + (i / 30 < schedule.progress ? 'elapsed' : '') + (day === today ? ' today' : '') + '" title="' + day + '"></i>'; }
     return '<section class="assets-next-payment" data-cash-context="' + context + '"><b>' + esc(daysLabel) + '</b><label>Следующая оплата<input type="date" aria-label="Следующая оплата" value="' + esc(schedule.due) + '" onchange="window.__assetsSaveSchedule(this,\'' + owner + '\',' + idx + ',\'date\')"></label><label>Цикл, дней<input type="number" min="1" max="3650" aria-label="Цикл оплаты, дней" value="' + schedule.cycle + '" onchange="window.__assetsSaveSchedule(this,\'' + owner + '\',' + idx + ',\'cycle\')"></label>' + (schedule.estimated ? '<div class="ad-label">План: последняя оплата + ' + schedule.cycle + ' дней. Дату можно изменить.</div>' : '') + (schedule.due ? '<div class="assets-payment-calendar' + (schedule.days < 0 ? ' overdue' : '') + '" role="img" aria-label="Период до следующей оплаты">' + bars + '</div><div class="assets-payment-period"><span>' + formatDateDDMM(schedule.start) + '</span><span>' + formatDateDDMM(schedule.due) + '</span></div>' : '') + '</section>';
   }
+  function cashDetailPayments(row, owner) {
+    if (!cashReady()) return [];
+    var fallback = getPaymentHistoryEntries(row, owner).slice();
+    try {
+      var journal = window.ProjectPaymentJournal, resolved = resolveCashProject(row, cashProjectSources());
+      if (journal && typeof journal.getEntries === 'function' && resolved.project && !resolved.ambiguous) {
+        var entries = journal.getEntries(String(resolved.project.id));
+        if (Array.isArray(entries) && entries.length) return entries.map(function (entry) { return Object.assign({}, entry); });
+      }
+    } catch (_) {}
+    return fallback;
+  }
   function saveCashSchedule(input, owner, idx, field) {
     var section = input && input.closest('[data-cash-context]');
     if (!cashReady() || !section || section.getAttribute('data-cash-context') !== cashBindingContext()) return;
@@ -3135,6 +3147,7 @@
     var panel = document.getElementById('assetsDetailPanel');
     var content = document.getElementById('assetsDetailContent');
     if (!panel || !content) return;
+    if (!cashReady()) { content.innerHTML = '<div class="ad-placeholder">Данные профиля загружаются.</div>'; return; }
     if (owner == null || idx == null || idx < 0) {
       content.innerHTML = '<div class="ad-placeholder" style="color:var(--muted);font-size:11px">Выберите проект слева</div>';
       return;
@@ -3145,19 +3158,20 @@
       content.innerHTML = '<div class="ad-placeholder" style="color:var(--muted)">Проект не найден</div>';
       return;
     }
-    var entries = getPaymentHistoryEntries(p, owner).slice();
+    var entries = cashDetailPayments(p, owner);
+    var detailPaymentModel = Object.assign({}, p, { paymentHistory: entries });
     var total = entries.reduce(function(a, e) { return a + (parseInt(String(e.amount || '').replace(/\s/g, ''), 10) || 0); }, 0);
     var expected = parseInt(String(p.expected || '').replace(/\s/g, ''), 10) || 0;
-    var payDate = cashPaymentSchedule(p, owner).last;
+    var payDate = cashPaymentSchedule(detailPaymentModel, owner).last;
     var payDateFmt = payDate ? (function() {
       var parts = payDate.split(/[-/]/);
       if (parts.length >= 3) return parts[2] + '.' + parts[1] + '.' + parts[0];
       return payDate;
     }()) : '—';
     var html = '<div class="ad-project">' + esc(p.emoji || '') + ' ' + esc(p.name || 'Проект') + '</div>';
-    html += '<div class="ad-row"><span class="ad-label">Общая сумма оплат</span><span class="ad-val">' + fmt(total) + ' ₽</span></div>';
+    html += '<div class="ad-row"><span class="ad-label">Сумма в истории · всё время</span><span class="ad-val">' + fmt(total) + ' ₽</span></div>';
     html += '<div class="ad-row"><span class="ad-label">Последняя проведённая оплата</span><span class="ad-val">' + esc(payDateFmt) + '</span></div>';
-    html += cashScheduleHtml(p, owner, idx);
+    html += cashScheduleHtml(detailPaymentModel, owner, idx);
     html += '<div class="ad-section" style="margin-top:12px;padding-top:8px;border-top:1px solid var(--border)"><div class="ad-label" style="margin-bottom:6px">История оплат</div>';
     if (entries.length > 0) {
       entries.sort(function(a, b) { return (b.date || '').localeCompare(a.date || ''); });
