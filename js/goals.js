@@ -852,14 +852,17 @@
     return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate());
   }
   function getDefaultSaleDateISO() {
-    if (_goalsViewMonth && /^\d{4}-\d{2}$/.test(_goalsViewMonth)) {
-      var p = _goalsViewMonth.split('-');
-      var y = parseInt(p[0], 10);
-      var m = parseInt(p[1], 10);
-      var last = new Date(y, m, 0).getDate();
-      return _goalsViewMonth + '-' + pad2(last);
+    var now = new Date();
+    try {
+      var parts = new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'Europe/Moscow', year: 'numeric', month: '2-digit', day: '2-digit'
+      }).formatToParts(now);
+      var date = {};
+      parts.forEach(function(part) { date[part.type] = part.value; });
+      return date.year + '-' + date.month + '-' + date.day;
+    } catch (e) {
+      return new Date(now.getTime() + 3 * 60 * 60 * 1000).toISOString().slice(0, 10);
     }
-    return getTodayISO();
   }
   function formatBadgeDateShort(dateStr) {
     if (!dateStr) return '';
@@ -931,7 +934,7 @@
     var today = getTodayISO();
     list.forEach(function(id) {
       var sid = normalizeStatusId(id);
-      if (!map[sid]) map[sid] = today;
+      if (!map[sid] && sid !== 'paid') map[sid] = today;
     });
     Object.keys(map).forEach(function(k) {
       if (list.indexOf(k) < 0) delete map[k];
@@ -2935,13 +2938,17 @@
     if (!p.status) p.status = [];
     var sid = normalizeStatusId(statusId);
     if (sid === 'paid' && p.stage !== 'sold') {
-      commitGoalSold(projectId, getGoalInlineAmount(projectId), getDefaultSaleDateISO());
+      commitGoalSold(projectId, getGoalInlineAmount(projectId));
       return;
     }
     var has = (p.status || []).some(function(id) { return normalizeStatusId(id) === sid; });
-    if (!has) p.status.push(sid);
-    var statusDates = getStatusDateMap(p);
-    statusDates[sid] = getTodayISO();
+    if (sid === 'paid') {
+      markGoalAsPaid(p);
+    } else {
+      if (!has) p.status.push(sid);
+      var statusDates = getStatusDateMap(p);
+      statusDates[sid] = getTodayISO();
+    }
     saveData(data);
     syncGoalToKassaIfReady(p);
     render();
@@ -3075,7 +3082,13 @@
     if (!hasPaid) status.push('paid');
     p.status = status;
     var dates = getStatusDateMap(p);
-    dates.paid = saleDate || dates.paid || getTodayISO();
+    if (!hasPaid) {
+      dates.paid = saleDate || getDefaultSaleDateISO();
+      p.paidCycleId = 'paid_' + generateId();
+      p.paidMarkedAt = new Date().toISOString();
+    } else if (saleDate) {
+      dates.paid = saleDate;
+    }
   }
   function statusListHasPaid(list) {
     return (Array.isArray(list) ? list : []).some(function(id) { return normalizeStatusId(id) === 'paid'; });
@@ -3086,16 +3099,26 @@
     data.projects = data.projects || [];
     var cur = data.projects.find(function(x) { return x && x.id === projectId; });
     if (!cur) return false;
-    saleDate = saleDate || getDefaultSaleDateISO();
+    var explicitSaleDate = saleDate;
     var finalAmount = normalizeGoalSaleAmount(cur, saleAmount);
+    if (cur.stage === 'sold') {
+      markGoalAsPaid(cur, explicitSaleDate);
+      cur.saleAmount = finalAmount || cur.saleAmount || '';
+      cur.date = cur.statusDates.paid || cur.date || '';
+      cur.weekIndex = getWeekIndex(parseInt(String(cur.date).split('-')[2], 10) || 1);
+      if (!saveData(data)) return false;
+      syncGoalToKassaIfReady(cur);
+      render();
+      return true;
+    }
     if (cur.stage === 'working') {
+      markGoalAsPaid(cur, explicitSaleDate);
       cur.stage = 'sold';
       cur.saleAmount = finalAmount;
-      cur.date = saleDate;
-      cur.weekIndex = getWeekIndex(parseInt(String(saleDate).split('-')[2], 10) || 1);
+      cur.date = cur.statusDates.paid || cur.date || '';
+      cur.weekIndex = getWeekIndex(parseInt(String(cur.date).split('-')[2], 10) || 1);
       if (cur.workCopyOfWeekId) cur.soldFromId = cur.workCopyOfWeekId;
       delete cur.workCopyOfWeekId;
-      markGoalAsPaid(cur, saleDate);
       data.workOrderWork = (data.workOrderWork || []).filter(function(id) { return id !== cur.id; });
       var workingAll = data.projects.filter(function(x) { return x && x.stage === 'working'; });
       data.workOrderWork = mergeWorkingOrderIds(data.workOrderWork || [], workingAll);
@@ -3113,9 +3136,9 @@
     });
     if (existingSold) {
       existingSold.saleAmount = finalAmount || existingSold.saleAmount || '';
-      existingSold.date = saleDate;
-      existingSold.weekIndex = getWeekIndex(parseInt(String(saleDate).split('-')[2], 10) || 1);
-      markGoalAsPaid(existingSold, saleDate);
+      markGoalAsPaid(existingSold, explicitSaleDate);
+      existingSold.date = existingSold.statusDates.paid || existingSold.date || '';
+      existingSold.weekIndex = getWeekIndex(parseInt(String(existingSold.date).split('-')[2], 10) || 1);
       if (!saveData(data)) return false;
       syncGoalToKassaIfReady(existingSold);
       render();
@@ -3131,13 +3154,16 @@
     copy.id = generateId();
     copy.stage = 'sold';
     copy.saleAmount = finalAmount;
-    copy.date = saleDate;
-    copy.weekIndex = getWeekIndex(parseInt(String(saleDate).split('-')[2], 10) || 1);
+    copy.status = (Array.isArray(copy.status) ? copy.status : []).filter(function(id) { return normalizeStatusId(id) !== 'paid'; });
+    delete copy.paidCycleId;
+    delete copy.paidMarkedAt;
+    markGoalAsPaid(copy, explicitSaleDate);
+    copy.date = copy.statusDates.paid;
+    copy.weekIndex = getWeekIndex(parseInt(String(copy.date).split('-')[2], 10) || 1);
     copy.soldFromId = projectId;
     delete copy.crmArchived;
     delete copy.emojiBeforeArchive;
     delete copy.archiveCopyOfWeekId;
-    markGoalAsPaid(copy, saleDate);
     if (cur.crmArchived) {
       var removedArchiveIds = data.projects.filter(function(x) { return x.archiveCopyOfWeekId === projectId; }).map(function(x) { return x.id; });
       markGoalProjectsDeleted(data, removedArchiveIds);
@@ -3157,7 +3183,7 @@
   }
 
   function quickSetSold(projectId) {
-    if (!commitGoalSold(projectId, getGoalInlineAmount(projectId), getDefaultSaleDateISO())) {
+    if (!commitGoalSold(projectId, getGoalInlineAmount(projectId))) {
       showGoalsSmallToast('Не удалось перевести в ПРОДАНО');
     }
   }
@@ -3169,7 +3195,7 @@
     if (!p) return;
     if (stage === 'sold') {
       if (options.quick) {
-        commitGoalSold(projectId, options.saleAmount || getGoalInlineAmount(projectId), options.saleDate || getDefaultSaleDateISO());
+        commitGoalSold(projectId, options.saleAmount || getGoalInlineAmount(projectId), options.saleDate);
         return;
       }
       showSaleAmountPicker(projectId, p, function(saleAmount, saleDate) {
@@ -3736,6 +3762,10 @@
   }
 
   function openEditModal(p) {
+    var editBefore = JSON.parse(JSON.stringify(p));
+    var editId = p.id;
+    var editScope = goalsStorageKey();
+    var editMonth = _goalsViewMonth || '';
     var existing = document.getElementById('goalEditModal');
     if (existing) existing.remove();
     var modal = document.createElement('div');
@@ -3802,6 +3832,16 @@
     document.getElementById('goalEditSave').onclick = function() {
       var name = String((document.getElementById('goalEditName') || {}).value || '').replace(/\s+/g, ' ').trim();
       if (!name) { alert('Введите название'); return; }
+      if (goalsStorageKey() !== editScope || (_goalsViewMonth || '') !== editMonth) {
+        showGoalsSmallToast('Режим или месяц изменился. Откройте карточку заново.');
+        return;
+      }
+      var data = loadData();
+      var latest = (data.projects || []).find(function(item) { return item && item.id === editId; });
+      if (!latest) return;
+      var p = JSON.parse(JSON.stringify(editBefore));
+      var hadPaid = statusListHasPaid(p.status);
+      var previousDate = p.date;
       var selEmoji = modal.querySelector('.goal-emoji-btn.goal-emoji-sel');
       var emoji = selEmoji ? selEmoji.getAttribute('data-emoji') : (p.emoji || '📦');
       p.name = name;
@@ -3821,16 +3861,32 @@
       if (p.stage === 'sold') p.saleAmount = saleVal || '';
       var status = [];
       modal.querySelectorAll('input[data-status]:checked').forEach(function(cb) { status.push(cb.getAttribute('data-status')); });
-      p.status = status;
+      if (statusListHasPaid(status)) {
+        p.status = hadPaid ? status : status.filter(function(id) { return normalizeStatusId(id) !== 'paid'; });
+        markGoalAsPaid(p, p.date !== previousDate ? p.date : undefined);
+      } else {
+        p.status = status;
+      }
       var touchMarkers = [];
       modal.querySelectorAll('input[data-touch]:checked').forEach(function(cb) { touchMarkers.push(cb.getAttribute('data-touch')); });
       p.touchMarkers = touchMarkers;
       ensureStatusDates(p, p.status);
       ensureTouchDates(p, p.touchMarkers);
       p.tags = editTags;
-      var data = loadData();
-      saveData(data);
-      syncGoalToKassaIfReady(p);
+      var changedFields = Object.keys(p).filter(function(field) {
+        return JSON.stringify(p[field]) !== JSON.stringify(editBefore[field]);
+      });
+      var conflict = changedFields.some(function(field) {
+        return JSON.stringify(latest[field]) !== JSON.stringify(editBefore[field]) &&
+          JSON.stringify(latest[field]) !== JSON.stringify(p[field]);
+      });
+      if (conflict) {
+        showGoalsSmallToast('Эти данные уже изменены. Откройте карточку заново, чтобы не потерять правки.');
+        return;
+      }
+      changedFields.forEach(function(field) { latest[field] = p[field]; });
+      if (!saveData(data)) return;
+      syncGoalToKassaIfReady(latest);
       modal.remove();
       render();
     };
@@ -4004,6 +4060,9 @@
       '</div>' +
       '</div></div>';
     document.body.appendChild(modal);
+    var paymentDateEdited = false;
+    var paymentDateInput = document.getElementById('goalInpDate');
+    if (paymentDateInput) paymentDateInput.oninput = function() { paymentDateEdited = true; };
     if (isPopover) {
       var box = modal.querySelector('.goal-modal');
       box.classList.add('goal-modal-mini');
@@ -4099,11 +4158,13 @@
         stage: modalStage,
         sourceAccountId: ((document.getElementById('source_account_id') || {}).value || '').trim()
       };
-      if (statusListHasPaid(status)) {
+      if (statusListHasPaid(status) || modalStage === 'sold') {
         project.stage = 'sold';
         project.saleAmount = mainPrice || '';
-        project.status = ['paid'];
-        project.statusDates = { paid: dateVal || getTodayISO() };
+        project.status = [];
+        project.statusDates = {};
+        markGoalAsPaid(project, paymentDateEdited ? dateVal : undefined);
+        project.date = project.statusDates.paid;
       }
       var data = loadData();
       data.projects = data.projects || [];
@@ -4218,8 +4279,8 @@
     project.sourceAccountId = client.source_account_id || client.sourceAccountId || '';
     if (targetStage === 'sold') {
       project.saleAmount = detectedPrice || '';
-      project.status = ['paid'];
-      project.statusDates = { paid: getTodayISO() };
+      markGoalAsPaid(project);
+      project.date = project.statusDates.paid;
     }
     if (client.folderId) {
       project.folderId = client.folderId;
@@ -4261,9 +4322,9 @@
       }
       if (targetStage === 'sold') {
         existing.saleAmount = existing.saleAmount || existing.mainPrice || '';
+        markGoalAsPaid(existing);
         existing.status = ['paid'];
-        existing.statusDates = Object.assign({}, existing.statusDates || {});
-        existing.statusDates.paid = getTodayISO();
+        existing.date = existing.statusDates.paid || existing.date || '';
       }
       if (!saveData(data)) return;
       syncGoalToKassaIfReady(existing);
