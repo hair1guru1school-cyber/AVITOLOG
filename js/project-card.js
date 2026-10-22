@@ -11,6 +11,8 @@
   var sidebarRefreshRequest = null;
   var rowClickBound = false;
   var refreshTimer = null;
+  var metricsCache = new Map();
+  var metricsScope = '';
   var FIELDS = [
     ['title', 'Название проекта', 300], ['company', 'Компания', 300],
     ['contact_name', 'Контактное лицо', 200], ['phone', 'Телефон', 100],
@@ -232,6 +234,16 @@
     element.textContent += '@media(max-width:1100px){.project-card-body{grid-template-rows:none;grid-auto-rows:max-content}}';
     element.textContent += '@media(min-width:1101px) and (max-height:820px){.project-card-head{padding:10px 15px}.project-card-foot{padding:8px 15px}.project-card-body{padding:10px;gap:10px}.project-card-section{padding:10px}.project-card-section h3,.project-card-section-title{margin-bottom:8px}.project-card-fields{gap:6px 8px}.project-card-field{gap:3px}.project-card-field input,.project-card-field textarea,.project-card-field select{padding:5px 7px;font-size:11px}.project-card-metric{padding:7px 8px}.project-card-metric strong{font-size:18px;margin-top:4px}.project-card-meta{margin-bottom:8px}.project-card-disclosure{margin-top:8px;padding-top:7px}.project-card-trend{margin:8px 0 5px}.project-card-bars{height:65px;margin-top:5px}.project-card-context .project-context{font-size:11px;gap:7px}.project-card-context .project-context textarea{min-height:64px;padding:6px}.project-card-context .project-context-note{font-size:10px}.project-card-context .project-context-actions{margin:4px 0}.project-card-context .project-context button{padding:4px 7px;font-size:10px}}';
     element.textContent += '.project-card-account-controls{display:flex;gap:6px;align-items:center}.project-card-account-controls select{flex:1;min-width:0}.project-card-account-refresh{flex:none;padding:8px;border:1px solid var(--border,#31445b);border-radius:7px;background:var(--surface2,#132132);color:var(--text,#eaf2ff);font:inherit;font-size:11px;cursor:pointer}.project-card-account-refresh:disabled{opacity:.6;cursor:wait}.project-card-account-status{display:block;font-size:10px;line-height:1.4;color:var(--muted,#9ab0c9)}.project-card-account-status:empty{display:none}';
+    element.textContent += [
+      '@media(min-width:1101px){.project-card-body{grid-template-columns:minmax(0,.86fr) minmax(0,1.65fr) minmax(0,.86fr)}}.project-card-avito{container-type:inline-size}.project-avito-dashboard{--avito-blue:65,166,255;--avito-purple:173,116,255;--avito-teal:18,207,187;font-variant-numeric:tabular-nums}.project-avito-period{font-size:9px;color:var(--muted,#9ab0c9);margin:-3px 0 8px}.project-avito-primary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.project-avito-metric{--tone:var(--avito-blue);border:1px solid rgba(var(--tone),.3);background:linear-gradient(145deg,rgba(var(--tone),.12),rgba(var(--tone),.015));border-radius:10px;padding:10px;min-width:0}.project-avito-favorites{--tone:var(--avito-purple)}.project-avito-views{--tone:var(--avito-teal)}.project-avito-metric h4{display:flex;align-items:center;gap:6px;margin:0;font-size:11px;font-weight:600}.project-avito-icon{width:17px;height:17px;flex:none;color:rgb(var(--tone,var(--avito-blue)))}.project-avito-total{display:block;font-size:clamp(25px,4.5cqw,38px);font-weight:750;line-height:1.05;margin:7px 0 3px;letter-spacing:-.03em;overflow-wrap:anywhere}.project-avito-subtitle{font-size:9px;color:var(--muted,#9ab0c9)}',
+      '.project-avito-columns{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px;align-items:end;padding-top:7px}.project-avito-column{display:flex;flex-direction:column;align-items:center;justify-content:flex-end;min-width:0;outline-offset:2px;border-radius:3px}.project-avito-plot{height:47px;width:100%;display:flex;align-items:flex-end;justify-content:center;border-bottom:1px solid var(--border,#31445b)}.project-avito-bar{display:block;width:74%;max-width:54px;border-radius:4px 4px 0 0;background:linear-gradient(0deg,rgba(var(--tone),.65),rgb(var(--tone)));box-shadow:inset 0 1px 0 #ffffff38}.project-avito-value{font-size:9px;color:var(--text,#eaf2ff);white-space:nowrap;margin-bottom:3px}.project-avito-date{font-size:8px;color:var(--muted,#9ab0c9);white-space:nowrap;margin-top:4px}.project-avito-column.is-unknown .project-avito-bar{width:45%;height:1px!important;background:none;border-top:1px dashed var(--muted,#9ab0c9);box-shadow:none}.project-avito-column.is-zero .project-avito-bar{height:1px!important;box-shadow:none;opacity:.5}.project-avito-five{display:flex;justify-content:space-between;gap:4px;margin-top:7px;padding-top:6px;border-top:1px solid rgba(var(--tone),.18);font-size:9px;color:var(--muted,#9ab0c9)}.project-avito-five b{color:var(--text,#eaf2ff)}',
+      '.project-avito-secondary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:8px 0}.project-avito-secondary>div{min-width:0;padding:8px 9px;border:1px solid var(--border,#31445b);border-radius:8px;background:var(--surface2,#132132)}.project-avito-secondary span{display:block;font-size:9px;color:var(--muted,#9ab0c9)}.project-avito-secondary strong{display:block;font-size:20px;line-height:1.2;margin-top:4px;overflow-wrap:anywhere}.project-avito-secondary small{display:block;font-size:8px;margin-top:3px;color:var(--muted,#9ab0c9)}.project-avito-secondary .project-avito-active{color:#2fc79b}',
+      '.project-avito-bottom{display:grid;grid-template-columns:minmax(0,1.8fr) minmax(135px,1fr);gap:9px}.project-avito-chart,.project-avito-summary{min-width:0;border:1px solid var(--border,#31445b);border-radius:9px;padding:9px;background:var(--bg,#09111d)}.project-avito-chart-head{display:flex;justify-content:space-between;gap:5px;align-items:center;font-size:10px;margin-bottom:4px}.project-avito-tabs{display:flex;gap:3px}.project-avito-tabs button{display:grid;place-items:center;width:25px;height:23px;padding:3px;cursor:pointer;border:1px solid var(--border,#31445b);background:var(--surface2,#132132);border-radius:5px;color:var(--muted,#9ab0c9)}.project-avito-tabs button[aria-pressed="true"]{background:rgba(var(--tone),.15);border-color:rgba(var(--tone),.6);color:rgb(var(--tone))}.project-avito-chart{--tone:var(--avito-blue)}.project-avito-chart .project-avito-plot{height:79px;background:repeating-linear-gradient(to top,transparent 0,transparent 25px,var(--border,#31445b) 26px,transparent 27px)}.project-avito-chart .project-avito-columns{gap:10px;padding-top:7px}.project-avito-chart .project-avito-value{font-size:10px}.project-avito-chart .project-avito-date{font-size:9px}.project-avito-summary h4{font-size:10px;margin:0 0 6px}.project-avito-summary ul{margin:0;padding:0;list-style:none}.project-avito-summary li{display:flex;justify-content:space-between;align-items:center;gap:6px;padding:5px 0;border-bottom:1px solid var(--border,#31445b);font-size:9px}.project-avito-summary li:last-child{border-bottom:0}.project-avito-summary li span{display:flex;align-items:center;gap:5px;color:var(--muted,#9ab0c9)}.project-avito-summary b{white-space:nowrap;font-size:11px}.project-avito-summary .project-avito-icon{width:12px;height:12px}',
+      '.project-avito-footer{display:flex;flex-wrap:wrap;align-items:center;gap:4px 12px;font-size:9px;color:var(--muted,#9ab0c9);margin-top:8px}.project-avito-footer b{color:var(--text,#eaf2ff)}.project-avito-status{flex-basis:100%;line-height:1.4}.project-avito-status:empty{display:none}.project-avito-tariff{flex-basis:100%}@container(max-width:560px){.project-avito-metric{padding:7px}.project-avito-metric h4{font-size:10px;gap:4px}.project-avito-primary{gap:5px}.project-avito-columns{gap:3px}.project-avito-date{font-size:7px}.project-avito-value{font-size:8px}.project-avito-bottom{grid-template-columns:1fr}.project-avito-summary ul{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:3px 10px}.project-avito-summary li{flex-wrap:wrap;justify-content:flex-start;border:0;padding:2px 0}.project-avito-secondary{gap:5px}.project-avito-secondary>div{padding:7px}.project-avito-secondary strong{font-size:17px}.project-avito-chart .project-avito-plot{height:90px}}'
+    ].join('');
+    element.textContent += '@media(min-width:1101px){.project-card-body{grid-template-rows:minmax(0,1.9fr) minmax(0,1fr)}}.project-avito-plot{height:35px}.project-avito-bar{min-height:2px}.project-avito-column.is-zero .project-avito-bar,.project-avito-column.is-unknown .project-avito-bar{min-height:0}.project-avito-chart.project-avito-favorites{--tone:var(--avito-purple)}.project-avito-chart.project-avito-views{--tone:var(--avito-teal)}@container(min-width:421px) and (max-width:560px){.project-avito-bottom{grid-template-columns:minmax(0,1.8fr) minmax(125px,1fr)}.project-avito-summary ul{display:block}.project-avito-summary li{flex-wrap:nowrap;justify-content:space-between;border-bottom:1px solid var(--border,#31445b);padding:4px 0}.project-avito-chart .project-avito-plot{height:79px}}@media(min-width:1101px) and (max-height:820px){.project-avito-period{margin-bottom:5px;font-size:8px}.project-avito-metric{padding:7px}.project-avito-metric h4{font-size:10px}.project-avito-total{font-size:25px;margin:4px 0 1px}.project-avito-subtitle{font-size:8px}.project-avito-columns{padding-top:3px}.project-avito-plot{height:30px}.project-avito-value{font-size:8px;margin-bottom:2px}.project-avito-date{font-size:7px;margin-top:3px}.project-avito-five{font-size:8px;margin-top:4px;padding-top:4px}.project-avito-secondary{margin:6px 0;gap:6px}.project-avito-secondary>div{padding:6px}.project-avito-secondary span{font-size:8px}.project-avito-secondary strong{font-size:17px;margin-top:2px}.project-avito-secondary small{font-size:7px;margin-top:2px}.project-avito-chart,.project-avito-summary{padding:7px}.project-avito-chart-head,.project-avito-summary h4{font-size:9px}.project-avito-chart .project-avito-plot{height:47px}.project-avito-chart .project-avito-columns{padding-top:3px;gap:7px}.project-avito-chart .project-avito-value{font-size:8px}.project-avito-chart .project-avito-date{font-size:8px}.project-avito-summary li{padding:3px 0;font-size:8px}.project-avito-summary b{font-size:10px}.project-avito-tabs button{width:23px;height:21px}.project-avito-footer{margin-top:6px;font-size:8px;gap:3px 9px}}';
+    element.textContent += '.project-avito-tabs [data-avito-chart="favorites"]{--tone:var(--avito-purple)}.project-avito-tabs [data-avito-chart="views"]{--tone:var(--avito-teal)}.project-avito-metric{padding:8px}.project-avito-total{font-size:clamp(25px,4cqw,34px);margin:6px 0 3px}.project-avito-period-total{display:flex;justify-content:space-between;gap:4px;font-size:8px;color:var(--muted,#9ab0c9);line-height:1.3}.project-avito-period-total b{color:var(--text,#eaf2ff);margin-left:3px}.project-avito-chart .project-avito-plot{height:62px}@media(min-width:1101px){.project-card-body{grid-template-rows:minmax(0,2.05fr) minmax(0,1fr)}}@media(min-width:1101px) and (max-height:820px){.project-card-body{grid-template-rows:minmax(0,2.4fr) minmax(0,1fr)}.project-avito-metric{padding:7px}.project-avito-total{font-size:25px;margin:4px 0 2px}.project-avito-chart .project-avito-plot{height:40px}.project-avito-period-total{font-size:7px}}';
+    element.textContent += '@media(min-width:1101px){.project-card-body{grid-template-rows:minmax(0,2.15fr) minmax(0,1fr)}}@media(min-width:1101px) and (max-height:820px){.project-card-body{grid-template-rows:minmax(0,2.4fr) minmax(0,1fr)}.project-avito-summary li{padding-top:2px;padding-bottom:2px}}';
     document.head.appendChild(element);
   }
   function fieldHtml(field, values) {
@@ -341,32 +353,171 @@
     var nextEvent = orderedEvents.find(function (event) { return validDay(event.date || event.startDate) && (event.date || event.startDate) >= today; });
     return '<h3>Задачи и календарь</h3><div class="project-card-progress-line"><span>Выполнено задач: ' + done + ' / ' + tasks.length + '</span><strong>' + (tasks.length ? percent + '%' : 'Нет задач') + '</strong></div><div class="project-card-progress" role="progressbar" aria-label="Выполненные задачи" aria-valuemin="0" aria-valuemax="' + Math.max(1, tasks.length) + '" aria-valuenow="' + done + '"><span style="width:' + percent + '%"></span></div><div class="project-card-task-counts"><span>Открыто: ' + (tasks.length - done) + '</span><span>Просрочено: ' + overdue + '</span><span>Отметок календаря: ' + events.length + '</span></div>' + (path ? '<div class="project-card-step-list" aria-label="Отмеченные этапы проекта">' + stages.map(function (stage) { return '<span class="project-card-step' + (path[stage[0]] ? ' is-done' : '') + '" title="' + (path[stage[0]] ? 'Отмечено в проекте' : 'Не отмечено') + '">' + (path[stage[0]] ? '✓ ' : '') + stage[1] + '</span>'; }).join('') + '</div>' : '') + (upcoming.length ? '<ul class="project-card-upcoming">' + upcoming.map(function (task) { return '<li><span title="' + escape(task.title) + '">' + escape(task.title || 'Задача') + '</span><time>' + escape(task.dueDate || 'Без срока') + '</time></li>'; }).join('') + '</ul>' : '<p class="project-card-note">' + (tasks.length ? 'Все связанные задачи выполнены.' : 'Связанных задач пока нет.') + '</p>') + '<p class="project-card-note">' + (activeRanges ? 'Действующих диапазонов календаря: ' + activeRanges + '.' : 'На сегодня нет действующих диапазонов.') + (nextEvent ? ' Ближайшая отметка: ' + escape(paymentDateLabel(nextEvent.date || nextEvent.startDate)) + '.' : '') + '</p>' + (tasksHtml || eventsHtml ? '<details class="project-card-disclosure"><summary>Все задачи и календарь</summary>' + (tasksHtml ? '<ul class="project-card-list">' + tasksHtml + '</ul>' : '') + (eventsHtml ? '<ul class="project-card-list">' + eventsHtml + '</ul>' : '') + '</details>' : '');
   }
+  function accountAnalytics(result, asOf) {
+    var day = asOf === undefined ? moscowDay() : asOf;
+    if (typeof day !== 'string' || !validDay(day)) throw new RangeError('invalid_analytics_date');
+    function object(value) { return value && typeof value === 'object' && !Array.isArray(value) ? value : {}; }
+    function amount(value) { return typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : null; }
+    function balance(value) { return typeof value === 'number' && Number.isFinite(value) ? value : null; }
+    function timezone(section) { return section.timezone === undefined || section.timezone === 'Europe/Moscow'; }
+    function timestamp(value) { return typeof value === 'string' && Number.isFinite(Date.parse(value)) ? value : ''; }
+    var outer = object(result), data = object(outer.overview || outer.snapshot || outer);
+    var history = object(data.history), today = object(data.today);
+    var keys = ['contacts', 'favorites', 'views', 'spending'];
+    var end = Date.parse(day + 'T00:00:00Z');
+    var dates = Array.from({ length: 30 }, function (_, index) { return new Date(end - (29 - index) * 86400000).toISOString().slice(0, 10); });
+    var byDate = Object.create(null), duplicate = Object.create(null);
+    var usableHistory = history.available === true && timezone(history);
+    if (usableHistory && Array.isArray(history.days)) {
+      history.days.forEach(function (value) {
+        var row = object(value);
+        if (typeof row.date !== 'string' || !validDay(row.date) || row.date < dates[0] || row.date > day) return;
+        if (Object.prototype.hasOwnProperty.call(byDate, row.date)) duplicate[row.date] = true;
+        else byDate[row.date] = row;
+      });
+    }
+    var usableToday = today.available === true && today.date === day && timezone(today);
+    var days = dates.map(function (date) {
+      var row = !duplicate[date] && byDate[date] || {}, next = { date: date };
+      keys.forEach(function (key) {
+        next[key] = amount(row[key]);
+        var currentValue = usableToday && date === day ? amount(today[key]) : null;
+        if (currentValue !== null) next[key] = currentValue;
+      });
+      return next;
+    });
+    function total(rows, key) {
+      if (rows.some(function (row) { return row[key] === null; })) return null;
+      var value = rows.reduce(function (sum, row) { return sum + row[key]; }, 0);
+      return Number.isFinite(value) ? value : null;
+    }
+    var exactPeriod = usableHistory && history.dateFrom === dates[0] && history.dateTo === day;
+    var totals = {}, fiveTotals = {}, todayValues = {}, lastFive = days.slice(-5), suppliedTotals = object(history.totals);
+    keys.forEach(function (key) {
+      var supplied = exactPeriod ? amount(suppliedTotals[key]) : null;
+      totals[key] = supplied !== null ? supplied : total(days, key);
+      fiveTotals[key] = total(lastFive, key);
+      todayValues[key] = days[days.length - 1][key];
+    });
+    var advance = object(data.advance), wallet = object(outer.balance || data.balance), listings = object(data.listings), tariff = object(data.tariff);
+    return {
+      dateFrom: dates[0], dateTo: day, days: lastFive, totals: totals, fiveTotals: fiveTotals, today: todayValues,
+      advance: advance.available === true ? balance(advance.balance) : null,
+      wallet: wallet.available === true ? balance(wallet.real) : null,
+      active: listings.available === true && Number.isSafeInteger(listings.active) && listings.active >= 0 ? listings.active : null,
+      fetchedAt: timestamp(data.fetched_at),
+      stale: data.stale === true || [history, today, advance, wallet, listings].some(function (section) { return section.stale === true; }) || usableHistory && history.dateTo !== day || today.available === true && today.date !== day,
+      tariff: tariff.available === true ? {
+        available: true, name: typeof tariff.name === 'string' ? tariff.name.trim().slice(0, 200) : '',
+        ends_at: timestamp(tariff.ends_at) || null,
+        days_remaining: Number.isSafeInteger(tariff.days_remaining) && tariff.days_remaining >= 0 ? tariff.days_remaining : null
+      } : { available: false, name: '', ends_at: null, days_remaining: null }
+    };
+  }
+  function accountIcon(kind) {
+    var paths = {
+      contacts: '<circle cx="9" cy="7" r="3"/><path d="M3 20v-3a6 6 0 0 1 12 0v3M16 4a3 3 0 0 1 0 6m2 3a5 5 0 0 1 3 4v3"/>',
+      favorites: '<path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1.1-1.1a5.5 5.5 0 0 0-7.8 7.8L12 21l8.8-8.6a5.5 5.5 0 0 0 0-7.8Z"/>',
+      views: '<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/>',
+      spending: '<rect x="3" y="5" width="18" height="15" rx="3"/><path d="M3 9h18M16 14h5M6 5V3h12"/>',
+      active: '<path d="M4 9h5l10-5v16L9 15H4V9Zm2 6 2 6h4l-2-6"/>'
+    };
+    return '<svg class="project-avito-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + (paths[kind] || paths.views) + '</svg>';
+  }
+  function accountColumns(days, key, large) {
+    var maximum = Math.max.apply(Math, [1].concat(days.map(function (day) { return Number.isFinite(day[key]) ? day[key] : 0; })));
+    var label = { contacts: 'Контакты', favorites: 'Избранное', views: 'Просмотры' }[key];
+    var description = days.map(function (day) { return paymentDateLabel(day.date) + ': ' + (day[key] === null ? 'нет данных' : metric(day[key])); }).join('; ');
+    return '<div class="project-avito-columns" role="img" aria-label="' + escape(label + '. ' + description) + '">' + days.map(function (day) {
+      var value = day[key], known = Number.isFinite(value), size = known && value > 0 ? Math.max(2, Math.round(value / maximum * 100)) : 0;
+      return '<div class="project-avito-column' + (!known ? ' is-unknown' : value === 0 ? ' is-zero' : '') + '" title="' + escape(day.date + ' · ' + label + ': ' + (known ? metric(value) : 'нет данных')) + '"><span class="project-avito-value">' + escape(metric(value)) + '</span><div class="project-avito-plot"><span class="project-avito-bar" style="height:' + size + '%"></span></div><span class="project-avito-date">' + escape(paymentDateLabel(day.date).slice(0, 5)) + '</span></div>';
+    }).join('') + '</div>';
+  }
+  function accountAnalyticsHtml(data, selected) {
+    var metrics = [{ key: 'contacts', label: 'Контакты' }, { key: 'favorites', label: 'Избранное' }, { key: 'views', label: 'Просмотры' }];
+    var active = metrics.find(function (item) { return item.key === selected; }) || metrics[0];
+    function money(value) { return Number.isFinite(value) ? formatMoney(value) : '—'; }
+    var rows = metrics.concat([{ key: 'spending', label: 'Расходы' }, { key: 'active', label: 'Активные' }]);
+    var stamp = data.fetchedAt ? new Date(data.fetchedAt).toLocaleString('ru-RU', { timeZone: 'Europe/Moscow', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '';
+    var tariff = data.tariff || {};
+    var tariffLabel = tariff.available ? 'Тариф: ' + (tariff.name || 'Не указан') + (tariff.ends_at ? ' · до ' + new Date(tariff.ends_at).toLocaleDateString('ru-RU', { timeZone: 'Europe/Moscow' }) : '') + (Number.isSafeInteger(tariff.days_remaining) ? ' · осталось дней: ' + tariff.days_remaining : '') : '';
+    return '<div class="project-avito-dashboard"><div class="project-avito-period">30 дней · ' + escape(paymentDateLabel(data.dateFrom) + ' — ' + paymentDateLabel(data.dateTo)) + ' · МСК</div><div class="project-avito-primary">' + metrics.map(function (item) {
+      return '<article class="project-avito-metric project-avito-' + item.key + '"><h4>' + accountIcon(item.key) + escape(item.label) + '</h4><strong class="project-avito-total">' + escape(metric(data.totals[item.key])) + '</strong><div class="project-avito-period-total"><span>за 30 дней</span><span title="Сумма только при наличии всех пяти дней">5 дней: <b>' + escape(metric(data.fiveTotals[item.key])) + '</b></span></div>' + accountColumns(data.days, item.key, false) + '</article>';
+    }).join('') + '</div><div class="project-avito-secondary"><div><span>Расходы · 30 дней</span><strong>' + escape(money(data.totals.spending)) + '</strong></div><div><span>Активные объявления</span><strong class="project-avito-active">' + escape(metric(data.active)) + '</strong></div><div><span>Получено сегодня · контакты</span><strong>' + escape(metric(data.today.contacts)) + '</strong><small>Избр. ' + escape(metric(data.today.favorites)) + ' · Просм. ' + escape(metric(data.today.views)) + '</small></div></div><div class="project-avito-bottom"><section class="project-avito-chart project-avito-' + active.key + '"><div class="project-avito-chart-head"><strong>5 дней · ' + escape(active.label) + '</strong><div class="project-avito-tabs" role="group" aria-label="Показатель графика">' + metrics.map(function (item) { return '<button type="button" data-avito-chart="' + item.key + '" aria-label="График: ' + item.label + '" title="' + item.label + '" aria-pressed="' + (item.key === active.key) + '">' + accountIcon(item.key) + '</button>'; }).join('') + '</div></div>' + accountColumns(data.days, active.key, true) + '</section><section class="project-avito-summary"><h4>Итоги за 30 дней</h4><ul>' + rows.map(function (item) {
+      var value = item.key === 'active' ? metric(data.active) : item.key === 'spending' ? money(data.totals.spending) : metric(data.totals[item.key]);
+      return '<li class="project-avito-' + item.key + '"' + (item.key === 'active' ? ' title="Текущее количество активных объявлений, не сумма за период"' : '') + '><span>' + accountIcon(item.key) + escape(item.label) + '</span><b>' + escape(value) + '</b></li>';
+    }).join('') + '</ul></section></div><div class="project-avito-footer"><span>Аванс <b>' + escape(money(data.advance)) + '</b></span><span>Кошелёк <b>' + escape(money(data.wallet)) + '</b></span><span>Расходы сегодня <b>' + escape(money(data.today.spending)) + '</b></span>' + (stamp ? '<span>Обновлено ' + escape(stamp) + ' МСК</span>' : '') + (tariffLabel ? '<span class="project-avito-tariff">' + escape(tariffLabel) + '</span>' : '') + '<span class="project-avito-status" data-account-status role="status">' + (data.stale ? 'Последние успешные данные API. Часть показателей может обновляться с задержкой.' : '') + '</span></div></div>';
+  }
+  function renderAccountMetrics(state, model) {
+    var container = state.overlay.querySelector('[data-account-metrics]');
+    state.analyticsModel = model;
+    container.innerHTML = accountAnalyticsHtml(model, state.analyticsMetric);
+    container.querySelectorAll('[data-avito-chart]').forEach(function (button) {
+      button.onclick = function () {
+        if (current !== state || state.scope !== scope()) return;
+        state.analyticsMetric = button.getAttribute('data-avito-chart');
+        renderAccountMetrics(state, state.analyticsModel);
+        var selected = container.querySelector('[data-avito-chart="' + state.analyticsMetric + '"]');
+        if (selected) selected.focus();
+      };
+    });
+  }
+  function accountAccessLost(code) {
+    return /^(auth_required|subject_mismatch|organization_forbidden|account_forbidden|permission_denied|forbidden|account_disconnected|account_changed|reconnect_required)$/.test(text(code));
+  }
+  function resetAccountMetrics(event) {
+    if (event && event.detail && event.detail.reason === 'transport_unavailable') return;
+    metricsCache.clear(); metricsScope = '';
+    var state = current;
+    if (!state) return;
+    state.analyticsModel = null; ++state.metricsRequest;
+    if (state.scope !== scope()) return;
+    var container = state.overlay.querySelector('[data-account-metrics]');
+    if (container) container.innerHTML = '<p class="project-card-note">Связь с аккаунтами сброшена. Проверьте вход и нажмите «Обновить».</p>';
+  }
   async function loadMetrics(state, id, populateProfile) {
     var container = state.overlay.querySelector('[data-account-metrics]');
     var request = ++state.metricsRequest;
+    if (metricsScope !== state.scope) { metricsCache.clear(); metricsScope = state.scope; }
+    if (state.metricsId !== id) { state.analyticsModel = null; state.metricsId = id; }
     if (!id) { container.innerHTML = '<p class="project-card-note">Привяжите аккаунт проекта, чтобы видеть статистику Avito.</p>'; return; }
     var bridge = root.AvitoWorkspaceBridge;
     if (!bridge || typeof bridge.getAccountOverview !== 'function') { container.innerHTML = '<p class="project-card-note">Статистика аккаунта пока недоступна.</p>'; return; }
-    container.innerHTML = '<p class="project-card-note">Загружаем реальные показатели аккаунта…</p>';
+    if (!state.analyticsModel && metricsCache.has(id)) renderAccountMetrics(state, accountAnalytics(metricsCache.get(id), moscowDay()));
+    var status = container.querySelector('[data-account-status]');
+    if (state.analyticsModel && status) status.textContent = 'Обновляем данные…';
+    else container.innerHTML = '<p class="project-card-note">Загружаем реальные показатели аккаунта…</p>';
     try {
-      var result = await bridge.getAccountOverview(id);
+      var response = bridge.getAccountOverview(id);
+      // The bridge may synchronously reset its previous profile before starting this request.
+      request = state.metricsRequest;
+      var result = await response;
       ensureScope(state.scope);
       if (current !== state || request !== state.metricsRequest) return;
+      var overview = result && (result.overview || result.snapshot || result) || {};
+      if (accountAccessLost(overview.error)) throw new Error(overview.error);
       if (populateProfile) {
         var profileInput = state.overlay.querySelector('[name="avito_account"]');
         var profileUrl = safeAvitoUrl(result && result.profile && result.profile.profile_url);
         if (profileInput && !profileInput.value.trim() && profileUrl) profileInput.value = profileUrl;
       }
-      var data = result && (result.overview || result.snapshot || result) || {};
-      var day = moscowDay();
-      var today = data.today && data.today.available && data.today.date === day ? data.today : {};
-      var history = data.history && data.history.available && data.history.dateTo === day ? data.history.totals || {} : {};
-      var advance = data.advance && data.advance.available ? data.advance.balance : null;
-      var balanceSection = result && result.balance || data.balance;
-      var balances = balanceSection && balanceSection.available ? balanceSection : {};
-      var tariff = data.tariff || {};
-      container.innerHTML = '<div class="project-card-metrics">' + metricBox('Аванс', advance === null ? '—' : formatMoney(advance)) + metricBox('Кошелёк', balances.real == null ? '—' : formatMoney(balances.real)) + metricBox('Активных объявлений', data.listings && data.listings.available ? metric(data.listings.active) : '—') + metricBox('Расходы сегодня', today.spending == null ? '—' : formatMoney(today.spending)) + metricBox('Контакты сегодня', metric(today.contacts)) + metricBox('Просмотры сегодня', metric(today.views)) + metricBox('Избранное сегодня', metric(today.favorites)) + metricBox('Контакты за 30 дней', metric(history.contacts)) + metricBox('Просмотры за 30 дней', metric(history.views)) + metricBox('Избранное за 30 дней', metric(history.favorites)) + metricBox('Расходы за 30 дней', history.spending == null ? '—' : formatMoney(history.spending)) + '</div><p class="project-card-note">' + escape(data.fetched_at ? 'Получено: ' + new Date(data.fetched_at).toLocaleString('ru-RU', { timeZone: 'Europe/Moscow' }) + ' МСК' : 'Показаны только доступные данные API.') + (data.stale ? ' · Последние успешные данные; обновление временно недоступно.' : '') + (tariff.available ? '<br>Тариф: ' + escape(tariff.name || 'Не указан') + (tariff.ends_at ? ' · до ' + escape(new Date(tariff.ends_at).toLocaleDateString('ru-RU', { timeZone: 'Europe/Moscow' })) : '') + (Number.isSafeInteger(tariff.days_remaining) ? ' · осталось дней: ' + tariff.days_remaining : '') : '') + '</p>';
-    } catch (_) { if (current === state && request === state.metricsRequest) container.innerHTML = '<p class="project-card-note">Не удалось получить статистику. Привязка сохранена; ключи повторно вводить не нужно.</p>'; }
+      metricsCache.set(id, result);
+      if (metricsCache.size > 32) metricsCache.delete(metricsCache.keys().next().value);
+      renderAccountMetrics(state, accountAnalytics(result, moscowDay()));
+    } catch (error) {
+      if (current !== state || state.scope !== scope() || request !== state.metricsRequest) return;
+      if (accountAccessLost(error && (error.code || error.message))) {
+        if (/^(auth_required|subject_mismatch|organization_forbidden)$/.test(error.code || error.message)) metricsCache.clear();
+        else metricsCache.delete(id);
+        state.analyticsModel = null;
+        container.innerHTML = '<p class="project-card-note">Нет доступа к статистике аккаунта. Проверьте его подключение во вкладке «Аккаунты».</p>';
+        return;
+      }
+      var message = 'Не удалось обновить статистику. Привязка сохранена; ключи повторно вводить не нужно.';
+      var lastStatus = container.querySelector('[data-account-status]');
+      if (state.analyticsModel && lastStatus) lastStatus.textContent = message + ' Показаны последние полученные данные.';
+      else container.innerHTML = '<p class="project-card-note">' + message + '</p>';
+    }
   }
   function formValues(state) {
     var values = {};
@@ -688,6 +839,7 @@
     document.addEventListener('avitolog:project-payments-changed', refreshPaymentSummary);
     document.addEventListener('avitolog:project-payments-file', refreshPaymentSummary);
     document.addEventListener('avitolog:project-context-changed', refreshPaymentSummary);
+    document.addEventListener('avitolog:workspace-reset', resetAccountMetrics);
     if (typeof root.MutationObserver === 'function') {
       new root.MutationObserver(function (records) {
         if (!records.some(function (record) { return !field.contains(record.target) && !(current && current.overlay.contains(record.target)); })) return;
@@ -704,6 +856,6 @@
   }
   var api = { open: open, close: close, refreshSidebar: refreshSidebar };
   root.ProjectCard = api;
-  if (typeof module !== 'undefined' && module.exports) module.exports = { normalize: normalize, safeAvitoUrl: safeAvitoUrl, linkedClient: linkedClient, model: model, accountScore: accountScore, rankedAccounts: rankedAccounts, changedFields: changedFields, assertNoConflict: assertNoConflict, paymentsHtml: paymentsHtml, paymentTrend: paymentTrend, dashboardHtml: dashboardHtml, save: save, scope: scope, ready: ready, readOnly: readOnly, sameId: sameId, findById: findById, projectForCurrent: projectForCurrent, activityHtml: activityHtml, loadAccounts: loadAccounts, refreshSidebarAccounts: refreshSidebarAccounts };
+  if (typeof module !== 'undefined' && module.exports) module.exports = { normalize: normalize, safeAvitoUrl: safeAvitoUrl, linkedClient: linkedClient, model: model, accountScore: accountScore, rankedAccounts: rankedAccounts, changedFields: changedFields, assertNoConflict: assertNoConflict, paymentsHtml: paymentsHtml, paymentTrend: paymentTrend, dashboardHtml: dashboardHtml, save: save, scope: scope, ready: ready, readOnly: readOnly, sameId: sameId, findById: findById, projectForCurrent: projectForCurrent, activityHtml: activityHtml, loadAccounts: loadAccounts, refreshSidebarAccounts: refreshSidebarAccounts, accountAnalytics: accountAnalytics, accountAnalyticsHtml: accountAnalyticsHtml, accountColumns: accountColumns, loadMetrics: loadMetrics };
   if (document) { if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init(); }
 })(typeof window !== 'undefined' ? window : globalThis);
