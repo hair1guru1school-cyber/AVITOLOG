@@ -46,8 +46,17 @@
   function parseReportedTotal(source) {
     validText(source);
     var match = source.match(/^\s*(?:оплатил(?:а|и)?|оплачено|всего\s+оплатил(?:а|и)?|всего\s+оплачено)\s*(\d{1,3}(?:[ \u00a0\u202f]\d{3})+|\d{1,13})([.,]\d{1,2})?\s*(?:₽|руб(?:\.|лей|ля)?|RUB)?\s*за\s*(\d{1,6})\s*цикл(?:ов|а)?\s*(?:ведения|продвижения)?\s*[.!]?\s*$/i);
-    if (!match) return null;
-    return financialSummary({ kind: 'reported_total', totalPaid: Number(match[1].replace(/[ \u00a0\u202f]/g, '') + (match[2] || '').replace(',', '.')), currency: 'RUB', promotionCycles: Number(match[3]), evidence: source.trim() }, source);
+    if (match) return financialSummary({ kind: 'reported_total', totalPaid: Number(match[1].replace(/[ \u00a0\u202f]/g, '') + (match[2] || '').replace(',', '.')), currency: 'RUB', promotionCycles: Number(match[3]), evidence: source.trim() }, source);
+    if (source.trim().length > 1000 || /(?:ежемесяч|еженедель|в\s+месяц|кажд\S*\s+(?:месяц|цикл)|за\s+(?:один|1)\s*цикл|по\s+\d|долг|остаток|остал|планиру|прогноз|вернул|возврат|рассроч|не\s+(?:оплат|отдал|получ|плат)|доллар|евро|USD|EUR|[$€%]|просмотр|контакт|показ|заявк|объявлен|плат[её]ж\S*\s*(?:№|номер)|[+*=\/]|\d\s*[-–—]\s*\d)/i.test(source)) return null;
+    if (!/(?:итого|в\s+итоге|за\s+вс[её]\s+время|всего|отдал\s+клиент|клиент\s+отдал)/i.test(source)) return null;
+    var cycles = Array.from(source.matchAll(/(^|[^\d.,])(\d{1,6})\s*цикл(?:ов|а)?(?![а-яё])/gi));
+    if (cycles.length !== 1) return null;
+    var cycle = cycles[0], start = cycle.index + cycle[1].length, residual = source.slice(0, start) + ' '.repeat(cycle[0].length - cycle[1].length) + source.slice(cycle.index + cycle[0].length);
+    if (/[-−]\s*$/.test(source.slice(0, start))) return null;
+    var amounts = Array.from(residual.matchAll(/(?:\d{1,3}(?:[ \u00a0\u202f]\d{3})+|\d+)(?:[.,]\d{1,2})?/g));
+    if (amounts.length !== 1 || /[-−]\s*$/.test(residual.slice(0, amounts[0].index))) return null;
+    var amount = Number(amounts[0][0].replace(/[ \u00a0\u202f]/g, '').replace(',', '.'));
+    return financialSummary({ kind: 'reported_total', totalPaid: amount, currency: 'RUB', promotionCycles: Number(cycle[2]), evidence: source.trim() }, source);
   }
   function validDay(value) {
     if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
@@ -161,6 +170,8 @@
     function mount(container, options) {
       options = options || {}; style();
       var store = win.ProjectContextStore, captured = store && store.scope(), destroyed = false, busy = false, syncBusy = false, controllers = [], requestGeneration = 0;
+      var autoApply = options.autoApply !== false, autoDelay = Number.isFinite(options.autoApplyDelayMs) ? Math.max(0, Math.min(10000, options.autoApplyDelayMs)) : 1000;
+      var autoTimer = null, autoScopeTimer = null, revision = 0, activeRun = null, autoDue = false, lastSuccess = null;
       var target = { projectId: options.projectId, clientId: options.clientId, folderId: options.folderId, scope: options.scope };
       var analysis = null, analyzedSource = '', analyzedValues = {}, analysisProvider = 'manual', candidates = [], financialInputs = null, recencyInput = null, pendingEntry = null, pendingSignature = '', unsaved = false;
       var root = el('div', 'project-context'), editor = el('div'), right = el('div'), status = el('div', 'project-context-status');
@@ -169,10 +180,10 @@
       var source = el('textarea'); source.placeholder = 'Напишите, что изменить в карточке…'; source.setAttribute('aria-label', 'Исходный текст контекста проекта');
       var counter = el('div', 'project-context-note', '0 / 20 000 символов');
       editor.appendChild(source); editor.appendChild(counter);
-      editor.appendChild(el('p', 'project-context-note', '«Разобрать запрос» и «Сохранить и выйти»: текст и описательные поля отправляются в платный API Anthropic; точные даты и итоги разбираются локально.'));
+      editor.appendChild(el('p', 'project-context-note', autoApply ? 'После паузы ввода изменения сохраняются автоматически: точные даты и итоги — локально, остальные запросы и описательные поля — через платный API Anthropic.' : '«Разобрать запрос» и «Сохранить и выйти»: текст и описательные поля отправляются в платный API Anthropic; точные даты и итоги разбираются локально.'));
       var actions = el('div', 'project-context-actions'); editor.appendChild(actions);
       function button(label, action, parent) { var node = el('button', '', label); node.type = 'button'; node.addEventListener('click', action); (parent || actions).appendChild(node); return node; }
-      var analyzeButton = button('Разобрать запрос', function () { void analyze(); });
+      var analyzeButton = button(autoApply ? 'Применить сейчас' : 'Разобрать запрос', function () { if (autoApply) void flush(true); else void analyze(); });
       var preview = el('div', 'project-context-preview'); right.appendChild(preview);
       var history = el('details', 'project-context-history'), historyTitle = el('summary', '', 'История контекста · 0'), driveStatus = el('p', 'project-context-note'), historyContent = el('div', 'project-context-history-content');
       history.appendChild(historyTitle); history.appendChild(driveStatus); right.appendChild(history);
@@ -181,14 +192,34 @@
       function current() { return !destroyed && (!options.isCurrent || options.isCurrent()) && store && store.scope() === captured && captured === options.scope; }
       function assertCurrent() { if (!current()) throw new Error('context_changed'); }
       function assertWritable() { assertCurrent(); if (options.readOnly) throw new Error('read_only'); if (!options.projectId) throw new Error('project_required'); }
-      function notice(value, bad) { if (!destroyed) { status.textContent = value; status.dataset.error = bad ? 'true' : 'false'; } }
+      function notice(value, bad) { if (!destroyed) { status.textContent = value; status.dataset.error = bad ? 'true' : 'false'; try { if (typeof options.onStatus === 'function') options.onStatus(value, !!bad); } catch (_) {} } }
       function updateControls() {
-        [source, analyzeButton].forEach(function (node) { node.disabled = !writable || busy || !current(); });
+        [source, analyzeButton].forEach(function (node) { node.disabled = !writable || !current(); });
         syncButton.disabled = !writable || syncBusy || !current();
-        candidates.forEach(function (candidate) { candidate.input.disabled = busy || !writable || !current(); });
-        if (financialInputs) [financialInputs.amount, financialInputs.cycles].forEach(function (node) { node.disabled = busy || !writable || !current(); });
-        if (recencyInput) recencyInput.disabled = busy || !writable || !current();
+        candidates.forEach(function (candidate) { candidate.input.disabled = !writable || !current(); });
+        if (financialInputs) [financialInputs.amount, financialInputs.cycles].forEach(function (node) { node.disabled = !writable || !current(); });
+        if (recencyInput) recencyInput.disabled = !writable || !current();
       }
+      function clearAuto() {
+        if (autoTimer !== null) win.clearTimeout(autoTimer); autoTimer = null; autoDue = false;
+        if (autoScopeTimer !== null) win.clearTimeout(autoScopeTimer); autoScopeTimer = null;
+      }
+      function watchAutoScope() {
+        if (autoScopeTimer !== null) return;
+        autoScopeTimer = win.setTimeout(function () {
+          autoScopeTimer = null;
+          if (!current()) { clearAuto(); controllers.slice().forEach(function (job) { job.cancel('context_changed'); }); updateControls(); return; }
+          if (autoTimer !== null || activeRun) watchAutoScope();
+        }, 250);
+      }
+      function scheduleAuto() {
+        clearAuto();
+        if (!autoApply || !writable || !current() || !source.value.trim() || !unsaved) return;
+        autoTimer = win.setTimeout(function () { autoTimer = null; autoDue = true; void startRun(true); }, autoDelay);
+        watchAutoScope();
+      }
+      function assertDraft(expected, input) { assertCurrent(); if (expected !== revision || input !== source.value) throw new Error('draft_changed'); }
+      function proposalEdited() { ++revision; unsaved = true; scheduleAuto(); }
       function localProposal(input) {
         var total = parseReportedTotal(input), recency = total ? null : parsePaymentRecency(input, moscowToday());
         if (!total && !recency) return null;
@@ -198,15 +229,17 @@
         return proposal;
       }
       function edited() {
+        ++revision; ++requestGeneration; controllers.slice().forEach(function (job) { job.cancel('draft_changed'); }); clearAuto();
         unsaved = !!source.value.trim(); counter.textContent = source.value.length + ' / 20 000 символов';
         if (pendingEntry && source.value !== pendingEntry.text) pendingEntry = null;
         analysis = null; analyzedSource = ''; analysisProvider = 'manual';
         try {
-          if (source.value.trim()) analysis = localProposal(source.value);
-          if (analysis) { analyzedSource = source.value; analyzedValues = allowedValues(options.getValues ? options.getValues() : {}); notice('Распознано локально. Проверьте значения; «Сохранить и выйти» сохранит изменения.'); }
+          if (lastSuccess && source.value.trim() === lastSuccess.sourceKey) { analysis = JSON.parse(JSON.stringify(lastSuccess.proposal)); analysisProvider = lastSuccess.provider; unsaved = false; }
+          else if (source.value.trim()) analysis = localProposal(source.value);
+          if (analysis) { analyzedSource = source.value; analyzedValues = allowedValues(options.getValues ? options.getValues() : {}); notice(unsaved ? autoApply ? 'Распознано локально. Сохраняем после паузы ввода…' : 'Распознано локально. Проверьте значения; «Сохранить и выйти» сохранит изменения.' : 'Сохранено в проекте.'); }
           else notice('');
         } catch (failure) { error(failure); }
-        showPreview();
+        showPreview(); scheduleAuto();
       }
       source.addEventListener('input', edited);
       function error(error) { notice(errorText(error), true); }
@@ -249,6 +282,7 @@
           var amountLabel = el('label', '', 'Всего оплачено, ₽'), amount = el('input'); amount.type = 'text'; amount.inputMode = 'decimal'; amount.value = String(analysis.financialSummary.totalPaid); amount.setAttribute('aria-label', 'Сводная сумма, рублей'); amountLabel.appendChild(amount);
           var cyclesLabel = el('label', '', 'Циклов ведения'), cycles = el('input'); cycles.type = 'number'; cycles.min = '0'; cycles.max = '100000'; cycles.step = '1'; cycles.value = String(analysis.financialSummary.promotionCycles); cycles.setAttribute('aria-label', 'Сводное число циклов'); cyclesLabel.appendChild(cycles);
           inputs.appendChild(amountLabel); inputs.appendChild(cyclesLabel); financial.appendChild(inputs);
+          amount.addEventListener('input', proposalEdited); cycles.addEventListener('input', proposalEdited);
           financial.appendChild(el('p', 'project-context-note', 'Общий итог, не новый платёж. Даты и касса не меняются.'));
           financial.appendChild(el('blockquote', 'project-context-quote', analysis.financialSummary.evidence)); preview.appendChild(financial); financialInputs = { amount: amount, cycles: cycles };
         }
@@ -257,6 +291,7 @@
           if (analysis.paymentRecencyYearInferred) recency.appendChild(el('p', 'project-context-note', 'Год ' + analysis.paymentRecency.lastPaymentDate.slice(0, 4) + ' предположен. Проверьте и при необходимости измените дату.'));
           recency.appendChild(el('p', 'project-context-note', 'Только дата последней оплаты. Нового платежа, суммы или записи в кассе не создаёт.'));
           recency.appendChild(el('blockquote', 'project-context-quote', analysis.paymentRecency.evidence)); preview.appendChild(recency); recencyInput = dateInput;
+          dateInput.addEventListener('input', proposalEdited);
         }
         ['facts', 'tasks'].forEach(function (kind) {
           if (!analysis[kind].length) return;
@@ -267,9 +302,10 @@
           var row = el('div', 'project-context-candidate'), label = el('label', '', FIELDS[suggestion.field][0] + (!text(analyzedValues[suggestion.field]).trim() ? ' · пустое поле' : ' · заменит заполненное поле')); row.appendChild(label);
           if (text(analyzedValues[suggestion.field]).trim()) row.appendChild(el('p', 'project-context-note', 'Сейчас: ' + analyzedValues[suggestion.field]));
           var input = el('textarea'); input.value = suggestion.value; input.maxLength = FIELDS[suggestion.field][1]; input.setAttribute('aria-label', 'Предложение: ' + FIELDS[suggestion.field][0]); row.appendChild(input);
+          input.addEventListener('input', proposalEdited);
           row.appendChild(el('blockquote', 'project-context-quote', suggestion.evidence)); preview.appendChild(row); candidates.push({ suggestion: suggestion, input: input });
         });
-        preview.appendChild(el('p', 'project-context-note', 'Проверьте предложения. «Сохранить и выйти» применит их.')); updateControls();
+        preview.appendChild(el('p', 'project-context-note', autoApply ? 'Изменения сохраняются автоматически после паузы ввода.' : 'Проверьте предложения. «Сохранить и выйти» применит их.')); updateControls();
       }
       function renderHistory() {
         if (!store || typeof store.get !== 'function') throw new Error('store_unavailable');
@@ -290,6 +326,7 @@
       }
       async function analyze() {
         if (busy) return { ok: false, error: errorText(new Error('context_busy')) };
+        var expected = revision;
         try {
           assertWritable(); var input = validText(source.value);
           analyzedValues = allowedValues(options.getValues ? options.getValues() : {});
@@ -306,12 +343,20 @@
             if (!Array.isArray(blocks) || value.stop_reason === 'max_tokens') throw new Error('invalid_ai_result');
             var raw = blocks.filter(function (item) { return item && item.type === 'text'; }).map(function (item) { return item.text; }).join('');
             next = parseAnalysis(raw, input); provider = 'anthropic';
+            if (autoApply && next.financialSummary) {
+              var supportedTotal = parseReportedTotal(input);
+              if (!supportedTotal || supportedTotal.totalPaid !== next.financialSummary.totalPaid || supportedTotal.promotionCycles !== next.financialSummary.promotionCycles) throw new Error('unsupported_evidence');
+            }
+            if (autoApply && next.paymentRecency) {
+              var supportedDate = parsePaymentRecency(input, moscowToday());
+              if (!supportedDate || supportedDate.lastPaymentDate !== next.paymentRecency.lastPaymentDate) throw new Error('unsupported_evidence');
+            }
           }
           assertCurrent();
-          if (source.value !== input) throw new Error('draft_changed');
-          analysis = next; analysisProvider = provider; analyzedSource = input; pendingEntry = null; pendingSignature = ''; unsaved = true; showPreview(); notice('Проверьте предложения. «Сохранить и выйти» применит их.');
+          assertDraft(expected, input);
+          analysis = next; analysisProvider = provider; analyzedSource = input; pendingEntry = null; pendingSignature = ''; unsaved = true; showPreview(); notice(autoApply ? 'Запрос разобран. Сохраняем изменения…' : 'Проверьте предложения. «Сохранить и выйти» применит их.');
           return { ok: true };
-        } catch (failure) { if (!destroyed) error(failure); return { ok: false, error: errorText(failure) }; }
+        } catch (failure) { var stale = expected !== revision; if (!destroyed && !stale) error(failure); return { ok: false, error: errorText(failure), stale: stale }; }
         finally { busy = false; if (!destroyed) updateControls(); }
       }
       function selectedPatch() {
@@ -332,20 +377,23 @@
           await options.onApply(patch); assertCurrent();
         }
       }
-      async function saveForExit() {
+      function clearComposer() {
+        analysis = null; analyzedSource = ''; pendingEntry = null; pendingSignature = ''; source.value = ''; counter.textContent = '0 / 20 000 символов'; showPreview();
+      }
+      async function commit(keepSource) {
         if (busy) return { ok: false, error: errorText(new Error('context_busy')) };
-        var committed = false;
+        var committed = false, expected = revision, input = source.value;
         try {
           assertWritable();
           if (!source.value.trim()) {
-            busy = true; updateControls(); await confirmCard({}); unsaved = false; notice('Сохранено в проекте.'); return { ok: true };
+            busy = true; updateControls(); await confirmCard({}); assertDraft(expected, input); unsaved = false; notice('Сохранено в проекте.'); return { ok: true };
           }
-          var input = validText(source.value);
+          validText(input);
           if (!analysis || analyzedSource !== input) {
             var prepared = await analyze(); if (!prepared || !prepared.ok) return prepared;
           }
-          assertCurrent(); if (analyzedSource !== input || source.value !== input) throw new Error('draft_changed');
-          var patch = selectedPatch();
+          assertDraft(expected, input); if (analyzedSource !== input) throw new Error('draft_changed');
+          var patch = {}; candidates.forEach(function (candidate) { patch[candidate.suggestion.field] = cleanString(candidate.input.value, FIELDS[candidate.suggestion.field][1]); });
           if (!store || typeof store.append !== 'function') throw new Error('store_unavailable');
           var entryData = { kind: 'text', text: input, summary: analysis.summary, facts: analysis.facts, tasks: analysis.tasks, suggestions: candidates.map(function (candidate) { return { field: candidate.suggestion.field, value: patch[candidate.suggestion.field], evidence: candidate.suggestion.evidence }; }), provider: analysisProvider };
           if (financialInputs) {
@@ -355,24 +403,59 @@
           }
           if (recencyInput) entryData.paymentRecency = Object.assign(paymentRecency({ kind: 'reported_last_payment', lastPaymentDate: recencyInput.value, evidence: analysis.paymentRecency.evidence }, input, moscowToday()), { confirmed: true });
           var signature = JSON.stringify(entryData);
+          var normalizedSignature = JSON.stringify(Object.assign({}, entryData, { text: input.trim() }));
+          if (lastSuccess && normalizedSignature === lastSuccess.signature) {
+            if (!keepSource) { busy = true; updateControls(); await confirmCard({}); assertDraft(expected, input); }
+            unsaved = false; notice('Сохранено в проекте.'); if (!keepSource) clearComposer(); return { ok: true };
+          }
+          selectedPatch();
           if (!pendingEntry || pendingSignature !== signature) {
             var entryId = win.crypto && typeof win.crypto.randomUUID === 'function' ? win.crypto.randomUUID() : 'ctx_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2);
             var stamp = Math.max(Date.now(), pendingEntry ? Date.parse(pendingEntry.createdAt) + 1 : 0);
             pendingEntry = Object.assign({ id: entryId, createdAt: new Date(stamp).toISOString() }, entryData); pendingSignature = signature;
           }
           busy = true; updateControls(); notice('Сохраняем подтверждённые изменения…');
-          var saved = await store.append(target, pendingEntry); assertCurrent();
+          assertDraft(expected, input);
+          var saved = await store.append(target, pendingEntry); assertDraft(expected, input);
           if (!saved || saved.ok !== true) throw new Error('append_unconfirmed');
           committed = true;
-          selectedPatch(); await confirmCard(patch);
+          selectedPatch(); await confirmCard(patch); assertDraft(expected, input);
           unsaved = false;
+          var proposal = { summary: entryData.summary, facts: entryData.facts, tasks: entryData.tasks, suggestions: entryData.suggestions };
+          if (entryData.financialSummary) { proposal.financialSummary = Object.assign({}, entryData.financialSummary); delete proposal.financialSummary.confirmed; }
+          if (entryData.paymentRecency) { proposal.paymentRecency = Object.assign({}, entryData.paymentRecency); delete proposal.paymentRecency.confirmed; proposal.paymentRecencyYearInferred = analysis.paymentRecencyYearInferred; }
+          lastSuccess = { sourceKey: input.trim(), signature: normalizedSignature, proposal: proposal, provider: analysisProvider };
+          analysis = JSON.parse(JSON.stringify(proposal)); analyzedValues = allowedValues(options.getValues ? options.getValues() : {});
           try { renderHistory(); } catch (_) {}
           notice(!options.onConfirm && Object.keys(patch).length ? 'Контекст сохранён. Выбранные поля внесены в форму; сохраните карточку.' : 'Сохранено в проекте.');
-          analysis = null; analyzedSource = ''; pendingEntry = null; pendingSignature = ''; source.value = ''; counter.textContent = '0 / 20 000 символов'; showPreview();
+          if (!keepSource) clearComposer();
           return { ok: true };
-        } catch (failure) { var message = (committed ? 'Исходный текст уже сохранён. Изменения карточки не подтверждены: ' : '') + errorText(failure); if (!destroyed) notice(message, true); return { ok: false, error: message }; }
+        } catch (failure) { var stale = expected !== revision, message = (committed ? 'Исходный текст уже сохранён. Изменения карточки не подтверждены: ' : '') + errorText(failure); if (!destroyed && !stale) notice(message, true); return { ok: false, error: message, stale: stale }; }
         finally { busy = false; if (!destroyed) updateControls(); }
       }
+      function startRun(keepSource) {
+        if (activeRun) return activeRun;
+        autoDue = false;
+        activeRun = Promise.resolve().then(function () { return commit(keepSource); }).finally(function () {
+          activeRun = null;
+          if (autoDue && current() && writable) { autoDue = false; void startRun(true); }
+          else if (autoTimer === null && autoScopeTimer !== null) { win.clearTimeout(autoScopeTimer); autoScopeTimer = null; }
+        });
+        watchAutoScope(); return activeRun;
+      }
+      async function flush(keepSource) {
+        clearAuto();
+        for (var pass = 0; pass < 5; pass++) {
+          while (activeRun) { var waiting = await activeRun; if (waiting && !waiting.ok && !waiting.stale) return waiting; }
+          clearAuto();
+          var result = await startRun(keepSource);
+          if (result && result.stale && current()) continue;
+          if (result && result.ok && !keepSource && !unsaved && source.value) clearComposer();
+          return result;
+        }
+        return { ok: false, error: errorText(new Error('draft_changed')) };
+      }
+      function saveForExit() { return flush(false); }
       async function sync() {
         if (syncBusy) return;
         try {
@@ -393,8 +476,8 @@
       catch (failure) { error(failure); }
       return {
         saveForExit: saveForExit,
-        isDirty: function () { return unsaved || busy; },
-        destroy: function () { destroyed = true; ++requestGeneration; controllers.forEach(function (job) { job.cancel('context_changed'); }); controllers = []; if (typeof doc.removeEventListener === 'function') doc.removeEventListener('avitolog:project-context-changed', contextChanged); source.value = ''; root.remove(); }
+        isDirty: function () { return unsaved || busy || autoTimer !== null || !!activeRun; },
+        destroy: function () { destroyed = true; clearAuto(); ++requestGeneration; controllers.forEach(function (job) { job.cancel('context_changed'); }); controllers = []; if (typeof doc.removeEventListener === 'function') doc.removeEventListener('avitolog:project-context-changed', contextChanged); source.value = ''; root.remove(); }
       };
     }
     return { mount: mount };
