@@ -603,25 +603,53 @@
     });
     return out;
   }
+  function mergeProjectIntakeContext(remote, next, projectId) {
+    function validate(value) {
+      if (!value || typeof value !== 'object' || Array.isArray(value) || value.format !== 'avitoboss-project-context-v1' ||
+          ['fil', 'sasha'].indexOf(value.profile) < 0 || typeof value.actor !== 'string' || !value.actor.trim() ||
+          value.projectId !== String(projectId) || !Array.isArray(value.entries) || value.entries.some(function(entry) {
+            return !entry || typeof entry !== 'object' || Array.isArray(entry) || typeof entry.id !== 'string' || !entry.id || entry.id.length > 100 || /\s/.test(entry.id);
+          })) throw new Error('Project context is malformed; the unsaved draft is retained');
+    }
+    validate(next);
+    if (remote !== undefined) {
+      validate(remote);
+      if (remote.profile !== next.profile || remote.actor !== next.actor || remote.projectId !== next.projectId) throw new Error('Project context owner changed; the unsaved draft is retained');
+    }
+    var entries = [], found = new Map();
+    (remote ? remote.entries : []).concat(next.entries).forEach(function(entry) {
+      if (found.has(entry.id)) {
+        if (stableJson(found.get(entry.id)) !== stableJson(entry)) throw new Error('Project context entry conflict; the unsaved draft is retained');
+        return;
+      }
+      found.set(entry.id, entry); entries.push(entry);
+    });
+    var out = Object.assign({}, remote || {}, next, { entries: entries });
+    if (stableJson(entries) !== stableJson(next.entries)) out.drivePending = true;
+    if (unescape(encodeURIComponent(JSON.stringify(out))).length > 5 * 1024 * 1024) throw new Error('Project context is too large; the unsaved draft is retained');
+    return out;
+  }
   function mergeProjectRecordByChanges(remoteItem, previousItem, nextItem) {
     if (!remoteItem || !previousItem || !nextItem) return nextItem;
     var out = Object.assign({}, remoteItem);
     Object.keys(nextItem).forEach(function(field) {
       if (!Object.prototype.hasOwnProperty.call(previousItem, field) ||
           stableJson(previousItem[field]) !== stableJson(nextItem[field])) {
-        out[field] = nextItem[field];
+        out[field] = field === 'intakeContextV1' ? mergeProjectIntakeContext(remoteItem[field], nextItem[field], nextItem.id) : nextItem[field];
       }
     });
     Object.keys(previousItem).forEach(function(field) {
       if (Object.prototype.hasOwnProperty.call(nextItem, field)) return;
+      if (field === 'intakeContextV1') throw new Error('Project context is append-only; the unsaved draft is retained');
       if (stableJson(remoteItem[field]) === stableJson(previousItem[field])) delete out[field];
     });
     return out;
   }
   function isProjectJournalOnlyChange(previousItem, nextItem) {
-    if (!previousItem || !nextItem || stableJson(previousItem.paymentJournalV1) === stableJson(nextItem.paymentJournalV1)) return false;
+    var journals = ['paymentJournalV1', 'intakeContextV1'];
+    if (!previousItem || !nextItem || !journals.some(function(field) { return stableJson(previousItem[field]) !== stableJson(nextItem[field]); })) return false;
     return Object.keys(previousItem).concat(Object.keys(nextItem)).every(function(field) {
-      return field === 'paymentJournalV1' || stableJson(previousItem[field]) === stableJson(nextItem[field]);
+      return journals.indexOf(field) >= 0 || stableJson(previousItem[field]) === stableJson(nextItem[field]);
     });
   }
   function mergeProjectArrayByChanges(remoteArr, previousArr, nextArr) {
@@ -674,11 +702,12 @@
     return out;
   }
   function mergeHiddenProjectsByChanges(remoteArr, previousArr, nextArr) {
-    var remoteById = {}, previousById = {}, journalOnlyById = {};
+    var remoteById = {}, previousById = {}, nextById = {}, journalOnlyById = {};
     (Array.isArray(remoteArr) ? remoteArr : []).forEach(function(item) { remoteById[backendItemId(item)] = item; });
     (Array.isArray(previousArr) ? previousArr : []).forEach(function(item) { previousById[backendItemId(item)] = item; });
     (Array.isArray(nextArr) ? nextArr : []).forEach(function(item) {
       var id = backendItemId(item);
+      if (id) nextById[id] = item;
       if (id && isProjectJournalOnlyChange(previousById[id], item)) journalOnlyById[id] = item;
     });
     return mergeArrayByChangedIds(remoteArr, previousArr, nextArr).filter(function(item) {
@@ -686,7 +715,16 @@
       return !journalOnlyById[id] || !!remoteById[id];
     }).map(function(item) {
       var id = backendItemId(item);
-      return journalOnlyById[id] ? mergeProjectRecordByChanges(remoteById[id], previousById[id], journalOnlyById[id]) : item;
+      if (journalOnlyById[id]) return mergeProjectRecordByChanges(remoteById[id], previousById[id], journalOnlyById[id]);
+      var remote = remoteById[id], previous = previousById[id], next = nextById[id];
+      if (!remote || !previous || !next) return item;
+      if (Object.prototype.hasOwnProperty.call(previous, 'intakeContextV1') && !Object.prototype.hasOwnProperty.call(next, 'intakeContextV1')) throw new Error('Project context is append-only; the unsaved draft is retained');
+      // Hidden business edits keep their legacy precedence, but cannot replace newer context.
+      var out = Object.assign({}, item);
+      if (stableJson(previous.intakeContextV1) !== stableJson(next.intakeContextV1)) out.intakeContextV1 = mergeProjectIntakeContext(remote.intakeContextV1, next.intakeContextV1, next.id);
+      else if (Object.prototype.hasOwnProperty.call(remote, 'intakeContextV1')) out.intakeContextV1 = remote.intakeContextV1;
+      else delete out.intakeContextV1;
+      return out;
     });
   }
   function mergeProjectsValue(remoteValue, previousValue, nextValue) {
