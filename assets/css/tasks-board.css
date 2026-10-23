@@ -10,7 +10,7 @@
 }
 
 .tasks-board-v2 .tasks-board-toolbar { flex-wrap: wrap; box-sizing: border-box; }
-.tasks-board-v2 .tasks-board-toolbar-left { flex: 1 1 280px; max-width: 100%; }
+.tasks-board-v2 .tasks-board-toolbar-left { flex: 0 1 auto; max-width: 100%; }
 .tasks-board-v2 .tasks-board-toolbar-spacer { display: none; }
 .tasks-board-v2 .tasks-board-controls { max-width: 100%; }
 
