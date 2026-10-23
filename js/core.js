@@ -815,7 +815,9 @@ function renderTasksBoardIntoMainContent(mc) {
   projectsData.tasks = Array.isArray(projectsData.tasks) ? projectsData.tasks : [];
   var crmTasks = [];
   try {
-    if (typeof crmTaskLoad === 'function') {
+    if (window.TasksBoard && typeof window.TasksBoard.readCrmTasks === 'function') {
+      crmTasks = window.TasksBoard.readCrmTasks();
+    } else if (typeof crmTaskLoad === 'function') {
       crmTasks = crmTaskLoad();
     } else {
       var _crmK = (typeof window.AVITOLOG_KEY === 'function') ? window.AVITOLOG_KEY('crm_tasks_v1') : 'crm_tasks_v1';
@@ -877,7 +879,8 @@ function renderTasksBoardIntoMainContent(mc) {
 
   crmTasks.forEach(function(t) {
     var projectName = String((t && t.project) || '').trim();
-    var pid = projectName ? (bucketByTitle[projectName.toLowerCase()] || '') : '';
+    var pid = window.TasksBoard ? window.TasksBoard.columnForCrm(t, projectsData.projects) : (projectName ? (bucketByTitle[projectName.toLowerCase()] || '') : '');
+    if (pid && !byProjectId[pid]) byProjectId[pid] = { id: pid, title: projectName || 'CRM без проекта', emoji: '📋', customIcon: '', zone: 'active', tasks: [] };
     if (!pid) {
       pid = projectName ? ('crm_' + projectName.toLowerCase().replace(/[^\wа-яё]+/gi, '_')) : 'crm_no_project';
       if (!byProjectId[pid]) byProjectId[pid] = { id: pid, title: projectName || 'CRM без проекта', emoji: '📋', customIcon: '', zone: 'active', tasks: [] };
@@ -910,6 +913,7 @@ function renderTasksBoardIntoMainContent(mc) {
     });
   if (!columns.length) {
     mc.innerHTML = '<div class="tasks-board-page"><div class="tasks-board-head"><div><div class="tasks-board-title">ЗАДАЧИ ПО ПРОЕКТАМ</div><div class="tasks-board-sub">Пока нет задач. Создай их в CRM или в ПРОЕКТАХ.</div></div></div><div class="tasks-board-empty">Нет данных для отображения.</div></div>';
+    if (window.TasksBoard) window.TasksBoard.enhance(mc);
     return;
   }
 
@@ -959,7 +963,7 @@ function renderTasksBoardIntoMainContent(mc) {
           return '<span class="tasks-task-tag" title="' + esc(lbl) + '">' + esc(e) + ' ' + esc(lbl) + '</span>';
         }).join('') + '</div>';
       }
-      return '<div class="tasks-task' + (isDone ? ' is-done' : '') + (isOver ? ' is-overdue' : '') + '">' +
+      return '<div class="tasks-task' + (isDone ? ' is-done' : '') + (isOver ? ' is-overdue' : '') + '" data-task-id="' + esc(t.id) + '" data-task-source="' + esc(t.source) + '">' +
         '<div class="tasks-task-top"><div class="tasks-task-title">' + esc(t.title) + '</div><span class="tasks-task-badge ' + statusClass + '">' + statusLabel + '</span></div>' +
         '<div class="tasks-task-meta"><span>📅 ' + esc(dueTxt) + '</span><span>• ' + esc(sourceTxt) + '</span><span>• ' + esc(t.type || 'task') + '</span></div>' +
         tagsHtml +
@@ -1024,6 +1028,7 @@ function renderTasksBoardIntoMainContent(mc) {
     '<div class="tasks-board-strip"><span class="tasks-board-chip">Проектов: ' + visible.length + '</span><span class="tasks-board-chip">Задач: ' + total + '</span><span class="tasks-board-chip">Done: ' + doneCount + '</span><span class="tasks-board-chip">Overdue: ' + overdueCount + '</span></div>' +
     '<div class="tasks-board-wrap"><div class="tasks-board-columns" style="--tasks-col-width:' + colWidth + 'px;--tasks-scale:' + scaleUnit + '">' + colsHtml + '</div></div>' +
   '</div>';
+  if (window.TasksBoard) window.TasksBoard.enhance(mc);
   if (typeof tasksBoardEnsureTaskPanelActive === 'function') tasksBoardEnsureTaskPanelActive();
 }
 function tasksBoardEnsureTaskPanelActive() {
