@@ -508,6 +508,7 @@
     var style = document.createElement('style'); style.id = 'cashControlsStyle';
     style.textContent = '.assets-settings{position:relative;display:inline-block}.assets-settings summary{list-style:none;cursor:pointer;border:1px solid var(--border);border-radius:6px;padding:5px 8px;background:var(--surface2,transparent);color:var(--text)}.assets-settings summary::-webkit-details-marker{display:none}.assets-settings label{position:absolute;right:0;top:100%;z-index:30;display:flex;align-items:center;gap:7px;white-space:nowrap;padding:12px;background:var(--surface,#132132);border:1px solid var(--border);border-radius:8px;box-shadow:0 8px 24px #0003;font-size:12px}.assets-project-card-btn{flex-shrink:0;cursor:pointer;border:1px solid var(--border);border-radius:5px;background:transparent;color:var(--text);padding:1px 4px;font-size:13px}.assets-next-payment{margin:10px 0;padding:10px 0;border-top:1px solid var(--border);border-bottom:1px solid var(--border)}.assets-next-payment label{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:5px;font-size:11px;margin:7px 0}.assets-next-payment input{max-width:135px;min-width:0;background:var(--surface2,transparent);color:var(--text);border:1px solid var(--border);border-radius:5px;padding:4px}.assets-next-payment input[type=number]{width:58px}.assets-payment-calendar{display:flex;gap:2px;height:15px;margin:9px 0 5px}.assets-payment-calendar i{flex:1;min-width:0;background:var(--border,#31445b);border-radius:2px}.assets-payment-calendar i.elapsed{background:var(--accent,#00bc8b)}.assets-payment-calendar.overdue i.elapsed{background:#ed7171}.assets-payment-calendar i.today{outline:2px solid var(--text);outline-offset:1px}.assets-payment-period{display:flex;justify-content:space-between;gap:6px;font-size:10px;color:var(--muted)}';
     style.textContent += '.assets-settings label{letter-spacing:normal;text-transform:none;font-weight:500;text-shadow:none}.assets-next-payment label{min-width:0}.assets-next-payment input{box-sizing:border-box;max-width:100%}.assets-detail-content .ad-row{gap:6px;flex-wrap:wrap}.assets-detail-content .ad-val{white-space:nowrap;max-width:100%}';
+    style.textContent += '.assets-next-payment [data-schedule-edit="days"],.assets-next-payment [data-schedule-edit="cycle"]{width:68px}.assets-next-payment input:focus{outline:1px solid var(--accent,#00bc8b)}[data-schedule-status]{font-size:11px;margin-top:5px}.assets-pay-expected{width:100%;margin-top:7px;padding:7px;border:1px solid var(--accent,#00bc8b);border-radius:6px;background:var(--surface2,transparent);color:var(--text);font-size:11px;cursor:pointer}.assets-cycle-history{padding:9px 0;border-top:1px solid var(--border)}.assets-cycle-record{margin-top:8px;font-size:11px}.assets-cycle-record span,.assets-cycle-record small{display:block}.assets-cycle-record small{color:var(--muted)}';
     document.head.appendChild(style);
   }
   function cashCalendarDay() { return new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Moscow', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date()); }
@@ -534,7 +535,11 @@
     var daysLabel = schedule.days === null ? 'Следующая оплата не назначена' : schedule.days < 0 ? 'Просрочено на ' + Math.abs(schedule.days) + ' дн.' : schedule.days === 0 ? 'Оплата сегодня' : 'До следующей оплаты: ' + schedule.days + ' дн.';
     var bars = '';
     if (schedule.due) for (var i = 0; i < 30; i++) { var day = new Date(Date.parse(schedule.start + 'T00:00:00Z') + Math.floor(i * Math.max(1, Math.round((Date.parse(schedule.due + 'T00:00:00Z') - Date.parse(schedule.start + 'T00:00:00Z')) / 86400000)) / 30) * 86400000).toISOString().slice(0, 10); bars += '<i class="' + (i / 30 < schedule.progress ? 'elapsed' : '') + (day === today ? ' today' : '') + '" title="' + day + '"></i>'; }
-    return '<section class="assets-next-payment" data-cash-context="' + context + '"><b>' + esc(daysLabel) + '</b><label>Следующая оплата<input type="date" aria-label="Следующая оплата" value="' + esc(schedule.due) + '" onchange="window.__assetsSaveSchedule(this,\'' + owner + '\',' + idx + ',\'date\')"></label><label>Цикл, дней<input type="number" min="1" max="3650" aria-label="Цикл оплаты, дней" value="' + schedule.cycle + '" onchange="window.__assetsSaveSchedule(this,\'' + owner + '\',' + idx + ',\'cycle\')"></label>' + (schedule.estimated ? '<div class="ad-label">План: последняя оплата + ' + schedule.cycle + ' дней. Дату можно изменить.</div>' : '') + (schedule.due ? '<div class="assets-payment-calendar' + (schedule.days < 0 ? ' overdue' : '') + '" role="img" aria-label="Период до следующей оплаты">' + bars + '</div><div class="assets-payment-period"><span>' + formatDateDDMM(schedule.start) + '</span><span>' + formatDateDDMM(schedule.due) + '</span></div>' : '') + '</section>';
+    function input(field, label, value, placeholder) {
+      return '<label>' + label + '<input type="text" inputmode="numeric" data-schedule-edit="' + field + '" aria-label="' + label + '" placeholder="' + placeholder + '" value="' + esc(value) + '" onfocus="window.__assetsBeginScheduleEdit(this,\'' + owner + '\',' + idx + ');this.select()" oninput="this.setCustomValidity(\'\')" onkeydown="return window.__assetsScheduleKeydown(event,this,\'' + owner + '\',' + idx + ',\'' + field + '\')"></label>';
+    }
+    var dateText = schedule.due ? schedule.due.split('-').reverse().join('.') : '';
+    return '<section class="assets-next-payment" data-cash-context="' + context + '" data-cash-owner="' + owner + '" data-cash-index="' + idx + '"><b>' + esc(daysLabel) + '</b>' + input('date', 'Следующая оплата', dateText, 'ДД.ММ.ГГГГ') + input('days', 'Через, дней', schedule.days === null ? '' : String(schedule.days), '3') + input('cycle', 'Цикл оплаты, дней', String(schedule.cycle), '30') + '<div class="ad-label">Enter — сохранить · Esc — отменить</div><div data-schedule-status role="status"></div>' + (schedule.estimated ? '<div class="ad-label">План: последняя оплата + ' + schedule.cycle + ' дней. Дату можно изменить.</div>' : '') + (schedule.due ? '<div class="assets-payment-calendar' + (schedule.days < 0 ? ' overdue' : '') + '" role="img" aria-label="Период до следующей оплаты">' + bars + '</div><div class="assets-payment-period"><span>' + formatDateDDMM(schedule.start) + '</span><span>' + formatDateDDMM(schedule.due) + '</span></div>' : '') + '</section>';
   }
   function cashDetailPayments(row, owner) {
     if (!cashReady()) return [];
@@ -551,13 +556,76 @@
   function saveCashSchedule(input, owner, idx, field) {
     var section = input && input.closest('[data-cash-context]');
     if (!cashReady() || !section || section.getAttribute('data-cash-context') !== cashBindingContext()) return;
-    var ref = getAssetsRowRef(owner, idx); if (!ref.row) return;
-    var value = input.value;
-    if (field === 'date') { if (value && !cashValidDay(value)) return; ref.row.nextPaymentDate = value; }
-    else { var days = Number(value); if (!Number.isInteger(days) || days < 1 || days > 3650) { input.setCustomValidity('Укажите от 1 до 3650 дней'); input.reportValidity(); return; } input.setCustomValidity(''); ref.row.paymentCycleDays = days; }
-    ref.save(ref.list); updateAssetsDetailPanel(owner, idx);
+    var ref = getAssetsRowRef(owner, idx); if (!ref.row) return false;
+    var edit = input.__cashScheduleEdit;
+    if (edit && (edit.context !== cashBindingContext() || edit.rowId !== String(ref.row.id || '') || edit.projection !== cashScheduleProjection(ref.row))) { scheduleEditStatus(input, 'Срок уже изменён в другом окне. Выберите проект заново; введённый текст оставлен.', true); return false; }
+    var value = String(input.value || '').trim();
+    if (field === 'date') {
+      var date = value ? cashPaymentDay(value) : '';
+      if (value && !date) { scheduleEditStatus(input, 'Введите дату ДД.ММ.ГГГГ или ГГГГ-ММ-ДД.', true); return false; }
+      ref.row.nextPaymentDate = date; ref.row.nextPaymentDateManual = true;
+    } else if (field === 'days') {
+      if (!/^-?\d+$/.test(value) || Number(value) < -3650 || Number(value) > 3650) { scheduleEditStatus(input, 'Введите целое число дней от −3650 до 3650.', true); return false; }
+      ref.row.nextPaymentDate = new Date(Date.parse(cashCalendarDay() + 'T00:00:00Z') + Number(value) * 86400000).toISOString().slice(0, 10); ref.row.nextPaymentDateManual = true;
+    } else {
+      var days = Number(value);
+      if (!/^\d+$/.test(value) || !Number.isInteger(days) || days < 1 || days > 3650) { scheduleEditStatus(input, 'Укажите от 1 до 3650 дней.', true); return false; }
+      ref.row.paymentCycleDays = days;
+      if (ref.row.nextPaymentDateManual === false && cashValidDay(ref.row.currentCycleStartDate)) ref.row.nextPaymentDate = new Date(Date.parse(ref.row.currentCycleStartDate + 'T00:00:00Z') + days * 86400000).toISOString().slice(0, 10);
+    }
+    input.__cashScheduleSaved = true;
+    try { ref.save(ref.list); } catch (_) { input.__cashScheduleSaved = false; scheduleEditStatus(input, 'Не удалось сохранить. Текст оставлен; повторите Enter.', true); return false; }
+    updateAssetsDetailPanel(owner, idx);
     var row = document.querySelector('.assets-col-row[data-owner="' + owner + '"][data-idx="' + idx + '"]');
     if (row) { var schedule = cashPaymentSchedule(ref.row, owner), fill = row.querySelector('.assets-progress-fill'), display = row.querySelector('.assets-payment-display'); if (fill) fill.style.width = Math.round(schedule.progress * 100) + '%'; if (display) display.textContent = schedule.days === null ? '' : schedule.days < 0 ? '−' + Math.abs(schedule.days) + ' дн.' : schedule.days + ' дн.'; }
+    return true;
+  }
+  function cashScheduleProjection(row) { return JSON.stringify([row.paidCycleId, row.paymentDate, row.nextPaymentDate, row.nextPaymentDateManual, row.paymentCycleDays, row.currentCycleStartDate, row.paymentCyclesV1]); }
+  function beginCashScheduleEdit(input, owner, idx) {
+    var section = input && input.closest('[data-cash-context]');
+    if (!cashReady() || !section || section.getAttribute('data-cash-context') !== cashBindingContext()) return false;
+    if (input.__cashScheduleEdit) return true;
+    var ref = getAssetsRowRef(owner, idx); if (!ref.row) return false;
+    input.__cashScheduleEdit = { context: cashBindingContext(), rowId: String(ref.row.id || ''), projection: cashScheduleProjection(ref.row), originalValue: input.value };
+    input.__cashScheduleSaved = false; return true;
+  }
+  function scheduleEditStatus(input, message, bad) {
+    var section = input.closest('[data-cash-context]'), status = section && section.querySelector && section.querySelector('[data-schedule-status]');
+    if (status) { status.textContent = message; status.style.color = bad ? '#e77979' : 'var(--accent)'; }
+    if (input.setCustomValidity) input.setCustomValidity(bad ? message : '');
+  }
+  function cashScheduleKeydown(event, input, owner, idx, field) {
+    if (event.key !== 'Enter' && event.key !== 'Escape') return true;
+    event.preventDefault(); if (event.stopPropagation) event.stopPropagation();
+    if (event.key === 'Escape') {
+      if (input.__cashScheduleEdit) input.value = input.__cashScheduleEdit.originalValue;
+      input.__cashScheduleSaved = true; delete input.__cashScheduleEdit;
+      if (input.blur) input.blur(); updateAssetsDetailPanel(owner, idx); return false;
+    }
+    saveCashSchedule(input, owner, idx, field); return false;
+  }
+  function receiveCashExpected(button, owner, idx) {
+    if (!cashReady() || owner !== 'me' || button.getAttribute('data-cash-context') !== cashBindingContext()) return false;
+    var ref = getAssetsRowRef(owner, idx);
+    if (!ref.row || JSON.stringify(ref.row) !== button.getAttribute('data-cash-row')) { cashFolderStatus('Данные строки изменились. Выберите проект ещё раз.', true); return false; }
+    var amount = parseAssetsMoney(ref.row.expected); if (!amount) return false;
+    var before = JSON.parse(JSON.stringify(ref.row)), next = JSON.parse(JSON.stringify(ref.row));
+    var result = applyCashPaymentEdit(next, before, owner, String(parseAssetsMoney(before.paid) + amount), { newCycle: true, paymentAmount: amount });
+    if (!result.ok) return false;
+    next.expected = ''; ref.list[idx] = next; button.disabled = true; ref.save(ref.list);
+    var row = document.querySelector('.assets-col-row[data-owner="me"][data-idx="' + idx + '"]');
+    if (row) { var paid = row.querySelector('[data-field="paid"]'), expected = row.querySelector('[data-field="expected"]'); if (paid) paid.value = next.paid; if (expected) expected.value = ''; }
+    updateColTotals(); refreshCashRowOrder(); updateAssetsDetailPanel(owner, idx); return true;
+  }
+  function cashCycleHistoryHtml(row) {
+    var seen = {}, cycles = (Array.isArray(row.paymentCyclesV1) ? row.paymentCyclesV1 : []).filter(function (cycle) { if (!cycle || !cycle.id || seen[cycle.id] || !cashValidDay(cycle.endDate)) return false; seen[cycle.id] = true; return true; }).slice().sort(function (a, b) { return b.endDate.localeCompare(a.endDate); });
+    if (!cycles.length) return '';
+    return '<section class="assets-cycle-history"><b>Завершённые циклы · ' + cycles.length + '</b>' + cycles.map(function (cycle) {
+      var start = cashValidDay(cycle.startDate) ? cycle.startDate.split('-').reverse().join('.') : 'Начало не указано', end = cycle.endDate.split('-').reverse().join('.');
+      var plannedDays = Number(cycle.cycleDays || cycle.plannedDays || 30);
+      var length = Number.isInteger(cycle.actualDurationDays) && !cycle.startEstimated ? cycle.actualDurationDays + ' дн.' + (cycle.actualDurationDays !== plannedDays ? ' · план ' + plannedDays + ' дн.' : '') : 'План ' + plannedDays + ' дн.';
+      return '<div class="assets-cycle-record"><span>' + esc(start + ' — ' + end) + '</span><small>' + esc(length + (cycle.startEstimated ? ' · начало расчётное' : '')) + '</small></div>';
+    }).join('') + '</section>';
   }
   function openCashProjectCard(button, owner, idx) {
     if (!cashReady() || button.getAttribute('data-cash-context') !== cashBindingContext()) return false;
@@ -2080,8 +2148,8 @@
           '<span class="assets-col-extra"><input type="text" value="' + esc(toAgentFmt) + '" placeholder="0" data-field="toAgent" oninput="window.__assetsScheduleColRowSave(this)" onblur="window.__assetsSaveColRow(this)" title="Агенту"></span>' +
           '<span class="assets-col-extra"><input type="text" value="' + esc(aoaFmt) + '" placeholder="0" data-field="aoaPercent" oninput="window.__assetsScheduleColRowSave(this)" onblur="window.__assetsSaveColRow(this)" title="AoA %"></span>';
       } else {
-        base += '<span class="assets-col-paid"><input type="text" value="' + esc(paidFmt) + '" placeholder="0" data-field="paid" oninput="window.__assetsScheduleColRowSave(this)" onblur="window.__assetsSaveColRow(this)" title="' + (isSashaView ? 'Твоя доля от сделки (сумма «Агенту» с Фила или вручную)' : '') + '"></span>' +
-          '<span class="assets-col-expected"><input type="text" value="' + esc(expectedFmt) + '" placeholder="0" data-field="expected" oninput="window.__assetsScheduleColRowSave(this)" onblur="window.__assetsSaveColRow(this)"></span>';
+        base += '<span class="assets-col-paid"><input type="text" value="' + esc(paidFmt) + '" placeholder="0" data-field="paid" oninput="window.__assetsScheduleColRowSave(this)" onkeydown="window.__assetsColEnter(event,this)" onblur="window.__assetsSaveColRow(this)" title="' + (isSashaView ? 'Твоя доля от сделки (сумма «Агенту» с Фила или вручную)' : '') + '"></span>' +
+          '<span class="assets-col-expected"><input type="text" value="' + esc(expectedFmt) + '" placeholder="0" data-field="expected" oninput="window.__assetsScheduleColRowSave(this)" onkeydown="window.__assetsColEnter(event,this)" onblur="window.__assetsSaveColRow(this)"></span>';
       }
       base += '<button type="button" class="assets-col-remove" onclick="window.__assetsRemoveProject(\'' + owner + '\',' + idx + ')" title="Удалить">✕</button>' +
         '</div>';
@@ -2216,7 +2284,7 @@
     updateColTotals();
     if (!draftOnly) {
       if (monetary && typeof window.__assetsRefreshRowOrder === 'function') window.__assetsRefreshRowOrder();
-      if (monetary) updateAssetsDetailPanel(owner, idx);
+      if (monetary || field === 'expected') updateAssetsDetailPanel(owner, idx);
     }
     if (field === 'paymentDate') {
       var fill = getPaymentBarFill(val);
@@ -2805,7 +2873,7 @@
   }
   function cashPaymentMonth() { return _assetsViewMonth || assetsCurrentMonthKey(); }
   function cashPaymentProjection(row, field) {
-    return JSON.stringify([row[field], row.paymentHistory, row.paidCycleId, row.paidMarkedAt, row.paymentDate, row.paymentDateManualMonth]);
+    return JSON.stringify([row[field], row.paymentHistory, row.paidCycleId, row.paidMarkedAt, row.paymentDate, row.paymentDateManualMonth, row.nextPaymentDate, row.nextPaymentDateManual, row.paymentCycleDays, row.currentCycleStartDate, row.paymentCyclesV1]);
   }
   function captureCashPaymentEdit(el) {
     var row = el && el.closest('.assets-col-row'), owner = row && row.getAttribute('data-owner');
@@ -2831,6 +2899,59 @@
     }
     return [];
   }
+  function cashCycleDays(row) {
+    var days = Number(row && row.paymentCycleDays);
+    return Number.isInteger(days) && days >= 1 && days <= 3650 ? days : 30;
+  }
+  function cashCycleShift(day, days) {
+    return new Date(Date.parse(day + 'T00:00:00Z') + days * 86400000).toISOString().slice(0, 10);
+  }
+  function recordCashPaymentCycle(row, before, cycle, date, mark) {
+    before = before || {};
+    var cycles = Array.isArray(row.paymentCyclesV1) ? row.paymentCyclesV1.slice() : [];
+    if (!cashPaymentDay(date) || cycles.some(function(entry) { return entry && (entry.paidCycleId === cycle || entry.id === 'cycle:' + cycle); })) return false;
+    var planned = cashCycleDays(row), due = cashPaymentDay(before.nextPaymentDate), start = cashPaymentDay(before.currentCycleStartDate), estimated = false;
+    if (!due && !Object.prototype.hasOwnProperty.call(before, 'nextPaymentDate') && cashPaymentDay(before.paymentDate) > cashPaymentToday()) due = cashPaymentDay(before.paymentDate);
+    if (start > date) start = '';
+    if (!start) {
+      var history = Array.isArray(before.paymentHistory) ? before.paymentHistory : [];
+      var prior = history.filter(function(entry) { return entry && entry.paidCycleId !== cycle; }).map(function(entry) { return cashPaymentDay(entry.date); }).filter(function(day) { return day && day <= date; }).sort();
+      start = prior[prior.length - 1] || '';
+      if (!start && (parseAssetsMoney(before.paid) > 0 || parseAssetsMoney(before.soldFor) > 0)) {
+        var previousDate = cashPaymentDay(before.paymentDate);
+        if (previousDate && previousDate <= date) start = previousDate;
+      }
+    }
+    if (!start && due) {
+      var inferred = cashCycleShift(due, -planned);
+      if (inferred <= date) { start = inferred; estimated = true; }
+    }
+    var duration = start ? Math.round((Date.parse(date + 'T00:00:00Z') - Date.parse(start + 'T00:00:00Z')) / 86400000) : null;
+    cycles.push({ id: 'cycle:' + cycle, paidCycleId: cycle, startDate: start, endDate: date, cycleDays: planned, plannedDays: planned,
+      actualDurationDays: estimated ? null : duration, durationDays: duration,
+      scheduledDueDate: due, recordedAt: mark, startEstimated: estimated });
+    row.paymentCyclesV1 = cycles;
+    row.currentCycleStartDate = date;
+    row.nextPaymentDate = cashCycleShift(date, planned);
+    row.nextPaymentDateManual = false;
+    return true;
+  }
+  function correctCashPaymentCycleDate(row, cycle, date) {
+    if (!cycle || !cashPaymentDay(date) || !Array.isArray(row.paymentCyclesV1)) return false;
+    var changed = false;
+    row.paymentCyclesV1 = row.paymentCyclesV1.map(function(entry) {
+      if (!entry || entry.paidCycleId !== cycle || entry.endDate === date) return entry;
+      var oldEnd = cashPaymentDay(entry.endDate), start = cashPaymentDay(entry.startDate), duration = start && start <= date ? Math.round((Date.parse(date + 'T00:00:00Z') - Date.parse(start + 'T00:00:00Z')) / 86400000) : null;
+      if (row.currentCycleStartDate === oldEnd) {
+        var days = cashCycleDays(row), automatic = row.nextPaymentDateManual === false || row.nextPaymentDateManual !== true && oldEnd && row.nextPaymentDate === cashCycleShift(oldEnd, days);
+        row.currentCycleStartDate = date;
+        if (automatic) { row.nextPaymentDate = cashCycleShift(date, days); row.nextPaymentDateManual = false; }
+      }
+      changed = true;
+      return Object.assign({}, entry, { endDate: date, durationDays: duration, actualDurationDays: entry.startEstimated ? null : duration });
+    });
+    return changed;
+  }
   function applyCashPaymentEdit(row, before, owner, value, options) {
     options = options || {};
     var field = owner === 'me' ? 'paid' : 'soldFor', amount = parseAssetsMoney(value), old = parseAssetsMoney(before && before[field]);
@@ -2848,7 +2969,11 @@
       var date = cashPaymentDay(options.date) || (row.paymentDateManualMonth === cashPaymentMonth() ? cashPaymentDay(row.paymentDate) : '') || cashPaymentToday();
       var cycle = String(options.cycleId || 'cash_' + generateId()), mark = options.markedAt || new Date().toISOString();
       var existing = history.find(function(entry) { return entry.paidCycleId === cycle; });
-      if (!existing) history.push({ id: 'payment:' + cycle, date: date, amount: amount, paidCycleId: cycle, paidMarkedAt: mark });
+      if (existing) return applyCashPaymentEdit(row, Object.assign({}, row, { paidCycleId: cycle }), owner, value, { preserveCycle: true });
+      var paymentAmount = Object.prototype.hasOwnProperty.call(options, 'paymentAmount') ? Number(String(options.paymentAmount).replace(/\s/g, '')) : amount;
+      if (!Number.isSafeInteger(paymentAmount) || !(paymentAmount > 0)) return { ok: false, reason: 'invalid_payment_amount' };
+      history.push({ id: 'payment:' + cycle, date: date, amount: paymentAmount, paidCycleId: cycle, paidMarkedAt: mark });
+      if (!before || before.paidCycleId !== cycle) recordCashPaymentCycle(row, before, cycle, date, mark);
       row.paymentHistory = history;
       row.paidCycleId = cycle;
       row.paidMarkedAt = mark;
@@ -2859,8 +2984,9 @@
       if (indices.length) {
         var last = indices.reduce(function(found, index) { return String(history[index].date || '') >= String(history[found].date || '') ? index : found; }, indices[0]);
         var otherTotal = indices.reduce(function(total, index) { return total + (index === last ? 0 : parseAssetsMoney(history[index].amount)); }, 0);
-        if (amount < otherTotal) return { ok: false, reason: 'amount_below_recorded_parts' };
-        history[last].amount = amount - otherTotal;
+        var correctedCycleTotal = otherTotal + parseAssetsMoney(history[last].amount) + amount - old;
+        if (correctedCycleTotal < otherTotal) return { ok: false, reason: 'amount_below_recorded_parts' };
+        history[last].amount = correctedCycleTotal - otherTotal;
         row.paymentHistory = history;
       }
     }
@@ -2874,11 +3000,14 @@
     var known = history.some(function(entry) { return entry.paidCycleId === cycle; });
     var baseline = previous || { paid: '' };
     if (!known && (!previous || previous.paidCycleId !== cycle)) {
-      applyCashPaymentEdit(row, baseline, 'me', amount, { newCycle: true, cycleId: cycle, markedAt: mark, date: paidDate });
+      applyCashPaymentEdit(row, baseline, 'me', String(parseAssetsMoney(baseline.paid) + parseAssetsMoney(amount)), { newCycle: true, cycleId: cycle, markedAt: mark, date: paidDate, paymentAmount: amount });
     } else if (known) {
       var before = Object.assign({}, baseline, { paidCycleId: cycle });
-      applyCashPaymentEdit(row, before, 'me', amount, { preserveCycle: true });
+      if (!previous) before.paid = row.paid;
+      var recorded = history.reduce(function(total, entry) { return total + (entry.paidCycleId === cycle ? parseAssetsMoney(entry.amount) : 0); }, 0);
+      applyCashPaymentEdit(row, before, 'me', String(parseAssetsMoney(before.paid) + parseAssetsMoney(amount) - recorded), { preserveCycle: true });
       row.paymentHistory.forEach(function(entry) { if (entry.paidCycleId === cycle && cashPaymentDay(entry.date) !== paidDate && row.paymentHistory.filter(function(part) { return part.paidCycleId === cycle; }).length === 1) entry.date = paidDate; });
+      if (row.paymentHistory.filter(function(entry) { return entry.paidCycleId === cycle; }).length === 1) correctCashPaymentCycleDate(row, cycle, paidDate);
       row.paymentDate = paidDate;
       row.paidCycleId = cycle;
       row.paidMarkedAt = mark;
@@ -3011,6 +3140,7 @@
     if (amount <= 0) p.paymentDateManualMonth = cashPaymentMonth();
     else if (indices.length === 1 && p.paymentDate) {
       p.paymentHistory[indices[0]].date = p.paymentDate;
+      correctCashPaymentCycleDate(p, p.paidCycleId, p.paymentDate);
     } else if ((!Array.isArray(p.paymentHistory) || p.paymentHistory.length === 0) && p.paymentDate) {
       if (amount > 0) p.paymentHistory = [{ id: 'payment:' + generateId(), date: p.paymentDate, amount: amount }];
     }
@@ -3159,6 +3289,8 @@
       content.innerHTML = '<div class="ad-placeholder" style="color:var(--muted)">Проект не найден</div>';
       return;
     }
+    var active = document.activeElement, editSection = active && active.closest && active.closest('.assets-next-payment');
+    if (active && active.__cashScheduleEdit && !active.__cashScheduleSaved && editSection && editSection.getAttribute('data-cash-owner') === owner && editSection.getAttribute('data-cash-index') === String(idx) && editSection.getAttribute('data-cash-context') === cashBindingContext()) return;
     var entries = cashDetailPayments(p, owner);
     var detailPaymentModel = Object.assign({}, p, { paymentHistory: entries });
     var total = entries.reduce(function(a, e) { return a + (parseInt(String(e.amount || '').replace(/\s/g, ''), 10) || 0); }, 0);
@@ -3173,6 +3305,7 @@
     html += '<div class="ad-row"><span class="ad-label">Сумма в истории · всё время</span><span class="ad-val">' + fmt(total) + ' ₽</span></div>';
     html += '<div class="ad-row"><span class="ad-label">Последняя оплата</span><span class="ad-val">' + esc(payDateFmt) + '</span></div>';
     html += cashScheduleHtml(detailPaymentModel, owner, idx);
+    html += cashCycleHistoryHtml(p);
     html += '<div class="ad-section" style="margin-top:12px;padding-top:8px;border-top:1px solid var(--border)"><div class="ad-label" style="margin-bottom:6px">История оплат</div>';
     if (entries.length > 0) {
       entries.sort(function(a, b) { return (b.date || '').localeCompare(a.date || ''); });
@@ -3189,6 +3322,7 @@
     }
     if (owner === 'me' && expected > 0) {
       html += '<div class="ad-row" style="margin-top:4px"><span class="ad-label">Ожидать</span><span class="ad-val" style="color:#35d0ff">' + fmt(expected) + ' ₽</span></div>';
+      html += '<button type="button" class="assets-pay-expected" data-cash-context="' + esc(cashBindingContext()) + '" data-cash-row="' + esc(JSON.stringify(p)) + '" onclick="window.__assetsReceiveExpected(this,\'' + owner + '\',' + idx + ')" title="Зафиксировать получение ожидаемой суммы и завершить цикл">Ожидать → Оплатил · ' + fmt(expected) + ' ₽</button>';
     }
     html += '</div>';
     content.innerHTML = html;
@@ -3326,6 +3460,7 @@
   window.__aiImportRender = renderAiImportContent;
   window.__renderAssetsPage = renderAssetsPage;
   window.__assetsSaveColRow = saveColRow;
+  window.__assetsColEnter = function (event, input) { if (event.key === 'Enter') { event.preventDefault(); event.stopPropagation(); saveColRow(input); if (input.blur) input.blur(); } };
   window.__assetsScheduleColRowSave = scheduleColRowSave;
   window.__assetsAddProject = addProjectBlank;
   window.__assetsRemoveProject = removeAssetsProject;
@@ -3334,6 +3469,9 @@
   window.__assetsRefreshRowOrder = refreshCashRowOrder;
   window.__assetsOpenProjectCard = openCashProjectCard;
   window.__assetsSaveSchedule = saveCashSchedule;
+  window.__assetsBeginScheduleEdit = beginCashScheduleEdit;
+  window.__assetsScheduleKeydown = cashScheduleKeydown;
+  window.__assetsReceiveExpected = receiveCashExpected;
   window.__assetsSetUnpaidFirst = function (enabled) {
     if (!cashReady()) return;
     var key = typeof window.AVITOLOG_KEY === 'function' ? window.AVITOLOG_KEY('avitolog_assets_unpaid_first_v1') : 'avitolog_assets_unpaid_first_v1';
