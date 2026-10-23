@@ -230,7 +230,7 @@
       '.project-card-row-button{padding:1px 4px;font-size:11px;line-height:16px;flex:none}.project-card-sidebar{display:block;width:100%;margin-top:9px;padding:12px;border:1px solid var(--border,#31445b);background:var(--surface2,#132132);color:var(--accent,#59d8ff);border-radius:8px;font-weight:700;cursor:pointer}.project-card-payments .project-card-sidebar{font-size:10px;padding:7px;margin-top:7px}.project-card-account-field select{width:100%;padding:8px;background:var(--surface2,#132132);border:1px solid var(--border,#31445b);border-radius:7px;color:var(--text,#eaf2ff);font-size:12px}',
       '@media(max-width:1100px){.project-card-dialog{width:96vw;max-height:none}.project-card-body{overflow:auto;display:grid;grid-template-columns:1fr 1fr;grid-template-rows:auto;grid-template-areas:"details metrics" "payments activity" "context context";align-content:start}.project-card-section{overflow:visible}.project-card-context{min-height:260px}.project-card-head h2{font-size:16px}}@media(max-width:720px){.project-card-overlay{padding:4px}.project-card-dialog{width:100%;height:calc(100dvh - 8px);border-radius:11px}.project-card-head,.project-card-foot{padding:10px}.project-card-body{padding:8px;gap:8px;grid-template-columns:1fr;grid-template-areas:"details" "metrics" "payments" "activity" "context"}.project-card-section{padding:11px}.project-card-head h2{font-size:14px}.project-card-kicker{font-size:9px}.project-card-avatar{width:34px;height:34px;border-radius:10px;font-size:14px}.project-card-foot{align-items:flex-start}.project-card-foot [data-action="save"]{font-size:11px}.project-card-avito .project-card-metrics{grid-template-columns:repeat(3,minmax(0,1fr))}}@media(max-width:360px){.project-card-avito .project-card-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}}'
     ].join('');
-    element.textContent += '.project-card-context{display:block}.project-card-notes-pane{height:100%;min-width:0;min-height:0}.project-card-notes-pane .project-card-field{height:calc(100% - 25px)}.project-card-notes-pane textarea{flex:1;min-height:120px;resize:vertical}.project-card-payment-editor{margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--border,#31445b)}.project-card-payment-editor .project-card-fields{grid-template-columns:1fr 1fr}.project-card-payment-editor .project-card-field:last-child{grid-column:1/-1}';
+    element.textContent += '.project-card-context{display:block}.project-card-notes-pane{height:100%;min-width:0;min-height:0}.project-card-notes-pane .project-card-field{height:calc(100% - 25px)}.project-card-notes-pane textarea{flex:1;min-height:120px;resize:vertical}.project-card-payments .project-card-payment-value{display:block;width:100%;padding:0;border:0;border-radius:3px;background:transparent;color:inherit;text-align:left;font:inherit;cursor:text}.project-card-payment-value:focus-visible{outline:1px solid var(--accent,#59d8ff);outline-offset:3px}.project-card-payments [data-manual-payment]{box-sizing:border-box;width:100%;min-width:0;margin-top:5px;padding:0;border:0;border-bottom:1px solid var(--accent,#59d8ff);border-radius:0;background:transparent;color:var(--text,#eaf2ff);font:inherit;font-size:19px;font-weight:800;line-height:1.2;font-variant-numeric:tabular-nums}.project-card-payments [data-manual-payment]:focus{outline:none}.project-card-payments [data-manual-payment][hidden],.project-card-payment-value[hidden]{display:none}.project-card-payment-value:disabled{opacity:1;cursor:default}';
     element.textContent += '@media(max-width:1100px){.project-card-body{grid-template-rows:none;grid-auto-rows:max-content}}';
     element.textContent += '@media(min-width:1101px) and (max-height:820px){.project-card-head{padding:10px 15px}.project-card-foot{padding:8px 15px}.project-card-body{padding:10px;gap:10px}.project-card-section{padding:10px}.project-card-section h3,.project-card-section-title{margin-bottom:8px}.project-card-fields{gap:6px 8px}.project-card-field{gap:3px}.project-card-field input,.project-card-field textarea,.project-card-field select{padding:5px 7px;font-size:11px}.project-card-metric{padding:7px 8px}.project-card-metric strong{font-size:18px;margin-top:4px}.project-card-meta{margin-bottom:8px}.project-card-disclosure{margin-top:8px;padding-top:7px}.project-card-trend{margin:8px 0 5px}.project-card-bars{height:65px;margin-top:5px}.project-card-context .project-context{font-size:11px;gap:7px}.project-card-context .project-context textarea{min-height:64px;padding:6px}.project-card-context .project-context-note{font-size:10px}.project-card-context .project-context-actions{margin:4px 0}.project-card-context .project-context button{padding:4px 7px;font-size:10px}}';
     element.textContent += '.project-card-account-controls{display:flex;gap:6px;align-items:center}.project-card-account-controls select{flex:1;min-width:0}.project-card-account-refresh{flex:none;padding:8px;border:1px solid var(--border,#31445b);border-radius:7px;background:var(--surface2,#132132);color:var(--text,#eaf2ff);font:inherit;font-size:11px;cursor:pointer}.project-card-account-refresh:disabled{opacity:.6;cursor:wait}.project-card-account-status{display:block;font-size:10px;line-height:1.4;color:var(--muted,#9ab0c9)}.project-card-account-status:empty{display:none}';
@@ -244,7 +244,7 @@
     element.textContent += '@media(min-width:1101px){.project-card-body{grid-template-rows:minmax(0,1.9fr) minmax(0,1fr)}}.project-avito-plot{height:35px}.project-avito-bar{min-height:2px}.project-avito-column.is-zero .project-avito-bar,.project-avito-column.is-unknown .project-avito-bar{min-height:0}.project-avito-chart.project-avito-favorites{--tone:var(--avito-purple)}.project-avito-chart.project-avito-views{--tone:var(--avito-teal)}@container(min-width:421px) and (max-width:560px){.project-avito-bottom{grid-template-columns:minmax(0,1.8fr) minmax(125px,1fr)}.project-avito-summary ul{display:block}.project-avito-summary li{flex-wrap:nowrap;justify-content:space-between;border-bottom:1px solid var(--border,#31445b);padding:4px 0}.project-avito-chart .project-avito-plot{height:79px}}@media(min-width:1101px) and (max-height:820px){.project-avito-period{margin-bottom:5px;font-size:8px}.project-avito-metric{padding:7px}.project-avito-metric h4{font-size:10px}.project-avito-total{font-size:25px;margin:4px 0 1px}.project-avito-subtitle{font-size:8px}.project-avito-columns{padding-top:3px}.project-avito-plot{height:30px}.project-avito-value{font-size:8px;margin-bottom:2px}.project-avito-date{font-size:7px;margin-top:3px}.project-avito-five{font-size:8px;margin-top:4px;padding-top:4px}.project-avito-secondary{margin:6px 0;gap:6px}.project-avito-secondary>div{padding:6px}.project-avito-secondary span{font-size:8px}.project-avito-secondary strong{font-size:17px;margin-top:2px}.project-avito-secondary small{font-size:7px;margin-top:2px}.project-avito-chart,.project-avito-summary{padding:7px}.project-avito-chart-head,.project-avito-summary h4{font-size:9px}.project-avito-chart .project-avito-plot{height:47px}.project-avito-chart .project-avito-columns{padding-top:3px;gap:7px}.project-avito-chart .project-avito-value{font-size:8px}.project-avito-chart .project-avito-date{font-size:8px}.project-avito-summary li{padding:3px 0;font-size:8px}.project-avito-summary b{font-size:10px}.project-avito-tabs button{width:23px;height:21px}.project-avito-footer{margin-top:6px;font-size:8px;gap:3px 9px}}';
     element.textContent += '.project-avito-tabs [data-avito-chart="favorites"]{--tone:var(--avito-purple)}.project-avito-tabs [data-avito-chart="views"]{--tone:var(--avito-teal)}.project-avito-metric{padding:8px}.project-avito-total{font-size:clamp(25px,4cqw,34px);margin:6px 0 3px}.project-avito-period-total{display:flex;justify-content:space-between;gap:4px;font-size:8px;color:var(--muted,#9ab0c9);line-height:1.3}.project-avito-period-total b{color:var(--text,#eaf2ff);margin-left:3px}.project-avito-chart .project-avito-plot{height:62px}@media(min-width:1101px){.project-card-body{grid-template-rows:minmax(0,2.05fr) minmax(0,1fr)}}@media(min-width:1101px) and (max-height:820px){.project-card-body{grid-template-rows:minmax(0,2.4fr) minmax(0,1fr)}.project-avito-metric{padding:7px}.project-avito-total{font-size:25px;margin:4px 0 2px}.project-avito-chart .project-avito-plot{height:40px}.project-avito-period-total{font-size:7px}}';
     element.textContent += '@media(min-width:1101px){.project-card-body{grid-template-rows:minmax(0,2.15fr) minmax(0,1fr)}}@media(min-width:1101px) and (max-height:820px){.project-card-body{grid-template-rows:minmax(0,2.4fr) minmax(0,1fr)}.project-avito-summary li{padding-top:2px;padding-bottom:2px}}';
-    element.textContent += '.project-card-foot{display:grid;grid-template-columns:minmax(0,1fr) 180px;align-items:center;gap:12px;height:56px;min-height:56px;padding:8px 14px}.project-card-foot [data-notice],.project-card-foot [data-notice]:empty{display:block;min-width:0;min-height:16px;max-height:36px;overflow:auto;overflow-wrap:anywhere;line-height:16px;font-size:10px;margin:0}.project-card-foot [data-action="save"]{grid-column:2;justify-self:end;width:180px;min-width:180px;max-width:180px;white-space:nowrap}.project-card-foot [data-notice][data-error="true"]{color:#e56c75}@media(max-width:720px){.project-card-foot{grid-template-columns:minmax(0,1fr) 155px;gap:8px;height:60px;min-height:60px;padding:8px 10px}.project-card-foot [data-action="save"]{width:155px;min-width:155px;max-width:155px;font-size:11px}.project-card-foot [data-notice]{font-size:9px;line-height:14px;max-height:36px}}';
+    element.textContent += '.project-card-foot{display:grid;grid-template-columns:minmax(0,1fr) 180px;align-items:center;gap:12px;height:56px;min-height:56px;padding:8px 14px}.project-card-foot [data-notice],.project-card-foot [data-notice]:empty{display:block;min-width:0;min-height:16px;max-height:36px;overflow:auto;overflow-wrap:anywhere;line-height:16px;font-size:10px;margin:0}.project-card-foot [data-action="save"]{grid-column:2;justify-self:end;width:180px;min-width:180px;max-width:180px;white-space:nowrap}.project-card-foot [data-notice][data-error="true"]{color:#e56c75}.project-card-payment-value strong[hidden]{display:none}@media(max-width:720px){.project-card-foot{grid-template-columns:minmax(0,1fr) 155px;gap:8px;height:60px;min-height:60px;padding:8px 10px}.project-card-foot [data-action="save"]{width:155px;min-width:155px;max-width:155px;font-size:11px}.project-card-foot [data-notice]{font-size:9px;line-height:14px;max-height:36px}}';
     document.head.appendChild(element);
   }
   function fieldHtml(field, values) {
@@ -360,6 +360,48 @@
     if (!changed) return null;
     return Object.assign({ version: 1 }, result, { updatedAt: new Date().toISOString() });
   }
+  function paymentMetricBox(label, display, key, value) {
+    var date = key === 'lastPaymentDate', disabled = readOnly() ? ' disabled' : '';
+    return '<div class="project-card-metric"><button type="button" class="project-card-payment-value" data-payment-edit="' + key + '" aria-label="Изменить: ' + escape(label) + '" title="Нажмите, чтобы изменить"' + disabled + '>' + escape(label) + '<strong>' + escape(display) + '</strong></button><input hidden name="payment_' + key + '" data-manual-payment="' + key + '" aria-label="' + escape(label) + '" type="' + (date ? 'date' : 'text') + '"' + (date ? ' max="' + moscowDay() + '"' : ' inputmode="decimal"') + ' value="' + escape(value) + '"' + disabled + '></div>';
+  }
+  function finishPaymentEditor(state, input, cancel, restoreFocus) {
+    var edit = input.__paymentEditBefore;
+    if (!edit) return;
+    var key = input.getAttribute('data-manual-payment'), button = input.closest('.project-card-metric').querySelector('[data-payment-edit]');
+    try {
+      var value = cancel ? null : parseManualPaymentField(key, input.value, moscowDay());
+      if (cancel) {
+        input.value = edit.value;
+        if (!edit.touched) delete state.manualTouched[key];
+        state.dirty = edit.dirty;
+      }
+      button.querySelector('strong').textContent = cancel ? edit.display : value === '' ? '—' : key === 'totalPaid' ? formatMoney(value) : key === 'lastPaymentDate' ? paymentDateLabel(value) : metric(value);
+      var notice = state.overlay.querySelector('[data-notice]');
+      if (input.__paymentValidationError && notice.textContent === input.__paymentValidationError) notice.textContent = '';
+      input.setCustomValidity(''); delete input.__paymentEditBefore; delete input.__paymentValidationError;
+      input.hidden = true; button.querySelector('strong').hidden = false;
+      if (restoreFocus) button.focus();
+    } catch (error) {
+      input.__paymentValidationError = error.message;
+      input.setCustomValidity(error.message);
+      state.overlay.querySelector('[data-notice]').textContent = error.message;
+    }
+  }
+  function bindPaymentEditors(state) {
+    state.overlay.addEventListener('click', function (event) {
+      var button = event.target.closest && event.target.closest('[data-payment-edit]');
+      if (!button || state.saving || readOnly() || !ready() || state.scope !== scope()) return;
+      var key = button.getAttribute('data-payment-edit'), input = state.overlay.querySelector('[name="payment_' + key + '"]');
+      if (!input || !input.hidden) return;
+      input.__paymentEditBefore = { value: input.value, display: button.querySelector('strong').textContent, touched: !!state.manualTouched[key], dirty: state.dirty };
+      button.querySelector('strong').hidden = true; input.hidden = false; input.focus();
+      if (input.type !== 'date') input.select();
+    });
+    state.overlay.addEventListener('focusout', function (event) {
+      var input = event.target;
+      if (input.getAttribute && input.getAttribute('data-manual-payment') && input.__paymentEditBefore) finishPaymentEditor(state, input, false, false);
+    });
+  }
   function paymentSummaryHtml(project) {
     var journal = root.ProjectPaymentJournal;
     var available = journal && typeof journal.getEntries === 'function';
@@ -377,7 +419,8 @@
     if (report) cycles = metric(report.promotionCycles);
     if (Object.prototype.hasOwnProperty.call(manual, 'promotionCycles')) cycles = metric(manual.promotionCycles);
     var count = summary && Number.isSafeInteger(summary.count) && summary.count >= 0 ? summary.count : valid.length;
-    var cards = '<div class="project-card-metrics">' + metricBox(manualDate ? 'Последняя оплата · вручную' : report ? 'Последняя известная оплата' : 'Последняя оплата', paymentDateLabel(lastDate)) + metricBox(manualDate ? 'Дней после указанной оплаты' : report ? 'Дней после известной оплаты' : 'Дней после оплаты', metric(daysSince)) + metricBox('Всего оплачено', formatMoney(total)) + metricBox('Циклов продвижения', cycles) + '</div>';
+    var values = paymentEditorValues(project);
+    var cards = '<div class="project-card-metrics">' + paymentMetricBox(manualDate ? 'Последняя оплата · вручную' : report ? 'Последняя известная оплата' : 'Последняя оплата', paymentDateLabel(lastDate), 'lastPaymentDate', values.lastPaymentDate) + metricBox(manualDate ? 'Дней после указанной оплаты' : report ? 'Дней после известной оплаты' : 'Дней после оплаты', metric(daysSince)) + paymentMetricBox('Всего оплачено', formatMoney(total), 'totalPaid', values.totalPaid) + paymentMetricBox('Циклов продвижения', cycles, 'promotionCycles', values.promotionCycles) + '</div>';
     if (hasManual) cards += '<p class="project-card-note">Ручные значения имеют приоритет. Они не создают платежи и не меняют кассу или журнал.</p>';
     if (recency && !manual.lastPaymentDate) cards += '<p class="project-card-note">Дата последней оплаты подтверждена вручную · ' + escape(new Date(recency.recordedAt).toLocaleDateString('ru-RU', { timeZone: 'Europe/Moscow' })) + '. Это уточнение даты, не новый платёж.' + (summary && summary.lastPaymentDate && summary.lastPaymentDate !== recency.lastPaymentDate ? ' Последняя известная дата в журнале: ' + escape(paymentDateLabel(summary.lastPaymentDate)) + '.' : '') + '</p>';
     if (report && (!Object.prototype.hasOwnProperty.call(manual, 'totalPaid') || !Object.prototype.hasOwnProperty.call(manual, 'promotionCycles'))) cards += '<p class="project-card-note">Общий итог · подтверждено вручную · ' + escape(new Date(report.recordedAt).toLocaleDateString('ru-RU', { timeZone: 'Europe/Moscow' })) + '. Отдельно в журнале датированных оплат: ' + escape(formatMoney(ledgerTotal)) + '. Итог не прибавляется к журналу; даты и график ниже относятся только к его записям.</p>';
@@ -387,17 +430,15 @@
   }
   function paymentsHtml(project) {
     var journal = root.ProjectPaymentJournal;
-    var values = paymentEditorValues(project);
-    var fields = [['totalPaid', 'Всего оплачено, ₽', 'text'], ['promotionCycles', 'Циклов продвижения', 'text'], ['lastPaymentDate', 'Последняя оплата', 'date']];
-    var editor = '<div class="project-card-payment-editor"><div class="project-card-fields">' + fields.map(function (field) { return '<label class="project-card-field"><span>' + field[1] + '</span><input name="payment_' + field[0] + '" data-manual-payment="' + field[0] + '" type="' + field[2] + '"' + (field[2] === 'text' ? ' inputmode="decimal"' : ' max="' + moscowDay() + '"') + ' value="' + escape(values[field[0]]) + '"></label>'; }).join('') + '</div><p class="project-card-note">Ручные итоги сохраняются кнопкой «Сохранить и выйти». Новые переводы в кассе не создаются.</p></div>';
-    return editor + '<div data-payment-summary>' + paymentSummaryHtml(project) + '</div>' + (journal && typeof journal.getEntries === 'function' && safeFolder(project) ? '<button type="button" data-payment-sync class="project-card-sidebar">Сохранить журнал в папку проекта</button>' : '') + '<div class="project-card-note" data-payment-file></div>';
+    return '<div data-payment-summary>' + paymentSummaryHtml(project) + '</div>' + (journal && typeof journal.getEntries === 'function' && safeFolder(project) ? '<button type="button" data-payment-sync class="project-card-sidebar">Сохранить журнал в папку проекта</button>' : '') + '<div class="project-card-note" data-payment-file></div>';
   }
   function refreshPaymentSummary() {
     var state = current;
     if (!state || state.scope !== scope() || !ready()) return;
     var target = hasId(state.projectId) ? findById(getProjects().projects, 'id', state.projectId) : findById(getClients(), 'client_id', state.clientId) || findById(getClients(), 'folderId', state.folderId);
     var container = state.overlay.querySelector('[data-payment-summary]');
-    if (target && container) container.innerHTML = paymentSummaryHtml(target);
+    if (Object.keys(state.manualTouched || {}).length || container && container.querySelector && container.querySelector('[data-manual-payment]:not([hidden])')) return;
+    if (target && container) { container.innerHTML = paymentSummaryHtml(target); syncPaymentEditor(state, target); }
   }
   function activityHtml(project, data) {
     var tasks = (data.tasks || []).filter(function (task) { return project && sameId(task.projectId, project.id); });
@@ -812,7 +853,11 @@
     }
     overlay.addEventListener('input', markDirty);
     overlay.addEventListener('change', markDirty);
+    bindPaymentEditors(state);
     overlay.addEventListener('keydown', function (event) {
+      if (event.target.__paymentEditBefore && (event.key === 'Enter' || event.key === 'Escape')) {
+        event.preventDefault(); event.stopPropagation(); finishPaymentEditor(state, event.target, event.key === 'Escape', true); return;
+      }
       if (event.key === 'Escape') { event.preventDefault(); close(false); }
       if (event.key === 'Tab') {
         var focusable = Array.from(overlay.querySelectorAll('button,input,textarea,select,a[href],summary')).filter(function (el) { return !el.disabled && (!el.getClientRects || el.getClientRects().length > 0); });
