@@ -509,6 +509,7 @@ function openProjectsTab() {
     updateProjectsButtonVisibility();
     return;
   }
+  if (typeof collapseTaskPanelForOtherTabs === 'function') collapseTaskPanelForOtherTabs();
   goalsMode = false;
   agencyMode = false;
   strategyMode = false;
@@ -1033,7 +1034,7 @@ function renderTasksBoardIntoMainContent(mc) {
 }
 function tasksBoardEnsureTaskPanelActive() {
   if (typeof tasksMode !== 'undefined' && !tasksMode) return;
-  if (typeof openTaskPanel !== 'function') return;
+  if (typeof renderTaskPanel !== 'function') return;
   var mc = document.getElementById('mainContent');
   if (!mc) return;
   var cols = Array.prototype.slice.call(mc.querySelectorAll('.tasks-col[data-project-id]'));
@@ -1048,7 +1049,10 @@ function tasksBoardEnsureTaskPanelActive() {
   var currentId = (typeof window._taskPanelProjectId !== 'undefined' && window._taskPanelProjectId) ? String(window._taskPanelProjectId) : '';
   var currentVisible = currentId && projectCols.some(function(col) { return String(col.getAttribute('data-project-id') || '') === currentId; });
   var targetId = currentVisible ? currentId : String(projectCols[0].getAttribute('data-project-id') || '');
-  if (targetId) openTaskPanel(targetId);
+  if (targetId) {
+    _taskPanelProjectId = targetId;
+    renderTaskPanel();
+  }
 }
 function tasksBoardSetDone(taskId, source) {
   if (!taskId) return;

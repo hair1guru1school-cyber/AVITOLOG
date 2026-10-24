@@ -66,6 +66,7 @@ var _tasksLayerOn = (function(){ try{ var v=localStorage.getItem(TASKS_LAYER_ON_
 var TASKS_SORT_ON_KEY = (typeof window.AVITOLOG_KEY === 'function') ? window.AVITOLOG_KEY('avitolog_projects_tasks_sort_v1') : 'avitolog_projects_tasks_sort_v1';
 var _projectsTasksSortOn = (function(){ try{ return localStorage.getItem(TASKS_SORT_ON_KEY)==='1'; }catch(e){ return false; }})();
 var _taskPanelProjectId = null;
+var _taskPanelExpandedByUser = false;
 var _selectedCalCell = null;
 var _projectsZoneTabOrder = (function(){ try{ var s=localStorage.getItem('av_projects_zone_order'); return s ? JSON.parse(s) : ['active','second_chance','archive']; }catch(e){ return ['active','second_chance','archive']; }})();
 var DAYS_LEFT = 0; // по умолчанию показывать только с сегодня
@@ -4060,7 +4061,7 @@ function closeTaskPanel() {
   hideCalTaskHoverPreview();
   var el = document.getElementById('taskPanelDrawer');
   if (el) el.classList.remove('open');
-  applyTaskPanelCollapsedUI();
+  setTaskPanelCollapsed(true);
   syncTaskPanelBodyClass();
   if (typeof rerenderProjectsPreserveScroll === 'function') rerenderProjectsPreserveScroll();
 }
@@ -4091,10 +4092,10 @@ function setTaskPanelWidth(w) {
 }
 
 function getTaskPanelCollapsed() {
-  try { return localStorage.getItem(TASK_PANEL_COLLAPSED_KEY) === '1'; } catch (e) { return false; }
+  return !_taskPanelExpandedByUser;
 }
 function setTaskPanelCollapsed(collapsed) {
-  try { localStorage.setItem(TASK_PANEL_COLLAPSED_KEY, collapsed ? '1' : '0'); } catch (e) {}
+  _taskPanelExpandedByUser = !collapsed;
   applyTaskPanelCollapsedUI();
 }
 function toggleTaskPanelCollapsed() {
@@ -4111,6 +4112,7 @@ function applyTaskPanelCollapsedUI() {
   var tab = document.getElementById('taskPanelExpandTab');
   if (!drawer) return;
   var open = drawer.classList.contains('open');
+  if (!open) _taskPanelExpandedByUser = false;
   var show = getTaskPanelCollapsed() && open;
   drawer.classList.toggle('task-panel-drawer--collapsed', show);
   if (!open) drawer.classList.remove('task-panel-drawer--collapsed');
@@ -4491,8 +4493,7 @@ function renderProjectsScreen(opts) {
     var rest = visibleProjects.filter(function(p){ return !matchFilter(p); });
     visibleProjects = first.concat(rest);
   }
-  // Keep the right task drawer visible in Projects mode:
-  // if nothing selected (or selected project disappeared from current zone), pin first visible project.
+  // Choose a context for the collapsed handle without expanding the drawer.
   if (visibleProjects.length) {
     var stillVisible = _taskPanelProjectId && visibleProjects.some(function(p){ return p.id === _taskPanelProjectId; });
     if (!stillVisible) _taskPanelProjectId = visibleProjects[0].id;

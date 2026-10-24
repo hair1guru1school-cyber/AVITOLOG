@@ -5,6 +5,7 @@ function switchTab(tab) {
   if ((goalsMode || projectsMode || strategyMode) && tab !== 'goals' && typeof openAnalyticsTab === 'function') {
     openAnalyticsTab();
   }
+  if (typeof collapseTaskPanelForOtherTabs === 'function') collapseTaskPanelForOtherTabs();
   currentTab = tab;
   ['scripts','kp','analysis','presale','avito1','contract'].forEach(function(t) {
     var el = document.getElementById('tab-'+t);
