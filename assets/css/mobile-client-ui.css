@@ -136,6 +136,9 @@ body.mobile-client-tools-on.kp-client-view .sidebar { min-height: 0; }
 body.mobile-client-tools-on.kp-client-view #mobileWebviewControls {
   bottom: calc((78px + env(safe-area-inset-bottom, 0px)) / var(--mw-scale, 1));
 }
+body.mobile-client-tools-on.kp-client-view #avitoChatLauncher {
+  bottom: calc(78px + env(safe-area-inset-bottom, 0px));
+}
 
 @media (max-width: 768px) {
   body.mobile-client-tools-on.mobile-webview-on #mainApp > .layout { grid-template-columns: 300px minmax(0, 1fr) 0; }
