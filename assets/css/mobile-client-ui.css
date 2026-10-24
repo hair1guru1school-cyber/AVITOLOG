@@ -131,12 +131,15 @@ body.mobile-client-ui #mainApp > header .logo {
 }
 body.mobile-client-ui #mainApp > header button:not(#headerMenuBtn) {
   flex-shrink: 0;
+  width: auto;
+  max-width: none;
   min-height: calc(32px / var(--mobile-shell-scale));
   min-width: calc(32px / var(--mobile-shell-scale));
   padding: 0 calc(7px / var(--mobile-shell-scale));
   font-size: calc(12px / var(--mobile-shell-scale));
   line-height: 1.2;
   white-space: nowrap;
+  overflow: visible;
 }
 body.mobile-client-ui #analyticsTopRow {
   position: relative;
