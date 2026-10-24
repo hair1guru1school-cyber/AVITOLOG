@@ -245,7 +245,7 @@
   }
   body.mobile-client-ui.assets-mode .assets-col-paid::before { content: '\041e\043f\043b\0430\0442\0438\043b'; }
   body.mobile-client-ui.assets-mode .assets-col-expected::before { content: '\041e\0436\0438\0434\0430\0442\044c'; }
-  body.mobile-client-ui.assets-mode .assets-col-extra:nth-of-type(3)::before { content: '\041f\0440\043e\0434\0430\043d\043e \0437\0430'; }
+  body.mobile-client-ui.assets-mode .assets-col-extra:nth-of-type(3)::before { content: '\041f\0440\043e\0434\0430\043d\043e\0020\0437\0430'; }
   body.mobile-client-ui.assets-mode .assets-col-extra:nth-of-type(4)::before { content: '\0410\0433\0435\043d\0442\0443'; }
   body.mobile-client-ui.assets-mode .assets-col-extra:nth-of-type(5)::before { content: 'AoA %'; }
   body.mobile-client-ui.assets-mode .assets-col-paid::before,

@@ -115,7 +115,9 @@
         });
         restoreTools();
       }
-      var enabled = mobile && client && !!top && buttons.every(function (button) { return !!button; });
+      var app = doc.getElementById('mainApp');
+      var visible = app && !app.hidden && app.style.display !== 'none' && (!win.getComputedStyle || win.getComputedStyle(app).display !== 'none');
+      var enabled = mobile && client && visible && !!top && buttons.every(function (button) { return !!button; });
       if (enabled) {
         if (!rail || !rail.isConnected) {
           restoreTools();
