@@ -5053,14 +5053,16 @@ function toggleMobileWebviewMode() {
   applyMobileWebviewMode();
 }
 function mobileWebviewZoomOut() {
+  var current = document.body.classList.contains('mobile-webview-on') ? getMobileWebviewScale() : 1;
   mobileWebviewEnabledFallback = true;
   try { localStorage.setItem(MOBILE_WEBVIEW_ON_KEY, '1'); } catch(e) {}
-  setMobileWebviewScale(getMobileWebviewScale() - 0.06);
+  setMobileWebviewScale(current - 0.06);
 }
 function mobileWebviewZoomIn() {
+  var current = document.body.classList.contains('mobile-webview-on') ? getMobileWebviewScale() : 1;
   mobileWebviewEnabledFallback = true;
   try { localStorage.setItem(MOBILE_WEBVIEW_ON_KEY, '1'); } catch(e) {}
-  setMobileWebviewScale(getMobileWebviewScale() + 0.06);
+  setMobileWebviewScale(current + 0.06);
 }
 function mobileWebviewZoomReset() {
   mobileWebviewEnabledFallback = true;

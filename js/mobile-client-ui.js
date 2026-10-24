@@ -20,6 +20,7 @@
   function install(win, doc) {
     if (win[KEY]) return win[KEY];
     var account = null, tools = [], rail = null, observer = null, frame = null, stopped = false;
+    var zoom = null, zoomApp = null;
     var request = win.requestAnimationFrame ? win.requestAnimationFrame.bind(win) : win.setTimeout.bind(win);
     var cancel = win.cancelAnimationFrame ? win.cancelAnimationFrame.bind(win) : win.clearTimeout.bind(win);
 
@@ -49,10 +50,33 @@
       if (rail && rail.hidden !== true) rail.hidden = true;
     }
 
+    function syncZoom(mobile) {
+      var app = doc.getElementById('mainApp');
+      if (observer && app && app !== zoomApp) {
+        observer.observe(app, { attributes: true, attributeFilter: ['style', 'hidden'] });
+        zoomApp = app;
+      }
+      var node = doc.getElementById('mobileWebviewControls');
+      if (zoom && (zoom.node !== node || !zoom.anchor.isConnected)) {
+        if (!zoom.anchor.isConnected && zoom.node.parentNode === doc.body) doc.body.removeChild(zoom.node);
+        restore(zoom);
+        zoom = null;
+        node = doc.getElementById('mobileWebviewControls');
+      }
+      if (mobile && app && !app.hidden && app.style.display !== 'none' && node) {
+        if (!zoom) zoom = remember(node);
+        if (node.parentNode !== doc.body) doc.body.appendChild(node);
+      } else if (zoom) {
+        restore(zoom);
+        zoom = null;
+      }
+    }
+
     function update() {
       frame = null;
       if (stopped || !doc.body) return;
       var mobile = isMobile(win.innerWidth, win.innerHeight);
+      syncZoom(mobile);
       setClass('mobile-client-ui', mobile);
       var client = isClient(doc.body.classList);
       var kp = client && doc.body.classList.contains('kp-tab');
@@ -110,13 +134,13 @@
 
     function start() {
       if (stopped || !doc.body) return;
-      update();
       if (win.MutationObserver && !observer) {
         observer = new win.MutationObserver(function (records) {
-          if (records.some(function (record) { return record.type === 'childList' || record.target === doc.body; })) schedule();
+          if (records.some(function (record) { return record.type === 'childList' || record.target === doc.body || record.target === zoomApp; })) schedule();
         });
         observer.observe(doc.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['class'] });
       }
+      update();
     }
 
     function destroy() {
@@ -128,6 +152,7 @@
       doc.removeEventListener('DOMContentLoaded', start);
       restoreTools();
       restore(account);
+      restore(zoom);
       if (rail && rail.parentNode) rail.parentNode.removeChild(rail);
       if (doc.body) {
         setClass('mobile-client-ui', false);

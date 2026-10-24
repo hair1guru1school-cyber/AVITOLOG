@@ -108,6 +108,29 @@ body.mobile-client-ui .sidebar :is(#crmFolderBtn, #crmSaveDriveBtn) {
 body.mobile-client-ui #crmFolderBtn { flex: 0 0 calc(66px / var(--client-control-scale)); }
 body.mobile-client-ui #crmSaveDriveBtn { width: calc(36px / var(--client-control-scale)); }
 
+/* Outside the transformed app, zoom follows the viewport while content scrolls. */
+body.mobile-client-ui > #mobileWebviewControls {
+  position: fixed;
+  left: max(8px, env(safe-area-inset-left, 0px));
+  bottom: max(8px, env(safe-area-inset-bottom, 0px));
+  gap: 4px;
+  padding: 4px;
+  transform: none !important;
+}
+body.mobile-client-ui > #mobileWebviewControls > :not(#mobileWebviewZoomOutBtn):not(#mobileWebviewZoomInBtn) { display: none !important; }
+body.mobile-client-ui > #mobileWebviewControls > .mobile-webview-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0;
+  font: 700 24px/1 sans-serif;
+  touch-action: manipulation;
+}
+
 body.mobile-client-tools-on #rightPanelWrap { display: none !important; }
 body.mobile-client-tools-on #mainApp > .layout > .content-wrap {
   min-width: 0;
@@ -189,8 +212,8 @@ body.mobile-client-tools-on.kp-client-view.mobile-webview-on #mainApp > .layout 
   min-height: 0 !important;
 }
 body.mobile-client-tools-on.kp-client-view .sidebar { min-height: 0; }
-body.mobile-client-tools-on.kp-client-view #mobileWebviewControls {
-  bottom: calc((78px + env(safe-area-inset-bottom, 0px)) / var(--mw-scale, 1));
+body.mobile-client-tools-on.kp-client-view > #mobileWebviewControls {
+  bottom: calc(78px + env(safe-area-inset-bottom, 0px));
 }
 body.mobile-client-tools-on.kp-client-view #avitoChatLauncher {
   bottom: calc(78px + env(safe-area-inset-bottom, 0px));
