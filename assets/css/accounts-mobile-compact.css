@@ -80,7 +80,7 @@
   }
   body.accounts-mobile-compact .accounts-header-controls > :is(label, button, details),
   body.accounts-mobile-compact .accounts-header-controls .account-filters > label { flex: 0 0 auto; }
-  body.accounts-mobile-compact .accounts-header-controls:has(details[open]) { overflow: visible; }
+  body.accounts-mobile-compact .accounts-header-controls:has(details[open]) { overflow-x: auto; overflow-y: hidden; flex-wrap: nowrap; }
   body.accounts-mobile-compact .accounts-header :is(select, .button) { height: 36px; min-height: 36px !important; padding: 5px 8px; }
   body.accounts-mobile-compact .accounts-header .organization { max-width: 155px; }
   body.accounts-mobile-compact .accounts-status-strip {
