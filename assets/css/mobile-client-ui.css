@@ -6,33 +6,36 @@ body.mobile-client-ui:not(.avito-accounts-mode) #headerMenuBtn {
   flex: 0 0 auto;
   align-items: center;
   justify-content: center;
-  gap: 7px;
-  width: auto;
-  min-width: 44px;
-  min-height: 44px;
-  padding: 8px 11px;
-  border: 1px solid var(--accent);
+  gap: 0;
+  width: calc(34px / var(--mobile-shell-scale));
+  height: calc(34px / var(--mobile-shell-scale));
+  min-width: calc(34px / var(--mobile-shell-scale));
+  min-height: calc(34px / var(--mobile-shell-scale));
+  padding: 0;
+  border: 1px solid var(--border);
   border-radius: 12px;
   background: var(--surface);
   color: var(--text);
-  font-size: 18px;
+  font-size: 0 !important;
   line-height: 1;
   touch-action: manipulation;
 }
 
-body.mobile-client-ui:not(.avito-accounts-mode) #headerMenuBtn::after {
-  content: '\041a\043b\0438\0435\043d\0442';
-  font: 700 11px/1.2 'Golos Text', sans-serif;
+body.mobile-client-ui:not(.avito-accounts-mode) #headerMenuBtn::before {
+  content: '\1f464';
+  font: calc(21px / var(--mobile-shell-scale))/1 sans-serif;
 }
-
-body.mobile-client-ui:not(.avito-accounts-mode) #headerMenuBtn[aria-expanded='true'] {
-  background: var(--accent);
-  color: var(--bg);
+body.mobile-client-ui:not(.avito-accounts-mode) #headerMenuBtn::after { content: none; }
+body.mobile-client-ui.mobile-client-bound:not(.avito-accounts-mode) #headerMenuBtn::before {
+  filter: drop-shadow(0 0 3px rgba(0,217,126,.9));
 }
+body.mobile-client-ui .sidebar-top-row .sidebar-sec-first { font-size: 0; }
+body.mobile-client-ui .sidebar-top-row .sidebar-sec-first::before { content: '\1f464'; font-size: 16px; }
+body.mobile-client-ui.mobile-client-bound .sidebar-top-row .sidebar-sec-first::before { filter: drop-shadow(0 0 3px rgba(0,217,126,.8)); }
 
 body.mobile-client-ui #sidebarTogglePeek { display: none !important; }
-body.mobile-client-ui { --client-control-scale: 1; }
-body.mobile-client-ui.mobile-webview-on { --client-control-scale: var(--mw-scale, 1); }
+body.mobile-client-ui { --client-control-scale: 1; --mobile-shell-scale: 1; }
+body.mobile-client-ui.mobile-webview-on { --mobile-shell-scale: var(--mw-scale, 1); }
 body.mobile-client-ui .sidebar .project-card-account-field {
   flex: 0 0 auto;
   padding: 9px 10px;
@@ -94,8 +97,10 @@ body.mobile-client-ui #clientBadgeName {
   min-width: 0;
   max-width: none;
   display: block;
-  white-space: normal;
-  overflow-wrap: anywhere;
+  white-space: nowrap;
+  overflow-wrap: normal;
+  overflow: hidden;
+  text-overflow: ellipsis;
   font-size: calc(15px / var(--client-control-scale));
   line-height: 1.3;
 }
@@ -107,6 +112,47 @@ body.mobile-client-ui .sidebar :is(#crmFolderBtn, #crmSaveDriveBtn) {
 }
 body.mobile-client-ui #crmFolderBtn { flex: 0 0 calc(66px / var(--client-control-scale)); }
 body.mobile-client-ui #crmSaveDriveBtn { width: calc(36px / var(--client-control-scale)); }
+
+body.mobile-client-ui:not(.avito-accounts-mode) #mainApp > header {
+  height: calc(42px / var(--mobile-shell-scale));
+  min-height: calc(42px / var(--mobile-shell-scale));
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+body.mobile-client-ui:not(.avito-accounts-mode) #analyticsTopRow {
+  display: flex;
+  flex-wrap: nowrap;
+  justify-content: flex-start;
+  align-items: stretch;
+  flex: 0 0 auto;
+  min-width: 0;
+  max-width: 100%;
+  gap: calc(4px / var(--mobile-shell-scale));
+  padding: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  overscroll-behavior-x: contain;
+  touch-action: pan-x pinch-zoom;
+  -webkit-overflow-scrolling: touch;
+}
+body.mobile-client-ui:not(.avito-accounts-mode) #analyticsTopRow > .btn-projects {
+  flex: 0 0 auto;
+  width: auto;
+  min-width: calc(60px / var(--mobile-shell-scale)) !important;
+  height: calc(34px / var(--mobile-shell-scale));
+  min-height: calc(34px / var(--mobile-shell-scale));
+  padding: 0 calc(6px / var(--mobile-shell-scale));
+  gap: calc(4px / var(--mobile-shell-scale));
+  border-radius: calc(9px / var(--mobile-shell-scale)) calc(9px / var(--mobile-shell-scale)) 0 0;
+  font-size: calc(10px / var(--mobile-shell-scale));
+  font-weight: 700;
+  letter-spacing: 0;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: visible;
+  text-overflow: clip;
+}
 
 /* Outside the transformed app, zoom follows the viewport while content scrolls. */
 body.mobile-client-ui > #mobileWebviewControls {
@@ -171,12 +217,10 @@ body.mobile-client-tools-on #mobileClientTools > .rtab {
 }
 body.mobile-client-tools-on #mobileClientTools .rtab-ico { font-size: 19px; }
 body.mobile-client-tools-on #mobileClientTools .rtab-txt { line-height: 1.2; white-space: nowrap; }
-body.mobile-client-ui.mobile-webview-on:not(.avito-accounts-mode) #headerMenuBtn,
 body.mobile-client-tools-on.mobile-webview-on #mobileClientTools > .rtab {
   min-height: calc(44px / var(--mw-scale, 1));
   font-size: calc(11px / var(--mw-scale, 1));
 }
-body.mobile-client-ui.mobile-webview-on #headerMenuBtn::after { font-size: calc(11px / var(--mw-scale, 1)); }
 
 /* KP stays focused on its sheet; its selected task project is left intact. */
 body.kp-client-view #taskPanelWrap { display: none !important; }

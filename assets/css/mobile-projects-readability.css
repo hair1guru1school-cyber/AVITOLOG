@@ -1,0 +1,207 @@
+/* Readable Projects geometry at either WEB or board zoom; saved desktop sizes stay untouched. */
+.projects-mobile-title { display: none; }
+.projects-mobile-actions { display: contents; }
+body.projects-mobile-readable #mainApp > .layout {
+  height: calc((var(--mobile-visual-height, 100dvh) - 42px) / var(--projects-mobile-app-scale, 1)) !important;
+  min-height: 0 !important;
+}
+body.projects-mobile-readable .projects-table {
+  --projects-sticky-width: calc(clamp(180px, 40vw, 240px) / var(--projects-mobile-scale, 1)) !important;
+  --projects-cell-num-font: calc(8px / var(--projects-mobile-scale, 1)) !important;
+  --projects-card-num-font: calc(11px / var(--projects-mobile-scale, 1)) !important;
+  --projects-marker-font: calc(12px / var(--projects-mobile-scale, 1)) !important;
+  --projects-marker-small-font: calc(8px / var(--projects-mobile-scale, 1)) !important;
+}
+body.projects-mobile-readable .projects-table .projects-sticky {
+  width: var(--projects-sticky-width) !important;
+  min-width: var(--projects-sticky-width) !important;
+  max-width: var(--projects-sticky-width) !important;
+}
+body.projects-mobile-readable .projects-table-row[data-id] {
+  min-height: calc(62px / var(--projects-mobile-scale, 1)) !important;
+  flex: 0 0 auto !important;
+}
+body.projects-mobile-readable .projects-table-row[data-id] > .projects-sticky { display: block; }
+body.projects-mobile-readable .projects-board.projects-fit-rows .projects-table-wrap {
+  overflow-y: auto;
+}
+body.projects-mobile-readable .projects-table-wrap {
+  overflow: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+body.projects-mobile-readable .projects-table .projects-cal-day {
+  width: max(var(--projects-mobile-day-width, 28px), calc(24px / var(--projects-mobile-scale, 1))) !important;
+  min-width: max(var(--projects-mobile-day-width, 28px), calc(24px / var(--projects-mobile-scale, 1))) !important;
+  max-width: max(var(--projects-mobile-day-width, 28px), calc(24px / var(--projects-mobile-scale, 1))) !important;
+  flex-shrink: 0;
+}
+body.projects-mobile-readable .projects-cal-header .cal-num {
+  font-size: calc(14px / var(--projects-mobile-scale, 1));
+}
+body.projects-mobile-readable .projects-cal-header :is(.cal-mon, .cal-wd) {
+  font-size: calc(8px / var(--projects-mobile-scale, 1));
+}
+body.projects-mobile-readable .proj-cell-editable {
+  flex: 1 1 0;
+  min-width: 0;
+  padding: calc(3px / var(--projects-mobile-scale, 1));
+  align-items: flex-start;
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+}
+body.projects-mobile-readable .proj-col-expand {
+  position: absolute;
+  left: calc(3px / var(--projects-mobile-scale, 1));
+  bottom: calc(4px / var(--projects-mobile-scale, 1));
+  height: calc(24px / var(--projects-mobile-scale, 1));
+  width: calc(16px / var(--projects-mobile-scale, 1));
+  min-width: calc(16px / var(--projects-mobile-scale, 1));
+  gap: 0;
+}
+body.projects-mobile-readable .proj-row-drag-handle {
+  width: calc(12px / var(--projects-mobile-scale, 1));
+  min-width: 0;
+  padding: 0;
+  margin-right: 0;
+  font-size: calc(10px / var(--projects-mobile-scale, 1));
+}
+body.projects-mobile-readable .proj-col-expand-arrow { font-size: calc(8px / var(--projects-mobile-scale, 1)); }
+body.projects-mobile-readable .proj-col-type {
+  position: absolute;
+  left: calc(21px / var(--projects-mobile-scale, 1));
+  bottom: calc(4px / var(--projects-mobile-scale, 1));
+  height: calc(24px / var(--projects-mobile-scale, 1));
+  width: calc(14px / var(--projects-mobile-scale, 1));
+  min-width: calc(14px / var(--projects-mobile-scale, 1));
+}
+body.projects-mobile-readable .proj-col-type > * { font-size: calc(10px / var(--projects-mobile-scale, 1)); }
+body.projects-mobile-readable .proj-drive-btn {
+  position: absolute;
+  left: calc(37px / var(--projects-mobile-scale, 1));
+  bottom: calc(4px / var(--projects-mobile-scale, 1));
+  width: calc(18px / var(--projects-mobile-scale, 1));
+  min-width: calc(18px / var(--projects-mobile-scale, 1));
+  height: calc(24px / var(--projects-mobile-scale, 1));
+  font-size: calc(14px / var(--projects-mobile-scale, 1));
+}
+body.projects-mobile-readable .proj-col-move {
+  position: absolute;
+  right: calc(3px / var(--projects-mobile-scale, 1));
+  bottom: calc(4px / var(--projects-mobile-scale, 1));
+  height: calc(24px / var(--projects-mobile-scale, 1));
+  width: calc(16px / var(--projects-mobile-scale, 1));
+  min-width: calc(16px / var(--projects-mobile-scale, 1));
+  margin-left: 0;
+}
+body.projects-mobile-readable .proj-move-btn {
+  width: calc(16px / var(--projects-mobile-scale, 1));
+  min-width: 0;
+  height: calc(24px / var(--projects-mobile-scale, 1));
+  font-size: calc(12px / var(--projects-mobile-scale, 1));
+}
+body.projects-mobile-readable .proj-task-badge {
+  position: absolute;
+  right: calc(18px / var(--projects-mobile-scale, 1));
+  bottom: calc(3px / var(--projects-mobile-scale, 1));
+  z-index: 2;
+  margin: 0;
+}
+body.projects-mobile-readable .proj-task-count {
+  min-width: calc(14px / var(--projects-mobile-scale, 1));
+  height: calc(14px / var(--projects-mobile-scale, 1));
+  padding: 0;
+  font-size: calc(9px / var(--projects-mobile-scale, 1));
+}
+body.projects-mobile-readable .proj-main-line {
+  position: relative;
+  display: grid;
+  grid-template-columns: calc(20px / var(--projects-mobile-scale, 1)) minmax(0, 1fr) calc(16px / var(--projects-mobile-scale, 1));
+  gap: calc(3px / var(--projects-mobile-scale, 1));
+  overflow: visible;
+  white-space: normal;
+}
+body.projects-mobile-readable .proj-main-line > .proj-emoji-btn {
+  grid-column: 1;
+  grid-row: 1;
+  width: calc(20px / var(--projects-mobile-scale, 1));
+  min-width: 0;
+  height: calc(30px / var(--projects-mobile-scale, 1));
+  font-size: calc(18px / var(--projects-mobile-scale, 1));
+}
+body.projects-mobile-readable .proj-emoji-btn img {
+  width: calc(18px / var(--projects-mobile-scale, 1));
+  height: calc(18px / var(--projects-mobile-scale, 1));
+}
+body.projects-mobile-readable .proj-main-line > .projects-mobile-title {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  grid-column: 2;
+  grid-row: 1;
+  min-width: 0;
+  align-self: center;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+  font-size: calc(12px / var(--projects-mobile-scale, 1));
+  font-weight: 650;
+  line-height: 1.25;
+  color: var(--text);
+}
+body.projects-mobile-readable .proj-main-line > input {
+  grid-column: 2;
+  grid-row: 1;
+  min-width: 0;
+  width: 100%;
+  max-width: 100%;
+  font-size: calc(12px / var(--projects-mobile-scale, 1)) !important;
+  min-height: calc(30px / var(--projects-mobile-scale, 1));
+}
+body.projects-mobile-readable .proj-main-line > input[readonly] {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+}
+body.projects-mobile-readable .proj-main-line > input:not([readonly]) + .projects-mobile-title { visibility: hidden; }
+body.projects-mobile-readable .proj-main-line > .field-expand-btn {
+  grid-column: 3;
+  grid-row: 1;
+  width: calc(16px / var(--projects-mobile-scale, 1));
+  min-width: 0;
+  height: calc(24px / var(--projects-mobile-scale, 1));
+  font-size: calc(11px / var(--projects-mobile-scale, 1));
+}
+body.projects-mobile-readable .projects-mobile-actions {
+  display: flex;
+  grid-column: 1 / -1;
+  align-items: center;
+  gap: calc(4px / var(--projects-mobile-scale, 1));
+  min-width: 0;
+  width: calc(100% - 88px / var(--projects-mobile-scale, 1));
+  max-width: calc(100% - 88px / var(--projects-mobile-scale, 1));
+  margin-left: calc(54px / var(--projects-mobile-scale, 1));
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scrollbar-width: thin;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: calc(2px / var(--projects-mobile-scale, 1));
+  padding-right: calc(16px / var(--projects-mobile-scale, 1));
+  box-sizing: border-box;
+}
+body.projects-mobile-readable .projects-mobile-actions > * { flex-shrink: 0; }
+body.projects-mobile-readable .projects-mobile-actions .project-path { margin-left: 0; padding-left: 0; }
+body.projects-mobile-readable .projects-mobile-actions :is(button, .proj-path-btn) {
+  min-height: calc(22px / var(--projects-mobile-scale, 1));
+  min-width: calc(20px / var(--projects-mobile-scale, 1));
+  height: auto;
+  font-size: calc(10px / var(--projects-mobile-scale, 1));
+}
+body.projects-mobile-readable .projects-sticky-head { padding: calc(4px / var(--projects-mobile-scale, 1)); }
+body.projects-mobile-readable .projects-zone-tab.projects-zone-tab-zone {
+  height: calc(25px / var(--projects-mobile-scale, 1));
+  min-height: calc(25px / var(--projects-mobile-scale, 1));
+  font-size: calc(10px / var(--projects-mobile-scale, 1));
+}
+body.projects-mobile-readable .projects-table-row[data-projects-contacts-zero="true"] .projects-mobile-title { color: var(--muted); }

@@ -20,9 +20,116 @@
       distance: Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY) };
   }
 
+  function transformScale(node) {
+    var transform = String(node && node.style && node.style.transform || '');
+    var scale = transform.match(/scale(?:3d)?\(\s*([\d.]+)/);
+    var matrix = transform.match(/matrix\(\s*([\d.]+)/);
+    var value = Number(scale ? scale[1] : matrix ? matrix[1] : 1);
+    return Number.isFinite(value) && value > 0 ? value : 1;
+  }
+  function effectiveScale(app, board) {
+    return Math.max(.05, Math.min(4, transformScale(app) * transformScale(board)));
+  }
+  function phoneViewport(win) {
+    return win.innerWidth <= 768 || (win.innerWidth <= 980 && win.innerWidth > win.innerHeight && win.innerHeight <= 560);
+  }
+
+  // These are only mirrors and layout wrappers; original inputs and action nodes keep their handlers.
+  function installReadability(win, doc) {
+    if (!doc.querySelector || !doc.querySelectorAll || !win.addEventListener || !doc.body.classList.toggle) return null;
+    var records = new Map(), frame = null, observer = null, destroyed = false;
+    function restore(input, record) {
+      if (record.actions.parentNode) {
+        while (record.actions.firstChild) record.parent.insertBefore(record.actions.firstChild, record.actions);
+        record.actions.parentNode.removeChild(record.actions);
+      }
+      if (record.mirror.parentNode) record.mirror.parentNode.removeChild(record.mirror);
+      records.delete(input);
+    }
+    function sync() {
+      if (frame !== null) win.cancelAnimationFrame(frame);
+      frame = null;
+      if (destroyed) return;
+      var body = doc.body, board = doc.querySelector('.projects-board');
+      var active = phoneViewport(win) && body.classList.contains('projects-mode') && !body.classList.contains('avito-accounts-mode') && !!board;
+      if (body.classList.contains('projects-mobile-readable') !== active) body.classList.toggle('projects-mobile-readable', active);
+      if (!active) {
+        records.forEach(function (record, input) { restore(input, record); });
+        if (body.style.getPropertyValue('--projects-mobile-scale')) body.style.removeProperty('--projects-mobile-scale');
+        if (body.style.getPropertyValue('--projects-mobile-app-scale')) body.style.removeProperty('--projects-mobile-app-scale');
+        if (body.style.getPropertyValue('--projects-mobile-day-width')) body.style.removeProperty('--projects-mobile-day-width');
+        return;
+      }
+      var app = doc.querySelector('#mainApp'), scale = String(effectiveScale(app, board));
+      if (body.style.getPropertyValue('--projects-mobile-scale') !== scale) body.style.setProperty('--projects-mobile-scale', scale);
+      var appScale = String(transformScale(app));
+      if (body.style.getPropertyValue('--projects-mobile-app-scale') !== appScale) body.style.setProperty('--projects-mobile-app-scale', appScale);
+      var firstDay = board.querySelector('.projects-cal-day'), dayWidth = parseFloat(firstDay && firstDay.style.width) || 28;
+      var dayValue = Math.max(1, dayWidth) + 'px';
+      if (body.style.getPropertyValue('--projects-mobile-day-width') !== dayValue) body.style.setProperty('--projects-mobile-day-width', dayValue);
+      records.forEach(function (record, input) {
+        if (input.isConnected === false || input.parentNode !== record.parent) restore(input, record);
+      });
+      board.querySelectorAll('.proj-main-line > input').forEach(function (input) {
+        var parent = input.parentNode, record = records.get(input);
+        if (!record) {
+          var mirror = doc.createElement('span'), actions = doc.createElement('div');
+          mirror.className = 'projects-mobile-title'; mirror.setAttribute('aria-hidden', 'true');
+          actions.className = 'projects-mobile-actions';
+          var buttons = Array.from(parent.children).filter(function (node) {
+            return node !== input && !node.classList.contains('proj-emoji-btn') && !node.classList.contains('field-expand-btn');
+          });
+          parent.insertBefore(mirror, input.nextSibling);
+          parent.appendChild(actions);
+          buttons.forEach(function (node) { actions.appendChild(node); });
+          record = { parent: parent, mirror: mirror, actions: actions };
+          records.set(input, record);
+        }
+        var name = String(input.value || '');
+        if (record.mirror.textContent !== name) record.mirror.textContent = name;
+        if (record.mirror.title !== name) record.mirror.title = name;
+      });
+    }
+    function schedule() {
+      if (!destroyed && frame === null) frame = win.requestAnimationFrame(sync);
+    }
+    function projectTree(node) {
+      return !!(node && ((node.closest && node.closest('.projects-board')) || (node.querySelector && node.querySelector('.projects-board'))));
+    }
+    function mutations(changes) {
+      if (changes.some(function (change) {
+        if (change.target === doc.body && change.type === 'attributes') return change.attributeName === 'class';
+        if (change.target && change.target.id === 'mainApp' && change.type === 'attributes') return true;
+        if (change.target && change.target.closest && change.target.closest('.projects-board')) return true;
+        return change.type === 'childList' && Array.from(change.addedNodes || []).concat(Array.from(change.removedNodes || [])).some(projectTree);
+      })) schedule();
+    }
+    if (win.MutationObserver) {
+      observer = new win.MutationObserver(mutations);
+      observer.observe(doc.body, { subtree: true, childList: true, attributes: true, attributeFilter: ['class', 'style', 'readonly', 'value'] });
+    }
+    win.addEventListener('resize', schedule);
+    doc.addEventListener('input', schedule, true);
+    doc.addEventListener('change', schedule, true);
+    sync();
+    return { sync: sync, destroy: function () {
+      destroyed = true;
+      if (frame !== null) win.cancelAnimationFrame(frame);
+      if (observer) observer.disconnect();
+      win.removeEventListener('resize', schedule);
+      doc.removeEventListener('input', schedule, true); doc.removeEventListener('change', schedule, true);
+      records.forEach(function (record, input) { restore(input, record); });
+      doc.body.classList.toggle('projects-mobile-readable', false);
+      doc.body.style.removeProperty('--projects-mobile-scale');
+      doc.body.style.removeProperty('--projects-mobile-app-scale');
+      doc.body.style.removeProperty('--projects-mobile-day-width');
+    } };
+  }
+
   function install(win, doc) {
     if (!win || !doc || win.__avitologProjectsPinch) return null;
     var gesture = null, blocked = false, suppressUntil = 0, frame = null, status = null, statusTimer = null;
+    var readability = installReadability(win, doc);
     var options = { capture: true, passive: false };
     function scope() { return typeof win.AVITOLOG_KEY === 'function' ? win.AVITOLOG_KEY('avitolog_projects_zoom') : 'avitolog_projects_zoom'; }
     function projectMode() { return doc.body && doc.body.classList.contains('projects-mode') && !doc.body.classList.contains('avito-accounts-mode'); }
@@ -52,6 +159,7 @@
       g.board.style.transform = 'scale(' + scale + ')';
       g.board.style.width = size.width; g.board.style.height = size.height;
       g.board.classList.toggle('projects-fit-rows', scale < 1);
+      if (readability) readability.sync();
       var rect = g.wrap.getBoundingClientRect();
       var physicalScale = rect.width / g.wrap.offsetWidth || scale;
       g.wrap.scrollLeft = Math.max(0, g.anchorX - (center.x - rect.left) / physicalScale);
@@ -134,6 +242,7 @@
       if (frame !== null) win.cancelAnimationFrame(frame);
       if (statusTimer !== null) win.clearTimeout(statusTimer);
       if (status && status.parentNode) status.parentNode.removeChild(status);
+      if (readability) readability.destroy();
       doc.removeEventListener('touchstart', start, options); doc.removeEventListener('touchmove', move, options);
       doc.removeEventListener('touchend', end, options); doc.removeEventListener('touchcancel', end, options);
       doc.removeEventListener('click', click, true);
@@ -142,5 +251,5 @@
     win.__avitologProjectsPinch = controller;
     return controller;
   }
-  return { zoomFor: zoomFor, sizeFor: sizeFor, install: install };
+  return { zoomFor: zoomFor, sizeFor: sizeFor, effectiveScale: effectiveScale, installReadability: installReadability, install: install };
 }));

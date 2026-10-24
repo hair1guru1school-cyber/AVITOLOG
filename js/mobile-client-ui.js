@@ -20,7 +20,7 @@
   function install(win, doc) {
     if (win[KEY]) return win[KEY];
     var account = null, tools = [], rail = null, observer = null, frame = null, stopped = false;
-    var zoom = null, zoomApp = null;
+    var zoom = null, zoomApp = null, bindingBadge = null;
     var request = win.requestAnimationFrame ? win.requestAnimationFrame.bind(win) : win.setTimeout.bind(win);
     var cancel = win.cancelAnimationFrame ? win.cancelAnimationFrame.bind(win) : win.clearTimeout.bind(win);
 
@@ -78,6 +78,12 @@
       var mobile = isMobile(win.innerWidth, win.innerHeight);
       syncZoom(mobile);
       setClass('mobile-client-ui', mobile);
+      var badge = doc.getElementById('clientBadge');
+      if (observer && badge && badge !== bindingBadge) {
+        observer.observe(badge, { attributes: true, attributeFilter: ['style', 'class', 'hidden'] });
+        bindingBadge = badge;
+      }
+      setClass('mobile-client-bound', !!(mobile && badge && !badge.hidden && badge.style.display === 'inline-flex'));
       var client = isClient(doc.body.classList);
       var kp = client && doc.body.classList.contains('kp-tab');
       setClass('kp-client-view', kp);
@@ -136,7 +142,7 @@
       if (stopped || !doc.body) return;
       if (win.MutationObserver && !observer) {
         observer = new win.MutationObserver(function (records) {
-          if (records.some(function (record) { return record.type === 'childList' || record.target === doc.body || record.target === zoomApp; })) schedule();
+          if (records.some(function (record) { return record.type === 'childList' || record.target === doc.body || record.target === zoomApp || record.target === bindingBadge; })) schedule();
         });
         observer.observe(doc.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['class'] });
       }
@@ -157,6 +163,7 @@
       if (doc.body) {
         setClass('mobile-client-ui', false);
         setClass('mobile-client-tools-on', false);
+        setClass('mobile-client-bound', false);
         setClass('kp-client-view', false);
       }
       delete win[KEY];
