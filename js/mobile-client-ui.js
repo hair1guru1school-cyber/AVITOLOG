@@ -7,7 +7,7 @@
 
   var KEY = '__avitologMobileClientUI';
   var MODES = ['projects-mode', 'goals-mode', 'agency-mode', 'strategy-mode', 'assets-mode', 'ads-mode', 'tasks-mode', 'avito-accounts-mode'];
-  var TOOLS = ['tab-kp', 'tab-analysis', 'tab-presale', 'tab-avito1', 'tab-contract', 'tab-scripts'];
+  var TOOLS = ['tab-scripts', 'tab-kp', 'tab-analysis', 'tab-presale', 'tab-avito1', 'tab-contract'];
 
   function isMobile(width, height) {
     return width > 0 && height > 0 && (width <= 768 || (width <= 980 && height <= 560 && width > height));
@@ -123,8 +123,8 @@
           rail.id = 'mobileClientTools';
           rail.setAttribute('aria-label', '\u0418\u043d\u0441\u0442\u0440\u0443\u043c\u0435\u043d\u0442\u044b \u043a\u043b\u0438\u0435\u043d\u0442\u0430');
         }
-        var parent = kp ? doc.body : top.parentNode;
-        if (rail.parentNode !== parent || (!kp && top.nextSibling !== rail)) parent.insertBefore(rail, kp ? null : top.nextSibling);
+        var parent = top.parentNode;
+        if (rail.parentNode !== parent || top.nextSibling !== rail) parent.insertBefore(rail, top.nextSibling);
         if (!tools.length) tools = buttons.map(remember);
         buttons.forEach(function (button, i) {
           if (rail.children[i] !== button) rail.insertBefore(button, rail.children[i] || null);

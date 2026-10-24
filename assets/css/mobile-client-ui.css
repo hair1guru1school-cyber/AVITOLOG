@@ -122,6 +122,22 @@ body.mobile-client-ui #mainApp > header {
   overflow-x: auto;
   overflow-y: hidden;
 }
+body.mobile-client-ui #mainApp > header .logo {
+  flex: 0 0 auto;
+  max-width: none;
+  overflow: visible;
+  font-size: calc(23px / var(--mobile-shell-scale));
+  letter-spacing: calc(1px / var(--mobile-shell-scale));
+}
+body.mobile-client-ui #mainApp > header button:not(#headerMenuBtn) {
+  flex-shrink: 0;
+  min-height: calc(32px / var(--mobile-shell-scale));
+  min-width: calc(32px / var(--mobile-shell-scale));
+  padding: 0 calc(7px / var(--mobile-shell-scale));
+  font-size: calc(12px / var(--mobile-shell-scale));
+  line-height: 1.2;
+  white-space: nowrap;
+}
 body.mobile-client-ui #analyticsTopRow {
   position: relative;
   top: auto;
@@ -189,20 +205,18 @@ body.mobile-client-tools-on #mainApp > .layout > .content-wrap {
 }
 body.mobile-client-tools-on #analyticsTopRow { position: relative; top: auto; flex-shrink: 0; }
 body.mobile-client-tools-on #mobileClientTools {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   flex: 0 0 auto;
-  align-items: center;
-  gap: 6px;
+  align-items: stretch;
+  gap: calc(4px / var(--mobile-shell-scale));
   min-width: 0;
   max-width: 100%;
-  padding: 7px 10px;
+  padding: calc(4px / var(--mobile-shell-scale));
+  box-sizing: border-box;
   border-bottom: 1px solid var(--border);
   background: var(--surface);
-  overflow-x: auto;
-  overscroll-behavior-x: contain;
-  -webkit-overflow-scrolling: touch;
-  scrollbar-width: thin;
-  touch-action: pan-x pinch-zoom;
+  touch-action: manipulation;
 }
 body.mobile-client-tools-on #mobileClientTools > .rtab {
   display: inline-flex;
@@ -210,48 +224,21 @@ body.mobile-client-tools-on #mobileClientTools > .rtab {
   flex-direction: row;
   align-items: center;
   justify-content: center;
-  gap: 6px;
-  width: auto;
-  min-height: 44px;
-  padding: 8px 12px;
+  gap: calc(4px / var(--mobile-shell-scale));
+  width: 100%;
+  min-width: 0;
+  min-height: calc(34px / var(--mobile-shell-scale));
+  padding: calc(5px / var(--mobile-shell-scale)) calc(3px / var(--mobile-shell-scale));
   border-radius: 10px;
-  font-size: 11px;
+  font-size: calc(10px / var(--mobile-shell-scale));
   letter-spacing: 0;
   white-space: nowrap;
 }
-body.mobile-client-tools-on #mobileClientTools .rtab-ico { font-size: 19px; }
+body.mobile-client-tools-on #mobileClientTools .rtab-ico { font-size: calc(14px / var(--mobile-shell-scale)); }
 body.mobile-client-tools-on #mobileClientTools .rtab-txt { line-height: 1.2; white-space: nowrap; }
-body.mobile-client-tools-on.mobile-webview-on #mobileClientTools > .rtab {
-  min-height: calc(44px / var(--mw-scale, 1));
-  font-size: calc(11px / var(--mw-scale, 1));
-}
 
 /* KP stays focused on its sheet; its selected task project is left intact. */
 body.kp-client-view #taskPanelWrap { display: none !important; }
-body.mobile-client-tools-on.kp-client-view #mobileClientTools {
-  position: fixed;
-  z-index: 400;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  width: 100%;
-  max-width: 100%;
-  box-sizing: border-box;
-  margin: 0;
-  padding: 6px 8px max(6px, env(safe-area-inset-bottom, 0px));
-  border-top: 1px solid var(--border);
-  border-bottom: 0;
-  box-shadow: 0 -4px 18px rgba(0,0,0,.16);
-}
-body.mobile-client-tools-on.kp-client-view #mobileClientTools > .rtab {
-  min-height: 44px;
-  min-width: 76px;
-  font-size: 11px;
-  padding: 8px 10px;
-}
-body.mobile-client-tools-on.kp-client-view #mainApp > .layout > .content-wrap {
-  padding-bottom: calc((68px + env(safe-area-inset-bottom, 0px)) / var(--mw-scale, 1));
-}
 body.mobile-client-tools-on.kp-client-view .kp-gen-title { font-size: calc(12px / var(--mw-scale, 1)); }
 body.mobile-client-tools-on.kp-client-view .kp-client-target { font-size: calc(15px / var(--mw-scale, 1)); }
 body.mobile-client-tools-on.kp-client-view .kp-client-context-label { font-size: calc(11px / var(--mw-scale, 1)); }
@@ -260,14 +247,32 @@ body.mobile-client-tools-on.kp-client-view.mobile-webview-on #mainApp > .layout 
   min-height: 0 !important;
 }
 body.mobile-client-tools-on.kp-client-view .sidebar { min-height: 0; }
-body.mobile-client-tools-on.kp-client-view > #mobileWebviewControls {
-  bottom: calc(78px + env(safe-area-inset-bottom, 0px));
+body.mobile-client-tools-on .content {
+  flex: 1 1 0;
+  min-height: 0;
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
 }
-body.mobile-client-tools-on.kp-client-view #avitoChatLauncher {
-  bottom: calc(78px + env(safe-area-inset-bottom, 0px));
+body.mobile-client-tools-on .sp-btn {
+  min-height: calc(40px / var(--mobile-shell-scale));
+  padding: calc(7px / var(--mobile-shell-scale));
+  font-size: calc(12px / var(--mobile-shell-scale));
+}
+body.mobile-client-tools-on .sp-btn-label { font-size: inherit; }
+body.mobile-client-tools-on .sp-btn-emoji { font-size: calc(18px / var(--mobile-shell-scale)); }
+body.mobile-client-tools-on .sp-grid { gap: calc(8px / var(--mobile-shell-scale)); }
+body.mobile-client-tools-on .sp-panel { min-width: 0; }
+body.mobile-client-tools-on .sp-panel-header { flex-wrap: wrap; }
+body.mobile-client-tools-on .kp-generator { max-width: none; min-width: 0; }
+body.mobile-client-tools-on .kp-editor-embed-wrap { min-width: 0; }
+body.mobile-client-tools-on.kp-client-view .content { overflow: auto !important; }
+body.mobile-client-tools-on.kp-client-view .content-wrap { min-height: 0; }
+@media (orientation: landscape) and (max-width: 980px) and (max-height: 560px) {
+  body.mobile-client-tools-on #mobileClientTools { grid-template-columns: repeat(6, minmax(0, 1fr)); }
 }
 
 @media (max-width: 768px) {
+  body.mobile-client-tools-on:not(.sidebar-hidden) #mobileClientTools { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   body.mobile-client-tools-on.mobile-webview-on #mainApp > .layout { grid-template-columns: 300px minmax(0, 1fr) 0; }
   body.mobile-client-tools-on.mobile-webview-on.sidebar-hidden #mainApp > .layout { grid-template-columns: 0 minmax(0, 1fr) 0; }
 }

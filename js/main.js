@@ -4989,10 +4989,10 @@ function getMobileWebviewScale() {
   try { stored = localStorage.getItem(MOBILE_WEBVIEW_SCALE_KEY); } catch(e) {}
   var raw = mobileWebviewScaleFallback === null ? parseFloat(stored || String(getMobileWebviewDefaultScale())) : mobileWebviewScaleFallback;
   if (!isFinite(raw)) raw = getMobileWebviewDefaultScale();
-  return Math.max(0.3, Math.min(1.25, raw));
+  return Math.max(0.2, Math.min(1.25, raw));
 }
 function setMobileWebviewScale(nextScale) {
-  var s = Math.max(0.3, Math.min(1.25, Number(nextScale) || 1));
+  var s = Math.max(0.2, Math.min(1.25, Number(nextScale) || 1));
   mobileWebviewScaleFallback = s;
   try { localStorage.setItem(MOBILE_WEBVIEW_SCALE_KEY, String(s)); } catch(e) {}
   applyMobileWebviewMode();
@@ -5056,13 +5056,13 @@ function mobileWebviewZoomOut() {
   var current = document.body.classList.contains('mobile-webview-on') ? getMobileWebviewScale() : 1;
   mobileWebviewEnabledFallback = true;
   try { localStorage.setItem(MOBILE_WEBVIEW_ON_KEY, '1'); } catch(e) {}
-  setMobileWebviewScale(current - 0.06);
+  setMobileWebviewScale(current - 0.1);
 }
 function mobileWebviewZoomIn() {
   var current = document.body.classList.contains('mobile-webview-on') ? getMobileWebviewScale() : 1;
   mobileWebviewEnabledFallback = true;
   try { localStorage.setItem(MOBILE_WEBVIEW_ON_KEY, '1'); } catch(e) {}
-  setMobileWebviewScale(current + 0.06);
+  setMobileWebviewScale(current + 0.1);
 }
 function mobileWebviewZoomReset() {
   mobileWebviewEnabledFallback = true;

@@ -1,0 +1,327 @@
+/* Portrait cash uses the existing fields and payment handlers, without a wide table. */
+@media (max-width: 768px) and (orientation: portrait) {
+  body.mobile-client-ui.assets-mode {
+    --cash-scale: var(--mobile-shell-scale, 1);
+    height: var(--mobile-visual-height, 100dvh);
+    min-height: 0;
+    overflow: hidden;
+    overflow: clip;
+  }
+
+  body.mobile-client-ui.assets-mode #mainApp > .layout {
+    height: calc((var(--mobile-visual-height, 100dvh) - 42px) / var(--cash-scale)) !important;
+    min-height: 0 !important;
+  }
+  body.mobile-client-ui.assets-mode.mobile-webview-on #mainApp > .layout {
+    grid-template-columns: min(300px, 28%) minmax(0, 1fr) 0;
+  }
+  body.mobile-client-ui.assets-mode.mobile-webview-on.sidebar-hidden #mainApp > .layout {
+    grid-template-columns: 0 minmax(0, 1fr) 0;
+  }
+  body.mobile-client-ui.assets-mode .content-wrap {
+    min-width: 0 !important;
+    min-height: 0;
+    padding-bottom: 0;
+  }
+  body.mobile-client-ui.assets-mode .content {
+    min-width: 0;
+    min-height: 0;
+    padding: calc(10px / var(--cash-scale));
+    overflow-y: auto;
+    overflow-x: hidden;
+    overscroll-behavior-y: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+  body.mobile-client-ui.assets-mode .assets-page-wrap {
+    box-sizing: border-box;
+    width: 100%;
+    max-width: none;
+    padding: 0 0 calc(78px / var(--cash-scale));
+    gap: calc(18px / var(--cash-scale));
+  }
+  body.mobile-client-ui.assets-mode .assets-summary-top { margin-bottom: 0; }
+  body.mobile-client-ui.assets-mode .assets-month-title {
+    width: 100%;
+    margin-bottom: calc(12px / var(--cash-scale));
+  }
+  body.mobile-client-ui.assets-mode .assets-month-nav-wrap {
+    width: 100%;
+    gap: calc(6px / var(--cash-scale));
+    letter-spacing: 0;
+  }
+  body.mobile-client-ui.assets-mode .assets-month-nav-label {
+    min-width: 0;
+    font-size: calc(22px / var(--cash-scale));
+    letter-spacing: calc(2px / var(--cash-scale));
+  }
+  body.mobile-client-ui.assets-mode .assets-month-nav-btn,
+  body.mobile-client-ui.assets-mode .assets-settings > summary {
+    box-sizing: border-box;
+    width: calc(36px / var(--cash-scale));
+    height: calc(36px / var(--cash-scale));
+    min-width: calc(36px / var(--cash-scale));
+    font-size: calc(14px / var(--cash-scale));
+    margin-left: 0;
+    touch-action: manipulation;
+  }
+  body.mobile-client-ui.assets-mode .assets-settings label {
+    box-sizing: border-box;
+    max-width: calc((100vw - 24px) / var(--cash-scale));
+    padding: calc(12px / var(--cash-scale));
+    font-size: calc(12px / var(--cash-scale));
+    white-space: normal;
+  }
+  body.mobile-client-ui.assets-mode .assets-summary-table {
+    max-width: none;
+    border-radius: calc(16px / var(--cash-scale));
+  }
+  body.mobile-client-ui.assets-mode .assets-summary-row {
+    gap: calc(10px / var(--cash-scale));
+    min-height: calc(39px / var(--cash-scale));
+    padding: 0 calc(13px / var(--cash-scale));
+  }
+  body.mobile-client-ui.assets-mode .assets-summary-label {
+    min-width: 0;
+    font-size: calc(12px / var(--cash-scale));
+    line-height: 1.35;
+  }
+  body.mobile-client-ui.assets-mode .assets-summary-val {
+    min-width: 0;
+    font-size: calc(16px / var(--cash-scale));
+    white-space: nowrap;
+  }
+  body.mobile-client-ui.assets-mode .assets-summary-main {
+    flex-direction: column;
+    align-items: stretch;
+    gap: calc(9px / var(--cash-scale));
+    padding: calc(17px / var(--cash-scale));
+  }
+  body.mobile-client-ui.assets-mode .assets-summary-main .assets-summary-label {
+    font-size: calc(13px / var(--cash-scale));
+  }
+  body.mobile-client-ui.assets-mode .assets-summary-main .assets-summary-val {
+    margin: 0;
+    padding: calc(13px / var(--cash-scale));
+    text-align: left;
+    font-size: calc(clamp(26px, 8.8vw, 38px) / var(--cash-scale));
+    line-height: 1.2;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+  body.mobile-client-ui.assets-mode .assets-summary-main .assets-summary-usd {
+    display: block;
+    margin: calc(5px / var(--cash-scale)) 0 0;
+    font-size: calc(13px / var(--cash-scale));
+    line-height: 1.3;
+  }
+  body.mobile-client-ui.assets-mode .assets-two-cols {
+    width: 100%;
+    max-width: none;
+    gap: calc(18px / var(--cash-scale));
+    margin-top: 0;
+  }
+  body.mobile-client-ui.assets-mode .assets-col {
+    border-radius: calc(14px / var(--cash-scale));
+  }
+  body.mobile-client-ui.assets-mode .assets-col-title {
+    padding: calc(12px / var(--cash-scale));
+    gap: calc(6px / var(--cash-scale));
+    font-size: calc(14px / var(--cash-scale));
+    line-height: 1.35;
+  }
+  body.mobile-client-ui.assets-mode .assets-col-breakdown {
+    flex-basis: 100%;
+    margin-left: 0;
+    font-size: calc(11px / var(--cash-scale));
+    line-height: 1.4;
+  }
+  body.mobile-client-ui.assets-mode .assets-filter-btn {
+    min-height: calc(36px / var(--cash-scale));
+    margin: 0 calc(12px / var(--cash-scale)) calc(8px / var(--cash-scale));
+    font-size: calc(12px / var(--cash-scale));
+    touch-action: manipulation;
+  }
+  body.mobile-client-ui.assets-mode .assets-col-list {
+    flex: 0 0 auto;
+    min-height: 0;
+    overflow: visible;
+  }
+  body.mobile-client-ui.assets-mode .assets-col-header {
+    min-width: 0;
+    height: 0;
+    padding: 0;
+    border: 0;
+    overflow: hidden;
+  }
+  body.mobile-client-ui.assets-mode .assets-col-row {
+    box-sizing: border-box;
+    display: grid;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    align-items: center;
+    gap: calc(10px / var(--cash-scale));
+    min-width: 0;
+    padding: calc(13px / var(--cash-scale)) calc(12px / var(--cash-scale));
+    font-size: calc(13px / var(--cash-scale));
+  }
+  body.mobile-client-ui.assets-mode .assets-col-emoji {
+    grid-column: 1;
+    grid-row: 1;
+    z-index: 1;
+    width: calc(30px / var(--cash-scale));
+    height: calc(34px / var(--cash-scale));
+    font-size: calc(17px / var(--cash-scale));
+  }
+  body.mobile-client-ui.assets-mode .assets-col-name {
+    box-sizing: border-box;
+    grid-column: 1 / -1;
+    grid-row: 1;
+    width: 100%;
+    min-width: 0;
+    padding: 0 calc(30px / var(--cash-scale)) 0 calc(37px / var(--cash-scale));
+  }
+  body.mobile-client-ui.assets-mode .assets-col-name-row {
+    flex-wrap: wrap;
+    gap: calc(3px / var(--cash-scale));
+  }
+  body.mobile-client-ui.assets-mode .assets-col-name-row input {
+    box-sizing: border-box;
+    flex: 1 1 100%;
+    min-width: 0;
+    min-height: calc(34px / var(--cash-scale));
+    padding: calc(5px / var(--cash-scale));
+    font-size: calc(13px / var(--cash-scale));
+  }
+  body.mobile-client-ui.assets-mode .assets-col-name-row button,
+  body.mobile-client-ui.assets-mode .assets-row-folder-link {
+    flex-shrink: 0;
+    min-width: calc(23px / var(--cash-scale));
+    min-height: calc(30px / var(--cash-scale));
+    padding: 0 calc(2px / var(--cash-scale));
+    font-size: calc(12px / var(--cash-scale));
+    touch-action: manipulation;
+  }
+  body.mobile-client-ui.assets-mode .assets-row-folder-inline { margin-left: 0; }
+  body.mobile-client-ui.assets-mode .assets-col-payment {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    min-width: 0;
+  }
+  body.mobile-client-ui.assets-mode .assets-payment-cell {
+    gap: calc(9px / var(--cash-scale));
+  }
+  body.mobile-client-ui.assets-mode .assets-col-payment .assets-progress-bar {
+    flex: 1;
+    min-width: 0;
+    height: calc(5px / var(--cash-scale));
+  }
+  body.mobile-client-ui.assets-mode .assets-col-payment .assets-progress-fill { display: block; }
+  body.mobile-client-ui.assets-mode .assets-col-payment .assets-payment-wrap {
+    flex: 0 0 auto;
+    min-width: calc(64px / var(--cash-scale));
+    min-height: calc(32px / var(--cash-scale));
+    padding: 0 calc(6px / var(--cash-scale));
+  }
+  body.mobile-client-ui.assets-mode .assets-payment-display {
+    font-size: calc(12px / var(--cash-scale));
+    line-height: 1.3;
+  }
+  body.mobile-client-ui.assets-mode .assets-col-paid {
+    grid-column: 1 / 4;
+    grid-row: 3;
+  }
+  body.mobile-client-ui.assets-mode .assets-col-expected {
+    grid-column: 4 / 7;
+    grid-row: 3;
+  }
+  body.mobile-client-ui.assets-mode .assets-col-extra {
+    grid-column: span 2;
+    grid-row: 3;
+  }
+  body.mobile-client-ui.assets-mode .assets-col-paid,
+  body.mobile-client-ui.assets-mode .assets-col-expected,
+  body.mobile-client-ui.assets-mode .assets-col-extra {
+    min-width: 0;
+    text-align: left;
+  }
+  body.mobile-client-ui.assets-mode .assets-col-paid::before { content: '\041e\043f\043b\0430\0442\0438\043b'; }
+  body.mobile-client-ui.assets-mode .assets-col-expected::before { content: '\041e\0436\0438\0434\0430\0442\044c'; }
+  body.mobile-client-ui.assets-mode .assets-col-extra:nth-of-type(3)::before { content: '\041f\0440\043e\0434\0430\043d\043e \0437\0430'; }
+  body.mobile-client-ui.assets-mode .assets-col-extra:nth-of-type(4)::before { content: '\0410\0433\0435\043d\0442\0443'; }
+  body.mobile-client-ui.assets-mode .assets-col-extra:nth-of-type(5)::before { content: 'AoA %'; }
+  body.mobile-client-ui.assets-mode .assets-col-paid::before,
+  body.mobile-client-ui.assets-mode .assets-col-expected::before,
+  body.mobile-client-ui.assets-mode .assets-col-extra::before {
+    display: block;
+    margin-bottom: calc(4px / var(--cash-scale));
+    color: var(--muted);
+    font-size: calc(11px / var(--cash-scale));
+    font-weight: 600;
+  }
+  body.mobile-client-ui.assets-mode .assets-col-paid input,
+  body.mobile-client-ui.assets-mode .assets-col-expected input,
+  body.mobile-client-ui.assets-mode .assets-col-extra input {
+    box-sizing: border-box;
+    width: 100%;
+    min-width: 0;
+    min-height: calc(38px / var(--cash-scale));
+    padding: calc(7px / var(--cash-scale));
+    text-align: left;
+    font-size: calc(16px / var(--cash-scale));
+    font-weight: 800;
+  }
+  body.mobile-client-ui.assets-mode .assets-col-remove {
+    grid-column: 6;
+    grid-row: 1;
+    justify-self: end;
+    z-index: 1;
+    width: calc(28px / var(--cash-scale));
+    height: calc(34px / var(--cash-scale));
+    font-size: calc(12px / var(--cash-scale));
+    touch-action: manipulation;
+  }
+  body.mobile-client-ui.assets-mode .assets-col-add-row {
+    margin: calc(12px / var(--cash-scale));
+    gap: calc(8px / var(--cash-scale));
+  }
+  body.mobile-client-ui.assets-mode .assets-col-add {
+    min-height: calc(38px / var(--cash-scale));
+    font-size: calc(12px / var(--cash-scale));
+    touch-action: manipulation;
+  }
+  body.mobile-client-ui.assets-mode .assets-chart-panel {
+    box-sizing: border-box;
+    width: 100%;
+    padding: calc(11px / var(--cash-scale));
+  }
+  body.mobile-client-ui.assets-mode .assets-chart-head { gap: calc(9px / var(--cash-scale)); }
+  body.mobile-client-ui.assets-mode .assets-chart-head b { font-size: calc(14px / var(--cash-scale)); }
+  body.mobile-client-ui.assets-mode .assets-chart-head span,
+  body.mobile-client-ui.assets-mode .assets-chart-legend,
+  body.mobile-client-ui.assets-mode .assets-chart-weeks { font-size: calc(11px / var(--cash-scale)); }
+  body.mobile-client-ui.assets-mode .assets-chart-modes { flex-wrap: wrap; }
+  body.mobile-client-ui.assets-mode .assets-chart-modes button {
+    min-height: calc(34px / var(--cash-scale));
+    font-size: calc(12px / var(--cash-scale));
+  }
+  body.mobile-client-ui.assets-mode .assets-chart-svg { height: calc(220px / var(--cash-scale)); }
+  body.mobile-client-ui.assets-mode .assets-ai-row {
+    box-sizing: border-box;
+    width: 100%;
+    min-width: 0;
+    padding: calc(12px / var(--cash-scale));
+    gap: calc(9px / var(--cash-scale));
+  }
+  body.mobile-client-ui.assets-mode .assets-ai-row .ai-label { font-size: calc(12px / var(--cash-scale)); }
+  body.mobile-client-ui.assets-mode .assets-ai-row .ai-input {
+    box-sizing: border-box;
+    flex-basis: 100%;
+    min-width: 0;
+    min-height: calc(65px / var(--cash-scale));
+    font-size: calc(14px / var(--cash-scale));
+  }
+  body.mobile-client-ui.assets-mode .assets-ai-row .ai-btns { flex-wrap: wrap; }
+  body.mobile-client-ui.assets-mode .assets-ai-row .ai-btns button {
+    min-height: calc(38px / var(--cash-scale));
+    font-size: calc(12px / var(--cash-scale));
+  }
+}

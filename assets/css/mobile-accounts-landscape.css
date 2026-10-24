@@ -1,0 +1,81 @@
+.accounts-mobile-scale[hidden],
+.accounts-mobile-scale-settings[hidden] { display: none !important; }
+
+@media (max-width: 768px), (max-width: 980px) and (max-height: 560px) and (orientation: landscape) {
+  body:not(.mobile-webview-on) .account-section > .table-scroll {
+    max-width: 100%;
+    overflow: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-x: contain;
+    overscroll-behavior-y: auto;
+    touch-action: pan-x pan-y pinch-zoom;
+    scrollbar-width: thin;
+  }
+
+  body:not(.mobile-webview-on) .account-section .accounts-table { zoom: var(--accounts-table-scale, 1); }
+  body:not(.mobile-webview-on) :is(.account-row, .account-row td, .avb-table-wrap, .avb-preview, .avb-results) { touch-action: pan-x pan-y pinch-zoom; }
+  /* Two fingers zoom only the table; ordinary swipes remain native. */
+  body.accounts-mobile-compact.accounts-table-pinch-on .account-section > .table-scroll,
+  body.accounts-mobile-compact.accounts-table-pinch-on :is(.account-row, .account-row td) { touch-action: pan-x pan-y !important; }
+  body:not(.mobile-webview-on) .account-row .account-row-handle { touch-action: none; }
+  body:not(.mobile-webview-on) .accounts-table :is(.table-sort, .account-group-select, .account-actions .button) { min-height: 44px; }
+  body:not(.mobile-webview-on) .accounts-table .account-actions .button { min-width: 44px; }
+
+  body:not(.mobile-webview-on) .accounts-mobile-scale { display: inline-flex; align-items: center; gap: 3px; margin-left: auto; }
+  body:not(.mobile-webview-on) .accounts-mobile-scale .button { min-width: 44px; min-height: 44px; padding: 5px 7px; font-size: 12px; }
+  body:not(.mobile-webview-on) .accounts-mobile-scale-status[data-tone="warning"] { max-width: 230px; color: #c06a31; font-size: 11px; }
+  body:not(.mobile-webview-on) .accounts-mobile-scale-settings { border-top: 1px solid var(--line); padding-top: 9px; }
+  body:not(.mobile-webview-on) .accounts-mobile-scale-settings label { display: grid; gap: 8px; width: 100%; }
+  body:not(.mobile-webview-on) .accounts-mobile-scale-settings label > span { display: flex; justify-content: space-between; gap: 10px; }
+  body:not(.mobile-webview-on) .accounts-mobile-scale-settings input[type="range"] { width: 100%; min-height: 44px; padding: 0; accent-color: var(--cyan); }
+  body:not(.mobile-webview-on) .accounts-mobile-scale-settings p { margin-top: 7px; }
+}
+
+@media (max-width: 980px) and (max-height: 560px) and (orientation: landscape) {
+  body:not(.mobile-webview-on) main { width: calc(100% - 16px); padding-top: 6px; }
+  body:not(.mobile-webview-on) .topbar { padding: 5px max(8px, env(safe-area-inset-right)) 5px max(8px, env(safe-area-inset-left)); gap: 8px; }
+  body:not(.mobile-webview-on) .topbar .brand small,
+  body:not(.mobile-webview-on) .topbar .badge { display: none; }
+  body:not(.mobile-webview-on) .topbar .button { min-height: 40px; }
+  body:not(.mobile-webview-on) .account-section .accounts-header { gap: 4px; padding: 5px 8px; border-radius: 8px; }
+  body:not(.mobile-webview-on) .accounts-heading { width: 100%; gap: 6px 10px; align-items: center; }
+  body:not(.mobile-webview-on) .account-section .accounts-heading h1 { font-size: 19px; }
+  body:not(.mobile-webview-on) .accounts-priority { margin-left: auto; }
+  body:not(.mobile-webview-on) .accounts-header-controls {
+    flex-basis: 100%;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    max-width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    touch-action: pan-x pan-y pinch-zoom;
+    scrollbar-width: thin;
+  }
+  body:not(.mobile-webview-on) .accounts-header-controls > :is(label, button, details),
+  body:not(.mobile-webview-on) .accounts-header-controls .account-filters > label { flex: 0 0 auto; }
+  body:not(.mobile-webview-on) .accounts-header-controls :is(select, .button) { min-height: 44px; }
+  body:not(.mobile-webview-on) .accounts-header-controls:has(details[open]) { overflow: visible; flex-wrap: wrap; }
+  body:not(.mobile-webview-on) .accounts-header-controls .table-settings-content { max-height: calc(100dvh - 90px); }
+  body:not(.mobile-webview-on) .accounts-status-strip { gap: 4px 10px; }
+  body:not(.mobile-webview-on) .accounts-status-strip #layoutState { flex: 1 1 auto; }
+  body:not(.mobile-webview-on) #accountDetail { max-width: calc(100vw - 16px); }
+
+  /* Keep the account recognisable without pinning a desktop-wide name column. */
+  body:not(.mobile-webview-on) .account-section .accounts-table .account-row td.account-identity {
+    position: sticky;
+    left: 0;
+    z-index: 2;
+    width: 190px;
+    min-width: 190px;
+    max-width: 190px;
+    background: linear-gradient(var(--group-tint, transparent), var(--group-tint, transparent)), var(--mobile-account-surface, #0c1723);
+    box-shadow: 3px 0 6px #0002;
+  }
+  body:not(.mobile-webview-on) .account-section .accounts-table .account-row[data-selected="true"] td.account-identity { background: var(--mobile-account-selected, #133047); }
+  body:not(.mobile-webview-on) .account-section .accounts-table thead th:first-child { position: sticky; left: 0; z-index: 3; background: var(--mobile-account-heading, #101e2b); }
+  body:not(.mobile-webview-on) .account-identity .account-summary { width: 170px; max-width: 170px; gap: 5px; }
+  body:not(.mobile-webview-on) .account-identity .account-name { min-width: 0; flex: 1 1 auto; overflow: hidden; }
+  body:not(.mobile-webview-on) .accounts-table .account-name-input { width: 100%; max-width: 100%; min-width: 0; field-sizing: fixed; text-overflow: ellipsis; }
+  body.day-mode:not(.mobile-webview-on) { --mobile-account-surface: #fff; --mobile-account-selected: #e4f2fa; --mobile-account-heading: #edf5fb; }
+  :root[data-theme="light"] body:not(.mobile-webview-on) { --mobile-account-surface: #fff; --mobile-account-selected: #e4f2fa; --mobile-account-heading: #edf5fb; }
+}
