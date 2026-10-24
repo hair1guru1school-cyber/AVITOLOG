@@ -901,7 +901,7 @@
     return parts.join('\n');
   }
 
-  function loadScriptFromList(urls, isReady, cb, message) {
+  function loadExtractionScriptFromList(urls, isReady, cb, message) {
     if (isReady()) {
       cb(null);
       return;
@@ -933,7 +933,7 @@
   }
 
   function getPdfJs(cb) {
-    loadScriptFromList(PDFJS_CDNS, function() {
+    loadExtractionScriptFromList(PDFJS_CDNS, function() {
       return !!(window.pdfjsLib && window.pdfjsLib.getDocument);
     }, function(err) {
       if (!err && window.pdfjsLib && window.pdfjsLib.GlobalWorkerOptions) {
@@ -944,7 +944,7 @@
   }
 
   function getTesseract(cb) {
-    loadScriptFromList(TESSERACT_CDNS, function() {
+    loadExtractionScriptFromList(TESSERACT_CDNS, function() {
       return !!(window.Tesseract && window.Tesseract.recognize);
     }, function(err) {
       cb(err, window.Tesseract || null);
@@ -2029,7 +2029,7 @@
       setTimeout(function() {
         try { URL.revokeObjectURL(a.href); } catch (e) {}
         if (a.parentNode) a.parentNode.removeChild(a);
-      }, 0);
+      }, 60000);
     }
     function setPdfDownloadReady(docMeta) {
       lastDrivePdfDoc = docMeta || null;
@@ -2154,6 +2154,12 @@
       });
     }
 
+    function contractPdfRenderScale(width, height) {
+      var w = Math.max(1, Number(width) || 794);
+      var h = Math.max(1, Number(height) || 1123);
+      return Math.min(2, Math.sqrt(4000000 / (w * h)), 16384 / w, 16384 / h);
+    }
+
     function htmlToPdfBlob(htmlStr, fileName) {
       return new Promise(function(resolve, reject) {
         getPdfRenderDeps(function(err, html2canvasFn, jsPdfCtor) {
@@ -2162,8 +2168,14 @@
             return;
           }
           var host = document.createElement('div');
+          var renderedCanvas = null;
           function cleanup() {
             if (host.parentNode) host.parentNode.removeChild(host);
+            if (renderedCanvas) {
+              renderedCanvas.width = 0;
+              renderedCanvas.height = 0;
+              renderedCanvas = null;
+            }
           }
           host.className = 'contract-pdf-export-host';
           host.style.position = 'fixed';
@@ -2200,7 +2212,7 @@
             var sourceWidth = Math.ceil(rect.width || 794);
             var sourceHeight = Math.ceil(source.scrollHeight || rect.height || 1123);
             html2canvasFn(source, {
-              scale: 2,
+              scale: contractPdfRenderScale(sourceWidth, sourceHeight),
               useCORS: true,
               backgroundColor: '#ffffff',
               width: sourceWidth,
@@ -2212,6 +2224,8 @@
               x: 0,
               y: 0
             }).then(function(canvas) {
+              renderedCanvas = canvas;
+              if (!canvas.width || !canvas.height) throw new Error('Не удалось отрисовать PDF. Повторите после закрытия других вкладок.');
               var pdf = new jsPdfCtor({ unit: 'mm', format: 'a4', orientation: 'portrait', compress: true });
               var pageWmm = 210;
               var pageHmm = 297;
@@ -2224,16 +2238,29 @@
                 pageCanvas.width = canvas.width;
                 pageCanvas.height = sliceH;
                 var ctx = pageCanvas.getContext('2d');
+                if (!ctx) {
+                  pageCanvas.width = 0;
+                  pageCanvas.height = 0;
+                  throw new Error('Недостаточно памяти для создания PDF. Повторите после закрытия других вкладок.');
+                }
                 ctx.fillStyle = '#ffffff';
                 ctx.fillRect(0, 0, pageCanvas.width, pageCanvas.height);
                 ctx.drawImage(canvas, 0, y, canvas.width, sliceH, 0, 0, canvas.width, sliceH);
                 if (page > 0) pdf.addPage();
-                pdf.addImage(pageCanvas.toDataURL('image/jpeg', 0.98), 'JPEG', 0, 0, pageWmm, sliceH * pageWmm / canvas.width);
+                try {
+                  var pageImage = pageCanvas.toDataURL('image/jpeg', 0.98);
+                  if (!/^data:image\//.test(pageImage)) throw new Error('Недостаточно памяти для создания PDF.');
+                  pdf.addImage(pageImage, 'JPEG', 0, 0, pageWmm, sliceH * pageWmm / canvas.width);
+                } finally {
+                  pageCanvas.width = 0;
+                  pageCanvas.height = 0;
+                }
                 y += sliceH;
                 page++;
               }
+              var pdfBlob = pdf.output('blob');
               cleanup();
-              resolve(pdf.output('blob'));
+              resolve(pdfBlob);
             }).catch(function(error) {
               cleanup();
               reject(error);
@@ -2431,7 +2458,7 @@
         setTimeout(function() {
           URL.revokeObjectURL(a.href);
           if (a.parentNode) a.parentNode.removeChild(a);
-        }, 0);
+        }, 60000);
       }
       try {
         if (btn) btn.disabled = true;

@@ -842,11 +842,41 @@
     }
   };
 
-  window.__saveKpPngToActiveClient = async function (blob, packageData) {
+  function kpSaveScopeKey() {
+    var identity = typeof window.__avitologBackendIdentity === 'function' ? window.__avitologBackendIdentity() : null;
+    return JSON.stringify([!!window.AVITOLOG_PROFILE_SASHA, identity && identity.id || '', identity && identity.email || '']);
+  }
+
+  window.__getKpSaveTarget = function () {
+    var ac = getKpActiveClient();
+    return ac && ac.folderId ? {
+      folderId: String(ac.folderId),
+      clientId: String(ac.id || ac.projectId || ac.project_id || ''),
+      scope: kpSaveScopeKey()
+    } : null;
+  };
+
+  window.__saveKpPngToActiveClient = async function (blob, packageData, expectedTarget) {
     var ac = getKpActiveClient();
     if (!ac || !ac.folderId) throw new Error('Сначала выберите клиента с папкой Google Drive в левом меню.');
     if (typeof driveUploadBlob !== 'function') throw new Error('Загрузка в Google Drive пока недоступна. Обновите страницу.');
+    if (expectedTarget && (expectedTarget.folderId !== String(ac.folderId) ||
+        expectedTarget.clientId !== String(ac.id || ac.projectId || ac.project_id || '') || expectedTarget.scope !== kpSaveScopeKey())) {
+      throw new Error('Клиент или пользователь изменился во время подготовки КП. Выберите нужного клиента и сохраните снова.');
+    }
+    ac = Object.assign({}, ac);
+    packageData = JSON.parse(JSON.stringify(packageData || {}));
+    var saveScope = kpSaveScopeKey();
+    function assertSaveScope() {
+      if (kpSaveScopeKey() !== saveScope) throw new Error('Пользователь или режим изменился. Вернитесь в исходный режим и проверьте папку клиента перед повторным сохранением.');
+    }
     var clientName = cleanKpFilePart(ac.company || ac.contact_name || ac.name || 'Клиент');
+    var targetFolderId = String(ac.folderId);
+    if (typeof window.resolveWritableDriveFolder === 'function') {
+      targetFolderId = String(await window.resolveWritableDriveFolder(targetFolderId, clientName) || '');
+      if (!targetFolderId) throw new Error('Не удалось выбрать доступную папку Google Drive.');
+    }
+    assertSaveScope();
     var now = new Date();
     var stamp = [
       now.getFullYear(),
@@ -854,12 +884,14 @@
       String(now.getDate()).padStart(2, '0')
     ].join('-') + ' ' + String(now.getHours()).padStart(2, '0') + '-' + String(now.getMinutes()).padStart(2, '0');
     var fileName = 'КП - ' + clientName + ' - ' + stamp + '.png';
-    var result = await driveUploadBlob(fileName, blob, 'image/png', ac.folderId);
+    var result = await driveUploadBlob(fileName, blob, 'image/png', targetFolderId);
+    assertSaveScope();
+    if (!result || typeof result.id !== 'string' || !result.id.trim()) throw new Error('Google Drive не подтвердил сохранение КП. Проверьте папку клиента перед повторной попыткой.');
     var record = compactSavedKpRecord({
       version: 1,
       savedAt: (packageData && packageData.savedAt) || now.toISOString(),
       clientName: clientName,
-      folderId: String(ac.folderId),
+      folderId: targetFolderId,
       imageName: fileName,
       imageFileId: (result && result.id) || '',
       imageFileLink: (result && result.webViewLink) || '',
@@ -880,15 +912,17 @@
     if (typeof driveUploadText === 'function') {
       var jsonName = fileName.replace(/\.png$/i, '.json');
       try {
-        await driveUploadText(jsonName, JSON.stringify(record, null, 2), 'application/json', ac.folderId);
+        await driveUploadText(jsonName, JSON.stringify(record, null, 2), 'application/json', targetFolderId);
       } catch (e) {
         console.warn('KP package data upload failed', e);
       }
     }
+    assertSaveScope();
     return {
+      id: result.id,
       name: fileName,
       clientName: clientName,
-      folderLink: ac.folderLink || ('https://drive.google.com/drive/folders/' + ac.folderId),
+      folderLink: targetFolderId === String(ac.folderId) && ac.folderLink || ('https://drive.google.com/drive/folders/' + targetFolderId),
       fileLink: (result && result.webViewLink) || '',
       packageData: record
     };
@@ -933,7 +967,7 @@
     return (
       '<div class="kp-gen-section kp-editor-embed-section">' +
       '<div class="kp-gen-label">Расчет КП</div>' +
-      '<iframe class="kp-editor-embed" src="kp-editor.html?embedded=1&amp;v=20260822-kp-quota-safe-1" title="Редактор КП"></iframe>' +
+      '<iframe class="kp-editor-embed" src="kp-editor.html?embedded=1&amp;v=20261024-mobile1" title="Редактор КП"></iframe>' +
       '</div>'
     );
   }

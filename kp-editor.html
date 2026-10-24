@@ -152,9 +152,11 @@
     body.embedded .editor .mini-note{font-size:13px}
   </style>
 <link rel="stylesheet" href="assets/css/light-theme-editor.css?v=20261021-light1">
+<link rel="stylesheet" href="assets/css/mobile.css?v=20261024-mobile1">
 <script defer src="js/light-theme.js?v=20261021-light1"></script>
+<script defer src="js/mobile-ui.js?v=20261024-mobile1"></script>
 </head>
-<body><script>if(new URLSearchParams(location.search).get("embedded")==="1")document.body.classList.add("embedded");</script>
+<body class="kp-mobile-editor"><script>if(new URLSearchParams(location.search).get("embedded")==="1")document.body.classList.add("embedded");</script>
   <header class="top">
     <div class="logo"><span class="logo-mark">📊</span><span>AVITOBO$$</span></div>
     <div class="status">КП Lab - отдельная тестовая страница</div>
@@ -1225,6 +1227,8 @@
         button.disabled = true;
         button.textContent = "Сохраняю...";
         try {
+          const saveTarget = typeof window.parent.__getKpSaveTarget === "function" ? window.parent.__getKpSaveTarget() : null;
+          if (!saveTarget) throw new Error("Выберите клиента с папкой Google Drive и обновите основную страницу перед сохранением КП.");
           readGlobalForm();
           const presetPreview = makePresetPreviewDataUrl();
           const result = await window.parent.__saveKpPngToActiveClient(
@@ -1241,8 +1245,10 @@
               bgChoice: state.bgChoice || "",
               presetKind: $("presetKind").value || "services",
               packages: clone(state.packages).filter((pkg) => pkg.on)
-            }
+            },
+            saveTarget
           );
+          if (!result || !result.id) throw new Error("Google Drive не подтвердил сохранение КП.");
           button.textContent = "Сохранено ✓";
           button.title = result && result.name ? result.name : "КП сохранено в папку клиента";
           setTimeout(() => { button.textContent = "Сохранить КП"; button.disabled = false; }, 2200);
@@ -1253,10 +1259,27 @@
         }
         return;
       }
-      const link = document.createElement("a");
-      link.href = canvas.toDataURL("image/png");
-      link.download = `kp-avito-${Date.now()}.png`;
-      link.click();
+      if (embedded) { alert("Сохранение в Drive недоступно. Обновите основную страницу и выберите клиента."); return; }
+      const oldText = button.textContent;
+      button.disabled = true;
+      button.textContent = "Готовлю PNG...";
+      let objectUrl;
+      let link;
+      try {
+        objectUrl = URL.createObjectURL(await canvasPngBlob());
+        link = document.createElement("a");
+        link.href = objectUrl;
+        link.download = `kp-avito-${Date.now()}.png`;
+        document.body.appendChild(link);
+        link.click();
+      } catch (error) {
+        alert(error && error.message ? error.message : "Не удалось скачать PNG.");
+      } finally {
+        if (link) link.remove();
+        if (objectUrl) setTimeout(() => URL.revokeObjectURL(objectUrl), 60000);
+        button.disabled = false;
+        button.textContent = oldText;
+      }
     }
     function applyPackageTemplate(count){
       state.packages.forEach((pkg, index) => {

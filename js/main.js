@@ -2676,7 +2676,7 @@ function startAuthGIS() {
                 var btn = document.querySelector('#driveSplash .splash-btn');
                 if (btn) { btn.textContent = '🔑 Нажми для входа'; btn.onclick = function(){ _authPromptForce = true; startAuth(); }; }
               } else {
-                alert('Ошибка GIS: ' + (e.message || e.type));
+                alert('Не удалось открыть вход Google. Нажмите Drive ещё раз и разрешите всплывающие окна для системы.');
               }
             }
           });
@@ -2688,14 +2688,8 @@ function startAuthGIS() {
       alert('Google Sign-In не загрузился. Подожди пару секунд и нажми снова.');
     }
   }
-  var attempts = 0;
-  function waitAndRun() {
-    if (typeof google !== 'undefined' && google.accounts && google.accounts.oauth2) { run(); return; }
-    attempts += 1;
-    if (attempts < 20) { setTimeout(waitAndRun, 500); return; }
-    alert('Google Sign-In не загрузился. Обнови страницу и нажми Drive ещё раз.');
-  }
-  waitAndRun();
+  // A delayed popup loses the tap gesture in mobile browsers. A second tap is safe.
+  run();
 }
 function testAuthUrl() { window.open(buildAuthUrl(), '_blank', 'noopener'); }
 window.continueWithoutDrive = continueWithoutDrive;
@@ -3201,9 +3195,25 @@ async function driveListClientFolderFiles(folderId) {
   }
 }
 
+async function readDriveUploadResult(resp, token) {
+  if (resp.status === 401) {
+    invalidateDriveToken(token);
+    updateDriveUI();
+    throw new Error('Сессия Google истекла. Нажмите Drive и войдите ещё раз; повторное сохранение запускается вручную.');
+  }
+  var result;
+  try { result = await resp.json(); } catch (error) {
+    throw new Error('Google Drive не подтвердил сохранение (HTTP ' + resp.status + '). Повторите проверку подключения.');
+  }
+  if (!resp.ok || !result || result.error || typeof result.id !== 'string' || !result.id.trim()) {
+    if (resp.status === 403) throw new Error('Google Drive отказал в записи. Проверьте свой Google-аккаунт, права к папке и свободное место.');
+    throw new Error('Google Drive не подтвердил сохранение (HTTP ' + resp.status + ').');
+  }
+  return result;
+}
+
 async function driveCreateGoogleDoc(name, htmlContent, parentId) {
   var token = await getDriveToken();
-  var enc = new TextEncoder();
   var boundary = 'avitolog_' + Date.now();
   var nl = '\r\n';
   var meta = JSON.stringify({
@@ -3218,15 +3228,7 @@ async function driveCreateGoogleDoc(name, htmlContent, parentId) {
   var part2 = '--' + boundary + nl +
     'Content-Type: text/html; charset=UTF-8' + nl + nl;
   var part3 = nl + '--' + boundary + '--';
-  var b1 = enc.encode(part1);
-  var b2 = enc.encode(part2);
-  var b3 = enc.encode(htmlContent);
-  var b4 = enc.encode(part3);
-  var total = new Uint8Array(b1.length + b2.length + b3.length + b4.length);
-  total.set(b1, 0);
-  total.set(b2, b1.length);
-  total.set(b3, b1.length + b2.length);
-  total.set(b4, b1.length + b2.length + b3.length);
+  var total = new Blob([part1, part2, htmlContent, part3]);
   var resp = await fetch(
     'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,name,webViewLink',
     {
@@ -3238,10 +3240,7 @@ async function driveCreateGoogleDoc(name, htmlContent, parentId) {
       body: total
     }
   );
-  var result = await resp.json();
-  console.log('Drive API response:', resp.status, result);
-  if (!result.id) throw new Error('Google Doc не создан: ' + JSON.stringify(result));
-  return result;
+  return readDriveUploadResult(resp, token);
 }
 
 async function generatePDF(htmlContent, name) {
@@ -3268,24 +3267,16 @@ async function driveUploadBlob(name, blob, mimeType, parentId) {
   var boundary = 'avitolog_' + Date.now();
   var nl = '\r\n';
   var meta = JSON.stringify({name: name, parents: [parentId]});
-  var enc = new TextEncoder();
   var pre = '--' + boundary + nl + 'Content-Type: application/json; charset=UTF-8' + nl + nl + meta + nl +
     '--' + boundary + nl + 'Content-Type: ' + mimeType + nl + nl;
   var post = nl + '--' + boundary + '--';
-  var preB = enc.encode(pre);
-  var postB = enc.encode(post);
-  var blobArr = await blob.arrayBuffer();
-  var blobB = new Uint8Array(blobArr);
-  var body = new Uint8Array(preB.length + blobB.length + postB.length);
-  body.set(preB, 0); body.set(blobB, preB.length); body.set(postB, preB.length + blobB.length);
+  var body = new Blob([pre, blob, post]);
   var resp = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,thumbnailLink,webViewLink', {
     method: 'POST',
     headers: {'Authorization': 'Bearer ' + token, 'Content-Type': 'multipart/related; boundary=' + boundary},
     body: body
   });
-  var result = await resp.json();
-  if (!result.id) throw new Error('PDF не загружен: ' + JSON.stringify(result));
-  return result;
+  return readDriveUploadResult(resp, token);
 }
 function aoaxDriveQueryEscape(value) {
   return String(value || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");

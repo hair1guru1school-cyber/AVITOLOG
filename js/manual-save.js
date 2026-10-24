@@ -67,6 +67,7 @@
         throw new Error('модуль резервной копии Drive не загружен');
       }
       driveResult = await window.__filManualBackupNow(authoritativeRecords);
+      if (!driveResult || !driveResult.ok) throw new Error('Google Drive не подтвердил резервную копию');
     } catch (err) {
       driveError = err;
     }

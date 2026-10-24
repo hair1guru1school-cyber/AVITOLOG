@@ -1,0 +1,183 @@
+/* Phone-only presentation. WEB mode keeps its existing desktop geometry. */
+@media (max-width: 768px) {
+  body:not(.mobile-webview-on) :is(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="hidden"]), select, textarea) {
+    font-size: 16px !important;
+    min-height: 44px;
+  }
+
+  body:not(.mobile-webview-on) :is(button, summary, a, input, select, textarea) { touch-action: manipulation; }
+  body:not(.mobile-webview-on) :is(.tb-project-grip, .tb-task-grip, .avchat-resize, .avchat-drag-edge, .avchat-head) { touch-action: none; }
+
+  body:not(.mobile-webview-on):not(.kp-mobile-editor) #mainApp > header {
+    height: auto;
+    min-height: 50px;
+    flex-wrap: wrap;
+    align-content: center;
+    gap: 6px;
+    padding: 7px 8px;
+    top: 0;
+  }
+
+  body:not(.mobile-webview-on) #mainApp > header .logo { flex: 1 1 110px; min-width: 0; }
+  body:not(.mobile-webview-on) #mainApp > header > .logo + div { display: none; }
+  body:not(.mobile-webview-on) #mainApp > header > form { flex: 1 0 100%; min-width: 0; }
+  body:not(.mobile-webview-on) #apiKeyInput { width: 100% !important; min-width: 0; }
+  body:not(.mobile-webview-on) #mainApp > header button { min-width: 44px; min-height: 44px; flex-shrink: 0; }
+  body:not(.mobile-webview-on) #mainApp > header :is(#manualSaveBtn, #authBtn) { scroll-margin-top: 8px; }
+
+  body:not(.mobile-webview-on):not(.kp-mobile-editor) #mainApp > .layout {
+    height: calc(var(--mobile-visual-height, 100dvh) - var(--mobile-header-height, 50px));
+    min-height: 160px;
+    min-width: 0;
+  }
+
+  body:not(.mobile-webview-on) #analyticsTopRow {
+    display: flex;
+    flex-wrap: nowrap;
+    align-items: stretch;
+    min-width: 0;
+    max-width: 100%;
+    top: var(--mobile-header-height, 50px);
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  body:not(.mobile-webview-on) #analyticsTopRow > .btn-projects { flex: 0 0 auto; width: auto; min-width: 96px !important; min-height: 44px; }
+  body:not(.mobile-webview-on) #mainMenuSettingsMenu {
+    top: calc(var(--mobile-header-height, 50px) + 4px);
+    max-height: calc(var(--mobile-visual-height, 100dvh) - var(--mobile-header-height, 50px) - 16px);
+  }
+  body:not(.mobile-webview-on) #mainMenuSettingsMenu :is(button, .main-menu-settings-option) { min-height: 44px; }
+  body:not(.mobile-webview-on) .content-wrap { min-width: 0; }
+  body:not(.mobile-webview-on) .sidebar { padding-bottom: max(16px, env(safe-area-inset-bottom)); }
+  body:not(.mobile-webview-on) .sidebar :is(button, summary, .client-item) { min-height: 44px; }
+  body:not(.mobile-webview-on) :is(.gen-buttons-row, .contract-toolbar-row, .kp-gen-actions) { flex-wrap: wrap; }
+  body:not(.mobile-webview-on) :is(.gen-buttons-row, .contract-toolbar-row, .kp-gen-actions) button { min-height: 44px; white-space: normal; }
+
+  body:not(.mobile-webview-on) #rightPanelWrap { width: 0; min-width: 0; max-width: none; }
+  body:not(.mobile-webview-on) #rightPanelWrap .right-resize-grip { display: none; }
+  body:not(.mobile-webview-on) #rightPanelWrap .right-tabs {
+    position: fixed;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    width: auto;
+    max-height: calc(var(--mobile-visual-height, 100dvh) - 8px);
+    flex-direction: row;
+    justify-content: flex-start;
+    overflow-x: auto;
+    gap: 6px;
+    padding: 6px 8px max(6px, env(safe-area-inset-bottom));
+  }
+  body:not(.mobile-webview-on) #rightPanelWrap .rtab { flex: 0 0 76px; min-height: 52px; padding: 6px 4px; }
+  body.assets-mode:not(.mobile-webview-on) #rightPanelWrap .right-tabs { max-height: min(45dvh, 360px); }
+  body.assets-mode:not(.mobile-webview-on) #assetsDetailPanel { width: 100%; min-width: 0; max-height: min(42dvh, 330px); }
+  body.assets-mode:not(.mobile-webview-on) #assetsDetailContent { min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
+  body.assets-mode:not(.mobile-webview-on) .content { padding-bottom: calc(min(45dvh, 360px) + 16px); }
+
+  body.projects-mode:not(.mobile-webview-on) .projects-table .projects-sticky {
+    width: min(var(--projects-sticky-width, 280px), 72vw);
+    min-width: min(var(--projects-sticky-width, 280px), 72vw);
+  }
+  body.projects-mode:not(.mobile-webview-on) .projects-table-wrap { overflow: auto; -webkit-overflow-scrolling: touch; }
+  body:not(.mobile-webview-on) .projects-zone-tabs-row1,
+  body:not(.mobile-webview-on) .projects-zone-tabs-row2 { flex-wrap: wrap; }
+  body:not(.mobile-webview-on) .projects-zone-tabs-top .projects-zone-tab { white-space: normal; padding-inline: 5px; }
+
+  body:not(.mobile-webview-on) :is(.sp-modal, .task-add-modal, .goal-modal, .kp-tpl-modal-content, .main-menu-settings-menu, .ads-source-modal) {
+    max-width: calc(100vw - 16px);
+    max-height: calc(var(--mobile-visual-height, 100dvh) - 16px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+  body:not(.mobile-webview-on) :is(.sp-modal-overlay, .task-add-modal-overlay, .goal-modal-overlay, .project-card-overlay) {
+    top: var(--mobile-visual-offset-top, 0px);
+    bottom: auto;
+    height: var(--mobile-visual-height, 100dvh);
+    padding: 6px;
+  }
+  body:not(.mobile-webview-on) .project-card-dialog { height: calc(var(--mobile-visual-height, 100dvh) - 12px); }
+  body:not(.mobile-webview-on) .project-card-foot { min-height: 64px; padding-bottom: max(8px, env(safe-area-inset-bottom)); }
+  body:not(.mobile-webview-on) .project-card-foot [data-action="save"] { min-height: 44px; }
+  body:not(.mobile-webview-on) :is(.project-card-head button, .project-card-tool, .project-avito-tabs button) { min-height: 44px; min-width: 44px; }
+  body:not(.mobile-webview-on) .project-card-fields { grid-template-columns: minmax(0, 1fr); }
+  body:not(.mobile-webview-on) .project-card-payments [data-manual-payment] { min-height: 44px; }
+
+  body:not(.mobile-webview-on) .tasks-board-search { flex: 1 1 100%; width: 100%; max-width: none; }
+  body:not(.mobile-webview-on) .tasks-board-v2 :is(.tb-project-grip, .tb-task-grip, .tb-task-emoji, .tb-task-move) { width: 44px; height: 44px; }
+  body:not(.mobile-webview-on) .tasks-board-v2 .tasks-col-title { grid-template-columns: 44px minmax(0, 1fr); }
+  body:not(.mobile-webview-on) :is(.tasks-col-open, .tasks-task-act, .tb-settings > summary, .tb-move-dialog button) { min-height: 44px; }
+
+  body:not(.mobile-webview-on) .credential-panel fieldset { grid-template-columns: minmax(0, 1fr); }
+  body:not(.mobile-webview-on) .accounts-header-controls { flex-wrap: wrap; }
+  body:not(.mobile-webview-on) .account-actions .button { min-height: 44px; min-width: 44px; }
+  body:not(.mobile-webview-on) :is(.table-scroll, .avb-table-wrap, .avb-preview, .avb-results) { -webkit-overflow-scrolling: touch; overscroll-behavior-x: contain; }
+  body:not(.mobile-webview-on) .avb-dialog { max-height: calc(var(--mobile-visual-height, 100dvh) - 16px); }
+  body:not(.mobile-webview-on) .avb-dialog button { min-height: 44px; }
+
+  body:not(.mobile-webview-on) .avchat-panel {
+    max-height: calc(var(--mobile-visual-height, 100dvh) - 16px) !important;
+    max-width: calc(100vw - 16px);
+  }
+  html.mobile-ui-keyboard-visible body:not(.mobile-webview-on) .avchat-panel {
+    top: var(--mobile-chat-keyboard-top) !important;
+    bottom: auto !important;
+  }
+  body:not(.mobile-webview-on) .avchat-panel :is(button, summary) { min-height: 44px; }
+  body:not(.mobile-webview-on) .avchat-panel .avchat-compose { flex-shrink: 0; padding-bottom: max(8px, env(safe-area-inset-bottom)); }
+  body:not(.mobile-webview-on) .avchat-tools { flex-wrap: wrap; }
+  body:not(.mobile-webview-on) .avchat-launch { bottom: max(78px, calc(env(safe-area-inset-bottom) + 70px)); }
+  body:not(.mobile-webview-on) .kp-editor-embed {
+    height: calc(var(--mobile-visual-height, 100dvh) - var(--mobile-header-height, 50px) - 130px);
+    min-height: 320px;
+  }
+
+  /* Canvas bitmap/export sizing stays in the existing renderer. */
+  body.kp-mobile-editor:not(.mobile-webview-on),
+  body.kp-mobile-editor.embedded:not(.mobile-webview-on) { overflow-x: hidden; overflow-y: auto; }
+  body.kp-mobile-editor:not(.mobile-webview-on) { padding-bottom: calc(80px + env(safe-area-inset-bottom)); }
+  body.kp-mobile-editor:not(.mobile-webview-on) .mobile-kp-save-bar {
+    position: fixed;
+    z-index: 70;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    display: flex;
+    padding: 9px 10px max(9px, env(safe-area-inset-bottom));
+    background: var(--surface, var(--panel, #101722));
+    border-top: 1px solid var(--border, var(--line, #29485e));
+    box-shadow: 0 -5px 20px #0003;
+  }
+  body.kp-mobile-editor:not(.mobile-webview-on) .mobile-kp-save-bar[hidden] { display: none; }
+  body.kp-mobile-editor:not(.mobile-webview-on) .mobile-kp-save-proxy { flex: 1; width: 100%; min-height: 48px; }
+  body.kp-mobile-editor:not(.mobile-webview-on) .top { height: auto; min-height: 58px; flex-wrap: wrap; padding: 9px; }
+  body.kp-mobile-editor:not(.mobile-webview-on) .layout,
+  body.kp-mobile-editor.embedded:not(.mobile-webview-on) .layout {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    width: 100%;
+    height: auto;
+    gap: 10px;
+    padding: 8px;
+  }
+  body.kp-mobile-editor:not(.mobile-webview-on) .layout > .panel { width: 100%; min-width: 0; }
+  body.kp-mobile-editor:not(.mobile-webview-on) .editor { position: static; width: 100%; order: -1; }
+  body.kp-mobile-editor:not(.mobile-webview-on) .editor > .head,
+  body.kp-mobile-editor:not(.mobile-webview-on) .editor > .body { zoom: 1; }
+  body.kp-mobile-editor.embedded:not(.mobile-webview-on) .editor .body { height: auto; overflow: visible; }
+  body.kp-mobile-editor:not(.mobile-webview-on) .resize-handle { display: none; }
+  body.kp-mobile-editor:not(.mobile-webview-on) .stage-wrap { width: 100%; height: auto; min-height: 0; max-height: 65dvh; padding: 6px; overflow: auto; }
+  body.kp-mobile-editor:not(.mobile-webview-on) .stage { width: 100%; min-width: 0; }
+  body.kp-mobile-editor:not(.mobile-webview-on) .head { flex-wrap: wrap; }
+  body.kp-mobile-editor:not(.mobile-webview-on) .grid2 { grid-template-columns: minmax(0, 1fr); }
+  body.kp-mobile-editor:not(.mobile-webview-on) :is(.btn, .tab, .group-chip, .modal-actions button) { min-height: 44px; }
+  body.kp-mobile-editor:not(.mobile-webview-on) .archive-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  body.kp-mobile-editor:not(.mobile-webview-on) .archive-prices { white-space: normal; }
+  body.kp-mobile-editor:not(.mobile-webview-on) .cover-track { grid-template-columns: minmax(0, 1fr); min-height: 0; }
+  body.kp-mobile-editor:not(.mobile-webview-on) .cover-carousel { grid-template-columns: 38px minmax(0, 1fr) 38px; gap: 6px; }
+  body.kp-mobile-editor:not(.mobile-webview-on) .niche-panel { left: 8px; right: 8px; top: 8px; width: auto; max-height: calc(var(--mobile-visual-height, 100dvh) - 16px); }
+  body.kp-mobile-editor:not(.mobile-webview-on) .modal-backdrop { padding: 8px; }
+  body.kp-mobile-editor:not(.mobile-webview-on) :is(.modal, .modal.small) { width: 100%; max-height: calc(var(--mobile-visual-height, 100dvh) - 16px); padding: 12px; }
+}
