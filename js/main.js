@@ -4912,13 +4912,29 @@ function closeClientMenu() {
   if (typeof window.__goalsCancelFolderBind === 'function') window.__goalsCancelFolderBind();
 }
 var SIDEBAR_HIDE_KEY = 'avitolog_sidebar_hidden_v1';
+function isMobileSidebarDrawer() {
+  return !!(window.matchMedia && window.matchMedia('(max-width: 768px) and (orientation: portrait)').matches &&
+    !document.body.classList.contains('mobile-webview-on'));
+}
+function isInlineSidebarHidden() {
+  return document.body.classList.contains('sidebar-hidden') ||
+    (document.body.classList.contains('projects-mode') && document.body.classList.contains('projects-sidebar-hidden'));
+}
 function syncSidebarToggleBtn() {
   var peek = document.getElementById('sidebarTogglePeek');
-  var hidden = document.body.classList.contains('sidebar-hidden');
-  var narrow = window.matchMedia && window.matchMedia('(max-width: 980px)').matches;
+  var drawer = isMobileSidebarDrawer();
+  var hidden = drawer ? !document.body.classList.contains('sidebar-open-mobile') : isInlineSidebarHidden();
+  var label = hidden ? 'Показать левое меню' : 'Скрыть левое меню';
   if (peek) {
-    peek.style.display = !narrow && hidden ? 'flex' : 'none';
+    peek.style.display = !drawer && hidden ? 'flex' : 'none';
   }
+  ['sidebarToggleBtn', 'headerMenuBtn', 'sidebarTogglePeek'].forEach(function(id) {
+    var btn = document.getElementById(id);
+    if (!btn) return;
+    btn.setAttribute('aria-expanded', hidden ? 'false' : 'true');
+    btn.setAttribute('aria-label', label);
+    btn.title = label;
+  });
 }
 function applySidebarVisibilityFromStorage() {
   var hidden = false;
@@ -4927,22 +4943,26 @@ function applySidebarVisibilityFromStorage() {
   syncSidebarToggleBtn();
 }
 function toggleSidebarVisibility(force) {
-  if (window.matchMedia && window.matchMedia('(max-width: 980px)').matches) {
-    toggleMobileSidebar();
+  if (isMobileSidebarDrawer()) {
+    var close = typeof force === 'boolean' ? force : document.body.classList.contains('sidebar-open-mobile');
+    document.body.classList.toggle('sidebar-open-mobile', !close);
+    syncSidebarToggleBtn();
     return;
   }
   var hidden = (typeof force === 'boolean')
     ? force
-    : !document.body.classList.contains('sidebar-hidden');
+    : !isInlineSidebarHidden();
   document.body.classList.toggle('sidebar-hidden', hidden);
+  if (!hidden) document.body.classList.remove('projects-sidebar-hidden');
   try { localStorage.setItem(SIDEBAR_HIDE_KEY, hidden ? '1' : '0'); } catch (e) {}
   syncSidebarToggleBtn();
 }
 function toggleMobileSidebar() {
-  document.body.classList.toggle('sidebar-open-mobile');
+  toggleSidebarVisibility();
 }
 function closeMobileSidebar() {
   document.body.classList.remove('sidebar-open-mobile');
+  syncSidebarToggleBtn();
 }
 var MOBILE_WEBVIEW_ON_KEY = 'avitolog_mobile_webview_on';
 var MOBILE_WEBVIEW_SCALE_KEY = 'avitolog_mobile_webview_scale';
@@ -4988,8 +5008,9 @@ function applyMobileWebviewMode() {
   var scaleEl = document.getElementById('mobileWebviewScaleVal');
   var scale = getMobileWebviewScale();
 
+  var wasOn = document.body.classList.contains('mobile-webview-on');
   document.body.classList.toggle('mobile-webview-on', on);
-  if (!on) document.body.classList.remove('sidebar-open-mobile');
+  if (wasOn !== on || !isMobileSidebarDrawer()) document.body.classList.remove('sidebar-open-mobile');
 
   if (on) {
     document.body.style.setProperty('--mw-scale', String(scale));
@@ -5017,6 +5038,7 @@ function applyMobileWebviewMode() {
   }
   if (btn) btn.textContent = on ? (autoLandscape ? 'WEB AUTO' : 'WEB ON') : 'WEB';
   if (scaleEl) scaleEl.textContent = Math.round(scale * 100) + '%';
+  syncSidebarToggleBtn();
 }
 function toggleMobileWebviewMode() {
   var cur = localStorage.getItem(MOBILE_WEBVIEW_ON_KEY) === '1';
@@ -5670,8 +5692,8 @@ document.addEventListener('DOMContentLoaded', function() {
   window.addEventListener('orientationchange', function() {
     setTimeout(function() {
       applyMobileWebviewMode();
-      if (typeof syncSidebarToggleBtn === 'function') syncSidebarToggleBtn();
       try { document.body.classList.remove('sidebar-open-mobile'); } catch (e) {}
+      if (typeof syncSidebarToggleBtn === 'function') syncSidebarToggleBtn();
     }, 120);
   });
   window.addEventListener('resize', syncSidebarToggleBtn);
