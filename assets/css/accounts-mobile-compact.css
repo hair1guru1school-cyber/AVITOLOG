@@ -1,0 +1,141 @@
+.accounts-mobile-name { display: none; }
+
+@media (max-width: 768px), (orientation: landscape) and (max-width: 980px) and (max-height: 560px) {
+  body.avito-accounts-mode #mainApp > header {
+    display: flex;
+    height: 44px !important;
+    min-height: 44px;
+    padding: 3px 6px;
+    gap: 6px;
+    flex-wrap: nowrap !important;
+    overflow-x: auto;
+    overflow-y: hidden;
+    align-items: center;
+    scrollbar-width: none;
+  }
+  body.avito-accounts-mode #mainApp > header > form,
+  body.avito-accounts-mode #mainApp > header > .logo + div,
+  body.avito-accounts-mode .avito-main-accounts-head { display: none !important; }
+  body.avito-accounts-mode #mainApp > header .logo { flex: 0 0 auto; min-width: 0; font-size: 17px; }
+  body.avito-accounts-mode #mainApp > header button { flex: 0 0 auto; min-height: 38px; height: 38px; min-width: 38px; margin: 0; }
+  body.avito-accounts-mode #analyticsTopRow {
+    display: flex;
+    flex-wrap: nowrap;
+    align-items: stretch;
+    gap: 5px;
+    padding: 3px 6px 0;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scrollbar-width: thin;
+    -webkit-overflow-scrolling: touch;
+  }
+  body.avito-accounts-mode #analyticsTopRow > .btn-projects {
+    flex: 0 0 auto;
+    width: auto;
+    min-width: max-content !important;
+    height: 40px;
+    min-height: 40px;
+    padding: 0 12px;
+    margin: 0;
+    font-size: 13px;
+    white-space: nowrap;
+    overflow: visible;
+    text-overflow: clip;
+  }
+  body.avito-accounts-mode #avitoAccountsPanel:not([hidden]) { padding: 3px; }
+
+  body.accounts-mobile-compact .topbar,
+  body.accounts-mobile-compact:has(#accountsGrid > .account-row) .hero,
+  body.accounts-mobile-compact:has(#accountsGrid > .account-row) main > footer { display: none; }
+  body.accounts-mobile-compact main { width: 100%; margin: 0; padding: 0; }
+  body.accounts-mobile-compact .account-section .accounts-header {
+    display: block;
+    margin: 0;
+    padding: 5px 6px;
+    border-radius: 6px;
+  }
+  body.accounts-mobile-compact .accounts-heading {
+    display: flex;
+    flex-wrap: nowrap;
+    width: 100%;
+    gap: 8px;
+    margin-bottom: 4px;
+    overflow-x: auto;
+    align-items: center;
+    scrollbar-width: none;
+  }
+  body.accounts-mobile-compact .account-section .accounts-heading h1 { flex: none; margin: 0; font-size: 18px; }
+  body.accounts-mobile-compact .accounts-heading #accountsCount { flex: none; max-width: none; font-size: 11px; font-weight: 800; }
+  body.accounts-mobile-compact .accounts-priority { flex: none; flex-basis: auto; flex-wrap: nowrap; margin: 0; }
+  body.accounts-mobile-compact .accounts-priority .balance-threshold input { min-height: 28px !important; width: 64px; padding: 3px 5px; }
+  body.accounts-mobile-compact .accounts-header-controls {
+    display: flex;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    gap: 5px;
+    max-width: 100%;
+    overflow-x: auto;
+    scrollbar-width: thin;
+    -webkit-overflow-scrolling: touch;
+  }
+  body.accounts-mobile-compact .accounts-header-controls > :is(label, button, details),
+  body.accounts-mobile-compact .accounts-header-controls .account-filters > label { flex: 0 0 auto; }
+  body.accounts-mobile-compact .accounts-header-controls:has(details[open]) { overflow: visible; }
+  body.accounts-mobile-compact .accounts-header :is(select, .button) { height: 36px; min-height: 36px !important; padding: 5px 8px; }
+  body.accounts-mobile-compact .accounts-header .organization { max-width: 155px; }
+  body.accounts-mobile-compact .accounts-status-strip {
+    flex: 0 0 auto;
+    flex-wrap: nowrap;
+    gap: 8px;
+    margin: 0;
+    padding: 3px 6px;
+    min-height: 20px;
+    max-width: 100%;
+    overflow-x: auto;
+    white-space: nowrap;
+    scrollbar-width: none;
+  }
+  body.accounts-mobile-compact .accounts-status-strip > span { flex: none; white-space: nowrap !important; }
+  body.accounts-mobile-compact .accounts-mobile-scale { display: none !important; }
+  body.accounts-mobile-compact .accounts-header .table-settings-content { position: fixed; top: 92px; right: 8px; left: auto; width: min(360px, calc(100vw - 16px)); max-height: calc(100dvh - 100px); overflow-y: auto; z-index: 30; }
+  body.accounts-mobile-compact .accounts-header .invite-content { position: fixed; top: 92px; right: 8px; left: auto; width: calc(100vw - 16px); max-height: calc(100dvh - 100px); overflow-y: auto; z-index: 30; }
+  body.accounts-mobile-compact #accountDetailHome > #accountDetail:not(.is-hidden) { position: fixed; inset: 8px; z-index: 30; margin: 0; max-height: calc(100dvh - 16px); overflow: auto; }
+  body.accounts-mobile-compact #accountDetailHome > #accountDetail > .section-head { position: sticky; top: 0; z-index: 2; flex-direction: row; padding: 8px; background: var(--mobile-account-surface, #0c1723); }
+
+  body.accounts-mobile-compact:has(#accountsGrid > .account-row) { height: 100dvh; min-height: 0; overflow: hidden; }
+  body.accounts-mobile-compact:has(#accountsGrid > .account-row) main { display: flex; flex-direction: column; height: 100%; min-height: 0; overflow: hidden; }
+  body.accounts-mobile-compact:has(#accountsGrid > .account-row) .account-section { display: flex; flex-direction: column; flex: 1 1 0; min-height: 0; margin: 0; }
+  body.accounts-mobile-compact .account-section > .table-scroll {
+    flex: 1 1 0;
+    min-height: 0;
+    width: 100%;
+    overflow: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+    touch-action: pan-x pan-y pinch-zoom;
+  }
+  body.accounts-mobile-compact .accounts-table thead th { position: sticky; top: 0; z-index: 4; padding: 3px 6px; }
+  body.accounts-mobile-compact .accounts-table thead th:first-child { left: 0; z-index: 6; }
+  body.accounts-mobile-compact .accounts-table .account-row td.account-identity {
+    position: sticky;
+    left: 0;
+    z-index: 2;
+    width: 220px;
+    min-width: 220px;
+    max-width: 220px;
+    background: linear-gradient(var(--group-tint, transparent), var(--group-tint, transparent)), var(--mobile-account-surface, #0c1723);
+    box-shadow: 3px 0 6px #0002;
+  }
+  body.accounts-mobile-compact .account-identity .account-summary { width: 200px; max-width: 200px; gap: 5px; }
+  body.accounts-mobile-compact .account-identity .account-name { position: relative; min-width: 0; flex: 1 1 auto; overflow: visible; }
+  body.accounts-mobile-compact .accounts-mobile-name { display: block; font-size: 16px; font-weight: 700; line-height: 1.25; white-space: normal; overflow-wrap: anywhere; padding: 5px 3px; }
+  body.accounts-mobile-compact .account-name:has(.accounts-mobile-name) .account-name-input { position: absolute; inset: 0; opacity: 0; width: 100%; height: 100%; min-height: 32px !important; padding: 5px 3px; font-size: 16px !important; }
+  body.accounts-mobile-compact .account-name:focus-within .account-name-input { opacity: 1; }
+  body.accounts-mobile-compact .account-name:focus-within .accounts-mobile-name { visibility: hidden; }
+  body.accounts-mobile-compact .accounts-table .account-row td { padding: 5px 8px; }
+  body.accounts-mobile-compact .accounts-table :is(.advance-metric, .contacts-metric) { font-size: 17px; }
+  body.accounts-mobile-compact .accounts-table .account-row td.account-identity { padding: 5px 8px; }
+  body.accounts-mobile-compact .accounts-table .account-row[data-selected='true'] td.account-identity { background: var(--mobile-account-selected, #133047); }
+  body.accounts-mobile-compact.day-mode { --mobile-account-surface: #fff; --mobile-account-selected: #e4f2fa; }
+  :root[data-theme='light'] body.accounts-mobile-compact { --mobile-account-surface: #fff; --mobile-account-selected: #e4f2fa; }
+}
