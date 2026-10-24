@@ -1,6 +1,12 @@
 /* Readable Projects geometry at either WEB or board zoom; saved desktop sizes stay untouched. */
 .projects-mobile-title { display: none; }
 .projects-mobile-actions { display: contents; }
+body.projects-mobile-readable {
+  height: var(--mobile-visual-height, 100dvh);
+  min-height: 0;
+  overflow: hidden;
+  overflow: clip;
+}
 body.projects-mobile-readable #mainApp > .layout {
   height: calc((var(--mobile-visual-height, 100dvh) - 42px) / var(--projects-mobile-app-scale, 1)) !important;
   min-height: 0 !important;
@@ -40,7 +46,20 @@ body.projects-mobile-readable .projects-cal-header .cal-num {
   font-size: calc(14px / var(--projects-mobile-scale, 1));
 }
 body.projects-mobile-readable .projects-cal-header :is(.cal-mon, .cal-wd) {
-  font-size: calc(8px / var(--projects-mobile-scale, 1));
+  font-size: calc(7px / var(--projects-mobile-scale, 1));
+}
+body.projects-mobile-readable .projects-cal-header .projects-cal-day {
+  min-height: calc(42px / var(--projects-mobile-scale, 1));
+  padding: calc(2px / var(--projects-mobile-scale, 1));
+  gap: 0;
+}
+body.projects-mobile-readable .projects-cal-header .cal-num-wd {
+  flex-direction: column;
+  gap: 0;
+  max-width: 100%;
+}
+body.projects-mobile-readable .cal-today-badge {
+  font-size: calc(5px / var(--projects-mobile-scale, 1));
 }
 body.projects-mobile-readable .proj-cell-editable {
   flex: 1 1 0;
