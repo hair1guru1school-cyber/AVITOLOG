@@ -30,6 +30,12 @@ body.avito-accounts-mode #mainApp > .layout > .content-wrap {
   padding-bottom: 0;
 }
 
+body.avito-accounts-mode #analyticsTopRow {
+  position: relative;
+  top: auto;
+  flex: 0 0 auto;
+}
+
 body.avito-accounts-mode #avitoAccountsPanel:not([hidden]) {
   display: flex;
   flex-direction: column;
