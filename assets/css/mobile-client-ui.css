@@ -113,14 +113,18 @@ body.mobile-client-ui .sidebar :is(#crmFolderBtn, #crmSaveDriveBtn) {
 body.mobile-client-ui #crmFolderBtn { flex: 0 0 calc(66px / var(--client-control-scale)); }
 body.mobile-client-ui #crmSaveDriveBtn { width: calc(36px / var(--client-control-scale)); }
 
-body.mobile-client-ui:not(.avito-accounts-mode) #mainApp > header {
+body.mobile-client-ui #mainApp > header {
+  box-sizing: border-box;
+  padding: 0 calc(6px / var(--mobile-shell-scale));
   height: calc(42px / var(--mobile-shell-scale));
   min-height: calc(42px / var(--mobile-shell-scale));
   flex-wrap: nowrap;
   overflow-x: auto;
   overflow-y: hidden;
 }
-body.mobile-client-ui:not(.avito-accounts-mode) #analyticsTopRow {
+body.mobile-client-ui #analyticsTopRow {
+  position: relative;
+  top: auto;
   display: flex;
   flex-wrap: nowrap;
   justify-content: flex-start;
@@ -136,7 +140,7 @@ body.mobile-client-ui:not(.avito-accounts-mode) #analyticsTopRow {
   touch-action: pan-x pinch-zoom;
   -webkit-overflow-scrolling: touch;
 }
-body.mobile-client-ui:not(.avito-accounts-mode) #analyticsTopRow > .btn-projects {
+body.mobile-client-ui #analyticsTopRow > .btn-projects {
   flex: 0 0 auto;
   width: auto;
   min-width: calc(60px / var(--mobile-shell-scale)) !important;

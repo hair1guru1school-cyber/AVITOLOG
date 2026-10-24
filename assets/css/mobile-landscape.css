@@ -115,10 +115,7 @@
   body.mobile-webview-on .mobile-webview-btn { min-width: 44px; min-height: 44px; touch-action: manipulation; }
   body.mobile-webview-on .sidebar-toggle-peek { min-width: calc(44px / var(--mw-scale, 1)); min-height: calc(52px / var(--mw-scale, 1)); }
 
-  /* The embedded account list owns its zoom, so its viewport stays phone-wide. */
-  body.avito-accounts-mode.mobile-webview-on { --mw-scale: 1 !important; }
-  body.avito-accounts-mode.mobile-webview-on #mainApp { transform: none !important; width: 100% !important; }
-  body.avito-accounts-mode.mobile-webview-on #mobileWebviewControls { display: none !important; }
+  /* Accounts keeps the shared shell; its frame owns the table viewport and zoom. */
   body.avito-accounts-mode #avitoAccountsPanel {
     display: flex;
     flex-direction: column;
