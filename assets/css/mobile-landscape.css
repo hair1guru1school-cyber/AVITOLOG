@@ -91,6 +91,8 @@
     overflow: hidden;
   }
 
+  body.mobile-webview-on.projects-mode #rightPanelWrap { display: none !important; }
+
   body.mobile-webview-on.projects-mode .projects-table-wrap {
     overflow: auto;
     min-width: 0;
