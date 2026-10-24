@@ -198,6 +198,16 @@ body.mobile-client-ui > #mobileWebviewControls > .mobile-webview-btn {
 }
 
 body.mobile-client-tools-on #rightPanelWrap { display: none !important; }
+body.mobile-client-tools-on {
+  height: var(--mobile-visual-height, 100dvh);
+  min-height: 0;
+  overflow: hidden;
+  overflow: clip;
+}
+body.mobile-client-tools-on #mainApp > .layout {
+  height: calc((var(--mobile-visual-height, 100dvh) - 42px) / var(--mobile-shell-scale)) !important;
+  min-height: 0 !important;
+}
 body.mobile-client-tools-on #mainApp > .layout > .content-wrap {
   min-width: 0;
   margin-right: 0;
