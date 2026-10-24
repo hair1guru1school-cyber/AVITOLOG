@@ -1,0 +1,19 @@
+/* Only the project rail owns a pinch; one-finger scrolling remains native. */
+body.projects-mode:not(.avito-accounts-mode) .projects-board,
+body.projects-mode:not(.avito-accounts-mode) .projects-table-wrap,
+body.projects-mode:not(.avito-accounts-mode) .projects-cal-day { touch-action: pan-x pan-y !important; }
+
+body.projects-mode .projects-pinch-status {
+  position: fixed;
+  z-index: 10060;
+  right: 10px;
+  bottom: max(12px, env(safe-area-inset-bottom));
+  padding: 7px 10px;
+  border: 1px solid var(--border, #31536a);
+  border-radius: 8px;
+  background: var(--surface, #101722);
+  color: var(--text, #edf7ff);
+  font: 12px sans-serif;
+  pointer-events: none;
+}
+.projects-pinch-status[hidden], body:not(.projects-mode) .projects-pinch-status { display: none; }

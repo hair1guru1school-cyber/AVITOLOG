@@ -1740,15 +1740,21 @@ function startProjectsStickyWidthResize(e) {
   document.addEventListener('mouseup', onUp);
 }
 function getSavedProjectsZoom() {
-  var z = parseFloat(localStorage.getItem(PROJECTS_ZOOM_KEY) || '1');
+  var raw = '1';
+  try { raw = localStorage.getItem(PROJECTS_ZOOM_KEY) || '1'; } catch (_) {}
+  var z = parseFloat(raw);
   return (isNaN(z) || z < 0.25 || z > 2) ? 1 : z;
 }
 function saveProjectsZoom(z) {
   z = Math.max(0.25, Math.min(2, z));
-  localStorage.setItem(PROJECTS_ZOOM_KEY, String(z));
+  var saved = true;
+  try { localStorage.setItem(PROJECTS_ZOOM_KEY, String(z)); } catch (_) { saved = false; }
   var board = document.querySelector('.projects-board');
   if (board) {
     board.style.transform = 'scale(' + z + ')';
+    var size = (z < 1 ? 100 / z : 100) + '%';
+    board.style.width = size;
+    board.style.height = size;
     board.classList.toggle('projects-fit-rows', z < 1);
   }
   var table = document.querySelector('.projects-table');
@@ -1758,6 +1764,7 @@ function saveProjectsZoom(z) {
     table.style.setProperty('--projects-row-height', effectiveRowH + 'px');
     applyProjectsCalendarScaleVars(table, getSavedProjectsDayPx() || 28, effectiveRowH);
   }
+  return saved;
 }
 function toggleProjectsSidebar() {
   var hidden = document.body.classList.toggle('projects-sidebar-hidden');
