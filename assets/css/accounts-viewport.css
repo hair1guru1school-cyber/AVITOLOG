@@ -9,6 +9,10 @@ body.avito-accounts-mode #mainApp {
   transform: none !important;
 }
 
+body.avito-accounts-mode #mainApp[hidden],
+body.avito-accounts-mode #mainApp[style*="display:none"],
+body.avito-accounts-mode #mainApp[style*="display: none"] { display: none !important; }
+
 body.avito-accounts-mode.mobile-webview-on { --mw-scale: 1 !important; }
 body.avito-accounts-mode #mobileWebviewControls { display: none !important; }
 body.avito-accounts-mode #mainApp > header { flex: 0 0 auto; }
