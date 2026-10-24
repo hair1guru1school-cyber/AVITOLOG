@@ -1,0 +1,129 @@
+/* Keep calendar panning inside its rail, not across a wider desktop page. */
+@media (orientation: landscape) and (max-width: 980px) and (max-height: 560px) {
+  body.mobile-webview-on #mainApp > header {
+    height: auto;
+    min-height: calc(44px / var(--mw-scale, 1));
+    flex-wrap: nowrap;
+    gap: 8px;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  body.mobile-webview-on #mainApp > header > .logo + div { display: none; }
+  body.mobile-webview-on #mainApp > header > form { display: none; }
+  body.mobile-webview-on #mainApp > header .logo { flex: 0 0 auto; }
+  body.mobile-webview-on #mainApp > header button {
+    flex-shrink: 0;
+    min-height: calc(40px / var(--mw-scale, 1));
+    min-width: calc(40px / var(--mw-scale, 1));
+    touch-action: manipulation;
+  }
+
+  body.mobile-webview-on #mainApp > .layout {
+    grid-template-columns: min(300px, 28%) minmax(0, 1fr) 92px;
+    grid-template-areas: none;
+    height: calc((var(--mobile-visual-height, 100dvh) - var(--mobile-header-height, 44px)) / var(--mw-scale, 1)) !important;
+    min-height: 0;
+    min-width: 0;
+  }
+
+  body.mobile-webview-on.projects-mode #mainApp > .layout,
+  body.mobile-webview-on.assets-mode #mainApp > .layout {
+    grid-template-columns: min(300px, 28%) minmax(0, 1fr) 0;
+  }
+
+  body.mobile-webview-on.sidebar-hidden #mainApp > .layout { grid-template-columns: 0 minmax(0, 1fr) 92px; }
+  body.mobile-webview-on.projects-mode:is(.sidebar-hidden, .projects-sidebar-hidden) #mainApp > .layout,
+  body.mobile-webview-on.assets-mode.sidebar-hidden #mainApp > .layout { grid-template-columns: 0 minmax(0, 1fr) 0; }
+
+  body.mobile-webview-on #mainApp > .layout > .sidebar {
+    position: relative;
+    left: auto;
+    top: auto;
+    bottom: auto;
+    width: auto;
+    min-width: 0;
+    transform: none !important;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  body.mobile-webview-on.sidebar-hidden #mainApp > .layout > .sidebar,
+  body.mobile-webview-on.projects-mode.projects-sidebar-hidden #mainApp > .layout > .sidebar {
+    width: 0;
+    min-width: 0;
+    padding: 0;
+    border-right: 0;
+    overflow: hidden;
+  }
+
+  body.mobile-webview-on #mainApp > .layout > .content-wrap {
+    grid-area: auto;
+    min-width: 0;
+    min-height: 0;
+    padding-bottom: 0;
+  }
+
+  body.mobile-webview-on #analyticsTopRow {
+    display: flex;
+    flex-wrap: nowrap;
+    flex-shrink: 0;
+    min-width: 0;
+    max-width: 100%;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  body.mobile-webview-on #analyticsTopRow > .btn-projects {
+    flex: 0 0 auto;
+    min-width: 0 !important;
+    min-height: calc(36px / var(--mw-scale, 1));
+    width: auto;
+    padding-inline: 14px;
+    white-space: nowrap;
+  }
+
+  body.mobile-webview-on.projects-mode .content,
+  body.mobile-webview-on.projects-mode .projects-board {
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  body.mobile-webview-on.projects-mode .projects-table-wrap {
+    overflow: auto;
+    min-width: 0;
+    min-height: 0;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+    touch-action: pan-x pan-y pinch-zoom;
+    scrollbar-width: thin;
+  }
+
+  body.mobile-webview-on.projects-mode .projects-table { min-width: max-content; }
+  body.mobile-webview-on.projects-mode .projects-table .projects-sticky {
+    width: min(var(--projects-sticky-width, 420px), calc(42vw / var(--mw-scale, 1)));
+    min-width: min(var(--projects-sticky-width, 420px), calc(42vw / var(--mw-scale, 1)));
+  }
+
+  body.mobile-webview-on.projects-mode .projects-cal-day { touch-action: pan-x pan-y pinch-zoom; }
+  body.mobile-webview-on.projects-mode .proj-row-drag-handle { touch-action: none; }
+  body.mobile-webview-on .mobile-webview-controls { bottom: max(8px, env(safe-area-inset-bottom)); }
+  body.mobile-webview-on .mobile-webview-btn { min-width: 44px; min-height: 44px; touch-action: manipulation; }
+  body.mobile-webview-on .sidebar-toggle-peek { min-width: calc(44px / var(--mw-scale, 1)); min-height: calc(52px / var(--mw-scale, 1)); }
+
+  /* The embedded account list owns its zoom, so its viewport stays phone-wide. */
+  body.avito-accounts-mode.mobile-webview-on { --mw-scale: 1 !important; }
+  body.avito-accounts-mode.mobile-webview-on #mainApp { transform: none !important; width: 100% !important; }
+  body.avito-accounts-mode.mobile-webview-on #mobileWebviewControls { display: none !important; }
+  body.avito-accounts-mode #avitoAccountsPanel {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    padding: 4px 6px;
+    overflow: hidden;
+  }
+  body.avito-accounts-mode .avito-main-accounts-head { flex: 0 0 auto; flex-direction: row; padding-bottom: 4px; }
+  body.avito-accounts-mode #avitoAccountsFrameHost { flex: 1 1 0; height: auto; min-height: 0; }
+}

@@ -22,6 +22,11 @@
     return !webMode && typeof width === 'number' && width > 0 && width <= 768;
   }
 
+  function landscape(width, height) {
+    return typeof width === 'number' && typeof height === 'number' &&
+      height > 0 && width > height && width <= 980 && height <= 560;
+  }
+
   function keyboardTop(viewport, layoutHeight) {
     if (!viewport || positive(viewport.scale, 1) > 1.02 || positive(layoutHeight, 0) - positive(viewport.height, layoutHeight) < 120) return null;
     return Math.round(Math.max(0, Number.isFinite(viewport.offsetTop) ? viewport.offsetTop : 0)) + 8;
@@ -74,7 +79,7 @@
       frame = null;
       if (!doc.body || !surface) return;
       syncSaveProxy();
-      if (!active(win.innerWidth, doc.body.classList.contains('mobile-webview-on'))) {
+      if (!active(win.innerWidth, doc.body.classList.contains('mobile-webview-on')) && !landscape(win.innerWidth, win.innerHeight)) {
         props.forEach(function (prop) { surface.style.removeProperty(prop); });
         markKeyboard(false);
         return;
@@ -143,5 +148,5 @@
     return controller;
   }
 
-  return { active: active, metrics: metrics, keyboardTop: keyboardTop, install: install };
+  return { active: active, landscape: landscape, metrics: metrics, keyboardTop: keyboardTop, install: install };
 });

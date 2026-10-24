@@ -4966,14 +4966,13 @@ function closeMobileSidebar() {
 }
 var MOBILE_WEBVIEW_ON_KEY = 'avitolog_mobile_webview_on';
 var MOBILE_WEBVIEW_SCALE_KEY = 'avitolog_mobile_webview_scale';
-/** Узкий экран или телефон в альбоме (ширина до ~932 и невысокий) — панель WEB/масштаб и мини-режим. */
+var mobileWebviewScaleFallback = null;
+var mobileWebviewEnabledFallback = null;
+/** Phone portrait or landscape keeps the same scale controls. */
 function isMobileViewport() {
   if (!window.matchMedia) return false;
   if (window.matchMedia('(max-width: 768px)').matches) return true;
-  if (window.matchMedia('(orientation: landscape)').matches &&
-      window.matchMedia('(max-width: 932px)').matches &&
-      window.matchMedia('(max-height: 520px)').matches) return true;
-  return false;
+  return isPhoneLandscapeDesktopMode();
 }
 function isPhoneLandscapeDesktopMode() {
   if (!window.matchMedia) return false;
@@ -4985,20 +4984,23 @@ function getMobileWebviewDefaultScale() {
   return isPhoneLandscapeDesktopMode() ? 0.62 : 0.72;
 }
 function getMobileWebviewScale() {
-  var raw = parseFloat(localStorage.getItem(MOBILE_WEBVIEW_SCALE_KEY) || String(getMobileWebviewDefaultScale()));
+  var stored = null;
+  try { stored = localStorage.getItem(MOBILE_WEBVIEW_SCALE_KEY); } catch(e) {}
+  var raw = mobileWebviewScaleFallback === null ? parseFloat(stored || String(getMobileWebviewDefaultScale())) : mobileWebviewScaleFallback;
   if (!isFinite(raw)) raw = getMobileWebviewDefaultScale();
-  if (isPhoneLandscapeDesktopMode()) raw = Math.max(raw, 0.56);
-  return Math.max(0.3, Math.min(1, raw));
+  return Math.max(0.3, Math.min(1.25, raw));
 }
 function setMobileWebviewScale(nextScale) {
-  var minScale = isPhoneLandscapeDesktopMode() ? 0.5 : 0.3;
-  var s = Math.max(minScale, Math.min(1, Number(nextScale) || 1));
-  localStorage.setItem(MOBILE_WEBVIEW_SCALE_KEY, String(s));
+  var s = Math.max(0.3, Math.min(1.25, Number(nextScale) || 1));
+  mobileWebviewScaleFallback = s;
+  try { localStorage.setItem(MOBILE_WEBVIEW_SCALE_KEY, String(s)); } catch(e) {}
   applyMobileWebviewMode();
 }
 function applyMobileWebviewMode() {
-  var enabled = false;
-  try { enabled = localStorage.getItem(MOBILE_WEBVIEW_ON_KEY) === '1'; } catch(e) {}
+  var enabled = mobileWebviewEnabledFallback;
+  if (enabled === null) {
+    try { enabled = localStorage.getItem(MOBILE_WEBVIEW_ON_KEY) === '1'; } catch(e) {}
+  }
   var mobile = isMobileViewport();
   var autoLandscape = isPhoneLandscapeDesktopMode();
   var on = mobile && (enabled || autoLandscape);
@@ -5041,20 +5043,27 @@ function applyMobileWebviewMode() {
   syncSidebarToggleBtn();
 }
 function toggleMobileWebviewMode() {
-  var cur = localStorage.getItem(MOBILE_WEBVIEW_ON_KEY) === '1';
-  localStorage.setItem(MOBILE_WEBVIEW_ON_KEY, cur ? '0' : '1');
+  var cur = mobileWebviewEnabledFallback;
+  if (cur === null) {
+    try { cur = localStorage.getItem(MOBILE_WEBVIEW_ON_KEY) === '1'; } catch(e) {}
+  }
+  mobileWebviewEnabledFallback = !cur;
+  try { localStorage.setItem(MOBILE_WEBVIEW_ON_KEY, cur ? '0' : '1'); } catch(e) {}
   applyMobileWebviewMode();
 }
 function mobileWebviewZoomOut() {
-  if (localStorage.getItem(MOBILE_WEBVIEW_ON_KEY) !== '1') localStorage.setItem(MOBILE_WEBVIEW_ON_KEY, '1');
+  mobileWebviewEnabledFallback = true;
+  try { localStorage.setItem(MOBILE_WEBVIEW_ON_KEY, '1'); } catch(e) {}
   setMobileWebviewScale(getMobileWebviewScale() - 0.06);
 }
 function mobileWebviewZoomIn() {
-  if (localStorage.getItem(MOBILE_WEBVIEW_ON_KEY) !== '1') localStorage.setItem(MOBILE_WEBVIEW_ON_KEY, '1');
+  mobileWebviewEnabledFallback = true;
+  try { localStorage.setItem(MOBILE_WEBVIEW_ON_KEY, '1'); } catch(e) {}
   setMobileWebviewScale(getMobileWebviewScale() + 0.06);
 }
 function mobileWebviewZoomReset() {
-  if (localStorage.getItem(MOBILE_WEBVIEW_ON_KEY) !== '1') localStorage.setItem(MOBILE_WEBVIEW_ON_KEY, '1');
+  mobileWebviewEnabledFallback = true;
+  try { localStorage.setItem(MOBILE_WEBVIEW_ON_KEY, '1'); } catch(e) {}
   setMobileWebviewScale(getMobileWebviewDefaultScale());
 }
 window.toggleMobileWebviewMode = toggleMobileWebviewMode;

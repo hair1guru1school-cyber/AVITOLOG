@@ -3140,7 +3140,7 @@ function onProjectRowPtrUp(e) {
   document.removeEventListener('pointercancel', onProjectRowPtrUp);
   hidePtrDragFloater();
   var committed = false;
-  if (pd.moved && pd.targetId && pd.targetId !== pd.id) {
+  if (e.type !== 'pointercancel' && pd.moved && pd.targetId && pd.targetId !== pd.id) {
     clearProjectDropMarks();
     pd.row.classList.remove('dragging');
     reorderProjectsWithinZone(pd.id, pd.targetId, !!pd.placeAfter);
@@ -3160,6 +3160,8 @@ function onProjectRowPtrUp(e) {
 function onProjectRowPtrDown(e) {
   if (e.button !== 0) return;
   if (_calendarPaintMode === 'launch') return;
+  if (e.pointerType && e.pointerType !== 'mouse' &&
+      !(e.target && e.target.closest && e.target.closest('.proj-row-drag-handle'))) return;
   if (isProjectRowDragBlockedTarget(e.target)) return;
   var row = e.target.closest('.projects-table-row[data-child-line-index="-1"]');
   if (!row) return;
