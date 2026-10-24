@@ -54,6 +54,9 @@
       if (stopped || !doc.body) return;
       var mobile = isMobile(win.innerWidth, win.innerHeight);
       setClass('mobile-client-ui', mobile);
+      var client = isClient(doc.body.classList);
+      var kp = client && doc.body.classList.contains('kp-tab');
+      setClass('kp-client-view', kp);
 
       var field = doc.querySelector('.project-card-account-field');
       if (account && (account.node !== field || !account.anchor.isConnected)) {
@@ -82,7 +85,7 @@
         });
         restoreTools();
       }
-      var enabled = mobile && isClient(doc.body.classList) && !!top && buttons.every(function (button) { return !!button; });
+      var enabled = mobile && client && !!top && buttons.every(function (button) { return !!button; });
       if (enabled) {
         if (!rail || !rail.isConnected) {
           restoreTools();
@@ -90,7 +93,8 @@
           rail.id = 'mobileClientTools';
           rail.setAttribute('aria-label', '\u0418\u043d\u0441\u0442\u0440\u0443\u043c\u0435\u043d\u0442\u044b \u043a\u043b\u0438\u0435\u043d\u0442\u0430');
         }
-        if (rail.parentNode !== top.parentNode || top.nextSibling !== rail) top.parentNode.insertBefore(rail, top.nextSibling);
+        var parent = kp ? doc.body : top.parentNode;
+        if (rail.parentNode !== parent || (!kp && top.nextSibling !== rail)) parent.insertBefore(rail, kp ? null : top.nextSibling);
         if (!tools.length) tools = buttons.map(remember);
         buttons.forEach(function (button, i) {
           if (rail.children[i] !== button) rail.insertBefore(button, rail.children[i] || null);
@@ -128,6 +132,7 @@
       if (doc.body) {
         setClass('mobile-client-ui', false);
         setClass('mobile-client-tools-on', false);
+        setClass('kp-client-view', false);
       }
       delete win[KEY];
     }

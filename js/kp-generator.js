@@ -1589,16 +1589,13 @@
         '<p class="kp-gen-note">Автозапись макета в Canva без <a href="https://www.canva.com/developers/" target="_blank" rel="noopener">Canva Connect API</a> недоступна: дублируйте шаблон в Canva и подставьте поля вручную или через копирование текста выше.</p>'
       : '';
 
-    var activeClient = getKpActiveClient();
-    var activeClientName = activeClient && (activeClient.company || activeClient.contact_name || activeClient.name);
-    var clientTitleHtml = activeClientName
-      ? ' для <button type="button" class="kp-client-target" id="kpClientTarget" title="Открыть папку клиента"><span>👤</span><b>' + esc(activeClientName) + '</b><span>📁</span></button>'
-      : ' <span class="kp-client-empty">— выберите клиента</span>';
-
     mc.innerHTML =
       '<div class="kp-generator">' +
-      '<div class="kp-gen-head">' +
-      '<div class="kp-gen-title">Коммерческое предложение' + clientTitleHtml + '</div>' +
+      '<div class="kp-gen-head" role="region" aria-label="Проект коммерческого предложения">' +
+      '<div class="kp-gen-title">Коммерческое предложение</div>' +
+      '<div class="kp-client-context"><span class="kp-client-context-label">Проект:</span>' +
+      '<button type="button" class="kp-client-target" id="kpClientTarget" title="Открыть папку клиента" hidden><span>👤</span><b id="kpClientName"></b><span>📁</span></button>' +
+      '<span class="kp-client-empty" id="kpClientEmpty">Выберите клиента в левом меню</span></div>' +
       '</div>' +
       createKpBlock +
       block2Html +
@@ -1609,6 +1606,7 @@
       '</div>';
 
     wire(mc);
+    refreshKpClientContext();
     var clientTarget = mc.querySelector('#kpClientTarget');
     if (clientTarget) {
       clientTarget.onclick = function () {
@@ -1619,6 +1617,18 @@
     }
     fitKpTplCardLabels(mc);
   };
+  function refreshKpClientContext() {
+    var button = document.getElementById('kpClientTarget');
+    var name = document.getElementById('kpClientName');
+    var empty = document.getElementById('kpClientEmpty');
+    if (!button || !name || !empty) return;
+    var client = getKpActiveClient();
+    var title = String(client && (client.company || client.contact_name || client.name) || '').trim();
+    if (name.textContent !== title) name.textContent = title;
+    button.hidden = !title;
+    empty.hidden = !!title;
+  }
+  document.addEventListener('avitolog:active-client-changed', refreshKpClientContext);
   function ensureKpIntegratedStyles() {
     if (document.getElementById('kpIntegratedStyles')) return;
     var st = document.createElement('style');
@@ -1628,19 +1638,23 @@
       '.kp-canva-toggle{min-width:190px}',
       '.kp-canva-toggle-hint{font-size:11px;color:var(--muted);opacity:.85}',
       '.kp-canva-section .kp-tpl-zones{margin-top:12px}',
-      'body.kp-tab .layout{grid-template-columns:0 minmax(0,1fr)}',
-      'body.kp-tab .sidebar{position:fixed;left:0;top:55px;bottom:0;z-index:460;display:flex;min-width:340px;width:340px;height:calc(100vh - 55px);padding:14px;overflow-y:auto;border-right:1px solid var(--border);transform:translateX(0);transition:transform .24s ease;box-shadow:12px 0 34px rgba(0,0,0,.38)}',
-      'body.kp-tab.sidebar-hidden .sidebar{min-width:340px;width:340px;padding:14px;overflow-y:auto;border-right:1px solid var(--border);transform:translateX(-100%)}',
-      'body.kp-tab .sidebar-toggle-peek{z-index:470}',
-      'body.kp-tab .content-wrap{grid-column:2;min-width:0}',
+      'body.kp-client-view:not(.mobile-client-ui) .layout{grid-template-columns:0 minmax(0,1fr)}',
+      'body.kp-client-view:not(.mobile-client-ui) .sidebar{position:fixed;left:0;top:55px;bottom:0;z-index:460;display:flex;min-width:340px;width:340px;height:calc(100vh - 55px);padding:14px;overflow-y:auto;border-right:1px solid var(--border);transform:translateX(0);transition:transform .24s ease;box-shadow:12px 0 34px rgba(0,0,0,.38)}',
+      'body.kp-client-view.sidebar-hidden:not(.mobile-client-ui) .sidebar{min-width:340px;width:340px;padding:14px;overflow-y:auto;border-right:1px solid var(--border);transform:translateX(-100%)}',
+      'body.kp-client-view:not(.mobile-client-ui) .sidebar-toggle-peek{z-index:470}',
+      'body.kp-client-view:not(.mobile-client-ui) .content-wrap{grid-column:2;min-width:0}',
       'body.kp-tab .kp-generator{width:calc(100% - 12px);max-width:none!important;margin:0 6px;padding:10px 0 28px}',
       '.kp-editor-embed-section{padding:0!important;overflow:hidden;border-color:rgba(0,217,126,.28)!important}',
       '.kp-editor-embed-section .kp-gen-label{padding:12px 14px 0}',
       '.kp-editor-embed{display:block;width:100%;height:1380px;min-height:calc(100vh - 110px);border:0;background:#05080d;border-radius:8px}',
       '.kp-canva-section{margin-top:14px;padding:10px 0 2px}',
-      '.kp-gen-title{display:flex;align-items:center;justify-content:center;gap:7px;flex-wrap:wrap}',
-      '.kp-client-target{display:inline-flex;align-items:center;gap:6px;max-width:min(420px,70vw);padding:6px 10px;border:1px solid rgba(0,217,126,.55);border-radius:8px;background:rgba(0,217,126,.09);color:var(--accent);font:inherit;cursor:pointer}',
-      '.kp-client-target b{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}',
+      '.kp-gen-head{position:sticky;top:0;z-index:30;padding:10px 12px;border:1px solid var(--border);border-radius:10px;background:var(--surface);box-shadow:0 3px 12px rgba(0,0,0,.15)}',
+      '.kp-gen-title{font-size:12px;font-weight:700;color:var(--muted);margin-bottom:6px}',
+      '.kp-client-context{display:flex;align-items:center;gap:8px;min-width:0}',
+      '.kp-client-context-label{flex:0 0 auto;color:var(--muted);font-size:12px}',
+      '.kp-client-target{display:inline-flex;align-items:center;gap:6px;min-width:0;max-width:100%;padding:6px 10px;border:1px solid rgba(0,217,126,.55);border-radius:8px;background:rgba(0,217,126,.09);color:var(--accent);font-family:inherit;font-size:16px;font-weight:800;line-height:1.3;cursor:pointer;text-align:left}',
+      '.kp-client-target[hidden],.kp-client-empty[hidden]{display:none!important}',
+      '.kp-client-target b{white-space:normal;overflow-wrap:anywhere}',
       '.kp-client-target:hover{background:rgba(0,217,126,.17);box-shadow:0 0 16px rgba(0,217,126,.12)}',
       '.kp-client-empty{font-size:12px;color:var(--muted);font-weight:600}',
       '@media(max-width:900px){.kp-editor-embed{height:1240px;min-height:1240px}}'

@@ -99,6 +99,44 @@ body.mobile-client-tools-on.mobile-webview-on #mobileClientTools > .rtab {
 }
 body.mobile-client-ui.mobile-webview-on #headerMenuBtn::after { font-size: calc(11px / var(--mw-scale, 1)); }
 
+/* KP stays focused on its sheet; its selected task project is left intact. */
+body.kp-client-view #taskPanelWrap { display: none !important; }
+body.mobile-client-tools-on.kp-client-view #mobileClientTools {
+  position: fixed;
+  z-index: 400;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  margin: 0;
+  padding: 6px 8px max(6px, env(safe-area-inset-bottom, 0px));
+  border-top: 1px solid var(--border);
+  border-bottom: 0;
+  box-shadow: 0 -4px 18px rgba(0,0,0,.16);
+}
+body.mobile-client-tools-on.kp-client-view #mobileClientTools > .rtab {
+  min-height: 44px;
+  min-width: 76px;
+  font-size: 11px;
+  padding: 8px 10px;
+}
+body.mobile-client-tools-on.kp-client-view #mainApp > .layout > .content-wrap {
+  padding-bottom: calc((68px + env(safe-area-inset-bottom, 0px)) / var(--mw-scale, 1));
+}
+body.mobile-client-tools-on.kp-client-view .kp-gen-title { font-size: calc(12px / var(--mw-scale, 1)); }
+body.mobile-client-tools-on.kp-client-view .kp-client-target { font-size: calc(15px / var(--mw-scale, 1)); }
+body.mobile-client-tools-on.kp-client-view .kp-client-context-label { font-size: calc(11px / var(--mw-scale, 1)); }
+body.mobile-client-tools-on.kp-client-view.mobile-webview-on #mainApp > .layout {
+  height: calc((var(--mobile-visual-height, 100dvh) - var(--mobile-header-height, 44px)) / var(--mw-scale, 1)) !important;
+  min-height: 0 !important;
+}
+body.mobile-client-tools-on.kp-client-view .sidebar { min-height: 0; }
+body.mobile-client-tools-on.kp-client-view #mobileWebviewControls {
+  bottom: calc((78px + env(safe-area-inset-bottom, 0px)) / var(--mw-scale, 1));
+}
+
 @media (max-width: 768px) {
   body.mobile-client-tools-on.mobile-webview-on #mainApp > .layout { grid-template-columns: 300px minmax(0, 1fr) 0; }
   body.mobile-client-tools-on.mobile-webview-on.sidebar-hidden #mainApp > .layout { grid-template-columns: 0 minmax(0, 1fr) 0; }
