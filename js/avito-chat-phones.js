@@ -41,6 +41,14 @@
   }
   function install(win) {
     var bridge = win.AvitoWorkspaceBridge, owner = '', generation = 0, running = null, cursor = 0, pages = Object.create(null), timer;
+    var socials = win.AvitoChatSocials, fields = ['phone'];
+    if (socials && typeof socials.contactsFromMessages === 'function') fields.push('vk', 'telegram');
+    function contact(record, field) {
+      var names = field === 'telegram' ? ['telegram', 'tg'] : field === 'vk' ? ['vk', 'vk_url'] : ['phone'];
+      for (var i = 0; record && i < names.length; i++) if (!blank(record[names[i]])) return text(record[names[i]]).trim();
+      return '';
+    }
+    function missing(record) { return fields.some(function (field) { return blank(contact(record, field)); }); }
     function key(base) { return typeof win.AVITOLOG_KEY === 'function' ? win.AVITOLOG_KEY(base) : base; }
     function context() {
       if (!bridge || win.AVITOLOG_BACKEND_MODE && win.AVITOLOG_BACKEND_INITIAL_SYNC_READY !== true) return '';
@@ -58,23 +66,57 @@
     function clients() { var value = typeof win.getCrmClients === 'function' ? win.getCrmClients() : []; return Array.isArray(value) ? value : []; }
     function hasChat(client, identity) { return client && (client.avito_chat_key === identity || Array.isArray(client.avito_chat_keys) && client.avito_chat_keys.indexOf(identity) !== -1); }
     function linkedProject(project, client) { return project && (project.crmClientId ? text(project.crmClientId) === text(client.client_id) : client.folderId && text(project.folderId) === text(client.folderId)); }
-    function mirror(client, token) {
-      var stamp = client.avitoPhoneImportV1;
-      if (!stamp || stamp.phone !== client.phone || !hasChat(client, stamp.chatKey)) return;
+    function syncActive(client, names, token) {
+      if (typeof win.getActiveClient !== 'function') return;
+      function matches(record) {
+        return record && (record.client_id ? text(record.client_id) === text(client.client_id) : client.folderId && text(record.folderId) === text(client.folderId) && clients().filter(function (item) { return text(item.folderId) === text(client.folderId); }).length === 1);
+      }
+      var active = win.getActiveClient();
+      if (!matches(active)) return;
       assertCurrent(token);
+      var stored = null, storedChanged = false, activeKey = key('avitolog_active_client');
+      try { stored = JSON.parse(win.localStorage.getItem(activeKey) || 'null'); } catch (_) {}
+      names.forEach(function (field) {
+        var value = client[field];
+        if (matches(stored) && contact(stored, field) && contact(stored, field) !== value) return;
+        if (blank(contact(active, field))) active[field] = value;
+        if (contact(active, field) !== value) return;
+        if (matches(stored) && blank(contact(stored, field))) { stored[field] = value; storedChanged = true; }
+        var input = typeof win.document.getElementById === 'function' && win.document.getElementById(field === 'telegram' ? 'tg' : field);
+        if (input && input !== win.document.activeElement && blank(input.value)) input.value = value;
+      });
+      if (storedChanged) { assertCurrent(token); try { win.localStorage.setItem(activeKey, JSON.stringify(stored)); } catch (_) {} }
+    }
+    function mirror(client, token) {
+      var imported = {};
+      fields.forEach(function (field) {
+        var stamp = field === 'phone' ? client.avitoPhoneImportV1 : client.avitoContactImportV1 && client.avitoContactImportV1[field];
+        var value = stamp && (field === 'phone' ? stamp.phone : stamp.value);
+        if (stamp && value && value === client[field] && hasChat(client, stamp.chatKey)) imported[field] = { value: value, stamp: stamp };
+      });
+      var names = Object.keys(imported);
+      if (!names.length) return;
+      assertCurrent(token);
+      syncActive(client, names, token);
       if (typeof win.loadProjectsData === 'function' && typeof win.saveProjectsData === 'function') {
         var data = copy(win.loadProjectsData()), changed = false;
         (data.projects || []).forEach(function (project) {
-          if (!linkedProject(project, client) || !blank(project.crmData && project.crmData.phone)) return;
-          project.crmData = Object.assign({}, project.crmData || {}, { phone: client.phone }); changed = true;
+          if (!linkedProject(project, client)) return;
+          names.forEach(function (field) {
+            if (!blank(contact(project.crmData, field)) || !blank(contact(project, field))) return;
+            var patch = {}; patch[field] = imported[field].value;
+            project.crmData = Object.assign({}, project.crmData || {}, patch); changed = true;
+          });
         });
         if (changed) { assertCurrent(token); win.saveProjectsData(data); assertCurrent(token); }
       }
       var live = typeof win.__avitologAdsGoalsRead === 'function' && win.__avitologAdsGoalsRead([]), storageKey = key('avitolog_goals_v1');
       var goals = live && live.live ? copy(live.live) : JSON.parse(win.localStorage.getItem(storageKey) || '{"projects":[]}'), goalsChanged = false;
       (goals.projects || []).forEach(function (goal) {
-        var linked = goal && (goal.crmClientRecordId ? text(goal.crmClientRecordId) === text(client.client_id) : goal.avitoChatKey === stamp.chatKey);
-        if (linked && blank(goal.phone) && blank(goal.payload && goal.payload.phone)) { goal.phone = client.phone; goalsChanged = true; }
+        names.forEach(function (field) {
+          var linked = goal && (goal.crmClientRecordId ? text(goal.crmClientRecordId) === text(client.client_id) : goal.avitoChatKey === imported[field].stamp.chatKey);
+          if (linked && blank(contact(goal, field)) && blank(contact(goal.payload, field))) { goal[field] = imported[field].value; goalsChanged = true; }
+        });
       });
       if (goalsChanged) {
         assertCurrent(token); var old = win.localStorage.getItem(storageKey), raw = JSON.stringify(goals), written = false;
@@ -82,6 +124,10 @@
         var memory = typeof win.__goalsApplyBackendValue === 'function' && win.__goalsApplyBackendValue(storageKey, raw);
         if (!written && !memory) throw new Error('storage_unavailable');
         win.document.dispatchEvent(new win.CustomEvent('avitolog:storage-write', { detail: { key: storageKey, value: raw, previousValue: old } })); assertCurrent(token);
+      }
+      if (changed || goalsChanged) {
+        assertCurrent(token);
+        win.document.dispatchEvent(new win.CustomEvent('avitolog:chat-contacts-updated', { detail: { clientId: text(client.client_id), fields: names } }));
       }
     }
     async function scan() {
@@ -91,8 +137,8 @@
       try {
         var pending = clients().filter(function (client) { return client && client.client_id && (client.avito_chat_key || Array.isArray(client.avito_chat_keys) && client.avito_chat_keys.length); });
         if (!pending.length) return;
-        pending.forEach(function (client) { if (!blank(client.phone)) { try { mirror(client, token); } catch (_) {} } });
-        pending = pending.filter(function (client) { return blank(client.phone); });
+        pending.forEach(function (client) { try { mirror(client, token); } catch (_) {} });
+        pending = pending.filter(missing);
         if (!pending.length) return;
         var accounts = await bridge.listAccounts(false); if (!valid(token)) return;
         var jobs = [], seen = Object.create(null);
@@ -113,27 +159,41 @@
           for (var page = 0; page < 2; page++) {
             if (!valid(token)) return;
             var latest = clients().filter(function (client) { return hasChat(client, target.identity); });
-            if (latest.length !== 1 || text(latest[0].client_id) !== target.clientId || !blank(latest[0].phone)) break;
+            if (latest.length !== 1 || text(latest[0].client_id) !== target.clientId || !missing(latest[0])) break;
             var offset = page === 0 ? 0 : pages[target.identity];
             if (page && !offset) break;
             try {
               var result = await bridge.getMessages(target.account.id, target.chatId, offset);
               if (!valid(token)) return;
-              var candidate = await phoneFromMessages(result && result.messages, target.account, null, win.crypto);
+              var candidates = socials && typeof socials.contactsFromMessages === 'function' ? socials.contactsFromMessages(result && result.messages, target.account, null) : {};
+              var candidate = blank(contact(latest[0], 'phone')) ? await phoneFromMessages(result && result.messages, target.account, null, win.crypto) : null;
+              if (candidate) candidates.phone = { value: candidate.phone, messageId: candidate.messageId, authorId: candidate.authorId };
               if (!valid(token)) return;
               if (!page && pages[target.identity] === undefined) pages[target.identity] = result && result.pagination && result.pagination.has_more ? 50 : 0;
               if (page) pages[target.identity] = result && result.pagination && result.pagination.has_more && offset < 1000 ? offset + 50 : 0;
-              if (!candidate) continue;
+              if (!Object.keys(candidates).length) continue;
               var rows = clients().slice(), matches = rows.filter(function (client) { return hasChat(client, target.identity); });
-              if (matches.length !== 1 || text(matches[0].client_id) !== target.clientId || !blank(matches[0].phone)) break;
-              var changed = Object.assign({}, matches[0], { phone: candidate.phone, avitoPhoneImportV1: { phone: candidate.phone, chatKey: target.identity, messageId: candidate.messageId, importedAt: new Date().toISOString() } });
+              if (matches.length !== 1 || text(matches[0].client_id) !== target.clientId) break;
+              var changed = Object.assign({}, matches[0]), applied = [], importedAt = new Date().toISOString();
+              fields.forEach(function (field) {
+                var value = candidates[field];
+                if (!value || !value.value || !blank(contact(matches[0], field))) return;
+                changed[field] = value.value; applied.push(field);
+                if (field === 'phone') changed.avitoPhoneImportV1 = { phone: value.value, chatKey: target.identity, messageId: value.messageId, importedAt: importedAt };
+                else {
+                  changed.avitoContactImportV1 = Object.assign({}, changed.avitoContactImportV1 || {});
+                  changed.avitoContactImportV1[field] = { value: value.value, chatKey: target.identity, messageId: value.messageId, importedAt: importedAt };
+                }
+              });
+              if (!applied.length) continue;
               rows[rows.indexOf(matches[0])] = changed;
               assertCurrent(token); win.saveCrmClients(rows); assertCurrent(token);
               var saved = clients().find(function (client) { return text(client.client_id) === target.clientId && hasChat(client, target.identity); });
-              if (!saved || saved.phone !== candidate.phone) throw new Error('storage_unconfirmed');
+              if (!saved || applied.some(function (field) { return saved[field] !== changed[field]; })) throw new Error('storage_unconfirmed');
               mirror(saved, token);
-              win.document.dispatchEvent(new win.CustomEvent('avitolog:chat-phone-updated', { detail: { clientId: target.clientId } }));
-              break;
+              if (applied.indexOf('phone') !== -1) win.document.dispatchEvent(new win.CustomEvent('avitolog:chat-phone-updated', { detail: { clientId: target.clientId } }));
+              win.document.dispatchEvent(new win.CustomEvent('avitolog:chat-contacts-updated', { detail: { clientId: target.clientId, fields: applied } }));
+              if (!missing(saved)) break;
             } catch (error) { if (!valid(token)) return; break; }
           }
         }

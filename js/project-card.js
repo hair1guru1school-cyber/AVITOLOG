@@ -628,6 +628,21 @@
     FIELDS.forEach(function (field) { var input = state.overlay.querySelector('[name="' + field[0] + '"]'); values[field[0]] = input ? input.value : state.before[field[0]]; });
     return values;
   }
+  function syncChatContacts(event) {
+    var state = current, clientId = event && event.detail && event.detail.clientId;
+    if (!state || state.saving || !state.overlay.isConnected || !ready() || readOnly() || state.scope !== scope() || !sameId(state.clientId, clientId)) return;
+    var clients = getClients(), client = findById(clients, 'client_id', clientId);
+    if (!client) return;
+    var project = hasId(state.projectId) ? findById(getProjects().projects, 'id', state.projectId) : null;
+    if (hasId(state.projectId) && (!project || !sameId((linkedClient(project, clients) || {}).client_id, clientId))) return;
+    var latest = model(project, client);
+    ['phone', 'telegram', 'vk'].forEach(function (key) {
+      var input = state.overlay.querySelector('[name="' + key + '"]');
+      if (!input || input.disabled || document.activeElement === input || state.contactTouched && state.contactTouched[key] || text(input.value).trim() || text(state.before[key]).trim() || !text(latest[key]).trim()) return;
+      input.value = latest[key];
+      state.before[key] = latest[key];
+    });
+  }
   function manualPaymentForm(state) {
     var values = {};
     ['totalPaid', 'promotionCycles', 'lastPaymentDate'].forEach(function (key) {
@@ -814,7 +829,7 @@
     var title = values.title || values.company || 'Клиент';
     var initials = title.trim().split(/\s+/).slice(0, 2).map(function (part) { return Array.from(part)[0] || ''; }).join('').toUpperCase();
     var hue = Array.from(title).reduce(function (sum, character) { return sum + character.codePointAt(0); }, 0) % 360;
-    var primary = ['title', 'company', 'contact_name', 'phone', 'telegram', 'category', 'city', 'avito_connection_id'];
+    var primary = ['title', 'company', 'contact_name', 'phone', 'telegram', 'vk', 'category', 'city', 'avito_connection_id'];
     var fields = FIELDS.filter(function (field) { return primary.indexOf(field[0]) >= 0; }).map(function (field) { return fieldHtml(field, values); }).join('');
     var secondary = FIELDS.filter(function (field) { return primary.indexOf(field[0]) < 0 && field[0] !== 'notes'; }).map(function (field) { return fieldHtml(field, values); }).join('');
     var notes = fieldHtml(FIELDS.find(function (field) { return field[0] === 'notes'; }), values);
@@ -849,6 +864,7 @@
       var target = event.target, name = target && (target.name || target.getAttribute && target.getAttribute('name'));
       var paymentKey = target && target.getAttribute && target.getAttribute('data-manual-payment');
       if (paymentKey) { state.manualTouched[paymentKey] = true; state.dirty = true; }
+      if (['phone', 'telegram', 'vk'].indexOf(name) >= 0) { state.contactTouched = state.contactTouched || {}; state.contactTouched[name] = true; }
       if (FIELDS.some(function (field) { return field[0] === name; })) state.dirty = true;
     }
     overlay.addEventListener('input', markDirty);
@@ -978,5 +994,8 @@
   var api = { open: open, close: close, refreshSidebar: refreshSidebar };
   root.ProjectCard = api;
   if (typeof module !== 'undefined' && module.exports) module.exports = { normalize: normalize, safeAvitoUrl: safeAvitoUrl, linkedClient: linkedClient, model: model, accountScore: accountScore, rankedAccounts: rankedAccounts, changedFields: changedFields, assertNoConflict: assertNoConflict, paymentsHtml: paymentsHtml, paymentEditorValues: paymentEditorValues, parseManualPayments: parseManualPayments, paymentTrend: paymentTrend, dashboardHtml: dashboardHtml, save: save, scope: scope, ready: ready, readOnly: readOnly, sameId: sameId, findById: findById, projectForCurrent: projectForCurrent, activityHtml: activityHtml, loadAccounts: loadAccounts, refreshSidebarAccounts: refreshSidebarAccounts, accountAnalytics: accountAnalytics, accountAnalyticsHtml: accountAnalyticsHtml, accountColumns: accountColumns, loadMetrics: loadMetrics };
-  if (document) { if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init(); }
+  if (document) {
+    document.addEventListener('avitolog:chat-contacts-updated', syncChatContacts);
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
+  }
 })(typeof window !== 'undefined' ? window : globalThis);
