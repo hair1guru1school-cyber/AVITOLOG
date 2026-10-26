@@ -489,11 +489,14 @@
     Object.keys(visibility).forEach(function (selector) { Array.prototype.forEach.call(state.legacy.querySelectorAll(selector), function (node) { node.hidden = !visibility[selector]; node.style.display = visibility[selector] ? '' : 'none'; }); });
     state.legacy.hidden = !(state.preferences.calendar || state.preferences.expenses || state.preferences.links);
   }
-  function mountLegacy(state) {
-    if (!mounted(state) || state.legacyMounted || state.profile === 'sasha' || !ready() || typeof legacyRender !== 'function') return;
-    legacyRender(state.legacy);
-    state.legacyMounted = true;
-    applyLegacyVisibility(state);
+  function mountLegacy(state, force) {
+    if (!mounted(state) || state.legacyMounting || state.legacyMounted && !force || state.profile === 'sasha' || !ready() || typeof legacyRender !== 'function') return;
+    state.legacyMounting = true;
+    try {
+      legacyRender(state.legacy);
+      state.legacyMounted = true;
+      applyLegacyVisibility(state);
+    } finally { state.legacyMounting = false; }
   }
   function renderStatus(state) {
     var waiting = !ready();
@@ -662,11 +665,11 @@
     if (window.AVITOLOG_ADS_SHARED) pollShared(state);
     return state;
   }
-  function show(host) {
+  function show(host, options) {
     if (!host) return;
     if (active && current(active)) {
       if (mounted(active) && active.host === host) {
-        if (active.legacyMounted && typeof legacyRender === 'function') { legacyRender(active.legacy); applyLegacyVisibility(active); }
+        if (active.legacyMounted && !(options && options.keepLegacy)) mountLegacy(active, true);
       } else {
         active.host = host; empty(host); host.appendChild(active.root);
       }

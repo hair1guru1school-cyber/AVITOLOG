@@ -1157,8 +1157,13 @@ function showClientContentsBack() {
   _analyticsRecentSelectedProjectId = '';
   refreshClientContents(true);
 }
+function clientContentsCanRender(tab) {
+  return !projectsMode && !goalsMode && !agencyMode && !assetsMode && !adsMode && !tasksMode &&
+    !(document.body && document.body.classList && document.body.classList.contains('avito-accounts-mode')) &&
+    (tab === undefined || currentTab === tab);
+}
 async function refreshClientContents(forceFolder) {
-  if (projectsMode || goalsMode || agencyMode || tasksMode) return;
+  if (!clientContentsCanRender()) return;
   var tab = currentTab;
   if (tab !== 'analysis' && tab !== 'presale' && tab !== 'avito1') return;
   var mc = document.getElementById('mainContent');
@@ -1179,7 +1184,7 @@ async function refreshClientContents(forceFolder) {
     } else targetFolderId = pid;
   }
   if (!targetFolderId) {
-    if (projectsMode || goalsMode || agencyMode || tasksMode) return;
+    if (!clientContentsCanRender(tab)) return;
     var headCtrlOnly = '<div class="client-view-switch" id="analyticsRecentSwitch">' +
       '<button type="button" class="client-view-btn' + (_analyticsRecentLimit === 2 ? ' on' : '') + '" title="2 последние" data-limit="2">2</button>' +
       '<button type="button" class="client-view-btn' + (_analyticsRecentLimit === 3 ? ' on' : '') + '" title="3 последние" data-limit="3">3</button>' +
@@ -1205,17 +1210,17 @@ async function refreshClientContents(forceFolder) {
   restoreDriveTokenFromStorage();
   if (!_driveToken && !getStoredDriveAuth()) {
     _refreshClientContentsInFlight = false;
-    if (projectsMode || goalsMode || agencyMode || tasksMode) return;
+    if (!clientContentsCanRender(tab)) return;
     var headNeedAuth = '<div class="client-contents-head"><div class="client-contents-title">' + (getAnalyticsRecentTitle() || 'Недавние') + '</div></div>';
     mc.innerHTML = '<div class="client-contents">' + headNeedAuth + buildAnalyticsRecentProjectsBlock() +
       '<div class="empty-st" style="padding:24px 0"><div style="font-size:36px;opacity:.2">&#128194;</div><p style="font-size:14px">Войдите в Google Drive</p><p style="font-size:12px;opacity:.7;margin-top:6px">Нажмите кнопку 🔑 Drive в шапке страницы, чтобы загрузить папку</p><button type="button" class="btn-back-inline" onclick="refreshClientContents(true)" style="margin-top:12px">Повторить</button></div></div>';
     wireAnalyticsRecentControls();
     return;
   }
-  if (projectsMode || goalsMode || agencyMode || tasksMode) return;
+  if (!clientContentsCanRender(tab)) return;
   mc.innerHTML = '<div class="empty-st"><div class="spinner" style="margin:0 auto"></div><p style="font-size:13px">Загружаю содержимое папки...</p></div>';
   var safetyTmr = setTimeout(function() {
-    if (_refreshClientContentsInFlight && !projectsMode && !goalsMode && !agencyMode && !tasksMode && mc) {
+    if (_refreshClientContentsInFlight && clientContentsCanRender(tab) && mc) {
       _refreshClientContentsInFlight = false;
       var headCtrlSt = '<div class="client-view-switch" id="analyticsRecentSwitch"><button type="button" class="client-view-btn" data-limit="2">2</button><button type="button" class="client-view-btn" data-limit="3">3</button><button type="button" class="client-view-btn" data-limit="5">5</button><button type="button" class="client-view-btn" data-limit="8">8</button><button type="button" class="client-view-btn" data-limit="10">10</button><button type="button" class="client-view-btn" data-limit="15">15</button><button type="button" class="client-view-btn" data-limit="20">20</button><button type="button" class="client-view-btn" data-limit="all">&#8734;</button></div>';
       var headSt = '<div class="client-contents-head"><div class="client-contents-title">' + (getAnalyticsRecentTitle() || 'Недавние') + '</div>' + headCtrlSt + '</div>';
@@ -1236,7 +1241,7 @@ async function refreshClientContents(forceFolder) {
     _refreshClientContentsInFlight = false;
     if (loadErr) {
       var mc2 = document.getElementById('mainContent');
-      if (mc2 && !projectsMode && !goalsMode && !agencyMode && !tasksMode) {
+      if (mc2 && clientContentsCanRender(tab)) {
         var headCtrlErr = '<div class="client-view-switch" id="analyticsRecentSwitch">' +
           '<button type="button" class="client-view-btn' + (_analyticsRecentLimit === 2 ? ' on' : '') + '" data-limit="2">2</button>' +
           '<button type="button" class="client-view-btn' + (_analyticsRecentLimit === 3 ? ' on' : '') + '" data-limit="3">3</button>' +
@@ -1258,7 +1263,7 @@ async function refreshClientContents(forceFolder) {
       return;
     }
   }
-  if (projectsMode || goalsMode || agencyMode || tasksMode) return;
+  if (!clientContentsCanRender(tab)) return;
   mc = document.getElementById('mainContent');
   if (!mc) return;
   try {
@@ -1368,7 +1373,7 @@ async function refreshClientContents(forceFolder) {
   } catch (e) {
     console.warn('refreshClientContents render', e);
     var mcx = document.getElementById('mainContent');
-    if (mcx && !projectsMode && !goalsMode && !agencyMode && !tasksMode) {
+    if (mcx && clientContentsCanRender(tab)) {
       var headCatch = '<div class="client-contents-head"><div class="client-contents-title">' + (getAnalyticsRecentTitle() || 'Недавние') + '</div></div>';
       mcx.innerHTML = '<div class="client-contents">' + headCatch + (typeof buildAnalyticsRecentProjectsBlock === 'function' ? buildAnalyticsRecentProjectsBlock() : '') +
         '<div class="empty-st" style="padding:24px 0"><div style="font-size:36px;opacity:.2">&#9888;</div><p style="font-size:14px">Ошибка отображения</p><p style="font-size:12px;opacity:.7">' + String(e && e.message || e) + '</p><button type="button" class="btn-back-inline" onclick="refreshClientContents(true)" style="margin-top:12px">Повторить</button></div></div>';
@@ -1985,6 +1990,7 @@ function buildAvito1Prompt() {
 function renderDoc(html) {
   currentHtml = html;
   docReady = true;
+  if (!clientContentsCanRender()) return;
   var content = currentTab === 'analysis' ? withImg(html) : currentTab === 'presale' ? insertHeaderImg(html, PRESALE_HEADER_IMG) : currentTab === 'avito1' ? insertHeaderImg(html, AVITO1_HEADER_IMG) : html;
   setContent(
     '<div class="doc-wrap">' +

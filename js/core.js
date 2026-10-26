@@ -659,12 +659,11 @@ function ensureAdsRendererLoaded(onReady, onFail) {
 }
 function renderAdsIntoMainContent(mc) {
   if (!mc) return;
-  mc.innerHTML = '';
   mc.style.display = '';
-  mc.scrollTop = 0;
+  if (!mc.querySelector('.ads-dashboard')) mc.scrollTop = 0;
   if (typeof window.__showAdsPage === 'function') {
     try {
-      window.__showAdsPage(mc);
+      window.__showAdsPage(mc, { keepLegacy: true });
     } catch (e) {
       mc.innerHTML = '<div class="empty-st"><div style="font-size:38px;opacity:.25">&#9888;</div><p>ADS</p><p style="font-size:12px;opacity:.7">Ошибка рендера ADS: ' + esc(String((e && e.message) || e || 'unknown')) + '</p></div>';
     }
@@ -673,7 +672,7 @@ function renderAdsIntoMainContent(mc) {
     ensureAdsRendererLoaded(function() {
       if (!adsMode) return;
       if (typeof window.__showAdsPage === 'function') {
-        try { window.__showAdsPage(mc); }
+        try { window.__showAdsPage(mc, { keepLegacy: true }); }
         catch (e) {
           mc.innerHTML = '<div class="empty-st"><div style="font-size:38px;opacity:.25">&#9888;</div><p>ADS</p><p style="font-size:12px;opacity:.7">Ошибка рендера ADS: ' + esc(String((e && e.message) || e || 'unknown')) + '</p></div>';
         }
