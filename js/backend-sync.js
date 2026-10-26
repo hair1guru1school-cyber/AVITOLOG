@@ -1073,6 +1073,9 @@
     if (String(value == null ? '' : value) === String(previousValue == null ? '' : previousValue)) return;
     var scope = pendingWriteScope();
     if (serverOnlyMode && !scope) return;
+    if (serverOnlyMode && initialSyncReady && window.AVITOLOG_EDIT_HISTORY) {
+      try { window.AVITOLOG_EDIT_HISTORY.record(key, String(previousValue == null ? '' : previousValue), String(value == null ? '' : value)); } catch (historyError) {}
+    }
     lastLocalWriteAt = Date.now();
     var enabled = coreKeys[key] ? coreEnabled : (isFinanceKey(key) ? financeEnabled : (isContentKey(key) && contentEnabled));
     if (!enabled && !serverOnlyMode) return;
@@ -1317,6 +1320,57 @@
     return response.json();
   }
   window.__avitologReadAgencyAds = function () { return agencyAdsRpc('read_agency_ads'); };
+  window.__avitologApplyEditHistory = async function (edits, direction) {
+    var scope = pendingWriteScope(), history = window.AVITOLOG_EDIT_HISTORY;
+    if (!serverOnlyMode || !initialSyncReady || !scope || isServerOnlySashaViewer() || !history || !Array.isArray(edits) || !edits.length || edits.length > 12 || !/^(undo|redo)$/.test(direction)) throw new Error('history_unavailable');
+    var keys = edits.map(function (edit) { if (!edit || !history.allowed(edit.key) || !isCurrentProfileWritableKey(edit.key)) throw new Error('history_forbidden'); return edit.key; });
+    function busy() { return keys.some(function (key) { return pendingWrites[key] || writeInFlight[key]; }); }
+    for (var wait = 0; busy() && wait < 50; wait++) await new Promise(function (resolve) { setTimeout(resolve, 100); });
+    if (busy()) throw new Error('history_pending');
+    var rows = await readRemote();
+    if (scope !== pendingWriteScope()) throw new Error('context_changed');
+    var updates = edits.map(function (edit) {
+      var row = rows.find(function (item) { return item.storage_key === edit.key; });
+      if (!row || !row.revision) throw new Error('history_conflict');
+      var current = JSON.parse(row.value_text), next = history.apply(current, edit.ops, direction);
+      if ((isProjectsStorageKey(edit.key) || isGoalsStorageKey(edit.key)) && (!next || !Array.isArray(next.projects)) || (isClientsStorageKey(edit.key) || /^crm_tasks_v1/.test(edit.key)) && !Array.isArray(next)) throw new Error('history_conflict');
+      if (isProjectsStorageKey(edit.key)) {
+        (next.projects || []).forEach(function (project) {
+          var previous = (current.projects || []).find(function (item) { return item.id === project.id; });
+          if (previous && (previous.zone || 'active') !== (project.zone || 'active')) {
+            if (typeof window.setProjectZoneIntent !== 'function') throw new Error('history_unavailable');
+            window.setProjectZoneIntent(project, project.zone || 'active');
+          }
+        });
+      }
+      return { key: edit.key, expected_revision: row.revision, value: JSON.stringify(next) };
+    });
+    if (busy()) throw new Error('history_pending');
+    var response = await authFetch(cfg.url + '/rest/v1/rpc/compare_and_swap_frontend_edits', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ p_edits: updates }) }, scope);
+    if (!response.ok) { var message = await response.text(); throw new Error(/40001|conflict/i.test(message) ? 'history_conflict' : 'history_save_failed'); }
+    var saved = await response.json();
+    if (scope !== pendingWriteScope()) throw new Error('context_changed');
+    if (!Array.isArray(saved) || saved.length !== updates.length) throw new Error('history_save_failed');
+    saved.forEach(function (row) { rememberRevision(row.storage_key, row.revision); });
+    var applied = [];
+    updates.forEach(function (item) {
+      if (pendingWrites[item.key] || writeInFlight[item.key]) return;
+      try {
+      applyStorageValue(item.key, item.value); applied.push(item.key);
+      if (isClientsStorageKey(item.key) && typeof window.__crmClientsApplyBackendValue === 'function') window.__crmClientsApplyBackendValue(item.key, item.value);
+      if (isGoalsStorageKey(item.key) && typeof window.__goalsApplyBackendValue === 'function') window.__goalsApplyBackendValue(item.key, item.value);
+      if (isClientsStorageKey(item.key) && typeof window.getActiveClient === 'function') {
+        var activeClient = window.getActiveClient(), clients = JSON.parse(item.value);
+        var match = activeClient && clients.find(function (client) { return activeClient.client_id ? client.client_id === activeClient.client_id : activeClient.folderId && client.folderId === activeClient.folderId; });
+        if (match) { if (typeof window.fillClientForm === 'function') window.fillClientForm(match); if (typeof window.setActiveClient === 'function') window.setActiveClient(match); }
+      }
+      } catch (historyViewError) { console.warn('History saved; view refresh is pending'); }
+    });
+    refreshOpenScreensAfterRemoteApply(applied, []);
+    try { if (typeof window.crmTaskRender === 'function') window.crmTaskRender(); } catch (historyTaskViewError) {}
+    document.dispatchEvent(new CustomEvent('avitolog:backend-remote-applied', { detail: { keys: applied, undoRedo: true } }));
+    return true;
+  };
   window.__avitologSaveAgencyAdsSettings = function (ids, mapping) {
     if (window.AVITOLOG_KEY_SUFFIX === '_sasha') return Promise.reject(new Error('read_only'));
     return agencyAdsRpc('save_agency_ads_settings', { p_selected: ids, p_source_map: mapping });
