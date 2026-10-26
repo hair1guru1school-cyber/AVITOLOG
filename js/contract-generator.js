@@ -1160,6 +1160,7 @@
   }
 
   function renderContractForm(container, onGenerate, onClear) {
+    var serviceTermBinding = window.CrmSoldProjects && window.CrmSoldProjects.captureContractContext();
     var state = {
       fio: '',
       companyName: '',
@@ -1339,7 +1340,7 @@
       '<input type="text" id="contract-manual-fio" class="contract-ai-input contract-manual-fio" autocomplete="name" placeholder="ФИО заказчика">' +
       '</div>' +
       '<div class="contract-toolbar-row contract-toolbar-row-secondary" id="contractToolbarSecondary" style="display:none">' +
-      '<button type="button" class="btn-gen contract-toolbar-btn" style="width:auto;min-width:0;flex:0 0 auto;display:inline-flex;padding:6px 12px;margin:0;border-radius:8px" onclick="window.__contractGenerate&&window.__contractGenerate()"><span>&#9889;</span> Сгенерировать договор</button>' +
+      '<button type="button" class="btn-gen contract-toolbar-btn" style="width:auto;min-width:0;flex:0 0 auto;display:inline-flex;padding:6px 12px;margin:0;border-radius:8px" onclick="window.__contractGenerate&&window.__contractGenerate({recordServiceTerm:true})"><span>&#9889;</span> Сгенерировать договор</button>' +
       '<div class="contract-mobile-tools" title="Мобильный зум и точное касание">' +
       '<button type="button" class="contract-mobile-tool-btn" onclick="window.__contractPreviewZoom&&window.__contractPreviewZoom(-0.1)">−</button>' +
       '<button type="button" class="contract-mobile-tool-btn contract-mobile-zoom-label" onclick="window.__contractPreviewZoom&&window.__contractPreviewZoom(0,true)" id="contractPreviewZoomLabel">100%</button>' +
@@ -1784,7 +1785,10 @@
     }
     setHeaderGender(savedContractDraft && savedContractDraft.headerGender ? savedContractDraft.headerGender : 'm');
 
-    window.__contractGenerate = function() {
+    window.__contractRememberServiceTerm = function(data) {
+      return serviceTermBinding && window.CrmSoldProjects ? window.CrmSoldProjects.rememberContractTerm(data, serviceTermBinding) : { ok: false };
+    };
+    window.__contractGenerate = function(options) {
       var d = getFormData();
       saveContractDraft(d);
       var fmt = function(x) {
@@ -1796,6 +1800,11 @@
       d.startDate = fmt(d.startDate) || d.startDate;
       d.endDate = fmt(d.endDate) || d.endDate;
       onGenerate(d);
+      if (options && options.recordServiceTerm && serviceTermBinding && window.CrmSoldProjects) {
+        var savedTerm = window.__contractRememberServiceTerm(d);
+        var termStatus = document.getElementById('contractSaveStatus');
+        if (termStatus) termStatus.textContent = savedTerm.ok ? 'Срок ведения: ' + savedTerm.days + ' дн. Сохранён для новых проектов.' : 'Договор сформирован. Срок не привязан к клиенту; календарь не изменён.';
+      }
     };
 
     window.__contractClear = function() {
@@ -2428,6 +2437,7 @@
         var htmlForExport = await inlineExportImages(lastGeneratedHtml);
         var mhtml = buildWordMhtml(htmlForExport);
         triggerBlobDownload(new Blob([mhtml], { type: 'application/msword;charset=utf-8' }), fileName);
+        if (window.__contractRememberServiceTerm) window.__contractRememberServiceTerm(lastGeneratedData);
         if (st) st.textContent = '✓ Скачан файл: ' + fileName;
       } catch (error) {
         if (st) st.textContent = 'Ошибка скачивания: ' + String((error && error.message) || error);
@@ -2474,6 +2484,7 @@
           if (st) st.textContent = 'Сохраняю в Google Docs...';
           await getDriveToken();
           var res = await driveCreateGoogleDoc(docName, wrapContractHtml(htmlForExport), ctx.folderId);
+          if (window.__contractRememberServiceTerm) window.__contractRememberServiceTerm(lastGeneratedData);
           if (st) {
             var link = res && res.webViewLink ? String(res.webViewLink) : '';
             st.innerHTML = link
@@ -2482,6 +2493,7 @@
           }
         } else {
           downloadDocLocal(docName, htmlForExport);
+          if (window.__contractRememberServiceTerm) window.__contractRememberServiceTerm(lastGeneratedData);
           if (st) st.textContent = '✓ Скачан .doc файл';
         }
       } catch (e) {
@@ -2532,6 +2544,7 @@
         var contractHtml = await inlineExportImages(lastGeneratedDocs && lastGeneratedDocs.contract ? lastGeneratedDocs.contract : lastGeneratedHtml);
         var contractBlob = await htmlToPdfBlob(contractHtml, contractName);
         var contractResult = await driveUploadBlob(contractName, contractBlob, 'application/pdf', ctx.folderId);
+        if (window.__contractRememberServiceTerm) window.__contractRememberServiceTerm(lastGeneratedData);
         var appendixResult = null;
         if (lastGeneratedDocs && lastGeneratedDocs.appendix) {
           var appendixHtml = await inlineExportImages(lastGeneratedDocs.appendix);

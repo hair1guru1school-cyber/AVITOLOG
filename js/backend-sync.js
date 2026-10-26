@@ -629,6 +629,22 @@
     if (unescape(encodeURIComponent(JSON.stringify(out))).length > 5 * 1024 * 1024) throw new Error('Project context is too large; the unsaved draft is retained');
     return out;
   }
+  function preserveManualProjectZone(remote, previous, next, out) {
+    var marker = next.zoneIntentV1, remoteMarker = remote.zoneIntentV1, previousMarker = previous.zoneIntentV1;
+    var remoteParent = remoteMarker && remoteMarker.id || '';
+    var causal = marker && (marker.parentId === remoteParent || Array.isArray(marker.ancestorIds) && marker.ancestorIds.length <= 16 && marker.ancestorIds.indexOf(remoteParent) !== -1);
+    var intended = marker && marker.version === 1 && marker.source === 'manual' &&
+      typeof marker.id === 'string' && marker.id.length > 0 && marker.id.length <= 200 &&
+      marker.id !== (previousMarker && previousMarker.id) && causal &&
+      ['active', 'second_chance', 'archive'].indexOf(marker.zone) !== -1 && marker.zone === next.zone;
+    if ((out.zone || 'active') !== (remote.zone || 'active') && !intended) {
+      if (Object.prototype.hasOwnProperty.call(remote, 'zone')) out.zone = remote.zone; else delete out.zone;
+    }
+    if (intended) out.zoneIntentV1 = marker;
+    else if (remoteMarker) out.zoneIntentV1 = remoteMarker;
+    else delete out.zoneIntentV1;
+    return out;
+  }
   function mergeProjectRecordByChanges(remoteItem, previousItem, nextItem) {
     if (!remoteItem || !previousItem || !nextItem) return nextItem;
     var out = Object.assign({}, remoteItem);
@@ -644,7 +660,7 @@
       if (field === 'intakeContextV1') return;
       if (stableJson(remoteItem[field]) === stableJson(previousItem[field])) delete out[field];
     });
-    return out;
+    return preserveManualProjectZone(remoteItem, previousItem, nextItem, out);
   }
   function isProjectJournalOnlyChange(previousItem, nextItem) {
     var journals = ['paymentJournalV1', 'intakeContextV1'];
@@ -724,7 +740,7 @@
       if (Object.prototype.hasOwnProperty.call(next, 'intakeContextV1') && stableJson(previous.intakeContextV1) !== stableJson(next.intakeContextV1)) out.intakeContextV1 = mergeProjectIntakeContext(remote.intakeContextV1, next.intakeContextV1, next.id);
       else if (Object.prototype.hasOwnProperty.call(remote, 'intakeContextV1')) out.intakeContextV1 = remote.intakeContextV1;
       else delete out.intakeContextV1;
-      return out;
+      return preserveManualProjectZone(remote, previous, next, out);
     });
   }
   function mergeProjectsValue(remoteValue, previousValue, nextValue) {
@@ -732,6 +748,11 @@
     var previous = parseJsonValue(previousValue);
     var next = parseJsonValue(nextValue);
     if (!remote || !previous || !next || !Array.isArray(previous.projects) || !Array.isArray(next.projects)) return nextValue;
+    var previousCount = previous.projects.length + (Array.isArray(previous.hiddenProjects) ? previous.hiddenProjects.length : 0);
+    var nextCount = next.projects.length + (Array.isArray(next.hiddenProjects) ? next.hiddenProjects.length : 0);
+    if (previousCount - nextCount >= 3 && Array.isArray(previous.tasks) && Array.isArray(next.tasks) && previous.tasks.length - next.tasks.length >= 3) {
+      throw new Error('Старая копия одновременно убирает проекты и задачи. Запись остановлена; черновик сохранён.');
+    }
     var out = Object.assign({}, remote);
     ['projects', 'hiddenProjects', 'tasks', 'taskLog'].forEach(function (field) {
       if (Array.isArray(next[field]) || Array.isArray(previous[field]) || Array.isArray(remote[field])) {

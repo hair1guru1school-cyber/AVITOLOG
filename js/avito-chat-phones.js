@@ -41,14 +41,18 @@
   }
   function install(win) {
     var bridge = win.AvitoWorkspaceBridge, owner = '', generation = 0, running = null, cursor = 0, pages = Object.create(null), timer;
-    var socials = win.AvitoChatSocials, fields = ['phone'];
+    var socials = win.AvitoChatSocials, insights = win.AvitoChatInsights, fields = ['phone'];
     if (socials && typeof socials.contactsFromMessages === 'function') fields.push('vk', 'telegram');
+    function enabled(name) { return win.CrmSettings ? win.CrmSettings.isEnabled(name) : name === 'autoVk' || name === 'autoTelegram'; }
+    function fieldEnabled(field) { return field === 'phone' || enabled(field === 'vk' ? 'autoVk' : 'autoTelegram'); }
+    function insightOptions() { return { autoChatPositions: enabled('autoChatPositions'), autoAccountDetails: enabled('autoAccountDetails') }; }
+    function wantsInsights() { return insights && (enabled('autoChatPositions') || enabled('autoAccountDetails')); }
     function contact(record, field) {
-      var names = field === 'telegram' ? ['telegram', 'tg'] : field === 'vk' ? ['vk', 'vk_url'] : ['phone'];
+      var names = field === 'telegram' ? ['telegram', 'tg'] : field === 'vk' ? ['vk', 'vk_url'] : field === 'city' ? ['city', 'geo', 'geography'] : field === 'client_type' ? ['client_type', 'clientType'] : [field];
       for (var i = 0; record && i < names.length; i++) if (!blank(record[names[i]])) return text(record[names[i]]).trim();
       return '';
     }
-    function missing(record) { return fields.some(function (field) { return blank(contact(record, field)); }); }
+    function missing(record) { return wantsInsights() || fields.some(function (field) { return fieldEnabled(field) && blank(contact(record, field)); }); }
     function key(base) { return typeof win.AVITOLOG_KEY === 'function' ? win.AVITOLOG_KEY(base) : base; }
     function context() {
       if (!bridge || win.AVITOLOG_BACKEND_MODE && win.AVITOLOG_BACKEND_INITIAL_SYNC_READY !== true) return '';
@@ -90,11 +94,13 @@
     function mirror(client, token) {
       var imported = {};
       fields.forEach(function (field) {
+        if (!fieldEnabled(field)) return;
         var stamp = field === 'phone' ? client.avitoPhoneImportV1 : client.avitoContactImportV1 && client.avitoContactImportV1[field];
         var value = stamp && (field === 'phone' ? stamp.phone : stamp.value);
         if (stamp && value && value === client[field] && hasChat(client, stamp.chatKey)) imported[field] = { value: value, stamp: stamp };
       });
       var names = Object.keys(imported);
+      mirrorInsights(client, token);
       if (!names.length) return;
       assertCurrent(token);
       syncActive(client, names, token);
@@ -129,6 +135,40 @@
         assertCurrent(token);
         win.document.dispatchEvent(new win.CustomEvent('avitolog:chat-contacts-updated', { detail: { clientId: text(client.client_id), fields: names } }));
       }
+    }
+    function selectedFacts(facts) {
+      return { positions: enabled('autoChatPositions') && facts && facts.positions || [], cities: enabled('autoAccountDetails') && facts && facts.cities || [], legalTypes: enabled('autoAccountDetails') && facts && facts.legalTypes || [] };
+    }
+    function mirrorInsights(client, token) {
+      var stamp = client.avitoInsightImportV1;
+      if (!wantsInsights() || !stamp || !hasChat(client, stamp.chatKey)) return;
+      var facts = selectedFacts(stamp.facts), changed = false;
+      if (typeof win.loadProjectsData === 'function' && typeof win.saveProjectsData === 'function') {
+        var data = copy(win.loadProjectsData());
+        (data.projects || []).forEach(function (project) {
+          if (!linkedProject(project, client)) return;
+          var base = Object.assign({}, project, project.crmData || {}), patch = insights.buildPatch(base, facts);
+          if (Object.keys(patch).length) { project.crmData = Object.assign({}, project.crmData || {}, patch); changed = true; }
+        });
+        if (changed) { assertCurrent(token); win.saveProjectsData(data); assertCurrent(token); }
+      }
+      var active = typeof win.getActiveClient === 'function' && win.getActiveClient();
+      if (active && text(active.client_id) === text(client.client_id)) {
+        var patch = insights.buildPatch(active, facts), activeKey = key('avitolog_active_client'), stored;
+        try { stored = JSON.parse(win.localStorage.getItem(activeKey) || 'null'); } catch (_) {}
+        Object.keys(patch).forEach(function (field) {
+          var input = win.document.getElementById && win.document.getElementById(field);
+          var previous = text(active[field]);
+          active[field] = patch[field];
+          if (input && input !== win.document.activeElement && text(input.value) === previous) input.value = patch[field];
+        });
+        if (stored && text(stored.client_id) === text(client.client_id)) {
+          var storedPatch = insights.buildPatch(stored, facts);
+          if (Object.keys(storedPatch).length) { assertCurrent(token); win.localStorage.setItem(activeKey, JSON.stringify(Object.assign({}, stored, storedPatch))); }
+        }
+      }
+      assertCurrent(token);
+      win.document.dispatchEvent(new win.CustomEvent('avitolog:chat-insights-updated', { detail: { clientId: text(client.client_id) } }));
     }
     async function scan() {
       var token = capture();
@@ -171,13 +211,13 @@
               if (!valid(token)) return;
               if (!page && pages[target.identity] === undefined) pages[target.identity] = result && result.pagination && result.pagination.has_more ? 50 : 0;
               if (page) pages[target.identity] = result && result.pagination && result.pagination.has_more && offset < 1000 ? offset + 50 : 0;
-              if (!Object.keys(candidates).length) continue;
+              if (!Object.keys(candidates).length && !wantsInsights()) continue;
               var rows = clients().slice(), matches = rows.filter(function (client) { return hasChat(client, target.identity); });
               if (matches.length !== 1 || text(matches[0].client_id) !== target.clientId) break;
               var changed = Object.assign({}, matches[0]), applied = [], importedAt = new Date().toISOString();
               fields.forEach(function (field) {
                 var value = candidates[field];
-                if (!value || !value.value || !blank(contact(matches[0], field))) return;
+                if (!fieldEnabled(field) || !value || !value.value || !blank(contact(matches[0], field))) return;
                 changed[field] = value.value; applied.push(field);
                 if (field === 'phone') changed.avitoPhoneImportV1 = { phone: value.value, chatKey: target.identity, messageId: value.messageId, importedAt: importedAt };
                 else {
@@ -185,6 +225,13 @@
                   changed.avitoContactImportV1[field] = { value: value.value, chatKey: target.identity, messageId: value.messageId, importedAt: importedAt };
                 }
               });
+              if (wantsInsights()) {
+                var facts = insights.extractFacts(result && result.messages, target.account, null, insightOptions());
+                if (enabled('autoAccountDetails')) facts.legalTypes = facts.legalTypes.concat(insights.extractNameFacts([changed.company, changed.contact_name].join(' ')).legalTypes);
+                var insightPatch = insights.buildPatch(changed, facts);
+                Object.keys(insightPatch).forEach(function (field) { changed[field] = insightPatch[field]; applied.push(field); });
+                if (Object.keys(insightPatch).length) changed.avitoInsightImportV1 = { chatKey: target.identity, importedAt: importedAt, facts: facts };
+              }
               if (!applied.length) continue;
               rows[rows.indexOf(matches[0])] = changed;
               assertCurrent(token); win.saveCrmClients(rows); assertCurrent(token);
@@ -202,6 +249,7 @@
     function schedule() { if (timer) win.clearTimeout(timer); timer = win.setTimeout(function () { timer = null; scan(); }, 1500); }
     win.document.addEventListener('avitolog:workspace-reset', reset);
     win.document.addEventListener('avitolog:backend-initial-ready', schedule);
+    win.document.addEventListener('avitolog:crm-settings-changed', schedule);
     win.document.addEventListener('avitolog:storage-write', function (event) { if (event.detail && event.detail.key === key('avitolog_clients')) schedule(); });
     win.document.addEventListener('visibilitychange', function () { if (win.document.visibilityState !== 'hidden') schedule(); });
     win.setInterval(function () { capture(); scan(); }, 60000); schedule();

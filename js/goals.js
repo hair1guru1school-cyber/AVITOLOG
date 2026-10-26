@@ -3126,7 +3126,8 @@
       try { checkMonthlyTotalAchievements(loadData(), cur.date, cur.name || cur.title || ''); } catch (eAch) {}
       syncGoalToKassaIfReady(cur);
       try {
-        if (typeof window.__goalsCreateActiveFromSold === 'function') window.__goalsCreateActiveFromSold(cur.id);
+        if (window.CrmSoldProjects) window.CrmSoldProjects.onSold(cur);
+        else if (typeof window.__goalsCreateActiveFromSold === 'function') window.__goalsCreateActiveFromSold(cur.id);
       } catch (eAct) {}
       render();
       return true;
@@ -3178,6 +3179,7 @@
     if (!saveData(data)) return false;
     try { checkMonthlyTotalAchievements(loadData(), copy.date || getTodayISO(), copy.name || copy.title || ''); } catch (eAch2) {}
     syncGoalToKassaIfReady(copy);
+    try { if (window.CrmSoldProjects) window.CrmSoldProjects.onSold(copy); } catch (eProject) {}
     render();
     return true;
   }

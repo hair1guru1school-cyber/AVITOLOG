@@ -636,9 +636,11 @@
     var project = hasId(state.projectId) ? findById(getProjects().projects, 'id', state.projectId) : null;
     if (hasId(state.projectId) && (!project || !sameId((linkedClient(project, clients) || {}).client_id, clientId))) return;
     var latest = model(project, client);
-    ['phone', 'telegram', 'vk'].forEach(function (key) {
+    var isInsight = event.type === 'avitolog:chat-insights-updated';
+    (isInsight ? ['notes', 'positions', 'city', 'client_type'] : ['phone', 'telegram', 'vk']).forEach(function (key) {
       var input = state.overlay.querySelector('[name="' + key + '"]');
-      if (!input || input.disabled || document.activeElement === input || state.contactTouched && state.contactTouched[key] || text(input.value).trim() || text(state.before[key]).trim() || !text(latest[key]).trim()) return;
+      if (!input || input.disabled || document.activeElement === input || state.contactTouched && state.contactTouched[key] || !text(latest[key]).trim()) return;
+      if (isInsight ? text(input.value) !== text(state.before[key]) : text(input.value).trim() || text(state.before[key]).trim()) return;
       input.value = latest[key];
       state.before[key] = latest[key];
     });
@@ -864,7 +866,7 @@
       var target = event.target, name = target && (target.name || target.getAttribute && target.getAttribute('name'));
       var paymentKey = target && target.getAttribute && target.getAttribute('data-manual-payment');
       if (paymentKey) { state.manualTouched[paymentKey] = true; state.dirty = true; }
-      if (['phone', 'telegram', 'vk'].indexOf(name) >= 0) { state.contactTouched = state.contactTouched || {}; state.contactTouched[name] = true; }
+      if (['phone', 'telegram', 'vk', 'notes', 'positions', 'city', 'client_type'].indexOf(name) >= 0) { state.contactTouched = state.contactTouched || {}; state.contactTouched[name] = true; }
       if (FIELDS.some(function (field) { return field[0] === name; })) state.dirty = true;
     }
     overlay.addEventListener('input', markDirty);
@@ -996,6 +998,7 @@
   if (typeof module !== 'undefined' && module.exports) module.exports = { normalize: normalize, safeAvitoUrl: safeAvitoUrl, linkedClient: linkedClient, model: model, accountScore: accountScore, rankedAccounts: rankedAccounts, changedFields: changedFields, assertNoConflict: assertNoConflict, paymentsHtml: paymentsHtml, paymentEditorValues: paymentEditorValues, parseManualPayments: parseManualPayments, paymentTrend: paymentTrend, dashboardHtml: dashboardHtml, save: save, scope: scope, ready: ready, readOnly: readOnly, sameId: sameId, findById: findById, projectForCurrent: projectForCurrent, activityHtml: activityHtml, loadAccounts: loadAccounts, refreshSidebarAccounts: refreshSidebarAccounts, accountAnalytics: accountAnalytics, accountAnalyticsHtml: accountAnalyticsHtml, accountColumns: accountColumns, loadMetrics: loadMetrics };
   if (document) {
     document.addEventListener('avitolog:chat-contacts-updated', syncChatContacts);
+    document.addEventListener('avitolog:chat-insights-updated', syncChatContacts);
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
   }
 })(typeof window !== 'undefined' ? window : globalThis);

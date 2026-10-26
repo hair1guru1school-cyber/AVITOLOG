@@ -1359,6 +1359,12 @@ function zoneTabDragEnd(e) {
   _zoneTabDragZone = null;
   document.querySelectorAll('.projects-zone-tab.zone-tab-dragging, .projects-zone-tab.zone-tab-drop-target').forEach(function(el){ el.classList.remove('zone-tab-dragging','zone-tab-drop-target'); });
 }
+function setProjectZoneIntent(project, zone) {
+  var previous = project.zoneIntentV1;
+  var parentId = previous && previous.id || '';
+  var ancestors = (previous && Array.isArray(previous.ancestorIds) ? previous.ancestorIds : []).concat(parentId).slice(-16);
+  project.zoneIntentV1 = { version: 1, source: 'manual', id: 'zone_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2), parentId: parentId, ancestorIds: ancestors, zone: zone, at: new Date().toISOString() };
+}
 function moveProjectToZone(projectId, zone) {
   var z = (zone === 'active' || zone === 'second_chance' || zone === 'archive') ? zone : 'active';
   var data = loadProjectsData();
@@ -1368,6 +1374,7 @@ function moveProjectToZone(projectId, zone) {
   if (oldZone === z) return;
   var zoneList = (data.projects || []).filter(function(x){ return (x.zone || 'active') === z; });
   var nextSort = zoneList.length ? Math.max.apply(null, zoneList.map(function(x){ return Number(x.sortOrder) || 0; })) + 1 : 0;
+  setProjectZoneIntent(p, z);
   p.zone = z;
   p.sortOrder = nextSort;
   saveProjectsData(data);
@@ -1396,7 +1403,7 @@ function moveProjectsToZone(projectIds, zone) {
   var nextSort = zoneList.length ? Math.max.apply(null, zoneList.map(function(x){ return Number(x.sortOrder) || 0; })) + 1 : 0;
   (data.projects || []).forEach(function(p){
     if (!idMap[p.id]) return;
-    if ((p.zone || 'active') !== z) changed.push(p.id);
+    if ((p.zone || 'active') !== z) { changed.push(p.id); setProjectZoneIntent(p, z); }
     p.zone = z;
     p.sortOrder = nextSort++;
   });
@@ -1460,6 +1467,7 @@ function restoreProjectFromHidden(projectId) {
   delete p.deletedAt;
   var prevZone = p._hiddenZone || 'archive';
   delete p._hiddenZone;
+  setProjectZoneIntent(p, prevZone);
   p.zone = prevZone;
   var zoneList = (data.projects || []).filter(function(x){ return (x.zone || 'active') === prevZone; });
   p.sortOrder = zoneList.length ? Math.max.apply(null, zoneList.map(function(x){ return Number(x.sortOrder) || 0; })) + 1 : 0;

@@ -311,6 +311,7 @@ function quickEditGoalPrice(projectId) {
 }
 window.__goalsQuickEditPrice = quickEditGoalPrice;
 function addGoalsProjectToActiveProjects(goalProject, addAtTopAndHighlight) {
+  if (window.CrmSoldProjects) return window.CrmSoldProjects.link(goalProject);
   if (!goalProject || !goalProject.name) return;
   if (typeof loadProjectsData !== 'function' || typeof saveProjectsData !== 'function') return;
   var data = loadProjectsData();
@@ -353,6 +354,12 @@ function __goalsCreateActiveFromSold(goalProjectId) {
   try { data = JSON.parse(localStorage.getItem((typeof window.AVITOLOG_KEY === 'function' ? window.AVITOLOG_KEY('avitolog_goals_v1') : 'avitolog_goals_v1')) || '{"projects":[]}'); } catch (e) { return; }
   var p = (data.projects || []).find(function(x){ return x && x.id === goalProjectId && x.stage === 'sold'; });
   if (!p) return;
+  if (window.CrmSoldProjects) {
+    var result = window.CrmSoldProjects.link(p);
+    if (result.message && typeof showAnalyticsReadyToast === 'function') showAnalyticsReadyToast(result.message);
+    if (result.created && !projectsMode && typeof openProjectsTab === 'function') openProjectsTab();
+    return result;
+  }
   addGoalsProjectToActiveProjects(p, true);
   if (typeof showAnalyticsReadyToast === 'function') showAnalyticsReadyToast('✓ СОЗДАН АКТИВНЫЙ проект в ПРОЕКТАХ');
   if (!projectsMode && typeof openProjectsTab === 'function') openProjectsTab();
