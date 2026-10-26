@@ -219,7 +219,7 @@ body.mobile-client-tools-on #mainApp > .layout > .content-wrap {
 body.mobile-client-tools-on #analyticsTopRow { position: relative; top: auto; flex-shrink: 0; }
 body.mobile-client-tools-on #mobileClientTools {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(6, minmax(0, 1fr));
   flex: 0 0 auto;
   align-items: stretch;
   gap: calc(4px / var(--mobile-shell-scale));
@@ -234,21 +234,23 @@ body.mobile-client-tools-on #mobileClientTools {
 body.mobile-client-tools-on #mobileClientTools > .rtab {
   display: inline-flex;
   flex: 0 0 auto;
-  flex-direction: row;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: calc(4px / var(--mobile-shell-scale));
+  gap: calc(2px / var(--mobile-shell-scale));
   width: 100%;
   min-width: 0;
-  min-height: calc(34px / var(--mobile-shell-scale));
-  padding: calc(5px / var(--mobile-shell-scale)) calc(3px / var(--mobile-shell-scale));
+  min-height: calc(38px / var(--mobile-shell-scale));
+  padding: calc(3px / var(--mobile-shell-scale)) calc(1px / var(--mobile-shell-scale));
   border-radius: 10px;
-  font-size: calc(10px / var(--mobile-shell-scale));
+  font-size: calc(9px / var(--mobile-shell-scale));
   letter-spacing: 0;
   white-space: nowrap;
 }
-body.mobile-client-tools-on #mobileClientTools .rtab-ico { font-size: calc(14px / var(--mobile-shell-scale)); }
-body.mobile-client-tools-on #mobileClientTools .rtab-txt { line-height: 1.2; white-space: nowrap; }
+body.mobile-client-tools-on #mobileClientTools .rtab-ico { font-size: calc(12px / var(--mobile-shell-scale)); }
+body.mobile-client-tools-on #mobileClientTools .rtab-txt { line-height: 1.1; white-space: normal; text-align: center; overflow-wrap: anywhere; }
+body.mobile-client-tools-on #extraPromptInp { box-sizing: border-box; min-height: calc(54px / var(--mobile-shell-scale)); padding: calc(9px / var(--mobile-shell-scale)); font-size: calc(16px / var(--mobile-shell-scale)); line-height: 1.4; resize: vertical; }
+body.mobile-client-tools-on #genBtn { min-height: calc(44px / var(--mobile-shell-scale)); padding: calc(8px / var(--mobile-shell-scale)) calc(14px / var(--mobile-shell-scale)); font-size: calc(14px / var(--mobile-shell-scale)); }
 
 /* KP stays focused on its sheet; its selected task project is left intact. */
 body.kp-client-view #taskPanelWrap { display: none !important; }
@@ -285,7 +287,7 @@ body.mobile-client-tools-on.kp-client-view .content-wrap { min-height: 0; }
 }
 
 @media (max-width: 768px) {
-  body.mobile-client-tools-on:not(.sidebar-hidden) #mobileClientTools { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  body.mobile-client-tools-on:not(.sidebar-hidden) #mobileClientTools { grid-template-columns: repeat(6, minmax(0, 1fr)); }
   body.mobile-client-tools-on.mobile-webview-on #mainApp > .layout { grid-template-columns: 300px minmax(0, 1fr) 0; }
   body.mobile-client-tools-on.mobile-webview-on.sidebar-hidden #mainApp > .layout { grid-template-columns: 0 minmax(0, 1fr) 0; }
 }

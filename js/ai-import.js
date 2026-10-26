@@ -1029,6 +1029,24 @@
   };
 
   var ASSETS_LEGACY_KEY = 'avitolog_assets_projects_v1';
+  window.__assetsToggleRowActions = function(button) {
+    var wrap = button.closest('.assets-row-actions');
+    if (!wrap) return;
+    var open = !wrap.classList.contains('is-open');
+    document.querySelectorAll('.assets-row-actions.is-open').forEach(function(other) {
+      other.classList.remove('is-open');
+      other.querySelector('.assets-row-actions-toggle').setAttribute('aria-expanded', 'false');
+    });
+    wrap.classList.toggle('is-open', open);
+    button.setAttribute('aria-expanded', String(open));
+  };
+  document.addEventListener('click', function(event) {
+    if (event.target.closest('.assets-row-actions')) return;
+    document.querySelectorAll('.assets-row-actions.is-open').forEach(function(wrap) {
+      wrap.classList.remove('is-open');
+      wrap.querySelector('.assets-row-actions-toggle').setAttribute('aria-expanded', 'false');
+    });
+  });
   var ASSETS_USD_RATE = 95;
   var _assetsStorageMemoryByKey = {};
   function isAssetsStorageQuotaError(e) {
@@ -2138,9 +2156,9 @@
         '<span class="assets-col-name">' +
           '<span class="assets-col-name-row">' +
             '<input type="text" value="' + esc(p.name || '') + '" placeholder="Проект" data-field="name" oninput="window.__assetsScheduleColRowSave(this)" onblur="window.__assetsSaveColRow(this)">' +
-            folderHtml +
+            '<span class="assets-row-actions"><button type="button" class="assets-row-actions-toggle" aria-label="Действия с проектом" aria-expanded="false" onclick="event.stopPropagation();window.__assetsToggleRowActions(this)">⋯</button><span class="assets-row-actions-items">' + folderHtml +
             '<button type="button" class="assets-status-badge ' + statusCls + '" onclick="window.__assetsCycleClientType(\'' + owner + '\',' + idx + ')" title="Старый/новичок/2-й раз">' + esc(statusBadge) + '</button>' +
-          '</span>' +
+          '</span></span></span>' +
         '</span>' +
         '<span class="assets-col-payment" title="Клик — дата проведённой оплаты. Полоса и дни — до следующей оплаты."><span class="assets-payment-cell"><span class="assets-progress-bar" title="След. платёж"><span class="assets-progress-fill" style="width:' + barPct + '%"></span></span><span class="assets-payment-wrap" onclick="event.stopPropagation();window.__assetsOpenPaymentCalendar&&window.__assetsOpenPaymentCalendar(this,\'' + owner + '\',' + idx + ')"><span class="assets-payment-display">' + esc(payDays) + '</span></span></span></span>';
       if (owner === 'sasha') {
@@ -2148,8 +2166,8 @@
           '<span class="assets-col-extra"><input type="text" value="' + esc(toAgentFmt) + '" placeholder="0" data-field="toAgent" oninput="window.__assetsScheduleColRowSave(this)" onblur="window.__assetsSaveColRow(this)" title="Агенту"></span>' +
           '<span class="assets-col-extra"><input type="text" value="' + esc(aoaFmt) + '" placeholder="0" data-field="aoaPercent" oninput="window.__assetsScheduleColRowSave(this)" onblur="window.__assetsSaveColRow(this)" title="AoA %"></span>';
       } else {
-        base += '<span class="assets-col-paid"><input type="text" value="' + esc(paidFmt) + '" placeholder="0" data-field="paid" oninput="window.__assetsScheduleColRowSave(this)" onkeydown="window.__assetsColEnter(event,this)" onblur="window.__assetsSaveColRow(this)" title="' + (isSashaView ? 'Твоя доля от сделки (сумма «Агенту» с Фила или вручную)' : '') + '"></span>' +
-          '<span class="assets-col-expected"><input type="text" value="' + esc(expectedFmt) + '" placeholder="0" data-field="expected" oninput="window.__assetsScheduleColRowSave(this)" onkeydown="window.__assetsColEnter(event,this)" onblur="window.__assetsSaveColRow(this)"></span>';
+        base += '<span class="assets-col-paid"><input type="text" value="' + esc(paidFmt) + '" placeholder="0" aria-label="Оплатил" data-field="paid" oninput="window.__assetsScheduleColRowSave(this)" onkeydown="window.__assetsColEnter(event,this)" onblur="window.__assetsSaveColRow(this)" title="' + (isSashaView ? 'Твоя доля от сделки (сумма «Агенту» с Фила или вручную)' : '') + '"></span>' +
+          '<span class="assets-col-expected"><input type="text" value="' + esc(expectedFmt) + '" placeholder="0" aria-label="Ожидать" data-field="expected" oninput="window.__assetsScheduleColRowSave(this)" onkeydown="window.__assetsColEnter(event,this)" onblur="window.__assetsSaveColRow(this)"></span>';
       }
       base += '<button type="button" class="assets-col-remove" onclick="window.__assetsRemoveProject(\'' + owner + '\',' + idx + ')" title="Удалить">✕</button>' +
         '</div>';

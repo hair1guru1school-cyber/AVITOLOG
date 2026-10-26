@@ -1302,6 +1302,25 @@
     currentPullScope = scope;
     try { return await task; } finally { if (currentPull === task) { currentPull = null; currentPullScope = ''; } }
   };
+  async function agencyAdsRpc(name, extra) {
+    if (!initialSyncReady) throw new Error('initial_sync_pending');
+    var organization = cfg.profileOrganizations && cfg.profileOrganizations.fil;
+    if (!organization) throw new Error('agency_not_configured');
+    var expected = pendingWriteScope();
+    if (!expected) throw new Error('auth_required');
+    var response = await authFetch(cfg.url + '/rest/v1/rpc/' + name, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(Object.assign({ p_organization_id: organization }, extra || {}))
+    }, expected);
+    if (expected !== pendingWriteScope()) throw new Error('context_changed');
+    if (!response.ok) { var error = new Error(response.status === 401 ? 'auth_required' : response.status === 403 ? 'agency_forbidden' : 'shared_ads_unavailable'); error.status = response.status; throw error; }
+    return response.json();
+  }
+  window.__avitologReadAgencyAds = function () { return agencyAdsRpc('read_agency_ads'); };
+  window.__avitologSaveAgencyAdsSettings = function (ids, mapping) {
+    if (window.AVITOLOG_KEY_SUFFIX === '_sasha') return Promise.reject(new Error('read_only'));
+    return agencyAdsRpc('save_agency_ads_settings', { p_selected: ids, p_source_map: mapping });
+  };
   function refreshVisibleProfile() {
     if (!serverOnlyMode || !initialSyncReady || document.hidden || Date.now() - lastLocalWriteAt < 3500) return;
     window.__avitologBackendPullNow().catch(function (error) { if (isSessionExpiredError(error)) showReauthStatus('Supabase read'); });
