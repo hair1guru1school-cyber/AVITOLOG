@@ -353,10 +353,10 @@ function loadProjectsData(forceReload) {
       _projectsDataMem = null;
       _projectsDataMemKey = null;
     } else if (_projectsDataMem && _projectsDataMemKey === storageKey) {
-      if (!initialPending && applyProjectMarkerClearTombstones(_projectsDataMem)) saveProjectsData(_projectsDataMem);
+      if (!initialPending && !isProjectsReadOnlyView() && applyProjectMarkerClearTombstones(_projectsDataMem)) saveProjectsData(_projectsDataMem);
       return _projectsDataMem;
     }
-    if (typeof window.__projectsMergeCardsFromStorageBackups === 'function') {
+    if (!isProjectsServerOnlyMode() && typeof window.__projectsMergeCardsFromStorageBackups === 'function') {
       try { window.__projectsMergeCardsFromStorageBackups(); } catch (eMerge) {}
     }
     var isSasha = typeof window !== 'undefined' && window.AVITOLOG_IS_SASHA;
@@ -382,13 +382,13 @@ function loadProjectsData(forceReload) {
     if (!serverOnly && data.projects.length < 10 && !isSasha) {
       return getDefaultProjectsData();
     }
-    if (!initialPending && applyProjectMarkerClearTombstones(data)) saveProjectsData(data);
+    if (!initialPending && !isProjectsReadOnlyView() && applyProjectMarkerClearTombstones(data)) saveProjectsData(data);
     if (serverOnly) {
       if (!Array.isArray(data.hiddenProjects)) data.hiddenProjects = [];
       if (!Array.isArray(data.tasks)) data.tasks = [];
       if (!Array.isArray(data.taskLog)) data.taskLog = [];
-      if (!initialPending && applyAoaxAutoloadState(data)) saveProjectsData(data);
-      if (!initialPending && applyProjectsAutoStatuses(data)) saveProjectsData(data);
+      if (!initialPending && !isProjectsReadOnlyView() && applyAoaxAutoloadState(data)) saveProjectsData(data);
+      if (!initialPending && !isProjectsReadOnlyView() && applyProjectsAutoStatuses(data)) saveProjectsData(data);
       _projectsDataMem = data;
       _projectsDataMemKey = storageKey;
       return data;
@@ -516,7 +516,11 @@ function loadProjectsData(forceReload) {
     return getDefaultProjectsData();
   }
 }
+function isProjectsReadOnlyView() {
+  return !!(window.AVITOLOG_BACKEND_MODE && typeof window.__avitologBackendReadOnly === 'function' && window.__avitologBackendReadOnly());
+}
 function saveProjectsData(data, opts) {
+  if (isProjectsReadOnlyView()) { _projectsDataMem = null; _projectsDataMemKey = null; return false; }
   if (!isProjectsServerOnlyMode()) {
     protectKnownProjectTitles(data);
     applyKnownProjectFolderFixes(data);
@@ -4413,9 +4417,10 @@ function renderProjectsScreen(opts) {
   try {
     var data = loadProjectsData();
     var todayStr = getTodayISOmsk();
-    if (ensureAoaxCalendarEventsFromInfo(data)) saveProjectsData(data);
+    if (!isProjectsReadOnlyView() && ensureAoaxCalendarEventsFromInfo(data)) saveProjectsData(data);
   // Повторная миграция !! и Актив на сегодня МСК (правило 00:00 МСК)
   (function migrateCardsToToday() {
+    if (isProjectsReadOnlyView()) return;
     var moved = false;
     (data.projects || []).forEach(function(p) {
       var cd = (p.cardsActiveDate || '').trim();

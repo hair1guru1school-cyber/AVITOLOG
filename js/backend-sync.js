@@ -334,8 +334,10 @@
   function isServerOnlySashaViewer() {
     return serverOnlyMode && window.AVITOLOG_KEY_SUFFIX === '_sasha' && !isBackendSessionSasha();
   }
+  window.__avitologBackendReadOnly = isServerOnlySashaViewer;
   function isCurrentProfileWritableKey(key) {
     var sashaProfile = window.AVITOLOG_KEY_SUFFIX === '_sasha';
+    if (isServerOnlySashaViewer()) return false;
     if (isContentKey(key)) return !sashaProfile;
     return sashaProfile ? isSashaScopedKey(key) : !isSashaScopedKey(key);
   }
@@ -511,6 +513,7 @@
     return !!rev && !!known && rev <= known;
   }
   async function writeKey(key, value, scope) {
+    if (serverOnlyMode && isSashaScopedKey(key) && !isBackendSessionSasha()) throw new Error('Профиль Саши открыт только для просмотра; его данные не изменены');
     var response = await authFetch(cfg.url + '/rest/v1/rpc/upsert_frontend_state', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ p_key: key, p_value: String(value == null ? '' : value) })
@@ -754,6 +757,11 @@
       throw new Error('Старая копия одновременно убирает проекты и задачи. Запись остановлена; черновик сохранён.');
     }
     var out = Object.assign({}, remote);
+    if (next.projectsViewV1 && stableJson(next.projectsViewV1) !== stableJson(previous.projectsViewV1)) {
+      var view = next.projectsViewV1, values = view.values;
+      if (view.version !== 1 || view.profile !== 'sasha' || !values || !Number.isFinite(values.zoom) || values.zoom < .25 || values.zoom > 2 || !Number.isFinite(values.rowHeight) || values.rowHeight < 14 || values.rowHeight > 120 || !Number.isFinite(values.dayPx) || values.dayPx < 14 || values.dayPx > 64 || !Number.isFinite(values.stickyWidth) || values.stickyWidth < 0 || values.stickyWidth > 2200) throw new Error('Invalid project view settings; the draft is retained');
+      out.projectsViewV1 = { version: 1, profile: 'sasha', values: { zoom: values.zoom, rowHeight: values.rowHeight, dayPx: values.dayPx, stickyWidth: values.stickyWidth }, updatedAt: view.updatedAt, updatedBy: view.updatedBy };
+    }
     ['projects', 'hiddenProjects', 'tasks', 'taskLog'].forEach(function (field) {
       if (Array.isArray(next[field]) || Array.isArray(previous[field]) || Array.isArray(remote[field])) {
         out[field] = field === 'projects'
@@ -1205,7 +1213,7 @@
         return;
       }
       var pendingPayload = readPendingPayloadCached(row.storage_key, shadowRows);
-      var hasDirtyCandidate = serverOnlyMode ? !!pendingPayload && pendingWriteMatchesScope(pendingPayload) : isRecentlyDirty(row.storage_key) || pendingPayload;
+      var hasDirtyCandidate = serverOnlyMode ? isCurrentProfileWritableKey(row.storage_key) && !!pendingPayload && pendingWriteMatchesScope(pendingPayload) : isRecentlyDirty(row.storage_key) || pendingPayload;
       if (serverOnlyMode && hasDirtyCandidate) {
         // One write queue owns draft retries, including edits made during a save.
         if (!pendingWrites[row.storage_key]) {
@@ -1294,6 +1302,12 @@
     currentPullScope = scope;
     try { return await task; } finally { if (currentPull === task) { currentPull = null; currentPullScope = ''; } }
   };
+  function refreshVisibleProfile() {
+    if (!serverOnlyMode || !initialSyncReady || document.hidden || Date.now() - lastLocalWriteAt < 3500) return;
+    window.__avitologBackendPullNow().catch(function (error) { if (isSessionExpiredError(error)) showReauthStatus('Supabase read'); });
+  }
+  window.addEventListener('focus', refreshVisibleProfile);
+  document.addEventListener('visibilitychange', refreshVisibleProfile);
   window.__avitologBackendHistory = async function (key, limit) {
     var storageKey = String(key || 'avitolog_clients_sasha');
     var response = await fetch(cfg.url + '/rest/v1/rpc/frontend_state_history', {
@@ -1729,10 +1743,10 @@
               window._projectsDataMem = null;
               window._projectsDataMemKey = null;
             }
-            if (window.projectsMode && typeof window.renderProjectsScreen === 'function') {
-              window.renderProjectsScreen();
-            } else if (window.projectsMode && typeof window.rerenderProjectsPreserveScroll === 'function') {
+            if (window.projectsMode && typeof window.rerenderProjectsPreserveScroll === 'function') {
               window.rerenderProjectsPreserveScroll();
+            } else if (window.projectsMode && typeof window.renderProjectsScreen === 'function') {
+              window.renderProjectsScreen();
             }
           }
           if (hasFinance && window.assetsMode && typeof window.__renderAssetsPage === 'function') {
@@ -1897,15 +1911,16 @@
         if (!isServerOnlySashaViewer()) {
           setStatus('Supabase SERVER: сервер главный · изменения пишутся сразу');
         } else {
-          pullTimer = setInterval(function () {
-            if (document.hidden) return;
-            if (Date.now() - lastLocalWriteAt < 3500) return;
-            window.__avitologBackendPullNow().catch(function (pullError) {
-              if (isSessionExpiredError(pullError)) { showReauthStatus('Supabase read'); return; }
-              setStatus('Ошибка server pull: ' + pullError.message, true);
-            });
-          }, 5000);
+          setStatus('Саша: только просмотр · данные обновляются каждые 5 секунд');
         }
+        pullTimer = setInterval(function () {
+          if (document.hidden) return;
+          if (Date.now() - lastLocalWriteAt < 3500) return;
+          window.__avitologBackendPullNow().catch(function (pullError) {
+            if (isSessionExpiredError(pullError)) { showReauthStatus('Supabase read'); return; }
+            setStatus('Ошибка server pull: ' + pullError.message, true);
+          });
+        }, 5000);
       }
     } catch (error) {
       finishInitialRead({ ok: false, message: error && error.message ? error.message : 'Ошибка загрузки профиля' });
