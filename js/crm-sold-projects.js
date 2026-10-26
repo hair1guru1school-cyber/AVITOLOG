@@ -45,12 +45,13 @@
     return !!fid && same(project.folderId, fid);
   }
   function makeTerm(data, binding, scope, at) {
-    var base = days(data && data.daysManage), extra = String(data && data.extraManageEnabled) === '1' ? days(data.extraManageDays, true) : 0;
-    if (base === null || extra === null || base + extra > 3660 || !binding || !scope) return null;
-    return { format: FORMAT, source: 'contract-explicit-generate', scope: scope, clientId: text(binding.clientId), folderId: text(binding.folderId), managementDays: base + extra, baseDays: base, extraDays: extra, generatedAt: at };
+    var creation = days(data && data.daysCreate), base = days(data && data.daysManage), extra = String(data && data.extraManageEnabled) === '1' ? days(data.extraManageDays, true) : 0;
+    if (creation === null || !binding || !scope) return null;
+    var management = base !== null && extra !== null && base + extra <= 3660 ? base + extra : null;
+    return { format: FORMAT, source: 'contract-explicit-generate', scope: scope, clientId: text(binding.clientId), folderId: text(binding.folderId), creationDays: creation, managementDays: management, baseDays: base, extraDays: extra, generatedAt: at };
   }
   function validTerm(term, goal, client, scope) {
-    if (!term || term.format !== FORMAT || term.source !== 'contract-explicit-generate' || term.scope !== scope || days(term.managementDays) === null || !term.generatedAt) return false;
+    if (!term || term.format !== FORMAT || term.source !== 'contract-explicit-generate' || term.scope !== scope || days(term.creationDays) === null || !term.generatedAt) return false;
     var id = client && client.client_id || goal && goal.crmClientRecordId, fid = client && client.folderId || folder(goal);
     return term.clientId ? same(term.clientId, id) : !!fid && same(term.folderId, fid);
   }
@@ -90,10 +91,14 @@
     }
     var events = Array.isArray(project.events) ? project.events : [];
     if (events.some(function (event) { return event && event.id === eventId; })) return { ok: true, reason: 'already_linked', changed: changed, created: created, projectId: project.id, data: out };
-    if (events.some(function (event) { return event && event.type === 'active_range' && event.source !== 'crm_contract' && text(event.endDate) >= start; })) return { ok: true, reason: 'manual_calendar_preserved', created: created, changed: changed, projectId: project.id, data: out };
-    var end = addDays(start, term.managementDays - 1);
-    project.events = events.concat({ id: eventId, type: 'active_range', startDate: start, endDate: end, source: 'crm_contract', goalId: text(goal.id), paidCycleId: cycle, contractGeneratedAt: term.generatedAt, managementDays: term.managementDays });
-    marker.state = 'scheduled'; marker.days = term.managementDays; marker.startDate = start; marker.endDate = end; project.crmSoldAutomationV1 = marker;
+    if (events.some(function (event) { return event && (event.type === 'active_range' || event.type === 'launch_range') && event.source !== 'crm_contract' && text(event.endDate) >= start; })) return { ok: true, reason: 'manual_calendar_preserved', created: created, changed: changed, projectId: project.id, data: out };
+    var end = addDays(start, Number(term.creationDays));
+    project.events = events.concat(
+      { id: eventId, type: 'launch_range', startDate: start, endDate: end, source: 'crm_contract', goalId: text(goal.id), paidCycleId: cycle, contractGeneratedAt: term.generatedAt, creationDays: Number(term.creationDays) },
+      { id: eventId + '_launch', type: 'not_launched_project_marker', date: end, source: 'crm_contract', goalId: text(goal.id) }
+    );
+    project.status = '\u041e\u0436\u0438\u0434\u0430\u044e\u0442';
+    marker.state = 'scheduled'; marker.kind = 'launch'; marker.days = Number(term.creationDays); marker.startDate = start; marker.endDate = end; project.crmSoldAutomationV1 = marker;
     return { ok: true, reason: 'scheduled', created: created, changed: true, projectId: project.id, data: out };
   }
   function install(win) {
@@ -109,7 +114,7 @@
     function assertScope(expected) { if (!expected || expected !== scope()) throw Error('context_changed'); }
     function clients() { var rows = typeof win.getCrmClients === 'function' ? win.getCrmClients() : []; return Array.isArray(rows) ? rows : []; }
     function message(result) {
-      if (result.reason === 'duration_missing') return '\u041f\u0440\u043e\u0435\u043a\u0442 \u0441\u0432\u044f\u0437\u0430\u043d. \u0421\u0440\u043e\u043a \u0432\u0435\u0434\u0435\u043d\u0438\u044f \u0432 \u0434\u043e\u0433\u043e\u0432\u043e\u0440\u0435 \u043d\u0435 \u043d\u0430\u0439\u0434\u0435\u043d; \u043a\u0430\u043b\u0435\u043d\u0434\u0430\u0440\u044c \u043d\u0435 \u0438\u0437\u043c\u0435\u043d\u0451\u043d.';
+      if (result.reason === 'duration_missing') return '\u041f\u0440\u043e\u0435\u043a\u0442 \u0441\u0432\u044f\u0437\u0430\u043d. \u0421\u0440\u043e\u043a \u0441\u043e\u0437\u0434\u0430\u043d\u0438\u044f \u0432 \u0434\u043e\u0433\u043e\u0432\u043e\u0440\u0435 \u043d\u0435 \u043d\u0430\u0439\u0434\u0435\u043d; \u043a\u0430\u043b\u0435\u043d\u0434\u0430\u0440\u044c \u043d\u0435 \u0438\u0437\u043c\u0435\u043d\u0451\u043d.';
       if (result.reason === 'existing_non_active') return '\u041f\u0440\u043e\u0435\u043a\u0442 \u0443\u0436\u0435 \u0435\u0441\u0442\u044c \u0432 Zzz/\u0430\u0440\u0445\u0438\u0432\u0435. \u0415\u0433\u043e \u043f\u043e\u043b\u043e\u0436\u0435\u043d\u0438\u0435 \u043d\u0435 \u043c\u0435\u043d\u044f\u043b\u043e\u0441\u044c.';
       if (result.reason === 'manual_calendar_preserved') return '\u041f\u0440\u043e\u0435\u043a\u0442 \u0441\u0432\u044f\u0437\u0430\u043d; \u0440\u0443\u0447\u043d\u044b\u0435 \u0434\u0430\u0442\u044b \u043a\u0430\u043b\u0435\u043d\u0434\u0430\u0440\u044f \u0441\u043e\u0445\u0440\u0430\u043d\u0435\u043d\u044b.';
       if (!result.ok) return '\u041d\u0435 \u0443\u0434\u0430\u043b\u043e\u0441\u044c \u043e\u0434\u043d\u043e\u0437\u043d\u0430\u0447\u043d\u043e \u0441\u0432\u044f\u0437\u0430\u0442\u044c \u043f\u0440\u043e\u0435\u043a\u0442. \u0414\u0430\u043d\u043d\u044b\u0435 \u043d\u0435 \u0438\u0437\u043c\u0435\u043d\u0435\u043d\u044b.';
@@ -148,7 +153,7 @@
         var saved = clients().find(function (row) { return same(row.client_id, updated.client_id); });
         if (!saved || JSON.stringify(saved.contractServiceTermV1) !== JSON.stringify(term)) return { ok: false, reason: 'save_unconfirmed' };
         var active = typeof win.getActiveClient === 'function' && win.getActiveClient(); if (active && same(active.client_id, updated.client_id)) active.contractServiceTermV1 = term;
-        return { ok: true, days: term.managementDays };
+        return { ok: true, days: term.creationDays };
       } catch (_) { return { ok: false, reason: 'save_failed' }; }
     }
     var api = { onSold: function (goal) { return link(goal, true); }, link: function (goal) { return link(goal, false); }, captureContractContext: captureContractContext, rememberContractTerm: rememberContractTerm };

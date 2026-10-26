@@ -1803,7 +1803,7 @@
       if (options && options.recordServiceTerm && serviceTermBinding && window.CrmSoldProjects) {
         var savedTerm = window.__contractRememberServiceTerm(d);
         var termStatus = document.getElementById('contractSaveStatus');
-        if (termStatus) termStatus.textContent = savedTerm.ok ? 'Срок ведения: ' + savedTerm.days + ' дн. Сохранён для новых проектов.' : 'Договор сформирован. Срок не привязан к клиенту; календарь не изменён.';
+        if (termStatus) termStatus.textContent = savedTerm.ok ? 'Срок создания: ' + savedTerm.days + ' дн. Сохранён для запуска новых проектов.' : 'Договор сформирован. Срок не привязан к клиенту; календарь не изменён.';
       }
     };
 
