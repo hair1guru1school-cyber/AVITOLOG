@@ -1,0 +1,28 @@
+/* Decorative backgrounds only: no overlays above editable CRM rows. */
+body.goals-mode :is(.goal-block-sold, .goal-block-sold:hover) {
+  background-color: #1b2b25;
+  background-image: url('../icons/crm-sold-outline.svg'), linear-gradient(140deg, rgba(228, 255, 241, .025), transparent 70%);
+  background-repeat: repeat, no-repeat;
+  background-size: 280px 240px, 100% 100%;
+  border-color: rgba(151, 216, 184, .13);
+}
+
+body.goals-mode :is(.goal-block-work, .goal-block-work:hover) {
+  background-color: #2a2722;
+  background-image: url('../icons/crm-working-outline.svg'), linear-gradient(140deg, rgba(255, 236, 210, .025), transparent 70%);
+  background-repeat: repeat, no-repeat;
+  background-size: 280px 240px, 100% 100%;
+  border-color: rgba(220, 190, 145, .13);
+}
+
+body.day-mode.goals-mode :is(.goal-block-sold, .goal-block-sold:hover) {
+  background-color: #f2faf5;
+  background-image: url('../icons/crm-sold-outline.svg'), linear-gradient(rgba(18, 103, 66, .035), rgba(18, 103, 66, .035));
+  border-color: rgba(18, 103, 66, .14);
+}
+
+body.day-mode.goals-mode :is(.goal-block-work, .goal-block-work:hover) {
+  background-color: #fffaf2;
+  background-image: url('../icons/crm-working-outline.svg'), linear-gradient(rgba(153, 108, 45, .035), rgba(153, 108, 45, .035));
+  border-color: rgba(153, 108, 45, .14);
+}

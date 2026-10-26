@@ -640,7 +640,8 @@
     });
     Object.keys(previousItem).forEach(function(field) {
       if (Object.prototype.hasOwnProperty.call(nextItem, field)) return;
-      if (field === 'intakeContextV1') throw new Error('Project context is append-only; the unsaved draft is retained');
+      // Older CRM snapshots may omit context; omission never deletes the server history.
+      if (field === 'intakeContextV1') return;
       if (stableJson(remoteItem[field]) === stableJson(previousItem[field])) delete out[field];
     });
     return out;
@@ -718,10 +719,9 @@
       if (journalOnlyById[id]) return mergeProjectRecordByChanges(remoteById[id], previousById[id], journalOnlyById[id]);
       var remote = remoteById[id], previous = previousById[id], next = nextById[id];
       if (!remote || !previous || !next) return item;
-      if (Object.prototype.hasOwnProperty.call(previous, 'intakeContextV1') && !Object.prototype.hasOwnProperty.call(next, 'intakeContextV1')) throw new Error('Project context is append-only; the unsaved draft is retained');
       // Hidden business edits keep their legacy precedence, but cannot replace newer context.
       var out = Object.assign({}, item);
-      if (stableJson(previous.intakeContextV1) !== stableJson(next.intakeContextV1)) out.intakeContextV1 = mergeProjectIntakeContext(remote.intakeContextV1, next.intakeContextV1, next.id);
+      if (Object.prototype.hasOwnProperty.call(next, 'intakeContextV1') && stableJson(previous.intakeContextV1) !== stableJson(next.intakeContextV1)) out.intakeContextV1 = mergeProjectIntakeContext(remote.intakeContextV1, next.intakeContextV1, next.id);
       else if (Object.prototype.hasOwnProperty.call(remote, 'intakeContextV1')) out.intakeContextV1 = remote.intakeContextV1;
       else delete out.intakeContextV1;
       return out;
