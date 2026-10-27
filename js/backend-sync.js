@@ -841,7 +841,10 @@
     });
     local.projects.forEach(function(item) {
       var id = backendItemId(item);
-      if (id && positions[id] != null) out.projects[positions[id]] = item;
+      if (id && positions[id] != null) {
+        var remoteItem = out.projects[positions[id]];
+        out.projects[positions[id]] = preserveManualProjectZone(remoteItem, remoteItem, item, Object.assign({}, item));
+      }
       else {
         if (id) positions[id] = out.projects.length;
         out.projects.push(item);
