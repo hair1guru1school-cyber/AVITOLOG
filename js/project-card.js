@@ -763,19 +763,22 @@
       FIELDS.forEach(function (field) { if (!selected || selected.indexOf(field[0]) >= 0) next[field[0]] = form[field[0]]; });
       var changes = changedFields(state.before, next);
       var drafts = FIELDS.filter(function (field) { return text(form[field[0]]).trim() !== text(state.before[field[0]]); }).map(function (field) { return field[0]; });
-      var clients = getClients().map(clone), data = clone(getProjects());
-      var project = findById(data.projects, 'id', state.projectId);
-      var client = hasId(state.clientId) ? findById(clients, 'client_id', state.clientId) : findById(clients, 'folderId', state.folderId);
+      var clients, data, project, client, paymentTarget, manual, crmPatch;
+      function prepare(freshProjects, freshClients) {
+      data = clone(freshProjects); clients = freshClients.map(clone);
+      project = findById(data.projects, 'id', state.projectId);
+      client = hasId(state.clientId) ? findById(clients, 'client_id', state.clientId) : findById(clients, 'folderId', state.folderId);
       if (hasId(state.projectId) && !project || !hasId(state.projectId) && !client) throw new Error('Проект или клиент больше не найден. Откройте карту заново.');
-      var paymentTarget = project || client, paymentBaseline = Object.assign({}, state.manualBefore || {});
+      paymentTarget = project || client; var paymentBaseline = Object.assign({}, state.manualBefore || {});
       Object.keys(state.manualTouched || {}).forEach(function (key) {
         if (!Object.prototype.hasOwnProperty.call(paymentTarget.manualPaymentsV1 || {}, key)) paymentBaseline[key] = '';
       });
-      var manual = !selected && state.manualBefore ? parseManualPayments(paymentBaseline, manualPaymentForm(state), paymentTarget.manualPaymentsV1, moscowDay()) : null;
+      manual = !selected && state.manualBefore ? parseManualPayments(paymentBaseline, manualPaymentForm(state), paymentTarget.manualPaymentsV1, moscowDay()) : null;
       if (manual && JSON.stringify(paymentTarget.manualPaymentsV1 || null) !== JSON.stringify(state.manualOverrideBefore || null) && JSON.stringify(paymentTarget.manualPaymentsV1 || null) !== JSON.stringify(state.unconfirmedManual || null)) throw new Error('Итоги оплат изменились в другом окне. Откройте карту заново; ваш черновик пока оставлен здесь.');
       assertNoConflict(Object.assign({}, state.before, state.draftBaselines || {}), model(project, client), changes);
       if (changes.avito_connection_id && !accounts.some(function (account) { return account.id === changes.avito_connection_id; })) throw new Error('Этот аккаунт недоступен в текущем режиме. Выберите доступный аккаунт.');
-      var crmPatch = Object.assign({}, changes); delete crmPatch.title;
+      if (changes.project_group_id && data.projectGroupsV1 && !data.projectGroupsV1.groups.some(function(g) { return g.id === changes.project_group_id && !g.deleted; })) throw new Error('Группа удалена. Выберите другую группу.');
+      crmPatch = Object.assign({}, changes); delete crmPatch.title;
       if (project) {
         project.crmData = Object.assign({}, project.crmData || {}, crmPatch);
         if (Object.prototype.hasOwnProperty.call(changes, 'title')) project.title = changes.title;
@@ -786,7 +789,23 @@
         Object.assign(client, crmPatch);
         if (Object.prototype.hasOwnProperty.call(changes, 'title') && !Object.prototype.hasOwnProperty.call(changes, 'company')) client.company = changes.title;
       }
-      if (manual) paymentTarget.manualPaymentsV1 = manual;
+      if (manual) { paymentTarget.manualPaymentsV1 = manual; if (confirmed) state.unconfirmedManual = clone(manual); }
+      }
+      var confirmed = root.AVITOLOG_BACKEND_SERVER_ONLY && typeof root.__avitologBackendCommitStatePatch === 'function';
+      if (root.AVITOLOG_BACKEND_SERVER_ONLY && !confirmed) throw new Error('Обновите страницу: модуль подтверждённого сохранения ещё не загружен.');
+      if (confirmed) {
+        var projectKey = typeof root.AVITOLOG_KEY === 'function' ? root.AVITOLOG_KEY('avitolog_projects') : 'avitolog_projects';
+        var clientKey = typeof root.AVITOLOG_KEY === 'function' ? root.AVITOLOG_KEY('avitolog_clients') : 'avitolog_clients';
+        await root.__avitologBackendCommitStatePatch(hasId(state.projectId) ? [projectKey, clientKey] : [clientKey], function(values) {
+          ensureScope(state.scope);
+          prepare(values[projectKey] ? JSON.parse(values[projectKey]) : { projects: [] }, values[clientKey] ? JSON.parse(values[clientKey]) : []);
+          var updates = {};
+          if (client && (Object.keys(changes).length || !project && manual)) updates[clientKey] = JSON.stringify(clients);
+          if (project && (Object.keys(changes).length || manual)) updates[projectKey] = JSON.stringify(data);
+          return updates;
+        });
+      } else {
+      prepare(getProjects(), getClients());
       ensureScope(state.scope);
       if (client && (Object.keys(changes).length || !project && manual)) {
         if (typeof root.saveCrmClients !== 'function') throw new Error('Сохранение CRM недоступно.');
@@ -802,6 +821,7 @@
         if (manual) state.unconfirmedManual = clone(manual);
         root.saveProjectsData(data);
         verifyCardWrite(state, 'avitolog_projects', project, Object.assign({}, changes, manual ? { manualPaymentsV1: manual } : {}));
+      }
       }
       ensureScope(state.scope);
       var previousBefore = state.before, previousDraftBaselines = state.draftBaselines || {};

@@ -353,6 +353,7 @@ function loadProjectsData(forceReload) {
       _projectsDataMem = null;
       _projectsDataMemKey = null;
     } else if (_projectsDataMem && _projectsDataMemKey === storageKey) {
+      if (!initialPending && typeof window.__avitologBackendReconcileProjectZones === 'function') window.__avitologBackendReconcileProjectZones(_projectsDataMem);
       if (!initialPending && !isProjectsReadOnlyView() && applyProjectMarkerClearTombstones(_projectsDataMem)) saveProjectsData(_projectsDataMem);
       return _projectsDataMem;
     }
@@ -378,6 +379,7 @@ function loadProjectsData(forceReload) {
       if (serverOnly || isSasha) return { projects: [], hiddenProjects: [], tasks: [], taskLog: [] };
       return getDefaultProjectsData();
     }
+    if (!initialPending && typeof window.__avitologBackendReconcileProjectZones === 'function') window.__avitologBackendReconcileProjectZones(data);
     /** У Саши нет демо-списка Фила: при <10 проектах раньше подставлялся getDefaultProjectsData() (30 строк). */
     if (!serverOnly && data.projects.length < 10 && !isSasha) {
       return getDefaultProjectsData();

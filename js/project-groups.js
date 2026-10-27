@@ -38,6 +38,9 @@
   function install(win){
     var doc=win.document,manager=null,autoTimer=null;
     function data(){
+      if(win.AVITOLOG_BACKEND_SERVER_ONLY&&typeof win.__avitologBackendReadConfirmedProjects==='function'){
+        var confirmed=win.__avitologBackendReadConfirmedProjects();if(confirmed)return confirmed;
+      }
       // Read the confirmed snapshot without invoking calendar normalizers for a group edit.
       if(win.localStorage&&typeof win.AVITOLOG_KEY==='function'){
         var raw=win.localStorage.getItem(win.AVITOLOG_KEY('avitolog_projects'));
@@ -58,27 +61,33 @@
     }
     function options(id){return '<option value="">Без группы</option>'+list().map(function(g){return '<option value="'+escape(g.id)+'"'+(g.id===id?' selected':'')+'>'+escape(g.emoji+' '+g.name)+'</option>';}).join('');}
     function fieldHtml(id){return '<label class="project-card-field project-card-field-wide">Группа проекта<span style="display:flex;gap:6px"><select name="project_group_id" data-project-group-select>'+options(id)+'</select><button type="button" class="project-card-tool" data-project-groups-manage title="Добавить, изменить или удалить группы" aria-label="Управление группами проектов">⚙</button></span></label>';}
-    function commit(next){
+    function commit(update){
       if(!ready()||readonly())throw Error('В этом режиме группы доступны только для просмотра.');
-      if(typeof win.saveProjectsData!=='function'||win.saveProjectsData(next)===false)throw Error('Не удалось сохранить группы.');
+      if(win.AVITOLOG_BACKEND_SERVER_ONLY){
+        if(typeof win.__avitologBackendCommitStatePatch!=='function')throw Error('Обновите страницу для сохранения групп на сервере.');
+        var key=typeof win.AVITOLOG_KEY==='function'?win.AVITOLOG_KEY('avitolog_projects'):'avitolog_projects';
+        return win.__avitologBackendCommitStatePatch([key],function(values){if(!values[key])throw Error('Проекты ещё не загружены.');var next={};next[key]=JSON.stringify(update(JSON.parse(values[key])));return next;}).then(function(){doc.dispatchEvent(new win.CustomEvent('avitolog:project-groups-changed'));});
+      }
+      if(typeof win.saveProjectsData!=='function'||win.saveProjectsData(update(data()))===false)throw Error('Не удалось сохранить группы.');
       doc.dispatchEvent(new win.CustomEvent('avitolog:project-groups-changed'));
     }
-    function ensureAuto(){if(!ready()||readonly())return;var plan=autoPlan(data());if(plan.changed)commit(plan.data);}
-    function scheduleAuto(){clearTimeout(autoTimer);autoTimer=setTimeout(function(){try{ensureAuto();}catch(e){/* The existing save status retains any unsaved draft. */}},100);}
+    function ensureAuto(){if(!ready()||readonly())return;var plan=autoPlan(data());if(plan.changed)return commit(function(fresh){return autoPlan(fresh).data;});}
+    function scheduleAuto(){clearTimeout(autoTimer);autoTimer=setTimeout(function(){try{Promise.resolve(ensureAuto()).catch(function(){});}catch(e){/* The existing save status retains any unsaved draft. */}},100);}
     function close(){if(manager){var focus=manager.focus;manager.node.remove();manager=null;if(focus&&focus.isConnected)focus.focus();}}
     function openManager(onChange){
       if(!ready()||readonly())return;close();var owner=scope(),node=doc.createElement('div');node.className='project-groups-overlay';node.style.cssText='position:fixed;inset:0;z-index:18500;display:grid;place-items:center;background:#0008;padding:16px';
       node.innerHTML='<section role="dialog" aria-modal="true" aria-label="Группы проектов" style="box-sizing:border-box;width:min(780px,96vw);max-height:90dvh;overflow:auto;padding:18px;border:1px solid var(--border,#345);border-radius:14px;background:var(--surface,#142132);color:var(--text,#fff)"><div style="display:flex;justify-content:space-between;align-items:center"><h3>Группы проектов</h3><button type="button" data-close aria-label="Закрыть группы">×</button></div><p style="font-size:12px;color:var(--muted,#abc)">Группы общие для карт в текущем режиме. Удаление группы оставляет проекты без группы; сами проекты и оплаты сохраняются.</p><div data-group-list></div><form data-group-add style="display:flex;flex-wrap:wrap;gap:6px;margin-top:12px"><input name="emoji" aria-label="Эмоджи новой группы" value="📦" maxlength="24" style="width:54px"><input name="name" aria-label="Название новой группы" placeholder="Новая группа" maxlength="80" required style="flex:1;min-width:130px"><input name="color" aria-label="Цвет новой группы" type="color" value="#54b8ff"><button type="submit">Добавить</button></form><p data-status role="status" style="font-size:12px"></p></section>';
       manager={node:node,scope:owner,focus:doc.activeElement};doc.body.appendChild(node);
       var style=doc.createElement('style');style.textContent='.project-groups-overlay input,.project-groups-overlay button{box-sizing:border-box;min-height:34px;padding:6px 9px;border:1px solid var(--border,#345);border-radius:6px;background:var(--surface2,#1b2b3e);color:var(--text,#fff);font:inherit}.project-groups-overlay input[type=color]{width:42px;padding:3px}.project-groups-overlay button{cursor:pointer}.project-groups-overlay h3{margin:0 0 8px}';node.appendChild(style);
-      function perform(action,item){try{if(scope()!==owner)throw Error('Режим изменился. Откройте группы заново.');commit(mutate(data(),action,item));render();if(onChange)onChange();node.querySelector('[data-status]').textContent='Изменения отправлены на сохранение.';return true;}catch(e){node.querySelector('[data-status]').textContent=e.message;return false;}}
+      var busy=false;
+      async function perform(action,item){if(busy)return false;busy=true;node.querySelectorAll('input,button').forEach(function(el){el.disabled=true;});node.querySelector('[data-status]').textContent='Сохраняем…';try{if(scope()!==owner)throw Error('Режим изменился. Откройте группы заново.');await commit(function(fresh){return mutate(fresh,action,item);});if(!node.isConnected||scope()!==owner)return false;render();if(onChange)onChange();node.querySelector('[data-status]').textContent=win.AVITOLOG_BACKEND_SERVER_ONLY?'Сохранено на сервере.':'Группы сохранены.';return true;}catch(e){if(node.isConnected)node.querySelector('[data-status]').textContent=e.message;return false;}finally{busy=false;if(node.isConnected)node.querySelectorAll('input,button').forEach(function(el){el.disabled=false;});}}
       function render(){var host=node.querySelector('[data-group-list]');host.replaceChildren();list().forEach(function(g){
         var row=doc.createElement('form');row.style.cssText='display:flex;flex-wrap:wrap;gap:6px;padding:8px 0;border-bottom:1px solid var(--border,#345)';
         row.innerHTML='<input name="emoji" aria-label="Эмоджи группы '+escape(g.name)+'" value="'+escape(g.emoji)+'" maxlength="24" style="width:54px"><input name="name" aria-label="Название группы '+escape(g.name)+'" value="'+escape(g.name)+'" maxlength="80" required style="flex:1;min-width:130px"><input name="color" aria-label="Цвет группы '+escape(g.name)+'" type="color" value="'+escape(g.color)+'"><button type="submit">Сохранить</button><button type="button" data-delete>Удалить</button>';
-        row.onsubmit=function(e){e.preventDefault();perform('update',{id:g.id,name:row.elements.name.value,emoji:row.elements.emoji.value,color:row.elements.color.value});};
+        row.onsubmit=function(e){e.preventDefault();var patch={id:g.id};['name','emoji','color'].forEach(function(key){if(row.elements[key].value!==g[key])patch[key]=row.elements[key].value;});perform('update',patch);};
         row.querySelector('[data-delete]').onclick=function(e){var b=e.currentTarget;if(b.dataset.confirm!=='yes'){b.dataset.confirm='yes';b.textContent='Подтвердить удаление';return;}perform('delete',{id:g.id});};host.appendChild(row);
       });}
-      node.querySelector('[data-close]').onclick=close;node.querySelector('[data-group-add]').onsubmit=function(e){e.preventDefault();var f=e.currentTarget;if(perform('add',{id:'custom_'+win.crypto.randomUUID(),name:f.elements.name.value,emoji:f.elements.emoji.value,color:f.elements.color.value}))f.elements.name.value='';};
+      node.querySelector('[data-close]').onclick=close;node.querySelector('[data-group-add]').onsubmit=async function(e){e.preventDefault();var f=e.currentTarget;if(await perform('add',{id:'custom_'+win.crypto.randomUUID(),name:f.elements.name.value,emoji:f.elements.emoji.value,color:f.elements.color.value}))f.elements.name.value='';};
       node.addEventListener('keydown',function(e){if(e.key==='Escape'){e.preventDefault();e.stopPropagation();close();}if(e.key==='Tab'){var els=Array.from(node.querySelectorAll('button,input')).filter(function(el){return !el.disabled;});if(e.shiftKey&&doc.activeElement===els[0]){e.preventDefault();els[els.length-1].focus();}else if(!e.shiftKey&&doc.activeElement===els[els.length-1]){e.preventDefault();els[0].focus();}}});render();node.querySelector('[data-close]').focus();
     }
     if(doc){['avitolog:backend-initial-ready','avitolog:backend-remote-applied'].forEach(function(event){doc.addEventListener(event,scheduleAuto);});doc.addEventListener('avitolog:workspace-reset',function(){if(manager&&manager.scope!==scope())close();scheduleAuto();});if(doc.readyState==='loading')doc.addEventListener('DOMContentLoaded',scheduleAuto);else scheduleAuto();}

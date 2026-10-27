@@ -13,6 +13,8 @@
   var timers = {};
   var pendingWrites = {};
   var writeInFlight = {};
+  var statePatchLocks = {};
+  var confirmedProjectSnapshots = {};
   var appliedRevisions = {};
   var statusEl;
   var persistentSessionKey = 'avitolog_backend_session_v1';
@@ -290,6 +292,9 @@
     return name === 'QuotaExceededError' || name === 'NS_ERROR_DOM_QUOTA_REACHED' || /exceeded the quota|quota/i.test(message);
   }
   function applyStorageValue(key, value) {
+    if (serverOnlyMode && isProjectsStorageKey(key)) {
+      try { confirmedProjectSnapshots[key] = { scope: pendingWriteScope(), data: JSON.parse(value) }; } catch (snapshotError) {}
+    }
     var target = window.AVITOLOG_BACKEND_STORAGE_TARGET;
     var prefix = typeof window.AVITOLOG_BACKEND_STORAGE_PREFIX === 'string' ? window.AVITOLOG_BACKEND_STORAGE_PREFIX : 'sb_backend::';
     try {
@@ -648,6 +653,28 @@
     else delete out.zoneIntentV1;
     return out;
   }
+  window.__avitologBackendReconcileProjectZones = function(data) {
+    var key = window.AVITOLOG_KEY_SUFFIX === '_sasha' ? 'avitolog_projects_sasha' : 'avitolog_projects';
+    var saved = confirmedProjectSnapshots[key];
+    if (!serverOnlyMode || !initialSyncReady || !saved || saved.scope !== pendingWriteScope() || !data || !Array.isArray(data.projects)) return false;
+    var changed = false;
+    ['projects','hiddenProjects'].forEach(function(field) {
+    var rows = (saved.data[field] || []).concat(saved.data[field === 'projects' ? 'hiddenProjects' : 'projects'] || []), byId = Object.create(null);
+    rows.forEach(function(p) { if (!Object.prototype.hasOwnProperty.call(byId, backendItemId(p))) byId[backendItemId(p)] = p; });
+    (data[field] || []).forEach(function(p) {
+      var remote = byId[backendItemId(p)]; if (!remote) return;
+      var result = preserveManualProjectZone(remote, remote, p, Object.assign({}, p));
+      if ((p.zone || 'active') !== (result.zone || 'active')) { p.zone = result.zone; p.sortOrder = remote.sortOrder; changed = true; }
+      if (stableJson(p.zoneIntentV1) !== stableJson(result.zoneIntentV1)) { if (result.zoneIntentV1) p.zoneIntentV1 = result.zoneIntentV1; else delete p.zoneIntentV1; changed = true; }
+    });
+    });
+    return changed;
+  };
+  window.__avitologBackendReadConfirmedProjects = function() {
+    var key = window.AVITOLOG_KEY_SUFFIX === '_sasha' ? 'avitolog_projects_sasha' : 'avitolog_projects';
+    var saved = confirmedProjectSnapshots[key];
+    return serverOnlyMode && initialSyncReady && saved && saved.scope === pendingWriteScope() ? JSON.parse(JSON.stringify(saved.data)) : null;
+  };
   function mergeProjectRecordByChanges(remoteItem, previousItem, nextItem) {
     if (!remoteItem || !previousItem || !nextItem) return nextItem;
     var out = Object.assign({}, remoteItem);
@@ -1027,7 +1054,7 @@
     return coreKeys[key] ? 'CRM/проекты' : (isFinanceKey(key) ? 'кассу/цели' : 'КП/ADS');
   }
   function drainPendingWrite(key) {
-    if (writeInFlight[key]) {
+    if (writeInFlight[key] || statePatchLocks[key]) {
       clearTimeout(timers[key]);
       timers[key] = setTimeout(function () { timers[key] = null; drainPendingWrite(key); }, 250);
       return;
@@ -1348,11 +1375,64 @@
     return response.json();
   }
   window.__avitologReadAgencyAds = function () { return agencyAdsRpc('read_agency_ads'); };
+  window.__avitologBackendCommitStatePatch = async function (keys, build) {
+    var scope = pendingWriteScope();
+    if (!serverOnlyMode || !initialSyncReady || !scope || isServerOnlySashaViewer() || typeof build !== 'function' || !Array.isArray(keys) || !keys.length || keys.length > 2 || new Set(keys).size !== keys.length || keys.some(function(key) { return !/^avitolog_(projects|clients)(_sasha)?$/.test(key) || !isCurrentProfileWritableKey(key); })) throw new Error('Сохранение недоступно в текущем режиме.');
+    function busy() { return keys.some(function(key) { return writeInFlight[key] || statePatchLocks[key]; }); }
+    for (var wait = 0; busy() && wait < 50; wait++) { await new Promise(function(resolve) { setTimeout(resolve, 100); }); if (scope !== pendingWriteScope()) throw new Error('Режим изменился; черновик оставлен в карте.'); }
+    if (busy()) throw new Error('Предыдущая запись ещё выполняется. Повторите сохранение.');
+    keys.forEach(function(key) { statePatchLocks[key] = true; clearTimeout(timers[key]); delete timers[key]; });
+    try {
+      for (var attempt = 0; attempt < 3; attempt++) {
+        var rows = await readRemote(), values = {}, byKey = {};
+        if (scope !== pendingWriteScope()) throw new Error('Режим изменился; черновик оставлен в карте.');
+        keys.forEach(function(key) { var row = rows.find(function(item) { return item.storage_key === key; }); if (row) { values[key] = row.value_text; byKey[key] = row; } });
+        var proposed = build(Object.assign({}, values));
+        if (!proposed || typeof proposed !== 'object' || Object.keys(proposed).some(function(key) { return keys.indexOf(key) < 0; })) throw new Error('Некорректные поля сохранения.');
+        var updates = Object.keys(proposed).map(function(key) {
+          if (!byKey[key] || !byKey[key].revision || typeof proposed[key] !== 'string') throw new Error('Сервер ещё не загрузил данные проекта.');
+          var prepared = isProjectsStorageKey(key) ? mergeProjectsValue(values[key], values[key], proposed[key]) : mergeClientsValue(values[key], values[key], proposed[key]);
+          var parsed = JSON.parse(prepared);
+          if (isProjectsStorageKey(key) ? !parsed || !Array.isArray(parsed.projects) : !Array.isArray(parsed)) throw new Error('Некорректные данные проекта.');
+          return { key: key, expected_revision: byKey[key].revision, value: prepared };
+        }).filter(function(item) { return stableJson(JSON.parse(item.value)) !== stableJson(JSON.parse(values[item.key])); });
+        if (scope !== pendingWriteScope()) throw new Error('Режим изменился; черновик оставлен в карте.');
+        if (updates.length) {
+          var response = await authFetch(cfg.url + '/rest/v1/rpc/compare_and_swap_frontend_edits', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ p_edits: updates }) }, scope);
+          if (!response.ok) { var message = await response.text(); if (/40001|conflict/i.test(message) && attempt < 2) continue; throw new Error(/40001|conflict/i.test(message) ? 'Данные изменились в другом окне. Повторите сохранение.' : 'Сервер не подтвердил запись: ' + message.slice(0, 300)); }
+          var saved = await response.json();
+          if (scope !== pendingWriteScope()) throw new Error('Режим изменился; проверьте сохранение после входа.');
+          if (!Array.isArray(saved) || saved.length !== updates.length || new Set(saved.map(function(row) { return row.storage_key; })).size !== saved.length || saved.some(function(row) { return !updates.some(function(item) { return item.key === row.storage_key; }) || !row.revision; })) throw new Error('Сервер не подтвердил все изменения.');
+          saved.forEach(function(row) { rememberRevision(row.storage_key, row.revision); });
+        }
+        var applied = [];
+        updates.forEach(function(item) { try { if (window.AVITOLOG_EDIT_HISTORY) window.AVITOLOG_EDIT_HISTORY.record(item.key, values[item.key], item.value); } catch (historyError) {} });
+        keys.filter(function(key) { return byKey[key]; }).forEach(function(key) {
+          var update = updates.find(function(item) { return item.key === key; });
+          var item = update || { key: key, value: values[key] };
+          var pending = pendingWrites[item.key];
+          if (update && pending && pendingWriteMatchesScope(pending)) {
+            try {
+              var rebased = isProjectsStorageKey(item.key) ? mergeProjectsValue(item.value, pending.previousValue || values[item.key], pending.value) : mergeClientsValue(item.value, pending.previousValue || values[item.key], pending.value);
+              pending.value = isProjectsStorageKey(item.key) ? mergeProjectsValue(rebased, values[item.key], item.value) : mergeClientsValue(rebased, values[item.key], item.value);
+              pending.previousValue = item.value; rememberPendingPayload(item.key, pending.value, pending.previousValue);
+            } catch (draftError) { /* Keep the original durable draft for its guarded retry. */ }
+          }
+          applyStorageValue(item.key, item.value); applied.push(item.key);
+          if (isClientsStorageKey(item.key) && typeof window.__crmClientsApplyBackendValue === 'function') window.__crmClientsApplyBackendValue(item.key, item.value);
+        });
+        refreshOpenScreensAfterRemoteApply(applied, []);
+        document.dispatchEvent(new CustomEvent('avitolog:backend-remote-applied', { detail: { keys: applied, confirmedPatch: true } }));
+        setStatus('Supabase: изменения подтверждены сервером');
+        return true;
+      }
+    } finally { keys.forEach(function(key) { delete statePatchLocks[key]; if (pendingWrites[key]) schedulePendingWrite(key, 0); }); }
+  };
   window.__avitologApplyEditHistory = async function (edits, direction) {
     var scope = pendingWriteScope(), history = window.AVITOLOG_EDIT_HISTORY;
     if (!serverOnlyMode || !initialSyncReady || !scope || isServerOnlySashaViewer() || !history || !Array.isArray(edits) || !edits.length || edits.length > 12 || !/^(undo|redo)$/.test(direction)) throw new Error('history_unavailable');
     var keys = edits.map(function (edit) { if (!edit || !history.allowed(edit.key) || !isCurrentProfileWritableKey(edit.key)) throw new Error('history_forbidden'); return edit.key; });
-    function busy() { return keys.some(function (key) { return pendingWrites[key] || writeInFlight[key]; }); }
+    function busy() { return keys.some(function (key) { return pendingWrites[key] || writeInFlight[key] || statePatchLocks[key]; }); }
     for (var wait = 0; busy() && wait < 50; wait++) await new Promise(function (resolve) { setTimeout(resolve, 100); });
     if (busy()) throw new Error('history_pending');
     var rows = await readRemote();
