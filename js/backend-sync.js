@@ -13,6 +13,7 @@
   var timers = {};
   var pendingWrites = {};
   var writeInFlight = {};
+  var writeInFlightTasks = {};
   var statePatchLocks = {};
   var confirmedProjectSnapshots = {};
   var appliedRevisions = {};
@@ -1068,7 +1069,7 @@
     writeInFlight[key] = true;
     var shouldWriteNext = false;
     var retryDelay = 0;
-    prepareValueForWrite(key, pending.value, pending.previousValue, pending.scope).then(function (prepared) {
+    var task = prepareValueForWrite(key, pending.value, pending.previousValue, pending.scope).then(function (prepared) {
       if (!pendingWriteMatchesScope(pending)) return null;
       return writeKey(key, prepared, pending.scope).then(function (result) {
         return { result: result, prepared: prepared };
@@ -1096,8 +1097,10 @@
       setStatus('Ошибка записи: ' + error.message, true);
     }).finally(function () {
       writeInFlight[key] = false;
+      if (writeInFlightTasks[key] === task) delete writeInFlightTasks[key];
       if (shouldWriteNext || pendingWrites[key]) schedulePendingWrite(key, retryDelay);
     });
+    writeInFlightTasks[key] = task;
   }
   function schedulePendingWrite(key, delay) {
     clearTimeout(timers[key]);
@@ -1381,11 +1384,16 @@
   window.__avitologBackendCommitStatePatch = async function (keys, build) {
     var scope = pendingWriteScope();
     if (!serverOnlyMode || !initialSyncReady || !scope || isServerOnlySashaViewer() || typeof build !== 'function' || !Array.isArray(keys) || !keys.length || keys.length > 2 || new Set(keys).size !== keys.length || keys.some(function(key) { return !/^avitolog_(projects|clients)(_sasha)?$/.test(key) || !isCurrentProfileWritableKey(key); })) throw new Error('Сохранение недоступно в текущем режиме.');
-    function busy() { return keys.some(function(key) { return writeInFlight[key] || statePatchLocks[key]; }); }
+    function busy() { return keys.some(function(key) { return statePatchLocks[key]; }); }
     for (var wait = 0; busy() && wait < 50; wait++) { await new Promise(function(resolve) { setTimeout(resolve, 100); }); if (scope !== pendingWriteScope()) throw new Error('Режим изменился; черновик оставлен в карте.'); }
     if (busy()) throw new Error('Предыдущая запись ещё выполняется. Повторите сохранение.');
     keys.forEach(function(key) { statePatchLocks[key] = true; clearTimeout(timers[key]); delete timers[key]; });
     try {
+      // Reserve the queue before awaiting an older background write, so refreshes cannot starve a manual save.
+      var idleTimer;
+      try { await Promise.race([Promise.all(keys.map(function(key) { return writeInFlightTasks[key] || Promise.resolve(); })), new Promise(function(resolve,reject) { idleTimer = setTimeout(function() { reject(new Error('Синхронизация ещё выполняется. Черновик оставлен в карте.')); }, 20000); })]); }
+      finally { clearTimeout(idleTimer); }
+      if (scope !== pendingWriteScope()) throw new Error('Режим изменился; черновик оставлен в карте.');
       for (var attempt = 0; attempt < 3; attempt++) {
         var rows = await readRemote(), values = {}, byKey = {};
         if (scope !== pendingWriteScope()) throw new Error('Режим изменился; черновик оставлен в карте.');
