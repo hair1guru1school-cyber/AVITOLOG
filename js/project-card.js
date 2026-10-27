@@ -720,7 +720,9 @@
   async function saveAndExit(state) {
     if (current !== state || state.saving) return { ok: false, error: 'Сохранение уже выполняется или карта закрыта.' };
     var notice = state.overlay.querySelector('[data-notice]'), button = state.overlay.querySelector('[data-action="save"]');
+    var controls = typeof state.overlay.querySelectorAll === 'function' ? Array.from(state.overlay.querySelectorAll('input,textarea,select,[data-project-groups-manage]')).map(function(element) { return { element: element, disabled: element.disabled }; }) : [];
     state.saving = true; button.disabled = true; button.textContent = 'Сохраняем…'; button.setAttribute('aria-busy', 'true');
+    controls.forEach(function(item) { item.element.disabled = true; });
     try {
       ensureScope(state.scope);
       var result = await save(state);
@@ -735,7 +737,7 @@
       return { ok: false, error: error.message || 'Не удалось сохранить все изменения.' };
     } finally {
       state.saving = false;
-      if (current === state) { button.disabled = readOnly() || !ready(); button.textContent = 'Сохранить и выйти'; button.setAttribute('aria-busy', 'false'); }
+      if (current === state) { controls.forEach(function(item) { item.element.disabled = item.disabled || readOnly() || !ready(); }); button.disabled = readOnly() || !ready(); button.textContent = 'Сохранить и выйти'; button.setAttribute('aria-busy', 'false'); }
     }
   }
   function verifyCardWrite(state, base, target, changes) {
