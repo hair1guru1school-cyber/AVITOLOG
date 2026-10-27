@@ -6,7 +6,8 @@
     var exact=[],named=[],n=norm(name);
     (data.projects||[]).forEach(function(p){
       var linked=(clients||[]).filter(function(c){return p.crmClientId&&c.client_id===p.crmClientId||!p.crmClientId&&p.folderId&&c.folderId===p.folderId;});
-      if(ids.indexOf(p.avitoConnectionId)>=0||ids.indexOf((p.crmData||{}).avito_connection_id)>=0||linked.length===1&&ids.indexOf(linked[0].avito_connection_id)>=0)exact.push(p);
+      var binding=p.avitoConnectionId||(p.crmData||{}).avito_connection_id||(linked.length===1&&linked[0].avito_connection_id)||'';
+      if(binding){if(ids.indexOf(binding)>=0)exact.push(p);}
       else if(n&&(norm(p.title)===n||norm((p.crmData||{}).company)===n))named.push(p);
     });return exact.length?exact:named;
   }
