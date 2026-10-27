@@ -20,7 +20,7 @@
     ['avito_account', 'Ссылка Avito клиента', 1000], ['category', 'Ниша', 300],
     ['city', 'География', 1000], ['client_type', 'Тип клиента', 100],
     ['kp_count', 'Объявлений по КП', 100], ['positions', 'Позиции', 5000],
-    ['notes', 'Примечания', 20000], ['avito_connection_id', 'Аккаунт проекта', 100]
+    ['notes', 'Примечания', 20000], ['avito_connection_id', 'Аккаунт проекта', 100], ['project_group_id', 'Группа проекта', 80]
   ];
   var CONTEXT_FIELDS = ['title', 'company', 'contact_name', 'phone', 'telegram', 'vk', 'category', 'city', 'client_type', 'kp_count', 'positions', 'notes'];
   function text(value) { return value == null ? '' : String(value); }
@@ -63,6 +63,7 @@
       var key = field[0];
       var value = key === 'title' ? project && project.title || data.company : data[key];
       if (key === 'avito_connection_id') value = project && project.avitoConnectionId || value;
+      if (key === 'project_group_id') value = root.ProjectGroups ? root.ProjectGroups.selected(project, client) : project && Object.prototype.hasOwnProperty.call(project, 'projectGroupId') ? project.projectGroupId : data.project_group_id;
       out[key] = Array.isArray(value) ? value.join(', ') : text(value);
     });
     return out;
@@ -88,6 +89,7 @@
     if (Object.prototype.hasOwnProperty.call(changes, 'title') && !changes.title) throw new Error('Укажите название проекта.');
     if (changes.avito_account && !safeAvitoUrl(changes.avito_account)) throw new Error('Укажите полную HTTPS-ссылку на профиль avito.ru.');
     if (changes.avito_connection_id && !/^(personal|oauth):[a-zA-Z0-9-]{1,80}$/.test(changes.avito_connection_id)) throw new Error('Выберите аккаунт из списка.');
+    if (Object.prototype.hasOwnProperty.call(changes, 'project_group_id') && root.ProjectGroups && !root.ProjectGroups.has(changes.project_group_id)) throw new Error('Группа удалена или недоступна. Выберите другую группу.');
     return changes;
   }
   function assertNoConflict(before, latest, changes) {
@@ -250,6 +252,7 @@
   function fieldHtml(field, values) {
     var key = field[0], multiline = key === 'notes' || key === 'positions';
     if (key === 'avito_connection_id') return '<label class="project-card-field project-card-field-wide">Аккаунт проекта<select name="avito_connection_id" data-account-select title="Подходящий по названию аккаунт предложен первым. Аккаунт заявки CRM не меняется."></select></label>';
+    if (key === 'project_group_id') return root.ProjectGroups ? root.ProjectGroups.fieldHtml(values[key]) : '<label class="project-card-field project-card-field-wide">Группа проекта<select name="project_group_id" disabled><option value="' + escape(values[key]) + '">' + escape(values[key] || 'Без группы') + '</option></select></label>';
     return '<label class="project-card-field' + (multiline || key === 'title' ? ' project-card-field-wide' : '') + '">' + escape(field[1]) + (multiline ? '<textarea rows="3"' : '<input type="text"') + ' name="' + key + '" maxlength="' + field[2] + '"' + (multiline ? '>' + escape(values[key]) + '</textarea>' : ' value="' + escape(values[key]) + '">') + '</label>';
   }
   function formatMoney(value) { return Number.isFinite(Number(value)) ? Math.round(Number(value)).toLocaleString('ru-RU') + ' ₽' : '—'; }
@@ -745,7 +748,7 @@
       var saved = base === 'avitolog_projects' ? findById(rows, 'id', target.id) : hasId(target.client_id) ? findById(rows, 'client_id', target.client_id) : findById(rows, 'folderId', target.folderId);
       if (!saved || Object.keys(changes).some(function (field) {
         if (field === 'manualPaymentsV1') return JSON.stringify(saved.manualPaymentsV1) !== JSON.stringify(changes[field]);
-        var actual = base !== 'avitolog_projects' || field === 'title' ? saved[field] : field === 'avito_connection_id' ? saved.avitoConnectionId : saved.crmData && saved.crmData[field];
+        var actual = base !== 'avitolog_projects' || field === 'title' ? saved[field] : field === 'avito_connection_id' ? saved.avitoConnectionId : field === 'project_group_id' ? saved.projectGroupId : saved.crmData && saved.crmData[field];
         return text(actual) !== text(changes[field]) || base === 'avitolog_projects' && field === 'avito_connection_id' && text(saved.crmData && saved.crmData[field]) !== text(changes[field]);
       })) throw new Error('storage_unconfirmed');
     } catch (_) { throw new Error('Хранилище не подтвердило сохранение. Черновик оставлен в карте; повторите сохранение.'); }
@@ -777,6 +780,7 @@
         project.crmData = Object.assign({}, project.crmData || {}, crmPatch);
         if (Object.prototype.hasOwnProperty.call(changes, 'title')) project.title = changes.title;
         if (Object.prototype.hasOwnProperty.call(changes, 'avito_connection_id')) project.avitoConnectionId = changes.avito_connection_id;
+        if (Object.prototype.hasOwnProperty.call(changes, 'project_group_id')) { project.projectGroupId = changes.project_group_id; project.projectGroupSource = 'manual'; }
         if (client) Object.assign(client, crmPatch);
       } else {
         Object.assign(client, crmPatch);
@@ -831,7 +835,7 @@
     var title = values.title || values.company || 'Клиент';
     var initials = title.trim().split(/\s+/).slice(0, 2).map(function (part) { return Array.from(part)[0] || ''; }).join('').toUpperCase();
     var hue = Array.from(title).reduce(function (sum, character) { return sum + character.codePointAt(0); }, 0) % 360;
-    var primary = ['title', 'company', 'contact_name', 'phone', 'telegram', 'vk', 'category', 'city', 'avito_connection_id'];
+    var primary = ['title', 'company', 'contact_name', 'phone', 'telegram', 'vk', 'category', 'city', 'avito_connection_id', 'project_group_id'];
     var fields = FIELDS.filter(function (field) { return primary.indexOf(field[0]) >= 0; }).map(function (field) { return fieldHtml(field, values); }).join('');
     var secondary = FIELDS.filter(function (field) { return primary.indexOf(field[0]) < 0 && field[0] !== 'notes'; }).map(function (field) { return fieldHtml(field, values); }).join('');
     var notes = fieldHtml(FIELDS.find(function (field) { return field[0] === 'notes'; }), values);
@@ -871,6 +875,17 @@
     }
     overlay.addEventListener('input', markDirty);
     overlay.addEventListener('change', markDirty);
+    var groupButton = overlay.querySelector('[data-project-groups-manage]');
+    if (groupButton && root.ProjectGroups) groupButton.onclick = function () {
+      if (state.saving || readOnly()) return;
+      root.ProjectGroups.openManager(function () {
+        if (current !== state || state.scope !== scope()) return;
+        var field = overlay.querySelector('[data-project-group-select]'), selected = field.value;
+        field.innerHTML = root.ProjectGroups.options(selected);
+        field.value = root.ProjectGroups.has(selected) ? selected : '';
+        if (field.value !== selected) { state.dirty = true; }
+      });
+    };
     bindPaymentEditors(state);
     overlay.addEventListener('keydown', function (event) {
       if (event.target.__paymentEditBefore && (event.key === 'Enter' || event.key === 'Escape')) {
@@ -919,7 +934,7 @@
       };
     }
     if (readOnly()) {
-      overlay.querySelectorAll('input,textarea,select,[data-action="save"],[data-payment-sync]').forEach(function (element) { element.disabled = true; });
+      overlay.querySelectorAll('input,textarea,select,[data-action="save"],[data-payment-sync],[data-project-groups-manage]').forEach(function (element) { element.disabled = true; });
       overlay.querySelector('[data-notice]').textContent = 'Режим Саши: только просмотр. Его данные не изменяются.';
     }
     mountContext(state, values.title || values.company || 'Клиент');

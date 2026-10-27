@@ -11,7 +11,7 @@
   var TAB_SCALE_DEFAULT = 100;
   var TAB_SCALE_MIN = 80;
   var TAB_SCALE_MAX = 140;
-  var ACCOUNTS_URL = 'https://avitoboss.online/integrations/avito-accounts/?embedded=1';
+  var ACCOUNTS_URL = 'https://avitoboss.online/integrations/avito-accounts/?embedded=1&v=20261027-project-groups1';
   var TAB_DEFINITIONS = [
     { key: 'goals', buttonId: 'btnGoals', label: 'CRM' },
     { key: 'analytics', buttonId: 'btnProjectsReturn', label: 'Клиент' },

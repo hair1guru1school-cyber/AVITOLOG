@@ -654,7 +654,9 @@
     Object.keys(nextItem).forEach(function(field) {
       if (!Object.prototype.hasOwnProperty.call(previousItem, field) ||
           stableJson(previousItem[field]) !== stableJson(nextItem[field])) {
-        out[field] = field === 'intakeContextV1' ? mergeProjectIntakeContext(remoteItem[field], nextItem[field], nextItem.id) : nextItem[field];
+        if (field === 'crmData' && isProjectGroupCrmChange(previousItem.crmData, nextItem.crmData)) {
+          out.crmData = Object.assign({}, remoteItem.crmData, { project_group_id: (nextItem.crmData || {}).project_group_id });
+        } else out[field] = field === 'intakeContextV1' ? mergeProjectIntakeContext(remoteItem[field], nextItem[field], nextItem.id) : nextItem[field];
       }
     });
     Object.keys(previousItem).forEach(function(field) {
@@ -663,10 +665,21 @@
       if (field === 'intakeContextV1') return;
       if (stableJson(remoteItem[field]) === stableJson(previousItem[field])) delete out[field];
     });
+    if (Object.prototype.hasOwnProperty.call(remoteItem, 'projectGroupId') && stableJson(remoteItem.projectGroupId) !== stableJson(previousItem.projectGroupId) && (nextItem.projectGroupSource === 'auto' || nextItem.projectGroupId === '')) {
+      out.projectGroupId = remoteItem.projectGroupId;
+      out.projectGroupSource = remoteItem.projectGroupSource;
+      if (out.crmData && remoteItem.crmData && Object.prototype.hasOwnProperty.call(remoteItem.crmData, 'project_group_id')) out.crmData.project_group_id = remoteItem.crmData.project_group_id;
+    }
     return preserveManualProjectZone(remoteItem, previousItem, nextItem, out);
   }
+  function isProjectGroupCrmChange(previousCrm, nextCrm) {
+    previousCrm = previousCrm || {}; nextCrm = nextCrm || {};
+    return Object.keys(previousCrm).concat(Object.keys(nextCrm)).every(function(key) { return key === 'project_group_id' || stableJson(previousCrm[key]) === stableJson(nextCrm[key]); });
+  }
   function isProjectJournalOnlyChange(previousItem, nextItem) {
-    var journals = ['paymentJournalV1', 'intakeContextV1'];
+    // Metadata-only edits must not resurrect a project deleted in another window.
+    var journals = ['paymentJournalV1', 'intakeContextV1', 'projectGroupId', 'projectGroupSource'];
+    if (isProjectGroupCrmChange(previousItem && previousItem.crmData, nextItem && nextItem.crmData)) journals.push('crmData');
     if (!previousItem || !nextItem || !journals.some(function(field) { return stableJson(previousItem[field]) !== stableJson(nextItem[field]); })) return false;
     return Object.keys(previousItem).concat(Object.keys(nextItem)).every(function(field) {
       return journals.indexOf(field) >= 0 || stableJson(previousItem[field]) === stableJson(nextItem[field]);
@@ -757,6 +770,21 @@
       throw new Error('Старая копия одновременно убирает проекты и задачи. Запись остановлена; черновик сохранён.');
     }
     var out = Object.assign({}, remote);
+    if (next.projectGroupsV1 && stableJson(next.projectGroupsV1) !== stableJson(previous.projectGroupsV1)) {
+      var catalog = next.projectGroupsV1, seenGroups = Object.create(null);
+      if (catalog.version !== 1 || !Array.isArray(catalog.groups) || catalog.groups.length > 100 || catalog.groups.some(function(group) {
+        if (!group || !/^[a-zA-Z0-9_-]{1,80}$/.test(group.id) || /^(?:__proto__|constructor|prototype)$/.test(group.id) || seenGroups[group.id] || typeof group.name !== 'string' || !group.name.trim() || group.name.length > 80 || typeof group.emoji !== 'string' || Array.from(group.emoji).length > 12 || /[\u0000-\u001f\u007f]/.test(group.name + group.emoji) || !/^#[0-9a-f]{6}$/i.test(group.color) || typeof group.deleted !== 'boolean') return true;
+        seenGroups[group.id] = true; return false;
+      })) throw new Error('Invalid project groups; the draft is retained');
+      var previousGroups = previous.projectGroupsV1 && previous.projectGroupsV1.groups || [], remoteGroups = remote.projectGroupsV1 && remote.projectGroupsV1.groups || [];
+      out.projectGroupsV1 = { version: 1, groups: mergeArrayByChangedIds(remoteGroups, previousGroups, catalog.groups).map(function(group) {
+        var old = previousGroups.find(function(g) { return g.id === group.id; }), fresh = remoteGroups.find(function(g) { return g.id === group.id; }), changed = catalog.groups.find(function(g) { return g.id === group.id; });
+        if (!old && fresh) return fresh;
+        if (!old || !fresh || !changed) return group;
+        var result = Object.assign({}, fresh); Object.keys(changed).forEach(function(key) { if (stableJson(old[key]) !== stableJson(changed[key])) result[key] = changed[key]; }); return result;
+      }) };
+      if (out.projectGroupsV1.groups.length > 100) throw new Error('Project group limit reached; the draft is retained');
+    }
     if (next.projectsViewV1 && stableJson(next.projectsViewV1) !== stableJson(previous.projectsViewV1)) {
       var view = next.projectsViewV1, values = view.values;
       if (view.version !== 1 || view.profile !== 'sasha' || !values || !Number.isFinite(values.zoom) || values.zoom < .25 || values.zoom > 2 || !Number.isFinite(values.rowHeight) || values.rowHeight < 14 || values.rowHeight > 120 || !Number.isFinite(values.dayPx) || values.dayPx < 14 || values.dayPx > 64 || !Number.isFinite(values.stickyWidth) || values.stickyWidth < 0 || values.stickyWidth > 2200) throw new Error('Invalid project view settings; the draft is retained');
