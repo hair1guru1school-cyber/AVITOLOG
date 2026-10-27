@@ -37,7 +37,14 @@
   }
   function install(win){
     var doc=win.document,manager=null,autoTimer=null;
-    function data(){return typeof win.loadProjectsData==='function'?win.loadProjectsData():{projects:[]};}
+    function data(){
+      // Read the confirmed snapshot without invoking calendar normalizers for a group edit.
+      if(win.localStorage&&typeof win.AVITOLOG_KEY==='function'){
+        var raw=win.localStorage.getItem(win.AVITOLOG_KEY('avitolog_projects'));
+        if(raw!==null){var saved=JSON.parse(raw);if(!saved||!Array.isArray(saved.projects))throw Error('Данные проектов ещё не загружены.');return saved;}
+      }
+      return typeof win.loadProjectsData==='function'?win.loadProjectsData():{projects:[]};
+    }
     function ready(){return !win.AVITOLOG_BACKEND_MODE||win.AVITOLOG_BACKEND_INITIAL_SYNC_READY===true;}
     function readonly(){return typeof win.__avitologBackendReadOnly==='function'&&win.__avitologBackendReadOnly();}
     function scope(){var identity=typeof win.__avitologBackendIdentity==='function'&&win.__avitologBackendIdentity();return (identity&&identity.id||'')+'|'+(win.AVITOLOG_KEY_SUFFIX||'');}
