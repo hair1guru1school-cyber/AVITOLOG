@@ -11,7 +11,8 @@
   var TAB_SCALE_DEFAULT = 100;
   var TAB_SCALE_MIN = 80;
   var TAB_SCALE_MAX = 140;
-  var ACCOUNTS_URL = 'https://avitoboss.online/integrations/avito-accounts/?embedded=1&v=20261027-project-groups1';
+  var UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+  var ACCOUNTS_URL = 'https://avitoboss.online/integrations/avito-accounts/?embedded=1&v=20261027-project-groups3';
   var TAB_DEFINITIONS = [
     { key: 'goals', buttonId: 'btnGoals', label: 'CRM' },
     { key: 'analytics', buttonId: 'btnProjectsReturn', label: 'Клиент' },
@@ -139,6 +140,23 @@
     var suffix = typeof window.AVITOLOG_KEY_SUFFIX === 'string' ? window.AVITOLOG_KEY_SUFFIX : '';
     var user = typeof window.AVITOLOG_USER === 'string' ? window.AVITOLOG_USER.trim().toLowerCase() : '';
     return suffix === '_sasha' || user === 'sasha' ? 'sasha' : 'fil';
+  }
+
+  function backendUserId() {
+    try {
+      var identity = typeof window.__avitologBackendIdentity === 'function' ? window.__avitologBackendIdentity() : null;
+      var id = String(identity && identity.id || '').toLowerCase();
+      return UUID.test(id) ? id : '';
+    } catch (error) { return ''; }
+  }
+
+  function accountsUrl() {
+    var profile = profileId();
+    var configuration = window.AVITOLOG_SUPABASE || {};
+    var organizations = configuration.profileOrganizations || {};
+    var organizationId = typeof organizations[profile] === 'string' ? organizations[profile].toLowerCase() : '';
+    if (!UUID.test(organizationId)) organizationId = '';
+    return ACCOUNTS_URL + '&profile=' + profile + '&organization_id=' + encodeURIComponent(organizationId) + '&expected_user_id=' + encodeURIComponent(backendUserId());
   }
 
   function fallbackKey(profile) {
@@ -455,11 +473,15 @@
 
   function ensureAccountsFrame() {
     var frame = document.getElementById('avitoAccountsFrame');
-    if (frame) return frame;
+    var url = accountsUrl();
+    var external = document.getElementById('avitoAccountsExternal');
+    if (external) external.href = url;
+    if (frame && frame.src === url) return frame;
+    if (frame && frame.parentNode) frame.parentNode.removeChild(frame);
     var host = document.getElementById('avitoAccountsFrameHost');
     if (!host) return null;
     frame = element('iframe', 'avitoAccountsFrame', 'avito-main-accounts-frame');
-    frame.src = ACCOUNTS_URL;
+    frame.src = url;
     frame.title = 'Аккаунты Avito';
     frame.loading = 'lazy';
     frame.allow = 'clipboard-write';
@@ -879,6 +901,7 @@
     state.initialized = true;
     installHooks();
     applyVisibility();
+    ['avitolog:backend-initial-ready','avitolog:workspace-reset'].forEach(function(event){document.addEventListener(event,function(){if(document.getElementById('avitoAccountsFrame'))ensureAccountsFrame();});});
     window.addEventListener('focus', ensureProfile);
     document.addEventListener('visibilitychange', function () {
       if (document.visibilityState !== 'hidden') ensureProfile();
