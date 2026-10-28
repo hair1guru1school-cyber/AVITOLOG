@@ -47,6 +47,7 @@ test('integration guards profile/read-only state, existing document editors and 
  const main=fs.readFileSync(path.resolve(__dirname,'../../js/main.js'),'utf8');
  assert.match(main,/scope: String\(identity && identity.id \|\| 'local'\) \+ '\|' \+ _ck\('avitolog_clients'\)/);
  assert.match(main,/rootFolderId: window.AVITOLOG_KEY_SUFFIX === '_sasha' \? '' : CRM_ROOT/);assert.match(main,/canDrive: ready && !readOnly/);
+ assert.match(source,/if\(!s.ready\|\|!c.ready\)/);
  const refresh=main.slice(main.indexOf('async function refreshClientContents('));assert.ok(refresh.indexOf('!forceFolder && docReady && currentHtml')<refresh.indexOf('ClientFolderBoard.renderHome(tab)'));
  assert.match(refresh,/_analyticsRecentSelectedProjectId !== selectedKey/);assert.match(source,/verified.id!==c.actorId/);assert.doesNotMatch(source,/saveProjectsData|saveCrmClients|driveUpload|method:\s*['"](?:POST|PATCH|DELETE)/);
 });

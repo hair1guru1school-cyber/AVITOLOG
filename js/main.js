@@ -868,7 +868,7 @@ function clientFolderBoardContext() {
   }
   return {
     scope: String(identity && identity.id || 'local') + '|' + _ck('avitolog_clients'),
-    actorId: identity && identity.id || '', tab: currentTab,
+    actorId: identity && identity.id || '', tab: currentTab, ready: ready,
     canRender: clientContentsCanRender() && ['analysis','presale','avito1'].indexOf(currentTab) >= 0,
     selected: !!_analyticsRecentSelectedProjectId,
     clients: ready && typeof getCrmClients === 'function' ? getCrmClients() : [],
