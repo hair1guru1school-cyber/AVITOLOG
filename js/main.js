@@ -839,17 +839,59 @@ function buildAnalyticsRecentProjectsBlock() {
 }
 function getAnalyticsRecentTitle() {
   if (!_analyticsRecentSelectedProjectId) return 'Недавние';
-  var p = getAnalyticsRecentProjects().find(function(x) { return x.projectId === _analyticsRecentSelectedProjectId; });
+  var p = getSelectedAnalyticsRecentProject();
   if (!p) return 'Недавние';
   return String(p.company || p.title || p.projectTitle || 'Недавние');
 }
 function getSelectedAnalyticsRecentProject() {
   if (!_analyticsRecentSelectedProjectId) return null;
+  if (window.ClientFolderBoard) {
+    var folderProject = window.ClientFolderBoard.getProject(_analyticsRecentSelectedProjectId);
+    if (folderProject) return folderProject;
+  }
   var arr = getAnalyticsRecentProjects();
   for (var i = 0; i < arr.length; i++) {
     if (arr[i] && arr[i].projectId === _analyticsRecentSelectedProjectId) return arr[i];
   }
   return null;
+}
+function clientFolderBoardContext() {
+  var identity = typeof window.__avitologBackendIdentity === 'function' ? window.__avitologBackendIdentity() : null;
+  var readOnly = typeof window.__avitologBackendReadOnly === 'function' && window.__avitologBackendReadOnly();
+  var ready = !window.AVITOLOG_BACKEND_MODE || window.AVITOLOG_BACKEND_INITIAL_SYNC_READY === true;
+  var data = null;
+  if (ready) {
+    if (typeof window.__avitologBackendReadConfirmedProjects === 'function') data = window.__avitologBackendReadConfirmedProjects();
+    if (!data && !window.AVITOLOG_BACKEND_SERVER_ONLY) {
+      try { data = JSON.parse(localStorage.getItem(_ck('avitolog_projects')) || 'null'); } catch (e) {}
+    }
+  }
+  return {
+    scope: String(identity && identity.id || 'local') + '|' + _ck('avitolog_clients'),
+    actorId: identity && identity.id || '', tab: currentTab,
+    canRender: clientContentsCanRender() && ['analysis','presale','avito1'].indexOf(currentTab) >= 0,
+    selected: !!_analyticsRecentSelectedProjectId,
+    clients: ready && typeof getCrmClients === 'function' ? getCrmClients() : [],
+    projects: ready && data ? (data.projects || []).concat(data.hiddenProjects || []) : [],
+    categories: typeof CRM_CATEGORY_OPTIONS !== 'undefined' ? CRM_CATEGORY_OPTIONS : [],
+    rootFolderId: window.AVITOLOG_KEY_SUFFIX === '_sasha' ? '' : CRM_ROOT,
+    canDrive: ready && !readOnly,
+    driveAvailable: ready && !readOnly && !!(_driveToken || getStoredDriveAuth())
+  };
+}
+function openClientFolderBoardProject(project) {
+  var clients = typeof getCrmClients === 'function' ? getCrmClients() : [];
+  var matched = clients.find(function(client) {
+    return (project.folderId && String(client.folderId || '') === project.folderId) ||
+      (project.client_id && client.client_id === project.client_id);
+  });
+  var active = matched || Object.assign({}, project.crmData || {}, project);
+  if (typeof fillClientForm === 'function') fillClientForm(active);
+  setActiveClient(active);
+  if (!project.folderId) return;
+  _analyticsRecentSelectedProjectId = project.projectId;
+  _analyticsOpenedFolderByProject[project.projectId] = true;
+  refreshClientContents(true);
 }
 function markAnalyticsFolderOpened(projectId) {
   var key = String(projectId || '').trim();
@@ -1105,6 +1147,7 @@ function wireAnalyticsProjectTags(project) {
   }
 }
 function wireAnalyticsRecentControls() {
+  if (window.ClientFolderBoard) window.ClientFolderBoard.mountSettings();
   var wrap = document.getElementById('analyticsRecentSwitch');
   if (wrap) {
     wrap.querySelectorAll('.client-view-btn').forEach(function(btn) {
@@ -1172,6 +1215,7 @@ async function refreshClientContents(forceFolder) {
     renderDoc(currentHtml);
     return;
   }
+  if (window.ClientFolderBoard && window.ClientFolderBoard.renderHome(tab)) return;
   var ac = _activeClient || getActiveClient();
   var selectedRecent = getSelectedAnalyticsRecentProject();
   var targetFolderId = (selectedRecent && selectedRecent.folderId) ? selectedRecent.folderId : (ac && ac.folderId ? ac.folderId : '');
@@ -1220,7 +1264,7 @@ async function refreshClientContents(forceFolder) {
   if (!clientContentsCanRender(tab)) return;
   mc.innerHTML = '<div class="empty-st"><div class="spinner" style="margin:0 auto"></div><p style="font-size:13px">Загружаю содержимое папки...</p></div>';
   var safetyTmr = setTimeout(function() {
-    if (_refreshClientContentsInFlight && clientContentsCanRender(tab) && mc) {
+    if (_refreshClientContentsInFlight && clientContentsCanRender(tab) && _analyticsRecentSelectedProjectId === selectedKey && mc) {
       _refreshClientContentsInFlight = false;
       var headCtrlSt = '<div class="client-view-switch" id="analyticsRecentSwitch"><button type="button" class="client-view-btn" data-limit="2">2</button><button type="button" class="client-view-btn" data-limit="3">3</button><button type="button" class="client-view-btn" data-limit="5">5</button><button type="button" class="client-view-btn" data-limit="8">8</button><button type="button" class="client-view-btn" data-limit="10">10</button><button type="button" class="client-view-btn" data-limit="15">15</button><button type="button" class="client-view-btn" data-limit="20">20</button><button type="button" class="client-view-btn" data-limit="all">&#8734;</button></div>';
       var headSt = '<div class="client-contents-head"><div class="client-contents-title">' + (getAnalyticsRecentTitle() || 'Недавние') + '</div>' + headCtrlSt + '</div>';
@@ -1239,6 +1283,7 @@ async function refreshClientContents(forceFolder) {
   } finally {
     clearTimeout(safetyTmr);
     _refreshClientContentsInFlight = false;
+    if (_analyticsRecentSelectedProjectId !== selectedKey) return;
     if (loadErr) {
       var mc2 = document.getElementById('mainContent');
       if (mc2 && clientContentsCanRender(tab)) {
@@ -1263,7 +1308,7 @@ async function refreshClientContents(forceFolder) {
       return;
     }
   }
-  if (!clientContentsCanRender(tab)) return;
+  if (!clientContentsCanRender(tab) || _analyticsRecentSelectedProjectId !== selectedKey) return;
   mc = document.getElementById('mainContent');
   if (!mc) return;
   try {
