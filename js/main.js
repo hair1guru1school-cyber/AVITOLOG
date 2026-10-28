@@ -886,11 +886,12 @@ function openClientFolderBoardProject(project) {
       (project.client_id && client.client_id === project.client_id);
   });
   var active = matched || Object.assign({}, project.crmData || {}, project);
+  _selectedProjectId = project.projectRecordId || null;
+  _analyticsRecentSelectedProjectId = project.folderId ? project.projectId : '';
+  if (project.folderId) _analyticsOpenedFolderByProject[project.projectId] = true;
   if (typeof fillClientForm === 'function') fillClientForm(active);
   setActiveClient(active);
   if (!project.folderId) return;
-  _analyticsRecentSelectedProjectId = project.projectId;
-  _analyticsOpenedFolderByProject[project.projectId] = true;
   refreshClientContents(true);
 }
 function markAnalyticsFolderOpened(projectId) {
@@ -1283,7 +1284,10 @@ async function refreshClientContents(forceFolder) {
   } finally {
     clearTimeout(safetyTmr);
     _refreshClientContentsInFlight = false;
-    if (_analyticsRecentSelectedProjectId !== selectedKey) return;
+    if (_analyticsRecentSelectedProjectId !== selectedKey) {
+      if (clientContentsCanRender(tab)) refreshClientContents(true);
+      return;
+    }
     if (loadErr) {
       var mc2 = document.getElementById('mainContent');
       if (mc2 && clientContentsCanRender(tab)) {
