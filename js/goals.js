@@ -18,6 +18,7 @@
   var _goalsWeekDragJustHappened = false;
   var _goalsFolderBindTargetId = '';
   var _goalSourceOutsideHandler = null;
+  var _goalNameEdit = null;
   var GOALS_WEEK_DRAG_MIME = 'application/x-avitolog-goal-row';
   var SOURCE_ACCOUNT_ICONS = ['👤','🟢','🔵','🟣','🟠','🟡','🔴','⚫','💼','📱'];
   var BUSINESS_DAY_START_HOUR = 5;
@@ -2122,6 +2123,11 @@
   }
 
   function render() {
+    // Background sync may refresh the data, but must not replace an unfinished name input.
+    if (_goalNameEdit) {
+      if (_goalNameEdit.input.isConnected && _goalNameEdit.scope === goalsStorageKey() && _goalNameEdit.month === (_goalsViewMonth || getCurrentMonthKey())) return;
+      _goalNameEdit.dispose();
+    }
     if (window.AVITOLOG_BACKEND_SERVER_ONLY && window.AVITOLOG_BACKEND_INITIAL_SYNC_READY !== true) {
       var waitingMain = document.getElementById('mainContent');
       var syncError = String(window.AVITOLOG_BACKEND_INITIAL_SYNC_ERROR || '');
@@ -3502,23 +3508,44 @@
     inp.value = curName;
     inp.style.pointerEvents = '';
     disp.parentNode.replaceChild(inp, disp);
+    var edit = { input: inp, scope: goalsStorageKey(), month: _goalsViewMonth || getCurrentMonthKey(), finished: false };
+    function outside(event) { if (event.target !== inp && !inp.contains(event.target)) done(true, true); }
+    edit.dispose = function() {
+      edit.finished = true;
+      document.removeEventListener('pointerdown', outside, true);
+      if (_goalNameEdit === edit) _goalNameEdit = null;
+      cellEl.classList.remove('goal-name-editing');
+    };
+    _goalNameEdit = edit;
+    document.addEventListener('pointerdown', outside, true);
     inp.focus();
     inp.select();
-    function done() {
-      cellEl.classList.remove('goal-name-editing');
+    function done(commit, keepClickTarget) {
+      if (edit.finished) return;
+      var sameScope = edit.scope === goalsStorageKey() && edit.month === (_goalsViewMonth || getCurrentMonthKey());
+      var connected = inp.isConnected;
+      edit.dispose();
+      if (!connected || !sameScope) return;
       var val = String(inp.value || '').replace(/\s+/g, ' ').trim();
-      var data = loadData();
-      var p = (data.projects || []).find(function(x) { return x.id === projId; });
-      if (p) { p.name = val || p.name || ''; saveData(data); }
-      var span = document.createElement('span');
-      span.className = 'goal-name-inline goal-name-display';
-      span.setAttribute('data-id', projId);
-      span.textContent = val || '';
-      inp.parentNode.replaceChild(span, inp);
+      if (commit && val && val !== curName) {
+        var data = loadData();
+        var p = (data.projects || []).find(function(x) { return x.id === projId; });
+        if (p) { p.name = val; saveData(data); }
+      }
+      if (keepClickTarget) {
+        var span = document.createElement('span');
+        span.className = 'goal-name-inline goal-name-display';
+        span.setAttribute('data-id', projId);
+        span.textContent = val || curName;
+        inp.parentNode.replaceChild(span, inp);
+        return;
+      }
       render();
     }
-    inp.onblur = done;
-    inp.onkeydown = function(e) { if (e.key === 'Enter') { e.preventDefault(); inp.blur(); } };
+    inp.onkeydown = function(e) {
+      if (e.isComposing || e.keyCode === 229) return;
+      if (e.key === 'Enter' || e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); done(e.key === 'Enter'); }
+    };
   }
 
   function closeGoalSourcePicker() {
