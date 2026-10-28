@@ -6,8 +6,8 @@
 })(typeof window !== 'undefined' ? window : null, function () {
   'use strict';
   var BASE = 'avitolog_crm_settings_v1';
-  var DEFAULTS = { autoVk: true, autoTelegram: true, autoChatPositions: false, autoAccountDetails: false, soldColor: '#1b2b25', workColor: '#2a2722' };
-  var FLAGS = ['autoVk', 'autoTelegram', 'autoChatPositions', 'autoAccountDetails'];
+  var DEFAULTS = { weeklyAutoSort: true, autoVk: true, autoTelegram: true, autoChatPositions: false, autoAccountDetails: false, soldColor: '#1b2b25', workColor: '#2a2722' };
+  var FLAGS = ['weeklyAutoSort', 'autoVk', 'autoTelegram', 'autoChatPositions', 'autoAccountDetails'];
   function text(value) { return value == null ? '' : String(value); }
   function normalize(value) {
     var out = Object.assign({}, DEFAULTS); value = value || {};
@@ -157,6 +157,9 @@
       menu = element('section', 'crm-settings-menu'); menu.id = 'crmSettingsMenu'; menu.hidden = true; menu.setAttribute('role', 'dialog'); menu.setAttribute('aria-label', 'Настройки CRM');
       var head = element('div', 'crm-settings-head'); head.appendChild(element('strong', '', 'Настройки CRM'));
       var exit = element('button', 'crm-settings-close', '\u00d7'); exit.type = 'button'; exit.setAttribute('aria-label', 'Закрыть настройки CRM'); exit.addEventListener('click', close); head.appendChild(exit); menu.appendChild(head);
+      var sorting = element('label', 'crm-settings-option'), sortingInput = element('input'); sortingInput.type = 'checkbox'; sortingInput.dataset.setting = 'weeklyAutoSort';
+      sortingInput.addEventListener('change', function () { change('weeklyAutoSort', sortingInput.checked); }); sorting.appendChild(sortingInput); sorting.appendChild(element('span', '', 'Автосортировка проектов на неделях')); menu.appendChild(sorting);
+      menu.appendChild(element('p', 'crm-settings-hint', 'Сначала КП с ценой, затем цена без КП, без цены и оплаченные. Отключите для ручного порядка.'));
       menu.appendChild(element('h3', '', 'Автоматизация'));
       [['autoVk', 'VK из входящих чатов'], ['autoTelegram', 'Telegram из входящих чатов'], ['autoChatPositions', 'Позиции товаров и услуг из чата в заметки'], ['autoAccountDetails', 'Города из чата, ИП / ООО из чата и имени клиента']].forEach(function (row) {
         var label = element('label', 'crm-settings-option'), input = element('input'); input.type = 'checkbox'; input.dataset.setting = row[0];

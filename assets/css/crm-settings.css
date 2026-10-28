@@ -3,6 +3,17 @@ body.goals-mode[style*="--crm-sold-bg"] .goal-block-sold :is(.goal-name,.goal-na
 body.goals-mode[style*="--crm-work-bg"] .goal-block-work :is(.goal-name,.goal-name-inline,.goal-block-title,.goal-block-title-txt,.goal-sum,.goal-sum-inline,.goal-sum-ruble){color:var(--crm-work-ink)!important}
 .crm-settings-button[hidden],.crm-settings-menu[hidden]{display:none!important}
 .crm-settings-button:hover,.crm-settings-button[aria-expanded="true"]{border-color:var(--accent,#49d7bf);color:var(--accent,#49d7bf)}
+.goals-header-actions{display:flex;align-items:center;gap:6px;flex:0 0 auto;margin-left:auto}
+.goals-header-actions .crm-settings-button{margin-left:0}
+body.goals-mode .goal-actions-inline .goal-folder-action{width:30px;min-width:30px;height:28px;font-size:25px;line-height:1;border-color:var(--accent,#49d7bf);color:var(--accent,#49d7bf)}
+body.goals-mode .goal-paid-action{background:rgba(0,217,126,.16);border-color:rgba(0,217,126,.65);color:#00d97e}
+.goal-week-paid :is(.goal-name-display,.goal-date,.goal-sum-inline,.goal-sum-ruble){opacity:.68}
+.goal-week-no-price :is(.goal-name-display,.goal-date,.goal-sum-inline,.goal-sum-ruble){opacity:.45}
+.goal-week-no-price:focus-within :is(.goal-name-display,.goal-date,.goal-sum-inline,.goal-sum-ruble){opacity:1}
+.goal-row-actions-menu{position:fixed;z-index:19010;min-width:174px;padding:5px;border:1px solid var(--border,#31445b);border-radius:10px;background:var(--surface,#101b2b);color:var(--text,#eaf2ff);box-shadow:0 10px 28px #0004}
+.goal-row-actions-menu button{display:block;width:100%;padding:10px;text-align:left;background:transparent;border:0;border-radius:6px;color:inherit;font:700 12px/1.3 sans-serif;cursor:pointer}
+.goal-row-actions-menu button:hover{background:var(--surface2,#132132)}
+.goal-row-actions-menu [data-action="delete"]{color:#f2677f}
 .crm-settings-menu{position:fixed;z-index:19000;box-sizing:border-box;width:min(330px,calc(100vw - 16px));max-height:calc(100dvh - 24px);overflow:auto;padding:14px;border:1px solid var(--border,#31445b);border-radius:12px;background:var(--surface,#101b2b);color:var(--text,#eaf2ff);box-shadow:0 12px 36px rgba(0,0,0,.35);font:12px/1.4 "Golos Text",sans-serif;overscroll-behavior:contain}
 .crm-settings-head{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:10px;font-size:14px}
 .crm-settings-close{flex:0 0 auto;width:30px;height:30px;padding:0;border:1px solid var(--border,#31445b);border-radius:7px;background:transparent;color:inherit;font:20px/1 sans-serif;cursor:pointer}

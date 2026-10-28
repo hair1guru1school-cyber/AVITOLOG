@@ -909,6 +909,9 @@
     });
     rememberSavedKpPackageData(String(ac.folderId), record);
     rememberSavedKpAsEditorPreset(record);
+    if (typeof window.__goalsKpCreated === 'function') {
+      try { window.__goalsKpCreated(ac, result.id, targetFolderId, record.savedAt); } catch (error) { console.warn('KP saved; CRM status update failed', error); }
+    }
     if (typeof driveUploadText === 'function') {
       var jsonName = fileName.replace(/\.png$/i, '.json');
       try {

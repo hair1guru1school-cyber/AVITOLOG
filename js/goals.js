@@ -19,6 +19,7 @@
   var _goalsFolderBindTargetId = '';
   var _goalSourceOutsideHandler = null;
   var _goalNameEdit = null;
+  var _goalActionsClose = null;
   var GOALS_WEEK_DRAG_MIME = 'application/x-avitolog-goal-row';
   var SOURCE_ACCOUNT_ICONS = ['👤','🟢','🔵','🟣','🟠','🟡','🔴','⚫','💼','📱'];
   var BUSINESS_DAY_START_HOUR = 5;
@@ -1183,7 +1184,7 @@
               weekIndex: it.weekIndex || weekIndex,
               mainPrice: String(it.mainPrice || '').trim(),
               priceOptions: it.mainPrice ? [String(it.mainPrice)] : [],
-              status: Array.isArray(it.status) ? it.status : (it.mainPrice ? ['kp'] : []),
+              status: Array.isArray(it.status) ? it.status : [],
               touchMarkers: [],
               tags: [],
               note: '',
@@ -1245,6 +1246,56 @@
     });
   }
 
+  function weeklyAutoSortEnabled() { return !window.CrmSettings || window.CrmSettings.get().weeklyAutoSort !== false; }
+  function statusListHasKp(status) { return (status || []).some(function(id) { return normalizeStatusId(id) === 'kp'; }); }
+  function weeklyProjectRank(project, soldLinks) {
+    if (statusListHasPaid(project.status) || project.stage === 'sold' || soldLinks && soldLinks[String(project.id)]) return 3;
+    var prices = [project.mainPrice].concat(project.priceOptions || []);
+    var hasPrice = prices.some(function(value) { var amount = Number(String(value || '').replace(/\s/g, '').replace(/(?:₽|руб\.?|р\.)/gi, '').replace(',', '.')); return isFinite(amount) && amount > 0; });
+    if (!hasPrice) return 2;
+    return (project.status || []).some(function(id) { return normalizeStatusId(id) === 'kp'; }) ? 0 : 1;
+  }
+  function orderedWeekProjects(projects, soldLinks, enabled) {
+    return (projects || []).map(function(project, index) { return { project: project, index: index }; }).sort(function(a, b) {
+      return enabled ? weeklyProjectRank(a.project, soldLinks) - weeklyProjectRank(b.project, soldLinks) || a.index - b.index : a.index - b.index;
+    }).map(function(item) { return item.project; });
+  }
+  function folderActionHtml(project) {
+    return '<button type="button" class="goal-more-btn goal-folder-action" onclick="event.stopPropagation();window.__goalsSelectFolder&&window.__goalsSelectFolder(\'' + esc(project.id) + '\')" title="Открыть или привязать папку проекта" aria-label="Открыть или привязать папку проекта">⌖</button>';
+  }
+  function rowActionsButtonHtml(project, weekNum) {
+    return '<button type="button" class="goal-move-btn goal-actions-menu-btn" onclick="event.stopPropagation();window.__goalsRowActions&&window.__goalsRowActions(\'' + esc(project.id) + '\',' + (Number(weekNum) || 0) + ',this)" title="В работу, в архив или удалить" aria-label="Действия с проектом" aria-haspopup="menu">→</button>';
+  }
+  function openGoalRowActions(projectId, weekNum, anchor) {
+    if (_goalActionsClose) _goalActionsClose();
+    var old = document.getElementById('goalRowActionsMenu'); if (old) old.remove();
+    var project = (loadData().projects || []).find(function(p) { return p.id === projectId; }); if (!project) return;
+    var scope = goalsStorageKey(), month = _goalsViewMonth || getCurrentMonthKey();
+    var popup = document.createElement('div'); popup.id = 'goalRowActionsMenu'; popup.className = 'goal-row-actions-menu'; popup.setAttribute('role', 'menu');
+    var actions = [];
+    if (project.stage !== 'working') actions.push(['work', '🔥 В работу']);
+    if (project.stage !== 'archive' && !project.crmArchived) actions.push(['archive', '🗂 В архив']);
+    actions.push(['delete', '× Удалить']);
+    popup.innerHTML = actions.map(function(action) { return '<button type="button" role="menuitem" data-action="' + action[0] + '">' + action[1] + '</button>'; }).join('');
+    function close() { popup.remove(); document.removeEventListener('pointerdown', outside, true); document.removeEventListener('keydown', escape, true); if (_goalActionsClose === close) _goalActionsClose = null; }
+    _goalActionsClose = close;
+    function outside(event) { if (!popup.contains(event.target) && !anchor.contains(event.target)) close(); }
+    function escape(event) { if (event.key === 'Escape') close(); }
+    popup.querySelectorAll('[data-action]').forEach(function(button) { button.onclick = function(event) {
+      event.stopPropagation(); close();
+      if (goalsStorageKey() !== scope || month !== (_goalsViewMonth || getCurrentMonthKey())) return;
+      project = (loadData().projects || []).find(function(p) { return p.id === projectId; }); if (!project) return;
+      var action = button.getAttribute('data-action');
+      if (action === 'work') { if (project.stage === 'sold') sendToWorkingFromSold(projectId); else setStage(projectId, 'working'); }
+      if (action === 'archive') setStage(projectId, 'archive');
+      if (action === 'delete' && confirm('Удалить эту строку CRM и связанные с ней записи кассы?')) { if (weekNum) deleteFromWeek(projectId, weekNum); else deletePermanent(projectId); }
+    }; });
+    document.body.appendChild(popup); var rect = anchor.getBoundingClientRect();
+    popup.style.left = Math.max(8, Math.min(rect.left, window.innerWidth - 188)) + 'px'; popup.style.top = Math.max(8, Math.min(rect.bottom + 5, window.innerHeight - 150)) + 'px';
+    document.addEventListener('pointerdown', outside, true); document.addEventListener('keydown', escape, true);
+  }
+  window.__goalsRowActions = openGoalRowActions;
+  document.addEventListener('avitolog:crm-settings-changed', function() { if (window.goalsMode) render(); });
   function renderWeekSection(weekNum, projects, soldAll, activeClient, currentWeekNum, year, month, sourceAccounts) {
     var selectedProjectNameNorm = '';
     if (typeof window.__goalsGetSelectedProjectName === 'function') {
@@ -1254,7 +1305,8 @@
     (soldAll || []).forEach(function(s) {
       if (s && s.soldFromId) soldLinkedByWeekId[String(s.soldFromId)] = true;
     });
-    var rows = projects.map(function(p) {
+    var autoSort = weeklyAutoSortEnabled();
+    var rows = orderedWeekProjects(projects, soldLinkedByWeekId, autoSort).map(function(p) {
       var rawMain = getMinPrice(p);
       var mainPrice = rawMain ? formatSumForDisplay(rawMain) : '—';
       var statusBadges = (p.status || []).map(function(sId) {
@@ -1277,24 +1329,16 @@
       var revealOnClick = 'event.stopPropagation();var r=this.closest(\'.goal-row\');if(r)r.classList.add(\'goal-add-revealed\');';
       var priceHtml = '<span class="goal-sum goal-sum-edit goal-kp-trigger" onclick="' + revealOnClick + '"><input type="text" class="goal-sum-inline" data-id="' + esc(p.id) + '" data-block="weekly" value="' + esc(mainPrice) + '" onclick="' + revealOnClick + '" placeholder="0" title="Нажмите для изменения"><span class="goal-sum-ruble">₽</span></span>';
       var emoji = p.crmArchived ? '💀' : (p.emoji || '📦');
-      var folderIcon = (p.folderLink) ? '<a href="' + esc(p.folderLink) + '" target="_blank" rel="noopener" class="goal-folder-link" title="Открыть папку" onclick="event.stopPropagation()">💿</a>' : '';
       var designations = '<span class="goal-designations">' + (statusBadges ? '<span class="goal-badges">' + statusBadges + '</span>' : '') + (touchBadges ? '<span class="goal-touches">' + touchBadges + '</span>' : '') + customTags + addBtn + '</span>';
-      var archToCrmBtn = p.crmArchived
-        ? ''
-        : '<button type="button" class="goal-move-btn" onclick="event.stopPropagation();window.__goalsSetStage&&window.__goalsSetStage(\'' + esc(p.id) + '\',\'archive\')" title="В архив CRM (строка на неделе останется с 💀)">🗂</button>';
       var actionsBtns = '<span class="goal-actions goal-actions-inline">' +
+        folderActionHtml(p) +
         contactButtonHtml(p) +
-        sourceAccountButtonHtml(p, sourceAccounts) +
-        '<button type="button" class="goal-more-btn" onclick="event.stopPropagation();window.__goalsSelectFolder&&window.__goalsSelectFolder(\'' + esc(p.id) + '\')" title="Открыть или привязать папку проекта">⋯</button>' +
-        '<button type="button" class="goal-move-btn" data-goal-action="sold" data-id="' + esc(p.id) + '" onclick="event.preventDefault();event.stopPropagation();window.__goalsQuickSetSold&&window.__goalsQuickSetSold(\'' + esc(p.id) + '\')" title="В Продано">✓</button>' +
-        '<button type="button" class="goal-move-btn" onclick="event.stopPropagation();window.__goalsSetStage&&window.__goalsSetStage(\'' + esc(p.id) + '\',\'working\')" title="В работу (копия; строка на неделе остаётся)">🔥</button>' +
-        archToCrmBtn +
-        '<button type="button" class="goal-del-btn" onclick="event.stopPropagation();window.__goalsDelete&&window.__goalsDelete(\'' + esc(p.id) + '\',' + weekNum + ')" title="Удалить из недели">×</button>' +
+        '<button type="button" class="goal-move-btn goal-paid-action" data-goal-action="sold" data-id="' + esc(p.id) + '" onclick="event.preventDefault();event.stopPropagation();window.__goalsQuickSetSold&&window.__goalsQuickSetSold(\'' + esc(p.id) + '\')" title="Оплачено — в Продано">💰</button>' +
+        rowActionsButtonHtml(p, weekNum) +
         '</span>';
       var dispName = String(p.name || '').replace(/\s+/g, ' ').trim();
       var nameCell = '<span class="goal-name-cell" onclick="event.stopPropagation();window.__goalsEditWeekNameCell&&window.__goalsEditWeekNameCell(this)">' +
         '<button type="button" class="goal-emoji-btn' + (p.crmArchived ? ' goal-emoji-crm-archived' : '') + '" onclick="event.stopPropagation();window.__goalsShowEmojiPicker&&window.__goalsShowEmojiPicker(this,\'' + esc(p.id) + '\')" title="' + (p.crmArchived ? 'В архиве CRM' : 'Изменить иконку') + '">' + emoji + '</button>' +
-        (folderIcon ? folderIcon + ' ' : '') +
         '<span class="goal-name-inline goal-name-display" data-id="' + esc(p.id) + '" title="' + esc(p.name || '') + '">' + esc(dispName) + '</span>' +
         actionsBtns +
         '</span>';
@@ -1315,7 +1359,9 @@
       var rowClass = 'goal-row' +
         (isActiveClientRow ? ' goal-row-client-active' : '') +
         (p.crmArchived ? ' goal-row-crm-archived' : '') +
-        (hasSoldCopy ? ' goal-row-week-sold' : '');
+        (hasSoldCopy ? ' goal-row-week-sold' : '') +
+        (autoSort && weeklyProjectRank(p, soldLinkedByWeekId) === 3 ? ' goal-week-paid' : '') +
+        (autoSort && weeklyProjectRank(p, soldLinkedByWeekId) === 2 ? ' goal-week-no-price' : '');
       return '<div class="' + rowClass + '" data-id="' + esc(p.id) + '" data-week="' + weekNum + '" data-week-sold="' + (hasSoldCopy ? '1' : '0') + '" draggable="true" onclick="window.__goalsQuickAddClientToRow && window.__goalsQuickAddClientToRow(' + weekNum + ',\'' + esc(p.id) + '\',event)" ondragstart="window.__goalsWeekRowDragStart&&window.__goalsWeekRowDragStart(event)" ondragover="window.__goalsWeekRowDragOver&&window.__goalsWeekRowDragOver(' + weekNum + ',\'' + esc(p.id) + '\',event)" ondragleave="window.__goalsWeekRowDragLeave&&window.__goalsWeekRowDragLeave(event)" ondrop="window.__goalsWeekRowDrop&&window.__goalsWeekRowDrop(' + weekNum + ',\'' + esc(p.id) + '\',event)" ondragend="window.__goalsWeekRowDragEnd&&window.__goalsWeekRowDragEnd(event)">' +
         '<span class="goal-date">' + esc(formatDateShort(p.date)) + '</span>' +
         '<span class="goal-name">' + nameCell + '</span>' +
@@ -1422,26 +1468,21 @@
         ? '<button type="button" class="goal-work-target-btn' + (p.workTarget ? ' on' : '') + '" onclick="event.stopPropagation();window.__goalsToggleWorkTarget&&window.__goalsToggleWorkTarget(\'' + esc(p.id) + '\')" title="Пометить как приоритетную цель (А)">🎯</button>'
         : '';
       var emoji = p.emoji || '📦';
-      var folderIcon = (p.folderLink) ? '<a href="' + esc(p.folderLink) + '" target="_blank" rel="noopener" class="goal-folder-link" title="Открыть папку" onclick="event.stopPropagation()">💿</a>' : '';
       var archBtn = (blockType === 'archive')
         ? '<button type="button" class="goal-restore-btn" onclick="event.stopPropagation();window.__goalsSetStage&&window.__goalsSetStage(\'' + esc(p.id) + '\',\'weekly\')" title="' +
           esc(p.archiveCopyOfWeekId ? 'Вернуть на неделю (убрать 💀 со строки)' : 'Вернуть в неделю') +
           '">&#8634;</button>'
         : '';
       var toActiveBtn = (blockType === 'sold') ? '<button type="button" class="goal-to-work-btn goal-to-active-btn" onclick="event.stopPropagation();window.__goalsCreateActiveFromSold&&window.__goalsCreateActiveFromSold(\'' + esc(p.id) + '\')" title="Создать активный проект в ПРОЕКТАХ">🅰️</button>' : '';
-      var projectLinkBtns = contactButtonHtml(p) + sourceAccountButtonHtml(p, blockOpts.sourceAccounts || []) +
-        '<button type="button" class="goal-more-btn" onclick="event.stopPropagation();window.__goalsSelectFolder&&window.__goalsSelectFolder(\'' + esc(p.id) + '\')" title="Открыть или привязать папку проекта">⋯</button>';
+      var projectLinkBtns = folderActionHtml(p) + contactButtonHtml(p);
       var workToWeekBtn = (blockType === 'work') ? '<button type="button" class="goal-move-btn goal-to-week-btn" onclick="event.stopPropagation();window.__goalsShowSendToWeek&&window.__goalsShowSendToWeek(\'' + esc(p.id) + '\',this)" title="Отправить в неделю">📅</button>' : '';
-      var workToSoldBtn = (blockType === 'work') ? '<button type="button" class="goal-move-btn" data-goal-action="sold" data-id="' + esc(p.id) + '" onclick="event.preventDefault();event.stopPropagation();window.__goalsQuickSetSold&&window.__goalsQuickSetSold(\'' + esc(p.id) + '\')" title="В продано">✓</button>' : '';
-      var workToArchiveBtn = (blockType === 'work') ? '<button type="button" class="goal-move-btn" onclick="event.stopPropagation();window.__goalsSetStage&&window.__goalsSetStage(\'' + esc(p.id) + '\',\'archive\')" title="В архив">🗂</button>' : '';
-      var delBtn = (blockType === 'sold' || blockType === 'work') ? '<button type="button" class="goal-del-btn" onclick="event.stopPropagation();window.__goalsDeletePermanent&&window.__goalsDeletePermanent(\'' + esc(p.id) + '\')" title="Удалить">×</button>' : '';
+      var workToSoldBtn = (blockType === 'work') ? '<button type="button" class="goal-move-btn goal-paid-action" data-goal-action="sold" data-id="' + esc(p.id) + '" onclick="event.preventDefault();event.stopPropagation();window.__goalsQuickSetSold&&window.__goalsQuickSetSold(\'' + esc(p.id) + '\')" title="Оплачено — в Продано">💰</button>' : '';
       var dispName = String(p.name || '').replace(/\s+/g, ' ').trim();
-      var actionsHtml = (archBtn || '') + (toActiveBtn || '') + projectLinkBtns + (workToWeekBtn || '') + (workToSoldBtn || '') + (workToArchiveBtn || '') + (delBtn || '');
+      var actionsHtml = projectLinkBtns + (archBtn || '') + (toActiveBtn || '') + (workToWeekBtn || '') + (workToSoldBtn || '') + rowActionsButtonHtml(p, 0);
       var actionsInName = (blockType === 'sold' || blockType === 'work') ? actionsHtml : '';
       var nameCell = '<span class="goal-name-cell" onclick="event.stopPropagation();window.__goalsEditNameCell&&window.__goalsEditNameCell(this)">' +
         targetBtn +
         '<button type="button" class="goal-emoji-btn" onclick="event.stopPropagation();window.__goalsShowEmojiPicker&&window.__goalsShowEmojiPicker(this,\'' + esc(p.id) + '\')" title="Изменить иконку">' + emoji + '</button>' +
-        (folderIcon ? folderIcon + ' ' : '') +
         '<span class="goal-name-inline goal-name-display" data-id="' + esc(p.id) + '" title="' + esc(p.name || '') + '">' + esc(dispName) + '</span>' +
         (actionsInName ? '<span class="goal-actions-inline">' + actionsInName + '</span>' : '') +
         '</span>';
@@ -2437,7 +2478,7 @@
         '</div>';
       }).join('');
       return '<div class="goals-month-chart-wrap">' +
-        '<div class="goals-month-chart-head"><div><b>📊 CRM месяц по дням</b><span>Каждый день — отдельный столбец. Нет КП/продажи/слива — столбца нет. Высота = сумма.</span></div><button type="button" class="goals-smart-open-btn" id="goalsSmartOpenBtn" title="Открыть умную строку ИИ">🤖</button></div>' +
+        '<div class="goals-month-chart-head"><div><b>📊 CRM месяц по дням</b><span>Каждый день — отдельный столбец. Нет КП/продажи/слива — столбца нет. Высота = сумма.</span></div><div class="goals-header-actions"><button type="button" class="goals-smart-open-btn" id="goalsSmartOpenBtn" title="Открыть умную строку ИИ">🤖</button></div></div>' +
         '<div class="goals-month-chart-legend"><span class="kp">КП</span><span class="sold">Продан</span><span class="drain">Слился</span></div>' +
         '<div class="goals-month-chart-grid">' + weeksHtml + '</div>' +
         '<div class="goals-smart-modal" id="goalsSmartModal" hidden><div class="goals-smart-modal-card"><div class="goals-smart-modal-head"><b>🤖 Умная строка ИИ</b><button type="button" id="goalsSmartCloseBtn">×</button></div><label class="goals-smart-input-label">Введи команду или данные, ИИ распределит</label><div class="goals-smart-input-row"><textarea class="goals-smart-input" id="goalsSmartInput" rows="1" placeholder="Проект 1, Проект 2 35000 | добавь метрику: конверсия 12% | Иван 45000 в неделю 2" title="Enter — выполнить"></textarea><button type="button" class="goals-smart-input-btn" id="goalsSmartInputBtn">Добавить</button></div></div></div>' +
@@ -3955,9 +3996,7 @@
     copy.saleAmount = '';
     copy.soldFromId = undefined;
     copy.status = copy.status ? copy.status.slice() : [];
-    if (copy.status.indexOf('kp') < 0) copy.status.unshift('kp');
     copy.statusDates = Object.assign({}, copy.statusDates || {});
-    if (!copy.statusDates.kp) copy.statusDates.kp = getTodayISO();
     copy.touchDates = Object.assign({}, copy.touchDates || {});
     copy.tags = (copy.tags || []).slice();
     if (copy.tags.indexOf('new') < 0) copy.tags.unshift('new');
@@ -4268,6 +4307,25 @@
     return isFinite(n) ? String(Math.round(n)) : '';
   }
 
+  function clientHasSavedKp(client) {
+    if (!client.folderId || typeof window.__getSavedKpPackagesForClient !== 'function') return false;
+    try { return window.__getSavedKpPackagesForClient(String(client.folderId)).some(function(record) { return record && typeof record.imageFileId === 'string' && !!record.imageFileId.trim(); }); } catch (error) { return false; }
+  }
+  window.__goalsKpCreated = function(client, fileId, folderId, savedAt) {
+    if (!client || !client.folderId || typeof fileId !== 'string' || !fileId.trim()) return 0;
+    if (window.AVITOLOG_BACKEND_MODE && typeof window.AVITOLOG_PROFILE_LOCKED === 'boolean' && /_sasha$/.test(goalsStorageKey()) !== window.AVITOLOG_PROFILE_LOCKED) return 0;
+    var data = loadLiveData(), changed = 0, clientId = String(client.client_id || ''), originalFolder = String(client.folderId);
+    (data.projects || []).forEach(function(project) {
+      if (project.stage === 'sold' || project.stage === 'archive') return;
+      var linkedFolder = String(project.folderId || project.crmClientId || ''), link = String(project.folderLink || '').match(/\/folders\/([a-zA-Z0-9_-]+)/);
+      if (!(linkedFolder === originalFolder || link && link[1] === originalFolder || clientId && String(project.crmClientRecordId || '') === clientId)) return;
+      project.status = (project.status || []).slice(); if (!statusListHasKp(project.status)) project.status.push('kp');
+      project.statusDates = Object.assign({}, project.statusDates || {}); if (!project.statusDates.kp) project.statusDates.kp = getTodayISO();
+      project.kpCreatedV1 = { fileId: fileId, folderId: String(folderId || originalFolder), savedAt: String(savedAt || '') }; changed++;
+    });
+    if (changed) { setGoalsStorageValue(goalsStorageKey(), JSON.stringify(data)); if (window.goalsMode) render(); }
+    return changed;
+  };
   function createGoalProjectFromClient(client, weekNum, targetStage) {
     var name = String(client.company || client.contact_name || client.name || 'Клиент').trim();
     if (!name) return null;
@@ -4278,8 +4336,9 @@
     var folderLink = (client.folderLink || (client.folderId ? 'https://drive.google.com/drive/folders/' + client.folderId : '')) || '';
     var detectedPrice = extractClientPrice(client);
     var stage = targetStage || 'weekly';
-    var status = stage === 'weekly' ? ['kp'] : [];
-    var statusDates = stage === 'weekly' ? { kp: getTodayISO() } : {};
+    var hasSavedKp = clientHasSavedKp(client);
+    var status = hasSavedKp ? ['kp'] : [];
+    var statusDates = hasSavedKp ? { kp: getTodayISO() } : {};
     var project = {
       id: generateId(),
       name: name,
@@ -4343,7 +4402,7 @@
         if (project[field]) existing[field] = project[field];
       });
       if (project.sourceAccountId) existing.sourceAccountId = project.sourceAccountId;
-      if (existing.stage === 'weekly') {
+      if (existing.stage === 'weekly' && statusListHasKp(project.status)) {
         existing.status = existing.status ? existing.status.slice() : [];
         if (existing.status.indexOf('kp') < 0) existing.status.unshift('kp');
         existing.statusDates = Object.assign({}, existing.statusDates || {});
