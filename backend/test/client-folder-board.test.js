@@ -2,6 +2,12 @@
 const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),vm=require('node:vm');
 const source=fs.readFileSync(path.resolve(__dirname,'../../js/client-folder-board.js'),'utf8'),sandbox={module:{exports:{}},URLSearchParams,AbortController};vm.runInNewContext(source,sandbox);const api=sandbox.module.exports;
 const clone=v=>JSON.parse(JSON.stringify(v)),root='root_folder_123',cat='category_12345',other='category_67890',fid='project_folder1',fid2='project_folder2';
+test('direction headings and folder counts are prominent without changing project row typography',()=>{
+ const css=fs.readFileSync(path.resolve(__dirname,'../../assets/css/client-folder-board.css'),'utf8');
+ assert.match(css,/\.cfb-column-head strong\{[^}]*font-size:14px;[^}]*font-weight:800/);
+ assert.match(css,/\.cfb-column-head small\{[^}]*flex-shrink:0;[^}]*font-size:16px;[^}]*font-weight:800;[^}]*opacity:1/);
+ assert.match(css,/\.cfb-project-text strong\{font-size:12px;/);
+});
 test('new view defaults on; only safe Drive folder links and bounded settings are accepted',()=>{
  assert.equal(api.cleanSettings().enabled,true);assert.equal(api.cleanSettings({enabled:false}).enabled,false);
  assert.equal(api.folderId('https://drive.google.com/drive/folders/'+fid+'?usp=sharing'),fid);
