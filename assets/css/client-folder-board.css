@@ -3,5 +3,7 @@
 body.day-mode .cfb,body.light .cfb,body.light-theme .cfb,body[data-theme=light] .cfb,html[data-theme=light] .cfb{--cfb-surface:#fff;--cfb-line:#d7e3ef;--cfb-text:#20374d;--cfb-muted:#657e96}
 @media(max-width:700px){.cfb{padding:12px 10px}.cfb h2{font-size:17px}.cfb-tools{width:100%;flex-wrap:nowrap}.cfb-tools input{min-width:60px;width:auto;flex:1}.cfb-tools button{font-size:12px;white-space:nowrap}.cfb-column{flex-basis:218px}.cfb-rows{max-height:calc(100dvh - 285px)}.cfb-top{gap:10px}.cfb-status{margin:9px 0}}
 body:has(#clientFolderBoard) #analyticsControlPanel,body:has(#clientFolderBoard) #secBar,body:has(#clientFolderBoard) #genButtonsRow,body:has(#clientFolderBoard) #genExtraPrompt{display:none!important}
-.cfb-column-head strong{flex:1;min-width:0;font-size:14px;font-weight:800;line-height:1.3}
-.cfb-column-head small{flex-shrink:0;margin-left:2px;min-width:32px;padding:4px 7px;border:1px solid #52c9d72b;border-radius:7px;background:#52c9d714;color:var(--cfb-text);font-size:16px;font-weight:800;line-height:1.15;font-variant-numeric:tabular-nums;text-align:center;opacity:1}
+.cfb-column-head button{display:grid;grid-template-columns:minmax(0,1fr);gap:4px;padding:6px 7px}
+.cfb-column-head button>span{display:none}
+.cfb-column-head strong{min-width:0;min-height:2.5em;font-size:14px;font-weight:800;line-height:1.25}
+.cfb-column-head small{box-sizing:border-box;flex-shrink:0;justify-self:start;margin-left:0;min-width:32px;padding:3px 7px;border:1px solid #52c9d72b;border-radius:7px;background:#52c9d714;color:var(--cfb-text);font-size:16px;font-weight:800;line-height:1.15;font-variant-numeric:tabular-nums;text-align:center;opacity:1}

@@ -6,6 +6,7 @@ test('direction headings and folder counts are prominent without changing projec
  const css=fs.readFileSync(path.resolve(__dirname,'../../assets/css/client-folder-board.css'),'utf8');
  assert.match(css,/\.cfb-column-head strong\{[^}]*font-size:14px;[^}]*font-weight:800/);
  assert.match(css,/\.cfb-column-head small\{[^}]*flex-shrink:0;[^}]*font-size:16px;[^}]*font-weight:800;[^}]*opacity:1/);
+ assert.match(css,/\.cfb-column-head button\{display:grid;grid-template-columns:minmax\(0,1fr\)/);
  assert.match(css,/\.cfb-project-text strong\{font-size:12px;/);
 });
 test('new view defaults on; only safe Drive folder links and bounded settings are accepted',()=>{
