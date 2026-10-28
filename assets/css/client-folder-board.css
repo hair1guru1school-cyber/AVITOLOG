@@ -3,6 +3,7 @@
 body.day-mode .cfb,body.light .cfb,body.light-theme .cfb,body[data-theme=light] .cfb,html[data-theme=light] .cfb{--cfb-surface:#fff;--cfb-line:#d7e3ef;--cfb-text:#20374d;--cfb-muted:#657e96}
 @media(max-width:700px){.cfb{padding:12px 10px}.cfb h2{font-size:17px}.cfb-tools{width:100%;flex-wrap:nowrap}.cfb-tools input{min-width:60px;width:auto;flex:1}.cfb-tools button{font-size:12px;white-space:nowrap}.cfb-column{flex-basis:218px}.cfb-rows{max-height:calc(100dvh - 285px)}.cfb-top{gap:10px}.cfb-status{margin:9px 0}}
 body:has(#clientFolderBoard) #analyticsControlPanel,body:has(#clientFolderBoard) #secBar,body:has(#clientFolderBoard) #genButtonsRow,body:has(#clientFolderBoard) #genExtraPrompt{display:none!important}
+.cfb-column-head{height:auto}
 .cfb-column-head button{display:grid;grid-template-columns:minmax(0,1fr);gap:4px;padding:6px 7px}
 .cfb-column-head button>span{display:none}
 .cfb-column-head strong{min-width:0;min-height:2.5em;font-size:14px;font-weight:800;line-height:1.25}
