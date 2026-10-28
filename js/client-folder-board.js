@@ -2,6 +2,7 @@
   'use strict';
   var FOLDER_MIME='application/vnd.google-apps.folder';
   function str(v){return String(v==null?'':v);}
+  function serviceFolder(row){return /^(?:OLD|Brains|project-avatars)$/i.test(str(row&&row.name).trim());}
   function esc(v){return str(v).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
   function folderId(value){var v=str(value).trim(),m=v.match(/^https:\/\/drive\.google\.com\/(?:drive\/(?:u\/\d+\/)?folders\/)([\w-]+)/);return m?m[1]:(/^[\w-]{10,200}$/.test(v)?v:'');}
   function stamp(value){
@@ -35,7 +36,7 @@
       var linked=clientId&&(context.clients||[]).find(function(client){return client.client_id===clientId;});
       add(linked?Object.assign({},linked,row,{folderId:row.folderId||row.crmData&&row.crmData.folderId||linked.folderId}):row,'project');
     });
-    var folders=(cache.folders||[]).filter(function(f){return f&&folderId(f.id);});
+    var folders=(cache.folders||[]).filter(function(f){return f&&folderId(f.id)&&!serviceFolder(f);});
     folders.filter(function(f){return (f.parents||[]).indexOf(root)>=0&&!rows.has('folder_'+f.id);}).forEach(function(f){column('drive_'+f.id,f.name,f.id);});
     settings.directions.forEach(function(d){var original=cols.get(d.id);if(original&&original.folderId)folderCols.delete(original.folderId);column(d.id,d.name,d.folderId);});
     folders.forEach(function(f){
@@ -125,7 +126,7 @@
           if(app){var inside=await listDriveFolders(win.fetch.bind(win),token,app.id,controller.signal),clients=inside.find(function(f){return f.name==='Клиенты'||f.name==='CRM';});root=clients&&clients.id;}
           if(!root)throw Error('Укажите вашу папку CRM в настройках вида. Папки автоматически не создаются.');
         }
-        initial=await listDriveFolders(win.fetch.bind(win),token,root,controller.signal);
+        initial=(await listDriveFolders(win.fetch.bind(win),token,root,controller.signal)).filter(function(f){return !serviceFolder(f);});
         var known=new Set(model(c,s).projects.map(function(p){return p.folderId;}).filter(Boolean)),directions=initial.filter(function(f){return !known.has(f.id);}).map(function(f){return f.id;});
         s.settings.directions.forEach(function(d){if(d.folderId)directions.push(d.folderId);});directions=Array.from(new Set(directions));
         var all=initial.slice(),cursor=0;

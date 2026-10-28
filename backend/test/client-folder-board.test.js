@@ -24,6 +24,10 @@ test('Drive-only directories and project folders appear without creating CRM or 
  const c={rootFolderId:root,clients:[],projects:[]},cache={folders:[{id:cat,name:'Направление',parents:[root]},{id:fid,name:'Новый клиент',parents:[cat],createdTime:'2026-10-20T10:00:00Z'}]};
  const board=api.buildBoard(c,cache,{});assert.equal(board.projects.length,1);assert.equal(board.columns[0].name,'Направление');assert.equal(board.projects[0].folderId,fid);assert.equal(c.projects.length,0);assert.equal(c.clients.length,0);
 });
+test('technical Drive folders are not mistaken for client directions or projects',()=>{
+ const cache={folders:[{id:cat,name:'Brains',parents:[root]},{id:fid,name:'project-avatars',parents:[cat]},{id:other,name:'OLD',parents:[root]}]};
+ const board=api.buildBoard({rootFolderId:root},cache,{showEmpty:true});assert.equal(board.columns.length,0);assert.equal(board.projects.length,0);
+});
 test('direction rename and nested folder binding are presentation-only and do not alter project zones, tasks or money',()=>{
  const c={rootFolderId:root,categories:[{v:cat,n:'Main'}],projects:[{id:'x',folderId:fid,title:'One',categoryFolderId:cat,zone:'archive',paymentJournalV1:{entries:[{amount:42}]}},{id:'y',title:'No folder',tasks:[{id:'t1'}]}]};
  const before=JSON.stringify(c),cache={folders:[{id:cat,name:'Main',parents:[root]},{id:other,name:'Вложенная',parents:[cat]},{id:fid,name:'One',parents:[other],createdTime:'2026-10-01T00:00:00Z'}]},settings={directions:[{id:'custom_sub',name:'Подгруппа',folderId:other},{id:'drive_'+cat,name:'Новое имя',folderId:cat}]};
