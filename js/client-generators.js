@@ -102,7 +102,7 @@
       if (linked.folderId && String(linked.folderId) !== String(client.folderId)) linked = {};
       var projectFolder = project && (project.folderId || project.crmData && project.crmData.folderId);
       var projectData = projectFolder && String(projectFolder) === String(client.folderId) ? project.crmData || {} : {};
-      data = contextData(contextData(contextData(data, client), linked), projectData);
+      data = contextData(contextData(contextData(data, linked), client), projectData);
       var headers = {};
       [['analysis', 'getAnalyticsHeaderImg'], ['presale', 'getPresaleHeaderImgForExport'], ['avito1', 'getAvito1HeaderImgForExport']].forEach(function (entry) {
         if (typeof win[entry[1]] !== 'function') return;
@@ -218,6 +218,7 @@
       var snapshot;
       try { snapshot = captured(); } catch (error) { holder.append(el('h2', '', '🌀 Скрипт и документы'), el('p', 'cg-error', message(error))); if (library) { var fallback = el('div'); holder.append(fallback); library(fallback); } return; }
       panelKey = key(snapshot); var state = draft(snapshot);
+      holder.append(button('← К папкам клиентов', function () { originalSwitch.call(win, 'analysis'); if (typeof win.showClientContentsBack === 'function') win.showClientContentsBack(); }, 'cg-back'));
       holder.append(el('h2', '', '🌀 Скрипт и документы'), el('p', 'cg-caption', snapshot.title + ' · папка захвачена'));
       var folder = el('a', 'cg-folder', 'Открыть папку Drive ↗'); folder.href = 'https://drive.google.com/drive/folders/' + encodeURIComponent(snapshot.folderId); folder.target = '_blank'; folder.rel = 'noopener'; holder.append(folder);
       holder.append(el('p', 'cg-caption', 'Нажмите, чтобы выбрать документы. Удерживайте кнопку для комментария; также можно нажать её маленький карандаш.'));
@@ -246,10 +247,6 @@
       var templates = el('details', 'cg-library'); templates.append(el('summary', '', 'Быстрые скрипты и шаблоны сообщений')); var libraryHost = el('div'); templates.append(libraryHost); holder.append(templates); if (library) library(libraryHost); renderResults();
     }
     win.__showScriptsPanel = render;
-    win.switchTab = function (tab) {
-      if (['analysis', 'presale', 'avito1'].indexOf(tab) >= 0) { try { var snap = captured(); draft(snap).selected = [tab]; } catch (_) {} tab = 'scripts'; }
-      return originalSwitch.apply(this, [tab]);
-    };
     var scriptTab = doc.getElementById('tab-scripts'); if (scriptTab) { var icon = scriptTab.querySelector('.rtab-ico'); if (icon) icon.textContent = '🌀'; }
     var lastKey = ''; win.setInterval(function () {
       updateProgress();

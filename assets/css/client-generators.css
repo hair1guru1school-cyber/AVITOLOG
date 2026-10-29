@@ -1,5 +1,7 @@
 /* Existing nodes remain for old document links; generators now live in Script. */
 body #tab-analysis,body #tab-presale,body #tab-avito1{display:none!important}
+body #genButtonsRow,body #genExtraPrompt,body:has(.cg-panel) #chatFloat{display:none!important}
+.cg-panel .cg-back{border:0;background:transparent;color:var(--accent,#00d97e);font:inherit;font-size:12px;padding:0 0 10px;cursor:pointer}
 body.mobile-client-tools-on #mobileClientTools{grid-template-columns:repeat(3,minmax(0,1fr))!important}
 .cg-panel{padding:16px;max-width:1200px;margin:0 auto;color:var(--text,#e4ecef)}
 .cg-panel h2{margin:0 0 6px;font-size:22px}.cg-caption{font-size:12px;opacity:.7;line-height:1.5;margin:8px 0 14px}.cg-folder{color:var(--accent,#00d97e);font-size:12px}

@@ -45,3 +45,6 @@ test('UI retains old template library, keyboard comments, global progress and no
 test('AI HTML is cleaned inside an inert template, never a resource-loading DOMParser document',()=>{
  const source=fs.readFileSync(root+'/js/client-generators.js','utf8');assert.ok(source.includes("doc.createElement('template')"));assert.ok(source.includes('clean(parsed.content)'));assert.equal(source.includes('new win.DOMParser'),false);
 });
+test('folder overview and legacy document routes are not hijacked by the generator panel',()=>{
+ const source=fs.readFileSync(root+'/js/client-generators.js','utf8'),css=fs.readFileSync(root+'/assets/css/client-generators.css','utf8');assert.equal(source.includes('win.switchTab ='),false);assert.ok(source.includes('win.showClientContentsBack()'));assert.ok(css.includes('body #genButtonsRow'));assert.ok(source.includes('win.__showScriptsPanel = render'));
+});
