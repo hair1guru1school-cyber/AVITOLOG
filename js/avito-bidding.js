@@ -196,6 +196,10 @@
       state.dialog = null; state.parts = null; state.quotes = [];
     }
     function clear() { if (active) stop(active); active = null; cache.clear(); }
+    function parentDialog(open) {
+      if(!win.parent || win.parent===win)return;
+      ['https://hair1guru1school-cyber.github.io','https://avitoboss.online'].forEach(function(origin){win.parent.postMessage({type:'AVITOLOG_BIDDING_VIEW',open:open},origin);});
+    }
     function mount(host, context) {
       if (!host || !context || !context.account || !context.organizationId || typeof context.api !== 'function') return;
       var key = scopeKey(context), state;
@@ -372,7 +376,7 @@
     }
     function open(state) {
       if (!valid(state)) return;
-      if (state.dialog) { if (!state.dialog.open) state.dialog.showModal(); if (state.groupId === CONTACT_GROUP_ID && state.next != null) { if (state.loadingAll && state.cancelAllLoad) state.resumeContactsLoad = true; else loadAllItems(state); } return; }
+      if (state.dialog) { if (!state.dialog.open) state.dialog.showModal(); parentDialog(true); if (state.groupId === CONTACT_GROUP_ID && state.next != null) { if (state.loadingAll && state.cancelAllLoad) state.resumeContactsLoad = true; else loadAllItems(state); } return; }
       var dialog = el('dialog', 'avb-dialog'), head = el('header', 'avb-dialog-head'), title = el('div');
       title.append(el('h2', '', 'Ставки и группы объявлений'), el('p', 'avb-muted', state.ctx.account.display_name || 'Аккаунт Avito'));
       var close = button(state, 'Закрыть', 'avb-secondary', function () { dialog.close(); });
@@ -387,8 +391,9 @@
       foot.append(el('span', 'avb-muted', 'Ставки меняются только после подтверждения. После применения расходы идут по правилам Авито. Конкуренция и прогноз — оценки Авито, не гарантия заявок.'));
       dialog.append(head, status, toolbar, layout, foot); doc.body.append(dialog);
       state.dialog = dialog; state.parts = { status: status, toolbar: toolbar, table: table, controls: controls, preview: preview, chart: chart, groupBars: groupBars };
-      dialog.addEventListener('close', function () { state.cancelPreview = true; state.cancelAllLoad = true; state.resumeContactsLoad = false; if (state.runner) state.runner.cancel(); });
+      dialog.addEventListener('close', function () { parentDialog(false); state.cancelPreview = true; state.cancelAllLoad = true; state.resumeContactsLoad = false; if (state.runner) state.runner.cancel(); });
       dialog.showModal(); renderToolbar(state); renderTable(state); renderControls(state); renderPreview(state);
+      parentDialog(true);
       if (!state.loaded || state.loading || dashboard && Date.now() - state.loadedAt >= 60000) loadItems(state, false).then(function () { if (valid(state) && dialog.open && !state.selectedId && state.items.length) choose(state, initialItemId(state.items, state.details, state.loadedAt)); });
       else { note(state, 'Снимок от ' + new Date(state.loadedAt).toLocaleString('ru-RU') + '. Выберите объявления → укажите ставку → проверьте изменения.'); if (!state.selectedId && state.items.length) choose(state, initialItemId(state.items, state.details, state.loadedAt)); }
       loadGroups(state);
@@ -711,7 +716,7 @@
       if(fresh){
         var quote=draft.reply, summary=el('details','avb-server-consent');summary.open=true;
         summary.append(el('summary','','Подтверждение · '+quote.count+' объявлений'),el('strong','',currentLabel(quote.after)),el('p','avb-warning',quote.after.mode==='base'?'Повышенное продвижение будет отключено. Базовое размещение может быть платным.':'Общий предел: '+money((quote.after.limit_penny||quote.after.budget_penny)*quote.count)+' / '+(quote.after.mode==='manual'?'день':quote.after.budget_type)+'. Это лимит, не прогноз.'));
-        summary.append(el('small','avb-muted','Работает без браузера, до 24 часов. Условия каждого объявления проверяются перед отправкой. Новая очередь заменяет ещё не отправленные ставки этих объявлений. Неизвестный ответ останавливает очередь без повтора.'),button(state,'← Изменить параметры','avb-secondary',function(){state.serverDraft=null;renderPreview(state);}));
+        summary.append(el('small','avb-muted','Очередь выполняется без браузера, в пределах 24 часов. Установленные ставки действуют в Авито до вашего изменения, а не только сутки. Условия каждого объявления проверяются перед отправкой. Новая очередь заменяет ещё не отправленные ставки этих объявлений. Неизвестный ответ останавливает очередь без повтора.'),button(state,'← Изменить параметры','avb-secondary',function(){state.serverDraft=null;renderPreview(state);}));
         var check=el('input');check.type='checkbox';var label=el('label','avb-risk-confirm');label.append(check,el('span','','Подтверждаю расходы и запуск серверной очереди.'));
         var send=button(state,'Подтвердить и запустить','avb-danger',async function(){
           if(!check.checked||state.busy||state.serverDraft!==draft||draft.fingerprint!==JSON.stringify([pendingIds(state),state.form]))return;

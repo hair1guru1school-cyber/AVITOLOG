@@ -12,7 +12,7 @@
   var TAB_SCALE_MIN = 80;
   var TAB_SCALE_MAX = 140;
   var UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-  var ACCOUNTS_URL = 'https://avitoboss.online/integrations/avito-accounts/?embedded=1&v=20261027-project-groups3';
+  var ACCOUNTS_URL = 'https://avitoboss.online/integrations/avito-accounts/?embedded=1&v=20261029-bidding-queue2';
   var TAB_DEFINITIONS = [
     { key: 'goals', buttonId: 'btnGoals', label: 'CRM' },
     { key: 'analytics', buttonId: 'btnProjectsReturn', label: 'Клиент' },
@@ -437,6 +437,7 @@
   }
 
   function closeAccounts() {
+    document.body.classList.remove('avito-bid-overlay');
     var wasOpen = state.accountsOpen;
     state.accountsOpen = false;
     document.body.classList.remove('avito-accounts-mode');
@@ -477,6 +478,7 @@
     var external = document.getElementById('avitoAccountsExternal');
     if (external) external.href = url;
     if (frame && frame.src === url) return frame;
+    document.body.classList.remove('avito-bid-overlay');
     if (frame && frame.parentNode) frame.parentNode.removeChild(frame);
     var host = document.getElementById('avitoAccountsFrameHost');
     if (!host) return null;
@@ -752,6 +754,7 @@
       '.avito-main-accounts-head a{color:#7cf5ff;font-weight:800}',
       '#avitoAccountsFrameHost{height:calc(100vh - 145px);min-height:520px;border:1px solid #233b4e;border-radius:12px;overflow:hidden;background:#070c14}',
       '#avitoAccountsFrame{display:block;width:100%;height:100%;border:0;background:#070c14}',
+      'body.avito-bid-overlay #avitoAccountsFrameHost{position:fixed;inset:0;width:100vw;height:100dvh;min-height:0;z-index:2147482000;border:0;border-radius:0}',
       'body.avito-accounts-mode .sidebar,body.avito-accounts-mode #sidebarTogglePeek,body.avito-accounts-mode #mainContent,body.avito-accounts-mode #rightPanelWrap,body.avito-accounts-mode #taskPanelWrap,body.avito-accounts-mode #chatFloat,body.avito-accounts-mode #analyticsControlPanel,body.avito-accounts-mode #secBar,body.avito-accounts-mode #genExtraPrompt,body.avito-accounts-mode #genButtonsRow{display:none!important}',
       'body.avito-accounts-mode .layout{grid-template-columns:minmax(0,1fr)!important}',
       'body.avito-accounts-mode .content-wrap{min-width:0;min-height:0;margin-right:0!important}',
@@ -899,6 +902,11 @@
     addAccountsTab(row);
     addAccountsPanel(mainContent);
     state.initialized = true;
+    window.addEventListener('message',function(event){
+      var frame=document.getElementById('avitoAccountsFrame'),data=event.data;
+      if(event.origin!=='https://avitoboss.online'||!frame||event.source!==frame.contentWindow||!data||data.type!=='AVITOLOG_BIDDING_VIEW'||typeof data.open!=='boolean'||Object.keys(data).sort().join(',')!=='open,type')return;
+      document.body.classList.toggle('avito-bid-overlay',data.open&&state.accountsOpen);
+    });
     installHooks();
     applyVisibility();
     ['avitolog:backend-initial-ready','avitolog:workspace-reset'].forEach(function(event){document.addEventListener(event,function(){if(document.getElementById('avitoAccountsFrame'))ensureAccountsFrame();});});
