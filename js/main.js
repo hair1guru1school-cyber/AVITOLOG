@@ -3256,8 +3256,10 @@ async function readDriveUploadResult(resp, token) {
   return result;
 }
 
-async function driveCreateGoogleDoc(name, htmlContent, parentId) {
+async function driveCreateGoogleDoc(name, htmlContent, parentId, guard, signal) {
+  if (guard) guard();
   var token = await getDriveToken();
+  if (guard) guard(token);
   var boundary = 'avitolog_' + Date.now();
   var nl = '\r\n';
   var meta = JSON.stringify({
@@ -3277,6 +3279,7 @@ async function driveCreateGoogleDoc(name, htmlContent, parentId) {
     'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,name,webViewLink',
     {
       method: 'POST',
+      signal: signal,
       headers: {
         'Authorization': 'Bearer ' + token,
         'Content-Type': 'multipart/related; boundary=' + boundary

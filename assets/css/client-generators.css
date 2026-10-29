@@ -1,0 +1,22 @@
+/* Existing nodes remain for old document links; generators now live in Script. */
+body #tab-analysis,body #tab-presale,body #tab-avito1{display:none!important}
+body.mobile-client-tools-on #mobileClientTools{grid-template-columns:repeat(3,minmax(0,1fr))!important}
+.cg-panel{padding:16px;max-width:1200px;margin:0 auto;color:var(--text,#e4ecef)}
+.cg-panel h2{margin:0 0 6px;font-size:22px}.cg-caption{font-size:12px;opacity:.7;line-height:1.5;margin:8px 0 14px}.cg-folder{color:var(--accent,#00d97e);font-size:12px}
+.cg-choices{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:18px 0}
+.cg-choice{display:flex;border:1px solid var(--border,#39444d);border-radius:12px;overflow:hidden;min-width:0;background:var(--panel,#171c23)}
+.cg-choice button,.cg-panel .cg-actions button,.cg-comments button,.cg-result button{font:inherit;color:inherit;cursor:pointer;border:0;background:transparent;padding:13px}
+.cg-choice>button:first-child{flex:1;text-align:left;font-weight:750;touch-action:pan-y;user-select:none}
+.cg-choice>button[aria-pressed=true]{background:color-mix(in srgb,var(--accent,#00d97e) 18%,transparent);box-shadow:inset 0 -3px var(--accent,#00d97e)}
+.cg-choice .cg-edit{flex:0 0 36px;padding:6px;opacity:.65}.cg-choice .cg-has-comment::after{content:' •';color:var(--accent,#00d97e)}
+.cg-actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap}.cg-actions select{padding:10px;border-radius:8px;background:var(--panel,#171c23);color:inherit;border:1px solid var(--border,#39444d)}
+.cg-panel .cg-start,.cg-comments .cg-actions button:first-child{background:var(--accent,#00d97e);color:#06241a;border-radius:9px;font-weight:750}
+.cg-panel button:disabled{opacity:.45;cursor:wait}.cg-panel button:focus-visible,.cg-comments button:focus-visible{outline:2px solid var(--accent,#00d97e);outline-offset:-3px}
+.cg-results{display:grid;gap:8px}.cg-result{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:11px;border:1px solid var(--border,#39444d);border-radius:10px;font-size:13px}.cg-result a{color:var(--accent,#00d97e)}.cg-result small{flex-basis:100%}.cg-error{color:#ee8793;white-space:pre-wrap;font-size:12px}
+.cg-library{margin-top:24px;border-top:1px solid var(--border,#39444d);padding-top:14px}.cg-library>summary{cursor:pointer;font-size:14px;font-weight:650}
+.cg-comments{width:min(560px,calc(100vw - 24px));max-height:85dvh;overflow:auto;background:var(--bg,#10151c);color:var(--text,#e4ecef);border:1px solid var(--border,#39444d);border-radius:14px;padding:20px}.cg-comments::backdrop{background:#0009}.cg-comments h3{margin:0 0 8px}.cg-comments p{font-size:12px;opacity:.7}.cg-comments textarea{box-sizing:border-box;width:100%;padding:12px;resize:vertical;min-height:110px;background:var(--panel,#171c23);color:inherit;border:1px solid var(--border,#39444d);border-radius:8px;font:inherit}
+.cg-suggestion{display:flex;gap:8px;align-items:flex-start;font-size:12px;padding:9px 0;line-height:1.4;overflow-wrap:anywhere}.cg-suggestion input{flex:none;width:16px;height:16px;margin-top:3px}
+.cg-progress[hidden]{display:none!important}.cg-progress{position:fixed;bottom:8px;left:50%;transform:translateX(-50%);z-index:2147483000;width:min(450px,calc(100vw - 120px));display:grid;grid-template-columns:minmax(0,1fr) 28px;border:1px solid #386956;border-radius:9px;background:#102b24;color:#caffdf;box-shadow:0 3px 18px #0005;overflow:hidden;font:11px Arial,sans-serif}
+.cg-progress>button{background:transparent;border:0;color:inherit;padding:7px 9px;text-align:left;cursor:pointer;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}.cg-progress>button:last-child{grid-column:2;grid-row:1;text-align:center}.cg-progress progress{grid-column:1/-1;width:100%;height:4px;border:0;accent-color:#00d97e}.cg-progress[aria-busy=true] progress{animation:cg-pulse 1.5s ease-in-out infinite}@keyframes cg-pulse{50%{opacity:.45}}
+@media(max-width:680px){.cg-panel{padding:12px}.cg-choices{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.cg-choice button{min-height:48px}.cg-comments{padding:14px}.cg-progress{bottom:7px;width:calc(100vw - 110px)}}
+@media(prefers-reduced-motion:reduce){.cg-progress[aria-busy=true] progress{animation:none}}
