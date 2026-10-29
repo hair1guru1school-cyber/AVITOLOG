@@ -1,0 +1,10 @@
+# Append this isolated snippet to the existing .htaccess; never replace it.
+RewriteEngine On
+RewriteRule ^integrations/avito-accounts(?:/index\.html)?/?$ _avito-relay/accounts-page.php [END]
+# Preserve the session header for PHP CGI on these routes only.
+RewriteCond %{HTTP:Authorization} ^(.+)$
+RewriteRule ^api/integrations/avito-accounts/ - [E=HTTP_AUTHORIZATION:%1]
+RewriteRule ^api/integrations/avito-accounts/(config|context|accounts|preferences|layout)$ _avito-relay/accounts-relay.php [END]
+RewriteRule ^api/integrations/avito-accounts/accounts/[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}(/(profile|balance|reconnect|refresh|disconnect))?$ _avito-relay/accounts-relay.php [END]
+RewriteRule ^api/integrations/avito-accounts/accounts/[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}/chats(/[A-Za-z0-9_-]{1,200}/(messages|read))?$ _avito-relay/accounts-relay.php [END]
+RewriteRule ^api/integrations/avito-accounts/accounts/[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}/bidding/(items(/[1-9][0-9]{0,15})?|groups|preview|apply|jobs|queue-preview|queue-confirm|queue-cancel)$ _avito-relay/accounts-relay.php [END]

@@ -84,7 +84,12 @@
   function install(win) {
     if (win.__clientGenerators) return win.__clientGenerators;
     var doc = win.document, library = win.__showScriptsPanel, originalSwitch = win.switchTab;
-    var drafts = new Map(), batches = [], dialogs = new Map(), holder = null, panelKey = '', errorText = '', dismissed = null, statusDialog = null, statusBatch = null;
+    var drafts = new Map(), batches = [], dialogs = new Map(), documents = new Map(), holder = null, panelKey = '', errorText = '', dismissed = null, statusDialog = null, statusBatch = null;
+    var database;
+    function prefs(id, value) {
+      if (!database) database = new Promise(function(resolve,reject){if(!win.indexedDB)return reject(Error('IndexedDB недоступна'));var req=win.indexedDB.open('avitolog-client-generators',1);req.onupgradeneeded=function(){req.result.createObjectStore('preferences');};req.onsuccess=function(){resolve(req.result);};req.onerror=function(){reject(req.error);};});
+      return database.then(function(db){return new Promise(function(resolve,reject){var tx=db.transaction('preferences',value===undefined?'readonly':'readwrite'),store=tx.objectStore('preferences'),req=value===undefined?store.get(id):store.put(copy(value),id);tx.oncomplete=function(){resolve(req.result);};tx.onerror=function(){reject(tx.error);};tx.onabort=function(){reject(tx.error||Error('Запись не завершена'));};});});
+    }
     function el(tag, cls, text) { var node = doc.createElement(tag); if (cls) node.className = cls; if (text != null) node.textContent = text; return node; }
     function button(label, fn, cls) { var node = el('button', cls || '', label); node.type = 'button'; node.addEventListener('click', fn); return node; }
     function scope() {
@@ -111,7 +116,33 @@
       return { scope: scope(), folderId: String(client.folderId), clientId: String(client.client_id || client.id || ''), title: data.company || 'Клиент', data: data, headers: headers };
     }
     function key(snapshot) { return snapshot.scope + '|' + snapshot.folderId + '|' + snapshot.clientId; }
-    function draft(snapshot) { var id = key(snapshot); if (!drafts.has(id)) drafts.set(id, { selected: ['analysis'], comments: {}, depth: 'mid' }); return drafts.get(id); }
+    function draft(snapshot) { var id = key(snapshot); if (!drafts.has(id)) drafts.set(id, { selected: ['analysis'], comments: {}, common: '', depth: 'mid' }); return drafts.get(id); }
+    function existingDocuments(snapshot, target) {
+      var id=key(snapshot), saved=documents.get(id);
+      function draw(files,error){if(snapshot.scope!==scope()||!target.isConnected)return;target.replaceChildren(el('strong','','Документы в папке проекта'),button('Обновить список',function(){load();},'cg-refresh'));
+        (files||[]).forEach(function(file){if(!/^[a-zA-Z0-9_-]+$/.test(file.id||''))return;var a=el('a','',file.name);a.href='https://drive.google.com/file/d/'+encodeURIComponent(file.id)+'/view';a.target='_blank';a.rel='noopener';target.append(a);});
+        if(error)target.append(el('small','cg-error',error));else if(!files||!files.length)target.append(el('small','', 'Подходящих документов в полученном списке пока нет.'));
+      }
+      async function load(){if(typeof win.driveListFolderItems!=='function')return;try{var files=await win.driveListFolderItems(snapshot.folderId);if(snapshot.scope!==scope())return;files=files.filter(function(f){return !f.isFolder&&/аналит|анализ|авито|avito|коммерчес|(?:^|\s)кп(?:\s|$)|скрипт|нужно сейчас/i.test(f.name||'');});documents.set(id,files);draw(files);}catch(error){draw(documents.get(id),message(error));}}
+      draw(saved);if(win._driveToken)load();
+    }
+    function renderTemplates(snapshot,target) {
+      if(typeof win.__getScriptsPanelData!=='function'){if(library)library(target);return;}
+      var id=key(snapshot), base=win.__getScriptsPanelData(), data={auto:false,variants:{}}, dirty=false, selectedVariants={};
+      var settings=el('details','cg-template-settings');settings.append(el('summary','','⚙ Настройки быстрых скриптов'));var check=el('input');check.type='checkbox';var label=el('label','cg-suggestion');label.append(check,el('span','','Автоматически добавлять вариант с данными захваченного проекта (локально, без платного API)'));settings.append(label);target.append(settings);
+      var cards=el('div','cg-template-grid');target.append(cards);var status=el('p','cg-caption');target.append(status);
+      function personal(text){var facts=suggestions(snapshot.data);return String(text||'')+(facts.length?'\n\nПо вашему проекту «'+snapshot.title+'»:\n'+facts.join('\n'):'');}
+      function draw(){cards.replaceChildren();base.forEach(function(template){
+        var values=data.variants[template.id]||(template.variants?template.variants.slice():[template.text||'']);
+        if(data.auto&&!data.variants[template.id])values=values.concat([personal(values[0])]);
+        var card=el('section','cg-template-card'),title=el('h3','',template.emoji+' '+template.label),select=el('select'),input=el('textarea');input.rows=5;input.maxLength=20000;input.setAttribute('aria-label','Текст: '+template.label);
+        values.forEach(function(_,i){var option=el('option','','Вариант '+(i+1));option.value=String(i);select.append(option);});select.value=String(Math.min(values.length-1,selectedVariants[template.id]||0));input.value=values[Number(select.value)];select.setAttribute('aria-label','Вариант: '+template.label);select.addEventListener('change',function(){selectedVariants[template.id]=Number(select.value);input.value=values[Number(select.value)]||'';});input.addEventListener('input',function(){values[Number(select.value)]=input.value;data.variants[template.id]=values.slice();dirty=true;});
+        var actions=el('div','cg-actions');actions.append(button('+ Вариант',function(){if(values.length>=20)return;values.push(input.value);data.variants[template.id]=values.slice();selectedVariants[template.id]=values.length-1;dirty=true;draw();}),button('Копировать',async function(){try{await win.navigator.clipboard.writeText(input.value);status.textContent='Скопировано.';}catch(_){status.textContent='Не удалось скопировать; выделите текст.';}}),button('Сохранить варианты',function(){save();}));card.append(title,select,input,actions);cards.append(card);
+      });}
+      async function save(){try{await prefs(id,data);dirty=false;status.textContent='Варианты и настройки сохранены для этого проекта в браузере.';}catch(error){status.textContent='Не сохранено: '+message(error);}}
+      check.addEventListener('change',function(){data.auto=check.checked;dirty=true;draw();save();});
+      draw();prefs(id).then(function(saved){if(saved&&!dirty&&snapshot.scope===scope()&&target.isConnected){data={auto:saved.auto===true,variants:saved.variants||{}};check.checked=data.auto;draw();}}).catch(function(error){status.textContent='Настройки недоступны: '+message(error);});
+    }
     function build(type, data, comment, depth) {
       var before = win.currentData, beforeDepth = win.currentDepth;
       try {
@@ -219,7 +250,8 @@
       try { snapshot = captured(); } catch (error) { holder.append(el('h2', '', '🌀 Скрипт и документы'), el('p', 'cg-error', message(error))); if (library) { var fallback = el('div'); holder.append(fallback); library(fallback); } return; }
       panelKey = key(snapshot); var state = draft(snapshot);
       holder.append(button('← К папкам клиентов', function () { originalSwitch.call(win, 'analysis'); if (typeof win.showClientContentsBack === 'function') win.showClientContentsBack(); }, 'cg-back'));
-      holder.append(el('h2', '', '🌀 Скрипт и документы'), el('p', 'cg-caption', snapshot.title + ' · папка захвачена'));
+      var heading=el('div','cg-heading');heading.append(el('h2', '', '🌀 Скрипт и документы'),el('strong','cg-project-title',snapshot.title));holder.append(heading);
+      holder.append(el('p','cg-project-facts',suggestions(snapshot.data).join(' · ')||'Заполните данные клиента в левом меню — генераторы используют их автоматически.'));
       var folder = el('a', 'cg-folder', 'Открыть папку Drive ↗'); folder.href = 'https://drive.google.com/drive/folders/' + encodeURIComponent(snapshot.folderId); folder.target = '_blank'; folder.rel = 'noopener'; holder.append(folder);
       holder.append(el('p', 'cg-caption', 'Нажмите, чтобы выбрать документы. Удерживайте кнопку для комментария; также можно нажать её маленький карандаш.'));
       var choices = el('div', 'cg-choices');
@@ -235,16 +267,19 @@
         control.addEventListener('keydown', function (event) { if (event.key === 'F2') { event.preventDefault(); showComments(type, snapshot, state, control); } });
         var edit = button('✎', function () { showComments(type, snapshot, state, control); }, 'cg-edit'); edit.setAttribute('aria-label', 'Комментарий: ' + type.title); wrap.append(control, edit); choices.append(wrap);
       }); holder.append(choices);
+      var common=el('textarea','cg-common');common.rows=3;common.maxLength=6000;common.placeholder='Общий комментарий для всех выбранных документов';common.setAttribute('aria-label','Общий комментарий для всех документов');common.value=state.common||'';common.addEventListener('input',function(){state.common=common.value;});holder.append(common);
       var actions = el('div', 'cg-actions'), depth = el('select'); depth.setAttribute('aria-label', 'Подробность документов'); [['light', 'Кратко'], ['mid', 'Стандарт'], ['max', 'Подробно']].forEach(function (row) { var option = el('option', '', row[1]); option.value = row[0]; depth.append(option); }); depth.value = state.depth; depth.addEventListener('change', function () { state.depth = depth.value; });
       var start = button('Сгенерировать выбранное (' + state.selected.length + ')', async function () {
         if (runner.active()) return; errorText = '';
         try {
           var fresh = captured(); if (key(fresh) !== panelKey) { render(container); throw Error('Выбран другой проект. Проверьте документы и нажмите генерацию заново.'); }
-          var batch = plan(fresh, state.selected, state.comments, function (type, data, comment) { return build(type, data, comment, state.depth); });
+          var comments={};TYPES.forEach(function(type){comments[type.id]=[state.common,state.comments[type.id]].filter(Boolean).join('\n\n').slice(0,6000);});
+          var batch = plan(fresh, state.selected, comments, function (type, data, comment) { return build(type, data, comment, state.depth); });
           batches.push(batch); dismissed = null; await runner.run(batch);
         } catch (error) { errorText = message(error); renderResults(); }
       }, 'cg-start'); actions.append(depth, start); holder.append(actions, el('p', 'cg-caption', 'Выбранные документы и комментарии отправляются в текущий AI-сервис (Anthropic, платный API). Файлы сохраняются в захваченную папку Google Drive. Можно менять вкладки; не закрывайте страницу до завершения.'), el('div', 'cg-results'));
-      var templates = el('details', 'cg-library'); templates.append(el('summary', '', 'Быстрые скрипты и шаблоны сообщений')); var libraryHost = el('div'); templates.append(libraryHost); holder.append(templates); if (library) library(libraryHost); renderResults();
+      var files=el('section','cg-documents');holder.append(files);existingDocuments(snapshot,files);
+      var templates = el('details', 'cg-library');templates.open=true; templates.append(el('summary', '', 'Быстрые скрипты и шаблоны сообщений')); var libraryHost = el('div'); templates.append(libraryHost); holder.append(templates); renderTemplates(snapshot,libraryHost); renderResults();
     }
     win.__showScriptsPanel = render;
     var scriptTab = doc.getElementById('tab-scripts'); if (scriptTab) { var icon = scriptTab.querySelector('.rtab-ico'); if (icon) icon.textContent = '🌀'; }

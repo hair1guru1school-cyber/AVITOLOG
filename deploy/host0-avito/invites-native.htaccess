@@ -1,0 +1,12 @@
+# Native Supabase callback mode. Append without changing the old OAuth routes.
+RewriteEngine On
+RewriteRule ^integrations/avito-connect(?:/index\.html)?/?$ _avito-relay/invites-page.php [END]
+
+# Preserve the session header only for the isolated invitation API.
+RewriteCond %{HTTP:Authorization} ^(.+)$
+RewriteRule ^api/integrations/avito-invites/ - [E=HTTP_AUTHORIZATION:%1]
+RewriteRule ^api/integrations/avito-invites/(config|context|connections|invitations)$ _avito-relay/invites-relay.php [END]
+RewriteRule ^api/integrations/avito-invites/invitations/[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}/revoke$ _avito-relay/invites-relay.php [END]
+RewriteRule ^api/integrations/avito-invites/connections/[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}(/(refresh|disconnect))?$ _avito-relay/invites-relay.php [END]
+RewriteRule ^api/integrations/avito-invites/connections/[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}/chats(/[A-Za-z0-9_-]{1,200}/(messages|read))?$ _avito-relay/invites-relay.php [END]
+RewriteRule ^api/integrations/avito-invites/connections/[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}/bidding/(items(/[1-9][0-9]{0,15})?|groups|preview|apply|jobs|queue-preview|queue-confirm|queue-cancel)$ _avito-relay/invites-relay.php [END]

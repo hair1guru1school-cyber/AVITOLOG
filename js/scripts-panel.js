@@ -347,6 +347,7 @@
     });
   }
 
+  window.__getScriptsPanelData = function () { return deepCopy(loadData()); };
   window.__showScriptsPanel = function (container) {
     var scripts = loadData();
     renderPanel(container, scripts);

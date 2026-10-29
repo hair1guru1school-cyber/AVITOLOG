@@ -1,0 +1,21 @@
+project_id = "avitolog-avito"
+
+# Only this new function accepts provider callbacks. Its handler verifies relay
+# authentication on every route and user JWT + tenancy before protected actions.
+[functions.avito-integration]
+enabled = true
+verify_jwt = false
+entrypoint = "./functions/avito-integration/index.ts"
+
+# Client invitations use their own HMAC relay and sealed POST payloads.
+# Provider callbacks cannot carry a Supabase JWT. The module defaults OFF.
+[functions.avito-invites]
+enabled = true
+verify_jwt = false
+entrypoint = "./functions/avito-invites/index.ts"
+
+# Dedicated scheduled worker: timestamped HMAC + one-use nonce, not public JWT auth.
+[functions.avito-bidding-worker]
+enabled = true
+verify_jwt = false
+entrypoint = "./functions/avito-bidding-worker/index.ts"
