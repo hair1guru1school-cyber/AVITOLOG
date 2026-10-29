@@ -13,5 +13,11 @@ test('mobile headings stay above scrollable rows, touch gestures remain native a
  assert.match(rule('body.mobile-client-ui #clientFolderBoard .cfb-column-head'),/flex-shrink:0/);
  assert.match(rule('body.mobile-client-ui #clientFolderBoard .cfb-rows'),/touch-action:pan-x pan-y pinch-zoom/);
  assert.match(css,/\.cfb-rows\{max-height:calc\(100dvh - 245px\);min-height:95px;overflow-y:auto/);
- assert.doesNotMatch(css.slice(css.indexOf('/* Use the scaled mobile shell')),/100d?vh/);
+ assert.doesNotMatch(rule('body.mobile-client-ui #clientFolderBoard .cfb-rows'),/100d?vh/);
+});
+test('mobile height subtracts the actual flex header rather than assuming its default size',()=>{
+ assert.match(rule('body.mobile-client-ui:has(#clientFolderBoard) #mainApp'),/display:flex!important/);
+ assert.match(rule('body.mobile-client-ui:has(#clientFolderBoard) #mainApp'),/height:calc\(var\(--mobile-visual-height,100dvh\) \/ var\(--mobile-shell-scale,1\)\)/);
+ assert.match(rule('body.mobile-client-ui:has(#clientFolderBoard) #mainApp>header'),/flex-shrink:0/);
+ assert.match(rule('body.mobile-client-ui:has(#clientFolderBoard) #mainApp>.layout'),/flex:1 1 0;height:auto!important;min-height:0!important/);
 });
