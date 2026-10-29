@@ -35,9 +35,9 @@ body.mobile-client-ui.projects-mode:not(.avito-accounts-mode) .projects-table-ro
   min-height: var(--projects-row-height, 14px) !important;
 }
 body.mobile-client-ui.projects-mode:not(.avito-accounts-mode) .projects-table .projects-sticky {
-  width: min(var(--projects-sticky-width, 360px), calc(48vw / var(--mobile-shell-scale, 1))) !important;
-  min-width: min(var(--projects-sticky-width, 360px), calc(48vw / var(--mobile-shell-scale, 1))) !important;
-  max-width: min(var(--projects-sticky-width, 360px), calc(48vw / var(--mobile-shell-scale, 1))) !important;
+  width: min(var(--projects-mobile-closed-width, var(--projects-sticky-width, 360px)), calc(48vw / var(--mobile-shell-scale, 1))) !important;
+  min-width: min(var(--projects-mobile-closed-width, var(--projects-sticky-width, 360px)), calc(48vw / var(--mobile-shell-scale, 1))) !important;
+  max-width: min(var(--projects-mobile-closed-width, var(--projects-sticky-width, 360px)), calc(48vw / var(--mobile-shell-scale, 1))) !important;
 }
 body.mobile-client-ui.projects-mode:not(.avito-accounts-mode) .proj-main-line {
   overflow-x: auto;
@@ -75,9 +75,9 @@ body.mobile-client-ui.projects-mode:not(.avito-accounts-mode).projects-mobile-pa
 }
 /* All sticky cells widen together, keeping the header and calendar columns aligned. */
 body.mobile-client-ui.projects-mode:not(.avito-accounts-mode).projects-mobile-path-expanded .projects-table .projects-sticky {
-  width: min(calc(var(--projects-sticky-width, 360px) + 240px), calc(78vw / var(--mobile-shell-scale, 1))) !important;
-  min-width: min(calc(var(--projects-sticky-width, 360px) + 240px), calc(78vw / var(--mobile-shell-scale, 1))) !important;
-  max-width: min(calc(var(--projects-sticky-width, 360px) + 240px), calc(78vw / var(--mobile-shell-scale, 1))) !important;
+  width: min(calc(var(--projects-mobile-closed-width, var(--projects-sticky-width, 360px)) + 240px), calc(78vw / var(--mobile-shell-scale, 1))) !important;
+  min-width: min(calc(var(--projects-mobile-closed-width, var(--projects-sticky-width, 360px)) + 240px), calc(78vw / var(--mobile-shell-scale, 1))) !important;
+  max-width: min(calc(var(--projects-mobile-closed-width, var(--projects-sticky-width, 360px)) + 240px), calc(78vw / var(--mobile-shell-scale, 1))) !important;
 }
 body.mobile-client-ui.projects-mode:not(.avito-accounts-mode).projects-mobile-paths .proj-col-expand {
   width: 22px;
