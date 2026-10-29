@@ -64,8 +64,47 @@
     }while(page);
     return out;
   }
+  function bindBoardNavigation(win,root,active){
+    var doc=win.document,columns=root.querySelector('.cfb-columns');
+    if(!columns)return {dispose:function(){},sync:function(){}};
+    var slider=doc.createElement('input'),disposed=false,frame=null,resizeObserver=null,removalObserver=null;
+    slider.type='range';slider.className='cfb-scroll-range';slider.min='0';slider.max='0';slider.step='1';slider.value='0';
+    slider.setAttribute('aria-label','Прокрутка направлений клиентов');slider.title='Направления: влево / вправо';slider.hidden=true;
+    columns.before(slider);
+    function limit(){return Math.max(0,columns.scrollWidth-columns.clientWidth);}
+    function sync(){
+      if(disposed)return;
+      var max=limit();slider.max=String(max);slider.value=String(Math.max(0,Math.min(max,columns.scrollLeft)));slider.hidden=max<=0;
+    }
+    function schedule(){if(!disposed&&frame===null)frame=win.requestAnimationFrame(function(){frame=null;sync();});}
+    function move(value){columns.scrollLeft=Math.max(0,Math.min(limit(),value));sync();}
+    function input(){move(Number(slider.value)||0);}
+    function editable(target){return !!(target&&target.closest&&target.closest('input,textarea,select,[contenteditable]:not([contenteditable="false"]),[role="textbox"],[role="combobox"],[role="slider"],[role="spinbutton"]'));}
+    function keydown(event){
+      if(disposed||event.defaultPrevented||event.ctrlKey||event.metaKey||event.altKey||event.shiftKey||(event.key!=='ArrowLeft'&&event.key!=='ArrowRight'))return;
+      if(!root.isConnected||!root.getClientRects().length||active&& !active())return;
+      var target=event.target||doc.activeElement;
+      if(target!==slider&&(editable(target)||editable(doc.activeElement)))return;
+      if(target&&target.closest&&target.closest('.sidebar,[role="dialog"],[aria-modal="true"]'))return;
+      var dialogs=doc.querySelectorAll('[aria-modal="true"],dialog[open]');
+      for(var i=0;i<dialogs.length;i++)if(dialogs[i].getClientRects().length)return;
+      var column=columns.querySelector('.cfb-column'),gap=parseFloat(win.getComputedStyle(columns).columnGap)||12;
+      var step=event.repeat?64:(column?column.offsetWidth+gap:Math.max(80,columns.clientWidth*.8));
+      event.preventDefault();move(columns.scrollLeft+(event.key==='ArrowLeft'?-step:step));
+    }
+    function dispose(){
+      if(disposed)return;disposed=true;
+      if(frame!==null)win.cancelAnimationFrame(frame);
+      doc.removeEventListener('keydown',keydown);columns.removeEventListener('scroll',schedule);slider.removeEventListener('input',input);win.removeEventListener('resize',schedule);
+      if(resizeObserver)resizeObserver.disconnect();if(removalObserver)removalObserver.disconnect();slider.remove();
+    }
+    doc.addEventListener('keydown',keydown);columns.addEventListener('scroll',schedule,{passive:true});slider.addEventListener('input',input);win.addEventListener('resize',schedule);
+    if(win.ResizeObserver){resizeObserver=new win.ResizeObserver(schedule);resizeObserver.observe(columns);}
+    if(win.MutationObserver&&root.parentNode){removalObserver=new win.MutationObserver(function(){if(!root.isConnected)dispose();});removalObserver.observe(root.parentNode,{childList:true});}
+    sync();return {dispose:dispose,sync:sync};
+  }
   function install(win){
-    var doc=win.document,states=new Map(),dbPromise=null,dialog=null,paintTimer=null;
+    var doc=win.document,states=new Map(),dbPromise=null,dialog=null,paintTimer=null,navigation=null;
     function context(){return typeof win.clientFolderBoardContext==='function'?win.clientFolderBoardContext():null;}
     function database(){
       if(!dbPromise)dbPromise=new Promise(function(resolve,reject){if(!win.indexedDB)return reject(Error('Нет хранилища браузера.'));var request=win.indexedDB.open('avitolog-client-folders-v1',1);request.onupgradeneeded=function(){request.result.createObjectStore('records');};request.onsuccess=function(){resolve(request.result);};request.onerror=function(){reject(request.error);};}).catch(function(e){dbPromise=null;throw e;});
@@ -98,9 +137,10 @@
       var host=doc.getElementById('mainContent');if(!host)return false;
       if(!s.ready||!c.ready){host.innerHTML='<section id="clientFolderBoard" class="cfb"><header class="cfb-top"><h2>Клиенты по направлениям</h2></header><p class="cfb-status" role="status">Загружаем сохранённый каталог текущего режима…</p></section>';return true;}
       var old=host.querySelector('.cfb-columns'),left=old?old.scrollLeft:0,tops={};if(old)old.querySelectorAll('[data-cfb-column]').forEach(function(col){tops[col.dataset.cfbColumn]=col.querySelector('.cfb-rows').scrollTop;});
-      var board=model(c,s);
+      var board=model(c,s);if(navigation){navigation.dispose();navigation=null;}
       host.innerHTML='<section id="clientFolderBoard" class="cfb"><header class="cfb-top"><div><h2>Клиенты по направлениям <span>'+board.projects.length+'</span></h2><p>Папки слева направо · новые проекты сверху</p></div><div class="cfb-tools"><input type="search" data-cfb-search aria-label="Поиск клиента" placeholder="Найти клиента…"><button type="button" data-cfb-refresh'+(s.busy||!s.ready?' disabled':'')+'>↻ Drive</button>'+gear()+'</div></header><div class="cfb-status" role="status">'+esc(status(s))+'</div><div class="cfb-columns" tabindex="0" aria-label="Направления клиентов">'+board.columns.map(function(col){return '<section class="cfb-column" data-cfb-column="'+esc(col.id)+'"><header class="cfb-column-head"><button type="button" data-cfb-direction="'+esc(col.id)+'" title="Изменить название и привязку папки"><span>📁</span><strong>'+esc(col.name)+'</strong><small>'+col.projects.length+'</small></button>'+(col.folderId?'<a href="https://drive.google.com/drive/folders/'+esc(col.folderId)+'" target="_blank" rel="noopener noreferrer" title="Открыть направление в Drive" aria-label="Открыть направление '+esc(col.name)+' в Drive">↗</a>':'')+'</header><div class="cfb-rows">'+col.projects.map(function(row){return '<article class="cfb-project" data-cfb-name="'+esc(row.company.toLowerCase())+'"><button type="button" data-cfb-project="'+esc(row.projectId)+'"><span class="cfb-avatar">'+esc(row.emoji||'📂')+'</span><span class="cfb-project-text"><strong>'+esc(row.company)+'</strong><small>'+(row.addedAtMs?new Date(row.addedAtMs).toLocaleDateString('ru-RU'):row.folderId?'Папка проекта':'Без папки Drive')+'</small></span></button>'+(row.folderId?'<a href="'+esc(row.folderLink)+'" target="_blank" rel="noopener noreferrer" title="Папка проекта в Drive" aria-label="Папка '+esc(row.company)+' в Drive">↗</a>':'')+'</article>';}).join('')+(col.projects.length?'':'<p class="cfb-empty">Пока нет проектов</p>')+'</div></section>';}).join('')+(board.columns.length?'':'<p class="cfb-empty">Папки появятся после подключения Drive. Уже добавленные клиенты отображаются без изменения данных.</p>')+'</div></section>';
       var columns=host.querySelector('.cfb-columns');columns.scrollLeft=left;columns.querySelectorAll('[data-cfb-column]').forEach(function(col){col.querySelector('.cfb-rows').scrollTop=tops[col.dataset.cfbColumn]||0;});
+      navigation=bindBoardNavigation(win,host.querySelector('#clientFolderBoard'),function(){var now=context();return !!now&&now.scope===c.scope&&now.canRender&&!now.selected;});
       host.querySelector('[data-cfb-settings]').onclick=openSettings;
       host.querySelector('[data-cfb-refresh]').disabled=s.busy||!s.ready||!c.canDrive;
       host.querySelector('[data-cfb-refresh]').onclick=function(){refresh(true);};
@@ -173,5 +213,5 @@
     if(doc.readyState==='loading')doc.addEventListener('DOMContentLoaded',start);else setTimeout(start,0);
     return {renderHome:renderHome,mountSettings:mountSettings,getProject:getProject,openSettings:openSettings};
   }
-  return {folderId:folderId,stamp:stamp,created:created,cleanSettings:cleanSettings,buildBoard:buildBoard,listDriveFolders:listDriveFolders,install:install};
+  return {folderId:folderId,stamp:stamp,created:created,cleanSettings:cleanSettings,buildBoard:buildBoard,listDriveFolders:listDriveFolders,bindBoardNavigation:bindBoardNavigation,install:install};
 });
