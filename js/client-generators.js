@@ -72,6 +72,15 @@
   function suggestions(data) {
     return [['Ниша', data.category], ['География', data.city], ['Позиции', (data.positions || []).join(', ')], ['УТП / заметки', data.notes]].filter(function (row) { return !!row[1]; }).map(function (row) { return row[0] + ': ' + String(row[1]).slice(0, 1500); });
   }
+  function contextData(input, saved) {
+    var out = Object.assign({}, input);
+    ['company','name','phone','tg','vk','category','city','notes','avito_account','client_type','kp'].forEach(function (field) {
+      var alias = { name: 'contact_name', tg: 'telegram', kp: 'kp_count' }[field] || field;
+      if (!String(out[field] || '').trim()) out[field] = String(saved[field] || saved[alias] || '');
+    });
+    if (!Array.isArray(out.positions) || !out.positions.length) out.positions = Array.isArray(saved.positions) ? saved.positions.slice() : saved.positions ? [String(saved.positions)] : [];
+    return out;
+  }
   function install(win) {
     if (win.__clientGenerators) return win.__clientGenerators;
     var doc = win.document, library = win.__showScriptsPanel, originalSwitch = win.switchTab;
@@ -89,6 +98,11 @@
       if (!client || !client.folderId) throw Error('Сначала захватите папку проекта в левом меню.');
       var read = function (id) { var node = doc.getElementById(id); return node ? String(node.value || '').trim() : ''; };
       var data = { company: read('company') || client.company || client.title || '', name: read('contact_name'), phone: read('phone'), tg: read('tg'), vk: read('vk'), category: read('category'), city: typeof win.getGeoValues === 'function' ? win.getGeoValues().join(', ') : read('city'), notes: read('notes'), avito_account: read('avito_account'), client_type: read('client_type'), kp: read('kp_count'), positions: typeof win.getPos === 'function' ? win.getPos() : [] };
+      var linked = typeof win.crmLinkedClientForContact === 'function' ? win.crmLinkedClientForContact(client) || {} : {}, project = typeof win.getSelectedProject === 'function' ? win.getSelectedProject() : null;
+      if (linked.folderId && String(linked.folderId) !== String(client.folderId)) linked = {};
+      var projectFolder = project && (project.folderId || project.crmData && project.crmData.folderId);
+      var projectData = projectFolder && String(projectFolder) === String(client.folderId) ? project.crmData || {} : {};
+      data = contextData(contextData(contextData(data, client), linked), projectData);
       var headers = {};
       [['analysis', 'getAnalyticsHeaderImg'], ['presale', 'getPresaleHeaderImgForExport'], ['avito1', 'getAvito1HeaderImgForExport']].forEach(function (entry) {
         if (typeof win[entry[1]] !== 'function') return;
@@ -248,5 +262,5 @@
     if (win.currentTab === 'scripts') { var current = doc.getElementById('mainContent'); if (current) render(current); }
     return api;
   }
-  return { TYPES: TYPES, plan: plan, createRunner: createRunner, parseResult: parseResult, suggestions: suggestions, install: install };
+  return { TYPES: TYPES, plan: plan, createRunner: createRunner, parseResult: parseResult, suggestions: suggestions, contextData: contextData, install: install };
 }));

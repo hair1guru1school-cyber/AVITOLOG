@@ -13,6 +13,10 @@ test('exactly four generators capture immutable project, folder, selection, fact
 test('suggestions are explicit choices, never silently appended to comments',()=>{
  const snap=snapshot(),suggestions=G.suggestions(snap.data),batch=make(snap,['analysis']);assert.equal(suggestions.length,4);assert.equal(batch.jobs[0].comment,'');
 });
+test('closed or unpopulated sidebar fields fall back to saved data of the bound client',()=>{
+ const original={category:'',city:'',notes:'Manual note',positions:[]},saved={category:'Furniture',city:'City',notes:'Old note',positions:['Kitchen'],kp_count:'40'};
+ const data=G.contextData(original,saved);assert.equal(data.category,'Furniture');assert.equal(data.city,'City');assert.equal(data.notes,'Manual note');assert.equal(data.kp,'40');assert.deepEqual(Array.from(data.positions),['Kitchen']);assert.equal(original.category,'');assert.equal(G.suggestions(data).length,4);
+});
 test('switching tabs and selecting another project cannot redirect any queued file',async()=>{
  let selected=snapshot(),tab='scripts',calls=[],release;
  const runner=G.createRunner({isCurrent:s=>s.scope==='actor|profile',prepare:async()=>{},generate:()=>new Promise(r=>{release=r;}),parse:raw=>raw,save:async(s,j,guard)=>{guard();calls.push([s.folderId,j.type,selected.folderId,tab]);return {id:j.type};}});
