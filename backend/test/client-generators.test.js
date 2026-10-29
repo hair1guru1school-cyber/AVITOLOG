@@ -42,3 +42,6 @@ test('Drive upload guard rechecks identity after asynchronous token refresh, bef
 test('UI retains old template library, keyboard comments, global progress and no localStorage result eviction',()=>{
  const source=fs.readFileSync(root+'/js/client-generators.js','utf8'),css=fs.readFileSync(root+'/assets/css/client-generators.css','utf8');assert.ok(source.includes('library(libraryHost)'));assert.ok(source.includes("event.key === 'F2'"));assert.ok(source.includes("doc.body.append(progress)"));assert.ok(source.includes("event.returnValue = ''"));assert.equal(source.includes('saveNorm('),false);assert.equal(source.includes('localStorage'),false);assert.match(css,/#tab-analysis/);assert.match(css,/repeat\(3,minmax\(0,1fr\)\)/);assert.match(css,/prefers-reduced-motion/);
 });
+test('AI HTML is cleaned inside an inert template, never a resource-loading DOMParser document',()=>{
+ const source=fs.readFileSync(root+'/js/client-generators.js','utf8');assert.ok(source.includes("doc.createElement('template')"));assert.ok(source.includes('clean(parsed.content)'));assert.equal(source.includes('new win.DOMParser'),false);
+});

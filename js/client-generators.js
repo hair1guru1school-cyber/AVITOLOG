@@ -122,7 +122,7 @@
       } finally { win.currentData = before; win.currentDepth = beforeDepth; }
     }
     function sanitize(html) {
-      var parsed = new win.DOMParser().parseFromString(html, 'text/html');
+      var parsed = doc.createElement('template'); parsed.innerHTML = html;
       var allowed = /^(H[1-6]|P|DIV|SPAN|UL|OL|LI|STRONG|B|EM|I|BR|TABLE|THEAD|TBODY|TR|TD|TH|BLOCKQUOTE|A)$/;
       function clean(parent) { Array.from(parent.children).forEach(function (node) {
         if (/^(SCRIPT|STYLE|IFRAME|OBJECT|EMBED|SVG|MATH|FORM|INPUT|BUTTON|IMG|LINK|META)$/.test(node.tagName)) { node.remove(); return; }
@@ -130,7 +130,7 @@
         if (!allowed.test(node.tagName)) { node.replaceWith.apply(node, Array.from(node.childNodes)); return; }
         Array.from(node.attributes).forEach(function (attr) { if (!(node.tagName === 'A' && attr.name === 'href' && /^https:\/\//i.test(attr.value)) && !(/^(TD|TH)$/.test(node.tagName) && /^(colspan|rowspan)$/.test(attr.name) && /^\d{1,2}$/.test(attr.value))) node.removeAttribute(attr.name); });
       }); }
-      clean(parsed.body); return parsed.body.innerHTML;
+      clean(parsed.content); return parsed.innerHTML;
     }
     var runner = createRunner({
       isCurrent: function (snapshot) { return snapshot.scope === scope(); },
