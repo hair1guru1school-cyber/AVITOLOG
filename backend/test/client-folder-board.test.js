@@ -65,9 +65,20 @@ test('integration guards profile/read-only state, existing document editors and 
 });
 test('opening a directory row changes exact selection, never leaves a prior calendar project as a save target',()=>{
  const main=fs.readFileSync(path.resolve(__dirname,'../../js/main.js'),'utf8'),start=main.indexOf('function openClientFolderBoardProject('),end=main.indexOf('function markAnalyticsFolderOpened(',start),h={_selectedProjectId:'previous',_analyticsRecentSelectedProjectId:'',_analyticsOpenedFolderByProject:{},getCrmClients:()=>[{client_id:'c1',company:'Same',folderId:fid},{client_id:'c2',company:'Same',folderId:fid2}],fillClientForm:c=>{h.form=c;},setActiveClient:c=>{h.active=c;},refreshClientContents:()=>{h.refreshes=(h.refreshes||0)+1;}};
+ h.window={ProjectCard:{open:id=>{h.opened=id;}}};
  vm.runInNewContext(main.slice(start,end),h);
  h.openClientFolderBoardProject({projectId:'folder_'+fid2,folderId:fid2,projectRecordId:'p2',company:'Same'});
- assert.equal(h._selectedProjectId,'p2');assert.equal(h.active.client_id,'c2');assert.equal(h._analyticsRecentSelectedProjectId,'folder_'+fid2);
- h.openClientFolderBoardProject({projectId:'folder_'+fid,folderId:fid,company:'Same'});assert.equal(h._selectedProjectId,null);assert.equal(h.active.client_id,'c1');
+ assert.equal(h._selectedProjectId,'p2');assert.equal(h.active.client_id,'c2');assert.equal(h._analyticsRecentSelectedProjectId,'');assert.equal(h.opened,'p2');
+ h.openClientFolderBoardProject({projectId:'folder_'+fid,folderId:fid,company:'Same'});assert.equal(h._selectedProjectId,null);assert.equal(h.active.client_id,'c1');assert.equal(h.opened,undefined);
  h.openClientFolderBoardProject({projectId:'project_new',projectRecordId:'new',company:'No folder'});assert.equal(h._analyticsRecentSelectedProjectId,'');assert.equal(h._selectedProjectId,'new');
+ assert.equal(h.opened,'new');assert.equal(h.refreshes,undefined,'opening the card never opens the legacy detail page');
+ h.openClientFolderBoardProject({projectId:'folder_driveonly',folderId:'driveonly',company:'Drive only'});assert.equal(h.active.folderId,'driveonly');assert.equal(h._selectedProjectId,null);assert.equal(h.opened,undefined);
+ const active=h.active;let warning='';h.window.ProjectCard=null;h.alert=text=>{warning=text;};
+ h.openClientFolderBoardProject({projectRecordId:'other'});assert.equal(h.active,active);assert.ok(warning.includes('Карта проекта'));
+});
+
+test('the optional recent-project grid also opens the detailed card, not legacy project details',()=>{
+ const main=fs.readFileSync(path.resolve(__dirname,'../../js/main.js'),'utf8'),start=main.indexOf('function wireAnalyticsRecentControls('),end=main.indexOf('function classifyFileToDocType(',start);
+ const selected={projectId:'folder_target',folderId:'target',company:'Exact'},row={getAttribute:()=>selected.projectId},h={window:{},document:{getElementById:()=>null,querySelectorAll:()=>[row]},getAnalyticsRecentProjects:()=>[selected],openClientFolderBoardProject:p=>{h.opened=p;},refreshClientContents:()=>{throw Error('Legacy detail opened');}};
+ vm.runInNewContext(main.slice(start,end),h);h.wireAnalyticsRecentControls();row.onclick();assert.equal(h.opened,selected);
 });

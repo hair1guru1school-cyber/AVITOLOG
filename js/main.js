@@ -880,6 +880,11 @@ function clientFolderBoardContext() {
   };
 }
 function openClientFolderBoardProject(project) {
+  if (!project) return;
+  if (!window.ProjectCard || typeof window.ProjectCard.open !== 'function') {
+    alert('Карта проекта ещё загружается. Повторите открытие.');
+    return;
+  }
   var clients = typeof getCrmClients === 'function' ? getCrmClients() : [];
   var matched = clients.find(function(client) {
     return (project.folderId && String(client.folderId || '') === project.folderId) ||
@@ -887,12 +892,10 @@ function openClientFolderBoardProject(project) {
   });
   var active = matched || Object.assign({}, project.crmData || {}, project);
   _selectedProjectId = project.projectRecordId || null;
-  _analyticsRecentSelectedProjectId = project.folderId ? project.projectId : '';
-  if (project.folderId) _analyticsOpenedFolderByProject[project.projectId] = true;
+  _analyticsRecentSelectedProjectId = '';
   if (typeof fillClientForm === 'function') fillClientForm(active);
   setActiveClient(active);
-  if (!project.folderId) return;
-  refreshClientContents(true);
+  window.ProjectCard.open(project.projectRecordId || undefined);
 }
 function markAnalyticsFolderOpened(projectId) {
   var key = String(projectId || '').trim();
@@ -1165,24 +1168,9 @@ function wireAnalyticsRecentControls() {
   }
   document.querySelectorAll('.recent-project-item').forEach(function(row) {
     row.onclick = function() {
-      _analyticsRecentSelectedProjectId = row.getAttribute('data-project-id') || '';
-      if (_analyticsRecentSelectedProjectId) {
-        _analyticsOpenedFolderByProject[_analyticsRecentSelectedProjectId] = true;
-        var selected = getSelectedAnalyticsRecentProject();
-        if (selected) {
-          var clients = (typeof getCrmClients === 'function') ? getCrmClients() : [];
-          var selectedFolder = String(selected.folderId || selected.projectId || '');
-          var selectedName = String(selected.company || selected.title || selected.projectTitle || '').trim().toLowerCase();
-          var matched = clients.find(function(client) {
-            return (selectedFolder && String(client.folderId || '') === selectedFolder) ||
-              (selectedName && String(client.company || '').trim().toLowerCase() === selectedName);
-          });
-          var active = matched || Object.assign({}, selected, { folderId: selectedFolder });
-          if (typeof fillClientForm === 'function') fillClientForm(active);
-          setActiveClient(active);
-        }
-      }
-      refreshClientContents(true);
+      var id = row.getAttribute('data-project-id') || '';
+      var selected = getAnalyticsRecentProjects().find(function(project) { return project.projectId === id; });
+      if (selected) openClientFolderBoardProject(selected);
     };
   });
 }
