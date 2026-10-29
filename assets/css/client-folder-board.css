@@ -12,3 +12,11 @@ body:has(#clientFolderBoard) #analyticsControlPanel,body:has(#clientFolderBoard)
 .cfb input.cfb-scroll-range[hidden]{display:none}.cfb input.cfb-scroll-range:hover,.cfb input.cfb-scroll-range:focus-visible{opacity:1}.cfb input.cfb-scroll-range:focus-visible{outline:1px solid var(--accent,#36d8b5);outline-offset:2px}
 .cfb-scroll-range::-webkit-slider-runnable-track{height:3px;border-radius:9px;background:var(--border,#345)}.cfb-scroll-range::-webkit-slider-thumb{appearance:none;-webkit-appearance:none;width:32px;height:9px;margin-top:-3px;border:0;border-radius:9px;background:var(--cfb-muted,#90a8c3)}
 .cfb-scroll-range::-moz-range-track{height:3px;border-radius:9px;background:var(--border,#345)}.cfb-scroll-range::-moz-range-thumb{width:32px;height:9px;border:0;border-radius:9px;background:var(--cfb-muted,#90a8c3)}
+/* Use the scaled mobile shell's remaining height, not unscaled viewport units. */
+body.mobile-client-ui #mainContent:has(>#clientFolderBoard){display:flex;flex-direction:column;min-height:0;overflow:hidden}
+body.mobile-client-ui #clientFolderBoard{display:flex;flex-direction:column;flex:1 1 0;min-height:0}
+body.mobile-client-ui #clientFolderBoard>.cfb-top,body.mobile-client-ui #clientFolderBoard>.cfb-status,body.mobile-client-ui #clientFolderBoard>.cfb-scroll-range{flex-shrink:0}
+body.mobile-client-ui #clientFolderBoard>.cfb-columns{flex:1 1 0;min-height:0;align-items:stretch;overflow-y:hidden}
+body.mobile-client-ui #clientFolderBoard .cfb-column{display:flex;flex-direction:column;min-height:0}
+body.mobile-client-ui #clientFolderBoard .cfb-column-head{flex-shrink:0}
+body.mobile-client-ui #clientFolderBoard .cfb-rows{flex:1 1 0;min-height:0;max-height:none;-webkit-overflow-scrolling:touch;touch-action:pan-x pan-y pinch-zoom}
