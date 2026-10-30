@@ -1,15 +1,18 @@
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-const CHAT=/^-[1-9][0-9]{4,19}$/, TYPES=['kp','analysis','presale','avito1'];
+const CHAT=/^-[1-9][0-9]{4,19}$/, TYPES=['kp','analysis','presale','avito1','bot','portfolio'],STATIC=['bot','portfolio'];
+const HEADING='📜 Коммерческое Предложение';
 const enc=new TextEncoder(),fail=(status,code)=>Object.assign(Error(code),{status,code});
 const ORIGINS=['https://hair1guru1school-cyber.github.io','https://avitoboss.online'];
 export function normalizeTelegramTemplate(value={}){
  const text=(key,max,otherwise='')=>typeof value[key]==='string'?value[key].trim().slice(0,max):otherwise;
  const defaults={kp:'🤝 Направляю подробное коммерческое предложение по проекту «{project}»: варианты продвижения, состав работ и стоимость. Посмотрите подходящий пакет — обсудим детали и следующий шаг.',analysis:'💡 Прикладываю анализ проекта «{project}»: рынок, целевую аудиторию, ключевые позиции и рекомендации по запуску. Он поможет оценить возможности продвижения и выбрать приоритеты.',presale:'⏰ Здесь — почему стоит рассмотреть запуск сейчас: текущая ситуация, подготовка и первые шаги для проекта «{project}».',avito1:'🏆 Почему Авито №1: собрал возможности площадки для проекта «{project}», её преимущества и моменты, которые важно учесть перед стартом. Посмотрите вместе с КП — так проще выбрать формат продвижения.',contract:'📜 Договор по проекту «{project}». Проверьте реквизиты, состав работ, сроки и стоимость. Напишите, если нужны уточнения.',appendix:'📎 Приложение к договору по проекту «{project}»: перечень работ и согласованные условия.',other:'Документ по проекту «{project}». Посмотрите, пожалуйста; готов обсудить вопросы.',scripts:'🌀 Подготовил скрипты для проекта «{project}»: ответы клиентам, уточнение задачи, предложение и работа с возражениями.'};
  const current={kp:'🤝 Вот подробное коммерческое предложение с выгодными стратегиями по продвижению вашего проекта!\n\nЖду от вас обратную связь\n\n1) Договор с моим ИП\n2) Каждые 3 дня до запуска даю отчет о работе\n3) Всегда на связи - всегда в ваших аккаунтах\n4) Имею большой опыт в данной категории.\n\nА мой опыт на Авито уже более 9 лет\nРезультат гарантирую',analysis:'💡 Также прикладываю подробный анализ по ключевым позициям, целевым аудиториям и стратегии запуска — в нём:\n✨ Чёткая картина рынка и сезонности\n👥 Подробное описание ЦА с их болями и потребностями\n📦 Продуктовая матрица и варианты апсейла\n🔑 Полное семантическое ядро и ключи для продвижения\n📍 Гео-сетка и структура карточек\n🚀 Пошаговый план масштабирования от первых запусков до полного охвата',presale:'Также направляю - почему стоит запускаться именно сейчас',avito1:'🏆 Направляю документ «Почему Авито №1»: как площадка может работать для вашего проекта, какие возможности стоит использовать и на что обратить внимание перед запуском.'};
- const captions={},enabled={};for(const type of TYPES){const caption=value.captions?.[type],legacy=value.version!==3&&(caption==='{document}'||caption===defaults[type]);captions[type]=typeof caption==='string'&&!legacy?caption.slice(0,800):current[type];enabled[type]=value.enabled?.[type]!==false;}
+ current.bot='🤖 БОТ в Avito — он даёт до +20–30% к конверсии в диалог\n\n⚡️ Мгновенный ответ → заявка не «остывает» и не уходит конкуренту\n\n📈 Рост показателей аккаунта за счёт скорости реакции\n\n📞 Сбор контактов без давления — больше тёплых заявок\n\n🧭 Клиент сразу понимает, куда попал и что будет дальше';
+ current.portfolio='+ Дополнительное портфолио именно по упаковке аккаунта - это дает особенно высокое качество рекламы и позиционирования, что в свою очередь дает до +40% конверсии';
+ const captions={},enabled={};for(const type of TYPES){const caption=value.captions?.[type],legacy=![3,4].includes(value.version)&&(caption==='{document}'||caption===defaults[type]);captions[type]=typeof caption==='string'&&!legacy?caption.slice(0,800):current[type];enabled[type]=value.enabled?.[type]!==false;}
  let order=Array.isArray(value.order)?value.order.filter((x,i,a)=>TYPES.includes(x)&&a.indexOf(x)===i):[];
- if(value.version!==3)order=['kp',...order.filter(x=>x!=='kp')];order=order.concat(TYPES.filter(x=>!order.includes(x)));
- return {version:3,heading:text('heading',200,'{project}'),intro:text('intro',800),footer:text('footer',800,'{date}'),captions,enabled,order,silent:value.silent!==false};
+ if(![3,4].includes(value.version))order=['kp',...order.filter(x=>x!=='kp')];order=order.concat(TYPES.filter(x=>!order.includes(x)));
+ return {version:4,heading:value.version===4?text('heading',200,HEADING):HEADING,intro:text('intro',800),footer:text('footer',800,'{date}'),captions,enabled,order,silent:value.silent!==false};
 }
 function text(value,max,required=false){if(typeof value!=='string'||value.length>max||/[\u0000-\u0008\u000b\u000c\u000e-\u001f]/.test(value)||required&&!value.trim())throw fail(400,'invalid_request');return value.trim();}
 export function richPdfMessage(manifest,files){
@@ -20,7 +23,7 @@ export function richPdfMessage(manifest,files){
  manifest.documents.forEach((item,index)=>{
   if(!item||!TYPES.includes(item.type)||names.has(item.name)||typeof item.name!=='string'||item.name.length>180||!item.name.endsWith('.pdf')||/[\\/\u0000-\u001f]/.test(item.name)||files[index].name!==item.name)throw fail(400,'invalid_files');names.add(item.name);
   const caption=text(item.caption,800);documents.push({type:item.type,name:item.name,caption});
-  blocks.push({type:'document',document:{type:'document',media:'attach://pdf'+index,disable_content_type_detection:true}});
+  blocks.push({type:'document',document:{type:'document',media:files[index].telegramId||'attach://pdf'+index,disable_content_type_detection:true}});
   if(caption)blocks.push({type:'paragraph',text:caption});
  });if(footer)blocks.push({type:'footer',text:footer});
  return {rich:{blocks,skip_entity_detection:true},content:{heading,intro,footer,documents,silent:manifest.silent!==false}};
@@ -70,7 +73,7 @@ export function createTelegramHandler(options={}){
  const filter=actor=>'owner_id=eq.'+actor.p_owner+'&organization_id=eq.'+actor.p_org+'&profile=eq.'+actor.p_profile;
  const owner=actor=>actor.p_owner+'|'+actor.p_org+'|'+actor.p_profile;
  async function connection(actor){const rows=await serviceRequest('telegram_delivery_connections?select=*&'+filter(actor)+'&limit=1');return rows?.[0]||null;}
- function publicConfig(row){return {connected:!!row,bot:row?{id:String(row.bot_id),username:row.bot_username}:null,revision:row?.revision||null,destination:row?.destination_id?{id:row.destination_id,title:row.destination_title,type:row.destination_type}:null,template:normalizeTelegramTemplate(row?.template)};}
+ function publicConfig(row){const assets={};for(const type of STATIC){const a=row?.template?.assets?.[type];if(a&&a.bot_id===row.bot_id&&typeof a.ref==='string')assets[type]={ref:a.ref,name:a.name,size:a.size};}return {connected:!!row,bot:row?{id:String(row.bot_id),username:row.bot_username}:null,revision:row?.revision||null,destination:row?.destination_id?{id:row.destination_id,title:row.destination_title,type:row.destination_type}:null,template:normalizeTelegramTemplate(row?.template),assets};}
  async function telegram(token,method,payload,form=false,sending=false){
   let response;try{response=await fetcher('https://api.telegram.org/bot'+token+'/'+method,{method:'POST',headers:form?undefined:{'Content-Type':'application/json'},body:form?payload:JSON.stringify(payload||{}),redirect:'error',signal:AbortSignal.timeout(sending?90000:20000)});}catch(_){throw fail(502,sending?'send_unknown':'telegram_unavailable');}
   let result;try{result=await readJson(response,2*1024*1024);}catch(_){throw fail(502,sending?'send_unknown':'telegram_unavailable');}
@@ -89,7 +92,7 @@ export function createTelegramHandler(options={}){
   if(request.method==='OPTIONS')return new Response(null,{status:204,headers:{'Access-Control-Allow-Origin':origin,'Access-Control-Allow-Methods':'GET,POST,PUT,OPTIONS','Access-Control-Allow-Headers':'authorization,apikey,content-type','Access-Control-Max-Age':'600','Vary':'Origin'}});
   try{
    const path=new URL(request.url).pathname.replace(/^.*\/telegram-delivery/,'');
-   if(![['GET','/config'],['POST','/connect'],['POST','/targets'],['PUT','/settings'],['POST','/send'],['GET','/jobs']].some(([m,p])=>request.method===m&&path===p))throw fail(404,'not_found');
+   if(![['GET','/config'],['POST','/connect'],['POST','/targets'],['PUT','/settings'],['POST','/send'],['GET','/jobs'],['POST','/assets']].some(([m,p])=>request.method===m&&path===p))throw fail(404,'not_found');
    const actor=await auth(request),row=await connection(actor);
    if(path==='/config')return json({ok:true,...publicConfig(row)},200,origin);
    if(path==='/jobs'){
@@ -100,18 +103,40 @@ export function createTelegramHandler(options={}){
     if(!/^multipart\/form-data;\s*boundary=/.test(request.headers.get('content-type')||''))throw fail(400,'invalid_files');
     const bytes=await bounded(request,25*1024*1024+65536),form=await new Response(bytes,{headers:{'Content-Type':request.headers.get('content-type')}}).formData();let manifest;try{manifest=JSON.parse(String(form.get('manifest')||''));}catch(_){throw fail(400,'invalid_request');}
     if(!UUID.test(manifest.request_id||'')||manifest.revision!==row.revision||manifest.destination_id!==row.destination_id)throw fail(409,'settings_conflict');
-    const project=text(manifest.project,200,true),items=manifest.documents;if(!Array.isArray(items)||!items.length||items.length>10||Array.from(form.keys()).length!==items.length+1)throw fail(400,'invalid_files');
-    const files=items.map((_,i)=>form.get('pdf'+i));let total=0;const digests=[];
-    for(const file of files){if(!file||typeof file.arrayBuffer!=='function'||file.type!=='application/pdf'||file.size<8||file.size>10*1024*1024||(total+=file.size)>25*1024*1024||await file.slice(0,5).text()!=='%PDF-')throw fail(400,'invalid_files');digests.push(await hash(await file.arrayBuffer()));}
+    const project=text(manifest.project,200,true),items=manifest.documents;if(!Array.isArray(items)||!items.length||items.length>10)throw fail(400,'invalid_files');
+    let total=0;const digests=[],files=[],expected=['manifest'];
+    for(const [i,item] of items.entries()){
+     if(item.asset_ref){const a=row.template?.assets?.[item.type];if(!STATIC.includes(item.type)||!a||a.bot_id!==row.bot_id||a.ref!==item.asset_ref||item.name!==a.name)throw fail(409,'asset_changed');files.push({name:a.name,size:a.size,telegramId:a.file_id});digests.push(a.ref);continue;}
+     const file=form.get('pdf'+i);expected.push('pdf'+i);if(!file||typeof file.arrayBuffer!=='function'||file.type!=='application/pdf'||file.size<8||file.size>10*1024*1024||(total+=file.size)>25*1024*1024||await file.slice(0,5).text()!=='%PDF-')throw fail(400,'invalid_files');files.push(file);digests.push(await hash(await file.arrayBuffer()));
+    }
+    if(Array.from(form.keys()).length!==expected.length||expected.some(k=>!form.has(k)))throw fail(400,'invalid_files');
     const message=richPdfMessage(manifest,files),payloadHash=await hash(enc.encode(JSON.stringify({project,content:message.content,digests}))),token=await openTelegramToken(row.encrypted_token,master,owner(actor));
     await target(token,row.bot_id,row.destination_id);
     const claim=await rpc('begin',{...actor,p_request:manifest.request_id,p_revision:row.revision,p_target:row.destination_id,p_hash:payloadHash,p_project:project,p_count:files.length});
     if(!claim.claimed)return json({ok:true,request_id:manifest.request_id,state:claim.state,message_id:claim.message_id||null,destination:publicConfig(row).destination},200,origin);
-    const outgoing=new FormData();outgoing.set('chat_id',row.destination_id);outgoing.set('rich_message',JSON.stringify(message.rich));outgoing.set('disable_notification',String(message.content.silent));files.forEach((file,i)=>outgoing.set('pdf'+i,file,file.name));
+    const outgoing=new FormData();outgoing.set('chat_id',row.destination_id);outgoing.set('rich_message',JSON.stringify(message.rich));outgoing.set('disable_notification',String(message.content.silent));files.forEach((file,i)=>{if(!file.telegramId)outgoing.set('pdf'+i,file,file.name);});
     let sent;try{sent=await telegram(token,'sendRichMessage',outgoing,true,true);if(!Number.isSafeInteger(sent?.message_id)||sent.message_id<1||String(sent?.chat?.id)!==row.destination_id)throw fail(502,'send_unknown');}
     catch(error){const state=error.code==='send_unknown'?'unknown':'failed';await rpc('finish',{...actor,p_request:manifest.request_id,p_hash:payloadHash,p_state:state,p_message:null}).catch(()=>{});throw error;}
     const receipt=await rpc('finish',{...actor,p_request:manifest.request_id,p_hash:payloadHash,p_state:'sent',p_message:sent.message_id}).catch(()=>false);
     return json({ok:true,request_id:manifest.request_id,state:'sent',message_id:sent.message_id,receipt_saved:receipt===true,destination:publicConfig(row).destination},200,origin);
+   }
+   if(path==='/assets'){
+    if(!row?.destination_id)throw fail(409,'destination_required');
+    if(!/^multipart\/form-data;\s*boundary=/.test(request.headers.get('content-type')||''))throw fail(400,'invalid_files');
+    const bytes=await bounded(request,50*1024*1024+65536),form=await new Response(bytes,{headers:{'Content-Type':request.headers.get('content-type')}}).formData();let data;try{data=JSON.parse(String(form.get('asset')||''));}catch(_){throw fail(400,'invalid_request');}
+    if(data.revision!==row.revision)throw fail(409,'settings_conflict');if(!STATIC.includes(data.type))throw fail(400,'invalid_files');
+    const token=await openTelegramToken(row.encrypted_token,master,owner(actor));await target(token,row.bot_id,row.destination_id);
+    let sent,cleanup=false;
+    try{
+     if(data.source){const match=/^https:\/\/t\.me\/c\/([1-9][0-9]{0,11})\/([1-9][0-9]{0,10})\/?$/.exec(data.source);if(!match||String(-(1000000000000+Number(match[1])))!==row.destination_id)throw fail(400,'invalid_source');
+      sent=await telegram(token,'forwardMessage',{chat_id:row.destination_id,from_chat_id:row.destination_id,message_id:Number(match[2]),disable_notification:true},false,true);
+     }else{const file=form.get('pdf');if(!file||typeof file.arrayBuffer!=='function'||file.size<8||file.size>50*1024*1024||file.type!=='application/pdf'||await file.slice(0,5).text()!=='%PDF-')throw fail(400,'invalid_files');const upload=new FormData();upload.set('chat_id',row.destination_id);upload.set('disable_notification','true');upload.set('document',file,data.type==='bot'?'🤖 БОТ в Avito.pdf':'🎨 Портфолио.pdf');sent=await telegram(token,'sendDocument',upload,true,true);}
+     if(!Number.isSafeInteger(sent?.message_id)||String(sent?.chat?.id)!==row.destination_id)throw fail(502,'send_unknown');
+     const file=sent.document;if(typeof file?.file_id!=='string'||!file.file_id||file.file_id.length>512||typeof file.file_unique_id!=='string'||file.mime_type!=='application/pdf'||!Number.isSafeInteger(file.file_size)||file.file_size<8||file.file_size>50*1024*1024)throw fail(400,'invalid_files');
+     const assets={...row.template?.assets,[data.type]:{bot_id:row.bot_id,file_id:file.file_id,name:text(file.file_name,180,true),size:file.file_size,ref:await hash(enc.encode(row.bot_id+'|'+file.file_unique_id+'|'+file.file_id))}};if(!assets[data.type].name.endsWith('.pdf'))throw fail(400,'invalid_files');
+     await rpc('save',{...actor,p_expected:row.revision,p_connect:false,p_value:{destination_id:row.destination_id,destination_title:row.destination_title,destination_type:row.destination_type,template:{...normalizeTelegramTemplate(row.template),assets}}});
+    }finally{if(Number.isSafeInteger(sent?.message_id)&&String(sent?.chat?.id)===row.destination_id)cleanup=await telegram(token,'deleteMessage',{chat_id:row.destination_id,message_id:sent.message_id}).catch(()=>false);}
+    return json({ok:true,...publicConfig(await connection(actor)),cleanup:cleanup===true},200,origin);
    }
    const body=await readJson(request,32768);
    if(path==='/connect'){
@@ -126,7 +151,7 @@ export function createTelegramHandler(options={}){
     const updates=await telegram(token,'getUpdates',{limit:100,timeout:0});return json({ok:true,targets:discoverTelegramTargets(updates),webhook:false},200,origin);
    }
    if(body.revision!==row.revision)throw fail(409,'settings_conflict');const destination=await target(token,row.bot_id,body.destination_id);
-   await rpc('save',{...actor,p_expected:body.revision,p_connect:false,p_value:{destination_id:destination.id,destination_title:destination.title,destination_type:destination.type,template:normalizeTelegramTemplate(body.template)}});
+   await rpc('save',{...actor,p_expected:body.revision,p_connect:false,p_value:{destination_id:destination.id,destination_title:destination.title,destination_type:destination.type,template:{...normalizeTelegramTemplate(body.template),assets:row.template?.assets||{}}}});
    return json({ok:true,...publicConfig(await connection(actor))},200,origin);
   }catch(error){return json({ok:false,error:error.code||'unavailable'},error.status||503,origin);}
  };

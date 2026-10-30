@@ -1382,17 +1382,18 @@
   }
   window.__avitologReadAgencyAds = function () { return agencyAdsRpc('read_agency_ads'); };
   window.__avitologTelegramRequest = async function (action, payload) {
-    var routes = { config: ['GET','config'], connect: ['POST','connect'], targets: ['POST','targets'], settings: ['PUT','settings'], send: ['POST','send'], jobs: ['GET','jobs'] };
+    var routes = { config: ['GET','config'], connect: ['POST','connect'], targets: ['POST','targets'], settings: ['PUT','settings'], send: ['POST','send'], jobs: ['GET','jobs'], assets: ['POST','assets'] };
     if (!Object.prototype.hasOwnProperty.call(routes,action) || !initialSyncReady || !serverOnlyMode || isServerOnlySashaViewer()) throw new Error('telegram_context_unavailable');
     var expected = pendingWriteScope(), profile = window.AVITOLOG_KEY_SUFFIX === '_sasha' ? 'sasha' : 'fil';
     var organization = cfg.profileOrganizations && cfg.profileOrganizations[profile];
     if (!expected || !organization) throw new Error('auth_required');
-    var requestHeaders = await headers(action === 'send' ? {} : { 'Content-Type':'application/json' });
+    var multipart = action === 'send' || action === 'assets';
+    var requestHeaders = await headers(multipart ? {} : { 'Content-Type':'application/json' });
     assertPendingWriteScope(expected, String(requestHeaders.Authorization || '').replace(/^Bearer\s+/i,''));
     var endpoint = cfg.url + '/functions/v1/telegram-delivery/' + routes[action][1] + '?organization_id=' + encodeURIComponent(organization) + '&profile=' + profile;
     var response;
-    try { response = await fetch(endpoint, { method:routes[action][0], headers:requestHeaders, body:routes[action][0] === 'GET' ? undefined : action === 'send' ? payload : JSON.stringify(payload || {}), credentials:'omit', redirect:'error', signal:AbortSignal.timeout(action === 'send' ? 120000 : 45000) }); }
-    catch (_) { throw new Error(action === 'send' ? 'send_unknown' : 'telegram_unavailable'); }
+    try { response = await fetch(endpoint, { method:routes[action][0], headers:requestHeaders, body:routes[action][0] === 'GET' ? undefined : multipart ? payload : JSON.stringify(payload || {}), credentials:'omit', redirect:'error', signal:AbortSignal.timeout(multipart ? 120000 : 45000) }); }
+    catch (_) { throw new Error(multipart ? 'send_unknown' : 'telegram_unavailable'); }
     if (expected !== pendingWriteScope()) throw new Error('context_changed');
     var result; try { result = await response.json(); } catch (_) { throw new Error(action === 'send' ? 'send_unknown' : 'telegram_unavailable'); }
     if (!response.ok || result.ok !== true) throw new Error(typeof result.error === 'string' ? result.error : action === 'send' ? 'send_unknown' : 'telegram_unavailable');

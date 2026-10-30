@@ -108,21 +108,23 @@
     return blob;
   }
   function createPdfDelivery(env) {
-    var cache=new WeakMap(),tail=Promise.resolve();
+    var cache=new WeakMap(),savedFiles=new Map(),tail=Promise.resolve();
     function owner(batch){return JSON.stringify([batch.snapshot.scope,batch.snapshot.folderId,batch.snapshot.clientId]);}
+    function savedKey(batch,job){return job.file&&job.file.id?JSON.stringify([owner(batch),job.file.id,job.file.modifiedTime||'',job.type,job.title,job.pdfFilename||'',job.html||'']):'';}
+    function cached(batch,job){var row=cache.get(job),key=savedKey(batch,job);if(!row&&key){row=savedFiles.get(key);if(row&&Date.now()-row.created>120000){savedFiles.delete(key);row=null;}if(row)cache.set(job,row);}return row;}
     function guard(batch){if(!env.isCurrent(batch.snapshot))throw Error('Пользователь или режим изменился. Передача PDF остановлена.');}
-    function peek(batch,job){var row=cache.get(job);return env.isCurrent(batch.snapshot)&&row&&row.owner===owner(batch)&&row.html===job.html?row.file||null:null;}
+    function peek(batch,job){var row=cached(batch,job);return env.isCurrent(batch.snapshot)&&row&&row.owner===owner(batch)&&row.html===job.html?row.file||null:null;}
     function get(batch,job){
       try{guard(batch);}catch(error){return Promise.reject(error);}
       if(!job.html&&!job.file)return Promise.reject(Error('Документ ещё создаётся.'));
-      var row=cache.get(job),id=owner(batch);
+      var row=cached(batch,job),id=owner(batch),saved=savedKey(batch,job);
       if(row&&row.owner!==id)return Promise.reject(Error('Этот PDF принадлежит другому проекту.'));
       if(row&&row.html===job.html){if(row.file)return Promise.resolve(row.file);if(row.pending)return row.pending;}
-      row={owner:id,html:job.html};cache.set(job,row);job.pdfState='preparing';job.pdfError='';
+      row={owner:id,html:job.html,created:Date.now()};cache.set(job,row);if(saved){savedFiles.set(saved,row);while(savedFiles.size>24)savedFiles.delete(savedFiles.keys().next().value);}job.pdfState='preparing';job.pdfError='';
       row.pending=tail.then(async function(){
         guard(batch);var blob=await env.render(batch.snapshot,job);guard(batch);await validatePdf(blob);guard(batch);
         row.file=env.file(blob,pdfName(batch.snapshot,job));job.pdfState='ready';return row.file;
-      }).catch(function(error){job.pdfState='failed';job.pdfError=message(error);if(cache.get(job)===row)cache.delete(job);throw error;}).finally(function(){row.pending=null;if(env.changed)env.changed();});
+      }).catch(function(error){job.pdfState='failed';job.pdfError=message(error);if(cache.get(job)===row)cache.delete(job);if(savedFiles.get(saved)===row)savedFiles.delete(saved);throw error;}).finally(function(){row.pending=null;if(env.changed)env.changed();});
       tail=row.pending.catch(function(){});if(env.changed)env.changed();return row.pending;
     }
     function files(batch,jobs){if(!jobs.length)return null;var list=jobs.map(function(job){return peek(batch,job);});return list.every(Boolean)?list:null;}
@@ -426,9 +428,9 @@
       modal.append(actions);if(batch.deliveryMessage)modal.append(el('p','cg-delivery-help',batch.deliveryMessage));
     }
     function pdfAction(batch,jobs,mode){
-      if(mode==='share'){jobs=jobs.filter(function(job){return ['kp','analysis','presale','avito1'].indexOf(job.type)>=0;});if(!jobs.length)return;}
+      if(mode==='share'){jobs=jobs.filter(function(job,index,all){return ['kp','analysis','presale','avito1'].indexOf(job.type)>=0&&all.findIndex(function(other){return other.type===job.type;})===index;});if(!jobs.length)return;}
       if(mode==='share'&&win.AVBTelegramDelivery){
-        win.AVBTelegramDelivery.openComposer({snapshot:batch.snapshot,isCurrent:function(){return batch.snapshot.scope===scope();},documents:jobs.map(function(job){return {type:job.type,name:pdfName(batch.snapshot,job)};}),prepare:function(){return Promise.all(jobs.map(function(job){return delivery.get(batch,job);}));}});
+        win.AVBTelegramDelivery.openComposer({snapshot:batch.snapshot,isCurrent:function(){return batch.snapshot.scope===scope();},documents:jobs.map(function(job){return {type:job.type,name:pdfName(batch.snapshot,job),prepare:function(){return delivery.get(batch,job);}};})});
       }
       else if(mode==='download'&&delivery.files(batch,jobs))downloadPdfs(batch,jobs);
       else openDelivery(batch,jobs,mode);

@@ -32,6 +32,8 @@ async function fixture(){
   if(method==='getUpdates')return reply({ok:true,result:[{my_chat_member:{chat:{id:Number(TARGET),title:'🗒 NOTES',type:'channel'}}}]});
   if(method==='getChat')return reply({ok:true,result:{id:Number(body.chat_id),title:'🗒 NOTES',type:'channel'}});
   if(method==='getChatMember')return reply({ok:true,result:{user:{id:123456},status:'administrator',can_post_messages:rights}});
+  if(method==='forwardMessage'||method==='sendDocument')return reply({ok:true,result:{message_id:201,chat:{id:Number(TARGET)},document:{file_id:'private-telegram-file-'+(body.message_id||'upload'),file_unique_id:'unique-'+(body.message_id||'upload'),file_name:method==='sendDocument'?body.get('document').name:body.message_id===194?'🎨 Портфолио.pdf':'🤖 БОТ.pdf',file_size:body.message_id===194?29*1024*1024:100,mime_type:'application/pdf'}}});
+  if(method==='deleteMessage')return reply({ok:true,result:true});
   if(method==='sendRichMessage'){
    if(sendMode==='timeout')throw Error('Private URL '+TOKEN);
    if(sendMode==='reject')return reply({ok:false,error_code:400,description:'Rejected '+TOKEN},400);
@@ -86,6 +88,22 @@ test('settings cannot be silently overwritten by an old revision or another prof
  const h=await fixture(),config=await h.ready();const sasha=await h.request('config',undefined,{profile:'sasha'});assert.equal(sasha.value.connected,false);const stale=await h.request('settings',{revision:crypto.randomUUID(),destination_id:TARGET,template:{heading:'Wrong'}},{method:'PUT'});assert.equal(stale.value.error,'settings_conflict');assert.equal((await h.request('config')).value.revision,config.revision);
 });
 test('only supported template variables and plain text blocks are accepted',async()=>{
- const h=await fixture(),settings=h.G.normalizeTelegramTemplate({heading:'<b>{project}</b>',captions:{analysis:'{document}'},order:['analysis','analysis','invalid'],api_token:TOKEN});assert.equal(settings.heading,'<b>{project}</b>');assert.deepEqual(settings.order,['kp','analysis','presale','avito1']);assert.equal('api_token' in settings,false);assert.match(settings.captions.analysis,/анализ/);
+ const h=await fixture(),settings=h.G.normalizeTelegramTemplate({version:4,heading:'<b>{project}</b>',captions:{analysis:'test'},order:['analysis','analysis','invalid'],api_token:TOKEN});assert.equal(settings.heading,'<b>{project}</b>');assert.deepEqual(settings.order,['analysis','kp','presale','avito1','bot','portfolio']);assert.equal('api_token' in settings,false);assert.equal(settings.captions.analysis,'test');assert.match(h.G.normalizeTelegramTemplate({}).captions.analysis,/анализ/);
  const rich=h.G.richPdfMessage({heading:'<script>x</script>',intro:'',footer:'',documents:[{type:'analysis',name:'a.pdf',caption:'<b>text</b>'}]},[{name:'a.pdf'}]);assert.equal(rich.rich.blocks[0].text,'<script>x</script>');assert.equal(rich.rich.skip_entity_detection,true);
+});
+
+async function asset(h,config,type,extra={},file){const form=new FormData();form.set('asset',JSON.stringify({revision:config.revision,type,...extra}));if(file)form.set('pdf',file);return h.request('assets',form);}
+test('static channel PDFs are registered privately and only the temporary copy is removed',async()=>{
+ const h=await fixture(),config=await h.ready(),result=await asset(h,config,'portfolio',{source:'https://t.me/c/1234567890/194'});assert.equal(result.status,200);assert.equal(result.value.assets.portfolio.size,29*1024*1024);assert.equal(JSON.stringify(result.value).includes('private-telegram-file'),false);assert.equal(result.value.cleanup,true);const deletes=h.calls.filter(x=>x.url.endsWith('/deleteMessage'));assert.equal(deletes.length,1);assert.equal(deletes[0].body.message_id,201);assert.equal(h.sends().length,0);
+ const saved=await h.request('settings',{revision:result.value.revision,destination_id:TARGET,template:{version:4,heading:'changed',assets:{portfolio:{file_id:'injected'}}}},{method:'PUT'});assert.equal(saved.value.assets.portfolio.ref,result.value.assets.portfolio.ref);
+});
+test('one rich message reuses the saved large portfolio without uploading it again',async()=>{
+ const h=await fixture(),config=(await asset(h,await h.ready(),'portfolio',{source:'https://t.me/c/1234567890/194'})).value,a=config.assets.portfolio,f=h.form(config),manifest=JSON.parse(f.data.get('manifest'));manifest.documents.push({type:'portfolio',name:a.name,asset_ref:a.ref,caption:'Portfolio'});f.data.set('manifest',JSON.stringify(manifest));const sent=await h.request('send',f.data);assert.equal(sent.value.state,'sent');assert.equal(h.sends().length,1);const outgoing=h.sends()[0].body,rich=JSON.parse(outgoing.get('rich_message'));assert.equal(outgoing.has('pdf2'),false);assert.equal(rich.blocks.filter(x=>x.type==='document').at(-1).document.media,'private-telegram-file-194');
+});
+test('asset refs cannot cross profiles, be forged, or reference another private channel',async()=>{
+ const h=await fixture(),c=await h.ready();assert.equal((await asset(h,c,'portfolio',{source:'https://t.me/c/9999999999/194'})).value.error,'invalid_source');assert.equal(h.calls.some(x=>x.url.endsWith('/forwardMessage')),false);assert.equal((await asset(h,c,'contract',{source:'https://t.me/c/1234567890/194'})).status,400);
+ const configured=(await asset(h,c,'bot',{source:'https://t.me/c/1234567890/193'})).value,f=h.form(configured),manifest=JSON.parse(f.data.get('manifest'));manifest.documents.push({type:'bot',name:'🤖 БОТ.pdf',asset_ref:'forged',caption:''});f.data.set('manifest',JSON.stringify(manifest));assert.equal((await h.request('send',f.data)).value.error,'asset_changed');assert.equal(h.sends().length,0);
+});
+test('manual replacement validates PDF bytes and atomically replaces only the selected reusable slot',async()=>{
+ const h=await fixture(),c=await h.ready();assert.equal((await asset(h,c,'bot',{},new File(['not PDF data'],'bad.pdf',{type:'application/pdf'}))).status,400);const first=(await asset(h,c,'portfolio',{source:'https://t.me/c/1234567890/194'})).value,replaced=await asset(h,first,'bot',{},new File(['%PDF-1.4 test'],'manual.pdf',{type:'application/pdf'}));assert.equal(replaced.status,200);assert.equal(replaced.value.assets.portfolio.ref,first.assets.portfolio.ref);assert.equal(replaced.value.assets.bot.name,'🤖 БОТ в Avito.pdf');assert.equal((await asset(h,first,'bot',{source:'https://t.me/c/1234567890/193'})).value.error,'settings_conflict');
 });

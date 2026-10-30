@@ -1,6 +1,6 @@
 'use strict';
 const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
-const root=require('node:path').resolve(__dirname,'../..'),source=fs.readFileSync(root+'/js/client-generators.js','utf8'),sandbox={module:{exports:{}}};
+const root=process.env.DELIVERY_TEST_ROOT||require('node:path').resolve(__dirname,'../..'),source=fs.readFileSync(root+'/js/client-generators.js','utf8'),sandbox={module:{exports:{}}};
 vm.runInNewContext(source,sandbox);const G=sandbox.module.exports,tick=()=>new Promise(r=>setImmediate(r));
 const pdf=()=>new Blob(['%PDF-1.4\nTest document\n%%EOF'],{type:'application/pdf'});
 const batch=()=>({snapshot:{scope:'owner|google-a',folderId:'Folder_A',clientId:'A',title:'Тестовый проект A'},jobs:[]});
@@ -25,6 +25,7 @@ test('concurrent PDF preparation coalesces and ready files are reused',async()=>
  let release,calls=0;const h=fixture({render:()=>{calls++;return new Promise(r=>{release=r;});}}),b=batch(),j=job();
  const one=h.service.get(b,j),two=h.service.get(b,j);assert.equal(one,two);await tick();assert.equal(calls,1);release(pdf());const file=await one;assert.equal(await two,file);assert.equal(await h.service.get(b,j),file);assert.equal(h.service.peek(b,j),file);assert.equal(j.pdfState,'ready');assert.equal(calls,1);
 });
+test('new row objects reuse an unchanged saved PDF without crossing project or actor boundaries',async()=>{const h=fixture(),b=batch(),j=job();const first=await h.service.get(b,j);assert.equal(await h.service.get(b,{...j}),first);assert.equal(h.renders.length,1);const changed={...j,file:{...j.file,modifiedTime:'new'}};assert.notEqual(await h.service.get(b,changed),first);assert.equal(h.renders.length,2);const other=batch();other.snapshot.folderId='Other';assert.notEqual(await h.service.get(other,{...j}),first);assert.equal(h.renders.length,3);});
 test('large PDF renderers run serially, not concurrently',async()=>{
  const releases=[],starts=[];const h=fixture({render:(s,j)=>{starts.push(j.title);return new Promise(r=>{releases.push(r);});}}),b=batch(),a=job(),c={...job(),title:'Скрипты'};
  const one=h.service.get(b,a),two=h.service.get(b,c);await tick();assert.deepEqual(starts,['Аналитика']);releases.shift()(pdf());await one;await tick();assert.deepEqual(starts,['Аналитика','Скрипты']);releases.shift()(pdf());await two;
