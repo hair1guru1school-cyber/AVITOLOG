@@ -9,32 +9,33 @@ export function normalizeTelegramTemplate(value={}){
  const current={kp:'🤝 Вот подробное коммерческое предложение с выгодными стратегиями по продвижению вашего проекта!\n\nЖду от вас обратную связь\n\n1) Договор с моим ИП\n2) Каждые 3 дня до запуска даю отчет о работе\n3) Всегда на связи - всегда в ваших аккаунтах\n4) Имею большой опыт в данной категории.\n\nА мой опыт на Авито уже более 9 лет\nРезультат гарантирую',analysis:'💡 Также прикладываю подробный анализ по ключевым позициям, целевым аудиториям и стратегии запуска — в нём:\n✨ Чёткая картина рынка и сезонности\n👥 Подробное описание ЦА с их болями и потребностями\n📦 Продуктовая матрица и варианты апсейла\n🔑 Полное семантическое ядро и ключи для продвижения\n📍 Гео-сетка и структура карточек\n🚀 Пошаговый план масштабирования от первых запусков до полного охвата',presale:'Также направляю - почему стоит запускаться именно сейчас',avito1:'🏆 Направляю документ «Почему Авито №1»: как площадка может работать для вашего проекта, какие возможности стоит использовать и на что обратить внимание перед запуском.'};
  current.bot='🤖 БОТ в Avito — он даёт до +20–30% к конверсии в диалог\n\n⚡️ Мгновенный ответ → заявка не «остывает» и не уходит конкуренту\n\n📈 Рост показателей аккаунта за счёт скорости реакции\n\n📞 Сбор контактов без давления — больше тёплых заявок\n\n🧭 Клиент сразу понимает, куда попал и что будет дальше';
  current.portfolio='+ Дополнительное портфолио именно по упаковке аккаунта - это дает особенно высокое качество рекламы и позиционирования, что в свою очередь дает до +40% конверсии';
- const captions={},enabled={};for(const type of TYPES){const caption=value.captions?.[type],legacy=![3,4].includes(value.version)&&(caption==='{document}'||caption===defaults[type]);captions[type]=typeof caption==='string'&&!legacy?caption.slice(0,800):current[type];enabled[type]=value.enabled?.[type]!==false;}
+ const captions={},enabled={};for(const type of TYPES){const caption=value.captions?.[type],legacy=![3,4,5].includes(value.version)&&(caption==='{document}'||caption===defaults[type]);captions[type]=typeof caption==='string'&&!legacy?caption.slice(0,800):current[type];enabled[type]=value.enabled?.[type]!==false;}
  let order=Array.isArray(value.order)?value.order.filter((x,i,a)=>TYPES.includes(x)&&a.indexOf(x)===i):[];
- if(![3,4].includes(value.version))order=['kp',...order.filter(x=>x!=='kp')];order=order.concat(TYPES.filter(x=>!order.includes(x)));
- return {version:4,heading:value.version===4?text('heading',200,HEADING):HEADING,subtitle:text('subtitle',800),heroEnabled:value.heroEnabled!==false,intro:text('intro',800),footer:text('footer',800,'{date}'),captions,enabled,order,silent:value.silent!==false};
+ if(![3,4,5].includes(value.version))order=['kp',...order.filter(x=>x!=='kp')];order=order.concat(TYPES.filter(x=>!order.includes(x)));
+ return {version:5,heading:[4,5].includes(value.version)?text('heading',200,HEADING):HEADING,nicheHeading:text('nicheHeading',200,'{niche}'),subtitle:value.version===5||value.subtitle?text('subtitle',800):'{geo} - запуск под ключ',heroEnabled:value.heroEnabled!==false,intro:text('intro',800),footer:text('footer',800,'{date}'),captions,enabled,order,silent:value.silent!==false};
 }
 function text(value,max,required=false){if(typeof value!=='string'||value.length>max||/[\u0000-\u0008\u000b\u000c\u000e-\u001f]/.test(value)||required&&!value.trim())throw fail(400,'invalid_request');return value.trim();}
 export function extractTelegramHeader(message){
- const blocks=message?.rich_message?.blocks,parts=[];
- if(Array.isArray(blocks)){for(const block of blocks){if(block?.type==='document')break;if(['heading','subheading','paragraph'].includes(block?.type)&&typeof block.text==='string'&&block.text.trim())parts.push(block.text.trim());}}
- else if(typeof (message?.caption||message?.text)==='string')parts.push(...(message.caption||message.text).trim().split(/\n+/));
+ function plain(value,depth=0){if(depth>8)throw fail(400,'invalid_source');if(typeof value==='string')return value;if(Array.isArray(value))return value.map(v=>plain(v,depth+1)).join('');if(value&&typeof value==='object')return value.type==='custom_emoji'?String(value.alternative_text||''):plain(value.text||'',depth+1);return '';}
+ const blocks=message?.rich_message?.blocks,parts=[],headings=[];
+ if(Array.isArray(blocks)){for(const block of blocks){if(block?.type==='document')break;if(['heading','subheading','paragraph'].includes(block?.type)){const content=plain(block.text).trim();if(content){parts.push(content);if(block.type!=='paragraph')headings.push(content);}}}}
+ else if(typeof (message?.caption||message?.text)==='string'){parts.push(...(message.caption||message.text).trim().split(/\n+/));if(parts.length>=3)headings.push(parts[0],parts[1]);}
  if(!parts.length||parts[0].length>200||parts.slice(1).join('\n\n').length>800)throw fail(400,'invalid_source');
- return {heading:text(parts[0],200,true),subtitle:text(parts.slice(1).join('\n\n'),800)};
+ const nicheHeading=headings.length>1?headings[1]:'';return {heading:text(parts[0],200,true),nicheHeading:text(nicheHeading,200),subtitle:text(parts.slice(1).filter(p=>p!==nicheHeading).join('\n\n'),800)};
 }
 export function richPdfMessage(manifest,files){
  if(!manifest||!Array.isArray(manifest.documents)||manifest.documents.length<1||manifest.documents.length>10||files.length!==manifest.documents.length)throw fail(400,'invalid_files');
  const blocks=[],names=new Set(),documents=[];
- const heading=text(manifest.heading,200),subtitle=text(manifest.subtitle||'',800),intro=text(manifest.intro,800),footer=text(manifest.footer,800);
- if(manifest.hero===true)blocks.push({type:'photo',photo:{type:'photo',media:'attach://hero'}});
- if(heading)blocks.push({type:'heading',size:3,text:heading});if(subtitle)blocks.push({type:'paragraph',text:subtitle});if(intro)blocks.push({type:'paragraph',text:intro});
+ const heading=text(manifest.heading,200),nicheHeading=text(manifest.nicheHeading||'',200),subtitle=text(manifest.subtitle||'',800),intro=text(manifest.intro,800),footer=text(manifest.footer,800);
+ if(heading)blocks.push({type:'heading',size:3,text:heading});if(nicheHeading)blocks.push({type:'heading',size:4,text:nicheHeading});if(subtitle)blocks.push({type:'paragraph',text:{type:'italic',text:subtitle}});
+ if(manifest.hero===true)blocks.push({type:'photo',photo:{type:'photo',media:'attach://hero'}});if(intro)blocks.push({type:'paragraph',text:intro});
  manifest.documents.forEach((item,index)=>{
   if(!item||!TYPES.includes(item.type)||names.has(item.name)||typeof item.name!=='string'||item.name.length>180||!item.name.endsWith('.pdf')||/[\\/\u0000-\u001f]/.test(item.name)||files[index].name!==item.name)throw fail(400,'invalid_files');names.add(item.name);
   const caption=text(item.caption,800);documents.push({type:item.type,name:item.name,caption});
   blocks.push({type:'document',document:{type:'document',media:files[index].telegramId||'attach://pdf'+index,disable_content_type_detection:true}});
   if(caption)blocks.push({type:'paragraph',text:caption});
  });if(footer)blocks.push({type:'footer',text:footer});
- return {rich:{blocks,skip_entity_detection:true},content:{heading,subtitle,hero:manifest.hero===true,intro,footer,documents,silent:manifest.silent!==false}};
+ return {rich:{blocks,skip_entity_detection:true},content:{heading,nicheHeading,subtitle,hero:manifest.hero===true,intro,footer,documents,silent:manifest.silent!==false}};
 }
 async function bounded(response,maximum){
  if(Number(response.headers.get('content-length'))>maximum){await response.body?.cancel();throw fail(413,'request_too_large');}

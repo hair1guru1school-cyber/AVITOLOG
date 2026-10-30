@@ -167,7 +167,7 @@
         if (typeof win[entry[1]] !== 'function') return;
         try { var url = new win.URL(win[entry[1]](), win.location.href); if (url.protocol === 'https:' || /^data:image\/(png|jpeg|webp);base64,/i.test(url.href)) headers[entry[0]] = url.href; } catch (_) {}
       });
-      return { scope: scope(), folderId: String(client.folderId), clientId: String(client.client_id || client.id || ''), title: data.company || 'Клиент', data: data, headers: headers };
+      return { scope: scope(), folderId: String(client.folderId), clientId: String(client.client_id || client.id || ''), title: data.company || 'Клиент', emoji: client.emoji || linked.emoji || '', data: data, headers: headers };
     }
     function key(snapshot) { return snapshot.scope + '|' + snapshot.folderId + '|' + snapshot.clientId; }
     function draft(snapshot) { var id = key(snapshot); if (!drafts.has(id)) drafts.set(id, { selected: ['analysis'], comments: {}, common: '', depth: 'mid' }); return drafts.get(id); }
