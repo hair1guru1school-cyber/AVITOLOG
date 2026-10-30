@@ -101,6 +101,7 @@
     var name=job.pdfFilename?String(job.pdfFilename).replace(/\.pdf$/i,''):String(job.title||'Документ')+' - '+String(snapshot.title||'Проект');
     return (name.replace(/[\\/:*?"<>|\u0000-\u001f]/g,'_').replace(/\s+/g,' ').trim().slice(0,160).replace(/[. ]+$/,'')||'Документ')+'.pdf';
   }
+  function deliveryType(name){return /коммерчес|(?:^|[^a-zа-яё])кп(?:$|[^a-zа-яё])/i.test(name)?'kp':/аналит|анализ/i.test(name)?'analysis':/нужно сейчас|почему сейчас/i.test(name)?'presale':/авито|avito/i.test(name)&&!/договор|приложени|скрипт/i.test(name)?'avito1':'';}
   async function validatePdf(blob) {
     if(!blob||typeof blob.slice!=='function'||blob.size<8||blob.size>25*1024*1024)throw Error('PDF пустой или превышает 25 МБ.');
     if(await blob.slice(0,5).text()!=='%PDF-')throw Error('Сервис вернул не PDF. Файл не скачан.');
@@ -171,7 +172,7 @@
     function existingDocuments(snapshot, target) {
       var id=key(snapshot), saved=documents.get(id);
       function draw(files,error){if(snapshot.scope!==scope()||!target.isConnected)return;target.replaceChildren(el('strong','','Документы в папке проекта'),button('Обновить список',function(){load();},'cg-refresh'));
-        (files||[]).forEach(function(file){if(!/^[a-zA-Z0-9_-]+$/.test(file.id||''))return;var row=el('label','cg-folder-document'),a=el('a','',file.name);a.href='https://drive.google.com/file/d/'+encodeURIComponent(file.id)+'/view';a.target='_blank';a.rel='noopener';if(file.mimeType==='application/pdf'||/\.pdf$/i.test(file.name)||file.mimeType==='application/vnd.google-apps.document'){var check=el('input');check.type='checkbox';check.checked=(draft(snapshot).files||[]).indexOf(file.id)>=0;check.setAttribute('aria-label','Выбрать файл: '+file.name);check.addEventListener('change',function(){var state=draft(snapshot);state.files=(state.files||[]).filter(function(id){return id!==file.id;});if(check.checked)state.files.push(file.id);renderProjectDelivery();});row.append(check);}row.append(a);target.append(row);});
+        (files||[]).forEach(function(file){if(!/^[a-zA-Z0-9_-]+$/.test(file.id||''))return;var row=el('label','cg-folder-document'),a=el('a','',file.name);a.href='https://drive.google.com/file/d/'+encodeURIComponent(file.id)+'/view';a.target='_blank';a.rel='noopener';if(deliveryType(file.name)&&(file.mimeType==='application/pdf'||/\.pdf$/i.test(file.name)||file.mimeType==='application/vnd.google-apps.document')){var check=el('input');check.type='checkbox';check.checked=(draft(snapshot).files||[]).indexOf(file.id)>=0;check.setAttribute('aria-label','Выбрать файл: '+file.name);check.addEventListener('change',function(){var state=draft(snapshot);state.files=(state.files||[]).filter(function(id){return id!==file.id;});if(check.checked)state.files.push(file.id);renderProjectDelivery();});row.append(check);}row.append(a);target.append(row);});
         if(error)target.append(el('small','cg-error',error));else if(!files||!files.length)target.append(el('small','', 'Подходящих документов в полученном списке пока нет.'));
       }
       async function load(){if(typeof win.driveListFolderItems!=='function')return;try{var files=await win.driveListFolderItems(snapshot.folderId);if(snapshot.scope!==scope())return;files=folderDocuments(files);documents.set(id,files);draw(files);}catch(error){draw(documents.get(id),message(error));}}
@@ -425,6 +426,7 @@
       modal.append(actions);if(batch.deliveryMessage)modal.append(el('p','cg-delivery-help',batch.deliveryMessage));
     }
     function pdfAction(batch,jobs,mode){
+      if(mode==='share'){jobs=jobs.filter(function(job){return ['kp','analysis','presale','avito1'].indexOf(job.type)>=0;});if(!jobs.length)return;}
       if(mode==='share'&&win.AVBTelegramDelivery){
         win.AVBTelegramDelivery.openComposer({snapshot:batch.snapshot,isCurrent:function(){return batch.snapshot.scope===scope();},documents:jobs.map(function(job){return {type:job.type,name:pdfName(batch.snapshot,job)};}),prepare:function(){return Promise.all(jobs.map(function(job){return delivery.get(batch,job);}));}});
       }
@@ -445,7 +447,7 @@
       if (job.error) row.append(el('small', 'cg-error', job.error));
       var actions=el('div','cg-document-actions'),available=!!(job.html||job.file);
       var download=button('↓ PDF',function(){pdfAction(batch,[job],'download');},'cg-pdf-button'),share=button('В Telegram',function(){pdfAction(batch,[job],'share');},'cg-pdf-button');
-      download.title='Скачать документ в PDF';download.disabled=share.disabled=!available;actions.append(download,share);
+      download.title='Скачать документ в PDF';download.disabled=share.disabled=!available;actions.append(download);if(job.type!=='scripts')actions.append(share);
       if(job.pdfState==='preparing')actions.append(el('small','','PDF…'));
       if(job.pdfState==='failed')actions.append(el('small','cg-error','PDF не готов: нажмите ↓ PDF для повтора.'));
       row.append(actions);
@@ -485,8 +487,8 @@
       var found=new Map(),ready=kpReady.get(key(snapshot));
       if(ready)found.set('kp',{type:'kp',title:'КП',emoji:'📋',state:'saved',html:'',file:{id:ready.pdf.id,url:ready.pdf.webViewLink||'https://drive.google.com/file/d/'+ready.pdf.id+'/view',mimeType:'application/pdf'},pdfBlob:ready.pdfBlob});
       batches.filter(function(batch){return key(batch.snapshot)===key(snapshot)&&batch.snapshot.scope===scope();}).forEach(function(batch){batch.jobs.forEach(function(job){if(job.html||job.file)found.set(job.type,job);});});
-      var result=TYPES.filter(function(type){return draft(snapshot).selected.indexOf(type.id)>=0&&found.has(type.id);}).map(function(type){return found.get(type.id);});
-      (documents.get(key(snapshot))||[]).forEach(function(file){if((draft(snapshot).files||[]).indexOf(file.id)<0||result.some(function(job){return job.file&&job.file.id===file.id;}))return;var name=String(file.name||''),type=/кп|коммерчес/i.test(name)?'kp':/аналит|анализ/i.test(name)?'analysis':/нужно сейчас/i.test(name)?'presale':/авито|avito/i.test(name)?'avito1':/приложени/i.test(name)?'appendix':/договор/i.test(name)?'contract':/скрипт/i.test(name)?'scripts':'other';result.push({type:type,title:name,pdfFilename:name,state:'saved',file:{id:file.id,mimeType:file.mimeType||'application/pdf'}});});return result;
+      var result=TYPES.filter(function(type){return type.id!=='scripts'&&draft(snapshot).selected.indexOf(type.id)>=0&&found.has(type.id);}).map(function(type){return found.get(type.id);});
+      (documents.get(key(snapshot))||[]).forEach(function(file){var type=deliveryType(file.name);if(!type||(draft(snapshot).files||[]).indexOf(file.id)<0||result.some(function(job){return job.file&&job.file.id===file.id;}))return;result.push({type:type,title:file.name,pdfFilename:file.name,state:'saved',file:{id:file.id,mimeType:file.mimeType||'application/pdf'}});});return result;
     }
     function renderProjectDelivery(){
       if(!holder||!holder.isConnected||!panelSnapshot||panelSnapshot.scope!==scope())return;

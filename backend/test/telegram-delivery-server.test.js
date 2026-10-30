@@ -1,6 +1,6 @@
 'use strict';
 const test=require('node:test'),assert=require('node:assert/strict'),crypto=require('node:crypto');
-const root=require('node:path').resolve(__dirname,'../..'),moduleReady=import(require('node:url').pathToFileURL(root+'/supabase/functions/telegram-delivery/core.mjs').href);
+const root=process.env.TELEGRAM_TEST_ROOT||require('node:path').resolve(__dirname,'../..'),moduleReady=import(require('node:url').pathToFileURL(root+'/supabase/functions/telegram-delivery/core.mjs').href);
 const OWNER='22222222-2222-4222-8222-222222222222',ORG='11111111-1111-4111-8111-111111111111',TARGET='-1001234567890',MASTER='ab'.repeat(32),TOKEN='123456:'+ 'x'.repeat(35),ORIGIN='https://hair1guru1school-cyber.github.io';
 async function fixture(){
  const G=await moduleReady,rows=new Map(),jobs=new Map(),calls=[];let actor=OWNER,rights=true,webhook=false,sendMode='ok',wrongBot=false;
@@ -45,7 +45,7 @@ async function fixture(){
  async function connect(){return request('connect',{token:TOKEN,revision:null});}
  async function ready(){const connected=await connect();assert.equal(connected.status,200);const saved=await request('settings',{revision:connected.value.revision,destination_id:TARGET,template:{heading:'{project}'}},{method:'PUT'});assert.equal(saved.status,200);return saved.value;}
  function form(config,options={}){
-  const documents=[{type:'analysis',name:'Аналитика.pdf',caption:'Первый текст'},{type:'scripts',name:'Скрипт.pdf',caption:'Второй текст'}];
+  const documents=[{type:'analysis',name:'Аналитика.pdf',caption:'Первый текст'},{type:'presale',name:'Почему сейчас.pdf',caption:'Второй текст'}];
   const manifest={request_id:options.id||crypto.randomUUID(),revision:config.revision,destination_id:options.target||TARGET,project:'Тестовый проект',heading:'Заголовок',intro:'Вступление',footer:'Конец',silent:true,documents};
   const data=new FormData();data.set('manifest',JSON.stringify({...manifest,...options.manifest}));documents.forEach((d,i)=>data.set('pdf'+i,new File([options.invalid?'not a PDF file':'%PDF-1.4\n'+(options.content||'Example')+'\n%%EOF'],d.name,{type:'application/pdf'})));return {data,id:manifest.request_id};
  }
@@ -86,6 +86,6 @@ test('settings cannot be silently overwritten by an old revision or another prof
  const h=await fixture(),config=await h.ready();const sasha=await h.request('config',undefined,{profile:'sasha'});assert.equal(sasha.value.connected,false);const stale=await h.request('settings',{revision:crypto.randomUUID(),destination_id:TARGET,template:{heading:'Wrong'}},{method:'PUT'});assert.equal(stale.value.error,'settings_conflict');assert.equal((await h.request('config')).value.revision,config.revision);
 });
 test('only supported template variables and plain text blocks are accepted',async()=>{
- const h=await fixture(),settings=h.G.normalizeTelegramTemplate({heading:'<b>{project}</b>',captions:{analysis:'{document}'},order:['analysis','analysis','invalid'],api_token:TOKEN});assert.equal(settings.heading,'<b>{project}</b>');assert.deepEqual(settings.order,['analysis','scripts','presale','avito1']);assert.equal('api_token' in settings,false);
+ const h=await fixture(),settings=h.G.normalizeTelegramTemplate({heading:'<b>{project}</b>',captions:{analysis:'{document}'},order:['analysis','analysis','invalid'],api_token:TOKEN});assert.equal(settings.heading,'<b>{project}</b>');assert.deepEqual(settings.order,['kp','analysis','presale','avito1']);assert.equal('api_token' in settings,false);assert.match(settings.captions.analysis,/анализ/);
  const rich=h.G.richPdfMessage({heading:'<script>x</script>',intro:'',footer:'',documents:[{type:'analysis',name:'a.pdf',caption:'<b>text</b>'}]},[{name:'a.pdf'}]);assert.equal(rich.rich.blocks[0].text,'<script>x</script>');assert.equal(rich.rich.skip_entity_detection,true);
 });

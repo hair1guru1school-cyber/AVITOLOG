@@ -1,7 +1,7 @@
 (function(root,factory){var api=factory();if(typeof module==='object'&&module.exports)module.exports=api;else root.AVBKpDocuments=api.install(root);}(typeof window==='object'?window:this,function(){
   'use strict';
   var WORD='application/vnd.openxmlformats-officedocument.wordprocessingml.document',REL='http://schemas.openxmlformats.org/package/2006/relationships',R='http://schemas.openxmlformats.org/officeDocument/2006/relationships',A='http://schemas.openxmlformats.org/drawingml/2006/main';
-  var COVERS=[{id:'original',name:'Обложка из Word-шаблона'},{id:'stroyka',name:'Стройка',src:'Cp-Constructor/stroyka.png'},{id:'mebel',name:'Мебель',src:'Cp-Constructor/mebel.png'},{id:'avto-moto',name:'Авто / мото',src:'Cp-Constructor/avto-moto.png'}];
+  var COVERS=[{id:'original',name:'Обложка из Word-шаблона'}];
   function fail(message,code){var e=Error(message);e.code=code||'';return e;}
   function safeName(value){return (String(value||'Клиент').replace(/[\\/:*?"<>|\u0000-\u001f]/g,' ').replace(/\s+/g,' ').trim().slice(0,130)||'Клиент');}
   function stamp(date){return new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Moscow',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hour12:false}).format(date||new Date()).replace(':','-');}
