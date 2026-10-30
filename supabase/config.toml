@@ -19,3 +19,9 @@ entrypoint = "./functions/avito-invites/index.ts"
 enabled = true
 verify_jwt = false
 entrypoint = "./functions/avito-bidding-worker/index.ts"
+
+# User JWT and organization/profile rights are verified inside the handler.
+[functions.telegram-delivery]
+enabled = true
+verify_jwt = false
+entrypoint = "./functions/telegram-delivery/index.ts"

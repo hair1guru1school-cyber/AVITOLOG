@@ -371,12 +371,6 @@
       try{var count=delivery.download(batch,jobs);deliveryMessage(batch,count>1?'PDF переданы браузеру. Разрешите скачивание нескольких файлов или скачайте каждый кнопкой ↓ PDF.':'PDF передан браузеру для скачивания.');}
       catch(error){deliveryMessage(batch,message(error));}
     }
-    function sharePdfs(batch,jobs){
-      try{
-        var pending=delivery.share(batch,jobs);
-        Promise.resolve(pending).then(function(){if(batch.snapshot.scope===scope())deliveryMessage(batch,'Выбор приложения завершён. Получателя и отправку подтвердите в Telegram.');},function(error){if(batch.snapshot.scope===scope())deliveryMessage(batch,error.name==='AbortError'?'Передача отменена. Файлы остаются доступны.':'Не удалось открыть передачу файлов: '+message(error));});
-      }catch(error){deliveryMessage(batch,message(error));}
-    }
     function openDelivery(batch,jobs,mode){
       if(batch.snapshot.scope!==scope())return;
       if(deliveryDialog)deliveryDialog.close();
@@ -401,8 +395,7 @@
       });modal.append(list);
       var ready=!!delivery.files(batch,jobs),actions=el('div','cg-template-menu-actions');
       var download=button(jobs.length>1?'Скачать все PDF':'Скачать PDF',function(){downloadPdfs(batch,jobs);});download.disabled=!ready;actions.append(download);
-      if(ready&&delivery.canShare(batch,jobs))actions.append(button('Выбрать Telegram / получателя',function(){sharePdfs(batch,jobs);},'cg-template-save'));
-      else if(ready){
+      if(ready){
         modal.append(el('p','cg-delivery-help','Браузер не передаёт вложения напрямую. Скачайте PDF, откройте Telegram и прикрепите файлы к нужному чату.'));
         var telegram=el('a','cg-telegram-link','Открыть Telegram Web ↗');telegram.href='https://web.telegram.org/k/';telegram.target='_blank';telegram.rel='noopener noreferrer';actions.append(telegram);
       }
@@ -410,10 +403,13 @@
       modal.append(actions);if(batch.deliveryMessage)modal.append(el('p','cg-delivery-help',batch.deliveryMessage));
     }
     function pdfAction(batch,jobs,mode){
-      if(mode==='download'&&delivery.files(batch,jobs))downloadPdfs(batch,jobs);
-      else if(mode==='share'&&delivery.canShare(batch,jobs))sharePdfs(batch,jobs);
+      if(mode==='share'&&win.AVBTelegramDelivery){
+        win.AVBTelegramDelivery.openComposer({snapshot:batch.snapshot,isCurrent:function(){return batch.snapshot.scope===scope();},documents:jobs.map(function(job){return {type:job.type,name:pdfName(batch.snapshot,job)};}),prepare:function(){return Promise.all(jobs.map(function(job){return delivery.get(batch,job);}));}});
+      }
+      else if(mode==='download'&&delivery.files(batch,jobs))downloadPdfs(batch,jobs);
       else openDelivery(batch,jobs,mode);
     }
+    function telegramSettings(){var control=button('⚙ Бот',function(){if(win.AVBTelegramDelivery)win.AVBTelegramDelivery.openSettings({isCurrent:function(){return true;}});else win.alert('Обновите страницу: модуль Telegram ещё не загрузился.');},'cg-pdf-button');control.setAttribute('aria-label','Настройки Telegram-бота');return control;}
     function batchActions(batch){
       var jobs=batch.jobs.filter(function(job){return !!(job.html||job.file);});
       if(batch.running||jobs.length<2)return null;
@@ -480,10 +476,10 @@
     function render(container) {
       container.replaceChildren(); holder = el('section', 'cg-panel'); container.append(holder);
       var snapshot;
-      try { snapshot = captured(); } catch (error) { holder.append(el('h2', '', '🌀 Скрипт и документы'), el('p', 'cg-error', message(error))); if (library) { var fallback = el('div'); holder.append(fallback); library(fallback); } return; }
+      try { snapshot = captured(); } catch (error) { holder.append(el('h2', '', '🌀 Скрипт и документы'),telegramSettings(), el('p', 'cg-error', message(error))); if (library) { var fallback = el('div'); holder.append(fallback); library(fallback); } return; }
       panelKey = key(snapshot); var state = draft(snapshot);
       holder.append(button('← К папкам клиентов', function () { originalSwitch.call(win, 'analysis'); if (typeof win.showClientContentsBack === 'function') win.showClientContentsBack(); }, 'cg-back'));
-      var heading=el('div','cg-heading');heading.append(el('h2', '', '🌀 Скрипт и документы'),el('strong','cg-project-title',snapshot.title));holder.append(heading);
+      var heading=el('div','cg-heading');heading.append(el('h2', '', '🌀 Скрипт и документы'),el('strong','cg-project-title',snapshot.title),telegramSettings());holder.append(heading);
       holder.append(el('p','cg-project-facts',suggestions(snapshot.data).join(' · ')||'Заполните данные клиента в левом меню — генераторы используют их автоматически.'));
       var folder = el('a', 'cg-folder', 'Открыть папку Drive ↗'); folder.href = 'https://drive.google.com/drive/folders/' + encodeURIComponent(snapshot.folderId); folder.target = '_blank'; folder.rel = 'noopener'; holder.append(folder);
       holder.append(el('p', 'cg-caption', 'Нажмите, чтобы выбрать документы. Удерживайте кнопку для комментария; также можно нажать её маленький карандаш.'));
