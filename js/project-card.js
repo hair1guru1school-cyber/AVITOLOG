@@ -853,6 +853,14 @@
       notice.textContent = error.message || 'Не удалось сохранить изменения.'; return { ok: false, error: notice.textContent };
     }
   }
+  function contractRequisitesHtml(project, client) {
+    var sources = [client && client.contractRequisitesV1, project && project.crmData && project.crmData.contractRequisitesV1].filter(function(item) { return item && item.fields; });
+    sources.sort(function(a,b) { return text(b.updatedAt).localeCompare(text(a.updatedAt)); });
+    var fields = sources[0] && sources[0].fields || {};
+    var labels = {fio:'Имя / наименование',fullName:'Полное наименование',shortName:'Краткое наименование',legalAddress:'Юридический адрес',postalAddress:'Почтовый адрес',actualAddress:'Фактический адрес',ceo:'Руководитель',contacts:'Контакты',phone:'Телефон',email:'Email',inn:'ИНН',kpp:'КПП',ogrn:'ОГРН / ОГРНИП',account:'Расчётный счёт',bank:'Банк',bik:'БИК',corrAccount:'Корреспондентский счёт',passport:'Паспорт'};
+    var rows = Object.keys(labels).filter(function(key) { return text(fields[key]); }).map(function(key) { return '<tr><th scope="row">'+escape(labels[key])+'</th><td>'+escape(fields[key])+'</td></tr>'; }).join('');
+    return rows ? '<details class="project-card-disclosure"><summary>Реквизиты из договора</summary><table class="project-card-table"><tbody>'+rows+'</tbody></table></details>' : '';
+  }
   function dashboardHtml(project, client, values, data, folder) {
     var title = values.title || values.company || 'Клиент';
     var initials = title.trim().split(/\s+/).slice(0, 2).map(function (part) { return Array.from(part)[0] || ''; }).join('').toUpperCase();
@@ -864,7 +872,7 @@
     var metadata = project ? '<span>' + escape(project.status || 'Статус не указан') + '</span><span>' + escape(({ active: 'Активные', sleep: 'Zzz', second_chance: 'Zzz', archive: 'Архив' })[project.zone] || project.zone || 'Активные') + '</span>' : '<span>Клиент CRM</span>';
     return [
       '<section class="project-card-dialog" role="dialog" aria-modal="true" aria-labelledby="projectCardTitle"><header class="project-card-head"><div class="project-card-heading"><div class="project-card-avatar" style="--avatar-hue:' + hue + '" aria-hidden="true">' + escape(initials || 'К') + '</div><div style="min-width:0"><div class="project-card-kicker">Клиент и продвижение</div><h2 id="projectCardTitle">Карта проекта · ' + escape(title) + '</h2></div></div><button type="button" data-action="close" aria-label="Закрыть карту проекта">×</button></header>',
-      '<div class="project-card-body"><section class="project-card-section project-card-details"><h3>Данные клиента</h3><div class="project-card-meta">' + metadata + (folder ? '<a target="_blank" rel="noopener noreferrer" href="' + escape(folder) + '">Папка Drive ↗</a>' : '<span>Папка Drive не привязана</span>') + '</div><div class="project-card-fields">' + fields + '</div><details class="project-card-disclosure"><summary>Ссылки и позиции</summary><div class="project-card-fields">' + secondary + '</div></details></section>',
+      '<div class="project-card-body"><section class="project-card-section project-card-details"><h3>Данные клиента</h3><div class="project-card-meta">' + metadata + (folder ? '<a target="_blank" rel="noopener noreferrer" href="' + escape(folder) + '">Папка Drive ↗</a>' : '<span>Папка Drive не привязана</span>') + '</div><div class="project-card-fields">' + fields + '</div>'+contractRequisitesHtml(project,client)+'<details class="project-card-disclosure"><summary>Ссылки и позиции</summary><div class="project-card-fields">' + secondary + '</div></details></section>',
       '<section class="project-card-section project-card-avito"><div class="project-card-section-title"><h3>Аккаунт Avito</h3><button type="button" class="project-card-tool" data-card-account-refresh>Обновить</button></div><div data-account-metrics></div></section>',
       '<section class="project-card-section project-card-payments"><h3>Оплаты и динамика</h3>' + paymentsHtml(project || client) + '</section>',
       '<section class="project-card-section project-card-activity">' + activityHtml(project, data) + '</section>',

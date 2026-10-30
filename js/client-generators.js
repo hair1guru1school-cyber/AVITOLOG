@@ -81,6 +81,21 @@
     if (!Array.isArray(out.positions) || !out.positions.length) out.positions = Array.isArray(saved.positions) ? saved.positions.slice() : saved.positions ? [String(saved.positions)] : [];
     return out;
   }
+  function folderDocuments(files) {
+    var result=[],groups=new Map();
+    (Array.isArray(files)?files:[]).forEach(function(file){
+      if(!file||file.isFolder||file.trashed)return;
+      var name=String(file.name||''),mime=String(file.mimeType||'').toLowerCase(),ext=(name.match(/\.([a-z0-9]+)$/i)||[])[1]||'';ext=ext.toLowerCase();
+      if(/json|javascript/.test(mime)||/\.json(?:$|\.)/i.test(name))return;
+      var rank=mime==='application/pdf'||ext==='pdf'?3:/^(?:docx?|odt|rtf)$/.test(ext)||/^(?:application\/(?:msword|vnd\.openxmlformats-officedocument\.wordprocessingml\.document|vnd\.google-apps\.document|vnd\.oasis\.opendocument\.text|rtf))$/.test(mime)?2:/^html?$/.test(ext)||mime==='text/html'?1:0;
+      if(!rank&&/^(?:png|jpe?g|webp)$/.test(ext)&&/(?:^|[^a-zа-яё])кп(?:$|[^a-zа-яё])/i.test(name))rank=0.5;
+      if(!rank||!/аналит|анализ|авито|avito|коммерчес|(?:^|[^a-zа-яё])кп(?:$|[^a-zа-яё])|скрипт|нужно сейчас|договор|приложени|сч[её]т|акт(?:\s|[._-]|$)|отч[её]т|бриф|стратеги|аудит|упаковк|план продвижения/i.test(name))return;
+      var stem=name.replace(/(?:\.(?:pdf|docx?|odt|rtf|html?|png|jpe?g|webp))+$/i,'').toLowerCase().replace(/ё/g,'е').replace(/[\u2010-\u2015\u2212_-]+/g,' ').replace(/[^a-zа-я0-9]+/g,' ').trim();
+      var previous=groups.get(stem);
+      if(!previous){groups.set(stem,{index:result.length,rank:rank});result.push(file);}
+      else if(rank>previous.rank){result[previous.index]=file;previous.rank=rank;}
+    });return result;
+  }
   function pdfName(snapshot,job) {
     var name=String(job.title||'Документ')+' - '+String(snapshot.title||'Проект');
     return (name.replace(/[\\/:*?"<>|\u0000-\u001f]/g,'_').replace(/\s+/g,' ').trim().slice(0,160).replace(/[. ]+$/,'')||'Документ')+'.pdf';
@@ -158,7 +173,7 @@
         (files||[]).forEach(function(file){if(!/^[a-zA-Z0-9_-]+$/.test(file.id||''))return;var a=el('a','',file.name);a.href='https://drive.google.com/file/d/'+encodeURIComponent(file.id)+'/view';a.target='_blank';a.rel='noopener';target.append(a);});
         if(error)target.append(el('small','cg-error',error));else if(!files||!files.length)target.append(el('small','', 'Подходящих документов в полученном списке пока нет.'));
       }
-      async function load(){if(typeof win.driveListFolderItems!=='function')return;try{var files=await win.driveListFolderItems(snapshot.folderId);if(snapshot.scope!==scope())return;files=files.filter(function(f){return !f.isFolder&&/аналит|анализ|авито|avito|коммерчес|(?:^|\s)кп(?:\s|$)|скрипт|нужно сейчас/i.test(f.name||'');});documents.set(id,files);draw(files);}catch(error){draw(documents.get(id),message(error));}}
+      async function load(){if(typeof win.driveListFolderItems!=='function')return;try{var files=await win.driveListFolderItems(snapshot.folderId);if(snapshot.scope!==scope())return;files=folderDocuments(files);documents.set(id,files);draw(files);}catch(error){draw(documents.get(id),message(error));}}
       draw(saved);if(win._driveToken)load();
     }
     function renderTemplates(snapshot,target) {
@@ -523,5 +538,5 @@
     if (win.currentTab === 'scripts') { var current = doc.getElementById('mainContent'); if (current) render(current); }
     return api;
   }
-  return { TYPES: TYPES, plan: plan, createRunner: createRunner, parseResult: parseResult, suggestions: suggestions, contextData: contextData, pdfName:pdfName,validatePdf:validatePdf,createPdfDelivery:createPdfDelivery, install: install };
+  return { TYPES: TYPES, plan: plan, createRunner: createRunner, parseResult: parseResult, suggestions: suggestions, contextData: contextData, folderDocuments:folderDocuments, pdfName:pdfName,validatePdf:validatePdf,createPdfDelivery:createPdfDelivery, install: install };
 }));

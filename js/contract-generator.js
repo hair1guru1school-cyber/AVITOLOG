@@ -1161,6 +1161,7 @@
 
   function renderContractForm(container, onGenerate, onClear) {
     var serviceTermBinding = window.CrmSoldProjects && window.CrmSoldProjects.captureContractContext();
+    var clientDataBinding = window.ContractClientSync && window.ContractClientSync.capture();
     var state = {
       fio: '',
       companyName: '',
@@ -1358,6 +1359,7 @@
       '<button type="button" class="contract-toolbar-btn contract-btn-pdf" id="contractDownloadPdfBtn" style="display:none" onclick="window.__contractDownloadPdf&&window.__contractDownloadPdf()">⬇ Скачать PDF</button>' +
       '<button type="button" class="contract-toolbar-btn contract-btn-clear" onclick="window.__contractClear&&window.__contractClear()">Очистить</button>' +
       '<span class="contract-save-status" id="contractSaveStatus"></span>' +
+      '<span class="contract-save-status" id="contractClientSyncStatus" role="status" aria-live="polite"></span>' +
       '</div>' +
       '</div>' +
       '<div class="contract-form">' +
@@ -1788,6 +1790,21 @@
     window.__contractRememberServiceTerm = function(data) {
       return serviceTermBinding && window.CrmSoldProjects ? window.CrmSoldProjects.rememberContractTerm(data, serviceTermBinding) : { ok: false };
     };
+    window.__contractRememberClientData = function(data) {
+      var status = document.getElementById('contractClientSyncStatus');
+      if (!clientDataBinding || !window.ContractClientSync) {
+        if (status) status.textContent = 'Выберите сохранённого клиента: реквизиты пока не привязаны к карточке.';
+        return Promise.resolve({ ok: false });
+      }
+      if (status) status.textContent = 'Сохраняю данные клиента в карточку…';
+      return window.ContractClientSync.save(data, clientDataBinding).then(function(result) {
+        if (JSON.stringify(window.ContractClientSync.capture()) === JSON.stringify(clientDataBinding)) {
+          var currentStatus = document.getElementById('contractClientSyncStatus');
+          if (currentStatus) currentStatus.textContent = result.ok ? 'Данные договора сохранены в карточке клиента.' : 'Реквизиты не сохранены: ' + result.error;
+        }
+        return result;
+      });
+    };
     window.__contractGenerate = function(options) {
       var d = getFormData();
       saveContractDraft(d);
@@ -1800,6 +1817,7 @@
       d.startDate = fmt(d.startDate) || d.startDate;
       d.endDate = fmt(d.endDate) || d.endDate;
       onGenerate(d);
+      if (options && options.recordServiceTerm) window.__contractRememberClientData(d);
       if (options && options.recordServiceTerm && serviceTermBinding && window.CrmSoldProjects) {
         var savedTerm = window.__contractRememberServiceTerm(d);
         var termStatus = document.getElementById('contractSaveStatus');
@@ -2417,6 +2435,8 @@
       updateSaveButtonState();
     });
 
+    var rememberClientDataForExport = window.__contractRememberClientData;
+    var rememberServiceTermForExport = window.__contractRememberServiceTerm;
     if (typeof window.__contractGenerate === 'function') window.__contractGenerate();
 
     window.__contractDownloadLocal = async function() {
@@ -2437,7 +2457,8 @@
         var htmlForExport = await inlineExportImages(lastGeneratedHtml);
         var mhtml = buildWordMhtml(htmlForExport);
         triggerBlobDownload(new Blob([mhtml], { type: 'application/msword;charset=utf-8' }), fileName);
-        if (window.__contractRememberServiceTerm) window.__contractRememberServiceTerm(lastGeneratedData);
+        if (typeof rememberServiceTermForExport === 'function') rememberServiceTermForExport(lastGeneratedData);
+        if (typeof rememberClientDataForExport === 'function') await rememberClientDataForExport(lastGeneratedData);
         if (st) st.textContent = '✓ Скачан файл: ' + fileName;
       } catch (error) {
         if (st) st.textContent = 'Ошибка скачивания: ' + String((error && error.message) || error);
@@ -2484,7 +2505,8 @@
           if (st) st.textContent = 'Сохраняю в Google Docs...';
           await getDriveToken();
           var res = await driveCreateGoogleDoc(docName, wrapContractHtml(htmlForExport), ctx.folderId);
-          if (window.__contractRememberServiceTerm) window.__contractRememberServiceTerm(lastGeneratedData);
+          if (typeof rememberServiceTermForExport === 'function') rememberServiceTermForExport(lastGeneratedData);
+          if (typeof rememberClientDataForExport === 'function') await rememberClientDataForExport(lastGeneratedData);
           if (st) {
             var link = res && res.webViewLink ? String(res.webViewLink) : '';
             st.innerHTML = link
@@ -2493,7 +2515,8 @@
           }
         } else {
           downloadDocLocal(docName, htmlForExport);
-          if (window.__contractRememberServiceTerm) window.__contractRememberServiceTerm(lastGeneratedData);
+          if (typeof rememberServiceTermForExport === 'function') rememberServiceTermForExport(lastGeneratedData);
+          if (typeof rememberClientDataForExport === 'function') await rememberClientDataForExport(lastGeneratedData);
           if (st) st.textContent = '✓ Скачан .doc файл';
         }
       } catch (e) {
@@ -2544,7 +2567,8 @@
         var contractHtml = await inlineExportImages(lastGeneratedDocs && lastGeneratedDocs.contract ? lastGeneratedDocs.contract : lastGeneratedHtml);
         var contractBlob = await htmlToPdfBlob(contractHtml, contractName);
         var contractResult = await driveUploadBlob(contractName, contractBlob, 'application/pdf', ctx.folderId);
-        if (window.__contractRememberServiceTerm) window.__contractRememberServiceTerm(lastGeneratedData);
+        if (typeof rememberServiceTermForExport === 'function') rememberServiceTermForExport(lastGeneratedData);
+        if (typeof rememberClientDataForExport === 'function') await rememberClientDataForExport(lastGeneratedData);
         var appendixResult = null;
         if (lastGeneratedDocs && lastGeneratedDocs.appendix) {
           var appendixHtml = await inlineExportImages(lastGeneratedDocs.appendix);
