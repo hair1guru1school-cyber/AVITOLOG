@@ -12,21 +12,29 @@ export function normalizeTelegramTemplate(value={}){
  const captions={},enabled={};for(const type of TYPES){const caption=value.captions?.[type],legacy=![3,4].includes(value.version)&&(caption==='{document}'||caption===defaults[type]);captions[type]=typeof caption==='string'&&!legacy?caption.slice(0,800):current[type];enabled[type]=value.enabled?.[type]!==false;}
  let order=Array.isArray(value.order)?value.order.filter((x,i,a)=>TYPES.includes(x)&&a.indexOf(x)===i):[];
  if(![3,4].includes(value.version))order=['kp',...order.filter(x=>x!=='kp')];order=order.concat(TYPES.filter(x=>!order.includes(x)));
- return {version:4,heading:value.version===4?text('heading',200,HEADING):HEADING,intro:text('intro',800),footer:text('footer',800,'{date}'),captions,enabled,order,silent:value.silent!==false};
+ return {version:4,heading:value.version===4?text('heading',200,HEADING):HEADING,subtitle:text('subtitle',800),heroEnabled:value.heroEnabled!==false,intro:text('intro',800),footer:text('footer',800,'{date}'),captions,enabled,order,silent:value.silent!==false};
 }
 function text(value,max,required=false){if(typeof value!=='string'||value.length>max||/[\u0000-\u0008\u000b\u000c\u000e-\u001f]/.test(value)||required&&!value.trim())throw fail(400,'invalid_request');return value.trim();}
+export function extractTelegramHeader(message){
+ const blocks=message?.rich_message?.blocks,parts=[];
+ if(Array.isArray(blocks)){for(const block of blocks){if(block?.type==='document')break;if(['heading','subheading','paragraph'].includes(block?.type)&&typeof block.text==='string'&&block.text.trim())parts.push(block.text.trim());}}
+ else if(typeof (message?.caption||message?.text)==='string')parts.push(...(message.caption||message.text).trim().split(/\n+/));
+ if(!parts.length||parts[0].length>200||parts.slice(1).join('\n\n').length>800)throw fail(400,'invalid_source');
+ return {heading:text(parts[0],200,true),subtitle:text(parts.slice(1).join('\n\n'),800)};
+}
 export function richPdfMessage(manifest,files){
  if(!manifest||!Array.isArray(manifest.documents)||manifest.documents.length<1||manifest.documents.length>10||files.length!==manifest.documents.length)throw fail(400,'invalid_files');
  const blocks=[],names=new Set(),documents=[];
- const heading=text(manifest.heading,200),intro=text(manifest.intro,800),footer=text(manifest.footer,800);
- if(heading)blocks.push({type:'heading',size:3,text:heading});if(intro)blocks.push({type:'paragraph',text:intro});
+ const heading=text(manifest.heading,200),subtitle=text(manifest.subtitle||'',800),intro=text(manifest.intro,800),footer=text(manifest.footer,800);
+ if(manifest.hero===true)blocks.push({type:'photo',photo:{type:'photo',media:'attach://hero'}});
+ if(heading)blocks.push({type:'heading',size:3,text:heading});if(subtitle)blocks.push({type:'paragraph',text:subtitle});if(intro)blocks.push({type:'paragraph',text:intro});
  manifest.documents.forEach((item,index)=>{
   if(!item||!TYPES.includes(item.type)||names.has(item.name)||typeof item.name!=='string'||item.name.length>180||!item.name.endsWith('.pdf')||/[\\/\u0000-\u001f]/.test(item.name)||files[index].name!==item.name)throw fail(400,'invalid_files');names.add(item.name);
   const caption=text(item.caption,800);documents.push({type:item.type,name:item.name,caption});
   blocks.push({type:'document',document:{type:'document',media:files[index].telegramId||'attach://pdf'+index,disable_content_type_detection:true}});
   if(caption)blocks.push({type:'paragraph',text:caption});
  });if(footer)blocks.push({type:'footer',text:footer});
- return {rich:{blocks,skip_entity_detection:true},content:{heading,intro,footer,documents,silent:manifest.silent!==false}};
+ return {rich:{blocks,skip_entity_detection:true},content:{heading,subtitle,hero:manifest.hero===true,intro,footer,documents,silent:manifest.silent!==false}};
 }
 async function bounded(response,maximum){
  if(Number(response.headers.get('content-length'))>maximum){await response.body?.cancel();throw fail(413,'request_too_large');}
@@ -92,7 +100,7 @@ export function createTelegramHandler(options={}){
   if(request.method==='OPTIONS')return new Response(null,{status:204,headers:{'Access-Control-Allow-Origin':origin,'Access-Control-Allow-Methods':'GET,POST,PUT,OPTIONS','Access-Control-Allow-Headers':'authorization,apikey,content-type','Access-Control-Max-Age':'600','Vary':'Origin'}});
   try{
    const path=new URL(request.url).pathname.replace(/^.*\/telegram-delivery/,'');
-   if(![['GET','/config'],['POST','/connect'],['POST','/targets'],['PUT','/settings'],['POST','/send'],['GET','/jobs'],['POST','/assets']].some(([m,p])=>request.method===m&&path===p))throw fail(404,'not_found');
+   if(![['GET','/config'],['POST','/connect'],['POST','/targets'],['PUT','/settings'],['POST','/send'],['GET','/jobs'],['POST','/assets'],['POST','/example']].some(([m,p])=>request.method===m&&path===p))throw fail(404,'not_found');
    const actor=await auth(request),row=await connection(actor);
    if(path==='/config')return json({ok:true,...publicConfig(row)},200,origin);
    if(path==='/jobs'){
@@ -105,6 +113,9 @@ export function createTelegramHandler(options={}){
     if(!UUID.test(manifest.request_id||'')||manifest.revision!==row.revision||manifest.destination_id!==row.destination_id)throw fail(409,'settings_conflict');
     const project=text(manifest.project,200,true),items=manifest.documents;if(!Array.isArray(items)||!items.length||items.length>10)throw fail(400,'invalid_files');
     let total=0;const digests=[],files=[],expected=['manifest'];
+    if(manifest.hero!==undefined&&typeof manifest.hero!=='boolean')throw fail(400,'invalid_files');
+    const hero=manifest.hero===true?form.get('hero'):null;
+    if(manifest.hero===true){if(!hero||typeof hero.arrayBuffer!=='function'||!['image/png','image/jpeg'].includes(hero.type)||hero.size<8||hero.size>5*1024*1024)throw fail(400,'invalid_image');const magic=new Uint8Array(await hero.slice(0,8).arrayBuffer()),valid=hero.type==='image/png'?[137,80,78,71,13,10,26,10].every((v,i)=>magic[i]===v):magic[0]===255&&magic[1]===216&&magic[2]===255;if(!valid)throw fail(400,'invalid_image');total+=hero.size;expected.push('hero');digests.push(await hash(await hero.arrayBuffer()));}
     for(const [i,item] of items.entries()){
      if(item.asset_ref){const a=row.template?.assets?.[item.type];if(!STATIC.includes(item.type)||!a||a.bot_id!==row.bot_id||a.ref!==item.asset_ref||item.name!==a.name)throw fail(409,'asset_changed');files.push({name:a.name,size:a.size,telegramId:a.file_id});digests.push(a.ref);continue;}
      const file=form.get('pdf'+i);expected.push('pdf'+i);if(!file||typeof file.arrayBuffer!=='function'||file.type!=='application/pdf'||file.size<8||file.size>10*1024*1024||(total+=file.size)>25*1024*1024||await file.slice(0,5).text()!=='%PDF-')throw fail(400,'invalid_files');files.push(file);digests.push(await hash(await file.arrayBuffer()));
@@ -114,7 +125,7 @@ export function createTelegramHandler(options={}){
     await target(token,row.bot_id,row.destination_id);
     const claim=await rpc('begin',{...actor,p_request:manifest.request_id,p_revision:row.revision,p_target:row.destination_id,p_hash:payloadHash,p_project:project,p_count:files.length});
     if(!claim.claimed)return json({ok:true,request_id:manifest.request_id,state:claim.state,message_id:claim.message_id||null,destination:publicConfig(row).destination},200,origin);
-    const outgoing=new FormData();outgoing.set('chat_id',row.destination_id);outgoing.set('rich_message',JSON.stringify(message.rich));outgoing.set('disable_notification',String(message.content.silent));files.forEach((file,i)=>{if(!file.telegramId)outgoing.set('pdf'+i,file,file.name);});
+    const outgoing=new FormData();outgoing.set('chat_id',row.destination_id);outgoing.set('rich_message',JSON.stringify(message.rich));outgoing.set('disable_notification',String(message.content.silent));if(hero)outgoing.set('hero',hero,hero.type==='image/png'?'kp-header.png':'kp-header.jpg');files.forEach((file,i)=>{if(!file.telegramId)outgoing.set('pdf'+i,file,file.name);});
     let sent;try{sent=await telegram(token,'sendRichMessage',outgoing,true,true);if(!Number.isSafeInteger(sent?.message_id)||sent.message_id<1||String(sent?.chat?.id)!==row.destination_id)throw fail(502,'send_unknown');}
     catch(error){const state=error.code==='send_unknown'?'unknown':'failed';await rpc('finish',{...actor,p_request:manifest.request_id,p_hash:payloadHash,p_state:state,p_message:null}).catch(()=>{});throw error;}
     const receipt=await rpc('finish',{...actor,p_request:manifest.request_id,p_hash:payloadHash,p_state:'sent',p_message:sent.message_id}).catch(()=>false);
@@ -139,6 +150,14 @@ export function createTelegramHandler(options={}){
     return json({ok:true,...publicConfig(await connection(actor)),cleanup:cleanup===true},200,origin);
    }
    const body=await readJson(request,32768);
+   if(path==='/example'){
+    if(!row?.destination_id)throw fail(409,'destination_required');if(body.revision!==row.revision)throw fail(409,'settings_conflict');
+    const match=/^https:\/\/t\.me\/c\/([1-9][0-9]{0,11})\/([1-9][0-9]{0,10})\/?$/.exec(body.source||'');if(!match||String(-(1000000000000+Number(match[1])))!==row.destination_id)throw fail(400,'invalid_source');
+    const token=await openTelegramToken(row.encrypted_token,master,owner(actor));await target(token,row.bot_id,row.destination_id);let sent,cleanup=false,header;
+    try{sent=await telegram(token,'forwardMessage',{chat_id:row.destination_id,from_chat_id:row.destination_id,message_id:Number(match[2]),disable_notification:true},false,true);if(!Number.isSafeInteger(sent?.message_id)||String(sent?.chat?.id)!==row.destination_id)throw fail(502,'send_unknown');header=extractTelegramHeader(sent);}
+    finally{if(Number.isSafeInteger(sent?.message_id)&&String(sent?.chat?.id)===row.destination_id)cleanup=await telegram(token,'deleteMessage',{chat_id:row.destination_id,message_id:sent.message_id}).catch(()=>false);}
+    return json({ok:true,...header,cleanup:cleanup===true},200,origin);
+   }
    if(path==='/connect'){
     if(body.revision!==(row?.revision||null))throw fail(409,'settings_conflict');
     const token=typeof body.token==='string'?body.token.trim():'';if(!/^[1-9][0-9]{4,19}:[A-Za-z0-9_-]{30,100}$/.test(token))throw fail(400,'invalid_token');

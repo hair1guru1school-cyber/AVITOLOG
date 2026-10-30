@@ -430,7 +430,7 @@
     function pdfAction(batch,jobs,mode){
       if(mode==='share'){jobs=jobs.filter(function(job,index,all){return ['kp','analysis','presale','avito1'].indexOf(job.type)>=0&&all.findIndex(function(other){return other.type===job.type;})===index;});if(!jobs.length)return;}
       if(mode==='share'&&win.AVBTelegramDelivery){
-        win.AVBTelegramDelivery.openComposer({snapshot:batch.snapshot,isCurrent:function(){return batch.snapshot.scope===scope();},documents:jobs.map(function(job){return {type:job.type,name:pdfName(batch.snapshot,job),prepare:function(){return delivery.get(batch,job);}};})});
+        win.AVBTelegramDelivery.openComposer({snapshot:batch.snapshot,isCurrent:function(){return batch.snapshot.scope===scope();},prepareHero:function(){return win.AVBKpDocuments&&win.AVBKpDocuments.headerImage?win.AVBKpDocuments.headerImage(batch.snapshot):null;},documents:jobs.map(function(job){return {type:job.type,name:pdfName(batch.snapshot,job),prepare:function(){return delivery.get(batch,job);}};})});
       }
       else if(mode==='download'&&delivery.files(batch,jobs))downloadPdfs(batch,jobs);
       else openDelivery(batch,jobs,mode);

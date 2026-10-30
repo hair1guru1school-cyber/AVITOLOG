@@ -91,7 +91,11 @@
     async function latest(snapshot){var owner=scope();guard(owner);if(!snapshot||!/^[a-zA-Z0-9_-]+$/.test(snapshot.folderId||''))return null;var result=await read('ready',owner,snapshot.folderId);if(result&&result.owner===owner&&!result.pdf&&result.wordBlob&&!jobs.has(key('ready',owner,snapshot.folderId))){var job=Object.assign({},result,{error:'PDF ещё не подтверждён.'});jobs.set(key('ready',owner,snapshot.folderId),job);notify(job,'Сохранённый Word найден. Можно дособрать PDF.');}return result&&result.owner===owner&&result.pdf&&result.word&&result.pdfBlob?result:null;}
     win.setInterval(function(){var owner=scope();dialogs.forEach(function(value,modal){if(value!==owner)modal.close();});if(!visibleJob||visibleJob.owner!==owner)banner.hidden=true;},800);
     win.addEventListener('beforeunload',function(event){if(pending){event.preventDefault();event.returnValue='';}});
-    return Object.freeze({scope:scope,settings:settings,save:save,latest:latest,importTemplate:importTemplate,download:download});
+    async function headerImage(snapshot){
+      var owner=scope(),ready=await latest(snapshot);guard(owner);if(!ready||!ready.pngBlob)return null;
+      return new Promise(function(resolve,reject){var url=win.URL.createObjectURL(ready.pngBlob),image=new win.Image();function cleanup(){win.URL.revokeObjectURL(url);}image.onerror=function(){cleanup();reject(fail('Картинка сохранённого КП не загрузилась.'));};image.onload=function(){try{guard(owner);var w=image.naturalWidth,h=image.naturalHeight;if(!w||!h||Math.abs(w/h-1414/2000)>.02)throw fail('Нужен сохранённый лист КП стандартного размера.');var canvas=doc.createElement('canvas'),scale=w/1414;canvas.width=1200;canvas.height=705;canvas.getContext('2d').drawImage(image,60*scale,35*scale,1294*scale,760*scale,0,0,1200,705);canvas.toBlob(function(blob){cleanup();canvas.width=canvas.height=0;try{guard(owner);if(!blob)throw fail('Не удалось подготовить шапку КП.');resolve(blob);}catch(error){reject(error);}},'image/jpeg',.9);}catch(error){cleanup();reject(error);}};image.src=url;});
+    }
+    return Object.freeze({scope:scope,settings:settings,save:save,latest:latest,headerImage:headerImage,importTemplate:importTemplate,download:download});
   }
   return {WORD:WORD,safeName:safeName,stamp:stamp,imagePart:imagePart,inspect:inspect,assemble:assemble,draftStore:draftStore,install:install};
 }));

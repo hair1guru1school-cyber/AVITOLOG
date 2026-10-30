@@ -1390,7 +1390,7 @@
     var value = await response.json();if (!response.ok || !value.ok) throw new Error(value.error || 'history_unavailable');return value;
   };
   window.__avitologTelegramRequest = async function (action, payload) {
-    var routes = { config: ['GET','config'], connect: ['POST','connect'], targets: ['POST','targets'], settings: ['PUT','settings'], send: ['POST','send'], jobs: ['GET','jobs'], assets: ['POST','assets'] };
+    var routes = { config: ['GET','config'], connect: ['POST','connect'], targets: ['POST','targets'], settings: ['PUT','settings'], send: ['POST','send'], jobs: ['GET','jobs'], assets: ['POST','assets'], example: ['POST','example'] };
     if (!Object.prototype.hasOwnProperty.call(routes,action) || !initialSyncReady || !serverOnlyMode || isServerOnlySashaViewer()) throw new Error('telegram_context_unavailable');
     var expected = pendingWriteScope(), profile = window.AVITOLOG_KEY_SUFFIX === '_sasha' ? 'sasha' : 'fil';
     var organization = cfg.profileOrganizations && cfg.profileOrganizations[profile];
