@@ -538,6 +538,7 @@
       state.refresh.disabled = waiting || state.sharedLoading;
       state.authButton.hidden = true;
     }
+    if (selectedPeriod(state)) {state.status.textContent=waiting?'Загружаем подтверждённые данные Supabase…':state.historyLoading?'Архив ADS · обновляем в фоне, сохранённые данные остаются':state.historyWarning||'Архив ADS · сохранённые данные';state.status.className='ads-dashboard-status'+(state.historyWarning?' is-warning':'');state.refresh.disabled=waiting||!!state.historyLoading;state.authButton.hidden=true;}
     state.note.textContent = [state.localWarning || '', state.sharedWarning || '', state.shared ? 'Общий ADS агентства. Продажи Фила и Саши — полные суммы закрытых сделок их CRM; это не личная прибыль и не доля «Агентству».' : state.profile === 'sasha' ? 'Старый контент-календарь Фила в режиме Саши не открывается.' : '', '«Заработано» — датированные поступления кассы' + (state.profile === 'fil' || state.shared ? ', включая долю «Агентству» от Саши' : '') + '. «Показали телефон» — действие в Авито, не подтверждённый звонок. Общие контакты не складываются повторно с телефоном и чатом. Расходы — рекламные расходы API, не только списания аванса.'].filter(Boolean).join(' ');
   }
   function metricCard(state, metric, data, days, numberOnly) {
