@@ -10,7 +10,7 @@ async function fixture(){
   if(parsed.pathname==='/auth/v1/user')return opts.headers.Authorization==='Bearer user-token'?reply({id:actor}):reply({error:'bad'},401);
   if(parsed.pathname.includes('/rest/v1/')){
    const route=parsed.pathname.split('/rest/v1/')[1];
-   if(route==='rpc/telegram_delivery_require_actor'){if(body.p_owner!==OWNER||body.p_profile==='fil'&&actor!==OWNER)return reply({message:'telegram_forbidden'},403);return reply(null);}
+   if(route==='rpc/telegram_delivery_require_actor'){if(body.p_owner!==OWNER||body.p_profile==='fil'&&actor!==OWNER)return reply({message:'telegram_forbidden'},403);return new Response(null,{status:204});}
    if(route==='rpc/telegram_delivery_save'){
     const old=rows.get(key(body));if((old?.revision||null)!==body.p_expected)return reply({message:'settings_conflict'},400);
     rows.set(key(body),body.p_connect?{...old,revision:crypto.randomUUID(),bot_id:body.p_value.bot_id,bot_username:body.p_value.bot_username,encrypted_token:body.p_value.encrypted_token,destination_id:null,template:old?.template||{}}:{...old,...body.p_value,revision:crypto.randomUUID()});return reply(rows.get(key(body)).revision);

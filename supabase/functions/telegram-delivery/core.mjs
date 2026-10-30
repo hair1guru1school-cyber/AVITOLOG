@@ -52,6 +52,7 @@ export function createTelegramHandler(options={}){
  const json=(value,status,origin)=>Response.json(value,{status,headers:{'Access-Control-Allow-Origin':origin,'Vary':'Origin','Cache-Control':'no-store','Referrer-Policy':'no-referrer','X-Content-Type-Options':'nosniff'}});
  async function serviceRequest(route,body,method){
   let response;try{response=await fetcher(url+'/rest/v1/'+route,{method:method||(body===undefined?'GET':'POST'),headers:{apikey:service,Authorization:'Bearer '+service,'Content-Type':'application/json'},body:body===undefined?undefined:JSON.stringify(body),signal:AbortSignal.timeout(15000),redirect:'error'});}catch(_){throw fail(503,'storage_unavailable');}
+  if(response.ok&&route==='rpc/telegram_delivery_require_actor'){await response.body?.cancel();return null;}
   const value=await readJson(response);if(!response.ok){const code=['settings_conflict','delivery_busy','request_conflict','try_later','telegram_forbidden','bot_required'].find(x=>String(value.message||'').includes(x));throw fail(code==='telegram_forbidden'?403:409,code||'storage_unavailable');}return value;
  }
  const rpc=(name,body)=>serviceRequest('rpc/telegram_delivery_'+name,body);
