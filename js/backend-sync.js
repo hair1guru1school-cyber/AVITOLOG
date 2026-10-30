@@ -1381,6 +1381,14 @@
     return response.json();
   }
   window.__avitologReadAgencyAds = function () { return agencyAdsRpc('read_agency_ads'); };
+  window.__avitologReadAgencyAdsPeriod = async function (period, refresh) {
+    if (!initialSyncReady) throw new Error('initial_sync_pending');
+    var organization = cfg.profileOrganizations && cfg.profileOrganizations.fil, expected = pendingWriteScope();
+    if (!organization || !expected || !period || !/^\d{4}-\d{2}-\d{2}$/.test(period.dateFrom) || !/^\d{4}-\d{2}-\d{2}$/.test(period.dateTo)) throw new Error('invalid_period');
+    var response = await authFetch(cfg.url + '/functions/v1/agency-ads-history', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({organizationId:organization,dateFrom:period.dateFrom,dateTo:period.dateTo,refresh:refresh===true}),signal:AbortSignal.timeout(120000)},expected);
+    if (expected !== pendingWriteScope()) throw new Error('context_changed');
+    var value = await response.json();if (!response.ok || !value.ok) throw new Error(value.error || 'history_unavailable');return value;
+  };
   window.__avitologTelegramRequest = async function (action, payload) {
     var routes = { config: ['GET','config'], connect: ['POST','connect'], targets: ['POST','targets'], settings: ['PUT','settings'], send: ['POST','send'], jobs: ['GET','jobs'], assets: ['POST','assets'] };
     if (!Object.prototype.hasOwnProperty.call(routes,action) || !initialSyncReady || !serverOnlyMode || isServerOnlySashaViewer()) throw new Error('telegram_context_unavailable');

@@ -34,9 +34,10 @@
     }
     return '';
   }
-  function range(now) {
-    var today = moscowDate(now), end = dayStamp(today), days = [], months = [];
-    for (var i = 29; i >= 0; i--) {
+  function range(now, selected) {
+    var today = selected && selected.dateTo || moscowDate(now), end = dayStamp(today), count = selected ? (end - dayStamp(selected.dateFrom)) / DAY + 1 : 30, days = [], months = [];
+    if (end === null || selected && dayStamp(selected.dateFrom) === null || !Number.isInteger(count) || count < 1 || count > 93 || today > moscowDate(now)) throw new TypeError('Invalid analytics period');
+    for (var i = count - 1; i >= 0; i--) {
       var day = new Date(end - i * DAY).toISOString().slice(0, 10);
       days.push(day);
       if (months.indexOf(day.slice(0, 7)) < 0) months.push(day.slice(0, 7));
@@ -64,7 +65,7 @@
   }
   function compute(input) {
     input = input || {};
-    var span = range(input.now), days = span.days.map(emptyDay), byDay = map(), warningSet = map(), sources = map(), sourceAccounts = [], registry = map();
+    var span = range(input.now, input.period), days = span.days.map(emptyDay), byDay = map(), warningSet = map(), sources = map(), sourceAccounts = [], registry = map();
     days.forEach(function(day) { byDay[day.date] = day; });
     function warn(code) { warningSet[code] = true; }
     var goals = object(input.goals) ? input.goals : {}, snapshots = object(goals.months) ? goals.months : {};
@@ -195,7 +196,7 @@
       });
     });
     var sashaCash = object(cash.sasha) ? cash.sasha : null;
-    if (sashaCash) [span.today.slice(0, 7)].forEach(function(ym) {
+    if (sashaCash) (input.period ? span.months : [span.today.slice(0, 7)]).forEach(function(ym) {
       var snapshots = object(sashaCash.months) ? sashaCash.months : {};
       var ledger = Array.isArray(snapshots[ym]) ? snapshots[ym] : Array.isArray(sashaCash.live) ? sashaCash.live : null;
       if (!ledger) {

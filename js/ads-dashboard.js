@@ -68,10 +68,10 @@
       });
     } else localStorage.setItem(key, raw);
   }
-  function cleanStatistics(values) {
+  function cleanStatistics(values, selectedSpan) {
     var helper = window.AVITOLOG_ADS_FUNNEL;
     if (!helper || !Array.isArray(values) || values.length > 200) return [];
-    var span = helper.range(new Date()), seen = Object.create(null);
+    var span = selectedSpan || helper.range(new Date()), seen = Object.create(null);
     function metrics(value) { var result = {}; API_METRICS.forEach(function (key) { result[key] = safeMetric(value && value[key]); }); return result; }
     return values.filter(function (value) {
       var id = String(value && value.avitoUserId || '');
@@ -166,6 +166,7 @@
       var saved = JSON.parse(raw);
       if (!saved || typeof saved !== 'object' || Array.isArray(saved)) return result;
       result.period = saved.period === 'today' ? 'today' : 'month';
+      if (window.AVITOLOG_ADS_PERIODS && saved.adsPeriod) result.adsPeriod = window.AVITOLOG_ADS_PERIODS.normalize(saved.adsPeriod);
       result.viewMode = ['compact', 'daily'].indexOf(saved.viewMode) !== -1 ? saved.viewMode : 'charts';
       result.dailyMetric = ['contacts', 'spending', 'earned', 'bought', 'views'].indexOf(saved.dailyMetric) !== -1 ? saved.dailyMetric : 'contacts';
       result.scale = dashboardScale(saved.scale);
@@ -205,10 +206,34 @@
       if (!current(state)) return;
       state.cacheReady = true;
       applyLegacyVisibility(state); render(state); renderSettings(state);
+      if (selectedPeriod(state)) loadHistory(state);
       if (!state.frame) setupBridge(state);
     });
   }
   function ready() { return !window.AVITOLOG_BACKEND_MODE || window.AVITOLOG_BACKEND_INITIAL_SYNC_READY === true; }
+  function selectedPeriod(state) {
+    if (!window.AVITOLOG_ADS_PERIODS || !state.preferences.adsPeriod) return null;
+    try { return window.AVITOLOG_ADS_PERIODS.range(state.preferences.adsPeriod,window.AVITOLOG_ADS_FUNNEL.range(new Date()).today); } catch (_) { return null; }
+  }
+  function choosePeriod(state, value) {state.preferences.adsPeriod=value;state.preferences.period='month';state.renderSignature=null;savePreferences(state);render(state);loadHistory(state);}
+  async function loadHistory(state, refresh) {
+    var selected=selectedPeriod(state);if (!selected||!ready()||!current(state)) return;
+    var signature=selected.dateFrom+':'+selected.dateTo,key=state.snapshotKey+':period:'+signature;
+    if (state.historyLoading===signature) return;state.historyLoading=signature;state.historyWarning='';renderStatus(state);
+    try {
+      if (!state.historyCache) state.historyCache=Object.create(null);
+      if (state.historyCache[signature]) {state.historyData=state.historyCache[signature];state.historyKey=signature;render(state);}
+      else if (window.AVITOLOG_ADS_CACHE) {var raw=await window.AVITOLOG_ADS_CACHE.read(key);if(raw&&current(state)&&JSON.stringify(selectedPeriod(state))===JSON.stringify(selected)){var saved=JSON.parse(raw);if(saved.version===1&&saved.data&&saved.data.dateFrom===selected.dateFrom&&saved.data.dateTo===selected.dateTo){state.historyData=saved.data;state.historyKey=signature;render(state);}}}
+      if (!current(state)||JSON.stringify(selectedPeriod(state))!==JSON.stringify(selected))return;
+      var result=await window.__avitologReadAgencyAdsPeriod(selected,refresh===true);
+      if (!current(state)||JSON.stringify(selectedPeriod(state))!==JSON.stringify(selected))return;
+      var data=result.data;if(!data||data.version!==1||data.dateFrom!==selected.dateFrom||data.dateTo!==selected.dateTo||!Array.isArray(data.statistics)||!Array.isArray(data.accounts)||!data.goals||!data.cash||!data.sellerGoals)throw Error('invalid_period_data');
+      state.historyData=data;state.historyKey=signature;state.historyCache[signature]=data;
+      state.historyWarning=(result.warnings||[]).length?'Часть статистики API ещё не обновилась. Сохранённые значения оставлены; повторите «Обновить» через минуту.':'';
+      var serialized=JSON.stringify({version:1,data:data});if(serialized.length<=500000&&window.AVITOLOG_ADS_CACHE)await window.AVITOLOG_ADS_CACHE.write(key,serialized);
+    } catch(error) {if(current(state)&&state.historyLoading===signature)state.historyWarning='Архив пока не обновился. Сохранённые данные не удалены.';}
+    finally {if(current(state)&&state.historyLoading===signature){state.historyLoading='';render(state);}}
+  }
   function number(value, money) {
     if (typeof value !== 'number' || !isFinite(value)) return '—';
     return value.toLocaleString('ru-RU', { maximumFractionDigits: money ? 2 : 0 }) + (money ? ' ₽' : '');
@@ -335,6 +360,7 @@
   }
   async function loadMetrics(state) {
     if (!current(state)) return;
+    if (selectedPeriod(state)) return;
     if (state.loading) { state.metricsQueued = true; return; }
     state.metricsQueued = false;
     state.refreshStartedAt = Date.now();
@@ -545,7 +571,7 @@
   }
   function renderSources(state) {
     empty(state.sources);
-    state.sources.appendChild(element('h3', '', 'Кто пришёл и с какого аккаунта · 30 дней'));
+    state.sources.appendChild(element('h3', '', 'Кто пришёл и с какого аккаунта · '+state.model.range.days.length+' дн.'));
     var sources = state.model.sources || [];
     if (!sources.length) state.sources.appendChild(element('p', 'ads-dashboard-muted', 'За выбранный период нет заявок CRM с датой. Источник выбирается в CRM.'));
     sources.forEach(function (source) {
@@ -570,22 +596,25 @@
     applyScale(state);
     renderStatus(state);
     state.todayButton.setAttribute('aria-pressed', state.preferences.period === 'today' ? 'true' : 'false');
-    state.monthButton.setAttribute('aria-pressed', state.preferences.period === 'month' ? 'true' : 'false');
+    state.monthButton.setAttribute('aria-pressed', state.preferences.period === 'month' && !selectedPeriod(state) ? 'true' : 'false');
+    if (state.periodMenu) state.periodMenu.setAttribute('data-active',selectedPeriod(state)?'true':'false');
     if (!ready()) return;
     var helper = window.AVITOLOG_ADS_FUNNEL;
     if (!helper || typeof helper.compute !== 'function') { state.status.textContent = 'Модуль воронки ещё не загружен. Обновите страницу.'; return; }
     try {
-      var now = new Date(); var range = helper.range(now); var sources = helper.readSources(range.months);
+      var now = new Date(), selected=selectedPeriod(state), periodKey=selected&&selected.dateFrom+':'+selected.dateTo;
+      var range = helper.range(now,selected), sources = helper.readSources(range.months), displayShared=selected ? state.historyKey===periodKey&&state.historyData : state.shared;
+      if (selected&&!displayShared) {state.rangeLabel.textContent=range.dateFrom+' — '+range.today+' · загружаем архив';empty(state.metrics);empty(state.funnel);empty(state.sources);empty(state.sellers);state.warnings.textContent=state.historyWarning||'Статистика за выбранный период загружается из сохранённых данных и API.';return;}
       if (window.AVITOLOG_ADS_SHARED && state.profile === 'sasha' && !state.shared) { renderStatus(state); return; }
-      if (state.shared) sources = { goals: state.shared.goals, cash: state.shared.cash };
-      var shownStatistics = state.shared ? cleanStatistics(state.shared.statistics) : state.statistics;
-      state.model = helper.compute({ now: now, goals: sources.goals, cash: sources.cash, statistics: shownStatistics, selectedAccountIds: state.preferences.selectedAccountIds || [], sourceMap: state.preferences.sourceMap });
+      if (displayShared) sources = { goals: displayShared.goals, cash: displayShared.cash };
+      var shownStatistics = displayShared ? cleanStatistics(displayShared.statistics,range) : state.statistics;
+      state.model = helper.compute({ now: now, period:selected, goals: sources.goals, cash: sources.cash, statistics: shownStatistics, selectedAccountIds: state.preferences.selectedAccountIds || [], sourceMap: state.preferences.sourceMap });
       var model = state.model; var today = state.preferences.period === 'today';
-      if (state.shared) {
+      if (displayShared) {
         empty(state.sellers);
         state.sellers.appendChild(element('span', 'ads-dashboard-muted', 'Продажи по CRM · полная сумма:'));
         [['fil', 'Фил'], ['sasha', 'Саша']].forEach(function (seller) {
-          var result = window.AVITOLOG_ADS_SHARED.sales(state.shared.sellerGoals[seller[0]], range);
+          var result = window.AVITOLOG_ADS_SHARED.sales(displayShared.sellerGoals[seller[0]], range);
           var total = today ? result.today : result.month;
           state.sellers.appendChild(element('strong', '', seller[1] + ': ' + number(total.amount, true) + ' · ' + number(total.count) + ' продаж'));
           model.warnings = model.warnings.concat(result.warnings.map(function (warning) { return seller[1] + ': ' + warning; }));
@@ -593,7 +622,8 @@
       }
       var data = today ? model.today : model.month;
       var days = today ? model.days.filter(function (day) { return day.date === model.range.today; }) : model.days;
-      state.rangeLabel.textContent = today ? 'Сегодня · ' + model.range.today + ' (МСК)' : model.range.dateFrom + ' — ' + model.range.today + ' · 30 дней (МСК)';
+      state.rangeLabel.textContent = today ? 'Сегодня · ' + model.range.today + ' (МСК)' : model.range.dateFrom + ' — ' + model.range.today + ' · '+model.range.days.length+' дн. (МСК)'+(selected?' · архив ADS':'');
+      if(selected&&state.historyWarning)model.warnings.push(state.historyWarning);
       var signature = JSON.stringify({ data: data, days: days, sources: model.sources, warnings: model.warnings, period: state.preferences.period, mode: state.preferences.viewMode, metrics: state.preferences.metrics, sourceMap: state.preferences.sourceMap, accounts: state.accounts, dailyMetric: state.preferences.dailyMetric, selected: state.preferences.selectedAccountIds, statistics: state.preferences.viewMode === 'daily' ? shownStatistics : null });
       if (signature === state.renderSignature) { mountLegacy(state); return; }
       state.renderSignature = signature;
@@ -634,12 +664,13 @@
     var title = element('div'); title.appendChild(element('h2', '', 'ADS · Воронка услуг авитолога'));
     state.rangeLabel = element('p', 'ads-dashboard-muted'); title.appendChild(state.rangeLabel); heading.appendChild(title);
     var controls = element('div', 'ads-dashboard-controls');
-    state.todayButton = button('Сегодня', 'ads-dashboard-button', function () { state.preferences.period = 'today'; savePreferences(state); render(state); });
-    state.monthButton = button('30 дней', 'ads-dashboard-button', function () { state.preferences.period = 'month'; savePreferences(state); render(state); });
-    state.refresh = button('Обновить', 'ads-dashboard-button', function () { if (window.AVITOLOG_ADS_SHARED && state.profile === 'sasha') { refreshShared(state); return; } if (state.frameLoaded) { if (state.accountsLoaded) loadMetrics(state); else loadAccounts(state); } else { if (state.frame && state.frame.parentNode) state.frame.parentNode.removeChild(state.frame); setupBridge(state); } });
+    state.todayButton = button('Сегодня', 'ads-dashboard-button', function () { delete state.preferences.adsPeriod;state.preferences.period = 'today';state.renderSignature=null;savePreferences(state); render(state); });
+    state.monthButton = button('30 дней', 'ads-dashboard-button', function () { delete state.preferences.adsPeriod;state.preferences.period = 'month';state.renderSignature=null;savePreferences(state); render(state); });
+    state.refresh = button('Обновить', 'ads-dashboard-button', function () { if(selectedPeriod(state)){loadHistory(state,true);return;}if (window.AVITOLOG_ADS_SHARED && state.profile === 'sasha') { refreshShared(state); return; } if (state.frameLoaded) { if (state.accountsLoaded) loadMetrics(state); else loadAccounts(state); } else { if (state.frame && state.frame.parentNode) state.frame.parentNode.removeChild(state.frame); setupBridge(state); } });
     state.gear = button('⚙', 'ads-dashboard-button ads-dashboard-gear', function () { state.settings.hidden = !state.settings.hidden; state.gear.setAttribute('aria-expanded', state.settings.hidden ? 'false' : 'true'); if (!state.settings.hidden) renderSettings(state); });
     state.gear.setAttribute('aria-label', 'Настройки ADS'); state.gear.setAttribute('aria-expanded', 'false');
     [state.todayButton, state.monthButton, state.refresh, state.gear].forEach(function (node) { controls.appendChild(node); }); heading.appendChild(controls); state.root.appendChild(heading);
+    if (window.AVITOLOG_ADS_PERIODS) {state.periodMenu=window.AVITOLOG_ADS_PERIODS.controls(document,state.preferences.adsPeriod,window.AVITOLOG_ADS_FUNNEL.range(new Date()).today,function(value){choosePeriod(state,value);});controls.insertBefore(state.periodMenu,state.refresh);}
     state.settings = element('section', 'ads-dashboard-settings'); state.settings.hidden = true; state.settings.setAttribute('aria-label', 'Настройки ADS');
     state.settingsContent = element('div'); state.settings.appendChild(state.settingsContent); state.root.appendChild(state.settings);
     state.status = element('p', 'ads-dashboard-status'); state.status.setAttribute('role', 'status'); state.root.appendChild(state.status);
@@ -661,7 +692,7 @@
     listen(state, document, 'avitolog:backend-initial-error', function () { renderStatus(state); state.status.textContent = window.AVITOLOG_BACKEND_INITIAL_SYNC_ERROR || 'Не удалось загрузить данные Supabase.'; });
     listen(state, window, 'storage', function () { render(state); });
     if (window.MutationObserver) { state.observer = new window.MutationObserver(function () { if (!current(state)) { state.root.hidden = true; destroy(state); } }); state.observer.observe(document.documentElement, { childList: true, subtree: true }); }
-    render(state); renderSettings(state); if (ready()) { setupBridge(state); if (window.AVITOLOG_ADS_SHARED) refreshShared(state); }
+    render(state); renderSettings(state); if (ready()) { setupBridge(state); if (window.AVITOLOG_ADS_SHARED) refreshShared(state);if(selectedPeriod(state))loadHistory(state); }
     if (window.AVITOLOG_ADS_SHARED) pollShared(state);
     return state;
   }

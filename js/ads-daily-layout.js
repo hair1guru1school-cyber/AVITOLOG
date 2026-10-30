@@ -203,7 +203,7 @@
   function table(options) {
     var section = node('section', 'ads-daily-panel ads-daily-accounts');
     var heading = node('div', 'ads-daily-section-heading');
-    heading.appendChild(node('h3', '', 'Аккаунты и результаты · ' + (options.period === 'today' ? 'сегодня' : '30 дней')));
+    heading.appendChild(node('h3', '', 'Аккаунты и результаты · ' + (options.period === 'today' ? 'сегодня' : options.model.range.days.length+' дн.')));
     var search = node('input', 'ads-daily-search'); search.type = 'search'; search.placeholder = 'Поиск по аккаунту…'; search.setAttribute('aria-label', 'Поиск по аккаунту');
     heading.appendChild(search); section.appendChild(heading);
     var wrap = node('div', 'ads-daily-table-scroll'), grid = node('table', 'ads-daily-table'), head = node('thead'), body = node('tbody');

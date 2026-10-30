@@ -231,9 +231,10 @@ function metricDate(time) {
 }
 const STATISTICS_METRICS = ['views', 'contacts', 'contactsShowPhone', 'contactsMessenger', 'favorites', 'spending'];
 const emptyMetrics = () => ({ views: null, contacts: null, contactsShowPhone: null, contactsMessenger: null, favorites: null, spending: null });
-export function accountStatisticsRange(date) {
-  const end = Date.parse(date + 'T00:00:00Z');
-  const dates = Array.from({ length: 30 }, (_, index) => new Date(end - (29 - index) * 86400000).toISOString().slice(0, 10));
+export function accountStatisticsRange(date, from) {
+  const end = Date.parse(date + 'T00:00:00Z'), start = from === undefined ? end - 29 * 86400000 : Date.parse(from + 'T00:00:00Z'), count = (end - start) / 86400000 + 1;
+  if (!Number.isInteger(count) || count < 1 || count > 93 || new Date(end).toISOString().slice(0,10)!==date || from !== undefined && new Date(start).toISOString().slice(0,10)!==from) throw fail(400,'invalid_period');
+  const dates = Array.from({ length: count }, (_, index) => new Date(start + index * 86400000).toISOString().slice(0, 10));
   return { dateFrom: dates[0], dateTo: date, dates };
 }
 export function unavailableAccountHistory(date, error) {
@@ -277,7 +278,8 @@ function statisticsDiagnostic(error) {
   if (error.statisticsShape) diagnostic.shape = Object.fromEntries(Object.entries(error.statisticsShape).filter(([, value]) => typeof value === 'boolean' || typeof value === 'number' && Number.isSafeInteger(value) && value >= 0));
   return diagnostic;
 }
-export function safeAccountStatistics(value, date) {
+export function safeAccountStatistics(value, date, from) {
+  const span = accountStatisticsRange(date, from);
   const result = value && value.result, groupings = result && result.groupings;
   const shape = { has_result: Boolean(result && typeof result === 'object' && !Array.isArray(result)), has_groupings: Array.isArray(groupings) };
   if (Array.isArray(groupings)) shape.grouping_count = groupings.length;
@@ -298,7 +300,7 @@ export function safeAccountStatistics(value, date) {
     if (result.pagination.total !== undefined && result.pagination.total !== groupings.length) reject('incomplete_response');
   }
   if (groupings.length === 0) reject('empty_totals');
-  if (groupings.length > 30 || groupings.some(group => !object(group))) reject('invalid_response');
+  if (groupings.length > span.dates.length || groupings.some(group => !object(group))) reject('invalid_response');
   const first = groupings[0];
   shape.has_group_type = first.type !== undefined;
   shape.group_is_dates = first.type === 'dates';
@@ -327,7 +329,7 @@ export function safeAccountStatistics(value, date) {
   // Undated totals may cover the entire requested range, not today's activity.
   if (groupings.some(group => group.type !== 'dates')) reject('unexpected_group_type');
   if (result.dataTotalCount !== groupings.length) reject('incomplete_response');
-  const { dateFrom, dateTo, dates } = accountStatisticsRange(date), byDate = new Map();
+  const { dateFrom, dateTo, dates } = span, byDate = new Map();
   let metricCount = 0;
   for (const group of groupings) {
     if (!Number.isSafeInteger(group.id) || group.id <= 0 || group.id >= 4102444800) reject('invalid_date');
