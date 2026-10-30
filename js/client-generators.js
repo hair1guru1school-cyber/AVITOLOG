@@ -81,11 +81,46 @@
     if (!Array.isArray(out.positions) || !out.positions.length) out.positions = Array.isArray(saved.positions) ? saved.positions.slice() : saved.positions ? [String(saved.positions)] : [];
     return out;
   }
+  function pdfName(snapshot,job) {
+    var name=String(job.title||'Документ')+' - '+String(snapshot.title||'Проект');
+    return (name.replace(/[\\/:*?"<>|\u0000-\u001f]/g,'_').replace(/\s+/g,' ').trim().slice(0,160).replace(/[. ]+$/,'')||'Документ')+'.pdf';
+  }
+  async function validatePdf(blob) {
+    if(!blob||typeof blob.slice!=='function'||blob.size<8||blob.size>25*1024*1024)throw Error('PDF пустой или превышает 25 МБ.');
+    if(await blob.slice(0,5).text()!=='%PDF-')throw Error('Сервис вернул не PDF. Файл не скачан.');
+    return blob;
+  }
+  function createPdfDelivery(env) {
+    var cache=new WeakMap(),tail=Promise.resolve();
+    function owner(batch){return JSON.stringify([batch.snapshot.scope,batch.snapshot.folderId,batch.snapshot.clientId]);}
+    function guard(batch){if(!env.isCurrent(batch.snapshot))throw Error('Пользователь или режим изменился. Передача PDF остановлена.');}
+    function peek(batch,job){var row=cache.get(job);return env.isCurrent(batch.snapshot)&&row&&row.owner===owner(batch)&&row.html===job.html?row.file||null:null;}
+    function get(batch,job){
+      try{guard(batch);}catch(error){return Promise.reject(error);}
+      if(!job.html&&!job.file)return Promise.reject(Error('Документ ещё создаётся.'));
+      var row=cache.get(job),id=owner(batch);
+      if(row&&row.owner!==id)return Promise.reject(Error('Этот PDF принадлежит другому проекту.'));
+      if(row&&row.html===job.html){if(row.file)return Promise.resolve(row.file);if(row.pending)return row.pending;}
+      row={owner:id,html:job.html};cache.set(job,row);job.pdfState='preparing';job.pdfError='';
+      row.pending=tail.then(async function(){
+        guard(batch);var blob=await env.render(batch.snapshot,job);guard(batch);await validatePdf(blob);guard(batch);
+        row.file=env.file(blob,pdfName(batch.snapshot,job));job.pdfState='ready';return row.file;
+      }).catch(function(error){job.pdfState='failed';job.pdfError=message(error);if(cache.get(job)===row)cache.delete(job);throw error;}).finally(function(){row.pending=null;if(env.changed)env.changed();});
+      tail=row.pending.catch(function(){});if(env.changed)env.changed();return row.pending;
+    }
+    function files(batch,jobs){if(!jobs.length)return null;var list=jobs.map(function(job){return peek(batch,job);});return list.every(Boolean)?list:null;}
+    function requireFiles(batch,jobs){guard(batch);var list=files(batch,jobs);if(!list)throw Error('Дождитесь подготовки PDF.');return list;}
+    function canShare(batch,jobs){try{var list=files(batch,jobs);return !!(list&&env.share&&env.canShare&&env.canShare({files:list}));}catch(_){return false;}}
+    return {get:get,peek:peek,files:files,canShare:canShare,
+      download:function(batch,jobs){var list=requireFiles(batch,jobs);list.forEach(function(file){guard(batch);env.download(file);});return list.length;},
+      share:function(batch,jobs){var list=requireFiles(batch,jobs);if(!canShare(batch,jobs))throw Error('Браузер не поддерживает передачу этих PDF.');return env.share({files:list,title:batch.snapshot.title});}
+    };
+  }
   function install(win) {
     if (win.__clientGenerators) return win.__clientGenerators;
     var doc = win.document, library = win.__showScriptsPanel, originalSwitch = win.switchTab;
     var drafts = new Map(), batches = [], dialogs = new Map(), documents = new Map(), holder = null, panelKey = '', errorText = '', dismissed = null, statusDialog = null, statusBatch = null;
-    var database;
+    var database,deliveryDialog=null,deliveryRequest=null;
     function prefs(id, value) {
       if (!database) database = new Promise(function(resolve,reject){if(!win.indexedDB)return reject(Error('IndexedDB недоступна'));var req=win.indexedDB.open('avitolog-client-generators',1);req.onupgradeneeded=function(){req.result.createObjectStore('preferences');};req.onsuccess=function(){resolve(req.result);};req.onerror=function(){reject(req.error);};});
       return database.then(function(db){return new Promise(function(resolve,reject){var tx=db.transaction('preferences',value===undefined?'readonly':'readwrite'),store=tx.objectStore('preferences'),req=value===undefined?store.get(id):store.put(copy(value),id);tx.oncomplete=function(){resolve(req.result);};tx.onerror=function(){reject(tx.error);};tx.onabort=function(){reject(tx.error||Error('Запись не завершена'));};});});
@@ -248,6 +283,56 @@
       }); }
       clean(parsed.content); return parsed.innerHTML;
     }
+    function assertPdfScope(snapshot){if(snapshot.scope!==scope())throw Error('Пользователь или Google-аккаунт изменился.');}
+    async function localPdf(snapshot,job){
+      assertPdfScope(snapshot);
+      if(typeof win.html2pdf!=='function')throw Error('Модуль PDF не загрузился. Обновите страницу или проверьте доступ к Google Drive.');
+      var host=el('div'),content=el('div','cg-pdf-document');
+      host.style.cssText='position:fixed;left:-10000px;top:0;width:710px;pointer-events:none';host.setAttribute('aria-hidden','true');
+      content.style.cssText='position:static;width:710px;background:#fff;color:#222;font:14px/1.65 Arial,sans-serif;box-sizing:border-box;overflow-wrap:anywhere';
+      content.innerHTML=sanitize(job.html);
+      Array.from(content.querySelectorAll('*')).forEach(function(node){
+        node.style.color=node.tagName==='A'?'#1165a0':'#222';node.style.fontFamily='Arial,sans-serif';node.style.letterSpacing='normal';
+        var heading={H1:26,H2:21,H3:17,H4:15,H5:14,H6:14}[node.tagName];
+        if(heading){node.style.fontSize=heading+'px';node.style.lineHeight='1.3';node.style.margin=(node.tagName==='H1'?'0':'20px')+' 0 10px';node.style.fontWeight='700';}
+        if(node.tagName==='P')node.style.margin='0 0 10px';
+        if(/^(UL|OL)$/.test(node.tagName)){node.style.paddingLeft='24px';node.style.margin='8px 0 12px';}
+        if(node.tagName==='LI')node.style.margin='4px 0';
+        if(node.tagName==='TABLE'){node.style.width='100%';node.style.borderCollapse='collapse';node.style.margin='12px 0';}
+        if(/^(TD|TH)$/.test(node.tagName)){node.style.padding='7px';node.style.border='1px solid #ccd5df';node.style.fontSize='12px';}
+        if(node.tagName==='TH')node.style.background='#edf3f8';
+      });
+      var header=snapshot.headers&&snapshot.headers[job.type];
+      if(header){var img=el('img');img.src=header;img.crossOrigin='anonymous';img.alt='';img.style.cssText='display:block;width:100%;height:auto;margin:0 0 20px';content.prepend(img);}
+      host.append(content);doc.body.append(host);
+      try{return await win.html2pdf().set({margin:[12,12,12,12],filename:pdfName(snapshot,job),image:{type:'jpeg',quality:.94},html2canvas:{scale:1.5,useCORS:true,allowTaint:false,backgroundColor:'#ffffff'},jsPDF:{unit:'mm',format:'a4',orientation:'portrait'},pagebreak:{mode:['css','legacy'],avoid:['h1','h2','h3','tr','li']}}).from(content).outputPdf('blob');}
+      finally{host.remove();}
+    }
+    async function pdfBlob(snapshot,job){
+      assertPdfScope(snapshot);
+      if(job.file&&/^[a-zA-Z0-9_-]+$/.test(job.file.id||'')&&win._driveToken){
+        var controller=new win.AbortController(),timer=win.setTimeout(function(){controller.abort();},30000);
+        try{
+          var token=await win.getDriveToken();assertPdfScope(snapshot);
+          var response=await win.fetch('https://www.googleapis.com/drive/v3/files/'+encodeURIComponent(job.file.id)+'/export?mimeType=application/pdf',{headers:{Authorization:'Bearer '+token},credentials:'omit',redirect:'error',cache:'no-store',signal:controller.signal});
+          assertPdfScope(snapshot);if(!response.ok)throw Error('Экспорт Drive: HTTP '+response.status);
+          var blob=await response.blob();await validatePdf(blob);assertPdfScope(snapshot);job.pdfSource='Google Drive';return blob;
+        }catch(error){assertPdfScope(snapshot);if(!job.html)throw error;}
+        finally{win.clearTimeout(timer);}
+      }
+      if(!job.html)throw Error('Содержимое документа ещё не готово.');
+      job.pdfSource='Локальная копия';return localPdf(snapshot,job);
+    }
+    function savePdfFile(file){
+      var url=win.URL.createObjectURL(file),link=el('a');link.href=url;link.download=file.name;doc.body.append(link);link.click();link.remove();win.setTimeout(function(){win.URL.revokeObjectURL(url);},30000);
+    }
+    var delivery=createPdfDelivery({
+      isCurrent:function(snapshot){return snapshot.scope===scope();},render:pdfBlob,
+      file:function(blob,name){if(typeof win.File==='function')return new win.File([blob],name,{type:'application/pdf'});var file=new win.Blob([blob],{type:'application/pdf'});file.name=name;return file;},
+      download:savePdfFile,canShare:function(data){return !!(win.navigator.share&&win.navigator.canShare&&win.navigator.canShare(data));},
+      share:function(data){return win.navigator.share(data);},changed:function(){renderResults();renderStatus();renderDelivery();}
+    });
+    function warmPdfs(batch){if(batch.snapshot.scope!==scope())return;batch.jobs.forEach(function(job){if(['saved','save_failed'].indexOf(job.state)>=0&&!job.pdfState)delivery.get(batch,job).catch(function(){});});}
     var runner = createRunner({
       isCurrent: function (snapshot) { return snapshot.scope === scope(); },
       prepare: async function (snapshot) {
@@ -272,7 +357,7 @@
         } catch (error) { if (controller.signal.aborted) throw Error('Drive не подтвердил запись вовремя. Проверьте папку перед повтором.'); throw error; }
         finally { win.clearTimeout(timeout); }
       },
-      onChange: function () { updateProgress(); renderResults(); renderStatus(); }
+      onChange: function (batch) { updateProgress(); renderResults(); renderStatus(); warmPdfs(batch); }
     });
     function showComments(type, snapshot, state, control) {
       var modal = el('dialog', 'cg-comments'); modal.setAttribute('aria-label', 'Комментарий: ' + type.title);
@@ -281,11 +366,71 @@
       suggestions(snapshot.data).forEach(function (suggestion) { var label = el('label', 'cg-suggestion'), check = el('input'); check.type = 'checkbox'; label.append(check, el('span', '', suggestion)); check.addEventListener('change', function () { var parts = input.value.split('\n'); if (check.checked && parts.indexOf(suggestion) < 0) parts.push(suggestion); if (!check.checked) parts = parts.filter(function (line) { return line !== suggestion; }); input.value = parts.join('\n').slice(0, 6000); }); modal.append(label); });
       var actions = el('div', 'cg-actions'); actions.append(button('Сохранить комментарий', function () { if (snapshot.scope === scope()) { state.comments[type.id] = input.value; control.title = input.value ? 'Есть комментарий. Удерживайте, чтобы изменить.' : 'Удерживайте для комментария'; control.classList.toggle('cg-has-comment', !!input.value); } modal.close(); }), button('Отмена', function () { modal.close(); })); modal.append(actions); doc.body.append(modal); dialogs.set(modal, snapshot.scope); modal.addEventListener('close', function () { dialogs.delete(modal); modal.remove(); }); modal.showModal(); input.focus();
     }
-    function jobRow(job) {
+    function deliveryMessage(batch,text){batch.deliveryMessage=text;renderResults();renderStatus();renderDelivery();}
+    function downloadPdfs(batch,jobs){
+      try{var count=delivery.download(batch,jobs);deliveryMessage(batch,count>1?'PDF переданы браузеру. Разрешите скачивание нескольких файлов или скачайте каждый кнопкой ↓ PDF.':'PDF передан браузеру для скачивания.');}
+      catch(error){deliveryMessage(batch,message(error));}
+    }
+    function sharePdfs(batch,jobs){
+      try{
+        var pending=delivery.share(batch,jobs);
+        Promise.resolve(pending).then(function(){if(batch.snapshot.scope===scope())deliveryMessage(batch,'Выбор приложения завершён. Получателя и отправку подтвердите в Telegram.');},function(error){if(batch.snapshot.scope===scope())deliveryMessage(batch,error.name==='AbortError'?'Передача отменена. Файлы остаются доступны.':'Не удалось открыть передачу файлов: '+message(error));});
+      }catch(error){deliveryMessage(batch,message(error));}
+    }
+    function openDelivery(batch,jobs,mode){
+      if(batch.snapshot.scope!==scope())return;
+      if(deliveryDialog)deliveryDialog.close();
+      deliveryRequest={batch:batch,jobs:jobs.slice(),mode:mode};deliveryDialog=el('dialog','cg-template-menu cg-delivery-modal');deliveryDialog.setAttribute('aria-label','Скачать PDF или передать в Telegram');
+      deliveryDialog.addEventListener('close',function(){this.remove();if(deliveryDialog===this){deliveryDialog=null;deliveryRequest=null;}});
+      doc.body.append(deliveryDialog);renderDelivery();deliveryDialog.showModal();
+      jobs.forEach(function(job){delivery.get(batch,job).catch(function(){});});
+    }
+    function renderDelivery(){
+      if(!deliveryDialog||!deliveryRequest)return;
+      var batch=deliveryRequest.batch,jobs=deliveryRequest.jobs,modal=deliveryDialog;
+      if(batch.snapshot.scope!==scope()){modal.close();return;}
+      var head=el('div','cg-template-menu-heading');head.append(el('h3','',deliveryRequest.mode==='share'?'PDF в Telegram':'Скачать PDF'),button('×',function(){modal.close();},'cg-template-close'));
+      modal.replaceChildren(head,el('strong','cg-template-project',batch.snapshot.title));
+      var list=el('div','cg-pdf-list');
+      jobs.forEach(function(job){
+        var item=el('div','cg-pdf-item');item.append(el('span','',pdfName(batch.snapshot,job)));
+        if(delivery.peek(batch,job))item.append(button('↓ PDF',function(){downloadPdfs(batch,[job]);},'cg-pdf-button'));
+        else if(job.pdfState==='failed'){item.append(el('small','cg-error',job.pdfError),button('Повторить PDF',function(){delivery.get(batch,job).catch(function(){});},'cg-pdf-button'));}
+        else item.append(el('small','','Подготовка PDF…'));
+        list.append(item);
+      });modal.append(list);
+      var ready=!!delivery.files(batch,jobs),actions=el('div','cg-template-menu-actions');
+      var download=button(jobs.length>1?'Скачать все PDF':'Скачать PDF',function(){downloadPdfs(batch,jobs);});download.disabled=!ready;actions.append(download);
+      if(ready&&delivery.canShare(batch,jobs))actions.append(button('Выбрать Telegram / получателя',function(){sharePdfs(batch,jobs);},'cg-template-save'));
+      else if(ready){
+        modal.append(el('p','cg-delivery-help','Браузер не передаёт вложения напрямую. Скачайте PDF, откройте Telegram и прикрепите файлы к нужному чату.'));
+        var telegram=el('a','cg-telegram-link','Открыть Telegram Web ↗');telegram.href='https://web.telegram.org/k/';telegram.target='_blank';telegram.rel='noopener noreferrer';actions.append(telegram);
+      }
+      if(jobs.length>1)modal.append(el('p','cg-delivery-help','Каждый документ скачивается отдельным PDF. Браузер может запросить разрешение на несколько скачиваний.'));
+      modal.append(actions);if(batch.deliveryMessage)modal.append(el('p','cg-delivery-help',batch.deliveryMessage));
+    }
+    function pdfAction(batch,jobs,mode){
+      if(mode==='download'&&delivery.files(batch,jobs))downloadPdfs(batch,jobs);
+      else if(mode==='share'&&delivery.canShare(batch,jobs))sharePdfs(batch,jobs);
+      else openDelivery(batch,jobs,mode);
+    }
+    function batchActions(batch){
+      var jobs=batch.jobs.filter(function(job){return !!(job.html||job.file);});
+      if(batch.running||jobs.length<2)return null;
+      var bar=el('div','cg-batch-actions'),all=jobs.length===batch.jobs.length;
+      bar.append(button(all?'Скачать всё · PDF':'Скачать готовые ('+jobs.length+' PDF)',function(){pdfAction(batch,jobs,'download');},'cg-pdf-button'),button('В Telegram',function(){pdfAction(batch,jobs,'share');},'cg-pdf-button'));
+      if(batch.deliveryMessage)bar.append(el('small','',batch.deliveryMessage));return bar;
+    }
+    function jobRow(job,batch) {
       var row = el('div', 'cg-result'); row.append(el('strong', '', job.emoji + ' ' + job.title), el('span', '', ({ waiting: 'В очереди', generating: 'Генерация…', saving: 'Сохранение в Drive…', saved: 'Сохранено в Drive', failed: 'Ошибка генерации', save_failed: 'Запись не подтверждена', not_started: 'Не запускался' })[job.state]));
       if (job.file) { var a = el('a', '', 'Открыть документ ↗'); a.href = job.file.url; a.target = '_blank'; a.rel = 'noopener'; row.append(a); }
       if (job.error) row.append(el('small', 'cg-error', job.error));
-      if (job.html && job.state !== 'saved') row.append(button('Скачать HTML', function () { var blob = new win.Blob([win.buildWordHtml(job.html)], { type: 'text/html;charset=utf-8' }), url = win.URL.createObjectURL(blob), a = el('a'); a.href = url; a.download = job.title + '.html'; a.click(); win.setTimeout(function () { win.URL.revokeObjectURL(url); }, 30000); }));
+      var actions=el('div','cg-document-actions'),available=!!(job.html||job.file);
+      var download=button('↓ PDF',function(){pdfAction(batch,[job],'download');},'cg-pdf-button'),share=button('В Telegram',function(){pdfAction(batch,[job],'share');},'cg-pdf-button');
+      download.title='Скачать документ в PDF';download.disabled=share.disabled=!available;actions.append(download,share);
+      if(job.pdfState==='preparing')actions.append(el('small','','PDF…'));
+      if(job.pdfState==='failed')actions.append(el('small','cg-error','PDF не готов: нажмите ↓ PDF для повтора.'));
+      row.append(actions);
       return row;
     }
     function renderStatus() {
@@ -293,7 +438,8 @@
       if (statusBatch.snapshot.scope !== scope()) { statusDialog.close(); return; }
       var rows = statusDialog.querySelector('.cg-results'); rows.replaceChildren();
       if (statusBatch.error) rows.append(el('p', 'cg-error', statusBatch.error));
-      statusBatch.jobs.forEach(function (job) { rows.append(jobRow(job)); });
+      statusBatch.jobs.forEach(function (job) { rows.append(jobRow(job,statusBatch)); });
+      var actions=batchActions(statusBatch);if(actions)rows.append(actions);
     }
     function showStatus(batch) {
       if (!batch || batch.snapshot.scope !== scope()) return;
@@ -310,7 +456,8 @@
       var relevant = batches.filter(function (batch) { return key(batch.snapshot) === panelKey && batch.snapshot.scope === scope(); });
       relevant.slice(-5).forEach(function (batch) {
         if (batch.error) target.append(el('p', 'cg-error', batch.error));
-        batch.jobs.forEach(function (job) { target.append(jobRow(job)); });
+        batch.jobs.forEach(function (job) { target.append(jobRow(job,batch)); });
+        var actions=batchActions(batch);if(actions)target.append(actions);
       });
       var start = holder.querySelector('.cg-start'); if (start) start.disabled = !!runner.active();
       if (errorText) target.prepend(el('p', 'cg-error', errorText));
@@ -323,6 +470,7 @@
       if (active && active.snapshot.scope !== scope()) active.cancelled = true;
       dialogs.forEach(function (owner, modal) { if (owner !== scope()) modal.close(); });
       if (statusDialog && statusBatch && statusBatch.snapshot.scope !== scope()) statusDialog.close();
+      if (deliveryDialog && deliveryRequest && deliveryRequest.batch.snapshot.scope !== scope()) deliveryDialog.close();
       progress.hidden = !batch || batch.snapshot.scope !== scope() || dismissed === batch;
       if (progress.hidden) return;
       var done = batch.jobs.filter(function (job) { return job.state === 'saved'; }).length, finished = batch.jobs.filter(function (job) { return ['saved', 'failed', 'save_failed', 'not_started'].indexOf(job.state) >= 0; }).length;
@@ -379,5 +527,5 @@
     if (win.currentTab === 'scripts') { var current = doc.getElementById('mainContent'); if (current) render(current); }
     return api;
   }
-  return { TYPES: TYPES, plan: plan, createRunner: createRunner, parseResult: parseResult, suggestions: suggestions, contextData: contextData, install: install };
+  return { TYPES: TYPES, plan: plan, createRunner: createRunner, parseResult: parseResult, suggestions: suggestions, contextData: contextData, pdfName:pdfName,validatePdf:validatePdf,createPdfDelivery:createPdfDelivery, install: install };
 }));
