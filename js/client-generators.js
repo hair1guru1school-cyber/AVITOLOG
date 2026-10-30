@@ -128,20 +128,105 @@
     }
     function renderTemplates(snapshot,target) {
       if(typeof win.__getScriptsPanelData!=='function'){if(library)library(target);return;}
-      var id=key(snapshot), base=win.__getScriptsPanelData(), data={auto:false,variants:{}}, dirty=false, selectedVariants={};
-      var settings=el('details','cg-template-settings');settings.append(el('summary','','⚙ Настройки быстрых скриптов'));var check=el('input');check.type='checkbox';var label=el('label','cg-suggestion');label.append(check,el('span','','Автоматически добавлять вариант с данными захваченного проекта (локально, без платного API)'));settings.append(label);target.append(settings);
-      var cards=el('div','cg-template-grid');target.append(cards);var status=el('p','cg-caption');target.append(status);
+      var id=key(snapshot), base=win.__getScriptsPanelData(), data={auto:false,variants:{}}, ready=false, writable=false, saving=false;
+      var settings=el('details','cg-template-settings');settings.append(el('summary','','⚙ Настройки быстрых скриптов'));var check=el('input');check.type='checkbox';check.disabled=true;var label=el('label','cg-suggestion');label.append(check,el('span','','Автоматически добавлять вариант с данными захваченного проекта (локально, без платного API)'));settings.append(label);target.append(settings);
+      target.append(el('p','cg-caption','Нажатие — копировать. Если вариантов несколько — выбрать. Правая кнопка мыши или удержание — настроить варианты.'));
+      var cards=el('div','cg-template-grid');target.append(cards);var status=el('p','cg-caption');status.setAttribute('role','status');target.append(status);
+      function current(){return snapshot.scope===scope()&&target.isConnected;}
       function personal(text){var facts=suggestions(snapshot.data);return String(text||'')+(facts.length?'\n\nПо вашему проекту «'+snapshot.title+'»:\n'+facts.join('\n'):'');}
+      function variants(template){
+        var saved=data.variants[template.id], values=Array.isArray(saved)&&saved.length?saved.slice(0,20):template.variants?template.variants.slice(0,20):[template.text||''];
+        values=values.map(function(text){return String(text||'').slice(0,20000);});
+        if(data.auto&&!saved&&values.length<20)values.push(personal(values[0]));
+        return values;
+      }
+      async function save(next){
+        if(!current()||!writable||saving)return false;
+        saving=true;check.disabled=true;draw();
+        try{await prefs(id,next);data=copy(next);if(current())status.textContent='Варианты сохранены для этого проекта в браузере.';return true;}
+        catch(error){if(current())status.textContent='Не сохранено: '+message(error);return false;}
+        finally{saving=false;if(current()){check.checked=data.auto;check.disabled=!writable;draw();}}
+      }
+      async function copyVariant(text,control,feedback){
+        if(!current())return false;
+        if(!String(text).trim()){feedback.textContent='Вариант пустой. Добавьте текст в настройках.';return false;}
+        try{
+          await win.navigator.clipboard.writeText(text);
+          if(current()){
+            feedback.textContent='Скопировано: '+control.getAttribute('data-label');
+            control.classList.add('cg-is-copied');
+            win.setTimeout(function(){control.classList.remove('cg-is-copied');},1400);
+          }
+          return true;
+        }catch(_){feedback.textContent='Копирование недоступно. Откройте настройку варианта и скопируйте выделенный текст.';return false;}
+      }
+      function openTemplate(template,control,editing){
+        if(!ready||saving||!current())return;
+        var modal=el('dialog','cg-template-menu'), heading=el('div','cg-template-menu-heading'), body=el('div'), feedback=el('p','cg-caption');
+        modal.setAttribute('aria-label','Варианты: '+template.label);feedback.setAttribute('role','status');
+        heading.append(el('h3','',template.emoji+' '+template.label),button('×',function(){modal.close();},'cg-template-close'));
+        heading.lastChild.setAttribute('aria-label','Закрыть варианты');modal.append(heading,el('small','cg-template-project',snapshot.title),body,feedback);
+        function editor(){
+          if(!current()||!writable)return;
+          editing=true;
+          var values=variants(template), selected=0, tabs=el('div','cg-variant-tabs'), input=el('textarea','cg-variant-input'), actions=el('div','cg-template-menu-actions');
+          input.rows=7;input.maxLength=20000;input.setAttribute('aria-label','Текст варианта');
+          var add=button('+ Вариант',function(){if(values.length>=20)return;values[selected]=input.value;values.push(input.value);selected=values.length-1;drawTabs();input.focus();},'cg-variant-add');
+          var remove=button('Удалить вариант',function(){if(values.length<=1)return;values.splice(selected,1);selected=Math.min(selected,values.length-1);drawTabs();},'cg-variant-delete');
+          function drawTabs(){
+            tabs.replaceChildren();values.forEach(function(_,i){var tab=button('Вариант '+(i+1),function(){values[selected]=input.value;selected=i;drawTabs();input.focus();},'cg-variant-tab');tab.setAttribute('aria-pressed',String(i===selected));tabs.append(tab);});
+            input.value=values[selected];add.disabled=values.length>=20;remove.disabled=values.length<=1;
+          }
+          async function commit(){
+            if(saving||!current())return;
+            values[selected]=input.value;
+            var next=copy(data);next.variants[template.id]=values.slice();
+            saveButton.disabled=true;add.disabled=true;remove.disabled=true;input.disabled=true;
+            Array.from(tabs.children).forEach(function(tab){tab.disabled=true;});
+            if(await save(next)){modal.close();return;}
+            saveButton.disabled=false;input.disabled=false;drawTabs();feedback.textContent=status.textContent;
+          }
+          var saveButton=button('Сохранить варианты',commit,'cg-template-save');
+          input.addEventListener('keydown',function(event){if((event.ctrlKey||event.metaKey)&&event.key==='Enter'){event.preventDefault();commit();}});
+          actions.append(add,remove,saveButton,button('Отмена',function(){modal.close();}));
+          body.replaceChildren(el('p','cg-caption','Выберите вариант или добавьте новый. Изменения применяются только после сохранения.'),tabs,input,actions);drawTabs();input.focus();
+        }
+        function picker(){
+          var list=el('div','cg-variant-list');
+          variants(template).forEach(function(text,i){
+            var item=button('',async function(){if(await copyVariant(text,control,feedback)){modal.close();control.focus();}},'cg-variant-copy');
+            item.setAttribute('aria-label','Скопировать вариант '+(i+1));item.append(el('strong','','Вариант '+(i+1)),el('span','cg-variant-preview',text.replace(/\s+/g,' ').slice(0,180)||'Пустой вариант'),el('span','cg-variant-copy-label','Копировать'));list.append(item);
+          });
+          var edit=button('Настроить варианты',editor,'cg-template-configure');edit.disabled=!writable;
+          body.replaceChildren(el('p','cg-caption','Выберите текст — он сразу скопируется.'),list,edit);
+        }
+        doc.body.append(modal);dialogs.set(modal,snapshot.scope);
+        modal.addEventListener('close',function(){dialogs.delete(modal);modal.remove();});
+        modal.addEventListener('click',function(event){if(event.target===modal&&!editing)modal.close();});
+        modal.showModal();if(editing&&writable)editor();else picker();
+      }
       function draw(){cards.replaceChildren();base.forEach(function(template){
-        var values=data.variants[template.id]||(template.variants?template.variants.slice():[template.text||'']);
-        if(data.auto&&!data.variants[template.id])values=values.concat([personal(values[0])]);
-        var card=el('section','cg-template-card'),title=el('h3','',template.emoji+' '+template.label),select=el('select'),input=el('textarea');input.rows=5;input.maxLength=20000;input.setAttribute('aria-label','Текст: '+template.label);
-        values.forEach(function(_,i){var option=el('option','','Вариант '+(i+1));option.value=String(i);select.append(option);});select.value=String(Math.min(values.length-1,selectedVariants[template.id]||0));input.value=values[Number(select.value)];select.setAttribute('aria-label','Вариант: '+template.label);select.addEventListener('change',function(){selectedVariants[template.id]=Number(select.value);input.value=values[Number(select.value)]||'';});input.addEventListener('input',function(){values[Number(select.value)]=input.value;data.variants[template.id]=values.slice();dirty=true;});
-        var actions=el('div','cg-actions');actions.append(button('+ Вариант',function(){if(values.length>=20)return;values.push(input.value);data.variants[template.id]=values.slice();selectedVariants[template.id]=values.length-1;dirty=true;draw();}),button('Копировать',async function(){try{await win.navigator.clipboard.writeText(input.value);status.textContent='Скопировано.';}catch(_){status.textContent='Не удалось скопировать; выделите текст.';}}),button('Сохранить варианты',function(){save();}));card.append(title,select,input,actions);cards.append(card);
+        var values=variants(template), timer=null, held=false, x=0, y=0;
+        var control=button('',function(){if(held){held=false;return;}if(values.length>1)openTemplate(template,control,false);else copyVariant(values[0],control,status);},'cg-template-button');
+        control.disabled=!ready||saving;control.setAttribute('data-label',template.label);control.setAttribute('aria-haspopup','dialog');
+        control.title='Нажатие — '+(values.length>1?'выбрать и скопировать':'копировать')+'. Правая кнопка мыши / F2 — варианты.';
+        if(/^#[0-9a-f]{3,8}$/i.test(template.color||''))control.style.setProperty('--cg-template-color',template.color);
+        control.append(el('span','cg-template-icon',template.emoji),el('span','cg-template-name',template.label));
+        if(values.length>1)control.append(el('span','cg-template-count',values.length+' ▾'));
+        function stop(){if(timer)win.clearTimeout(timer);timer=null;}
+        control.addEventListener('pointerdown',function(event){held=false;if(event.button!==0||event.pointerType==='mouse')return;x=event.clientX;y=event.clientY;stop();timer=win.setTimeout(function(){timer=null;held=true;openTemplate(template,control,true);},550);});
+        control.addEventListener('pointermove',function(event){if(Math.abs(event.clientX-x)+Math.abs(event.clientY-y)>12)stop();});
+        ['pointerup','pointercancel','pointerleave'].forEach(function(name){control.addEventListener(name,stop);});
+        control.addEventListener('contextmenu',function(event){event.preventDefault();stop();if(!held)openTemplate(template,control,true);});
+        control.addEventListener('keydown',function(event){if(event.key==='F2'||event.key==='ContextMenu'||event.shiftKey&&event.key==='F10'){event.preventDefault();openTemplate(template,control,true);}});
+        cards.append(control);
       });}
-      async function save(){try{await prefs(id,data);dirty=false;status.textContent='Варианты и настройки сохранены для этого проекта в браузере.';}catch(error){status.textContent='Не сохранено: '+message(error);}}
-      check.addEventListener('change',function(){data.auto=check.checked;dirty=true;draw();save();});
-      draw();prefs(id).then(function(saved){if(saved&&!dirty&&snapshot.scope===scope()&&target.isConnected){data={auto:saved.auto===true,variants:saved.variants||{}};check.checked=data.auto;draw();}}).catch(function(error){status.textContent='Настройки недоступны: '+message(error);});
+      check.addEventListener('change',function(){var next=copy(data);next.auto=check.checked;save(next);});
+      draw();prefs(id).then(function(saved){
+        if(!current())return;
+        if(saved)data=Object.assign({},saved,{auto:saved.auto===true,variants:saved.variants&&typeof saved.variants==='object'?saved.variants:{}});
+        ready=true;writable=true;check.checked=data.auto;check.disabled=false;draw();
+      }).catch(function(error){if(current()){ready=true;draw();status.textContent='Варианты не удалось загрузить; редактирование заблокировано: '+message(error);}});
     }
     function build(type, data, comment, depth) {
       var before = win.currentData, beforeDepth = win.currentDepth;
