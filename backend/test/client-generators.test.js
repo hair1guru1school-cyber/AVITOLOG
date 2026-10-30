@@ -5,9 +5,9 @@ const snapshot=()=>({scope:'actor|profile',folderId:'Drive_A',clientId:'project-
 const make=(snap=snapshot(),selected=['scripts','analysis','presale','avito1'],comments={})=>G.plan(snap,selected,comments,(type,data,comment)=>JSON.stringify({type,data,comment}));
 const tick=()=>new Promise(r=>setImmediate(r));
 
-test('exactly four generators capture immutable project, folder, selection, facts and optional comments',()=>{
+test('KP plus four AI choices capture immutable project, folder, selection, facts and optional comments',()=>{
  const snap=snapshot(),comments={analysis:'My comment'},batch=make(snap,['analysis','avito1'],comments);snap.folderId='Drive_B';snap.data.company='B';comments.analysis='changed';
- assert.equal(G.TYPES.length,4);assert.equal(batch.snapshot.folderId,'Drive_A');assert.equal(batch.jobs.length,2);assert.equal(batch.jobs[0].comment,'My comment');assert.equal(JSON.parse(batch.jobs[0].prompt).data.company,'Project A');assert.equal(batch.jobs[1].comment,'');
+ assert.equal(G.TYPES.length,5);assert.equal(G.TYPES[0].id,'kp');assert.equal(make(snapshot(),['kp','analysis']).jobs.length,1);assert.equal(batch.snapshot.folderId,'Drive_A');assert.equal(batch.jobs.length,2);assert.equal(batch.jobs[0].comment,'My comment');assert.equal(JSON.parse(batch.jobs[0].prompt).data.company,'Project A');assert.equal(batch.jobs[1].comment,'');
  assert.throws(()=>make(snapshot(),[]),/Выберите/);assert.throws(()=>make({...snapshot(),folderId:'../wrong'}),/папку/);
 });
 test('suggestions are explicit choices, never silently appended to comments',()=>{

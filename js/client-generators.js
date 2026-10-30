@@ -6,17 +6,18 @@
 }(typeof window === 'undefined' ? null : window, function () {
   'use strict';
   var TYPES = [
-    { id: 'scripts', title: 'Скрипт', emoji: '🌀' },
+    { id: 'kp', title: 'КП', emoji: '📋' },
     { id: 'analysis', title: 'Аналитика', emoji: '📊' },
     { id: 'presale', title: 'Нужно сейчас', emoji: '⏰' },
-    { id: 'avito1', title: 'Авито №1', emoji: '🏆' }
+    { id: 'avito1', title: 'Почему Авито №1', emoji: '🏆' },
+    { id: 'scripts', title: 'Скрипт', emoji: '🌀' }
   ];
   function copy(value) { return JSON.parse(JSON.stringify(value)); }
   function message(error) { return String(error && error.message || error || 'Неизвестная ошибка'); }
   function plan(snapshot, selected, comments, build) {
     if (!snapshot || !/^[a-zA-Z0-9_-]+$/.test(snapshot.folderId || '')) throw Error('Выберите привязанную папку клиента в левом меню.');
     var captured = copy(snapshot);
-    var jobs = TYPES.filter(function (type) { return selected.indexOf(type.id) >= 0; }).map(function (type) {
+    var jobs = TYPES.filter(function (type) { return type.id !== 'kp' && selected.indexOf(type.id) >= 0; }).map(function (type) {
       var comment = String(comments[type.id] || '').slice(0, 6000);
       return { type: type.id, title: type.title, emoji: type.emoji, comment: comment, prompt: build(type.id, copy(captured.data), comment), state: 'waiting', html: '', file: null, error: '' };
     });
@@ -97,7 +98,7 @@
     });return result;
   }
   function pdfName(snapshot,job) {
-    var name=String(job.title||'Документ')+' - '+String(snapshot.title||'Проект');
+    var name=job.pdfFilename?String(job.pdfFilename).replace(/\.pdf$/i,''):String(job.title||'Документ')+' - '+String(snapshot.title||'Проект');
     return (name.replace(/[\\/:*?"<>|\u0000-\u001f]/g,'_').replace(/\s+/g,' ').trim().slice(0,160).replace(/[. ]+$/,'')||'Документ')+'.pdf';
   }
   async function validatePdf(blob) {
@@ -134,7 +135,7 @@
   function install(win) {
     if (win.__clientGenerators) return win.__clientGenerators;
     var doc = win.document, library = win.__showScriptsPanel, originalSwitch = win.switchTab;
-    var drafts = new Map(), batches = [], dialogs = new Map(), documents = new Map(), holder = null, panelKey = '', errorText = '', dismissed = null, statusDialog = null, statusBatch = null;
+    var drafts = new Map(), batches = [], dialogs = new Map(), documents = new Map(), kpReady = new Map(), holder = null, panelSnapshot = null, panelKey = '', errorText = '', dismissed = null, statusDialog = null, statusBatch = null;
     var database,deliveryDialog=null,deliveryRequest=null;
     function prefs(id, value) {
       if (!database) database = new Promise(function(resolve,reject){if(!win.indexedDB)return reject(Error('IndexedDB недоступна'));var req=win.indexedDB.open('avitolog-client-generators',1);req.onupgradeneeded=function(){req.result.createObjectStore('preferences');};req.onsuccess=function(){resolve(req.result);};req.onerror=function(){reject(req.error);};});
@@ -170,7 +171,7 @@
     function existingDocuments(snapshot, target) {
       var id=key(snapshot), saved=documents.get(id);
       function draw(files,error){if(snapshot.scope!==scope()||!target.isConnected)return;target.replaceChildren(el('strong','','Документы в папке проекта'),button('Обновить список',function(){load();},'cg-refresh'));
-        (files||[]).forEach(function(file){if(!/^[a-zA-Z0-9_-]+$/.test(file.id||''))return;var a=el('a','',file.name);a.href='https://drive.google.com/file/d/'+encodeURIComponent(file.id)+'/view';a.target='_blank';a.rel='noopener';target.append(a);});
+        (files||[]).forEach(function(file){if(!/^[a-zA-Z0-9_-]+$/.test(file.id||''))return;var row=el('label','cg-folder-document'),a=el('a','',file.name);a.href='https://drive.google.com/file/d/'+encodeURIComponent(file.id)+'/view';a.target='_blank';a.rel='noopener';if(file.mimeType==='application/pdf'||/\.pdf$/i.test(file.name)||file.mimeType==='application/vnd.google-apps.document'){var check=el('input');check.type='checkbox';check.checked=(draft(snapshot).files||[]).indexOf(file.id)>=0;check.setAttribute('aria-label','Выбрать файл: '+file.name);check.addEventListener('change',function(){var state=draft(snapshot);state.files=(state.files||[]).filter(function(id){return id!==file.id;});if(check.checked)state.files.push(file.id);renderProjectDelivery();});row.append(check);}row.append(a);target.append(row);});
         if(error)target.append(el('small','cg-error',error));else if(!files||!files.length)target.append(el('small','', 'Подходящих документов в полученном списке пока нет.'));
       }
       async function load(){if(typeof win.driveListFolderItems!=='function')return;try{var files=await win.driveListFolderItems(snapshot.folderId);if(snapshot.scope!==scope())return;files=folderDocuments(files);documents.set(id,files);draw(files);}catch(error){draw(documents.get(id),message(error));}}
@@ -179,6 +180,7 @@
     function renderTemplates(snapshot,target) {
       if(typeof win.__getScriptsPanelData!=='function'){if(library)library(target);return;}
       var id=key(snapshot), base=win.__getScriptsPanelData(), data={auto:false,variants:{}}, ready=false, writable=false, saving=false;
+      if(!base.some(function(item){return item.id==='why-avito1';}))base.push({id:'why-avito1',label:'Почему Авито №1',emoji:'🏆',color:'#b7791f',text:'🏆 Направляю документ «Почему Авито №1»: как площадка может работать для вашего проекта, какие возможности стоит использовать и на что обратить внимание перед запуском. Посмотрите вместе с КП — так проще выбрать подходящий формат продвижения.'});
       var settings=el('details','cg-template-settings');settings.append(el('summary','','⚙ Настройки быстрых скриптов'));var check=el('input');check.type='checkbox';check.disabled=true;var label=el('label','cg-suggestion');label.append(check,el('span','','Автоматически добавлять вариант с данными захваченного проекта (локально, без платного API)'));settings.append(label);target.append(settings);
       target.append(el('p','cg-caption','Нажатие — копировать. Если вариантов несколько — выбрать. Правая кнопка мыши или удержание — настроить варианты.'));
       var cards=el('div','cg-template-grid');target.append(cards);var status=el('p','cg-caption');status.setAttribute('role','status');target.append(status);
@@ -325,6 +327,10 @@
     }
     async function pdfBlob(snapshot,job){
       assertPdfScope(snapshot);
+      if(job.type==='kp'&&job.pdfBlob){await validatePdf(job.pdfBlob);assertPdfScope(snapshot);return job.pdfBlob;}
+      if(job.file&&job.file.mimeType==='application/pdf'){
+        var pdfToken=await win.getDriveToken();assertPdfScope(snapshot);var raw=await win.fetch('https://www.googleapis.com/drive/v3/files/'+encodeURIComponent(job.file.id)+'?alt=media',{headers:{Authorization:'Bearer '+pdfToken},credentials:'omit',cache:'no-store',redirect:'error'});assertPdfScope(snapshot);if(!raw.ok)throw Error('Не удалось получить PDF из Drive.');var direct=await raw.blob();await validatePdf(direct);assertPdfScope(snapshot);return direct;
+      }
       if(job.file&&/^[a-zA-Z0-9_-]+$/.test(job.file.id||'')&&win._driveToken){
         var controller=new win.AbortController(),timer=win.setTimeout(function(){controller.abort();},30000);
         try{
@@ -375,6 +381,7 @@
       onChange: function (batch) { updateProgress(); renderResults(); renderStatus(); warmPdfs(batch); }
     });
     function showComments(type, snapshot, state, control) {
+      if(type.id==='kp'){originalSwitch.call(win,'kp');return;}
       var modal = el('dialog', 'cg-comments'); modal.setAttribute('aria-label', 'Комментарий: ' + type.title);
       modal.append(el('h3', '', type.emoji + ' ' + type.title), el('p', '', 'Уточнения только для этого документа. Подсказки добавляются по выбору.'));
       var input = el('textarea'); input.rows = 5; input.maxLength = 6000; input.value = state.comments[type.id] || ''; input.setAttribute('aria-label', 'Комментарий к документу'); modal.append(input);
@@ -472,6 +479,25 @@
       });
       var start = holder.querySelector('.cg-start'); if (start) start.disabled = !!runner.active();
       if (errorText) target.prepend(el('p', 'cg-error', errorText));
+      renderProjectDelivery();
+    }
+    function projectJobs(snapshot){
+      var found=new Map(),ready=kpReady.get(key(snapshot));
+      if(ready)found.set('kp',{type:'kp',title:'КП',emoji:'📋',state:'saved',html:'',file:{id:ready.pdf.id,url:ready.pdf.webViewLink||'https://drive.google.com/file/d/'+ready.pdf.id+'/view',mimeType:'application/pdf'},pdfBlob:ready.pdfBlob});
+      batches.filter(function(batch){return key(batch.snapshot)===key(snapshot)&&batch.snapshot.scope===scope();}).forEach(function(batch){batch.jobs.forEach(function(job){if(job.html||job.file)found.set(job.type,job);});});
+      var result=TYPES.filter(function(type){return draft(snapshot).selected.indexOf(type.id)>=0&&found.has(type.id);}).map(function(type){return found.get(type.id);});
+      (documents.get(key(snapshot))||[]).forEach(function(file){if((draft(snapshot).files||[]).indexOf(file.id)<0||result.some(function(job){return job.file&&job.file.id===file.id;}))return;var name=String(file.name||''),type=/кп|коммерчес/i.test(name)?'kp':/аналит|анализ/i.test(name)?'analysis':/нужно сейчас/i.test(name)?'presale':/авито|avito/i.test(name)?'avito1':/приложени/i.test(name)?'appendix':/договор/i.test(name)?'contract':/скрипт/i.test(name)?'scripts':'other';result.push({type:type,title:name,pdfFilename:name,state:'saved',file:{id:file.id,mimeType:file.mimeType||'application/pdf'}});});return result;
+    }
+    function renderProjectDelivery(){
+      if(!holder||!holder.isConnected||!panelSnapshot||panelSnapshot.scope!==scope())return;
+      var area=holder.querySelector('.cg-project-delivery');if(!area)return;var jobs=projectJobs(panelSnapshot),batch={snapshot:panelSnapshot,jobs:jobs};area.replaceChildren(el('strong','','Отправка файлов проекта'));
+      var selected=el('span','cg-caption',jobs.length?jobs.map(function(job){return job.title;}).join(' · '):'Сохраните КП или создайте документы, затем выберите их кнопками выше.');area.append(selected);
+      var send=button('В Telegram · '+jobs.length+' PDF',function(){pdfAction(batch,jobs,'share');},'cg-start'),download=button('Скачать выбранные PDF',function(){pdfAction(batch,jobs,'download');},'cg-pdf-button');send.disabled=download.disabled=!jobs.length;area.append(send,download);
+      var control=holder.querySelector('[data-doc-type="kp"]'),ready=kpReady.has(key(panelSnapshot)),state=draft(panelSnapshot);
+      if(control){control.classList.toggle('cg-document-ready',ready);control.textContent=ready?'📋 КП ✓':'📋 КП · создать';control.setAttribute('aria-pressed',String(state.selected.indexOf('kp')>=0));control.title=ready?'Полный КП в Word и PDF готов. Можно выбрать для отправки.':'Откройте редактор и сохраните полный КП.';}
+    }
+    async function loadReadyKp(snapshot){
+      if(!win.AVBKpDocuments)return;try{var ready=await win.AVBKpDocuments.latest(snapshot);if(snapshot.scope!==scope())return;if(ready){kpReady.set(key(snapshot),ready);var state=draft(snapshot);if(!state.kpTouched&&state.selected.indexOf('kp')<0)state.selected.unshift('kp');}renderProjectDelivery();}catch(error){if(snapshot.scope===scope()&&holder&&holder.isConnected){var area=holder.querySelector('.cg-project-delivery');if(area)area.append(el('small','cg-error',message(error)));}}
     }
     var progress = el('aside', 'cg-progress'); progress.hidden = true; progress.setAttribute('aria-label', 'Фоновая генерация документов');
     var progressOpen = button('', function () { showStatus(runner.active() || batches[batches.length - 1]); }), meter = el('progress'), progressClose = button('×', function () { if (runner.active()) runner.cancel(); else { dismissed = batches[batches.length - 1]; updateProgress(); } });
@@ -492,16 +518,18 @@
       container.replaceChildren(); holder = el('section', 'cg-panel'); container.append(holder);
       var snapshot;
       try { snapshot = captured(); } catch (error) { holder.append(el('h2', '', '🌀 Скрипт и документы'),telegramSettings(), el('p', 'cg-error', message(error))); if (library) { var fallback = el('div'); holder.append(fallback); library(fallback); } return; }
-      panelKey = key(snapshot); var state = draft(snapshot);
+      panelKey = key(snapshot); panelSnapshot=snapshot; var state = draft(snapshot);
       holder.append(button('← К папкам клиентов', function () { originalSwitch.call(win, 'analysis'); if (typeof win.showClientContentsBack === 'function') win.showClientContentsBack(); }, 'cg-back'));
-      var heading=el('div','cg-heading');heading.append(el('h2', '', '🌀 Скрипт и документы'),el('strong','cg-project-title',snapshot.title),telegramSettings());holder.append(heading);
+      var heading=el('div','cg-heading');heading.append(el('h2', '', 'КП и документы'),el('strong','cg-project-title',snapshot.title),telegramSettings());holder.append(heading);
+      var facts=el('div','cg-fact-chips');[['География',snapshot.data.city],['Ниша',snapshot.data.category]].forEach(function(item){var chip=el('span','cg-fact-chip');chip.append(el('small','',item[0]),el('strong','',item[1]||'Не указана'));facts.append(chip);});holder.append(facts);
       holder.append(el('p','cg-project-facts',suggestions(snapshot.data).join(' · ')||'Заполните данные клиента в левом меню — генераторы используют их автоматически.'));
       var folder = el('a', 'cg-folder', 'Открыть папку Drive ↗'); folder.href = 'https://drive.google.com/drive/folders/' + encodeURIComponent(snapshot.folderId); folder.target = '_blank'; folder.rel = 'noopener'; holder.append(folder);
       holder.append(el('p', 'cg-caption', 'Нажмите, чтобы выбрать документы. Удерживайте кнопку для комментария; также можно нажать её маленький карандаш.'));
       var choices = el('div', 'cg-choices');
       TYPES.forEach(function (type) {
         var wrap = el('div', 'cg-choice'), timer = null, held = false, x = 0, y = 0;
-        var control = button(type.emoji + ' ' + type.title, function () { if (held) { held = false; return; } var index = state.selected.indexOf(type.id); if (index < 0) state.selected.push(type.id); else state.selected.splice(index, 1); control.setAttribute('aria-pressed', String(state.selected.indexOf(type.id) >= 0)); start.textContent = 'Сгенерировать выбранное (' + state.selected.length + ')'; });
+        var control = button(type.emoji + ' ' + type.title, function () { if (held) { held = false; return; }if(type.id==='kp'&&!kpReady.has(key(snapshot))){originalSwitch.call(win,'kp');return;}if(type.id==='kp')state.kpTouched=true;var index = state.selected.indexOf(type.id); if (index < 0) state.selected.push(type.id); else state.selected.splice(index, 1); control.setAttribute('aria-pressed', String(state.selected.indexOf(type.id) >= 0)); start.textContent = 'Сгенерировать документы (' + state.selected.filter(function(id){return id!=='kp';}).length + ')';renderProjectDelivery(); });
+        control.setAttribute('data-doc-type',type.id);
         control.setAttribute('aria-pressed', String(state.selected.indexOf(type.id) >= 0)); control.classList.toggle('cg-has-comment', !!state.comments[type.id]);
         function stop() { if (timer) win.clearTimeout(timer); timer = null; }
         control.addEventListener('pointerdown', function (event) { if (event.button !== 0) return; held = false; x = event.clientX; y = event.clientY; stop(); timer = win.setTimeout(function () { timer = null; held = true; showComments(type, snapshot, state, control); }, 550); });
@@ -509,11 +537,11 @@
         ['pointerup', 'pointercancel', 'pointerleave'].forEach(function (event) { control.addEventListener(event, stop); });
         control.addEventListener('contextmenu', function (event) { event.preventDefault(); stop(); if (!held) showComments(type, snapshot, state, control); held = true; });
         control.addEventListener('keydown', function (event) { if (event.key === 'F2') { event.preventDefault(); showComments(type, snapshot, state, control); } });
-        var edit = button('✎', function () { showComments(type, snapshot, state, control); }, 'cg-edit'); edit.setAttribute('aria-label', 'Комментарий: ' + type.title); wrap.append(control, edit); choices.append(wrap);
+        var edit = button('✎', function () { if(type.id==='kp'){originalSwitch.call(win,'kp');return;}showComments(type, snapshot, state, control); }, 'cg-edit'); edit.setAttribute('aria-label', 'Комментарий: ' + type.title); wrap.append(control, edit); choices.append(wrap);
       }); holder.append(choices);
       var common=el('textarea','cg-common');common.rows=3;common.maxLength=6000;common.placeholder='Общий комментарий для всех выбранных документов';common.setAttribute('aria-label','Общий комментарий для всех документов');common.value=state.common||'';common.addEventListener('input',function(){state.common=common.value;});holder.append(common);
       var actions = el('div', 'cg-actions'), depth = el('select'); depth.setAttribute('aria-label', 'Подробность документов'); [['light', 'Кратко'], ['mid', 'Стандарт'], ['max', 'Подробно']].forEach(function (row) { var option = el('option', '', row[1]); option.value = row[0]; depth.append(option); }); depth.value = state.depth; depth.addEventListener('change', function () { state.depth = depth.value; });
-      var start = button('Сгенерировать выбранное (' + state.selected.length + ')', async function () {
+      var start = button('Сгенерировать документы (' + state.selected.filter(function(id){return id!=='kp';}).length + ')', async function () {
         if (runner.active()) return; errorText = '';
         try {
           var fresh = captured(); if (key(fresh) !== panelKey) { render(container); throw Error('Выбран другой проект. Проверьте документы и нажмите генерацию заново.'); }
@@ -521,11 +549,13 @@
           var batch = plan(fresh, state.selected, comments, function (type, data, comment) { return build(type, data, comment, state.depth); });
           batches.push(batch); dismissed = null; await runner.run(batch);
         } catch (error) { errorText = message(error); renderResults(); }
-      }, 'cg-start'); actions.append(depth, start); holder.append(actions, el('p', 'cg-caption', 'Выбранные документы и комментарии отправляются в текущий AI-сервис (Anthropic, платный API). Файлы сохраняются в захваченную папку Google Drive. Можно менять вкладки; не закрывайте страницу до завершения.'), el('div', 'cg-results'));
+      }, 'cg-start'); actions.append(depth, start); holder.append(actions, el('p', 'cg-caption', 'Аналитика и другие выбранные тексты создаются через текущий AI-сервис (Anthropic, платный API). КП берётся из сохранённого полного Word/PDF, повторно ИИ его не пересчитывает. Можно менять вкладки; не закрывайте страницу до завершения.'), el('div', 'cg-results'));
+      holder.append(el('section','cg-project-delivery'));loadReadyKp(snapshot);
       var files=el('section','cg-documents');holder.append(files);existingDocuments(snapshot,files);
       var templates = el('details', 'cg-library');templates.open=true; templates.append(el('summary', '', 'Быстрые скрипты и шаблоны сообщений')); var libraryHost = el('div'); templates.append(libraryHost); holder.append(templates); renderTemplates(snapshot,libraryHost); renderResults();
     }
     win.__showScriptsPanel = render;
+    doc.addEventListener('avitolog:kp-documents-updated',function(){if(panelSnapshot&&panelSnapshot.scope===scope())loadReadyKp(panelSnapshot);});
     var scriptTab = doc.getElementById('tab-scripts'); if (scriptTab) { var icon = scriptTab.querySelector('.rtab-ico'); if (icon) icon.textContent = '🌀'; }
     var lastKey = ''; win.setInterval(function () {
       updateProgress();

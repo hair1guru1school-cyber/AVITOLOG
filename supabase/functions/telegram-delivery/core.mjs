@@ -1,12 +1,14 @@
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-const CHAT=/^-[1-9][0-9]{4,19}$/, TYPES=['scripts','analysis','presale','avito1'];
+const CHAT=/^-[1-9][0-9]{4,19}$/, TYPES=['kp','analysis','presale','avito1','contract','appendix','other','scripts'];
 const enc=new TextEncoder(),fail=(status,code)=>Object.assign(Error(code),{status,code});
 const ORIGINS=['https://hair1guru1school-cyber.github.io','https://avitoboss.online'];
 export function normalizeTelegramTemplate(value={}){
  const text=(key,max,otherwise='')=>typeof value[key]==='string'?value[key].trim().slice(0,max):otherwise;
- const captions={},enabled={};for(const type of TYPES){captions[type]=typeof value.captions?.[type]==='string'?value.captions[type].trim().slice(0,800):'{document}';enabled[type]=value.enabled?.[type]!==false;}
- const order=Array.isArray(value.order)?value.order.filter((x,i,a)=>TYPES.includes(x)&&a.indexOf(x)===i):[];
- return {heading:text('heading',200,'{project}'),intro:text('intro',800),footer:text('footer',800,'{date}'),captions,enabled,order:order.concat(TYPES.filter(x=>!order.includes(x))),silent:value.silent!==false};
+ const defaults={kp:'🤝 Направляю подробное коммерческое предложение по проекту «{project}»: варианты продвижения, состав работ и стоимость. Посмотрите подходящий пакет — обсудим детали и следующий шаг.',analysis:'💡 Прикладываю анализ проекта «{project}»: рынок, целевую аудиторию, ключевые позиции и рекомендации по запуску. Он поможет оценить возможности продвижения и выбрать приоритеты.',presale:'⏰ Здесь — почему стоит рассмотреть запуск сейчас: текущая ситуация, подготовка и первые шаги для проекта «{project}».',avito1:'🏆 Почему Авито №1: собрал возможности площадки для проекта «{project}», её преимущества и моменты, которые важно учесть перед стартом. Посмотрите вместе с КП — так проще выбрать формат продвижения.',contract:'📜 Договор по проекту «{project}». Проверьте реквизиты, состав работ, сроки и стоимость. Напишите, если нужны уточнения.',appendix:'📎 Приложение к договору по проекту «{project}»: перечень работ и согласованные условия.',other:'Документ по проекту «{project}». Посмотрите, пожалуйста; готов обсудить вопросы.',scripts:'🌀 Подготовил скрипты для проекта «{project}»: ответы клиентам, уточнение задачи, предложение и работа с возражениями.'};
+ const captions={},enabled={};for(const type of TYPES){const caption=value.captions?.[type];captions[type]=typeof caption==='string'&&!(value.version!==2&&caption==='{document}')?caption.slice(0,800):defaults[type];enabled[type]=value.enabled?.[type]!==false;}
+ let order=Array.isArray(value.order)?value.order.filter((x,i,a)=>TYPES.includes(x)&&a.indexOf(x)===i):[];
+ if(value.version!==2)order=['kp',...order.filter(x=>x!=='kp'&&x!=='scripts')];order=order.concat(TYPES.filter(x=>!order.includes(x)));if(value.version!==2)order=order.filter(x=>x!=='scripts').concat('scripts');
+ return {version:2,heading:text('heading',200,'{project}'),intro:text('intro',800),footer:text('footer',800,'{date}'),captions,enabled,order,silent:value.silent!==false};
 }
 function text(value,max,required=false){if(typeof value!=='string'||value.length>max||/[\u0000-\u0008\u000b\u000c\u000e-\u001f]/.test(value)||required&&!value.trim())throw fail(400,'invalid_request');return value.trim();}
 export function richPdfMessage(manifest,files){

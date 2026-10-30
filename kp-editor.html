@@ -291,6 +291,7 @@
 
         <div class="toolbar">
           <button class="btn primary" id="saveBtn">Сохранить</button>
+          <small id="kpPersistStatus" role="status"></small>
           <button class="btn" id="resetBtn">Сбросить</button>
           <button class="btn" id="template3Btn">3 пакета</button>
           <button class="btn" id="template4Btn">4 пакета</button>
@@ -436,6 +437,10 @@
     let customHeroSrc = "";
     let customNicheImages = [];
     let formReady = false;
+    let durableStateLoaded = false;
+    let stateWriteTail = Promise.resolve();
+    let stateWriteVersion = 0;
+    let pendingImageWrites = 0;
     let packageFormDirty = false;
     let archiveGroupId = "services";
     let archiveMenuPreset = null;
@@ -644,6 +649,11 @@
     function persistState(){
       state.selectedPackage = clampSelectedPackage();
       try { safeSetJsonStorage(LS_KEY, state); } catch (e) {}
+      const snapshot = clone(state);
+      const storageId = editorStateId(), version = ++stateWriteVersion;
+      $("kpPersistStatus").textContent = "Сохраняем настройки…";
+      stateWriteTail = stateWriteTail.catch(() => {}).then(() => putCustomHeroImage({ id: storageId, type: "editor-state", value: snapshot }));
+      stateWriteTail.then(() => { if (version === stateWriteVersion) $("kpPersistStatus").textContent = "Настройки сохранены"; }, () => { if (version === stateWriteVersion) $("kpPersistStatus").textContent = "Браузер не подтвердил сохранение. Черновик не удалён."; });
     }
     function readSelectedPackageIndex(){
       try {
@@ -695,21 +705,30 @@
       });
     }
     async function heroDbRequest(mode, action){
-      const db = await openHeroDb();
+      const writing = mode === "readwrite";
+      if (writing) pendingImageWrites++;
+      let db;
       try {
+        db = await openHeroDb();
         return await new Promise((resolve, reject) => {
           const tx = db.transaction(HERO_DB_STORE, mode);
           const request = action(tx.objectStore(HERO_DB_STORE));
-          request.onsuccess = () => resolve(request.result);
-          request.onerror = () => reject(request.error);
+          tx.oncomplete = () => resolve(request.result);
+          tx.onerror = tx.onabort = () => reject(tx.error || request.error || new Error("Хранилище не подтвердило запись изображения"));
         });
       } finally {
-        db.close();
+        if (db) db.close();
+        if (writing) pendingImageWrites--;
       }
     }
-    function listCustomHeroImages(){ return heroDbRequest("readonly", (store) => store.getAll()); }
+    function listCustomHeroImages(){ return heroDbRequest("readonly", (store) => store.getAll()).then((rows) => rows.filter((row) => row && typeof row.dataUrl === "string")); }
     function getCustomHeroImage(id){ return heroDbRequest("readonly", (store) => store.get(id)); }
     function putCustomHeroImage(record){ return heroDbRequest("readwrite", (store) => store.put(record)); }
+    function editorStateId(){
+      let owner = "standalone";
+      try { if (window.parent !== window && window.parent.AVBKpDocuments) owner = window.parent.AVBKpDocuments.scope() || "loading"; } catch (e) {}
+      return "__editor-state:" + owner;
+    }
     async function imageFileToDataUrl(file){
       const source = URL.createObjectURL(file);
       try {
@@ -727,6 +746,10 @@
       }
     }
     async function preload(){
+      if (!durableStateLoaded) {
+        durableStateLoaded = true;
+        try { const stored = await getCustomHeroImage(editorStateId()); if (stored && stored.value && Array.isArray(stored.value.packages)) { state = Object.assign(clone(defaults), stored.value); selectedPackage = Number(state.selectedPackage) || 0; } } catch (e) { $("kpPersistStatus").textContent = "Хранилище фонов пока недоступно"; }
+      }
       images.bgDark = await loadImage(ASSETS.bgDark);
       images.bgClean = await loadImage(ASSETS.bgClean);
       images.bgReference = await loadImage(ASSETS.bgReference);
@@ -801,6 +824,14 @@
         card.className = "niche-card" + (state.heroCustomId === record.id ? " active" : "");
         card.innerHTML = `<img src="${record.dataUrl}" alt=""><span><span class="niche-name">📌 ${escapeHtml(record.name)}</span><span class="niche-path">${kind === "goods" ? "Товары" : "Услуги"} · загружено</span></span>`;
         card.addEventListener("click", () => selectCustomNicheImage(record));
+        card.title = "Нажать — выбрать. Правая кнопка — переименовать фон.";
+        card.addEventListener("contextmenu", async (event) => {
+          event.preventDefault();
+          const answer = prompt("Название фона", record.name);
+          if (answer === null || !answer.trim()) return;
+          const updated = Object.assign({}, record, { name: answer.trim().slice(0, 100) });
+          try { await putCustomHeroImage(updated); customNicheImages = customNicheImages.map((item) => item.id === updated.id ? updated : item); if (state.heroCustomId === updated.id) { state.heroName = updated.name; persistState(); } renderNicheLibrary(); $("kpPersistStatus").textContent = "Название фона сохранено"; } catch (error) { alert(error.message || "Не удалось сохранить название"); }
+        });
         grid.appendChild(card);
       });
     }
@@ -1249,13 +1280,13 @@
             saveTarget
           );
           if (!result || !result.id) throw new Error("Google Drive не подтвердил сохранение КП.");
-          button.textContent = "Сохранено ✓";
+          button.textContent = result.fullDocument ? "Word + PDF сохранены ✓" : "Сохранено ✓";
           button.title = result && result.name ? result.name : "КП сохранено в папку клиента";
           setTimeout(() => { button.textContent = "Сохранить КП"; button.disabled = false; }, 2200);
         } catch (error) {
           button.textContent = oldText;
           button.disabled = false;
-          alert(error && error.message ? error.message : String(error));
+          if (!error || error.code !== "cancelled") alert(error && error.message ? error.message : String(error));
         }
         return;
       }
@@ -1832,6 +1863,7 @@
       if (document.hidden) flushPackageForm();
     });
     window.addEventListener("pagehide", flushPackageForm);
+    window.addEventListener("beforeunload", (event) => { if (pendingImageWrites) { event.preventDefault(); event.returnValue = ""; } });
     $("bgChoice").addEventListener("change", draw);
     $("titleStyle").addEventListener("change", draw);
     $("titleScale").addEventListener("input", draw);
@@ -1868,6 +1900,7 @@
     $("heroFile").addEventListener("change", async (event) => {
       const file = event.target.files && event.target.files[0];
       if (!file) return;
+      if (!/^image\/(?:png|jpeg|webp)$/.test(file.type) || file.size > 20 * 1024 * 1024) { alert("Выберите PNG, JPEG или WebP до 20 МБ."); event.target.value = ""; return; }
       const defaultKind = $("presetKind").value === "goods" ? "товары" : "услуги";
       const kindAnswer = prompt("Куда сохранить картинку: товары или услуги?", defaultKind);
       if (kindAnswer === null) { event.target.value = ""; return; }
@@ -1881,7 +1914,7 @@
       }
       const defaultName = file.name.replace(/\.[^.]+$/, "");
       const nameAnswer = prompt("Как назвать картинку?", defaultName);
-      const name = nameAnswer && nameAnswer.trim();
+      const name = nameAnswer && nameAnswer.trim().slice(0, 100);
       if (!name) { event.target.value = ""; return; }
       try {
         const record = {
@@ -1903,7 +1936,7 @@
     });
     if (document.body.classList.contains("embedded")) {
       $("downloadBtn").textContent = "Сохранить КП";
-      $("downloadBtn").title = "Сохранить PNG в папку выбранного клиента";
+      $("downloadBtn").title = "Выбрать обложку и сохранить полный КП в Word и PDF";
     }
     $("downloadBtn").addEventListener("click", downloadPng);
     $("copyTextBtn").addEventListener("click", async () => {
@@ -1917,6 +1950,7 @@
       state = clone(defaults);
       selectedPackage = 0;
       persistSelectedPackage();
+      persistState();
       preload();
     });
     $("template3Btn").addEventListener("click", () => applyPackageTemplate(3));
