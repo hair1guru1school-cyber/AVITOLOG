@@ -64,6 +64,8 @@
     .niche-card{display:grid;grid-template-columns:70px 1fr;gap:9px;align-items:center;text-align:left;border:1px solid rgba(255,255,255,.09);border-radius:8px;background:rgba(255,255,255,.035);color:#edf6ff;padding:7px}
     .niche-card:hover,.niche-card.active{border-color:rgba(255,212,95,.75);background:rgba(255,212,95,.1)}
     .niche-card img{width:70px;height:48px;object-fit:cover;border-radius:6px;background:#101722}
+    .niche-item{position:relative}.niche-item .niche-card{width:100%;padding-right:33px}.niche-rename{position:absolute;right:5px;top:7px;width:26px;height:28px;border:1px solid #ffffff25;border-radius:6px;background:#172438;color:#dcecff;font-size:14px}
+    .kp-image-details{width:min(420px,calc(100vw - 28px));max-height:85dvh;overflow:auto;padding:18px;border:1px solid var(--line);border-radius:12px;background:var(--panel);color:var(--text)}.kp-image-details::backdrop{background:#0009}.kp-image-details label{display:block;margin:12px 0;font-size:13px}.kp-image-details input,.kp-image-details select{display:block;width:100%;min-height:36px;margin-top:6px;padding:7px;border:1px solid var(--line);border-radius:7px;background:var(--panel2);color:var(--text)}.kp-image-details .toolbar{justify-content:flex-end}
     .niche-name{font-size:12px;line-height:1.15;font-weight:900}
     .niche-path{font-size:10px;color:#91a5bb;margin-top:3px}
     .editor{position:sticky;top:76px;transform-origin:top right}
@@ -441,6 +443,7 @@
     let stateWriteTail = Promise.resolve();
     let stateWriteVersion = 0;
     let pendingImageWrites = 0;
+    let initialLoad = null, heroLoadTask = Promise.resolve(), heroLoadVersion = 0, loadedHeroSource = "", imageSaving = false, heroAliases = {};
     let packageFormDirty = false;
     let archiveGroupId = "services";
     let archiveMenuPreset = null;
@@ -692,6 +695,33 @@
         img.src = src;
       });
     }
+    function imageNotice(error){ $("kpPersistStatus").textContent = error && error.message || "Картинка не загрузилась. Выберите её повторно."; }
+    function loadHero(src){
+      const version = ++heroLoadVersion;
+      const task = loadImage(src).then((image) => {
+        if (version !== heroLoadVersion) return false;
+        if (!image || !(image.naturalWidth || image.width)) throw new Error("Картинка КП не загрузилась. Экспорт без неё остановлен; выберите картинку повторно.");
+        images.hero = image; loadedHeroSource = src; return true;
+      });
+      heroLoadTask = task; task.catch(() => {}); return task;
+    }
+    async function selectedHeroSource(){
+      if (state.heroCustomId) { const record = await getCustomHeroImage(state.heroCustomId); if (!record || !record.dataUrl) throw new Error("Сохранённая картинка недоступна. Загрузите её повторно — КП без картинки не сохранится."); return record.dataUrl; }
+      return customHeroSrc || state.heroSrc || ASSETS.hero;
+    }
+    async function prepareImageExport(){
+      if (initialLoad) await initialLoad;
+      await heroLoadTask.catch(() => {});
+      const src = await selectedHeroSource();
+      if (!images.hero || loadedHeroSource !== src) await loadHero(src);
+      if (!images.hero || loadedHeroSource !== src) throw new Error("Дождитесь загрузки выбранной картинки и сохраните ещё раз.");
+      await stateWriteTail; draw();
+    }
+    async function rememberInlineHero(dataUrl,name){
+      let record = customNicheImages.find((item) => item.dataUrl === dataUrl);
+      if (!record) { record = { id: crypto.randomUUID(), kind: $("presetKind").value === "goods" ? "goods" : "services", name: name || "Картинка из шаблона", dataUrl, createdAt: new Date().toISOString() }; await putCustomHeroImage(record); customNicheImages.unshift(record); }
+      await selectCustomNicheImage(record);
+    }
     function openHeroDb(){
       return new Promise((resolve, reject) => {
         const request = indexedDB.open(HERO_DB_NAME, 1);
@@ -721,7 +751,7 @@
         if (writing) pendingImageWrites--;
       }
     }
-    function listCustomHeroImages(){ return heroDbRequest("readonly", (store) => store.getAll()).then((rows) => rows.filter((row) => row && typeof row.dataUrl === "string")); }
+    function listCustomHeroImages(){ return heroDbRequest("readonly", (store) => store.getAll()).then((rows) => { heroAliases = {}; rows.filter((row) => row && row.type === "hero-alias" && row.owner === editorStateId()).forEach((row) => { heroAliases[row.src] = row.name; }); return rows.filter((row) => row && typeof row.dataUrl === "string"); }); }
     function getCustomHeroImage(id){ return heroDbRequest("readonly", (store) => store.get(id)); }
     function putCustomHeroImage(record){ return heroDbRequest("readwrite", (store) => store.put(record)); }
     function editorStateId(){
@@ -759,7 +789,7 @@
       if (state.heroCustomId) {
         try { customRecord = await getCustomHeroImage(state.heroCustomId); } catch (e) {}
       }
-      images.hero = await loadImage((customRecord && customRecord.dataUrl) || customHeroSrc || state.heroSrc || ASSETS.hero);
+      try { await loadHero((customRecord && customRecord.dataUrl) || customHeroSrc || state.heroSrc || ASSETS.hero); } catch (error) { imageNotice(error); }
       images.footer = await loadImage(ASSETS.footer);
       images.titleSimple = await loadImage(ASSETS.titleSimple);
       images.titleColor = await loadImage(ASSETS.titleColor);
@@ -809,48 +839,53 @@
       const grid = $(gridId);
       grid.innerHTML = "";
       NICHE_LIBRARY[kind].forEach((file) => {
-        const name = cleanNicheName(file);
         const src = nichePath(file);
+        const name = heroAliases[src] || cleanNicheName(file);
         const card = document.createElement("button");
         card.type = "button";
         card.className = "niche-card" + (state.heroSrc === src ? " active" : "");
         card.innerHTML = `<img src="${src}" alt=""><span><span class="niche-name">${emojiForNiche(name)} ${name}</span><span class="niche-path">${kind === "goods" ? "Товары" : "Услуги"}</span></span>`;
-        card.addEventListener("click", () => selectNicheImage(src, name));
-        grid.appendChild(card);
+        card.addEventListener("click", () => selectNicheImage(src, name).catch(imageNotice));
+        appendNicheCard(grid,card,name,async (value) => { await putCustomHeroImage({ id: editorStateId()+":alias:"+src, type:"hero-alias", owner:editorStateId(), src, name:value }); heroAliases[src]=value; if(state.heroSrc===src){state.heroName=value;persistState();await stateWriteTail;} });
       });
       customNicheImages.filter((record) => record.kind === kind).forEach((record) => {
         const card = document.createElement("button");
         card.type = "button";
         card.className = "niche-card" + (state.heroCustomId === record.id ? " active" : "");
         card.innerHTML = `<img src="${record.dataUrl}" alt=""><span><span class="niche-name">📌 ${escapeHtml(record.name)}</span><span class="niche-path">${kind === "goods" ? "Товары" : "Услуги"} · загружено</span></span>`;
-        card.addEventListener("click", () => selectCustomNicheImage(record));
+        card.addEventListener("click", () => selectCustomNicheImage(record).catch(imageNotice));
         card.title = "Нажать — выбрать. Правая кнопка — переименовать фон.";
-        card.addEventListener("contextmenu", async (event) => {
-          event.preventDefault();
-          const answer = prompt("Название фона", record.name);
-          if (answer === null || !answer.trim()) return;
-          const updated = Object.assign({}, record, { name: answer.trim().slice(0, 100) });
-          try { await putCustomHeroImage(updated); customNicheImages = customNicheImages.map((item) => item.id === updated.id ? updated : item); if (state.heroCustomId === updated.id) { state.heroName = updated.name; persistState(); } renderNicheLibrary(); $("kpPersistStatus").textContent = "Название фона сохранено"; } catch (error) { alert(error.message || "Не удалось сохранить название"); }
-        });
-        grid.appendChild(card);
+        appendNicheCard(grid,card,record.name,async (value) => { const updated=Object.assign({},record,{name:value}); await putCustomHeroImage(updated);customNicheImages=customNicheImages.map((item)=>item.id===updated.id?updated:item);if(state.heroCustomId===updated.id){state.heroName=updated.name;persistState();await stateWriteTail;} });
+      });
+    }
+    function appendNicheCard(grid,card,name,saveName){
+      const wrap=document.createElement("div"),rename=document.createElement("button");wrap.className="niche-item";rename.className="niche-rename";rename.type="button";rename.textContent="✎";rename.title="Переименовать картинку";rename.setAttribute("aria-label","Переименовать: "+name);
+      async function edit(event){event.preventDefault();if(imageSaving)return;const answer=await askImageDetails(name,"services",true);if(!answer)return;try{await saveName(answer.name);renderNicheLibrary();$("kpPersistStatus").textContent="Название фона сохранено";}catch(error){imageNotice(error);}}
+      card.addEventListener("contextmenu",edit);rename.addEventListener("click",edit);wrap.append(card,rename);grid.append(wrap);
+    }
+    function askImageDetails(name,kind,renameOnly){
+      return new Promise((resolve)=>{const modal=document.createElement("dialog"),form=document.createElement("form"),title=document.createElement("h3"),label=document.createElement("label"),input=document.createElement("input"),groupLabel=document.createElement("label"),group=document.createElement("select"),actions=document.createElement("div"),save=document.createElement("button"),cancel=document.createElement("button");let result=null;
+        modal.className="kp-image-details";title.textContent=renameOnly?"Название картинки":"Сохранить картинку";label.textContent="Название картинки";input.value=name||"";input.maxLength=100;input.required=true;label.append(input);groupLabel.textContent="Раздел библиотеки";[["services","Услуги"],["goods","Товары"]].forEach(([value,text])=>{const option=document.createElement("option");option.value=value;option.textContent=text;group.append(option);});group.value=kind||"services";groupLabel.append(group);save.type="submit";save.className="btn primary";save.textContent="Сохранить";cancel.type="button";cancel.className="btn";cancel.textContent="Отмена";cancel.addEventListener("click",()=>modal.close());actions.className="toolbar";actions.append(cancel,save);form.append(title,label);if(!renameOnly)form.append(groupLabel);form.append(actions);modal.append(form);form.addEventListener("submit",(event)=>{event.preventDefault();if(!input.value.trim()){input.focus();return;}result={name:input.value.trim().slice(0,100),kind:group.value};modal.close();});modal.addEventListener("close",()=>{modal.remove();resolve(result);});document.body.append(modal);modal.showModal();input.focus();input.select();
       });
     }
     async function selectNicheImage(src, name){
+      if(imageSaving)return;if(initialLoad)await initialLoad;
+      if(!await loadHero(src))return;
       customHeroSrc = "";
       state.heroCustomId = "";
       state.heroSrc = src;
       state.heroName = name;
-      images.hero = await loadImage(src);
       renderNicheLibrary();
       saveState();
       draw();
     }
     async function selectCustomNicheImage(record){
+      if(imageSaving)return;if(initialLoad)await initialLoad;
+      if(!await loadHero(record.dataUrl))return;
       customHeroSrc = "";
       state.heroCustomId = record.id;
       state.heroSrc = "";
       state.heroName = record.name;
-      images.hero = await loadImage(record.dataUrl);
       renderNicheLibrary();
       saveState();
       draw();
@@ -1250,11 +1285,13 @@
       });
     }
     async function downloadPng(){
-      draw();
       const embedded = document.body.classList.contains("embedded");
       const button = $("downloadBtn");
+      const beforeText=button.textContent;
+      if(imageSaving)return;imageSaving=true;button.disabled=true;button.textContent="Проверяем картинку…";
+      try { await prepareImageExport(); } catch(error) {imageSaving=false;button.disabled=false;button.textContent=embedded?"Сохранить КП":"Скачать PNG";imageNotice(error);alert(error.message);return;}
       if (embedded && window.parent && typeof window.parent.__saveKpPngToActiveClient === "function") {
-        const oldText = button.textContent;
+        const oldText = beforeText;
         button.disabled = true;
         button.textContent = "Сохраняю...";
         try {
@@ -1282,16 +1319,17 @@
           if (!result || !result.id) throw new Error("Google Drive не подтвердил сохранение КП.");
           button.textContent = result.fullDocument ? "Word + PDF сохранены ✓" : "Сохранено ✓";
           button.title = result && result.name ? result.name : "КП сохранено в папку клиента";
-          setTimeout(() => { button.textContent = "Сохранить КП"; button.disabled = false; }, 2200);
+          setTimeout(() => { button.textContent = "Сохранить КП"; button.disabled = false; imageSaving=false; }, 2200);
         } catch (error) {
           button.textContent = oldText;
           button.disabled = false;
+          imageSaving=false;
           if (!error || error.code !== "cancelled") alert(error && error.message ? error.message : String(error));
         }
         return;
       }
-      if (embedded) { alert("Сохранение в Drive недоступно. Обновите основную страницу и выберите клиента."); return; }
-      const oldText = button.textContent;
+      if (embedded) { imageSaving=false;button.disabled=false;button.textContent="Сохранить КП";alert("Сохранение в Drive недоступно. Обновите основную страницу и выберите клиента."); return; }
+      const oldText = beforeText;
       button.disabled = true;
       button.textContent = "Готовлю PNG...";
       let objectUrl;
@@ -1310,6 +1348,7 @@
         if (objectUrl) setTimeout(() => URL.revokeObjectURL(objectUrl), 60000);
         button.disabled = false;
         button.textContent = oldText;
+        imageSaving=false;
       }
     }
     function applyPackageTemplate(count){
@@ -1403,20 +1442,14 @@
         if (record) {
           await selectCustomNicheImage(record);
         } else if (preset.heroDataUrl) {
-          customHeroSrc = preset.heroDataUrl;
-          state.heroSrc = "";
-          state.heroCustomId = "";
-          state.heroName = preset.heroName || state.heroName;
-          images.hero = await loadImage(customHeroSrc);
+          await rememberInlineHero(preset.heroDataUrl,preset.heroName);
+        } else {
+          throw new Error("Картинка этого шаблона недоступна. Выберите или загрузите её повторно.");
         }
       } else if (preset.heroSrc) {
         await selectNicheImage(preset.heroSrc, preset.heroName || "");
       } else if (preset.heroDataUrl) {
-        customHeroSrc = preset.heroDataUrl;
-        state.heroSrc = "";
-        state.heroCustomId = "";
-        state.heroName = preset.heroName || state.heroName;
-        images.hero = await loadImage(customHeroSrc);
+        await rememberInlineHero(preset.heroDataUrl,preset.heroName);
       }
       selectedPackage = 0;
       persistSelectedPackage();
@@ -1426,7 +1459,7 @@
     function applySelectedPreset(){
       const kind = $("presetKind").value || "services";
       const presets = getPackagePresets()[kind] || [];
-      applyPresetRecord(presets[Number($("presetSelect").value || 0)]);
+      applyPresetRecord(presets[Number($("presetSelect").value || 0)]).catch(imageNotice);
     }
     function currentPresetRecord(name, groupId, emoji){
       readGlobalForm();
@@ -1901,21 +1934,10 @@
       const file = event.target.files && event.target.files[0];
       if (!file) return;
       if (!/^image\/(?:png|jpeg|webp)$/.test(file.type) || file.size > 20 * 1024 * 1024) { alert("Выберите PNG, JPEG или WebP до 20 МБ."); event.target.value = ""; return; }
-      const defaultKind = $("presetKind").value === "goods" ? "товары" : "услуги";
-      const kindAnswer = prompt("Куда сохранить картинку: товары или услуги?", defaultKind);
-      if (kindAnswer === null) { event.target.value = ""; return; }
-      const normalizedKind = kindAnswer.trim().toLowerCase();
-      const kind = normalizedKind.startsWith("тов") || normalizedKind === "goods" ? "goods"
-        : normalizedKind.startsWith("усл") || normalizedKind === "services" ? "services" : "";
-      if (!kind) {
-        alert("Напишите «товары» или «услуги».");
-        event.target.value = "";
-        return;
-      }
       const defaultName = file.name.replace(/\.[^.]+$/, "");
-      const nameAnswer = prompt("Как назвать картинку?", defaultName);
-      const name = nameAnswer && nameAnswer.trim().slice(0, 100);
-      if (!name) { event.target.value = ""; return; }
+      const details=await askImageDetails(defaultName,$("presetKind").value === "goods"?"goods":"services",false);
+      if(!details){event.target.value="";return;}
+      const {name,kind}=details;
       try {
         const record = {
           id: crypto.randomUUID ? crypto.randomUUID() : `hero-${Date.now()}`,
@@ -1926,7 +1948,7 @@
         };
         await putCustomHeroImage(record);
         customNicheImages = [record].concat(customNicheImages.filter((item) => item.id !== record.id));
-        await selectCustomNicheImage(record);
+        if(initialLoad)await initialLoad;await selectCustomNicheImage(record);
         toggleNichePanels(true);
       } catch (error) {
         alert(error && error.message ? error.message : "Не удалось сохранить изображение");
@@ -1951,7 +1973,7 @@
       selectedPackage = 0;
       persistSelectedPackage();
       persistState();
-      preload();
+      $("downloadBtn").disabled=true;initialLoad=preload().finally(()=>{if(!imageSaving)$("downloadBtn").disabled=false;});
     });
     $("template3Btn").addEventListener("click", () => applyPackageTemplate(3));
     $("template4Btn").addEventListener("click", () => applyPackageTemplate(4));
@@ -1973,7 +1995,8 @@
 
     initResizableLayout();
     initEditorZoom();
-    preload();
+    $("downloadBtn").disabled=true;
+    initialLoad=preload().finally(()=>{if(!imageSaving)$("downloadBtn").disabled=false;});
     if (document.fonts && document.fonts.ready) {
       document.fonts.ready.then(draw);
     }
