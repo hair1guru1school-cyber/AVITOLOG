@@ -92,9 +92,14 @@
     win.setInterval(function(){var owner=scope();dialogs.forEach(function(value,modal){if(value!==owner)modal.close();});if(!visibleJob||visibleJob.owner!==owner)banner.hidden=true;},800);
     win.addEventListener('beforeunload',function(event){if(pending){event.preventDefault();event.returnValue='';}});
     async function headerImage(snapshot){
-      var owner=scope(),ready=await latest(snapshot);guard(owner);if(!ready||!ready.pngBlob)return null;
-      try{var source=ready.heroDataUrl||ready.heroSrc||'',url=new win.URL(source,win.location.href),data=/^data:image\/(png|jpeg|webp);base64,[a-zA-Z0-9+/=]+$/.test(source)&&source.length<=250000,local=url.origin===win.location.origin&&/\/(Cp-Constructor|assets)\/.*\.(png|jpe?g|webp)$/i.test(url.pathname);if(source&&(data||local)){var response=await win.fetch(data?source:url.href,{credentials:'omit'});if(response.ok){var raw=await response.blob();if(raw.size<=5*1024*1024){var prepared=await imageBlob(raw,'image/jpeg',1600,.9);guard(owner);return prepared;}}}}catch(error){if(error.code==='context_changed')throw error;}
-      return new Promise(function(resolve,reject){var url=win.URL.createObjectURL(ready.pngBlob),image=new win.Image();function cleanup(){win.URL.revokeObjectURL(url);}image.onerror=function(){cleanup();reject(fail('Картинка сохранённого КП не загрузилась.'));};image.onload=function(){try{guard(owner);var w=image.naturalWidth,h=image.naturalHeight;if(!w||!h||Math.abs(w/h-1414/2000)>.02)throw fail('Нужен сохранённый лист КП стандартного размера.');var canvas=doc.createElement('canvas'),scale=w/1414;canvas.width=1200;canvas.height=705;canvas.getContext('2d').drawImage(image,60*scale,35*scale,1294*scale,760*scale,0,0,1200,705);canvas.toBlob(function(blob){cleanup();canvas.width=canvas.height=0;try{guard(owner);if(!blob)throw fail('Не удалось подготовить шапку КП.');resolve(blob);}catch(error){reject(error);}},'image/jpeg',.9);}catch(error){cleanup();reject(error);}};image.src=url;});
+      var owner=scope(),ready=await latest(snapshot);guard(owner);if(!ready)return null;
+      // Use the editor's raw hero only, never the Word cover or a crop with rendered text.
+      var sources=[ready.heroDataUrl,ready.heroSrc];
+      for(var source of sources){
+        if(typeof source!=='string'||!source)continue;
+        try{var url=new win.URL(source,win.location.href),pathname=decodeURIComponent(url.pathname),data=/^data:image\/(png|jpeg|webp);base64,[a-zA-Z0-9+/=]+$/.test(source)&&source.length<=250000,local=url.origin===win.location.origin&&/\/(Cp-Constructor|assets|КАРТИНКИ КП)\/.*\.(png|jpe?g|webp)$/i.test(pathname)&&!/(?:^|\/)kp-hero-default\.png$/i.test(pathname);if(!data&&!local)continue;var response=await win.fetch(data?source:url.href,{credentials:'omit',redirect:'error'});guard(owner);if(!response.ok)continue;var raw=await response.blob();if(raw.size>5*1024*1024)continue;var prepared=await imageBlob(raw,'image/jpeg',1600,.9);guard(owner);return prepared;}catch(error){if(error.code==='context_changed')throw error;}
+      }
+      return null;
     }
     return Object.freeze({scope:scope,settings:settings,save:save,latest:latest,headerImage:headerImage,importTemplate:importTemplate,download:download});
   }
