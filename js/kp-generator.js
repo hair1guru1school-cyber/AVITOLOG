@@ -1,5 +1,5 @@
 /**
- * Вкладка «КП»: шаблоны Canva (товары / услуги), черновик, превью картинки.
+ * Вкладка «КП»: встроенный редактор и привязка к проекту.
  */
 (function () {
   var KP_TEMPLATES_STORE = 'avitolog_kp_templates_v1';
@@ -978,7 +978,7 @@
     return (
       '<div class="kp-gen-section kp-editor-embed-section">' +
       '<div class="kp-gen-label">Расчет КП</div>' +
-      '<iframe class="kp-editor-embed" src="kp-editor.html?embedded=1&amp;v=20261031-kp-library1" title="Редактор КП"></iframe>' +
+      '<iframe class="kp-editor-embed" src="kp-editor.html?embedded=1&amp;v=20261031-kp-controls1" title="Редактор КП"></iframe>' +
       '</div>'
     );
   }
@@ -1576,29 +1576,7 @@
       } catch (e1) {}
     }
 
-    // The integrated KP tab is the editor itself; no intermediate create screen.
-    var composerOpen = true;
-
-    var createKpBlock =
-      !composerOpen
-        ? '<div class="kp-gen-section kp-create-kp-wrap">' +
-          '<button type="button" class="kp-btn kp-btn-primary kp-create-kp-btn" id="kpCreateKpBtn">Создать КП</button>' +
-          '<p class="kp-create-kp-hint">Сначала выбери шаблон Canva выше, затем нажми — откроется шаблон КП и пакеты. Фото появится после выбора ниши.</p>' +
-          '</div>'
-        : '';
-
-    var block2Html = composerOpen ? buildEmbeddedEditorHtml() : '';
-    var tSel = templateForDraft(d.templateId);
-    var actionsHtml = composerOpen
-      ? '<div class="kp-gen-actions">' +
-        '<a class="kp-btn kp-btn-primary" id="kpOpenCanva" target="_blank" rel="noopener" href="' +
-        esc(tSel.editUrl || '#') +
-        '">Открыть шаблон в Canva</a>' +
-        '<button type="button" class="kp-btn kp-btn-secondary" id="kpCopyBrief">Скопировать текст для вставки</button>' +
-        '<button type="button" class="kp-btn kp-btn-ghost" id="kpAiSuggest">Подсказать заголовок (AI)</button>' +
-        '</div>' +
-        '<p class="kp-gen-note">Автозапись макета в Canva без <a href="https://www.canva.com/developers/" target="_blank" rel="noopener">Canva Connect API</a> недоступна: дублируйте шаблон в Canva и подставьте поля вручную или через копирование текста выше.</p>'
-      : '';
+    var block2Html = buildEmbeddedEditorHtml();
 
     mc.innerHTML =
       '<div class="kp-generator">' +
@@ -1609,12 +1587,7 @@
       '<button type="button" class="kp-client-target" id="kpClientTarget" title="Открыть папку клиента" hidden><span>👤</span><b id="kpClientName"></b><span>📁</span></button>' +
       '<span class="kp-client-empty" id="kpClientEmpty">Выберите клиента в левом меню</span></div>' +
       '</div>' +
-      createKpBlock +
       block2Html +
-      actionsHtml +
-      '<div class="kp-gen-section kp-canva-section">' +
-      buildCanvaToggleHtml(d) +
-      '</div>' +
       '</div>';
 
     wire(mc);
@@ -1660,7 +1633,7 @@
       'body.kp-tab .kp-generator{width:calc(100% - 12px);max-width:none!important;margin:0 6px;padding:10px 0 28px}',
       '.kp-editor-embed-section{padding:0!important;overflow:hidden;border-color:rgba(0,217,126,.28)!important}',
       '.kp-editor-embed-section .kp-gen-label{padding:12px 14px 0}',
-      '.kp-editor-embed{display:block;width:100%;height:1380px;min-height:calc(100vh - 110px);border:0;background:#05080d;border-radius:8px}',
+      '.kp-editor-embed{display:block;width:100%;height:calc(100dvh - 180px);min-height:420px;border:0;background:#05080d;border-radius:8px}',
       '.kp-canva-section{margin-top:14px;padding:10px 0 2px}',
       '.kp-gen-head{position:static;display:flex;align-items:center;flex-wrap:nowrap;gap:12px;overflow-x:auto;scrollbar-width:thin;padding:5px 10px;margin-bottom:8px;border:1px solid var(--border);border-radius:8px;background:var(--surface)}',
       '.kp-gen-head>.kp-gen-title{flex:0 0 auto;font-size:12px;font-weight:700;color:var(--muted);margin:0;white-space:nowrap}',
@@ -1671,8 +1644,7 @@
       '.kp-client-target[hidden],.kp-client-empty[hidden]{display:none!important}',
       '.kp-client-target b{white-space:nowrap}',
       '.kp-client-target:hover{background:rgba(0,217,126,.17);box-shadow:0 0 16px rgba(0,217,126,.12)}',
-      '.kp-client-empty{font-size:12px;color:var(--muted);font-weight:600}',
-      '@media(max-width:900px){.kp-editor-embed{height:1240px;min-height:1240px}}'
+      '.kp-client-empty{font-size:12px;color:var(--muted);font-weight:600}'
     ].join('\n');
     document.head.appendChild(st);
   }
