@@ -55,6 +55,8 @@
     .click-zone.active{outline:0;box-shadow:none;background:transparent!important}
     .hero-zone{position:absolute;left:3.8%;top:1.75%;width:91.5%;height:38%;border:0;border-radius:18px;background:transparent!important;padding:0;appearance:none;-webkit-appearance:none;color:transparent}
     .hero-zone:hover,.hero-zone.active{outline:2px dashed rgba(255,212,95,.82);outline-offset:-4px;background:rgba(255,212,95,.04)!important}
+    .hero-library-badge{position:absolute;right:6%;top:3%;z-index:5;min-width:34px;height:30px;padding:0 7px;border:1px solid var(--cyan);border-radius:7px;background:#102538;color:#fff;box-shadow:0 3px 12px #0008;font-size:17px}.hero-library-badge[hidden]{display:none!important}
+    .hero-library-dialog{width:min(1060px,calc(100vw - 24px));max-height:90dvh;overflow:auto;padding:16px;border:1px solid var(--line);border-radius:12px;background:var(--panel);color:var(--text)}.hero-library-dialog::backdrop{background:#000b}.hero-library-dialog .modal-head{position:static;flex-wrap:wrap}.hero-library-groups{display:flex;gap:6px;flex-wrap:wrap;margin:12px 0}.hero-library-groups .btn[aria-pressed="true"]{border-color:var(--green);color:var(--green)}.hero-library-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px}.hero-library-grid .niche-card{display:flex;flex-direction:column;align-items:stretch;min-height:180px;height:100%;padding:8px}.hero-library-grid .niche-card img{width:100%;height:120px;object-fit:cover}.hero-library-grid .niche-card>span{padding-right:24px}.hero-library-grid .niche-name{display:block;overflow-wrap:anywhere}.hero-library-grid .niche-path{display:block}.hero-library-dialog .hero-library-search{max-width:300px}.hero-library-status{min-height:20px;margin-top:10px;color:var(--muted);font-size:13px}
     .niche-panel{position:absolute;top:38px;width:290px;max-height:620px;overflow:auto;border:1px solid rgba(93,229,255,.24);border-radius:8px;background:rgba(4,8,14,.96);box-shadow:0 24px 70px rgba(0,0,0,.55);padding:12px;display:none;gap:9px;z-index:4}
     .niche-panel.open{display:flex;flex-direction:column}
     .niche-panel.left{right:calc(100% + 18px)}
@@ -182,6 +184,7 @@
         <div class="stage" id="stage">
           <canvas id="kpCanvas" width="1414" height="2000"></canvas>
           <button class="hero-zone" id="heroZone" type="button" aria-label="Выбрать картинку шапки"></button>
+          <button class="hero-library-badge" id="heroLibraryBadge" type="button" aria-label="Библиотека картинок КП" title="Картинки · названия и группы" hidden>🖼</button>
           <div class="niche-panel left" id="goodsPanel">
             <div class="niche-title">Товары</div>
             <div class="niche-grid" id="goodsGrid"></div>
@@ -438,6 +441,8 @@
     let selectedPackage = readSelectedPackageIndex();
     let customHeroSrc = "";
     let customNicheImages = [];
+    let heroLibrary = { groups: [{id:"services",name:"Услуги"},{id:"goods",name:"Товары"}], items: {} };
+    let heroLibraryDialog = null, heroLibraryGroup = "all", heroLibraryQuery = "", heroLibraryBusy = false, heroLibraryWriteTail = Promise.resolve();
     let formReady = false;
     let durableStateLoaded = false;
     let stateWriteTail = Promise.resolve();
@@ -751,13 +756,57 @@
         if (writing) pendingImageWrites--;
       }
     }
-    function listCustomHeroImages(){ return heroDbRequest("readonly", (store) => store.getAll()).then((rows) => { heroAliases = {}; rows.filter((row) => row && row.type === "hero-alias" && row.owner === editorStateId()).forEach((row) => { heroAliases[row.src] = row.name; }); return rows.filter((row) => row && typeof row.dataUrl === "string"); }); }
+    function listCustomHeroImages(){ const owner=editorStateId();return heroDbRequest("readonly", (store) => store.getAll()).then((rows) => { if(owner!==editorStateId())throw new Error("Режим изменился. Откройте библиотеку заново.");heroAliases = {}; rows.filter((row) => row && row.type === "hero-alias" && row.owner === owner).forEach((row) => { heroAliases[row.src] = row.name; });heroLibrary=normalizeHeroLibrary((rows.find(row=>row&&row.id===owner+":hero-library")||{}).value);return rows.filter((row) => row && typeof row.dataUrl === "string"); }); }
     function getCustomHeroImage(id){ return heroDbRequest("readonly", (store) => store.get(id)); }
     function putCustomHeroImage(record){ return heroDbRequest("readwrite", (store) => store.put(record)); }
     function editorStateId(){
       let owner = "standalone";
       try { if (window.parent !== window && window.parent.AVBKpDocuments) owner = window.parent.AVBKpDocuments.scope() || "loading"; } catch (e) {}
       return "__editor-state:" + owner;
+    }
+    function normalizeHeroLibrary(value){
+      const groups=[{id:"services",name:"Услуги"},{id:"goods",name:"Товары"}],items={};
+      if(value&&Array.isArray(value.groups))value.groups.forEach(group=>{if(!group||!/^[a-zA-Z0-9_-]{1,80}$/.test(group.id)||typeof group.name!=="string"||!group.name.trim())return;const existing=groups.find(item=>item.id===group.id);if(existing)existing.name=group.name.trim().slice(0,80);else if(groups.length<100)groups.push({id:group.id,name:group.name.trim().slice(0,80)});});
+      if(value&&value.items&&typeof value.items==="object")Object.keys(value.items).forEach(key=>{const item=value.items[key];if(!/^(?:builtin|custom):/.test(key)||!item||typeof item!=="object")return;items[key]={name:typeof item.name==="string"?item.name.slice(0,100):"",kind:groups.some(group=>group.id===item.kind)?item.kind:"services"};});
+      return {groups,items};
+    }
+    function heroLibraryEntries(){
+      const entries=[];
+      Object.keys(NICHE_LIBRARY).forEach(kind=>NICHE_LIBRARY[kind].forEach(file=>{const src=nichePath(file);entries.push({key:"builtin:"+src,src,name:heroAliases[src]||cleanNicheName(file),kind});}));
+      customNicheImages.forEach(record=>entries.push({key:"custom:"+record.id,src:record.dataUrl,name:record.name||"Картинка",kind:record.kind||"services",record}));
+      return entries.map(entry=>{const saved=heroLibrary.items[entry.key];return Object.assign({},entry,{name:saved&&saved.name||entry.name,kind:heroLibrary.groups.some(group=>group.id===(saved&&saved.kind||entry.kind))?saved&&saved.kind||entry.kind:"services"});});
+    }
+    function updateHeroLibrary(change){
+      const owner=editorStateId();pendingImageWrites++;
+      const task=heroLibraryWriteTail.catch(()=>{}).then(async()=>{let db;try{if(owner!==editorStateId())throw new Error("Режим изменился. Изменения не записаны в другой режим.");db=await openHeroDb();return await new Promise((resolve,reject)=>{const tx=db.transaction(HERO_DB_STORE,"readwrite"),store=tx.objectStore(HERO_DB_STORE),request=store.get(owner+":hero-library");let next,error;
+        request.onsuccess=()=>{try{if(owner!==editorStateId())throw new Error("Режим изменился");next=normalizeHeroLibrary(request.result&&request.result.value);change(next);next=normalizeHeroLibrary(next);store.put({id:owner+":hero-library",type:"hero-library",owner,value:next});}catch(e){error=e;tx.abort();}};
+        tx.oncomplete=()=>{if(owner===editorStateId())heroLibrary=next;resolve(next);};tx.onerror=tx.onabort=()=>reject(error||tx.error||new Error("Браузер не подтвердил сохранение библиотеки"));});}finally{if(db)db.close();}});
+      heroLibraryWriteTail=task;return task.finally(()=>{pendingImageWrites--;});
+    }
+    async function saveHeroDetails(entry,name,kind){
+      if(imageSaving)throw new Error("Дождитесь сохранения КП");await updateHeroLibrary(value=>{if(!value.groups.some(group=>group.id===kind))throw new Error("Группа изменена в другом окне. Откройте библиотеку заново.");value.items[entry.key]={name,kind};});
+      if(entry.record?state.heroCustomId===entry.record.id:state.heroSrc===entry.src){state.heroName=name;persistState();await stateWriteTail;}
+    }
+    function appendHeroEntry(grid,entry){
+      const card=document.createElement("button"),image=document.createElement("img"),text=document.createElement("span"),name=document.createElement("span"),group=document.createElement("span");card.type="button";card.className="niche-card"+((entry.record?state.heroCustomId===entry.record.id:state.heroSrc===entry.src)?" active":"");image.src=entry.src;image.alt="";image.loading="lazy";name.className="niche-name";name.textContent=emojiForNiche(entry.name)+" "+entry.name;group.className="niche-path";group.textContent=(heroLibrary.groups.find(item=>item.id===entry.kind)||{}).name||"Услуги";text.append(name,group);card.append(image,text);card.addEventListener("click",async()=>{try{if(entry.record)await selectCustomNicheImage(Object.assign({},entry.record,{name:entry.name}));else await selectNicheImage(entry.src,entry.name);await stateWriteTail;heroLibraryNotice("Картинка выбрана и сохранена");}catch(error){heroLibraryNotice(error.message);}});
+      appendNicheCard(grid,card,entry.name,(name,kind)=>saveHeroDetails(entry,name,kind),entry.kind);
+    }
+    function heroLibraryNotice(text){if(heroLibraryDialog)heroLibraryDialog.querySelector(".hero-library-status").textContent=text;$("kpPersistStatus").textContent=text;}
+    function renderHeroLibraryWindow(){
+      if(!heroLibraryDialog)return;const entries=heroLibraryEntries(),groups=heroLibraryDialog.querySelector(".hero-library-groups"),grid=heroLibraryDialog.querySelector(".hero-library-grid");if(heroLibraryGroup!=="all"&&!heroLibrary.groups.some(group=>group.id===heroLibraryGroup))heroLibraryGroup="all";groups.replaceChildren();
+      [{id:"all",name:"Все картинки"}].concat(heroLibrary.groups).forEach(group=>{const button=document.createElement("button");button.type="button";button.className="btn";button.textContent=group.name+" · "+entries.filter(entry=>group.id==="all"||entry.kind===group.id).length;button.setAttribute("aria-pressed",String(heroLibraryGroup===group.id));button.addEventListener("click",()=>{heroLibraryGroup=group.id;renderHeroLibraryWindow();});groups.append(button);});
+      heroLibraryDialog.querySelector('[data-hero-action="rename"]').disabled=heroLibraryGroup==="all";heroLibraryDialog.querySelector('[data-hero-action="remove"]').disabled=["all","services","goods"].includes(heroLibraryGroup);grid.replaceChildren();entries.filter(entry=>(heroLibraryGroup==="all"||entry.kind===heroLibraryGroup)&&entry.name.toLowerCase().includes(heroLibraryQuery.toLowerCase())).forEach(entry=>appendHeroEntry(grid,entry));if(!grid.children.length){const empty=document.createElement("p");empty.textContent="В этой группе пока нет картинок";grid.append(empty);}
+    }
+    async function editHeroGroup(action){
+      if(heroLibraryBusy||imageSaving)return;const id=heroLibraryGroup,group=heroLibrary.groups.find(item=>item.id===id);if(action!=="add"&&!group)return;heroLibraryBusy=true;
+      try{if(action==="remove"){if(["services","goods"].includes(id))return;await updateHeroLibrary(value=>{value.groups=value.groups.filter(item=>item.id!==id);Object.values(value.items).forEach(item=>{if(item.kind===id)item.kind="services";});});heroLibraryGroup="services";}
+        else{const answer=await askImageDetails(action==="add"?"":group.name,"services",true,true);if(!answer)return;await updateHeroLibrary(value=>{if(action==="add"){if(value.groups.length>=100)throw new Error("Максимум 100 групп");const newId=crypto.randomUUID();value.groups.push({id:newId,name:answer.name});heroLibraryGroup=newId;}else{const target=value.groups.find(item=>item.id===id);if(!target)throw new Error("Группа изменена в другом окне");target.name=answer.name;}});}
+        renderNicheLibrary();heroLibraryNotice(action==="remove"?"Группа убрана, картинки сохранены в группе «Услуги»":"Группа сохранена");
+      }catch(error){heroLibraryNotice(error.message);}finally{heroLibraryBusy=false;}
+    }
+    async function openHeroLibrary(){
+      if(heroLibraryDialog){heroLibraryDialog.focus();return;}toggleNichePanels(false);const modal=document.createElement("dialog"),head=document.createElement("div"),title=document.createElement("h3"),tools=document.createElement("div"),search=document.createElement("input"),groups=document.createElement("div"),grid=document.createElement("div"),status=document.createElement("p");modal.className="hero-library-dialog";modal.setAttribute("aria-label","Библиотека картинок КП");head.className="modal-head";title.textContent="Картинки КП";tools.className="toolbar";
+      [["upload","Добавить картинку",()=>$("heroFile").click()],["add","+ Группа",()=>editHeroGroup("add")],["rename","Название группы",()=>editHeroGroup("rename")],["remove","Убрать группу",()=>editHeroGroup("remove")],["close","Закрыть",()=>modal.close()]].forEach(([action,text,fn])=>{const button=document.createElement("button");button.type="button";button.className="btn";button.dataset.heroAction=action;button.textContent=text;if(action==="remove")button.title="Картинки останутся в группе «Услуги»";button.addEventListener("click",fn);tools.append(button);});head.append(title,tools);search.type="search";search.className="hero-library-search";search.placeholder="Найти картинку";search.setAttribute("aria-label","Найти картинку");search.value=heroLibraryQuery;search.addEventListener("input",()=>{heroLibraryQuery=search.value;renderHeroLibraryWindow();});groups.className="hero-library-groups";grid.className="hero-library-grid";status.className="hero-library-status";status.setAttribute("role","status");status.textContent="Названия, группы и выбор сохраняются автоматически в этом браузере. Карандаш — изменить название и группу картинки.";modal.append(head,search,groups,grid,status);modal.addEventListener("close",()=>{modal.remove();if(heroLibraryDialog===modal)heroLibraryDialog=null;});document.body.append(modal);heroLibraryDialog=modal;renderHeroLibraryWindow();modal.showModal();try{await heroLibraryWriteTail.catch(()=>{});customNicheImages=await listCustomHeroImages();renderNicheLibrary();}catch(error){heroLibraryNotice(error.message);}
     }
     async function imageFileToDataUrl(file){
       const source = URL.createObjectURL(file);
@@ -834,38 +883,22 @@
     function renderNicheLibrary(){
       renderNicheGroup("goodsGrid", "goods");
       renderNicheGroup("servicesGrid", "services");
+      renderHeroLibraryWindow();
     }
     function renderNicheGroup(gridId, kind){
       const grid = $(gridId);
       grid.innerHTML = "";
-      NICHE_LIBRARY[kind].forEach((file) => {
-        const src = nichePath(file);
-        const name = heroAliases[src] || cleanNicheName(file);
-        const card = document.createElement("button");
-        card.type = "button";
-        card.className = "niche-card" + (state.heroSrc === src ? " active" : "");
-        card.innerHTML = `<img src="${src}" alt=""><span><span class="niche-name">${emojiForNiche(name)} ${name}</span><span class="niche-path">${kind === "goods" ? "Товары" : "Услуги"}</span></span>`;
-        card.addEventListener("click", () => selectNicheImage(src, name).catch(imageNotice));
-        appendNicheCard(grid,card,name,async (value) => { await putCustomHeroImage({ id: editorStateId()+":alias:"+src, type:"hero-alias", owner:editorStateId(), src, name:value }); heroAliases[src]=value; if(state.heroSrc===src){state.heroName=value;persistState();await stateWriteTail;} });
-      });
-      customNicheImages.filter((record) => record.kind === kind).forEach((record) => {
-        const card = document.createElement("button");
-        card.type = "button";
-        card.className = "niche-card" + (state.heroCustomId === record.id ? " active" : "");
-        card.innerHTML = `<img src="${record.dataUrl}" alt=""><span><span class="niche-name">📌 ${escapeHtml(record.name)}</span><span class="niche-path">${kind === "goods" ? "Товары" : "Услуги"} · загружено</span></span>`;
-        card.addEventListener("click", () => selectCustomNicheImage(record).catch(imageNotice));
-        card.title = "Нажать — выбрать. Правая кнопка — переименовать фон.";
-        appendNicheCard(grid,card,record.name,async (value) => { const updated=Object.assign({},record,{name:value}); await putCustomHeroImage(updated);customNicheImages=customNicheImages.map((item)=>item.id===updated.id?updated:item);if(state.heroCustomId===updated.id){state.heroName=updated.name;persistState();await stateWriteTail;} });
-      });
+      const title=$(kind+"Panel").querySelector(".niche-title");if(title)title.textContent=(heroLibrary.groups.find(group=>group.id===kind)||{}).name||kind;
+      heroLibraryEntries().filter(entry=>entry.kind===kind).forEach(entry=>appendHeroEntry(grid,entry));
     }
-    function appendNicheCard(grid,card,name,saveName){
+    function appendNicheCard(grid,card,name,saveName,kind){
       const wrap=document.createElement("div"),rename=document.createElement("button");wrap.className="niche-item";rename.className="niche-rename";rename.type="button";rename.textContent="✎";rename.title="Переименовать картинку";rename.setAttribute("aria-label","Переименовать: "+name);
-      async function edit(event){event.preventDefault();if(imageSaving)return;const answer=await askImageDetails(name,"services",true);if(!answer)return;try{await saveName(answer.name);renderNicheLibrary();$("kpPersistStatus").textContent="Название фона сохранено";}catch(error){imageNotice(error);}}
+      async function edit(event){event.preventDefault();if(imageSaving)return;const answer=await askImageDetails(name,kind||"services",false);if(!answer)return;try{await saveName(answer.name,answer.kind);renderNicheLibrary();heroLibraryNotice("Название и группа картинки сохранены");}catch(error){heroLibraryNotice(error.message);}}
       card.addEventListener("contextmenu",edit);rename.addEventListener("click",edit);wrap.append(card,rename);grid.append(wrap);
     }
-    function askImageDetails(name,kind,renameOnly){
+    function askImageDetails(name,kind,renameOnly,groupOnly){
       return new Promise((resolve)=>{const modal=document.createElement("dialog"),form=document.createElement("form"),title=document.createElement("h3"),label=document.createElement("label"),input=document.createElement("input"),groupLabel=document.createElement("label"),group=document.createElement("select"),actions=document.createElement("div"),save=document.createElement("button"),cancel=document.createElement("button");let result=null;
-        modal.className="kp-image-details";title.textContent=renameOnly?"Название картинки":"Сохранить картинку";label.textContent="Название картинки";input.value=name||"";input.maxLength=100;input.required=true;label.append(input);groupLabel.textContent="Раздел библиотеки";[["services","Услуги"],["goods","Товары"]].forEach(([value,text])=>{const option=document.createElement("option");option.value=value;option.textContent=text;group.append(option);});group.value=kind||"services";groupLabel.append(group);save.type="submit";save.className="btn primary";save.textContent="Сохранить";cancel.type="button";cancel.className="btn";cancel.textContent="Отмена";cancel.addEventListener("click",()=>modal.close());actions.className="toolbar";actions.append(cancel,save);form.append(title,label);if(!renameOnly)form.append(groupLabel);form.append(actions);modal.append(form);form.addEventListener("submit",(event)=>{event.preventDefault();if(!input.value.trim()){input.focus();return;}result={name:input.value.trim().slice(0,100),kind:group.value};modal.close();});modal.addEventListener("close",()=>{modal.remove();resolve(result);});document.body.append(modal);modal.showModal();input.focus();input.select();
+        modal.className="kp-image-details";title.textContent=groupOnly?"Название группы":renameOnly?"Название картинки":"Сохранить картинку";label.textContent=groupOnly?"Название группы":"Название картинки";input.setAttribute("aria-label",label.textContent);input.value=name||"";input.maxLength=groupOnly?80:100;input.required=true;label.append(input);groupLabel.textContent="Раздел библиотеки";group.setAttribute("aria-label","Группа картинки");heroLibrary.groups.forEach(({id:value,name:text})=>{const option=document.createElement("option");option.value=value;option.textContent=text;group.append(option);});group.value=heroLibrary.groups.some(item=>item.id===kind)?kind:"services";groupLabel.append(group);save.type="submit";save.className="btn primary";save.textContent="Сохранить";cancel.type="button";cancel.className="btn";cancel.textContent="Отмена";cancel.addEventListener("click",()=>modal.close());actions.className="toolbar";actions.append(cancel,save);form.append(title,label);if(!renameOnly)form.append(groupLabel);form.append(actions);modal.append(form);form.addEventListener("submit",(event)=>{event.preventDefault();if(!input.value.trim()){input.focus();return;}result={name:input.value.trim().slice(0,groupOnly?80:100),kind:group.value};modal.close();});modal.addEventListener("close",()=>{modal.remove();resolve(result);});document.body.append(modal);modal.showModal();input.focus();input.select();
       });
     }
     async function selectNicheImage(src, name){
@@ -874,7 +907,7 @@
       customHeroSrc = "";
       state.heroCustomId = "";
       state.heroSrc = src;
-      state.heroName = name;
+      state.heroName = (heroLibraryEntries().find(entry=>!entry.record&&entry.src===src)||{}).name||name;
       renderNicheLibrary();
       saveState();
       draw();
@@ -885,7 +918,7 @@
       customHeroSrc = "";
       state.heroCustomId = record.id;
       state.heroSrc = "";
-      state.heroName = record.name;
+      state.heroName = (heroLibraryEntries().find(entry=>entry.record&&entry.record.id===record.id)||{}).name||record.name;
       renderNicheLibrary();
       saveState();
       draw();
@@ -1900,7 +1933,8 @@
     $("bgChoice").addEventListener("change", draw);
     $("titleStyle").addEventListener("change", draw);
     $("titleScale").addEventListener("input", draw);
-    $("heroZone").addEventListener("click", () => toggleNichePanels());
+    $("heroZone").addEventListener("click", () => {$("heroLibraryBadge").hidden=!$("heroLibraryBadge").hidden;$("heroZone").classList.toggle("active",!$("heroLibraryBadge").hidden);});
+    $("heroLibraryBadge").addEventListener("click",openHeroLibrary);
     $("coverBtn").addEventListener("click", openCoverModal);
     $("packagesBtn").addEventListener("click", closeCoverModal);
     $("coverPrevBtn").addEventListener("click", () => shiftCoverCarousel(-1));
@@ -1949,7 +1983,7 @@
         await putCustomHeroImage(record);
         customNicheImages = [record].concat(customNicheImages.filter((item) => item.id !== record.id));
         if(initialLoad)await initialLoad;await selectCustomNicheImage(record);
-        toggleNichePanels(true);
+        if(heroLibraryDialog)renderNicheLibrary();else await openHeroLibrary();
       } catch (error) {
         alert(error && error.message ? error.message : "Не удалось сохранить изображение");
       } finally {
