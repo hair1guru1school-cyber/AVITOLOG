@@ -161,6 +161,12 @@
     body.embedded .editor .btn,body.embedded .editor .tab{font-size:13px}
     body.embedded .editor .editor-footer .btn{font-size:12px;padding:0 4px}
     body.embedded .editor .mini-note{font-size:13px}
+    @media(min-width:769px){
+      body.embedded{overflow-x:hidden;overflow-y:auto}
+      body.embedded .layout{height:auto;min-height:100vh;grid-template-rows:auto}
+      body.embedded .stage-wrap{height:auto;flex:0 0 auto;overflow-x:auto;overflow-y:visible}
+      body.embedded .editor{position:sticky;top:8px;height:calc(100vh - 16px);align-self:start}
+    }
   </style>
 <link rel="stylesheet" href="assets/css/light-theme-editor.css?v=20261021-light1">
 <link rel="stylesheet" href="assets/css/mobile.css?v=20261024-mobile1">
