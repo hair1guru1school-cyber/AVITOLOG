@@ -229,6 +229,7 @@
     if (!force && hash === _lastBackupHash) return; // данные не изменились
 
     _running = true;
+    if (window.AVBSaveStatus) window.AVBSaveStatus.set('fil-backup', 'busy', 'Сохраняем резервную копию Google Drive…');
     var folderId;
     try {
       folderId = await ensureFolder();
@@ -311,6 +312,7 @@
 
   var _toastTimer = null;
   function showToast(text, isErr) {
+    if (window.AVBSaveStatus && window.AVBSaveStatus.set('fil-backup', isErr ? 'error' : 'saved', text) !== false) return;
     try {
       var el = document.getElementById('avitologFilBackupToast');
       if (!el) {

@@ -5,6 +5,7 @@
   var resetTimer = null;
 
   function toast(text, isError) {
+    if (window.AVBSaveStatus && window.AVBSaveStatus.set('manual-save', isError ? 'error' : 'saved', text) !== false) return;
     var el = document.getElementById('avitologManualSaveToast');
     if (!el) {
       el = document.createElement('div');
@@ -21,6 +22,7 @@
   window.__avitologManualSave = async function () {
     if (running) return;
     running = true;
+    if (window.AVBSaveStatus) window.AVBSaveStatus.set('manual-save', 'busy', 'Сохраняем и проверяем Supabase и Google Drive…');
     var btn = document.getElementById('manualSaveBtn');
     if (btn) {
       btn.disabled = true;

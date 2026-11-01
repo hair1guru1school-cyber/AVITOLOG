@@ -48,6 +48,7 @@
 
   var _toastTimer = null;
   function showSashaTeamToast(text, isErr) {
+    if (window.AVBSaveStatus && window.AVBSaveStatus.set('sasha-sync', isErr ? 'error' : /запускаю синхронизацию/i.test(text) ? 'busy' : 'info', text) !== false) return;
     try {
       var el = document.getElementById('avitologSashaSyncToast');
       if (!el) {

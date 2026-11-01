@@ -390,6 +390,7 @@
     return /session expired|jwt expired|invalid refresh token|refresh_token/i.test(String((error && error.message) || error || ''));
   }
   function showReauthStatus(prefix) {
+    if (window.AVBSaveStatus && window.AVBSaveStatus.set('supabase-auth', 'error', (prefix || 'Supabase') + ': сессия истекла.', { label: 'Войти', run: function () { window.location.href = 'backend-preview.html?return=app&reauth=1&v=20260925-session-renewal-1'; } }) !== false) return;
     ensureStatus();
     statusEl.innerHTML = '';
     statusEl.style.background = '#701b2b';
@@ -502,7 +503,8 @@
   window.__avitologBackendReconnect = function () {
     window.location.href = 'backend-preview.html?return=app&reauth=1&v=20260925-session-renewal-1';
   };
-  function setStatus(text, error) {
+  function setStatus(text, error, key) {
+    if (window.AVBSaveStatus && window.AVBSaveStatus.set(key ? 'supabase:' + key : 'supabase', error ? 'error' : /^Supabase: (сохраняю|дописываю)/.test(text) ? 'busy' : /сохранено · версия|изменения подтверждены сервером/.test(text) ? 'saved' : 'info', text) !== false) return;
     if (!statusEl && !error && !window.AVITOLOG_BACKEND_PREVIEW) return;
     ensureStatus();
     statusEl.textContent = text;
@@ -1067,6 +1069,7 @@
     if (!pending) return;
     if (!pendingWriteMatchesScope(pending)) { delete pendingWrites[key]; return; }
     writeInFlight[key] = true;
+    if (window.AVBSaveStatus) setStatus('Supabase: сохраняю ' + writeLabelForKey(key) + '...', false, key);
     var shouldWriteNext = false;
     var retryDelay = 0;
     var task = prepareValueForWrite(key, pending.value, pending.previousValue, pending.scope).then(function (prepared) {
@@ -1081,7 +1084,7 @@
         delete pendingWrites[key];
         clearDirty(key);
         clearPendingPayload(key);
-        setStatus('Supabase: сохранено · версия ' + payload.result.revision);
+        setStatus('Supabase: сохранено · версия ' + payload.result.revision, false, key);
       } else {
         var nextPending = pendingWrites[key];
         if (nextPending && pendingWriteMatchesScope(nextPending)) {
@@ -1089,12 +1092,12 @@
           rememberPendingPayload(key, nextPending.value, nextPending.previousValue);
         }
         shouldWriteNext = true;
-        setStatus('Supabase: дописываю свежую версию...');
+        setStatus('Supabase: дописываю свежую версию...', false, key);
       }
     }).catch(function (error) {
       retryDelay = 5000;
       if (isSessionExpiredError(error)) { showReauthStatus('Supabase write'); return; }
-      setStatus('Ошибка записи: ' + error.message, true);
+      setStatus('Ошибка записи: ' + error.message, true, key);
     }).finally(function () {
       writeInFlight[key] = false;
       if (writeInFlightTasks[key] === task) delete writeInFlightTasks[key];
@@ -1145,7 +1148,7 @@
     pendingWrites[key] = { value: String(value == null ? '' : value), previousValue: String(previousValue == null ? '' : previousValue), scope: scope, ts: Date.now() };
     rememberPendingPayload(key, value, previousValue);
     markDirty(key);
-    setStatus('Supabase: сохраняю ' + writeLabelForKey(key) + '...');
+    setStatus('Supabase: сохраняю ' + writeLabelForKey(key) + '...', false, key);
     if (serverOnlyMode && !initialSyncReady) return;
     var delay = (isClientsStorageKey(key) || key.indexOf('projects') >= 0 || isFinanceKey(key)) ? 0 : 700;
     schedulePendingWrite(key, delay);
@@ -2061,8 +2064,7 @@
       if (restoreBtn) restoreBtn.style.display = 'inline-flex';
     } catch (restoreBtnError) {}
     if (window.AVITOLOG_BACKEND_PREVIEW) {
-      ensureStatus();
-      statusEl.textContent = 'Supabase: проверка записи...';
+      setStatus('Supabase: проверка записи...');
     }
     if (!sessionData()) { finishInitialRead({ ok: false, message: 'Supabase: требуется вход' }); showReauthStatus('Supabase'); return; }
     try {

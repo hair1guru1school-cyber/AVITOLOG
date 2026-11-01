@@ -222,6 +222,7 @@
     if (!force && hash === _lastBackupHash) return;
 
     _running = true;
+    if (window.AVBSaveStatus) window.AVBSaveStatus.set('sasha-backup', 'busy', 'Сохраняем резервную копию Саши в Google Drive…');
     var folderId;
     try {
       folderId = await ensureFolder(context);
@@ -293,6 +294,7 @@
 
   var _toastTimer = null;
   function showToast(text, isErr) {
+    if (window.AVBSaveStatus && window.AVBSaveStatus.set('sasha-backup', isErr ? 'error' : 'saved', text) !== false) return;
     try {
       var el = document.getElementById('avitologSashaBackupToast');
       if (!el) {
