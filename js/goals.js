@@ -1333,6 +1333,7 @@
       var actionsBtns = '<span class="goal-actions goal-actions-inline">' +
         folderActionHtml(p) +
         contactButtonHtml(p) +
+        (window.AVBTelegramLeads ? window.AVBTelegramLeads.responsibleHtml(p) : '') +
         '<button type="button" class="goal-move-btn goal-paid-action" data-goal-action="sold" data-id="' + esc(p.id) + '" onclick="event.preventDefault();event.stopPropagation();window.__goalsQuickSetSold&&window.__goalsQuickSetSold(\'' + esc(p.id) + '\')" title="Оплачено — в Продано">💰</button>' +
         rowActionsButtonHtml(p, weekNum) +
         '</span>';
@@ -1418,6 +1419,7 @@
       weekIndicators +
       '<div class="goal-week-add-row">' +
       '<button type="button" class="goal-week-add" onclick="window.__goalsOpenModalForWeek && window.__goalsOpenModalForWeek(event,' + weekNum + ')">+ Добавить проект</button>' +
+      (window.AVBTelegramLeads ? window.AVBTelegramLeads.weekButtonHtml(year, month, weekNum) : '') +
       (addClientBtn ? addClientBtn : '') +
       '</div>' +
       '</div>';

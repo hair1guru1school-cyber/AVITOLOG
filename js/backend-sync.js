@@ -1392,6 +1392,16 @@
     if (expected !== pendingWriteScope()) throw new Error('context_changed');
     var value = await response.json();if (!response.ok || !value.ok) throw new Error(value.error || 'history_unavailable');return value;
   };
+  window.__avitologTelegramLeadsRequest = async function (action, payload) {
+    if (['snapshot','configure','settings','assign','pin','folder'].indexOf(action) < 0 || !initialSyncReady || !serverOnlyMode || action !== 'snapshot' && isServerOnlySashaViewer()) throw new Error('telegram_context_unavailable');
+    var expected = pendingWriteScope(), organization = cfg.profileOrganizations && cfg.profileOrganizations.fil;
+    if (!expected || !organization) throw new Error('auth_required');
+    var response = await authFetch(cfg.url + '/functions/v1/telegram-leads/' + action + '?organization_id=' + encodeURIComponent(organization), {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload || {}), signal:AbortSignal.timeout(60000)}, expected);
+    if (expected !== pendingWriteScope()) throw new Error('context_changed');
+    var result; try { result = await response.json(); } catch (_) { throw new Error('telegram_unavailable'); }
+    if (!response.ok || result.ok !== true) throw new Error(result.error || 'telegram_unavailable');
+    return result;
+  };
   window.__avitologTelegramRequest = async function (action, payload) {
     var routes = { config: ['GET','config'], connect: ['POST','connect'], targets: ['POST','targets'], settings: ['PUT','settings'], send: ['POST','send'], jobs: ['GET','jobs'], assets: ['POST','assets'], example: ['POST','example'] };
     if (!Object.prototype.hasOwnProperty.call(routes,action) || !initialSyncReady || !serverOnlyMode || isServerOnlySashaViewer()) throw new Error('telegram_context_unavailable');
