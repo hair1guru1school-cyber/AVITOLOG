@@ -978,7 +978,7 @@
     return (
       '<div class="kp-gen-section kp-editor-embed-section">' +
       '<div class="kp-gen-label">Расчет КП</div>' +
-      '<iframe class="kp-editor-embed" src="kp-editor.html?embedded=1&amp;v=20261031-kp-scroll1" title="Редактор КП"></iframe>' +
+      '<iframe class="kp-editor-embed" src="kp-editor.html?embedded=1&amp;v=20261103-kp-stable1" title="Редактор КП"></iframe>' +
       '</div>'
     );
   }
@@ -1634,6 +1634,10 @@
       '.kp-editor-embed-section{padding:0!important;overflow:hidden;border-color:rgba(0,217,126,.28)!important}',
       '.kp-editor-embed-section .kp-gen-label{padding:12px 14px 0}',
       '.kp-editor-embed{display:block;width:100%;height:calc(100dvh - 180px);min-height:420px;border:0;background:#05080d;border-radius:8px}',
+      'body.mobile-client-tools-on.kp-tab .kp-generator{height:100%;min-height:0;display:flex;flex-direction:column;padding:0!important}',
+      'body.mobile-client-tools-on.kp-tab .kp-gen-head{flex:0 0 auto}',
+      'body.mobile-client-tools-on.kp-tab .kp-editor-embed-section{flex:1 1 0;min-height:0;display:flex;flex-direction:column;margin:0}',
+      'body.mobile-client-tools-on.kp-tab .kp-editor-embed{flex:1 1 0;height:auto;min-height:0}',
       '.kp-canva-section{margin-top:14px;padding:10px 0 2px}',
       '.kp-gen-head{position:static;display:flex;align-items:center;flex-wrap:nowrap;gap:12px;overflow-x:auto;scrollbar-width:thin;padding:5px 10px;margin-bottom:8px;border:1px solid var(--border);border-radius:8px;background:var(--surface)}',
       '.kp-gen-head>.kp-gen-title{flex:0 0 auto;font-size:12px;font-weight:700;color:var(--muted);margin:0;white-space:nowrap}',

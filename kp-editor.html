@@ -71,6 +71,9 @@
     .niche-name{font-size:12px;line-height:1.15;font-weight:900}
     .niche-path{font-size:10px;color:#91a5bb;margin-top:3px}
     .editor{position:sticky;top:76px;transform-origin:top right}
+    .editor>.body{overflow-anchor:none}
+    .editor-appearance>summary{display:none}
+    .editor-appearance-content{display:flex;flex-direction:column;gap:12px}
     .editor>.head,.editor>.body{zoom:var(--editor-zoom,1)}
     .body{padding:14px;display:flex;flex-direction:column;gap:12px}
     .editor-footer{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;padding:10px;border-top:1px solid var(--line);background:var(--panel)}.editor-footer .btn{white-space:nowrap}.editor-footer #kpPersistStatus{grid-column:1 / -1;min-height:16px;font-size:12px;line-height:1.3;color:var(--muted)}
@@ -170,6 +173,7 @@
   </style>
 <link rel="stylesheet" href="assets/css/light-theme-editor.css?v=20261021-light1">
 <link rel="stylesheet" href="assets/css/mobile.css?v=20261024-mobile1">
+<link rel="stylesheet" href="assets/css/kp-editor-mobile.css?v=20261103-kp-stable1">
 <script defer src="js/light-theme.js?v=20261021-light1"></script>
 <script defer src="js/mobile-ui.js?v=20261024-mobile1"></script>
 </head>
@@ -220,6 +224,9 @@
         </div>
       </div>
       <div class="body">
+        <details class="editor-appearance" id="editorAppearance" open>
+        <summary>Оформление и готовые пакеты</summary>
+        <div class="editor-appearance-content">
         <div class="card">
           <label>Картинка шапки
             <input id="heroFile" type="file" accept="image/*">
@@ -268,11 +275,13 @@
           </div>
         </div>
 
+        </div>
+        </details>
         <div class="tabs" id="tabs"></div>
 
         <div class="card" id="packageEditor">
           <label class="switch"><input id="pkgOn" type="checkbox"> Показывать пакет</label>
-          <div class="grid2">
+          <div class="grid2 pkg-identity">
             <label>Иконка
               <input id="pkgIcon">
             </label>
@@ -288,9 +297,9 @@
               <input id="pkgUnlimited" type="checkbox"> ∞ без ограничений
             </label>
           </div>
-          <div class="grid2">
+          <div class="grid2 pkg-price">
             <label>Работа авитолога
-              <input id="pkgWork">
+              <input id="pkgWork" inputmode="decimal">
             </label>
             <label>Цвет плашки
               <input id="pkgColor" type="color">
@@ -944,14 +953,19 @@
     }
     function renderTabs(){
       clampSelectedPackage();
-      tabsEl.innerHTML = "";
+      while (tabsEl.children.length > state.packages.length) tabsEl.lastElementChild.remove();
       state.packages.forEach((pkg, index) => {
-        const btn = document.createElement("button");
+        let btn = tabsEl.children[index];
+        if (!btn) {
+          btn = document.createElement("button");
+          btn.type = "button";
+          btn.addEventListener("click", () => selectPackage(index));
+          tabsEl.appendChild(btn);
+        }
         btn.className = "tab" + (index === selectedPackage ? " active" : "");
+        btn.setAttribute("aria-pressed", String(index === selectedPackage));
         btn.textContent = `${index + 1}. ${compactPackageName(pkg, index)}`;
         btn.title = pkg.name || "Пакет";
-        btn.addEventListener("click", () => selectPackage(index));
-        tabsEl.appendChild(btn);
       });
     }
     function compactPackageName(pkg, index){
@@ -962,6 +976,7 @@
       return name.length > 10 ? name.slice(0, 10).trim() : name;
     }
     function renderPackageForm(){
+      const restoreScroll = captureEditorScroll();
       clampSelectedPackage();
       const pkg = state.packages[selectedPackage];
       $("pkgOn").checked = !!pkg.on;
@@ -978,12 +993,20 @@
       $("pkgColor").value = normalizeColor(pkg.color || "#24308f");
       $("pkgItems").value = (pkg.items || []).join("\n");
       resizePackageItemsField();
+      restoreScroll();
+    }
+    function captureEditorScroll(){
+      const nodes = [document.scrollingElement, editorEl.querySelector(".body"), $("pkgItems")].filter(Boolean);
+      const positions = nodes.map(node => [node, node.scrollTop, node.scrollLeft]);
+      return () => positions.forEach(([node, top, left]) => { node.scrollTop = top; node.scrollLeft = left; });
     }
     function resizePackageItemsField(){
       const field = $("pkgItems");
       if (!field) return;
+      const restoreScroll = captureEditorScroll();
       field.style.height = "auto";
       field.style.height = `${Math.max(220, field.scrollHeight + 4)}px`;
+      restoreScroll();
     }
     function renderZones(){
       stage.querySelectorAll(".click-zone").forEach((el) => el.remove());
@@ -994,30 +1017,33 @@
         zone.style.top = `${item.top / H * 100}%`;
         zone.style.height = `${item.height / H * 100}%`;
         zone.setAttribute("aria-label", `Пакет ${item.index + 1}`);
+        zone.dataset.packageIndex = item.index;
         zone.addEventListener("click", () => selectPackage(item.index));
         stage.appendChild(zone);
       });
     }
     function selectPackage(index){
+      const restoreScroll = captureEditorScroll();
       flushPackageForm();
-      autoSaveState();
       selectedPackage = index;
       persistSelectedPackage();
       renderTabs();
       renderPackageForm();
       updateZoneSelection();
+      autoSaveState();
+      restoreScroll();
     }
     function updateZoneSelection(){
-      stage.querySelectorAll(".click-zone").forEach((zone, index) => {
-        zone.classList.toggle("active", index === selectedPackage);
+      stage.querySelectorAll(".click-zone").forEach((zone) => {
+        zone.classList.toggle("active", Number(zone.dataset.packageIndex) === selectedPackage);
       });
     }
-    function readGlobalForm(){
+    function readGlobalForm(commitPackage = true){
       state.bgChoice = $("bgChoice").value;
       state.titleStyle = $("titleStyle").value;
       state.titleScale = Number($("titleScale").value) || defaults.titleScale;
       $("titleScaleValue").textContent = `${state.titleScale}%`;
-      flushPackageForm();
+      if (commitPackage) flushPackageForm();
     }
     function markPackageFormDirty(){
       packageFormDirty = true;
@@ -1056,7 +1082,7 @@
     }
 
     function draw(){
-      if (formReady) readGlobalForm();
+      if (formReady) readGlobalForm(!$("packageEditor").contains(document.activeElement));
       ctx.clearRect(0, 0, W, H);
       drawBackground();
       drawHero();
@@ -1916,6 +1942,26 @@
       }, { passive: false });
     }
 
+    function initCompactLayout(){
+      let host = window;
+      try { if (window.parent !== window && window.parent.location.origin === location.origin) host = window.parent; } catch (_) {}
+      let compact = null, pending = false;
+      function update(){
+        pending = false;
+        const next = host.matchMedia("(max-width:768px), (orientation:landscape) and (max-width:980px) and (max-height:560px)").matches;
+        let scale = 1;
+        if (next && host !== window && window.frameElement) scale = window.frameElement.getBoundingClientRect().width / window.frameElement.offsetWidth || 1;
+        document.body.style.setProperty("--kp-host-scale", String(Math.max(.1, Math.min(1, scale))));
+        document.body.classList.toggle("kp-compact", next);
+        if (compact !== next) { $("editorAppearance").open = !next; compact = next; }
+      }
+      function schedule(){ if (!pending) { pending = true; requestAnimationFrame(update); } }
+      host.addEventListener("resize", schedule);
+      if (host.visualViewport) host.visualViewport.addEventListener("resize", schedule);
+      if (host !== window) new MutationObserver(schedule).observe(host.document.body, { attributes: true, attributeFilter: ["style", "class"] });
+      update();
+    }
+
     ["pkgOn","pkgIcon","pkgName","pkgLimit","pkgUnlimited","pkgWork","pkgColor","pkgItems"].forEach((id) => {
       $(id).addEventListener("input", () => {
         markPackageFormDirty();
@@ -1930,12 +1976,18 @@
           $("pkgLimitRow").classList.toggle("is-unlimited", canBeUnlimited && $("pkgUnlimited").checked);
         }
       });
-      $(id).addEventListener("blur", () => {
+      function commitField(){
+        const restoreScroll = captureEditorScroll();
         const wasDirty = packageFormDirty;
         flushPackageForm();
         if (wasDirty && (id === "pkgOn" || id === "pkgIcon" || id === "pkgName")) renderTabs();
         if (wasDirty && id === "pkgOn") renderZones();
         if (wasDirty) draw();
+        restoreScroll();
+      }
+      $(id).addEventListener("blur", commitField);
+      $(id).addEventListener("keydown", (event) => {
+        if (event.key === "Enter" && id !== "pkgItems" && !event.isComposing) { event.preventDefault(); commitField(); }
       });
     });
     document.addEventListener("visibilitychange", () => {
@@ -2042,6 +2094,7 @@
 
     initResizableLayout();
     initEditorZoom();
+    initCompactLayout();
     $("downloadBtn").disabled=true;
     initialLoad=preload().finally(()=>{if(!imageSaving)$("downloadBtn").disabled=false;});
     if (document.fonts && document.fonts.ready) {
