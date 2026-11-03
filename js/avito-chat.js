@@ -292,6 +292,7 @@
           try {
             var result = await bridge.getChats(account.id); if (!current(generation)) return;
             mergeChats(account, result, 0);
+            renderChats();
           } catch (error) { failed.push(account.display_name + ': ' + errorText(error)); }
         }));
       }
@@ -326,7 +327,8 @@
     try {
       var result = await bridge.getMessages(row.account.id, row.chat.id, offset);
       if (!current(generation)) return;
-      var byId = Object.create(null), combined = (entry ? entry.messages : []).concat(result.messages || []);
+      var latest = messages[owner] || entry;
+      var byId = Object.create(null), combined = (latest ? latest.messages : []).concat(result.messages || []);
       combined.forEach(function (message) { byId[message.id] = message; });
       messages[owner] = { messages: Object.keys(byId).map(function (id) { return byId[id]; }), offset: older ? offset : entry && entry.offset || 0, hasMore: older || !entry ? !!(result.pagination && result.pagination.has_more) && offset < 1000 : entry.hasMore, loading: false }; renderMessages(row);
       if (state.chat && key(state.chat) === owner && state.mode !== 'closed' && row.chat.unread === true && document.visibilityState !== 'hidden') {
