@@ -45,11 +45,27 @@ var _calendarPaintDates = [];
 var _projectJokerDetachArmedId = null;
 var _cardsActivePlacement = null; // { value: string } - ghost follows mouse, click cell to place
 var _cardsActiveDragging = null;  // { projectId: string, childLineIdx: number, value: string, sourceDate: string } - drag existing badge
-var _mustLaunchPlacement = null;  // true when ghost follows, left-click places (multi), right-click cancels
+var _mustLaunchPlacement = null;  // true when ghost follows, left-click places once, right-click cancels
 var _projectMustLaunchDetachArmedId = null;
 var _projectsSheetPullTimer = null;
 var _projectsSheetPullBusy = false;
 var _projectsSheetPullPauseUntil = 0;
+var _projectsLocalRevision = 0;
+var _projectsSheetWriteTail = Promise.resolve();
+var _projectsSheetWritesPending = 0;
+var _projectsInlineEdit = null;
+var _projectsRenderPending = false;
+function projectsInteractionScope() {
+  var identity = null;
+  try { if (typeof window.__avitologBackendIdentity === 'function') identity = window.__avitologBackendIdentity(); } catch (_) {}
+  return [projectsDataKey(), window.AVITOLOG_KEY_EMAIL || '', window.AVITOLOG_USER || '', identity && identity.id || '', isProjectsReadOnlyView()].join('|');
+}
+function hasProjectsInlineEdit() {
+  if (!_projectsInlineEdit) return false;
+  if (_projectsInlineEdit.owner === projectsInteractionScope() && _projectsInlineEdit.input.isConnected !== false) return true;
+  _projectsInlineEdit = null;
+  return false;
+}
 var _projectsDayShiftTimer = null;
 var _projectsDayStamp = '';
 var _projectsTypeSortPriority = null; // null | 'old' | 'new' | 'returning'
@@ -231,6 +247,9 @@ function applyProjectMarkerClearTombstones(data) {
   var changed = false;
   data.projects.forEach(function(p) {
     if (!p || typeof p !== 'object') return;
+    var mustCleared = getProjectTimestampMs(p.mustLaunchManualClearedAt);
+    var mustUpdated = getProjectTimestampMs(p.mustLaunchUpdatedAt);
+    if (mustCleared && mustUpdated > mustCleared) { p.mustLaunchManualClearedAt = ''; changed = true; }
     if (String(p.mustLaunchManualClearedAt || '').trim()) {
       if (p.mustLaunchRequired) { p.mustLaunchRequired = false; changed = true; }
       if (p.mustLaunchDate) { p.mustLaunchDate = ''; changed = true; }
@@ -286,6 +305,7 @@ function runProjectsSheetPull(forceMerge) {
   if (document.hidden) return;
   if (!_driveToken) return;
   if (Date.now() < _projectsSheetPullPauseUntil) return;
+  if (_projectsSheetWritesPending || hasProjectsInlineEdit()) return;
   if (_projectsSheetPullBusy) return;
   _projectsSheetPullBusy = true;
   hydrateProjectsFromActiveSheet(!!forceMerge).then(function(changed){
@@ -435,13 +455,10 @@ function loadProjectsData(forceReload) {
     data.projects.forEach(function(p) {
       var cd = (p.cardsActiveDate || '').trim();
       var md = (p.mustLaunchDate || '').trim();
-      var fix15to11 = function(d){ if (!d || d.length < 10) return d; if (d.slice(-2) === '15') return d.slice(0,-2) + '11'; return d; };
       if (cd) {
         var nrm = normalizeIsoDateStr(cd);
         if (nrm && nrm !== cd) { p.cardsActiveDate = nrm; cardsMoved = true; cd = nrm; }
       }
-      if (p.cardsActive && cd) { var fixed = fix15to11(cd); if (fixed !== cd) { p.cardsActiveDate = fixed; cardsMoved = true; } }
-      if (p.mustLaunchRequired && md) { var fixedM = fix15to11(md); if (fixedM !== md) { p.mustLaunchDate = fixedM; cardsMoved = true; } }
       cd = (p.cardsActiveDate || '').trim();
       md = (p.mustLaunchDate || '').trim();
       // Актив карточек и «!!» с пустой/прошлой даты переносим на сегодня, чтобы метки не исчезали из видимого календаря.
@@ -457,10 +474,6 @@ function loadProjectsData(forceReload) {
           if (childDate) {
             var childNorm = normalizeIsoDateStr(childDate);
             if (childNorm && childNorm !== childDate) { p.childLineCardsActiveDate[childIdx] = childNorm; cardsMoved = true; childDate = childNorm; }
-          }
-          if (childDate) {
-            var childFixed = fix15to11(childDate);
-            if (childFixed !== childDate) { p.childLineCardsActiveDate[childIdx] = childFixed; cardsMoved = true; childDate = childFixed; }
           }
           if (childDate === '' || childDate < todayStr) { p.childLineCardsActiveDate[childIdx] = todayStr; cardsMoved = true; }
         });
@@ -523,6 +536,7 @@ function isProjectsReadOnlyView() {
 }
 function saveProjectsData(data, opts) {
   if (isProjectsReadOnlyView()) { _projectsDataMem = null; _projectsDataMemKey = null; return false; }
+  _projectsLocalRevision += 1;
   if (!isProjectsServerOnlyMode()) {
     protectKnownProjectTitles(data);
     applyKnownProjectFolderFixes(data);
@@ -566,6 +580,7 @@ window.__projectsApplyBackendValue = function(key, value) {
   try {
     var parsed = JSON.parse(String(value || ''));
     if (!parsed || !Array.isArray(parsed.projects)) return false;
+    _projectsLocalRevision += 1;
     _projectsDataMem = parsed;
     _projectsDataMemKey = key;
     try {
@@ -604,6 +619,8 @@ window.addEventListener('pagehide', flushScheduledProjectsData, true);
 window.addEventListener('beforeunload', flushScheduledProjectsData, true);
 async function hydrateProjectsFromActiveSheet(forceMerge) {
   if (!_driveToken) return false;
+  var owner = projectsInteractionScope(), revision = _projectsLocalRevision;
+  if (_projectsSheetWritesPending || hasProjectsInlineEdit() || isProjectsReadOnlyView()) return false;
   if (typeof forceMerge === 'undefined') forceMerge = false;
   try {
     var localRaw = localStorage.getItem(projectsDataKey());
@@ -619,6 +636,7 @@ async function hydrateProjectsFromActiveSheet(forceMerge) {
     var resp = await fetch(url, { headers: {'Authorization': 'Bearer ' + token} });
     if (!resp.ok) return false;
     var json = await resp.json();
+    if (owner !== projectsInteractionScope() || revision !== _projectsLocalRevision || _projectsSheetWritesPending || hasProjectsInlineEdit()) return false;
     var rows = json.values || [];
     if (!rows.length) return false;
     var latestById = {};
@@ -635,6 +653,7 @@ async function hydrateProjectsFromActiveSheet(forceMerge) {
     data.projects.forEach(function(p) {
       var r = latestById[p.id];
       if (!r) return;
+      var ts = r[0] || '';
       var title = safeSheetProjectTitle(p, r[2]);
       var status = r[3] || p.status;
       var folderLink = r[7] || p.folderLink || '';
@@ -659,7 +678,9 @@ async function hydrateProjectsFromActiveSheet(forceMerge) {
       var cardsActive = hasCardsCol ? String(r[15] || '').trim() : null;
       var mustLaunchRaw = hasMustLaunchCol ? String(r[16] || '').trim().toLowerCase() : '';
       var mustLaunchRequired = hasMustLaunchCol ? (mustLaunchRaw === '1' || mustLaunchRaw === 'true' || mustLaunchRaw === 'yes' || mustLaunchRaw === 'да' || mustLaunchRaw === '‼️') : null;
-      if (p.title !== title) { p.title = title; changed = true; }
+      var titleEditedAt = getProjectTimestampMs(p.titleUpdatedAt);
+      var sheetTitleStale = titleEditedAt && getProjectTimestampMs(ts) < titleEditedAt;
+      if (!sheetTitleStale && p.title !== title) { p.title = title; changed = true; }
       if (p.status !== status) { p.status = status; changed = true; }
       if ((p.folderLink || '') !== folderLink) { p.folderLink = folderLink; changed = true; }
       if ((p.folderId || '') !== folderId) { p.folderId = folderId; changed = true; }
@@ -1978,16 +1999,20 @@ function buildActiveProjectRow(p, reason) {
     p.mustLaunchRequired ? '1' : '0'
   ];
 }
-async function syncActiveProjectsSheetExact(reason) {
-  if (!_driveToken) return;
+async function syncActiveProjectsSheetExact(reason, owner) {
+  owner = owner || projectsInteractionScope();
+  if (!_driveToken || isProjectsReadOnlyView()) return;
   await getDriveToken();
+  if (owner !== projectsInteractionScope()) return;
   await ensureActiveProjectsSheet();
+  if (owner !== projectsInteractionScope()) return;
   var data = loadProjectsData();
   var active = (data.projects || [])
     .filter(function(p){ return (p.zone || 'active') === 'active'; })
     .sort(function(a,b){ return (a.sortOrder||0) - (b.sortOrder||0); });
   var rows = active.map(function(p){ return buildActiveProjectRow(p, reason || 'sync'); });
   var token = await getDriveToken();
+  if (owner !== projectsInteractionScope()) return;
   var clearUrl = 'https://sheets.googleapis.com/v4/spreadsheets/' + SHEETS_ID + '/values/' + encodeURIComponent(PROJECTS_ACTIVE_SHEET_NAME + '!A2:Q') + ':clear';
   await fetch(clearUrl, {
     method: 'POST',
@@ -1996,6 +2021,7 @@ async function syncActiveProjectsSheetExact(reason) {
   });
   if (!rows.length) return;
   token = await getDriveToken();
+  if (owner !== projectsInteractionScope()) return;
   var setUrl = 'https://sheets.googleapis.com/v4/spreadsheets/' + SHEETS_ID + '/values/' + encodeURIComponent(PROJECTS_ACTIVE_SHEET_NAME + '!A2:Q' + (rows.length + 1)) + '?valueInputOption=USER_ENTERED';
   var resp = await fetch(setUrl, {
     method: 'PUT',
@@ -2011,7 +2037,16 @@ function syncProjectToActiveSheet(projectId, reason) {
   // Prevent immediate pull from overwriting just-edited local state
   // while sheet write is still in flight.
   _projectsSheetPullPauseUntil = Date.now() + 10000;
-  syncActiveProjectsSheetExact(reason || 'sync').catch(function(e){ console.warn('Active sheet sync failed:', e); });
+  if (!_driveToken) return;
+  var owner = projectsInteractionScope();
+  _projectsSheetWritesPending += 1;
+  _projectsSheetWriteTail = _projectsSheetWriteTail.catch(function() {}).then(function() {
+    if (owner !== projectsInteractionScope() || isProjectsReadOnlyView()) return;
+    return syncActiveProjectsSheetExact(reason || 'sync', owner);
+  }).catch(function(e){ console.warn('Active sheet sync failed:', e); }).finally(function() {
+    _projectsSheetWritesPending -= 1;
+    _projectsSheetPullPauseUntil = Date.now() + 10000;
+  });
 }
 function getSelectedProject() {
   if (!_selectedProjectId) return null;
@@ -2898,7 +2933,8 @@ function bindProjectsCalendarInteractions() {
         _taskPanelProjectId = pid;
         renderTaskPanel();
       }
-      if (typeof rerenderProjectsPreserveScroll === 'function') rerenderProjectsPreserveScroll();
+      wrap.querySelectorAll('.cal-day-selected').forEach(function(selected) { selected.classList.remove('cal-day-selected'); });
+      cell.classList.add('cal-day-selected');
     }
     if (e.target && e.target.closest && e.target.closest('.cal-cards-del')) {
       e.preventDefault();
@@ -4414,7 +4450,12 @@ var _renderProjectsInProgress = false;
 function renderProjectsScreen(opts) {
   opts = opts || {};
   if (!projectsMode) return;
+  if (hasProjectsInlineEdit()) {
+    _projectsRenderPending = true;
+    return;
+  }
   if (_renderProjectsInProgress) return;
+  _projectsRenderPending = false;
   _renderProjectsInProgress = true;
   try {
     var data = loadProjectsData();
@@ -4427,13 +4468,10 @@ function renderProjectsScreen(opts) {
     (data.projects || []).forEach(function(p) {
       var cd = (p.cardsActiveDate || '').trim();
       var md = (p.mustLaunchDate || '').trim();
-      var fix15to11 = function(d){ if (!d || d.length < 10) return d; if (d.slice(-2) === '15') return d.slice(0,-2) + '11'; return d; };
       if (cd) {
         var nrm2 = normalizeIsoDateStr(cd);
         if (nrm2 && nrm2 !== cd) { p.cardsActiveDate = nrm2; moved = true; cd = nrm2; }
       }
-      if (p.cardsActive && cd) { var fc = fix15to11(cd); if (fc !== cd) { p.cardsActiveDate = fc; moved = true; } }
-      if (p.mustLaunchRequired && md) { var fm = fix15to11(md); if (fm !== md) { p.mustLaunchDate = fm; moved = true; } }
       cd = (p.cardsActiveDate || '').trim();
       md = (p.mustLaunchDate || '').trim();
       // Как в loadProjectsData: переносим «!!» с пустой/прошлой даты на сегодня, чтобы он оставался видимым.
@@ -4447,10 +4485,6 @@ function renderProjectsScreen(opts) {
           if (childDate) {
             var childNorm = normalizeIsoDateStr(childDate);
             if (childNorm && childNorm !== childDate) { p.childLineCardsActiveDate[childIdx] = childNorm; moved = true; childDate = childNorm; }
-          }
-          if (childDate) {
-            var childFixed = fix15to11(childDate);
-            if (childFixed !== childDate) { p.childLineCardsActiveDate[childIdx] = childFixed; moved = true; childDate = childFixed; }
           }
           if (childDate === '' || childDate < todayStr) { p.childLineCardsActiveDate[childIdx] = todayStr; moved = true; }
         });
@@ -4607,12 +4641,13 @@ function renderProjectsScreen(opts) {
     var taskIndicatorsHtml = '<div class="proj-task-badge"><span class="proj-task-count">' + taskCount + '</span></div>';
     var negativeBtnHtml = renderProjectNegativeButton(p);
     var touchBtnHtml = renderProjectTouchButton(p, todayStr);
+    var cardBtnHtml = '<button type="button" class="project-card-row-button" data-project-card="' + escAttr(p.id) + '" title="Карта проекта" aria-label="Карта проекта">▣</button>';
     var aoaxBadgeHtml = renderProjectAoaxBadge(p);
     var dragHandle = '<span class="proj-row-drag-handle" title="Тяните для перетаскивания строки">&#9776;</span>';
     if (hasChildLines && _expandedProjectIds[p.id] === undefined) _expandedProjectIds[p.id] = false;
     var showPositionRows = hasChildLines && _expandedProjectIds[p.id];
     var extraLinesHtml = typeof renderProjectChildLinesHtml === 'function' ? renderProjectChildLinesHtml(p) : '';
-    var stickyHtml = '<div class="proj-col-expand">' + dragHandle + '<span class="proj-col-expand-arrow"' + (expandArrowOnclick || '') + '>' + expandContent + '</span></div><div class="proj-col-type" onclick="event.stopPropagation();cycleProjectClientType(\'' + p.id + '\')" title="Старые/новички/2-й раз">' + typeHtml + '</div><button type="button" class="' + driveClass + '" title="' + driveTitle + '" onclick="event.stopPropagation();openProjectDriveFolder(\'' + p.id + '\')">💿</button><div class="proj-cell-editable' + expandedClass + '" data-id="' + p.id + '" onclick="if(event.shiftKey)return;editProjectCell(this)">' + hoverPop + '<div class="proj-main-line"><button type="button" class="proj-emoji-btn" onclick="event.stopPropagation();showProjEmojiPicker(this,\'' + p.id + '\')">' + emHtml + '</button><input type="text" value="' + (p.title||'').replace(/"/g,'&quot;') + '" size="' + Math.max(8, String(p.title || '').length + 2) + '" readonly style="pointer-events:none">' + expandBtnName + '<span class="project-path">' + pathHtml + '</span>' + aoaxBadgeHtml + '<button type="button" class="proj-status-btn project-status" onclick="event.stopPropagation();showProjectStatusPicker(this,\'' + p.id + '\')" style="background:' + (PROJECT_STATUS_COLORS[p.status]||'#666') + '22;color:' + (PROJECT_STATUS_COLORS[p.status]||'#999') + '">' + (p.status||'В работе') + '</button>' + negativeBtnHtml + touchBtnHtml + '</div>' + (hasChildLines ? '' : '<div class="proj-optional-row">' + (typeof renderProjectChildLinesHtml === 'function' ? renderProjectChildLinesHtml(p) : '') + '</div>') + taskIndicatorsHtml + '</div><div class="proj-col-move">' + moveBtn + '</div>';
+    var stickyHtml = '<div class="proj-col-expand">' + dragHandle + '<span class="proj-col-expand-arrow"' + (expandArrowOnclick || '') + '>' + expandContent + '</span></div><div class="proj-col-type" onclick="event.stopPropagation();cycleProjectClientType(\'' + p.id + '\')" title="Старые/новички/2-й раз">' + typeHtml + '</div><button type="button" class="' + driveClass + '" title="' + driveTitle + '" onclick="event.stopPropagation();openProjectDriveFolder(\'' + p.id + '\')">💿</button><div class="proj-cell-editable' + expandedClass + '" data-id="' + p.id + '" onclick="if(event.shiftKey)return;editProjectCell(this)">' + hoverPop + '<div class="proj-main-line"><button type="button" class="proj-emoji-btn" onclick="event.stopPropagation();showProjEmojiPicker(this,\'' + p.id + '\')">' + emHtml + '</button><input type="text" value="' + (p.title||'').replace(/"/g,'&quot;') + '" size="' + Math.max(8, String(p.title || '').length + 2) + '" readonly style="pointer-events:none">' + expandBtnName + '<span class="project-path">' + pathHtml + '</span>' + aoaxBadgeHtml + '<button type="button" class="proj-status-btn project-status" onclick="event.stopPropagation();showProjectStatusPicker(this,\'' + p.id + '\')" style="background:' + (PROJECT_STATUS_COLORS[p.status]||'#666') + '22;color:' + (PROJECT_STATUS_COLORS[p.status]||'#999') + '">' + (p.status||'В работе') + '</button>' + negativeBtnHtml + touchBtnHtml + cardBtnHtml + '</div>' + (hasChildLines ? '' : '<div class="proj-optional-row">' + (typeof renderProjectChildLinesHtml === 'function' ? renderProjectChildLinesHtml(p) : '') + '</div>') + taskIndicatorsHtml + '</div><div class="proj-col-move">' + moveBtn + '</div>';
     var selectedClass = (_selectedProjectId === p.id) ? ' selected' : '';
     var multiSelectedClass = isProjectMultiSelected(p.id) ? ' multi-selected' : '';
     var groupedClass = (_projectsTypeSortPriority && normalizeProjectClientType(p.clientType) === _projectsTypeSortPriority) || (_projectsFilterLaunch && projectHasLaunch(p)) || (_projectsFilterAutoload && projectHasAutoload(p)) || (_projectsFilterMustLaunch && projectHasMustLaunch(p)) ? ' group-match' : '';
@@ -4765,28 +4800,45 @@ function renderProjectsScreen(opts) {
 }
 function editProjectCell(el) {
   var cell = el.closest('.proj-cell-editable');
-  if (!cell || cell.classList.contains('editing')) return;
+  if (!cell || cell.classList.contains('editing') || isProjectsReadOnlyView()) return;
   cell.classList.add('editing');
   var inp = cell.querySelector('input');
   inp.removeAttribute('readonly');
   inp.style.pointerEvents = '';
   inp.focus();
   inp.select();
-  function done() {
+  var edit = { input: inp, owner: projectsInteractionScope(), id: cell.getAttribute('data-id'), finished: false };
+  _projectsInlineEdit = edit;
+  function done(commit) {
+    if (edit.finished) return;
+    edit.finished = true;
+    if (_projectsInlineEdit === edit) _projectsInlineEdit = null;
     cell.classList.remove('editing');
     inp.setAttribute('readonly','');
     inp.style.pointerEvents = 'none';
-    var id = cell.getAttribute('data-id');
+    if (edit.owner !== projectsInteractionScope() || isProjectsReadOnlyView()) return;
+    var id = edit.id;
     var data = loadProjectsData();
     var p = data.projects.find(function(x){ return x.id===id; });
     if (p) {
-      p.title = inp.value.trim() || p.title;
-      saveProjectsData(data);
-      syncProjectToActiveSheet(id, 'title_edit');
+      var title = commit !== false ? inp.value.trim() || p.title : p.title;
+      if (title !== p.title) {
+        p.title = title;
+        p.titleUpdatedAt = new Date().toISOString();
+        saveProjectsData(data);
+        syncProjectToActiveSheet(id, 'title_edit');
+      }
+      inp.value = p.title;
+      inp.size = Math.max(8, String(p.title || '').length + 2);
     }
+    if (_projectsRenderPending) rerenderProjectsPreserveScroll();
   }
-  inp.onblur = done;
-  inp.onkeydown = function(e) { if (e.key==='Enter') { e.preventDefault(); inp.blur(); } };
+  inp.onblur = function() { done(true); };
+  inp.onkeydown = function(e) {
+    if (e.isComposing || e.key !== 'Enter' && e.key !== 'Escape') return;
+    e.preventDefault(); e.stopPropagation();
+    done(e.key === 'Enter'); inp.blur();
+  };
 }
 function showProjEmojiPicker(btn, projectId) {
   var existing = document.getElementById('projEmojiPicker');
@@ -5160,7 +5212,7 @@ var _mustLaunchGhostOnMove = function(e) {
   }
 };
 var _mustLaunchGhostOnClick = function(e) {
-  if (e.button !== 0) return;
+  if (!_mustLaunchPlacement || e.button !== 0) return;
   var ox = 12, oy = 12;
   var cell = getCalendarCellAtPoint(e.clientX, e.clientY) || getCalendarCellAtPoint(e.clientX + ox, e.clientY + oy) || getCalendarCellFromEventTarget(e.target);
   if (!cell) return;
@@ -5170,6 +5222,7 @@ var _mustLaunchGhostOnClick = function(e) {
   e.preventDefault();
   e.stopPropagation();
   setProjectMustLaunchWithDate(pid, true, dt);
+  cancelMustLaunchPlacement();
 };
 var _mustLaunchGhostOnRightClick = function(e) {
   e.preventDefault();
