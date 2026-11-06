@@ -26,40 +26,62 @@
   }
   function createRunner(env) {
     var active = null;
-    function notify(batch) { if (env.onChange) env.onChange(batch); }
+    function notify(batch) {
+      try { if (env.onChange) env.onChange(batch); }
+      catch (_) { if (typeof console !== 'undefined') console.warn('Не удалось обновить индикатор документов. Генерация продолжается.'); }
+    }
     function guard(batch) { if (batch.cancelled || !env.isCurrent(batch.snapshot)) throw Error('Пользователь или режим изменился. Оставшиеся документы не отправлены.'); }
-    async function run(batch) {
+    async function run(batch, pending) {
       if (active) throw Error('Предыдущая очередь ещё выполняется.');
+      pending = pending || batch.jobs.filter(function (job) { return job.state === 'waiting'; });
+      if (!pending.length) return batch;
       active = batch; batch.running = true; notify(batch);
       try {
         guard(batch);
         await env.prepare(batch.snapshot); guard(batch);
-        for (var i = 0; i < batch.jobs.length; i++) {
-          var job = batch.jobs[i];
-          try {
-            guard(batch); job.state = 'generating'; notify(batch);
-            var raw = await env.generate(job.prompt, job.type);
-            guard(batch); job.html = env.parse(raw);
-            job.state = 'saving'; notify(batch);
-            job.file = await env.save(batch.snapshot, job, function () { guard(batch); });
-            guard(batch);
-            if (!job.file || !job.file.id) throw Error('Google Drive не подтвердил сохранение. Проверьте папку перед повторным запуском.');
-            job.state = 'saved';
-          } catch (error) {
-            job.error = message(error); job.state = job.html ? 'save_failed' : 'failed';
-            if (!env.isCurrent(batch.snapshot) || batch.cancelled) { batch.cancelled = true; break; }
+        var next = 0;
+        async function worker() {
+          while (next < pending.length) {
+            if (batch.cancelled || !env.isCurrent(batch.snapshot)) { batch.cancelled = true; return; }
+            var job = pending[next++];
+            try {
+              guard(batch); job.error = ''; job.state = 'generating'; notify(batch);
+              var raw = await env.generate(job.prompt, job.type);
+              guard(batch); job.html = env.parse(raw);
+              job.state = 'saving'; notify(batch);
+              job.file = await env.save(batch.snapshot, job, function () { guard(batch); });
+              guard(batch);
+              if (!job.file || !job.file.id) throw Error('Google Drive не подтвердил сохранение. Проверьте папку перед повторным запуском.');
+              job.state = 'saved';
+            } catch (error) {
+              job.error = message(error); job.state = job.html ? 'save_failed' : 'failed';
+              if (!env.isCurrent(batch.snapshot) || batch.cancelled) batch.cancelled = true;
+            }
+            notify(batch);
           }
-          notify(batch);
         }
+        // Independent requests retain each document's full prompt and output budget.
+        var workers = [];
+        for (var i = 0; i < Math.min(3, pending.length); i++) workers.push(worker());
+        var results = await Promise.allSettled(workers);
+        var failed = results.find(function (result) { return result.status === 'rejected'; });
+        if (failed) throw failed.reason;
       } catch (error) {
         batch.error = message(error);
       } finally {
-        batch.jobs.forEach(function (job) { if (job.state === 'waiting') { job.state = 'not_started'; job.error = batch.error || 'Очередь остановлена.'; } });
+        pending.forEach(function (job) { if (job.state === 'waiting') { job.state = 'not_started'; job.error = batch.error || 'Очередь остановлена.'; } });
         batch.running = false; active = null; notify(batch);
       }
       return batch;
     }
-    return { run: run, active: function () { return active; }, cancel: function () { if (active) { active.cancelled = true; notify(active); } } };
+    async function retry(batch, job) {
+      if (active) throw Error('Предыдущая очередь ещё выполняется.');
+      if (batch.jobs.indexOf(job) < 0 || ['failed', 'not_started'].indexOf(job.state) < 0 || job.html || job.file) throw Error('Повтор генерации для этого документа недоступен.');
+      if (!env.isCurrent(batch.snapshot)) throw Error('Пользователь или режим изменился.');
+      batch.cancelled = false; batch.error = ''; job.state = 'waiting';
+      return run(batch, [job]);
+    }
+    return { run: function (batch) { return run(batch); }, retry: retry, active: function () { return active; }, cancel: function () { if (active) { active.cancelled = true; notify(active); } } };
   }
   function parseResult(raw, sanitize) {
     if (typeof raw !== 'string' || raw.length > 500000) throw Error('Некорректный ответ генератора.');
@@ -448,6 +470,14 @@
       if (job.file) { var a = el('a', '', 'Открыть документ ↗'); a.href = job.file.url; a.target = '_blank'; a.rel = 'noopener'; row.append(a); }
       if (job.error) row.append(el('small', 'cg-error', job.error));
       var actions=el('div','cg-document-actions'),available=!!(job.html||job.file);
+      if (['failed', 'not_started'].indexOf(job.state) >= 0 && !available) {
+        var retry = button('↻ Повторить документ', async function () {
+          if (runner.active()) return;
+          try { await runner.retry(batch, job); }
+          catch (error) { job.error = message(error); renderResults(); renderStatus(); }
+        }, 'cg-pdf-button');
+        retry.disabled = !!runner.active(); actions.append(retry);
+      }
       var download=button('↓ PDF',function(){pdfAction(batch,[job],'download');},'cg-pdf-button'),share=button('В Telegram',function(){pdfAction(batch,[job],'share');},'cg-pdf-button');
       download.title='Скачать документ в PDF';download.disabled=share.disabled=!available;actions.append(download);if(job.type!=='scripts')actions.append(share);
       if(job.pdfState==='preparing')actions.append(el('small','','PDF…'));
@@ -553,7 +583,7 @@
           var batch = plan(fresh, state.selected, comments, function (type, data, comment) { return build(type, data, comment, state.depth); });
           batches.push(batch); dismissed = null; await runner.run(batch);
         } catch (error) { errorText = message(error); renderResults(); }
-      }, 'cg-start'); actions.append(depth, start); holder.append(actions, el('p', 'cg-caption', 'Аналитика и другие выбранные тексты создаются через текущий AI-сервис (Anthropic, платный API). КП берётся из сохранённого полного Word/PDF, повторно ИИ его не пересчитывает. Можно менять вкладки; не закрывайте страницу до завершения.'), el('div', 'cg-results'));
+      }, 'cg-start'); actions.append(depth, start); holder.append(actions, el('p', 'cg-caption', 'Выбранные документы генерируются параллельно: до трёх одновременно, каждый с полной подробностью. Используется Anthropic (платный API). КП берётся из сохранённого Word/PDF без повторной генерации. Можно менять вкладки; не закрывайте страницу до завершения.'), el('div', 'cg-results'));
       holder.append(el('section','cg-project-delivery'));loadReadyKp(snapshot);
       var files=el('section','cg-documents');holder.append(files);existingDocuments(snapshot,files);
       var templates = el('details', 'cg-library');templates.open=true; templates.append(el('summary', '', 'Быстрые скрипты и шаблоны сообщений')); var libraryHost = el('div'); templates.append(libraryHost); holder.append(templates); renderTemplates(snapshot,libraryHost); renderResults();
