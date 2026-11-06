@@ -856,6 +856,24 @@
     } : null;
   };
 
+  window.__getKpImageProjectContext = function () {
+    if ((window.AVITOLOG_BACKEND_MODE || window.AVITOLOG_BACKEND_SERVER_ONLY) && window.AVITOLOG_BACKEND_INITIAL_SYNC_READY !== true) return null;
+    var client = getKpActiveClient();
+    if (!client) return null;
+    var id = client.folderId || client.client_id || client.id || client.projectId || client.project_id;
+    if (!id) return null;
+    var project = typeof window.getSelectedProject === 'function' ? window.getSelectedProject() : null;
+    var linked = project && ((client.folderId && String(project.folderId || project.crmData && project.crmData.folderId || '') === String(client.folderId)) || (client.client_id && String(project.crmClientId || '') === String(client.client_id)));
+    var saved = linked && project.crmData || {};
+    function read(key) { var field = document.getElementById(key); return field ? String(field.value || '').trim() : ''; }
+    return {
+      id: String(id), scope: kpSaveScopeKey(),
+      category: String(read('category') || client.category || saved.category || '').slice(0, 2000),
+      title: [linked && project.title, read('company'), client.company, client.contact_name].filter(Boolean).join(' ').slice(0, 2000),
+      description: [read('notes') || client.notes || saved.notes, (client.positions || saved.positions || []).toString()].filter(Boolean).join(' ').slice(0, 8000)
+    };
+  };
+
   window.__saveKpPngToActiveClient = async function (blob, packageData, expectedTarget) {
     var ac = getKpActiveClient();
     if (!ac || !ac.folderId) throw new Error('Сначала выберите клиента с папкой Google Drive в левом меню.');
@@ -978,7 +996,7 @@
     return (
       '<div class="kp-gen-section kp-editor-embed-section">' +
       '<div class="kp-gen-label">Расчет КП</div>' +
-      '<iframe class="kp-editor-embed" src="kp-editor.html?embedded=1&amp;v=20261103-kp-stable1" title="Редактор КП"></iframe>' +
+      '<iframe class="kp-editor-embed" src="kp-editor.html?embedded=1&amp;v=20261106-kp-auto-image1" title="Редактор КП"></iframe>' +
       '</div>'
     );
   }

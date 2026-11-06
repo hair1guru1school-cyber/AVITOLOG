@@ -176,6 +176,9 @@
 <link rel="stylesheet" href="assets/css/kp-editor-mobile.css?v=20261103-kp-stable1">
 <script defer src="js/light-theme.js?v=20261021-light1"></script>
 <script defer src="js/mobile-ui.js?v=20261024-mobile1"></script>
+<style>
+.hero-library-niches{display:flex;gap:6px;overflow-x:auto;scrollbar-width:thin;padding:2px 0 8px;margin:8px 0}.hero-library-niches .btn,.hero-library-groups .btn{white-space:nowrap;font-size:12px;padding:6px 9px}.hero-library-niches .btn[aria-pressed="true"]{border-color:var(--green);color:var(--green)}.kp-auto-image-label{display:flex!important;align-items:flex-start;gap:9px}.kp-auto-image-label input[type="checkbox"]{width:auto;min-height:0;margin:3px 0;flex:none}
+</style>
 </head>
 <body class="kp-mobile-editor"><script>if(new URLSearchParams(location.search).get("embedded")==="1")document.body.classList.add("embedded");</script>
   <header class="top">
@@ -390,6 +393,7 @@
     <div class="emoji-picker" id="emojiPicker"></div>
   </main>
 
+  <script src="js/kp-image-match.js?v=20261106-kp-auto-image1"></script>
   <script>
     const W = 1414;
     const H = 2000;
@@ -465,6 +469,7 @@
     let customNicheImages = [];
     let heroLibrary = { groups: [{id:"services",name:"Услуги"},{id:"goods",name:"Товары"}], items: {} };
     let heroLibraryDialog = null, heroLibraryGroup = "all", heroLibraryQuery = "", heroLibraryBusy = false, heroLibraryWriteTail = Promise.resolve();
+    let heroLibraryNiche = "all", autoHeroTask = Promise.resolve(), autoHeroVersion = 0, autoHeroSignature = "", autoHeroReady = false;
     let formReady = false;
     let durableStateLoaded = false;
     let stateWriteTail = Promise.resolve();
@@ -723,10 +728,10 @@
       });
     }
     function imageNotice(error){ $("kpPersistStatus").textContent = error && error.message || "Картинка не загрузилась. Выберите её повторно."; }
-    function loadHero(src){
+    function loadHero(src, guard){
       const version = ++heroLoadVersion;
       const task = loadImage(src).then((image) => {
-        if (version !== heroLoadVersion) return false;
+        if (version !== heroLoadVersion || guard && !guard()) return false;
         if (!image || !(image.naturalWidth || image.width)) throw new Error("Картинка КП не загрузилась. Экспорт без неё остановлен; выберите картинку повторно.");
         images.hero = image; loadedHeroSource = src; return true;
       });
@@ -738,6 +743,7 @@
     }
     async function prepareImageExport(){
       if (initialLoad) await initialLoad;
+      await autoHeroTask;
       await heroLoadTask.catch(() => {});
       const src = await selectedHeroSource();
       if (!images.hero || loadedHeroSource !== src) await loadHero(src);
@@ -796,7 +802,7 @@
       const entries=[];
       Object.keys(NICHE_LIBRARY).forEach(kind=>NICHE_LIBRARY[kind].forEach(file=>{const src=nichePath(file);entries.push({key:"builtin:"+src,src,name:heroAliases[src]||cleanNicheName(file),kind});}));
       customNicheImages.forEach(record=>entries.push({key:"custom:"+record.id,src:record.dataUrl,name:record.name||"Картинка",kind:record.kind||"services",record}));
-      return entries.map(entry=>{const saved=heroLibrary.items[entry.key];return Object.assign({},entry,{name:saved&&saved.name||entry.name,kind:heroLibrary.groups.some(group=>group.id===(saved&&saved.kind||entry.kind))?saved&&saved.kind||entry.kind:"services"});});
+      return entries.map(entry=>{const saved=heroLibrary.items[entry.key],kind=heroLibrary.groups.some(group=>group.id===(saved&&saved.kind||entry.kind))?saved&&saved.kind||entry.kind:"services";return Object.assign({},entry,{name:saved&&saved.name||entry.name,kind,groupName:(heroLibrary.groups.find(group=>group.id===kind)||{}).name||""});});
     }
     function updateHeroLibrary(change){
       const owner=editorStateId();pendingImageWrites++;
@@ -815,9 +821,12 @@
     }
     function heroLibraryNotice(text){if(heroLibraryDialog)heroLibraryDialog.querySelector(".hero-library-status").textContent=text;$("kpPersistStatus").textContent=text;}
     function renderHeroLibraryWindow(){
-      if(!heroLibraryDialog)return;const entries=heroLibraryEntries(),groups=heroLibraryDialog.querySelector(".hero-library-groups"),grid=heroLibraryDialog.querySelector(".hero-library-grid");if(heroLibraryGroup!=="all"&&!heroLibrary.groups.some(group=>group.id===heroLibraryGroup))heroLibraryGroup="all";groups.replaceChildren();
-      [{id:"all",name:"Все картинки"}].concat(heroLibrary.groups).forEach(group=>{const button=document.createElement("button");button.type="button";button.className="btn";button.textContent=group.name+" · "+entries.filter(entry=>group.id==="all"||entry.kind===group.id).length;button.setAttribute("aria-pressed",String(heroLibraryGroup===group.id));button.addEventListener("click",()=>{heroLibraryGroup=group.id;renderHeroLibraryWindow();});groups.append(button);});
-      heroLibraryDialog.querySelector('[data-hero-action="rename"]').disabled=heroLibraryGroup==="all";heroLibraryDialog.querySelector('[data-hero-action="remove"]').disabled=["all","services","goods"].includes(heroLibraryGroup);grid.replaceChildren();entries.filter(entry=>(heroLibraryGroup==="all"||entry.kind===heroLibraryGroup)&&entry.name.toLowerCase().includes(heroLibraryQuery.toLowerCase())).forEach(entry=>appendHeroEntry(grid,entry));if(!grid.children.length){const empty=document.createElement("p");empty.textContent="В этой группе пока нет картинок";grid.append(empty);}
+      if(!heroLibraryDialog)return;const entries=heroLibraryEntries(),groups=heroLibraryDialog.querySelector(".hero-library-groups"),niches=heroLibraryDialog.querySelector(".hero-library-niches"),grid=heroLibraryDialog.querySelector(".hero-library-grid"),matcher=window.KpImageMatch;if(heroLibraryGroup!=="all"&&!heroLibrary.groups.some(group=>group.id===heroLibraryGroup))heroLibraryGroup="all";groups.replaceChildren();
+      [{id:"all",name:"Все картинки"}].concat(heroLibrary.groups).forEach(group=>{const button=document.createElement("button");button.type="button";button.className="btn";button.textContent=(matcher?matcher.emoji(group.name,group.id)+" ":"")+group.name+" · "+entries.filter(entry=>group.id==="all"||entry.kind===group.id).length;button.setAttribute("aria-pressed",String(heroLibraryGroup===group.id));button.addEventListener("click",()=>{heroLibraryGroup=group.id;renderHeroLibraryWindow();});groups.append(button);});
+      const grouped=entries.filter(entry=>heroLibraryGroup==="all"||entry.kind===heroLibraryGroup),filters=matcher?matcher.niches(grouped):[];
+      if(heroLibraryNiche!=="all"&&!filters.some(group=>group.id===heroLibraryNiche))heroLibraryNiche="all";
+      niches.replaceChildren();[{id:"all",name:"Все ниши",emoji:"🖼️",count:grouped.length}].concat(filters).forEach(group=>{const button=document.createElement("button");button.type="button";button.className="btn";button.dataset.nicheFilter=group.id;button.textContent=group.emoji+" "+group.name+" · "+group.count;button.setAttribute("aria-pressed",String(heroLibraryNiche===group.id));button.addEventListener("click",()=>{heroLibraryNiche=group.id;renderHeroLibraryWindow();});niches.append(button);});
+      heroLibraryDialog.querySelector('[data-hero-action="rename"]').disabled=heroLibraryGroup==="all";heroLibraryDialog.querySelector('[data-hero-action="remove"]').disabled=["all","services","goods"].includes(heroLibraryGroup);grid.replaceChildren();grouped.filter(entry=>(!matcher||matcher.belongs(entry,heroLibraryNiche))&&entry.name.toLowerCase().includes(heroLibraryQuery.toLowerCase())).forEach(entry=>appendHeroEntry(grid,entry));if(!grid.children.length){const empty=document.createElement("p");empty.textContent="По выбранным фильтрам картинок нет";grid.append(empty);}
     }
     async function editHeroGroup(action){
       if(heroLibraryBusy||imageSaving)return;const id=heroLibraryGroup,group=heroLibrary.groups.find(item=>item.id===id);if(action!=="add"&&!group)return;heroLibraryBusy=true;
@@ -827,8 +836,8 @@
       }catch(error){heroLibraryNotice(error.message);}finally{heroLibraryBusy=false;}
     }
     async function openHeroLibrary(){
-      if(heroLibraryDialog){heroLibraryDialog.focus();return;}toggleNichePanels(false);const modal=document.createElement("dialog"),head=document.createElement("div"),title=document.createElement("h3"),tools=document.createElement("div"),search=document.createElement("input"),groups=document.createElement("div"),grid=document.createElement("div"),status=document.createElement("p");modal.className="hero-library-dialog";modal.setAttribute("aria-label","Библиотека картинок КП");head.className="modal-head";title.textContent="Картинки КП";tools.className="toolbar";
-      [["upload","Добавить картинку",()=>$("heroFile").click()],["add","+ Группа",()=>editHeroGroup("add")],["rename","Название группы",()=>editHeroGroup("rename")],["remove","Убрать группу",()=>editHeroGroup("remove")],["close","Закрыть",()=>modal.close()]].forEach(([action,text,fn])=>{const button=document.createElement("button");button.type="button";button.className="btn";button.dataset.heroAction=action;button.textContent=text;if(action==="remove")button.title="Картинки останутся в группе «Услуги»";button.addEventListener("click",fn);tools.append(button);});head.append(title,tools);search.type="search";search.className="hero-library-search";search.placeholder="Найти картинку";search.setAttribute("aria-label","Найти картинку");search.value=heroLibraryQuery;search.addEventListener("input",()=>{heroLibraryQuery=search.value;renderHeroLibraryWindow();});groups.className="hero-library-groups";grid.className="hero-library-grid";status.className="hero-library-status";status.setAttribute("role","status");status.textContent="Названия, группы и выбор сохраняются автоматически в этом браузере. Карандаш — изменить название и группу картинки.";modal.append(head,search,groups,grid,status);modal.addEventListener("close",()=>{modal.remove();if(heroLibraryDialog===modal)heroLibraryDialog=null;});document.body.append(modal);heroLibraryDialog=modal;renderHeroLibraryWindow();modal.showModal();try{await heroLibraryWriteTail.catch(()=>{});customNicheImages=await listCustomHeroImages();renderNicheLibrary();}catch(error){heroLibraryNotice(error.message);}
+      if(heroLibraryDialog){heroLibraryDialog.focus();return;}toggleNichePanels(false);const modal=document.createElement("dialog"),head=document.createElement("div"),title=document.createElement("h3"),tools=document.createElement("div"),search=document.createElement("input"),groups=document.createElement("div"),niches=document.createElement("div"),grid=document.createElement("div"),status=document.createElement("p");modal.className="hero-library-dialog";modal.setAttribute("aria-label","Библиотека картинок КП");head.className="modal-head";title.textContent="Картинки КП";tools.className="toolbar";
+      [["upload","Добавить картинку",()=>$("heroFile").click()],["add","+ Группа",()=>editHeroGroup("add")],["rename","Название группы",()=>editHeroGroup("rename")],["remove","Убрать группу",()=>editHeroGroup("remove")],["settings","⚙",()=>openAutoHeroSettings()],["close","Закрыть",()=>modal.close()]].forEach(([action,text,fn])=>{const button=document.createElement("button");button.type="button";button.className="btn";button.dataset.heroAction=action;button.textContent=text;if(action==="settings"){button.title="Настройки подбора картинок";button.setAttribute("aria-label","Настройки подбора картинок");}if(action==="remove")button.title="Картинки останутся в группе «Услуги»";button.addEventListener("click",fn);tools.append(button);});head.append(title,tools);search.type="search";search.className="hero-library-search";search.placeholder="Найти картинку";search.setAttribute("aria-label","Найти картинку");search.value=heroLibraryQuery;search.addEventListener("input",()=>{heroLibraryQuery=search.value;renderHeroLibraryWindow();});groups.className="hero-library-groups";niches.className="hero-library-niches";niches.setAttribute("aria-label","Фильтр картинок по нишам");grid.className="hero-library-grid";status.className="hero-library-status";status.setAttribute("role","status");status.textContent="Названия, группы и выбор сохраняются автоматически в этом браузере. Карандаш — изменить название и группу картинки.";modal.append(head,search,groups,niches,grid,status);modal.addEventListener("close",()=>{modal.remove();if(heroLibraryDialog===modal)heroLibraryDialog=null;});document.body.append(modal);heroLibraryDialog=modal;renderHeroLibraryWindow();modal.showModal();try{await heroLibraryWriteTail.catch(()=>{});customNicheImages=await listCustomHeroImages();renderNicheLibrary();}catch(error){heroLibraryNotice(error.message);}
     }
     async function imageFileToDataUrl(file){
       const source = URL.createObjectURL(file);
@@ -923,9 +932,9 @@
         modal.className="kp-image-details";title.textContent=groupOnly?"Название группы":renameOnly?"Название картинки":"Сохранить картинку";label.textContent=groupOnly?"Название группы":"Название картинки";input.setAttribute("aria-label",label.textContent);input.value=name||"";input.maxLength=groupOnly?80:100;input.required=true;label.append(input);groupLabel.textContent="Раздел библиотеки";group.setAttribute("aria-label","Группа картинки");heroLibrary.groups.forEach(({id:value,name:text})=>{const option=document.createElement("option");option.value=value;option.textContent=text;group.append(option);});group.value=heroLibrary.groups.some(item=>item.id===kind)?kind:"services";groupLabel.append(group);save.type="submit";save.className="btn primary";save.textContent="Сохранить";cancel.type="button";cancel.className="btn";cancel.textContent="Отмена";cancel.addEventListener("click",()=>modal.close());actions.className="toolbar";actions.append(cancel,save);form.append(title,label);if(!renameOnly)form.append(groupLabel);form.append(actions);modal.append(form);form.addEventListener("submit",(event)=>{event.preventDefault();if(!input.value.trim()){input.focus();return;}result={name:input.value.trim().slice(0,groupOnly?80:100),kind:group.value};modal.close();});modal.addEventListener("close",()=>{modal.remove();resolve(result);});document.body.append(modal);modal.showModal();input.focus();input.select();
       });
     }
-    async function selectNicheImage(src, name){
-      if(imageSaving)return;if(initialLoad)await initialLoad;
-      if(!await loadHero(src))return;
+    async function selectNicheImage(src, name, options){
+      if(imageSaving&&!(options&&options.automatic))return;const context=imageProjectContext(),guard=heroSelectionGuard(context,options);if(initialLoad)await initialLoad;
+      if(!guard()||!await loadHero(src,guard)||!guard())return;
       customHeroSrc = "";
       state.heroCustomId = "";
       state.heroSrc = src;
@@ -933,10 +942,12 @@
       renderNicheLibrary();
       saveState();
       draw();
+      if(!options||!options.automatic)await rememberProjectHero("builtin:"+src,context,guard);
+      return true;
     }
-    async function selectCustomNicheImage(record){
-      if(imageSaving)return;if(initialLoad)await initialLoad;
-      if(!await loadHero(record.dataUrl))return;
+    async function selectCustomNicheImage(record, options){
+      if(imageSaving&&!(options&&options.automatic))return;const context=imageProjectContext(),guard=heroSelectionGuard(context,options);if(initialLoad)await initialLoad;
+      if(!guard()||!await loadHero(record.dataUrl,guard)||!guard())return;
       customHeroSrc = "";
       state.heroCustomId = record.id;
       state.heroSrc = "";
@@ -944,6 +955,50 @@
       renderNicheLibrary();
       saveState();
       draw();
+      if(!options||!options.automatic)await rememberProjectHero("custom:"+record.id,context,guard);
+      return true;
+    }
+    function imageProjectContext(){
+      try{return window.parent!==window&&typeof window.parent.__getKpImageProjectContext==="function"?window.parent.__getKpImageProjectContext():null;}catch(_){return null;}
+    }
+    function projectHeroId(context){return editorStateId()+":project-hero:"+JSON.stringify([context.scope,context.id]);}
+    function autoHeroStamp(context){return JSON.stringify([editorStateId(),context,heroLibraryEntries().map(entry=>[entry.key,entry.name,entry.groupName])]);}
+    function heroSelectionGuard(context,options){
+      const owner=editorStateId(),stamp=JSON.stringify(context);
+      if(!options||!options.automatic){autoHeroVersion++;autoHeroSignature=autoHeroStamp(context);}
+      return ()=>owner===editorStateId()&&stamp===JSON.stringify(imageProjectContext())&&(!options||!options.guard||options.guard());
+    }
+    async function rememberProjectHero(key,context,guard){
+      if(!context||!guard())return;await stateWriteTail;if(!guard())return;
+      await putCustomHeroImage({id:projectHeroId(context),type:"project-hero-choice",key,manual:true});
+    }
+    function refreshAutoHero(force){
+      const context=imageProjectContext(),matcher=window.KpImageMatch;
+      if(!autoHeroReady||!context||!matcher||imageSaving)return autoHeroTask;
+      const stamp=autoHeroStamp(context);if(!force&&stamp===autoHeroSignature)return autoHeroTask;
+      autoHeroSignature=stamp;const version=++autoHeroVersion,owner=editorStateId();
+      const current=()=>version===autoHeroVersion&&owner===editorStateId()&&stamp===autoHeroStamp(imageProjectContext());
+      autoHeroTask=(async()=>{
+        const setting=await getCustomHeroImage(owner+":auto-hero-settings");if(!current()||setting&&setting.enabled===false)return;
+        const saved=await getCustomHeroImage(projectHeroId(context));if(!current())return;
+        const entries=heroLibraryEntries();
+        const entry=saved&&saved.manual?entries.find(item=>item.key===saved.key):matcher.match(context,entries);
+        if(!entry)return;
+        const selected=entry.record?state.heroCustomId===entry.record.id:!state.heroCustomId&&state.heroSrc===entry.src;
+        if(selected)return;
+        const options={automatic:true,guard:current};
+        const applied=entry.record?await selectCustomNicheImage(entry.record,options):await selectNicheImage(entry.src,entry.name,options);
+        if(applied&&current())heroLibraryNotice((saved&&saved.manual?"Картинка проекта: ":"По нише проекта: ")+entry.name);
+      })().catch(error=>{if(current())imageNotice(error);});
+      return autoHeroTask;
+    }
+    async function openAutoHeroSettings(){
+      const owner=editorStateId(),modal=document.createElement("dialog"),title=document.createElement("h3"),label=document.createElement("label"),check=document.createElement("input"),text=document.createElement("span"),help=document.createElement("p"),status=document.createElement("p"),close=document.createElement("button");
+      modal.className="kp-image-details";modal.setAttribute("aria-label","Настройки подбора картинок");title.textContent="Настройки картинок КП";label.className="kp-auto-image-label";check.type="checkbox";check.disabled=true;text.textContent="Автоматически подбирать картинку по нише проекта";label.append(check,text);help.className="hint";help.textContent="Включено по умолчанию. Ниша важнее названия и описания. Используется ваша библиотека, без ИИ-запросов. Ручной выбор для проекта сохраняется.";status.className="hint";close.className="btn";close.textContent="Закрыть";close.addEventListener("click",()=>modal.close());modal.append(title,label,help,status,close);modal.addEventListener("close",()=>modal.remove());document.body.append(modal);modal.showModal();
+      try{const saved=await getCustomHeroImage(owner+":auto-hero-settings");if(owner!==editorStateId()||!modal.isConnected){modal.close();return;}check.checked=!saved||saved.enabled!==false;check.disabled=imageSaving;}catch(error){status.textContent="Не удалось загрузить настройку: "+error.message;return;}
+      check.addEventListener("change",async()=>{if(owner!==editorStateId()||imageSaving)return;const enabled=check.checked;check.disabled=true;autoHeroVersion++;status.textContent="Сохраняем…";
+        try{await putCustomHeroImage({id:owner+":auto-hero-settings",type:"auto-hero-settings",enabled});if(owner!==editorStateId()){modal.close();return;}status.textContent="Настройка сохранена";autoHeroSignature="";await refreshAutoHero(true);}catch(error){check.checked=!enabled;status.textContent="Не удалось сохранить: "+error.message;}finally{if(modal.isConnected&&owner===editorStateId())check.disabled=false;}
+      });
     }
     function toggleNichePanels(force){
       const open = force === undefined ? !$("goodsPanel").classList.contains("open") : force;
@@ -2097,6 +2152,8 @@
     initCompactLayout();
     $("downloadBtn").disabled=true;
     initialLoad=preload().finally(()=>{if(!imageSaving)$("downloadBtn").disabled=false;});
+    initialLoad.then(()=>{autoHeroReady=true;$("downloadBtn").disabled=true;return refreshAutoHero();}).catch(imageNotice).finally(()=>{if(!imageSaving)$("downloadBtn").disabled=false;});
+    setInterval(()=>{refreshAutoHero();},1000);
     if (document.fonts && document.fonts.ready) {
       document.fonts.ready.then(draw);
     }
