@@ -72,7 +72,7 @@
     .niche-path{font-size:10px;color:#91a5bb;margin-top:3px}
     .editor{position:sticky;top:76px;transform-origin:top right}
     .editor>.body{overflow-anchor:none}
-    .editor-appearance>summary{display:none}
+    .editor-appearance>summary,.package-details>summary{display:list-item;cursor:pointer;padding:8px 2px;font-size:12px;font-weight:700;color:var(--muted)}
     .editor-appearance-content{display:flex;flex-direction:column;gap:12px}
     .editor>.head,.editor>.body{zoom:var(--editor-zoom,1)}
     .body{padding:14px;display:flex;flex-direction:column;gap:12px}
@@ -133,7 +133,8 @@
     .cover-card img{width:100%;height:350px;object-fit:cover;border-radius:12px;background:#050911}
     .cover-card-title{font-weight:900;font-size:18px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
     .cover-arrow{height:64px;border-radius:12px;background:#172438;color:#dcecff;border:1px solid rgba(93,229,255,.25);font-size:24px;font-weight:900}
-    #pkgItems{min-height:220px;overflow:hidden;resize:none}
+    #pkgItems{height:140px;min-height:110px;max-height:360px;overflow:auto;resize:vertical}
+    .package-details>label,.package-details>.toolbar{margin-top:8px}.editor>.body{gap:9px;padding:10px}.editor #packageEditor{gap:8px;padding:10px}.editor .pkg-identity{grid-template-columns:65px minmax(0,1fr)}.pkg-core{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:9px;align-items:start}.editor input:not([type=checkbox]):not([type=color]),.editor select{min-height:36px;padding:7px 9px}.editor .preset-card{padding:10px;gap:8px}.editor .preset-title{font-size:13px}.editor .preset-card .toolbar{flex-wrap:nowrap;gap:5px}.editor .preset-card .btn{padding:0 8px;white-space:nowrap;font-size:11px}.editor .preset-card .grid2{gap:8px}.editor .preset-card label{font-size:10px}.editor-footer #kpPersistStatus{height:16px;min-height:16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.hero-upload-badge{right:calc(6% + 44px)}.inline-number-target{position:absolute;z-index:3;border:0;border-radius:3px;background:transparent;padding:0;color:transparent;cursor:text}.inline-number-target:hover,.inline-number-target:focus-visible{outline:1px dashed var(--cyan);outline-offset:1px}.canvas-inline-field{position:absolute;z-index:6;margin:0;padding:0 2px;border:1px solid var(--cyan);border-radius:3px;background:#07111df5;color:#fff;line-height:1;box-sizing:border-box;min-width:0;outline:0}.canvas-inline-field[aria-invalid="true"]{border-color:var(--red)}body.kp-mobile-editor.kp-compact .editor>.body>.preset-card{order:2}body.kp-mobile-editor.kp-compact .editor-appearance{order:3}
     .pkg-limit-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:end}
     .pkg-unlimited-check{height:42px;display:flex;align-items:center;gap:7px;padding:0 10px;border:1px solid rgba(124,245,255,.22);border-radius:8px;background:#081b2d;color:#d9f8ff;font-size:12px;font-weight:800;white-space:nowrap}
     .pkg-unlimited-check input{width:16px;height:16px;margin:0}
@@ -178,6 +179,7 @@
 <script defer src="js/mobile-ui.js?v=20261024-mobile1"></script>
 <style>
 .hero-library-niches{display:flex;gap:6px;overflow-x:auto;scrollbar-width:thin;padding:2px 0 8px;margin:8px 0}.hero-library-niches .btn,.hero-library-groups .btn{white-space:nowrap;font-size:12px;padding:6px 9px}.hero-library-niches .btn[aria-pressed="true"]{border-color:var(--green);color:var(--green)}.kp-auto-image-label{display:flex!important;align-items:flex-start;gap:9px}.kp-auto-image-label input[type="checkbox"]{width:auto;min-height:0;margin:3px 0;flex:none}
+.editor #tabs .tab{font-size:11px;padding:0 3px}
 </style>
 </head>
 <body class="kp-mobile-editor"><script>if(new URLSearchParams(location.search).get("embedded")==="1")document.body.classList.add("embedded");</script>
@@ -191,7 +193,7 @@
       <div class="head">
         <div>
           <h1>Редактор КП</h1>
-          <div class="hint">Формат 1414×2000. Клик по пакету на картине выбирает его для редактирования.</div>
+          <div class="hint">Нажмите на цену или количество на листе, чтобы изменить. Enter — сохранить, Esc — отменить.</div>
         </div>
         <div class="toolbar">
           <button class="btn" id="coverBtn" type="button">Обложка</button>
@@ -205,6 +207,8 @@
           <canvas id="kpCanvas" width="1414" height="2000"></canvas>
           <button class="hero-zone" id="heroZone" type="button" aria-label="Выбрать картинку шапки"></button>
           <button class="hero-library-badge" id="heroLibraryBadge" type="button" aria-label="Библиотека картинок КП" title="Картинки · названия и группы" hidden>🖼</button>
+          <button class="hero-library-badge hero-upload-badge" id="heroUploadBadge" type="button" aria-label="Загрузить картинку КП" title="Загрузить свою картинку" hidden>↥</button>
+          <input id="heroFile" type="file" accept="image/png,image/jpeg,image/webp" hidden>
           <div class="niche-panel left" id="goodsPanel">
             <div class="niche-title">Товары</div>
             <div class="niche-grid" id="goodsGrid"></div>
@@ -227,13 +231,10 @@
         </div>
       </div>
       <div class="body">
-        <details class="editor-appearance" id="editorAppearance" open>
-        <summary>Оформление и готовые пакеты</summary>
+        <details class="editor-appearance" id="editorAppearance">
+        <summary>Фон и надпись на картинке</summary>
         <div class="editor-appearance-content">
         <div class="card">
-          <label>Картинка шапки
-            <input id="heroFile" type="file" accept="image/*">
-          </label>
           <label>Надпись на шапке
             <select id="titleStyle">
               <option value="classic">Классика</option>
@@ -292,6 +293,7 @@
               <input id="pkgName">
             </label>
           </div>
+          <div class="pkg-core">
           <div class="pkg-limit-row" id="pkgLimitRow">
             <label>Количество объявлений
               <input id="pkgLimit" type="number" min="1" step="1" inputmode="numeric" placeholder="250">
@@ -300,14 +302,14 @@
               <input id="pkgUnlimited" type="checkbox"> ∞ без ограничений
             </label>
           </div>
-          <div class="grid2 pkg-price">
             <label>Работа авитолога
               <input id="pkgWork" inputmode="decimal">
             </label>
+          </div>
+          <details class="package-details"><summary>Строки пакета и цвет</summary>
             <label>Цвет плашки
               <input id="pkgColor" type="color">
             </label>
-          </div>
           <label>Строки пакета
             <textarea id="pkgItems"></textarea>
           </label>
@@ -317,6 +319,7 @@
             <button class="btn danger" id="clearLinesBtn">Очистить строки</button>
           </div>
           <div class="mini-note">Каждая строка с новой строки. Если начать строку с 🎁, она будет выглядеть как бонус. Обычные строки рисуются с синим маркером.</div>
+          </details>
         </div>
 
       </div>
@@ -643,7 +646,7 @@
       const quantity = pkg.quantity;
       let hasWorkLine = false;
       pkg.items = (pkg.items || []).map((line) => {
-        if (/=\s*работа\b/i.test(line) || /работа\s+авитолога/i.test(line)) {
+        if (/=\s*работа(?:\s|$)/i.test(line) || /работа\s+авитолога/i.test(line)) {
           hasWorkLine = true;
           return work ? `${work} = работа Авитолога (оплачивается сразу)` : line;
         }
@@ -677,7 +680,7 @@
       }
     }
     function saveState(){
-      readGlobalForm();
+      readGlobalForm(!$("packageEditor").contains(document.activeElement));
       persistState();
       draw();
     }
@@ -742,6 +745,8 @@
       return customHeroSrc || state.heroSrc || ASSETS.hero;
     }
     async function prepareImageExport(){
+      finishInlineEdit(true);
+      flushPackageForm();
       if (initialLoad) await initialLoad;
       await autoHeroTask;
       await heroLoadTask.catch(() => {});
@@ -860,6 +865,8 @@
         durableStateLoaded = true;
         try { const stored = await getCustomHeroImage(editorStateId()); if (stored && stored.value && Array.isArray(stored.value.packages)) { state = Object.assign(clone(defaults), stored.value); selectedPackage = Number(state.selectedPackage) || 0; } } catch (e) { $("kpPersistStatus").textContent = "Хранилище фонов пока недоступно"; }
       }
+      renderForm();
+      editorEl.querySelector(".body").inert = false;
       images.bgDark = await loadImage(ASSETS.bgDark);
       images.bgClean = await loadImage(ASSETS.bgClean);
       images.bgReference = await loadImage(ASSETS.bgReference);
@@ -875,7 +882,7 @@
       images.titleColor = await loadImage(ASSETS.titleColor);
       images.titleGold = await loadImage(ASSETS.titleGold);
       images.titlePremium = await loadImage(ASSETS.titlePremium);
-      renderForm();
+      renderNicheLibrary();
       draw();
     }
 
@@ -1047,21 +1054,12 @@
       $("pkgWork").value = pkg.work || "";
       $("pkgColor").value = normalizeColor(pkg.color || "#24308f");
       $("pkgItems").value = (pkg.items || []).join("\n");
-      resizePackageItemsField();
       restoreScroll();
     }
     function captureEditorScroll(){
       const nodes = [document.scrollingElement, editorEl.querySelector(".body"), $("pkgItems")].filter(Boolean);
       const positions = nodes.map(node => [node, node.scrollTop, node.scrollLeft]);
       return () => positions.forEach(([node, top, left]) => { node.scrollTop = top; node.scrollLeft = left; });
-    }
-    function resizePackageItemsField(){
-      const field = $("pkgItems");
-      if (!field) return;
-      const restoreScroll = captureEditorScroll();
-      field.style.height = "auto";
-      field.style.height = `${Math.max(220, field.scrollHeight + 4)}px`;
-      restoreScroll();
     }
     function renderZones(){
       stage.querySelectorAll(".click-zone").forEach((el) => el.remove());
@@ -1078,6 +1076,7 @@
       });
     }
     function selectPackage(index){
+      finishInlineEdit(true);
       const restoreScroll = captureEditorScroll();
       flushPackageForm();
       selectedPackage = index;
@@ -1144,6 +1143,65 @@
       drawHeroText();
       drawPackages();
       drawFooter();
+      renderInlineTargets();
+    }
+    let inlineEdit = null;
+    function inlineFields(){
+      const fields=[];
+      packageLayout().forEach(item=>{
+        const pkg=state.packages[item.index],quantity=packageQuantity(pkg),unlimited=isPackageUnlimited(pkg,item.index);
+        ctx.save();ctx.font=`400 31px ${FONT}`;
+        fields.push({index:item.index,key:"quantity",x:101,y:item.y-30,w:Math.max(64,ctx.measureText(unlimited?"Без ограничений":quantity||"Объявления").width+8),h:37,font:31});
+        let lineY=item.y+38;
+        for(const raw of pkg.items||[]){
+          const gift=raw.startsWith("🎁"),text=gift?raw.replace(/^🎁\s*/,""):raw;
+          if(!gift&&/работа/i.test(raw)){
+            ctx.font=`400 25px ${FONT}`;const money=formatMoney(pkg.work);
+            fields.push({index:item.index,key:"work",x:96,y:lineY-24,w:Math.max(100,ctx.measureText(money||"0 ₽").width+10),h:32,font:25});break;
+          }
+          lineY+=27*Math.max(1,getWrappedLines(text,1210,`400 25px ${FONT}`).length);
+        }
+        ctx.restore();
+      });return fields;
+    }
+    function positionInline(node,field){
+      node.style.left=`${field.x/W*100}%`;node.style.top=`${field.y/H*100}%`;node.style.width=`${Math.min(field.w,W-field.x-20)/W*100}%`;node.style.height=`${field.h/H*100}%`;
+      if(node.tagName==="INPUT")node.style.font=`400 ${field.font*stage.clientWidth/W}px ${FONT}`;
+    }
+    function renderInlineTargets(){
+      const fields=inlineFields(),keys=new Set();
+      fields.forEach(field=>{
+        const key=field.index+":"+field.key;keys.add(key);
+        let button=Array.from(stage.querySelectorAll(".inline-number-target")).find(node=>node.dataset.field===key);
+        if(!button){button=document.createElement("button");button.type="button";button.className="inline-number-target";button.dataset.field=key;button.addEventListener("click",()=>startInlineEdit(field.index,field.key));stage.appendChild(button);}
+        const label=(field.key==="quantity"?"Количество объявлений":"Цена пакета")+": "+state.packages[field.index].name;
+        button.setAttribute("aria-label",label);button.title=label+" · нажмите, чтобы изменить";positionInline(button,field);
+        if(inlineEdit&&inlineEdit.index===field.index&&inlineEdit.key===field.key)positionInline(inlineEdit.input,field);
+      });
+      stage.querySelectorAll(".inline-number-target").forEach(node=>{if(!keys.has(node.dataset.field))node.remove();});
+    }
+    function startInlineEdit(index,key){
+      if(!formReady||imageSaving)return;
+      finishInlineEdit(true);selectPackage(index);
+      const field=inlineFields().find(item=>item.index===index&&item.key===key);if(!field)return;
+      const input=document.createElement("input"),pkg=state.packages[index];input.className="canvas-inline-field";input.type="text";input.inputMode="numeric";input.setAttribute("aria-label",key==="quantity"?"Количество объявлений на листе":"Цена пакета на листе");input.value=key==="quantity"?(isPackageUnlimited(pkg,index)?"":packageQuantity(pkg)):String(pkg.work||"").replace(/[^\d\s]/g,"").trim();
+      inlineEdit={index,key,input};stage.appendChild(input);positionInline(input,field);input.focus({preventScroll:true});input.select();
+      input.addEventListener("keydown",event=>{if(event.isComposing)return;if(event.key==="Enter"){event.preventDefault();finishInlineEdit(true,true);}else if(event.key==="Escape"){event.preventDefault();finishInlineEdit(false);}});
+      input.addEventListener("blur",()=>finishInlineEdit(true));
+    }
+    function finishInlineEdit(commit,keepInvalid=false){
+      if(!inlineEdit)return true;
+      const edit=inlineEdit,value=edit.input.value.trim(),digits=value.replace(/\s/g,"");
+      const valid=/^\d+$/.test(digits)&&Number.isSafeInteger(Number(digits))&&(edit.key!=="quantity"||Number(digits)>0);
+      if(commit&&!valid&&keepInvalid){edit.input.setAttribute("aria-invalid","true");edit.input.title="Введите целое число";return false;}
+      inlineEdit=null;edit.input.remove();
+      if(commit&&valid){
+        const pkg=state.packages[edit.index];
+        if(edit.key==="quantity"){pkg.unlimited=false;pkg.quantity=digits;pkg.limit=`${digits} объявлений`;}else pkg.work=value;
+        syncPackageDerivedLines(pkg,edit.index);
+        if(selectedPackage===edit.index)renderPackageForm();persistState();draw();
+      }
+      return true;
     }
     function drawBackground(){
       const bg = state.bgChoice === "purple" ? images.bgPurple : images.bgDark;
@@ -1400,6 +1458,7 @@
       return `rgba(${r},${g},${b},${alpha})`;
     }
     function exportText(){
+      finishInlineEdit(true);
       readGlobalForm();
       return state.packages.filter((pkg) => pkg.on).map((pkg) => {
         const index = state.packages.indexOf(pkg);
@@ -2008,7 +2067,7 @@
         if (next && host !== window && window.frameElement) scale = window.frameElement.getBoundingClientRect().width / window.frameElement.offsetWidth || 1;
         document.body.style.setProperty("--kp-host-scale", String(Math.max(.1, Math.min(1, scale))));
         document.body.classList.toggle("kp-compact", next);
-        if (compact !== next) { $("editorAppearance").open = !next; compact = next; }
+        compact = next;
       }
       function schedule(){ if (!pending) { pending = true; requestAnimationFrame(update); } }
       host.addEventListener("resize", schedule);
@@ -2020,7 +2079,6 @@
     ["pkgOn","pkgIcon","pkgName","pkgLimit","pkgUnlimited","pkgWork","pkgColor","pkgItems"].forEach((id) => {
       $(id).addEventListener("input", () => {
         markPackageFormDirty();
-        if (id === "pkgItems") resizePackageItemsField();
       });
       $(id).addEventListener("change", () => {
         markPackageFormDirty();
@@ -2048,13 +2106,14 @@
     document.addEventListener("visibilitychange", () => {
       if (document.hidden) flushPackageForm();
     });
-    window.addEventListener("pagehide", flushPackageForm);
+    window.addEventListener("pagehide", () => {finishInlineEdit(true);flushPackageForm();});
     window.addEventListener("beforeunload", (event) => { if (pendingImageWrites) { event.preventDefault(); event.returnValue = ""; } });
     $("bgChoice").addEventListener("change", draw);
     $("titleStyle").addEventListener("change", draw);
     $("titleScale").addEventListener("input", draw);
-    $("heroZone").addEventListener("click", () => {$("heroLibraryBadge").hidden=!$("heroLibraryBadge").hidden;$("heroZone").classList.toggle("active",!$("heroLibraryBadge").hidden);});
+    $("heroZone").addEventListener("click", () => {const hidden=!$("heroLibraryBadge").hidden;$("heroLibraryBadge").hidden=hidden;$("heroUploadBadge").hidden=hidden;$("heroZone").classList.toggle("active",!hidden);});
     $("heroLibraryBadge").addEventListener("click",openHeroLibrary);
+    $("heroUploadBadge").addEventListener("click",()=>$("heroFile").click());
     $("coverBtn").addEventListener("click", openCoverModal);
     $("packagesBtn").addEventListener("click", closeCoverModal);
     $("coverPrevBtn").addEventListener("click", () => shiftCoverCarousel(-1));
@@ -2118,7 +2177,7 @@
     $("copyTextBtn").addEventListener("click", async () => {
       await navigator.clipboard.writeText(exportText());
     });
-    $("saveBtn").addEventListener("click", saveState);
+    $("saveBtn").addEventListener("click",()=>{finishInlineEdit(true);flushPackageForm();saveState();});
     $("resetBtn").addEventListener("click", () => {
       localStorage.removeItem(LS_KEY);
       localStorage.removeItem(SELECTED_PACKAGE_KEY);
@@ -2147,6 +2206,10 @@
       draw();
     });
 
+    const editorBody=editorEl.querySelector(".body");
+    editorBody.prepend(tabsEl,$("packageEditor"),editorBody.querySelector(".preset-card"));
+    editorBody.inert=true;
+    if(typeof ResizeObserver==="function")new ResizeObserver(()=>{if(formReady)renderInlineTargets();}).observe(stage);
     initResizableLayout();
     initEditorZoom();
     initCompactLayout();
