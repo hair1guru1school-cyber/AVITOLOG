@@ -42,24 +42,31 @@
   var EXECUTOR = EXECUTORS.filipp;
   var CONTRACT_DRAFT_KEY = 'avitolog_contract_draft_v2';
 
-  function loadContractDraft() {
+  function contractDraftKey(binding) {
+    var identity = typeof window.__avitologBackendIdentity === 'function' ? window.__avitologBackendIdentity() || {} : {};
+    var clientKey = typeof window.AVITOLOG_KEY === 'function' ? window.AVITOLOG_KEY('avitolog_clients') : 'avitolog_clients';
+    var scope = binding ? binding.scope : JSON.stringify([identity.id || '', clientKey, window.AVITOLOG_KEY_EMAIL || '']);
+    return CONTRACT_DRAFT_KEY + ':' + JSON.stringify([scope, binding && binding.clientId || '', binding && binding.folderId || '']);
+  }
+
+  function loadContractDraft(binding) {
     try {
-      var raw = sessionStorage.getItem(CONTRACT_DRAFT_KEY);
+      var raw = sessionStorage.getItem(contractDraftKey(binding));
       return raw ? JSON.parse(raw) : null;
     } catch (e) {
       return null;
     }
   }
 
-  function saveContractDraft(data) {
+  function saveContractDraft(data, binding) {
     try {
-      sessionStorage.setItem(CONTRACT_DRAFT_KEY, JSON.stringify(data || {}));
+      sessionStorage.setItem(contractDraftKey(binding), JSON.stringify(data || {}));
     } catch (e) {}
   }
 
-  function clearContractDraft() {
+  function clearContractDraft(binding) {
     try {
-      sessionStorage.removeItem(CONTRACT_DRAFT_KEY);
+      sessionStorage.removeItem(contractDraftKey(binding));
     } catch (e) {}
   }
 
@@ -1197,13 +1204,15 @@
     function scheduleContractDraftSave() {
       clearTimeout(contractDraftSaveTimer);
       contractDraftSaveTimer = setTimeout(function() {
-        saveContractDraft(getFormData());
+        if (!container.isConnected) return;
+        saveContractDraft(getFormData(), clientDataBinding);
       }, 120);
     }
 
     function saveContractDraftNow() {
       clearTimeout(contractDraftSaveTimer);
-      saveContractDraft(getFormData());
+      if (!container.isConnected) return;
+      saveContractDraft(getFormData(), clientDataBinding);
     }
 
     function getFormData() {
@@ -1679,7 +1688,13 @@
     var daysManageEl = document.getElementById('contract-daysManage');
     var endEl = document.getElementById('contract-endDate');
     var costEl = document.getElementById('contract-cost');
-    var savedContractDraft = loadContractDraft();
+    var savedContractDraft = loadContractDraft(clientDataBinding);
+    var rememberedClientData = clientDataBinding && window.ContractClientSync && typeof window.ContractClientSync.read === 'function' && window.ContractClientSync.read(clientDataBinding);
+    if (rememberedClientData && Object.keys(rememberedClientData).length) {
+      setFormData(rememberedClientData);
+      var rememberedName = document.getElementById('contract-manual-fio');
+      if (rememberedName && !rememberedName.value) rememberedName.value = rememberedClientData.shortName || rememberedClientData.fullName || rememberedClientData.companyName || '';
+    }
     if (savedContractDraft) {
       setFormData(savedContractDraft);
     } else {
@@ -1807,7 +1822,7 @@
     };
     window.__contractGenerate = function(options) {
       var d = getFormData();
-      saveContractDraft(d);
+      saveContractDraft(d, clientDataBinding);
       var fmt = function(x) {
         if (!x) return '';
         var parts = String(x).split('-');
@@ -1826,7 +1841,7 @@
     };
 
     window.__contractClear = function() {
-      clearContractDraft();
+      clearContractDraft(clientDataBinding);
       ['fio', 'fullName', 'shortName', 'legalAddress', 'postalAddress', 'actualAddress', 'ceo', 'contacts', 'phone', 'email', 'inn', 'kpp', 'ogrn', 'account', 'bank', 'bik', 'corrAccount', 'passport', 'startDate', 'endDate', 'daysCreate', 'daysManage', 'cost', 'soldCount', 'extraServices'].forEach(function(k) {
         var el = document.getElementById('contract-' + k);
         if (el) el.value = '';
@@ -1979,6 +1994,7 @@
     function scheduleLivePreview() {
       clearTimeout(livePreviewTimer);
       livePreviewTimer = setTimeout(function() {
+        if (!container.isConnected) return;
         if (typeof window.__contractGenerate === 'function') window.__contractGenerate();
       }, 180);
     }
@@ -2010,6 +2026,10 @@
       return m ? m[1] : '';
     }
     function getTargetFolderCtx() {
+      if (window.ContractClientSync && typeof window.ContractClientSync.target === 'function') {
+        var target = window.ContractClientSync.target();
+        if (target) return { folderId: String(target.folderId || target.folder_id || target.drive_folder_id || folderIdFromLink(target.folderLink) || '').trim(), name: target.company || target.title || target.projectTitle || 'Клиент', source: 'bound' };
+      }
       var selected = (typeof getSelectedAnalyticsRecentProject === 'function') ? getSelectedAnalyticsRecentProject() : null;
       if (selected) {
         var selectedFid = String(selected.folderId || folderIdFromLink(selected.folderLink) || '').trim();
@@ -2442,23 +2462,24 @@
     window.__contractDownloadLocal = async function() {
       var st = document.getElementById('contractSaveStatus');
       var btn = document.getElementById('contractDownloadLocalBtn');
-      if (!lastGeneratedHtml && typeof window.__contractGenerate === 'function') window.__contractGenerate();
+      if (typeof window.__contractGenerate === 'function') window.__contractGenerate();
       if (!lastGeneratedHtml) {
         if (st) st.textContent = 'Сначала сгенерируйте договор';
         return;
       }
       var oldText = btn ? btn.textContent : '';
+      var exportData = lastGeneratedData, exportHtml = lastGeneratedHtml, exportDocs = lastGeneratedDocs;
       try {
         if (btn) { btn.disabled = true; btn.textContent = 'Готовлю файл...'; }
-        var who = (lastGeneratedData && (lastGeneratedData.fio || lastGeneratedData.companyName)) || 'Клиент';
+        var who = (exportData && (exportData.fio || exportData.companyName)) || 'Клиент';
         var safeWho = String(who).replace(/[\\/:*?"<>|]+/g, ' ').replace(/\s+/g, ' ').trim() || 'Клиент';
-        var hasAppendix = !!(lastGeneratedDocs && lastGeneratedDocs.appendix);
+        var hasAppendix = !!(exportDocs && exportDocs.appendix);
         var fileName = (hasAppendix ? 'Договор и приложение - ' : 'Договор - ') + safeWho + '.doc';
-        var htmlForExport = await inlineExportImages(lastGeneratedHtml);
+        var htmlForExport = await inlineExportImages(exportHtml);
         var mhtml = buildWordMhtml(htmlForExport);
         triggerBlobDownload(new Blob([mhtml], { type: 'application/msword;charset=utf-8' }), fileName);
-        if (typeof rememberServiceTermForExport === 'function') rememberServiceTermForExport(lastGeneratedData);
-        if (typeof rememberClientDataForExport === 'function') await rememberClientDataForExport(lastGeneratedData);
+        if (typeof rememberServiceTermForExport === 'function') rememberServiceTermForExport(exportData);
+        if (typeof rememberClientDataForExport === 'function') await rememberClientDataForExport(exportData);
         if (st) st.textContent = '✓ Скачан файл: ' + fileName;
       } catch (error) {
         if (st) st.textContent = 'Ошибка скачивания: ' + String((error && error.message) || error);
@@ -2471,9 +2492,7 @@
       var st = document.getElementById('contractSaveStatus');
       var btn = document.getElementById('contractSaveWBtn');
       var ctx = getTargetFolderCtx();
-      if (!lastGeneratedHtml) {
-        if (typeof window.__contractGenerate === 'function') window.__contractGenerate();
-      }
+      if (typeof window.__contractGenerate === 'function') window.__contractGenerate();
       if (!lastGeneratedHtml) {
         if (st) st.textContent = 'Сначала сгенерируйте договор';
         return;
@@ -2491,22 +2510,23 @@
           if (a.parentNode) a.parentNode.removeChild(a);
         }, 60000);
       }
+      var exportData = lastGeneratedData, exportHtml = lastGeneratedHtml;
       try {
         if (btn) btn.disabled = true;
-        var who = (lastGeneratedData && (lastGeneratedData.fio || lastGeneratedData.companyName)) || (ctx && ctx.name) || 'Клиент';
+        var who = (exportData && (exportData.fio || exportData.companyName)) || (ctx && ctx.name) || 'Клиент';
         if (typeof window.resolveWritableDriveFolder === 'function') {
           var resolvedFolderId = await window.resolveWritableDriveFolder(ctx && ctx.folderId, who);
           if (resolvedFolderId) ctx = { folderId: resolvedFolderId, name: who, source: (ctx && ctx.source) || 'personal' };
         }
         var docName = '📜 Договор — ' + String(who);
-        var htmlForExport = await inlineExportImages(lastGeneratedHtml);
+        var htmlForExport = await inlineExportImages(exportHtml);
         var canDrive = !!(ctx && ctx.folderId && typeof driveCreateGoogleDoc === 'function' && typeof getDriveToken === 'function');
         if (canDrive) {
           if (st) st.textContent = 'Сохраняю в Google Docs...';
           await getDriveToken();
           var res = await driveCreateGoogleDoc(docName, wrapContractHtml(htmlForExport), ctx.folderId);
-          if (typeof rememberServiceTermForExport === 'function') rememberServiceTermForExport(lastGeneratedData);
-          if (typeof rememberClientDataForExport === 'function') await rememberClientDataForExport(lastGeneratedData);
+          if (typeof rememberServiceTermForExport === 'function') rememberServiceTermForExport(exportData);
+          if (typeof rememberClientDataForExport === 'function') await rememberClientDataForExport(exportData);
           if (st) {
             var link = res && res.webViewLink ? String(res.webViewLink) : '';
             st.innerHTML = link
@@ -2515,15 +2535,16 @@
           }
         } else {
           downloadDocLocal(docName, htmlForExport);
-          if (typeof rememberServiceTermForExport === 'function') rememberServiceTermForExport(lastGeneratedData);
-          if (typeof rememberClientDataForExport === 'function') await rememberClientDataForExport(lastGeneratedData);
+          if (typeof rememberServiceTermForExport === 'function') rememberServiceTermForExport(exportData);
+          if (typeof rememberClientDataForExport === 'function') await rememberClientDataForExport(exportData);
           if (st) st.textContent = '✓ Скачан .doc файл';
         }
       } catch (e) {
         try {
-          var who2 = (lastGeneratedData && (lastGeneratedData.fio || lastGeneratedData.companyName)) || 'Клиент';
-          var htmlForExportFallback = await inlineExportImages(lastGeneratedHtml);
+          var who2 = (exportData && (exportData.fio || exportData.companyName)) || 'Клиент';
+          var htmlForExportFallback = await inlineExportImages(exportHtml);
           downloadDocLocal('📜 Договор — ' + String(who2), htmlForExportFallback);
+          if (typeof rememberClientDataForExport === 'function') await rememberClientDataForExport(exportData);
           if (st) st.textContent = 'Drive недоступен, скачан .doc файл';
         } catch (e2) {
           if (st) st.textContent = 'Ошибка сохранения: ' + String((e2 && e2.message) || e2 || e);
@@ -2537,14 +2558,13 @@
       var st = document.getElementById('contractSaveStatus');
       var btn = document.getElementById('contractSavePdfBtn');
       setPdfDownloadReady(null);
-      if (!lastGeneratedHtml) {
-        if (typeof window.__contractGenerate === 'function') window.__contractGenerate();
-      }
+      if (typeof window.__contractGenerate === 'function') window.__contractGenerate();
       if (!lastGeneratedHtml) {
         if (st) st.textContent = 'Сначала сгенерируйте договор';
         return;
       }
       var ctx = getTargetFolderCtx();
+      var exportData = lastGeneratedData, exportHtml = lastGeneratedHtml, exportDocs = lastGeneratedDocs;
       var canDrive = !!(typeof driveUploadBlob === 'function' && typeof getDriveToken === 'function');
       if (!canDrive) {
         if (st) st.textContent = 'Подключите Google Drive и повторите.';
@@ -2553,7 +2573,7 @@
       try {
         if (btn) btn.disabled = true;
         if (st) st.textContent = 'Сохраняю в Google Drive...';
-        var who = (lastGeneratedData && (lastGeneratedData.fio || lastGeneratedData.companyName)) || (ctx && ctx.name) || 'Клиент';
+        var who = (exportData && (exportData.fio || exportData.companyName)) || (ctx && ctx.name) || 'Клиент';
         if (typeof window.resolveWritableDriveFolder === 'function') {
           var resolvedPdfFolderId = await window.resolveWritableDriveFolder(ctx && ctx.folderId, who);
           if (resolvedPdfFolderId) ctx = { folderId: resolvedPdfFolderId, name: who, source: (ctx && ctx.source) || 'personal' };
@@ -2564,14 +2584,14 @@
         var safeWho = String(who).replace(/[\\/:*?"<>|]+/g, ' ').replace(/\s+/g, ' ').trim() || 'Клиент';
         var contractName = 'Договор - ' + safeWho + '.pdf';
         var appendixName = 'Приложение - ' + safeWho + '.pdf';
-        var contractHtml = await inlineExportImages(lastGeneratedDocs && lastGeneratedDocs.contract ? lastGeneratedDocs.contract : lastGeneratedHtml);
+        var contractHtml = await inlineExportImages(exportDocs && exportDocs.contract ? exportDocs.contract : exportHtml);
         var contractBlob = await htmlToPdfBlob(contractHtml, contractName);
         var contractResult = await driveUploadBlob(contractName, contractBlob, 'application/pdf', ctx.folderId);
-        if (typeof rememberServiceTermForExport === 'function') rememberServiceTermForExport(lastGeneratedData);
-        if (typeof rememberClientDataForExport === 'function') await rememberClientDataForExport(lastGeneratedData);
+        if (typeof rememberServiceTermForExport === 'function') rememberServiceTermForExport(exportData);
+        if (typeof rememberClientDataForExport === 'function') await rememberClientDataForExport(exportData);
         var appendixResult = null;
-        if (lastGeneratedDocs && lastGeneratedDocs.appendix) {
-          var appendixHtml = await inlineExportImages(lastGeneratedDocs.appendix);
+        if (exportDocs && exportDocs.appendix) {
+          var appendixHtml = await inlineExportImages(exportDocs.appendix);
           var appendixBlob = await htmlToPdfBlob(appendixHtml, appendixName);
           appendixResult = await driveUploadBlob(appendixName, appendixBlob, 'application/pdf', ctx.folderId);
         }

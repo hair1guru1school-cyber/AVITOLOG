@@ -857,7 +857,7 @@
     var sources = [client && client.contractRequisitesV1, project && project.crmData && project.crmData.contractRequisitesV1].filter(function(item) { return item && item.fields; });
     sources.sort(function(a,b) { return text(b.updatedAt).localeCompare(text(a.updatedAt)); });
     var fields = sources[0] && sources[0].fields || {};
-    var labels = {fio:'Имя / наименование',fullName:'Полное наименование',shortName:'Краткое наименование',legalAddress:'Юридический адрес',postalAddress:'Почтовый адрес',actualAddress:'Фактический адрес',ceo:'Руководитель',contacts:'Контакты',phone:'Телефон',email:'Email',inn:'ИНН',kpp:'КПП',ogrn:'ОГРН / ОГРНИП',account:'Расчётный счёт',bank:'Банк',bik:'БИК',corrAccount:'Корреспондентский счёт',passport:'Паспорт'};
+    var labels = {fio:'ФИО / заказчик',fullName:'Полное наименование',shortName:'Краткое наименование',companyName:'Наименование в договоре',legalAddress:'Юридический адрес',postalAddress:'Почтовый адрес',actualAddress:'Фактический адрес',ceo:'Руководитель',contacts:'Контакты',phone:'Телефон',email:'Email',inn:'ИНН',kpp:'КПП',ogrn:'ОГРН / ОГРНИП',account:'Расчётный счёт',bank:'Банк',bik:'БИК',corrAccount:'Корреспондентский счёт',passport:'Паспорт'};
     var rows = Object.keys(labels).filter(function(key) { return text(fields[key]); }).map(function(key) { return '<tr><th scope="row">'+escape(labels[key])+'</th><td>'+escape(fields[key])+'</td></tr>'; }).join('');
     return rows ? '<details class="project-card-disclosure"><summary>Реквизиты из договора</summary><table class="project-card-table"><tbody>'+rows+'</tbody></table></details>' : '';
   }
@@ -865,7 +865,7 @@
     var title = values.title || values.company || 'Клиент';
     var initials = title.trim().split(/\s+/).slice(0, 2).map(function (part) { return Array.from(part)[0] || ''; }).join('').toUpperCase();
     var hue = Array.from(title).reduce(function (sum, character) { return sum + character.codePointAt(0); }, 0) % 360;
-    var primary = ['title', 'company', 'contact_name', 'phone', 'telegram', 'vk', 'category', 'city', 'avito_connection_id', 'project_group_id'];
+    var primary = ['title', 'company', 'contact_name', 'phone', 'telegram', 'vk', 'category', 'city', 'client_type', 'avito_connection_id', 'project_group_id'];
     var fields = FIELDS.filter(function (field) { return primary.indexOf(field[0]) >= 0; }).map(function (field) { return fieldHtml(field, values); }).join('');
     var secondary = FIELDS.filter(function (field) { return primary.indexOf(field[0]) < 0 && field[0] !== 'notes'; }).map(function (field) { return fieldHtml(field, values); }).join('');
     var notes = fieldHtml(FIELDS.find(function (field) { return field[0] === 'notes'; }), values);
