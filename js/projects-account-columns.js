@@ -14,7 +14,7 @@
   function columnWidths(value) { return { advance: width(value && value.advance), contacts: width(value && value.contacts) }; }
   function weight(value) { return typeof value === 'number' && Number.isFinite(value) ? Math.max(400, Math.min(900, Math.round(value / 100) * 100)) : 800; }
   function fontWeights(value) { return { advance: weight(value && value.advance), contacts: weight(value && value.contacts) }; }
-  function preferences(value) { return Object.assign(settings(value), { widths: columnWidths(value && value.widths), weights: fontWeights(value && value.weights) }); }
+  function preferences(value) { var out = Object.assign(settings(value), { widths: columnWidths(value && value.widths), weights: fontWeights(value && value.weights) }); if (value && typeof value.calendarCards === 'boolean') out.calendarCards = value.calendarCards; return out; }
   function resizeWidth(initial, delta, scale) { return width(initial + delta / (typeof scale === 'number' && Number.isFinite(scale) && scale > 0 ? scale : 1)); }
   function validScope(value) { return typeof value === 'string' && SCOPE.test(value) ? value.toLowerCase() : ''; }
   function moscowDay(value) {
@@ -46,20 +46,21 @@
   function number(value) { return typeof value === 'number' && Number.isFinite(value); }
   function derive(result, day) {
     var data = result && (result.overview || result.snapshot || result) || {};
-    var advance = data.advance || {}, today = data.today || {};
-    if (denied(data.error)) return { advance: null, contacts: null, denied: true };
+    var advance = data.advance || {}, today = data.today || {}, listings = data.listings || {};
+    if (denied(data.error)) return { advance: null, contacts: null, cards: null, denied: true };
     function metric(section, value, isToday) {
       if (denied(section.error) || section.available !== true || !number(value) || isToday && (section.date !== day || value < 0 || !Number.isSafeInteger(value))) return null;
       var stamp = section.fetched_at || data.fetched_at || '';
       if ((section.stale === true || data.stale === true) && moscowDay(stamp) !== day) return null;
       return { value: value, stale: section.stale === true || data.stale === true, fetchedAt: stamp };
     }
-    return { advance: metric(advance, advance.balance, false), contacts: metric(today, today.contacts, true), denied: false };
+    var cards = listings.visibility === 'status_only' && Number.isSafeInteger(listings.active) && listings.active >= 0 ? metric(listings, listings.active, false) : null;
+    return { advance: metric(advance, advance.balance, false), contacts: metric(today, today.contacts, true), cards: cards, denied: false };
   }
   function format(value, key) { return number(value) ? (key === 'advance' ? Math.round(value).toLocaleString('ru-RU') + ' \u20bd' : value.toLocaleString('ru-RU')) : ''; }
   function staleMetrics(metrics) {
-    var out = { advance: null, contacts: null, denied: false };
-    ['advance', 'contacts'].forEach(function (key) { if (metrics && metrics[key]) out[key] = Object.assign({}, metrics[key], { stale: true }); });
+    var out = { advance: null, contacts: null, cards: null, denied: false };
+    ['advance', 'contacts', 'cards'].forEach(function (key) { if (metrics && metrics[key]) out[key] = Object.assign({}, metrics[key], { stale: true }); });
     return out;
   }
 
@@ -144,7 +145,7 @@
     var scope = '', day = '', epoch = 0, revision = 0, hydrated = false, columns = settings(), widths = columnWidths(), weights = fontWeights(), warning = '';
     var catalog = null, catalogOwners = new Map(), catalogTask = null, catalogNext = 0, catalogError = '', entries = new Map(), queue = [], active = 0;
     var frame = null, interval = null, observer = null, observed = null, popover = null, stopped = false;
-    var writeQueue = Promise.resolve(), resizing = null, contactsSort = false;
+    var writeQueue = Promise.resolve(), resizing = null, contactsSort = false, calendarCards = null;
     function bridge() { return env.AvitoWorkspaceBridge; }
     function context() { try { return validScope(bridge() && bridge().context()); } catch (_) { return ''; } }
     function records() {
@@ -153,7 +154,7 @@
         return { projects: Array.isArray(data && data.projects) ? data.projects : [], clients: typeof env.getCrmClients === 'function' ? env.getCrmClients() || [] : [] };
       } catch (_) { return { projects: [], clients: [] }; }
     }
-    function enabled() { return columns.advance || columns.contacts; }
+    function enabled() { return columns.advance || columns.contacts || calendarCards === true; }
     function visible() { return options.visible ? options.visible() : !!(document && document.visibilityState !== 'hidden' && document.body.classList.contains('projects-mode') && document.querySelector('#mainContent .projects-table')); }
     function wanted() {
       var data = records(), ids = new Map();
@@ -178,13 +179,13 @@
     function syncContext() {
       var nextScope = context(), nextDay = moscowDay(now());
       if (nextScope !== scope) {
-        endResize(true); resetMetrics(); scope = nextScope; day = nextDay; columns = settings(); widths = columnWidths(); weights = fontWeights(); contactsSort = false; hydrated = false; warning = ''; revision++;
+        endResize(true); resetMetrics(); scope = nextScope; day = nextDay; columns = settings(); widths = columnWidths(); weights = fontWeights(); contactsSort = false; calendarCards = null; hydrated = false; warning = ''; revision++;
         if (popover) closeMenu();
         if (scope) {
           var owner = scope, requestRevision = revision;
           Promise.resolve().then(function () { return store.read(owner); }).then(function (value) {
             if (scope !== owner || context() !== owner || revision !== requestRevision) return;
-            columns = settings(value); widths = columnWidths(value && value.widths); weights = fontWeights(value && value.weights); hydrated = true; schedule();
+            columns = settings(value); widths = columnWidths(value && value.widths); weights = fontWeights(value && value.weights); calendarCards = value && typeof value.calendarCards === 'boolean' ? value.calendarCards : null; hydrated = true; schedule();
           }).catch(function () { if (scope === owner && revision === requestRevision) { hydrated = true; warning = '\u041d\u0430\u0441\u0442\u0440\u043e\u0439\u043a\u0438 \u043d\u0435 \u043f\u0440\u043e\u0447\u0438\u0442\u0430\u043d\u044b. \u0412\u044b\u0431\u043e\u0440 \u043f\u043e\u043a\u0430 \u0432\u0440\u0435\u043c\u0435\u043d\u043d\u044b\u0439.'; schedule(); } });
         }
       } else if (nextDay !== day) { resetMetrics(); day = nextDay; }
@@ -201,9 +202,11 @@
       if (!scope || value === true && !columns.contacts) return;
       contactsSort = value === true; schedule();
     }
+    function setCalendarCards(value) { syncContext(); if (!scope) return; calendarCards = value === true; persistPreferences(); }
     function persistPreferences() {
       hydrated = true; revision++; warning = '';
       var owner = scope, ownerRevision = revision, value = preferences(Object.assign({}, columns, { widths: widths, weights: weights }));
+      if (calendarCards !== null) value.calendarCards = calendarCards;
       function guard() { return owner === scope && owner === context() && ownerRevision === revision; }
       writeQueue = writeQueue.catch(function () {}).then(function () { if (guard()) return store.write(owner, value, guard); }).then(function () {
         if (guard()) { warning = ''; schedule(); }
@@ -277,8 +280,8 @@
         if (!currentJob(job) || entries.get(job.id) !== entry || !catalog || !catalog.has(job.id)) return;
         var next = derive(result, job.day);
         if (next.denied) { var data = result && (result.overview || result.snapshot || result) || {}; if (accountDenied(data.error)) invalidateAccount(job.id, entry); else invalidateAccess(); return; }
-        ['advance', 'contacts'].forEach(function (key) {
-          var data = result && (result.overview || result.snapshot || result) || {}, section = key === 'advance' ? data.advance : data.today;
+        ['advance', 'contacts', 'cards'].forEach(function (key) {
+          var data = result && (result.overview || result.snapshot || result) || {}, section = key === 'advance' ? data.advance : key === 'contacts' ? data.today : data.listings;
           // A partial refresh is not a replacement for a confirmed same-day value.
           if (!next[key] && !denied(section && section.error) && entry.metrics && entry.metrics[key]) next[key] = Object.assign({}, entry.metrics[key], { stale: true });
         });
@@ -455,6 +458,32 @@
         });
       });
     }
+    function renderCalendarCards(main) {
+      var retained = new Set();
+      if (scope && calendarCards === true) {
+        var data = records(), projects = new Map(); data.projects.forEach(function (project) { projects.set(text(project.id), project); });
+        main.querySelectorAll('.projects-table-row[data-child-line-index="-1"][data-id]').forEach(function (row) {
+          var id = connection(projects.get(row.getAttribute('data-id')), data.clients), entry = id && entries.get(id);
+          var metric = catalog && catalog.has(id) && entry && entry.metrics && entry.metrics.cards;
+          var cell = row.querySelector('.projects-cal-day[data-date="' + day + '"]');
+          if (!cell || !metric) return;
+          var badge = cell.querySelector('[data-projects-api-cards]');
+          if (!badge) { badge = element('span', 'projects-api-cards'); badge.setAttribute('data-projects-api-cards', 'true'); cell.appendChild(badge); }
+          var value = format(metric.value, 'cards'); if (badge.textContent !== value) badge.textContent = value;
+          badge.title = 'Активные объявления · API: ' + value + '. ' + titleFor(id, metric, entry);
+          var manual = cell.querySelector('.cal-cards-num'); if (manual) badge.title += '\nРучная отметка: ' + manual.textContent + ' (сохранена).';
+          badge.dataset.stale = metric.stale ? 'true' : 'false'; badge.setAttribute('aria-label', badge.title);
+          cell.classList.add('projects-api-cards-present');
+          cell.classList.toggle('projects-api-cards-with-marker', !!cell.querySelector('.cal-deadline,.cal-launch-tip,.cal-tasks-badges'));
+          retained.add(badge);
+        });
+      }
+      main.querySelectorAll('[data-projects-api-cards]').forEach(function (badge) {
+        if (retained.has(badge)) return;
+        if (badge.parentNode) badge.parentNode.classList.remove('projects-api-cards-present', 'projects-api-cards-with-marker');
+        badge.remove();
+      });
+    }
     function closeMenu() { if (popover) popover.remove(); popover = null; var gear = document && document.getElementById('projectsAccountColumnsGear'); if (gear) gear.setAttribute('aria-expanded', 'false'); }
     function menuPosition() {
       var gear = document.getElementById('projectsAccountColumnsGear'); if (!popover || !gear) return;
@@ -472,6 +501,9 @@
         input.setAttribute('data-projects-account-setting', key); input.addEventListener('change', function () { if (owner !== scope || owner !== context()) return; var next = settings(columns); next[key] = input.checked; setColumns(next); });
         label.appendChild(input); label.appendChild(element('span', '', LABELS[key])); popover.appendChild(label);
       });
+      var calendarLabel = element('label'), calendarInput = element('input'); calendarInput.type = 'checkbox'; calendarInput.checked = calendarCards === true; calendarInput.disabled = !scope;
+      calendarInput.setAttribute('data-projects-calendar-cards', 'true'); calendarInput.addEventListener('change', function () { if (owner === scope && owner === context()) setCalendarCards(calendarInput.checked); });
+      calendarLabel.appendChild(calendarInput); calendarLabel.appendChild(element('span', '', 'Активные объявления в первой ячейке · API')); popover.appendChild(calendarLabel);
       popover.appendChild(element('strong', 'projects-account-weights-title', '\u0416\u0438\u0440\u043d\u043e\u0441\u0442\u044c \u0446\u0438\u0444\u0440'));
       ['advance', 'contacts'].forEach(function (key) {
         var label = element('label', 'projects-account-weight-control'), input = element('input'), output = element('output');
@@ -488,6 +520,7 @@
     function updateMenu() {
       if (!popover) return;
       popover.querySelectorAll('[data-projects-account-setting]').forEach(function (input) { input.checked = columns[input.getAttribute('data-projects-account-setting')]; input.disabled = !scope; });
+      var calendarInput = popover.querySelector('[data-projects-calendar-cards]'); if (calendarInput) { calendarInput.checked = calendarCards === true; calendarInput.disabled = !scope; }
       popover.querySelectorAll('[data-projects-font-weight]').forEach(function (input) { input.value = String(weights[input.getAttribute('data-projects-font-weight')]); input.disabled = !scope; });
       popover.querySelectorAll('[data-projects-font-weight-value]').forEach(function (output) { output.textContent = String(weights[output.getAttribute('data-projects-font-weight-value')]); });
       var status = popover.querySelector('.projects-account-settings-status');
@@ -507,7 +540,7 @@
         }
         var currentGear = document.getElementById('projectsAccountColumnsGear'); if (currentGear) currentGear.title = warning || '\u0421\u0442\u043e\u043b\u0431\u0446\u044b Avito';
         if (resizing && (!visible() || resizing.handle.isConnected === false)) endResize(true);
-        renderRows(main); if (!visible()) closeMenu(); else updateMenu();
+        renderRows(main); renderCalendarCards(main); if (!visible()) closeMenu(); else updateMenu();
       } finally { if (observer) { observed = main; observer.observe(main, { childList: true, subtree: true, attributes: true, attributeFilter: ['data-id', 'data-child-line-index'] }); } }
     }
     function tick() { if (stopped) return; syncContext(); requestMetrics(); render(); }
@@ -548,10 +581,11 @@
       style.textContent += '.projects-account-value{border-left:0}.projects-account-resize::after{display:none}';
       style.textContent += '.projects-account-sortable{cursor:pointer}.projects-account-sortable[aria-pressed="true"]::after{content:"↓";position:absolute;right:10px;top:5px;font-size:12px;color:var(--accent,#00d97e)}.projects-account-sortable:focus-visible{outline:1px solid var(--accent,#00d97e);outline-offset:-2px}.projects-table-row[data-projects-contacts-zero="true"]>.projects-sticky,.projects-table-row[data-projects-contacts-zero="true"]>.projects-account-columns{background:#191e25!important}.projects-table-row[data-projects-contacts-zero="true"]>.projects-scroll{background:#939aa30a}.projects-table-row[data-projects-contacts-zero="true"] .projects-account-value,.projects-table-row[data-projects-contacts-zero="true"] .proj-main-line>input{color:#9da5af!important}body.day-mode .projects-table-row[data-projects-contacts-zero="true"]>.projects-sticky,body.day-mode .projects-table-row[data-projects-contacts-zero="true"]>.projects-account-columns{background:#f0f1f3!important}body.day-mode .projects-table-row[data-projects-contacts-zero="true"] .projects-account-value,body.day-mode .projects-table-row[data-projects-contacts-zero="true"] .proj-main-line>input{color:#6e7580!important}';
       style.textContent += '.projects-account-weights-title{margin:10px 0 6px;padding-top:10px;border-top:1px solid var(--border,#304156)}.projects-account-settings label.projects-account-weight-control{display:grid;grid-template-columns:1fr auto;gap:5px 8px}.projects-account-weight-control output{font-size:11px;font-variant-numeric:tabular-nums}.projects-account-settings .projects-account-weight-control input{grid-column:1/-1;width:100%;height:20px;margin:0;cursor:pointer}';
+      style.textContent += '.projects-api-cards-present{position:relative}.projects-api-cards-present>.cal-cards{visibility:hidden}.projects-api-cards{position:absolute;left:2px;right:2px;top:50%;transform:translateY(-50%);display:flex;align-items:center;justify-content:center;box-sizing:border-box;border:1px solid #64b4ff66;border-radius:5px;background:linear-gradient(180deg,#14416ee0,#0e2648e6);box-shadow:0 0 9px #72d6ff4d;color:#e8f6ff;font-size:var(--projects-card-num-font,13px);line-height:1.1;font-weight:700;font-variant-numeric:tabular-nums;padding:1px;white-space:nowrap;overflow:hidden;z-index:2}.projects-api-cards[data-stale="true"]{border-color:#c9a762;color:#eed396}.projects-api-cards-with-marker>.projects-api-cards{top:auto;bottom:1px;transform:none;height:45%;font-size:10px}.projects-api-cards-with-marker>.cal-deadline,.projects-api-cards-with-marker>.cal-launch-tip,.projects-api-cards-with-marker>.cal-tasks-badges{position:absolute;top:0;left:2px;right:2px;max-height:50%;height:50%;margin:0;padding:0;line-height:1;font-size:9px}.projects-api-cards-with-marker .cal-deadline-icon,.projects-api-cards-with-marker .cal-deadline-days{font-size:8px!important}';
       document.head.appendChild(style);
     }
-    return { start: start, stop: stopAll, tick: tick, setColumns: setColumns, setContactsSort: setContactsSort, setColumnWidth: setColumnWidth, setFontWeight: setFontWeight, reset: reset, workspaceReset: workspaceReset, refresh: refresh, flush: function () { return writeQueue; },
-      inspect: function () { return { scope: scope, day: day, contactsSort: contactsSort, columns: settings(columns), widths: columnWidths(widths), weights: fontWeights(weights), hydrated: hydrated, warning: warning, active: active, queued: queue.length, catalog: catalog && Array.from(catalog), entries: Array.from(entries, function (pair) { return [pair[0], { metrics: pair[1].metrics, pending: pair[1].pending, nextAt: pair[1].nextAt }]; }) }; }, place: place, renderRows: renderRows };
+    return { start: start, stop: stopAll, tick: tick, setColumns: setColumns, setContactsSort: setContactsSort, setCalendarCards: setCalendarCards, setColumnWidth: setColumnWidth, setFontWeight: setFontWeight, reset: reset, workspaceReset: workspaceReset, refresh: refresh, flush: function () { return writeQueue; },
+      inspect: function () { return { scope: scope, day: day, contactsSort: contactsSort, calendarCards: calendarCards === true, columns: settings(columns), widths: columnWidths(widths), weights: fontWeights(weights), hydrated: hydrated, warning: warning, active: active, queued: queue.length, catalog: catalog && Array.from(catalog), entries: Array.from(entries, function (pair) { return [pair[0], { metrics: pair[1].metrics, pending: pair[1].pending, nextAt: pair[1].nextAt }]; }) }; }, place: place, renderRows: renderRows, renderCalendarCards: renderCalendarCards };
   }
   if (typeof module !== 'undefined' && module.exports) module.exports = { settings: settings, preferences: preferences, columnWidths: columnWidths, fontWeights: fontWeights, resizeWidth: resizeWidth, validScope: validScope, moscowDay: moscowDay, linkedClient: linkedClient, connection: connection, catalogIds: catalogIds, derive: derive, denied: denied, format: format, preferenceStore: preferenceStore, createController: createController, TTL: TTL };
   else if (root.document && !root.ProjectsAccountColumns) {

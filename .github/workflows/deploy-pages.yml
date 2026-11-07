@@ -33,7 +33,9 @@ jobs:
             --exclude '.tmp.driveupload' \
             --exclude 'node_modules' \
             --exclude 'backend' \
-            --exclude 'backups'
+            --exclude 'backups' \
+            --exclude '/AOA-Land/portfolio-images/***'
+          node tools/prepare-pages-assets.cjs _site "$GITHUB_REPOSITORY" "$GITHUB_SHA"
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:

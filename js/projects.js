@@ -261,6 +261,9 @@ function applyProjectMarkerClearTombstones(data) {
       });
       if (p.events.length !== eventsBefore) changed = true;
     }
+    var cardsCleared = getProjectTimestampMs(p.cardsActiveManualClearedAt);
+    var cardsUpdated = getProjectTimestampMs(p.cardsActiveUpdatedAt);
+    if (cardsCleared && cardsUpdated > cardsCleared) { p.cardsActiveManualClearedAt = ''; changed = true; }
     if (String(p.cardsActiveManualClearedAt || '').trim()) {
       if (String(p.cardsActive || '').trim()) { p.cardsActive = ''; changed = true; }
       if (p.cardsActiveDate) { p.cardsActiveDate = ''; changed = true; }
@@ -1880,23 +1883,26 @@ function getProjectCardsActiveValue(p, childLineIdx) {
   }
   return String(p.cardsActive || '').trim();
 }
-function getProjectCardsActiveDate(p, childLineIdx) {
+function getProjectCardsActiveDate(p, childLineIdx, today) {
   if (!p) return '';
+  var date;
   if (childLineIdx >= 0) {
     ensureChildLineCardsActive(p);
-    return normalizeIsoDateStr(p.childLineCardsActiveDate[childLineIdx] || '');
+    date = normalizeIsoDateStr(p.childLineCardsActiveDate[childLineIdx] || '');
+  } else {
+    date = normalizeIsoDateStr(p.cardsActiveDate || '');
   }
-  return normalizeIsoDateStr(p.cardsActiveDate || '');
+  today = today || getTodayISOmsk();
+  return date && date < today ? today : date;
 }
-function getChildCardsActiveTotalForDate(p, dateStr) {
+function getChildCardsActiveTotalForDate(p, dateStr, today) {
   if (!p) return 0;
   ensureChildLineCardsActive(p);
   var total = 0;
   (p.childLineCardsActive || []).forEach(function(value, idx) {
     var n = parseInt(String(value || '').replace(/[^\d]/g, ''), 10);
     if (!isFinite(n) || n <= 0) return;
-    var d = normalizeIsoDateStr((p.childLineCardsActiveDate || [])[idx] || '');
-    if (!d) d = typeof getTodayISOmsk === 'function' ? getTodayISOmsk() : (typeof getTodayISO === 'function' ? getTodayISO() : '');
+    var d = getProjectCardsActiveDate(p, idx, today) || today || getTodayISOmsk();
     if (d === dateStr) total += n;
   });
   return total;
@@ -4664,13 +4670,15 @@ function renderProjectsScreen(opts) {
         var rocket = (events||[]).find(function(e){ return e.type==='not_launched_project_marker' && e.date===dStr; });
         var isTodayCell = (dStr === todayStr);
         var caRow = getProjectCardsActiveValue(p, childLineIdx);
-        var cdNorm = getProjectCardsActiveDate(p, childLineIdx);
+        var cdNorm = getProjectCardsActiveDate(p, childLineIdx, todayStr);
         if (caRow && !cdNorm) cdNorm = todayStr;
-        var childCardsTotal = (childLineIdx < 0) ? getChildCardsActiveTotalForDate(p, dStr) : 0;
+        var childCardsTotal = (childLineIdx < 0) ? getChildCardsActiveTotalForDate(p, dStr, todayStr) : 0;
         var cardsActiveShown = !!((childCardsTotal > 0) || (caRow && (dStr === cdNorm)));
         var cardsDisplayValue = childCardsTotal > 0 ? String(childCardsTotal) : caRow;
         var cardsToneClass = getCardsActiveToneClass(cardsDisplayValue, childCardsTotal > 0);
-        var mustLaunchShown = (childLineIdx < 0) && !!p.mustLaunchRequired && (dStr === (p.mustLaunchDate || todayStr));
+        var mustLaunchDisplayDate = normalizeIsoDateStr(p.mustLaunchDate || '') || todayStr;
+        if (mustLaunchDisplayDate < todayStr) mustLaunchDisplayDate = todayStr;
+        var mustLaunchShown = (childLineIdx < 0) && !!p.mustLaunchRequired && dStr === mustLaunchDisplayDate;
         var dayTasks = typeof getTasksForProjectAndDate === 'function' ? getTasksForProjectAndDate(p.id, dStr) : [];
         var isCalSelected = _selectedCalCell && _selectedCalCell.projectId === p.id && _selectedCalCell.dateStr === dStr && ((childLineIdx < 0 && (_selectedCalCell.childLineIdx == null || _selectedCalCell.childLineIdx < 0)) || (childLineIdx >= 0 && _selectedCalCell.childLineIdx === childLineIdx));
         var dayCls = 'projects-cal-day' + (isTodayCell ? ' today' : '') + (isCalSelected ? ' cal-day-selected' : '');
