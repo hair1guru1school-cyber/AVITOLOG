@@ -24,7 +24,8 @@ export function registerBidWorker(registry, module, { service, getRow, activeTok
       await guard();
       const context = { row, org: canonical.organization_id, actor: canonical.actor_id, token, guard };
       const preview = await bidding.handle({ context, route: { action: 'preview' }, method: 'POST', body: { item_id: claim.item_id, ...changeOf(canonical.intent) } });
-      if (Object.keys(preview.after).length !== Object.keys(canonical.intent).length || Object.keys(preview.after).some(k => preview.after[k] !== canonical.intent[k])) throw fail('bidding_changed');
+      const expected = canonical.intent.mode === 'base' ? { ...canonical.intent, action_type_id: preview.after.action_type_id } : canonical.intent;
+      if (Object.keys(preview.after).length !== Object.keys(expected).length || Object.keys(preview.after).some(k => preview.after[k] !== expected[k])) throw fail('bidding_changed');
       if (await rpc('mark_submitting', lease) !== true) throw fail('queue_stopped');
       submitted = true;
       const result = await bidding.handle({ context, route: { action: 'apply' }, method: 'POST', body: { quote: preview.quote, confirmation: 'APPLY_BIDS' } });

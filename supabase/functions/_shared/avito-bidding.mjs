@@ -290,7 +290,12 @@ export function createAvitoBidding({ requestJson, fetch: fetchImpl = globalThis.
       submitted = true;
       const response = await fetchImpl(API + path, { method: 'POST', headers: { ...auth(context.token), 'Content-Type': 'application/json' }, body: JSON.stringify(payload), redirect: 'error', signal: AbortSignal.timeout(15000) });
       if (response.status === 200) { status = await acknowledged(response) ? 'applied' : 'unknown'; if (status === 'unknown') error = 'bidding_result_unknown'; }
-      else { status = [400, 401, 403, 404, 422, 429].includes(response.status) ? 'rejected' : 'unknown'; error = response.status === 429 ? 'bidding_rate_limited' : 'bidding_provider_rejected'; await response.body?.cancel().catch(() => {}); }
+      else {
+        status = [400, 401, 403, 404, 422, 429].includes(response.status) ? 'rejected' : 'unknown';
+        error = ({400:'bidding_provider_validation',401:'bidding_provider_unauthorized',403:'bidding_provider_forbidden',404:'bidding_provider_not_found',422:'bidding_provider_validation',429:'bidding_rate_limited'})[response.status] || 'bidding_provider_rejected';
+        console.warn('avito_bidding_rejected', JSON.stringify({module,mode:after.mode,http_status:response.status}));
+        await response.body?.cancel().catch(() => {});
+      }
     } catch (cause) { status = submitted ? 'unknown' : 'rejected'; error = submitted ? 'bidding_result_unknown' : cause.code || 'account_changed'; }
     try { if (await store.finish({ p_quote_id: quote.id, p_actor_id: context.actor, p_status: status, p_error: error }) !== true) throw new Error(); }
     catch (_) { status = 'unknown'; error = 'bidding_audit_unconfirmed'; }

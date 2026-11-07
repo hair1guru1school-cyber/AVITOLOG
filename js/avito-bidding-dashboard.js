@@ -26,7 +26,8 @@
     else if(seed)reason='Недостаточно статистики для изменения: пока сохранить текущую ставку. Нужно ≥100 просмотров объявления и ≥500 просмотров / 5 контактов группы за 30 дней.';
     else if(count(manual.recommended_bid_penny)>0){seed=Math.round(manual.recommended_bid_penny*.85);reason='Стартовый тест: 85% рекомендации Авито. Собственной статистики пока мало; это не расчёт окупаемости.';}
     if(!seed)return null;
-    return {value:Math.max(manual.min_bid_penny+1,Math.min(manual.max_bid_penny,Math.round(seed*factor))),reason:reason,experimental:true};
+    var ceiling=Math.min(35000,manual.max_bid_penny);if(manual.min_bid_penny>=ceiling)return null;
+    return {value:Math.max(manual.min_bid_penny+1,Math.min(ceiling,Math.round(seed*factor))),reason:reason,experimental:true};
   }
   function fingerprint(ids,form){return JSON.stringify([ids.slice().map(String).sort(),pick(form,['mode','bid','limit','budget','period'])]);}
   function baseRenderBars(state,env){
