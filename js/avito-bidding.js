@@ -615,7 +615,7 @@
     function pendingIds(state) { return state.selected.size ? Array.from(state.selected) : state.selectedId ? [state.selectedId] : []; }
     async function prepareDisableAll(state) {
       if (!valid(state) || state.busy || state.preparingDisable || !state.ctx.canManage) return;
-      state.preparingDisable = true; renderToolbar(state);
+      state.preparingDisable = true; state.serverDraft = null; renderToolbar(state); renderPreview(state);
       try {
         note(state, 'Проверяем полный список этого аккаунта. Ставки пока не меняются.');
         if (!await loadItems(state, false, true, true)) throw Error('Не удалось подтвердить актуальный список. Отключение не подготовлено.');
@@ -630,7 +630,7 @@
         state.form.mode = 'base'; renderToolbar(state, true); renderControls(state);
         await serverPreviewChanges(state);
       } catch (error) { note(state, message(error), 'error'); }
-      finally { state.preparingDisable = false; if (valid(state)) renderToolbar(state); }
+      finally { state.preparingDisable = false; if (valid(state)) { renderToolbar(state); renderPreview(state); } }
     }
     async function pollJobs(state) {
       if (!valid(state)) return;
@@ -649,14 +649,21 @@
       var host = state.parts.jobs; host.replaceChildren();
       if ((state.jobs || []).length || state.jobsError) host.append(button(state, 'Обновить результат', 'avb-secondary avb-job-refresh', function() { pollJobs(state); }));
       if (state.jobsError) host.append(el('small', 'avb-warning', state.jobsError));
-      (state.jobs || []).slice(0,3).forEach(function (job) {
+      var jobs = state.jobs || [], previous = jobs.filter(function(job) { return job.id !== state.activeJobId && ['queued','running'].indexOf(job.status) < 0; });
+      var history = el('details', 'avb-job-history'); history.open = !!state.jobHistoryOpen;
+      history.addEventListener('toggle', function() { state.jobHistoryOpen = history.open; });
+      history.append(el('summary', '', 'Предыдущие очереди · ' + previous.length));
+      jobs.slice(0,3).forEach(function (job) {
         var counts = job.counts || {}, row = el('div','avb-server-job'), done = (counts.applied||0)+(counts.rejected||0)+(counts.unknown||0)+(counts.cancelled||0)+(counts.superseded||0), meter = el('progress'); meter.max = job.item_count; meter.value = done;
         row.append(el('strong','',({queued:'В очереди',running:'Выполняется на сервере',complete:'Готово',partial:'Частично / заменено новой ставкой',blocked:'Остановлено: проверьте результат',cancelled:'Остановлено',expired:'Срок очереди истёк'})[job.status] || job.status),el('span','','Применено '+(counts.applied||0)+' / '+job.item_count),meter);
         row.append(el('small','avb-job-counts','Ошибок: '+(counts.rejected||0)+' · Без подтверждения: '+(counts.unknown||0)+' · Не отправлено: '+((counts.cancelled||0)+(counts.superseded||0))+' · Осталось: '+((counts.pending||0)+(counts.preparing||0)+(counts.submitting||0))));
+        var created = Date.parse(job.confirmed_at || job.created_at);
+        if (Number.isFinite(created)) row.append(el('small', 'avb-job-counts', 'Запущена: ' + new Date(created).toLocaleString('ru-RU')));
         if (['queued','running'].indexOf(job.status)>=0) row.append(button(state,'Остановить оставшиеся','avb-secondary',async function(){try { await request(state,'/queue-cancel',{job_id:job.id}); if(state.jobsTimer)win.clearTimeout(state.jobsTimer);pollJobs(state); }catch(error){note(state,message(error),'error');}}));
         if (job.status==='blocked') { var failure = (job.results||[]).find(function(r){return (r.status==='rejected'||r.status==='unknown')&&r.error_code;}) || {}; row.append(el('small','avb-warning','Автоматического повтора нет. '+message({code:failure.error_code,message:failure.error_code||'Проверьте результат в Авито.'}))); }
-        host.append(row);
+        if (previous.indexOf(job) >= 0) history.append(row); else host.append(row);
       });
+      if (previous.length) host.append(history);
     }
     async function serverPreviewChanges(state) {
       if (!valid(state) || state.busy || !state.ctx.canManage) return;
@@ -753,19 +760,20 @@
       if (!valid(state) || !state.parts) return;
       var target = state.parts.preview; target.replaceChildren();
       if(state.ctx.serverQueue !== false){
-      var draft=state.serverDraft, fresh=draft&&draft.fingerprint===JSON.stringify([pendingIds(state),state.form]);
+      var draft=state.serverDraft, fresh=!state.preparingDisable&&draft&&draft.fingerprint===JSON.stringify([pendingIds(state),state.form]);
       if(state.parts.chart)state.parts.chart.hidden=!!fresh;
       state.parts.controls.hidden=!!fresh;
       if(fresh){
         var quote=draft.reply, summary=el('details','avb-server-consent');summary.open=true;
-        summary.append(el('summary','','Подтверждение · '+quote.count+' объявлений'),el('strong','',currentLabel(quote.after)),el('p','avb-warning',quote.after.mode==='base'?'Повышенное продвижение будет отключено. Базовое размещение может быть платным.':'Общий предел: '+money((quote.after.limit_penny||quote.after.budget_penny)*quote.count)+' / '+(quote.after.mode==='manual'?'день':quote.after.budget_type)+'. Это лимит, не прогноз.'));
+        summary.append(el('summary','',quote.after.mode==='base'?'Отключить повышенные ставки · '+quote.count+' объявлений':'Подтверждение · '+quote.count+' объявлений'),el('strong','',currentLabel(quote.after)),el('p','avb-warning',quote.after.mode==='base'?'Пока ничего не отключено. Поставьте галочку ниже и нажмите «Отключить ставки». Базовое размещение может быть платным.':'Общий предел: '+money((quote.after.limit_penny||quote.after.budget_penny)*quote.count)+' / '+(quote.after.mode==='manual'?'день':quote.after.budget_type)+'. Это лимит, не прогноз.'));
         summary.append(el('small','avb-muted','Очередь выполняется без браузера, в пределах 24 часов. Установленные ставки действуют в Авито до вашего изменения, а не только сутки. Условия каждого объявления проверяются перед отправкой. Новая очередь заменяет ещё не отправленные ставки этих объявлений. Неизвестный ответ останавливает очередь без повтора.'),button(state,'← Изменить параметры','avb-secondary',function(){state.serverDraft=null;renderPreview(state);}));
-        var check=el('input');check.type='checkbox';var label=el('label','avb-risk-confirm');label.append(check,el('span','','Подтверждаю расходы и запуск серверной очереди.'));
-        var send=button(state,'Подтвердить и запустить','avb-danger',async function(){
-          if(!check.checked||state.busy||state.serverDraft!==draft||draft.fingerprint!==JSON.stringify([pendingIds(state),state.form]))return;
+        var check=el('input');check.type='checkbox';var label=el('label','avb-risk-confirm');label.append(check,el('span','',quote.after.mode==='base'?'Подтверждаю отключение повышенных ставок у '+quote.count+' объявлений.':'Подтверждаю расходы и запуск серверной очереди.'));
+        var send=button(state,quote.after.mode==='base'?'Отключить ставки ('+quote.count+')':'Подтвердить и запустить','avb-danger',async function(){
+          if(!check.checked||state.busy||state.preparingDisable||state.serverDraft!==draft||draft.fingerprint!==JSON.stringify([pendingIds(state),state.form]))return;
+          if(Date.parse(quote.expires_at)<=Date.now())return note(state,'Подтверждение устарело. Нажмите «Изменить параметры» и проверьте заново. Ставки не отправлены.','warning');
           state.busy=true;send.disabled=true;
-          try{var result=await request(state,'/queue-confirm',{quote:quote.quote,confirmation:'QUEUE_BIDS'});if(!result.job)throw Error('Статус не подтверждён. Проверьте список очередей перед новым запуском.');state.serverDraft=null;note(state,'Очередь сохранена на сервере. Можно закрыть окно и браузер.');if(state.jobsTimer)win.clearTimeout(state.jobsTimer);await pollJobs(state);}catch(error){note(state,message(error)+' Проверьте очереди: подтверждение могло сохраниться. Повтор этого же подтверждения не создаёт новую очередь.','warning');}finally{state.busy=false;renderPreview(state);}
-        });send.disabled=true;check.addEventListener('change',function(){send.disabled=!check.checked||state.busy;});summary.append(label,send);target.append(summary);
+          try{var result=await request(state,'/queue-confirm',{quote:quote.quote,confirmation:'QUEUE_BIDS'});if(!result.job)throw Error('Статус не подтверждён. Проверьте список очередей перед новым запуском.');state.activeJobId=result.job.id;state.serverDraft=null;note(state,'Очередь сохранена на сервере. Можно закрыть окно и браузер.');if(state.jobsTimer)win.clearTimeout(state.jobsTimer);await pollJobs(state);}catch(error){note(state,message(error)+' Проверьте очереди: подтверждение могло сохраниться. Повтор этого же подтверждения не создаёт новую очередь.','warning');}finally{state.busy=false;renderPreview(state);}
+        });send.disabled=true;check.addEventListener('change',function(){send.disabled=!check.checked||state.busy||state.preparingDisable;});summary.append(label,send);target.append(summary);
       }
       var jobs=el('div','avb-server-jobs');target.append(jobs);state.parts.jobs=jobs;renderServerJobs(state);
       return;
