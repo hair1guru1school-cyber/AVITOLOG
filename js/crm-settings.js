@@ -6,8 +6,8 @@
 })(typeof window !== 'undefined' ? window : null, function () {
   'use strict';
   var BASE = 'avitolog_crm_settings_v1';
-  var DEFAULTS = { weeklyAutoSort: true, autoVk: true, autoTelegram: true, autoChatPositions: false, autoAccountDetails: false, soldColor: '#1b2b25', workColor: '#2a2722' };
-  var FLAGS = ['weeklyAutoSort', 'autoVk', 'autoTelegram', 'autoChatPositions', 'autoAccountDetails'];
+  var DEFAULTS = { weeklyAutoSort: true, autoContractCalendar: true, autoVk: true, autoTelegram: true, autoChatPositions: false, autoAccountDetails: false, soldColor: '#1b2b25', workColor: '#2a2722' };
+  var FLAGS = ['weeklyAutoSort', 'autoContractCalendar', 'autoVk', 'autoTelegram', 'autoChatPositions', 'autoAccountDetails'];
   function text(value) { return value == null ? '' : String(value); }
   function normalize(value) {
     var out = Object.assign({}, DEFAULTS); value = value || {};
@@ -140,7 +140,9 @@
     }
     function change(name, value) {
       if (saving || viewScope !== store.scope() || !writable()) { close(); return; }
-      saving = true; populate(); var patch = {}; patch[name] = value;
+      saving = true;
+      menu.querySelectorAll('[data-setting], [data-reset]').forEach(function (input) { input.disabled = true; });
+      statusText('Сохраняю…'); var patch = {}; patch[name] = value;
       store.set(patch).then(function (result) {
         saving = false;
         if (viewScope !== store.scope()) return;
@@ -161,10 +163,11 @@
       sortingInput.addEventListener('change', function () { change('weeklyAutoSort', sortingInput.checked); }); sorting.appendChild(sortingInput); sorting.appendChild(element('span', '', 'Автосортировка проектов на неделях')); menu.appendChild(sorting);
       menu.appendChild(element('p', 'crm-settings-hint', 'Сначала КП с ценой, затем цена без КП, без цены и оплаченные. Отключите для ручного порядка.'));
       menu.appendChild(element('h3', '', 'Автоматизация'));
-      [['autoVk', 'VK из входящих чатов'], ['autoTelegram', 'Telegram из входящих чатов'], ['autoChatPositions', 'Позиции товаров и услуг из чата в заметки'], ['autoAccountDetails', 'Города из чата, ИП / ООО из чата и имени клиента']].forEach(function (row) {
+      [['autoContractCalendar', 'Автозаполнение календаря по договору: срок запуска'], ['autoVk', 'VK из входящих чатов'], ['autoTelegram', 'Telegram из входящих чатов'], ['autoChatPositions', 'Позиции товаров и услуг из чата в заметки'], ['autoAccountDetails', 'Города из чата, ИП / ООО из чата и имени клиента']].forEach(function (row) {
         var label = element('label', 'crm-settings-option'), input = element('input'); input.type = 'checkbox'; input.dataset.setting = row[0];
         input.addEventListener('change', function () { change(row[0], input.checked); }); label.appendChild(input); label.appendChild(element('span', '', row[1])); menu.appendChild(label);
       });
+      menu.appendChild(element('p', 'crm-settings-hint', 'По договору ставится «Запуск» на срок создания нового проекта. Старые проекты и ручные отметки не меняются.'));
       menu.appendChild(element('p', 'crm-settings-hint', 'Ручные поля не заменяются; заметки только дополняются.'));
       menu.appendChild(element('p', 'crm-settings-hint', 'Чужие объявления и архив текущий API не предоставляет. Если город или тип компании неизвестны, поле останется без изменений.'));
       menu.appendChild(element('h3', '', 'Фон блоков'));

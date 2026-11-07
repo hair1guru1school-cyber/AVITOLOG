@@ -18,6 +18,11 @@
     var date = new Date(value + 'T00:00:00Z'); date.setUTCDate(date.getUTCDate() + count);
     return date.toISOString().slice(0, 10);
   }
+  function contractDate(value) {
+    var raw = text(value).trim(), match = raw.match(/^(\d{2})\.(\d{2})\.(\d{4})$/);
+    if (match) raw = match[3] + '-' + match[2] + '-' + match[1];
+    return validDate(raw) ? raw : '';
+  }
   function days(value, allowZero) {
     if (!/^\d{1,4}$/.test(text(value).trim())) return null;
     var result = Number(value);
@@ -48,7 +53,7 @@
     var creation = days(data && data.daysCreate), base = days(data && data.daysManage), extra = String(data && data.extraManageEnabled) === '1' ? days(data.extraManageDays, true) : 0;
     if (creation === null || !binding || !scope) return null;
     var management = base !== null && extra !== null && base + extra <= 3660 ? base + extra : null;
-    return { format: FORMAT, source: 'contract-explicit-generate', scope: scope, clientId: text(binding.clientId), folderId: text(binding.folderId), creationDays: creation, managementDays: management, baseDays: base, extraDays: extra, generatedAt: at };
+    return { format: FORMAT, source: 'contract-explicit-generate', scope: scope, clientId: text(binding.clientId), folderId: text(binding.folderId), startDate: contractDate(data.startDate), creationDays: creation, managementDays: management, baseDays: base, extraDays: extra, generatedAt: at };
   }
   function validTerm(term, goal, client, scope) {
     if (!term || term.format !== FORMAT || term.source !== 'contract-explicit-generate' || term.scope !== scope || days(term.creationDays) === null || !term.generatedAt) return false;
@@ -78,20 +83,26 @@
       out.projects.push(project); created = changed = true;
     }
     if (project.zone && project.zone !== 'active' || (out.hiddenProjects || []).indexOf(project) !== -1) return { ok: true, reason: 'existing_non_active', created: created, changed: changed, projectId: project.id, data: out };
-    if (!created) return { ok: true, reason: 'existing_project_preserved', created: false, changed: false, projectId: project.id, data: out };
-    if (options && options.schedule === false) return { ok: true, reason: 'manual_link', created: true, changed: true, projectId: project.id, data: out };
+    var previous = project.crmSoldAutomationV1;
+    var awaitingSale = previous && previous.state === 'awaiting_sale' && goal.stage === 'sold' && [goal.id, goal.soldFromId].some(function (id) { return same(previous.goalId, id); });
+    var pending = awaitingSale || previous && ['duration_missing', 'date_missing', 'disabled'].indexOf(previous.state) !== -1 && same(previous.goalId, goal.id) && same(previous.cycleId, goal.paidCycleId || goal.id + ':' + text(goal.statusDates && goal.statusDates.paid || goal.date));
+    if (!created && !pending) return { ok: true, reason: 'existing_project_preserved', created: false, changed: false, projectId: project.id, data: out };
+    if (options && options.manual) {
+      if (created && goal.stage === 'working') project.crmSoldAutomationV1 = { goalId: text(goal.id), state: 'awaiting_sale' };
+      return { ok: true, reason: 'manual_link', created: created, changed: changed, projectId: project.id, data: out };
+    }
     var terms = [client && client.contractServiceTermV1, project.contractServiceTermV1, project.crmData && project.crmData.contractServiceTermV1, goal.contractServiceTermV1, goal.payload && goal.payload.contractServiceTermV1].filter(function (term) { return validTerm(term, goal, client, scope); });
     terms.sort(function (a, b) { return text(b.generatedAt).localeCompare(text(a.generatedAt)); });
-    var term = terms[0], start = goal.statusDates && goal.statusDates.paid || goal.date;
-    var cycle = text(goal.paidCycleId || goal.id + ':' + text(start)), eventId = 'crm_sale_' + cycle;
-    var marker = { goalId: text(goal.id), cycleId: cycle, saleDate: text(start), state: !term ? 'duration_missing' : !validDate(start) ? 'date_missing' : 'ready' };
-    if (!term || !validDate(start)) {
+    var term = terms[0], saleDate = goal.statusDates && goal.statusDates.paid || goal.date, start = term && term.startDate || saleDate;
+    var cycle = text(goal.paidCycleId || goal.id + ':' + text(saleDate)), eventId = 'crm_sale_' + cycle;
+    var marker = { goalId: text(goal.id), cycleId: cycle, saleDate: text(saleDate), state: options && options.schedule === false ? 'disabled' : !term ? 'duration_missing' : !validDate(start) ? 'date_missing' : 'ready' };
+    if (marker.state !== 'ready') {
       if (JSON.stringify(project.crmSoldAutomationV1) !== JSON.stringify(marker)) { project.crmSoldAutomationV1 = marker; changed = true; }
       return { ok: true, reason: marker.state, created: created, changed: changed, projectId: project.id, data: out };
     }
     var events = Array.isArray(project.events) ? project.events : [];
     if (events.some(function (event) { return event && event.id === eventId; })) return { ok: true, reason: 'already_linked', changed: changed, created: created, projectId: project.id, data: out };
-    if (events.some(function (event) { return event && (event.type === 'active_range' || event.type === 'launch_range') && event.source !== 'crm_contract' && text(event.endDate) >= start; })) return { ok: true, reason: 'manual_calendar_preserved', created: created, changed: changed, projectId: project.id, data: out };
+    if (events.some(function (event) { return event && event.source !== 'crm_contract'; })) return { ok: true, reason: 'manual_calendar_preserved', created: created, changed: changed, projectId: project.id, data: out };
     var end = addDays(start, Number(term.creationDays));
     project.events = events.concat(
       { id: eventId, type: 'launch_range', startDate: start, endDate: end, source: 'crm_contract', goalId: text(goal.id), paidCycleId: cycle, contractGeneratedAt: term.generatedAt, creationDays: Number(term.creationDays) },
@@ -101,19 +112,76 @@
     marker.state = 'scheduled'; marker.kind = 'launch'; marker.days = Number(term.creationDays); marker.startDate = start; marker.endDate = end; project.crmSoldAutomationV1 = marker;
     return { ok: true, reason: 'scheduled', created: created, changed: true, projectId: project.id, data: out };
   }
+  function planContract(data, clients, term, binding, expected, schedule) {
+    if (!Array.isArray(clients) || !data || !Array.isArray(data.projects)) throw Error('Данные проекта ещё не загружены.');
+    if (!validTerm(term, { crmClientRecordId: binding.clientId, folderId: binding.folderId }, null, expected)) throw Error('Срок договора относится к другому клиенту или режиму.');
+    var rows = clone(clients), out = clone(data);
+    var matches = rows.filter(function (row) { return binding.clientId ? same(row.client_id, binding.clientId) : same(row.folderId, binding.folderId); });
+    if (matches.length > 1 || binding.clientId && matches.length !== 1) throw Error('Не удалось однозначно найти клиента договора.');
+    var client = matches[0] || null;
+    if (client && binding.folderId && client.folderId && !same(client.folderId, binding.folderId)) throw Error('Папка клиента изменилась.');
+    var identity = { crmClientRecordId: binding.clientId, folderId: binding.folderId };
+    var linked = out.projects.concat(out.hiddenProjects || []).filter(function (p) { return matchesProject(p, identity, client); });
+    if (linked.length > 1 || !client && !linked.length) throw Error('Не удалось однозначно найти проект договора.');
+    if (linked.some(function (p) { return binding.folderId && p.folderId && !same(p.folderId, binding.folderId) || !client && p.crmClientId; })) throw Error('Привязка проекта изменилась.');
+    if (client) client.contractServiceTermV1 = clone(term);
+    var result = null;
+    linked.forEach(function (p) {
+      p.contractServiceTermV1 = clone(term);
+      var marker = p.crmSoldAutomationV1;
+      if (!marker || ['duration_missing', 'date_missing', 'disabled'].indexOf(marker.state) === -1) return;
+      var goal = { id: marker.goalId, name: p.title, stage: 'sold', crmClientRecordId: client && client.client_id, folderId: binding.folderId, date: marker.saleDate, paidCycleId: marker.cycleId };
+      result = planSale(out, goal, rows, expected, { schedule: schedule });
+      if (!result.ok) throw Error('Не удалось заполнить запуск проекта.');
+      out = result.data;
+    });
+    return { clients: rows, data: out, clientChanged: JSON.stringify(rows) !== JSON.stringify(clients), changed: JSON.stringify(out) !== JSON.stringify(data), reason: result && result.reason || (schedule ? 'term_saved' : 'disabled'), projectId: linked[0] && linked[0].id, term: term };
+  }
   function install(win) {
+    var tail = Promise.resolve(), pending = 0;
+    function backend() { return !!(win.AVITOLOG_BACKEND_MODE || win.AVITOLOG_BACKEND_SERVER_ONLY); }
     function key(value) { return typeof win.AVITOLOG_KEY === 'function' ? win.AVITOLOG_KEY(value) : value; }
     function scope() {
       var suffix = key('avitolog_clients') === 'avitolog_clients_sasha' ? 'sasha' : key('avitolog_clients') === 'avitolog_clients' ? 'fil' : '';
       if (!suffix || typeof win.AVITOLOG_PROFILE_LOCKED !== 'boolean' || (suffix === 'sasha') !== win.AVITOLOG_PROFILE_LOCKED) return '';
-      if (win.AVITOLOG_BACKEND_MODE && win.AVITOLOG_BACKEND_INITIAL_SYNC_READY !== true) return '';
+      if (backend() && win.AVITOLOG_BACKEND_INITIAL_SYNC_READY !== true) return '';
       var identity = typeof win.__avitologBackendIdentity === 'function' ? win.__avitologBackendIdentity() || {} : {};
-      if (win.AVITOLOG_BACKEND_MODE && !identity.id) return '';
+      if (backend() && !identity.id) return '';
       return [identity.id || 'local', suffix, key('avitolog_clients'), key('avitolog_projects')].join('|');
     }
     function assertScope(expected) { if (!expected || expected !== scope()) throw Error('context_changed'); }
     function clients() { var rows = typeof win.getCrmClients === 'function' ? win.getCrmClients() : []; return Array.isArray(rows) ? rows : []; }
+    function enabled() { return !win.CrmSettings || win.CrmSettings.get().autoContractCalendar !== false; }
+    function run(expected, action) {
+      function invoke() { assertScope(expected); return action(); }
+      if (!backend() && !(win.CrmSettings && typeof win.CrmSettings.whenReady === 'function')) {
+        try { return invoke(); } catch (error) { return { ok: false, reason: 'save_failed', error: error.message }; }
+      }
+      pending++;
+      var task = tail.then(function () { return win.CrmSettings && typeof win.CrmSettings.whenReady === 'function' ? win.CrmSettings.whenReady() : null; }).then(invoke).catch(function (error) { return { ok: false, reason: 'save_failed', error: error.message }; }).finally(function () { pending--; });
+      tail = task; return task;
+    }
+    function write(expected, build) {
+      if (!backend()) {
+        var result = build(win.loadProjectsData(), clients()); assertScope(expected);
+        if (result.clientChanged) win.saveCrmClients(result.clients);
+        if (result.changed) win.saveProjectsData(result.data);
+        assertScope(expected); return result;
+      }
+      if (typeof win.__avitologBackendCommitStatePatch !== 'function') throw Error('Обновите страницу для надёжного сохранения запуска.');
+      var clientKey = key('avitolog_clients'), projectKey = key('avitolog_projects'), result;
+      return win.__avitologBackendCommitStatePatch([clientKey, projectKey], function (values) {
+        assertScope(expected);
+        if (typeof values[clientKey] !== 'string' || typeof values[projectKey] !== 'string') throw Error('Данные проекта ещё не загружены сервером.');
+        var projects = JSON.parse(values[projectKey]), rows = JSON.parse(values[clientKey]);
+        if (!projects || !Array.isArray(projects.projects) || !Array.isArray(rows)) throw Error('Сервер вернул неполные данные проекта.');
+        result = build(projects, rows);
+        var updates = {}; if (result.clientChanged) updates[clientKey] = JSON.stringify(result.clients); if (result.changed) updates[projectKey] = JSON.stringify(result.data); return updates;
+      }).then(function () { assertScope(expected); return result; });
+    }
+    function after(result, action) { return result && typeof result.then === 'function' ? result.then(action) : action(result); }
     function message(result) {
+      if (result.reason === 'disabled') return 'Проект связан. Автозаполнение календаря выключено в настройках CRM.';
       if (result.reason === 'duration_missing') return '\u041f\u0440\u043e\u0435\u043a\u0442 \u0441\u0432\u044f\u0437\u0430\u043d. \u0421\u0440\u043e\u043a \u0441\u043e\u0437\u0434\u0430\u043d\u0438\u044f \u0432 \u0434\u043e\u0433\u043e\u0432\u043e\u0440\u0435 \u043d\u0435 \u043d\u0430\u0439\u0434\u0435\u043d; \u043a\u0430\u043b\u0435\u043d\u0434\u0430\u0440\u044c \u043d\u0435 \u0438\u0437\u043c\u0435\u043d\u0451\u043d.';
       if (result.reason === 'existing_non_active') return '\u041f\u0440\u043e\u0435\u043a\u0442 \u0443\u0436\u0435 \u0435\u0441\u0442\u044c \u0432 Zzz/\u0430\u0440\u0445\u0438\u0432\u0435. \u0415\u0433\u043e \u043f\u043e\u043b\u043e\u0436\u0435\u043d\u0438\u0435 \u043d\u0435 \u043c\u0435\u043d\u044f\u043b\u043e\u0441\u044c.';
       if (result.reason === 'manual_calendar_preserved') return '\u041f\u0440\u043e\u0435\u043a\u0442 \u0441\u0432\u044f\u0437\u0430\u043d; \u0440\u0443\u0447\u043d\u044b\u0435 \u0434\u0430\u0442\u044b \u043a\u0430\u043b\u0435\u043d\u0434\u0430\u0440\u044f \u0441\u043e\u0445\u0440\u0430\u043d\u0435\u043d\u044b.';
@@ -124,19 +192,21 @@
       var expected = scope();
       if (!expected || automatic && (!goal || goal.stage !== 'sold')) return { ok: false, reason: 'inactive_context' };
       if (typeof win.loadProjectsData !== 'function' || typeof win.saveProjectsData !== 'function') return { ok: false, reason: 'projects_unavailable' };
-      try {
-        var result = planSale(win.loadProjectsData(), goal, clients(), expected, { schedule: automatic === true }); result.message = message(result);
-        if (result.changed) { assertScope(expected); win.saveProjectsData(result.data); assertScope(expected); }
+      goal = clone(goal);
+      return run(expected, function () { return after(write(expected, function (data, rows) { return planSale(data, goal, rows, expected, { schedule: automatic === true && enabled(), manual: !automatic }); }), function (result) {
+        result.message = message(result);
         if (result.changed && win.projectsMode && typeof win.rerenderProjectsPreserveScroll === 'function') win.rerenderProjectsPreserveScroll();
         if (result.changed && win.document && win.CustomEvent) win.document.dispatchEvent(new win.CustomEvent('avitolog:crm-sold-project-linked', { detail: { goalId: goal.id, projectId: result.projectId, reason: result.reason } }));
         if (automatic && result.created && result.reason !== 'scheduled' && typeof win.showAnalyticsReadyToast === 'function') win.showAnalyticsReadyToast(result.message);
         return result;
-      } catch (_) { return { ok: false, reason: 'save_failed', message: '\u041f\u0440\u043e\u0434\u0430\u0436\u0430 \u0441\u043e\u0445\u0440\u0430\u043d\u0435\u043d\u0430; \u043f\u0440\u043e\u0435\u043a\u0442 \u043d\u0435 \u0441\u0432\u044f\u0437\u0430\u043d. \u041f\u043e\u0432\u0442\u043e\u0440\u0438\u0442\u0435 \u043a\u043d\u043e\u043f\u043a\u043e\u0439 \ud83c\udd70\ufe0f.' }; }
+      }); });
     }
     function captureContractContext() {
-      var expected = scope(), active = typeof win.getActiveClient === 'function' ? win.getActiveClient() : null;
+      var expected = scope(), active = win.ContractClientSync && typeof win.ContractClientSync.target === 'function' ? win.ContractClientSync.target() : typeof win.getActiveClient === 'function' ? win.getActiveClient() : null;
       if (!expected || !active) return null;
-      return { scope: expected, clientId: text(active.client_id), folderId: text(active.folderId) };
+      var match = text(active.folderLink || active.driveFolderUrl || active.folderUrl).match(/\/folders\/([A-Za-z0-9_-]+)/);
+      var binding = { scope: expected, clientId: text(active.client_id || active.crmClientId), folderId: text(active.folderId || active.folder_id || active.drive_folder_id) || (match ? match[1] : '') };
+      return binding.clientId || binding.folderId ? binding : null;
     }
     function rememberContractTerm(data, binding) {
       var expected = scope();
@@ -145,20 +215,21 @@
       if (!current || current.clientId !== binding.clientId || current.folderId !== binding.folderId) return { ok: false, reason: 'client_changed' };
       var term = makeTerm(data, binding, expected, new Date().toISOString());
       if (!term) return { ok: false, reason: 'invalid_duration' };
-      var rows = clients(), matches = rows.filter(function (row) { return binding.clientId ? same(row.client_id, binding.clientId) : binding.folderId && same(row.folderId, binding.folderId); });
-      if (matches.length !== 1 || typeof win.saveCrmClients !== 'function') return { ok: false, reason: 'client_not_saved' };
-      var next = rows.slice(), updated = Object.assign({}, matches[0], { contractServiceTermV1: term }); next[rows.indexOf(matches[0])] = updated;
-      try {
-        assertScope(expected); win.saveCrmClients(next); assertScope(expected);
-        var saved = clients().find(function (row) { return same(row.client_id, updated.client_id); });
-        if (!saved || JSON.stringify(saved.contractServiceTermV1) !== JSON.stringify(term)) return { ok: false, reason: 'save_unconfirmed' };
-        var active = typeof win.getActiveClient === 'function' && win.getActiveClient(); if (active && same(active.client_id, updated.client_id)) active.contractServiceTermV1 = term;
-        return { ok: true, days: term.creationDays };
-      } catch (_) { return { ok: false, reason: 'save_failed' }; }
+      return run(expected, function () { return after(write(expected, function (projects, rows) {
+        var current = captureContractContext();
+        if (!current || current.clientId !== binding.clientId || current.folderId !== binding.folderId) throw Error('Клиент договора изменился.');
+        return planContract(projects, rows, term, binding, expected, enabled());
+      }), function (result) {
+        var active = typeof win.getActiveClient === 'function' && win.getActiveClient();
+        if (active && (binding.clientId ? same(active.client_id, binding.clientId) : same(active.folderId, binding.folderId))) active.contractServiceTermV1 = term;
+        if (result.reason === 'scheduled' && win.projectsMode && typeof win.rerenderProjectsPreserveScroll === 'function') win.rerenderProjectsPreserveScroll();
+        return result.reason === 'term_saved' ? { ok: true, days: term.creationDays } : { ok: true, days: term.creationDays, calendar: result.reason };
+      }); });
     }
     var api = { onSold: function (goal) { return link(goal, true); }, link: function (goal) { return link(goal, false); }, captureContractContext: captureContractContext, rememberContractTerm: rememberContractTerm };
     win.__onGoalsProjectSentToActive = api.link;
+    if (win.addEventListener) win.addEventListener('beforeunload', function (event) { if (pending) { event.preventDefault(); event.returnValue = ''; } });
     return Object.freeze(api);
   }
-  return { makeTerm: makeTerm, planSale: planSale, resolveClient: resolveClient, matchesProject: matchesProject, validDate: validDate, addDays: addDays, install: install };
+  return { makeTerm: makeTerm, planSale: planSale, planContract: planContract, resolveClient: resolveClient, matchesProject: matchesProject, validDate: validDate, addDays: addDays, install: install };
 });

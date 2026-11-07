@@ -1369,6 +1369,7 @@
       '<button type="button" class="contract-toolbar-btn contract-btn-clear" onclick="window.__contractClear&&window.__contractClear()">Очистить</button>' +
       '<span class="contract-save-status" id="contractSaveStatus"></span>' +
       '<span class="contract-save-status" id="contractClientSyncStatus" role="status" aria-live="polite"></span>' +
+      '<span class="contract-save-status" id="contractTermSyncStatus" role="status" aria-live="polite"></span>' +
       '</div>' +
       '</div>' +
       '<div class="contract-form">' +
@@ -1803,7 +1804,19 @@
     setHeaderGender(savedContractDraft && savedContractDraft.headerGender ? savedContractDraft.headerGender : 'm');
 
     window.__contractRememberServiceTerm = function(data) {
-      return serviceTermBinding && window.CrmSoldProjects ? window.CrmSoldProjects.rememberContractTerm(data, serviceTermBinding) : { ok: false };
+      var status = document.getElementById('contractTermSyncStatus');
+      if (!serviceTermBinding || !window.CrmSoldProjects) {
+        if (status) status.textContent = 'Выберите сохранённого клиента для привязки срока запуска.';
+        return Promise.resolve({ ok: false });
+      }
+      var request = window.CrmSoldProjects.rememberContractTerm(data, serviceTermBinding);
+      if (status) status.textContent = 'Сохраняю срок запуска из договора…';
+      return Promise.resolve(request).then(function(result) {
+        if (!serviceTermBinding || !window.CrmSoldProjects || JSON.stringify(window.CrmSoldProjects.captureContractContext()) !== JSON.stringify(serviceTermBinding)) return result;
+        var status = document.getElementById('contractTermSyncStatus');
+        if (status) status.textContent = !result.ok ? 'Срок запуска не сохранён: ' + (result.error || 'проверьте привязку клиента и повторите сохранение договора.') : result.calendar === 'scheduled' ? 'Запуск через ' + result.days + ' дн. добавлен в календарь проекта.' : result.calendar === 'disabled' ? 'Срок запуска сохранён. Автозаполнение календаря выключено в настройках CRM.' : result.calendar === 'manual_calendar_preserved' ? 'Срок запуска сохранён; ручные даты календаря не изменены.' : 'Срок создания: ' + result.days + ' дн. Сохранён для запуска новых проектов.';
+        return result;
+      });
     };
     window.__contractRememberClientData = function(data) {
       var status = document.getElementById('contractClientSyncStatus');
@@ -1820,6 +1833,8 @@
         return result;
       });
     };
+    var rememberServiceTerm = window.__contractRememberServiceTerm;
+    var rememberClientData = window.__contractRememberClientData;
     window.__contractGenerate = function(options) {
       var d = getFormData();
       saveContractDraft(d, clientDataBinding);
@@ -1832,11 +1847,8 @@
       d.startDate = fmt(d.startDate) || d.startDate;
       d.endDate = fmt(d.endDate) || d.endDate;
       onGenerate(d);
-      if (options && options.recordServiceTerm) window.__contractRememberClientData(d);
-      if (options && options.recordServiceTerm && serviceTermBinding && window.CrmSoldProjects) {
-        var savedTerm = window.__contractRememberServiceTerm(d);
-        var termStatus = document.getElementById('contractSaveStatus');
-        if (termStatus) termStatus.textContent = savedTerm.ok ? 'Срок создания: ' + savedTerm.days + ' дн. Сохранён для запуска новых проектов.' : 'Договор сформирован. Срок не привязан к клиенту; календарь не изменён.';
+      if (options && options.recordServiceTerm) {
+        rememberServiceTerm(d).then(function() { return rememberClientData(d); });
       }
     };
 
@@ -2478,7 +2490,7 @@
         var htmlForExport = await inlineExportImages(exportHtml);
         var mhtml = buildWordMhtml(htmlForExport);
         triggerBlobDownload(new Blob([mhtml], { type: 'application/msword;charset=utf-8' }), fileName);
-        if (typeof rememberServiceTermForExport === 'function') rememberServiceTermForExport(exportData);
+        if (typeof rememberServiceTermForExport === 'function') await rememberServiceTermForExport(exportData);
         if (typeof rememberClientDataForExport === 'function') await rememberClientDataForExport(exportData);
         if (st) st.textContent = '✓ Скачан файл: ' + fileName;
       } catch (error) {
@@ -2525,7 +2537,7 @@
           if (st) st.textContent = 'Сохраняю в Google Docs...';
           await getDriveToken();
           var res = await driveCreateGoogleDoc(docName, wrapContractHtml(htmlForExport), ctx.folderId);
-          if (typeof rememberServiceTermForExport === 'function') rememberServiceTermForExport(exportData);
+          if (typeof rememberServiceTermForExport === 'function') await rememberServiceTermForExport(exportData);
           if (typeof rememberClientDataForExport === 'function') await rememberClientDataForExport(exportData);
           if (st) {
             var link = res && res.webViewLink ? String(res.webViewLink) : '';
@@ -2535,7 +2547,7 @@
           }
         } else {
           downloadDocLocal(docName, htmlForExport);
-          if (typeof rememberServiceTermForExport === 'function') rememberServiceTermForExport(exportData);
+          if (typeof rememberServiceTermForExport === 'function') await rememberServiceTermForExport(exportData);
           if (typeof rememberClientDataForExport === 'function') await rememberClientDataForExport(exportData);
           if (st) st.textContent = '✓ Скачан .doc файл';
         }
@@ -2544,6 +2556,7 @@
           var who2 = (exportData && (exportData.fio || exportData.companyName)) || 'Клиент';
           var htmlForExportFallback = await inlineExportImages(exportHtml);
           downloadDocLocal('📜 Договор — ' + String(who2), htmlForExportFallback);
+          if (typeof rememberServiceTermForExport === 'function') await rememberServiceTermForExport(exportData);
           if (typeof rememberClientDataForExport === 'function') await rememberClientDataForExport(exportData);
           if (st) st.textContent = 'Drive недоступен, скачан .doc файл';
         } catch (e2) {
@@ -2587,7 +2600,7 @@
         var contractHtml = await inlineExportImages(exportDocs && exportDocs.contract ? exportDocs.contract : exportHtml);
         var contractBlob = await htmlToPdfBlob(contractHtml, contractName);
         var contractResult = await driveUploadBlob(contractName, contractBlob, 'application/pdf', ctx.folderId);
-        if (typeof rememberServiceTermForExport === 'function') rememberServiceTermForExport(exportData);
+        if (typeof rememberServiceTermForExport === 'function') await rememberServiceTermForExport(exportData);
         if (typeof rememberClientDataForExport === 'function') await rememberClientDataForExport(exportData);
         var appendixResult = null;
         if (exportDocs && exportDocs.appendix) {
