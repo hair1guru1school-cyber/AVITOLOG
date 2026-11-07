@@ -328,6 +328,7 @@
     function assertPdfScope(snapshot){if(snapshot.scope!==scope())throw Error('Пользователь или Google-аккаунт изменился.');}
     async function localPdf(snapshot,job){
       assertPdfScope(snapshot);
+      if(win.__avitologEnsurePdf)await win.__avitologEnsurePdf();
       if(typeof win.html2pdf!=='function')throw Error('Модуль PDF не загрузился. Обновите страницу или проверьте доступ к Google Drive.');
       var host=el('div'),content=el('div','cg-pdf-document');
       host.style.cssText='position:fixed;left:-10000px;top:0;width:710px;pointer-events:none';host.setAttribute('aria-hidden','true');

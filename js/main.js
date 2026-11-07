@@ -3291,6 +3291,7 @@ async function driveCreateGoogleDoc(name, htmlContent, parentId, guard, signal) 
 }
 
 async function generatePDF(htmlContent, name) {
+  if (window.__avitologEnsurePdf) await window.__avitologEnsurePdf();
   // Создаём временный контейнер
   var container = document.createElement('div');
   container.style.cssText = 'position:fixed;left:-9999px;top:0;width:794px;background:#fff;color:#000;font-family:Arial,sans-serif;padding:40px;box-sizing:border-box;';
@@ -5794,7 +5795,10 @@ document.addEventListener('DOMContentLoaded', function() {
   if (typeof applySashaTabVisibility === 'function') applySashaTabVisibility();
 
   function finishInitAfterSashaPull() {
-    if (typeof window !== 'undefined' && window.AVITOLOG_IS_SASHA) {
+    var restoredView = window.AVBStartupCache && window.AVBStartupCache.restoreNavigation();
+    if (restoredView) {
+      // The selected profile restores its own last tab; data still comes from the server.
+    } else if (typeof window !== 'undefined' && window.AVITOLOG_IS_SASHA) {
       if (typeof window.__crmRefreshAfterSashaSync === 'function') {
         try { window.__crmRefreshAfterSashaSync(); } catch (eCrm1) {}
       }

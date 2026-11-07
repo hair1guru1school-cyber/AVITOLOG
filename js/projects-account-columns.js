@@ -145,7 +145,7 @@
     var scope = '', day = '', epoch = 0, revision = 0, hydrated = false, columns = settings(), widths = columnWidths(), weights = fontWeights(), warning = '';
     var catalog = null, catalogOwners = new Map(), catalogTask = null, catalogNext = 0, catalogError = '', entries = new Map(), queue = [], active = 0;
     var frame = null, interval = null, observer = null, observed = null, popover = null, stopped = false;
-    var writeQueue = Promise.resolve(), resizing = null, contactsSort = false, calendarCards = null;
+    var writeQueue = Promise.resolve(), resizing = null, contactsSort = false, calendarCards = null, cacheRevision = 0;
     function bridge() { return env.AvitoWorkspaceBridge; }
     function context() { try { return validScope(bridge() && bridge().context()); } catch (_) { return ''; } }
     function records() {
@@ -175,7 +175,7 @@
       if (stopped || frame != null) return;
       frame = env.setTimeout(function () { frame = null; tick(); }, 25);
     }
-    function resetMetrics() { epoch++; entries.clear(); queue = []; catalog = null; catalogOwners.clear(); catalogTask = null; catalogNext = 0; catalogError = ''; }
+    function resetMetrics() { epoch++; cacheRevision++; entries.clear(); queue = []; catalog = null; catalogOwners.clear(); catalogTask = null; catalogNext = 0; catalogError = ''; }
     function syncContext() {
       var nextScope = context(), nextDay = moscowDay(now());
       if (nextScope !== scope) {
@@ -225,10 +225,33 @@
     }
     function invalidateAccess() {
       resetMetrics(); catalog = new Set(); catalogNext = now() + TTL; catalogError = 'access_denied';
+      if (env.AVBStartupCache && scope) env.AVBStartupCache.write('project-metrics:' + scope, {});
     }
     function invalidateAccount(id, entry) {
       if (entries.get(id) !== entry) return;
       entry.metrics = null; entry.error = 'access_denied'; entry.nextAt = now() + TTL;
+      cacheRevision++;
+      saveMetricCache();
+    }
+    function saveMetricCache() {
+      if (!env.AVBStartupCache || !scope) return;
+      var owner=scope, data={day:day,accounts:[]};
+      entries.forEach(function(entry,id){if(entry.metrics&&catalogOwners.get(id))data.accounts.push({id:id,owner:catalogOwners.get(id),metrics:entry.metrics});});
+      env.AVBStartupCache.write('project-metrics:'+owner,data,function(){return owner===context();});
+    }
+    function restoreMetricCache(owner,ownerEpoch) {
+      if (!env.AVBStartupCache) return;
+      var revision = cacheRevision;
+      env.AVBStartupCache.read('project-metrics:'+owner,function(){return owner===context()&&ownerEpoch===epoch;}).then(function(saved){
+        if(!saved||!Array.isArray(saved.accounts)||owner!==context()||ownerEpoch!==epoch||revision!==cacheRevision||catalogError||!catalog)return;
+        saved.accounts.forEach(function(item){
+          if(!item||!catalog.has(item.id)||!item.owner||catalogOwners.get(item.id)!==item.owner)return;
+          var entry=entries.get(item.id)||{metrics:null,pending:false,nextAt:0};
+          var next=Object.assign({advance:null,contacts:null,cards:null,denied:false},entry.metrics||{});
+          ['advance','contacts','cards'].forEach(function(key){var m=item.metrics&&item.metrics[key];if(next[key]||!m||!number(m.value)||!Number.isFinite(Date.parse(m.fetchedAt))||Date.parse(m.fetchedAt)>now()+5000||key!=='advance'&&(!Number.isSafeInteger(m.value)||m.value<0)||key==='contacts'&&moscowDay(m.fetchedAt)!==day)return;next[key]={value:m.value,fetchedAt:m.fetchedAt,stale:true};});
+          entry.metrics=next;entries.set(item.id,entry);
+        });schedule();
+      }).catch(function(){});
     }
     function loadCatalog() {
       if (catalogTask || now() < catalogNext || !bridge() || typeof bridge().listAccounts !== 'function') return;
@@ -241,6 +264,7 @@
         catalog = catalogIds(list); catalogError = '';
         entries.forEach(function (_, id) { if (!catalog.has(id) || catalogOwners.has(id) && catalogOwners.get(id) !== owners.get(id)) entries.delete(id); });
         catalogOwners = owners;
+        restoreMetricCache(owner, ownerEpoch);
         queue = queue.filter(function (job) { return catalog.has(job.id) && entries.has(job.id); });
       }).catch(function (error) {
         if (owner !== context() || ownerEpoch !== epoch) return;
@@ -285,7 +309,7 @@
           // A partial refresh is not a replacement for a confirmed same-day value.
           if (!next[key] && !denied(section && section.error) && entry.metrics && entry.metrics[key]) next[key] = Object.assign({}, entry.metrics[key], { stale: true });
         });
-        entry.metrics = next; entry.error = '';
+        entry.metrics = next; entry.error = ''; cacheRevision++; saveMetricCache();
       } catch (error) {
         if (!currentJob(job) || entries.get(job.id) !== entry) return;
         if (denied(error)) { if (accountDenied(error)) invalidateAccount(job.id, entry); else invalidateAccess(); return; }

@@ -83,6 +83,14 @@
     return { id: tokenUserId(data && data.access_token), email: String((data && data.email) || '').trim().toLowerCase() };
   }
   window.__avitologBackendIdentity = backendIdentity;
+  window.__avitologBackendCachedViewScope = function () {
+    if (!serverOnlyMode) return '';
+    var data = sessionData(), uid = backendIdentity().id;
+    var profile = window.AVITOLOG_KEY_SUFFIX === '_sasha' ? 'sasha' : 'fil';
+    var org = cfg.profileOrganizations && cfg.profileOrganizations[profile];
+    if (!uid || !org || !data || jwtExpiry(data.access_token) <= Math.floor(Date.now() / 1000)) return '';
+    return String(cfg.url || '') + '|' + uid + '|' + profile + '|' + org;
+  };
   function pendingWriteScope() {
     if (!serverOnlyMode) return '';
     var uid = backendIdentity().id;
@@ -1186,6 +1194,12 @@
       if (seen[row.storage_key]) throw new Error('Ambiguous profile snapshot: duplicate storage key');
       seen[row.storage_key] = true;
     });
+    if (serverOnlyMode && window.AVBStartupCache) {
+      var cacheOwner = window.__avitologBackendCachedViewScope();
+      rows.forEach(function (row) {
+        if (row.storage_key === 'avitolog_projects' + (sashaProfile ? '_sasha' : '')) window.AVBStartupCache.rememberProjects(cacheOwner, row.storage_key, row.value_text);
+      });
+    }
     return rows;
   }
   async function ensureSashaTeamMember() {
@@ -2078,7 +2092,7 @@
     }
     if (!sessionData()) { finishInitialRead({ ok: false, message: 'Supabase: требуется вход' }); showReauthStatus('Supabase'); return; }
     try {
-      phase = 'team'; await ensureSashaTeamMember();
+      phase = 'team'; var startupScope = pendingWriteScope(), teamTask = ensureSashaTeamMember();
       var forceLocalToServer = false;
       var forceSashaLegacyProjects = false;
       try {
@@ -2096,7 +2110,9 @@
       // In server-only mode read the server first. Retrying a stale browser queue
       // before this read can roll a complete cash ledger back to an older copy.
       if (!serverOnlyMode) { phase = 'pre-dirty'; await retryDirtyLocalWrites(); }
-      phase = 'read'; var rows = await readRemote();
+      phase = 'read'; var rows;
+      try { rows = await readRemote(); }
+      catch (readError) { if (window.AVITOLOG_KEY_SUFFIX !== '_sasha' || startupScope !== pendingWriteScope()) throw readError; await teamTask; if (startupScope !== pendingWriteScope()) throw readError; rows = await readRemote(); }
       phase = 'apply'; var applied = await applyRemoteRows(rows, { authoritativeInitial: serverOnlyMode }); var remoteKeys = applied.remoteKeys; var appliedKeys = applied.appliedKeys;
       phase = 'restore-pending'; await restoreScopedPendingWrites();
       initialSyncReady = true;

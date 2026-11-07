@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=0.5, maximum-scale=5, user-scalable=yes, viewport-fit=cover">
+  <meta name="color-scheme" content="dark">
+  <meta name="referrer" content="no-referrer">
+  <title>Аккаунты Avito | AVITOBOSS</title>
+  <link rel="stylesheet" href="./accounts.css?v=20261028-account-stacks3">
+  <script defer src="../../js/supabase-config.js"></script>
+  <script defer src="../../js/avito-accounts-session.js?v=20261017-auth4"></script>
+  <link rel="stylesheet" href="./bidding.css?v=20261029-bidding-queue3">
+  <link rel="stylesheet" href="../../assets/css/mobile.css?v=20261024-mobile1">
+  <link rel="stylesheet" href="../../assets/css/mobile-accounts-landscape.css?v=20261024-mobile-polish1">
+  <link rel="stylesheet" href="../../assets/css/accounts-mobile-compact.css?v=20261024-two-tabs-classic1">
+  <script defer src="../../js/mobile-accounts-view.js?v=20261024-mobile-polish1"></script>
+  <script defer src="../../js/mobile-ui.js?v=20261024-landscape1"></script>
+  <script defer src="../../js/avito-bidding-dashboard.js?v=20261029-bidding-queue3"></script>
+  <script defer src="../../js/avito-bidding.js?v=20261029-bidding-queue3"></script>
+  <script defer src="../../js/startup-cache.js?v=20261107-fast-resume1"></script>
+<script defer src="../../js/avito-accounts.js?v=20261107-fast-resume1"></script>
+<link rel="stylesheet" href="./light-theme.css?v=20261021-light1">
+<script defer src="../../js/light-theme.js?v=20261021-light1"></script>
+</head>
+<body>
+  <header class="topbar"><span class="brand">AVITOBOSS <small>AVITO API</small></span><div class="topbar-actions"><span class="badge">Отдельный модуль</span><button id="logoutBtn" class="button is-hidden" type="button">Выйти из модуля</button></div></header>
+  <main>
+    <section class="account-section" aria-labelledby="accountsTitle">
+      <div class="accounts-header toolbar panel">
+        <div class="accounts-heading"><h1 id="accountsTitle">Аккаунты Avito</h1><span id="accountsCount" class="muted">Требуется вход</span><div class="accounts-priority"><label class="balance-priority"><input id="lowAdvanceEnabled" type="checkbox"><span>Поднимать аккаунты с авансом</span></label><label class="balance-threshold"><span>до</span><input id="lowAdvanceThreshold" type="number" min="0" max="1000000000" step="any" value="500" aria-label="Порог аванса в рублях"><span>₽</span></label></div></div>
+        <div class="accounts-header-controls">
+        <label class="organization"><span class="visually-hidden">Организация</span><select id="organizationSelect" disabled aria-label="Организация"></select></label>
+        <button id="refreshBtn" class="button" type="button" title="Обновить список аккаунтов">Обновить</button>
+        <div class="account-filters">
+          <label><span class="visually-hidden">Фильтр по группе</span><select id="accountGroupFilter" aria-label="Фильтр по группе"><option value="">Все группы</option><option value="construction">🏗 Строительство</option><option value="furniture">🛋 Мебель</option><option value="special">🛠 Спецуслуги</option><option value="materials">🧱 Стройматериалы</option><option value="online">🌐 Online услуги</option><option value="equipment">⚙ Оборудование</option><option value="auto">🚗 Авто / мото</option><option value="avitolog">🅰️ Авитологи</option><option value="fences">📐 Ворота / заборы</option><option value="houses">🏡 Дома</option><option value="other">Другое</option></select></label>
+          <label><span class="visually-hidden">Видимость аккаунтов</span><select id="accountVisibilityFilter" aria-label="Видимость аккаунтов"><option value="visible">Показанные</option><option value="hidden">Скрытые</option><option value="deleted">Удалённые</option><option value="all">Все аккаунты</option></select></label>
+        </div>
+        <details class="invite-panel compact-invite">
+          <summary class="button" id="inviteTitle"><span aria-hidden="true">↗</span> Ссылка для клиента</summary>
+          <div class="invite-content">
+            <p id="inviteState" class="muted" role="status">Проверяем безопасное подключение...</p>
+            <div class="invite-create"><label>Подпись для себя<input id="inviteLabel" maxlength="120" autocomplete="off" placeholder="Например, клиент Заборы"></label><button id="createInviteBtn" class="button primary" type="button" disabled>Создать ссылку</button></div>
+            <p class="small">Скопируйте ссылку и откройте в браузере нужного аккаунта. Автоматического перехода нет.</p>
+            <div id="inviteResult" class="is-hidden"><label>Одноразовая ссылка<input id="inviteUrl" readonly autocomplete="off" spellcheck="false"></label><p id="inviteExpiry" class="small"></p><button id="copyInviteBtn" class="button" type="button" disabled>Скопировать ссылку</button></div>
+            <button id="cancelInviteBtn" class="button danger is-hidden" type="button" disabled>Отменить последнюю ссылку этой организации</button>
+          </div>
+        </details>
+        <button id="addApiBtn" class="button" type="button" title="Добавить по API-ключам" disabled>+ API-ключи</button>
+        <details id="accountTableSettings" class="table-settings">
+          <summary class="button" aria-label="Настройки таблицы" title="Настройки таблицы">⚙</summary>
+          <div class="table-settings-content">
+            <strong>Порядок аккаунтов</strong>
+            <div class="table-preferences">
+              <button id="manualOrderBtn" class="button" type="button" disabled>Ручной порядок</button>
+            </div>
+            <p class="small">Настройки вида сохраняются только в этом браузере. Приоритет аванса обновляет видимые строки раз в две минуты, пока страница видима и приоритет включён.</p>
+            <strong>Показать в таблице</strong>
+            <label><input id="tableShowWallet" type="checkbox" checked>Кошелёк</label><label><input id="tableShowSpending" type="checkbox" checked>Расходы</label><label><input id="tableShowListings" type="checkbox" checked>Активные объявления</label><label><input id="tableShowContacts" type="checkbox" checked>Контакты</label><label><input id="tableShowViews" type="checkbox" checked>Просмотры</label><label><input id="tableShowFavorites" type="checkbox" checked>Избранное</label><label><input id="tableShowGroup" type="checkbox" checked>Группы</label>
+            <strong>В обзоре аккаунта</strong>
+            <label><input id="tableShowTariff" type="checkbox" checked>Тариф из API</label><label><input id="tableEstimateTariff" type="checkbox">Тест: тариф по оплатам 3 000/6 000 ₽</label>
+            <p class="small">Тест ищет подходящую оплату за последние 30 дней при открытии обзора. Это предположение, не подтверждённый уровень или срок тарифа. Настройки сохраняются в этом браузере отдельно для пользователя и организации.</p>
+            <details class="accounts-help"><summary>О показателях и обновлении</summary><p class="small">Аванс является отдельным балансом CPA, а не суммой кошелька. Статистика за текущий день по Москве; Avito может обновлять её с задержкой. Повторный запрос доступен не чаще раза в минуту. «-» означает, что данные не получены, а не ноль.</p></details>
+          </div>
+        </details>
+        </div>
+      </div>
+      <div class="accounts-status-strip">
+        <span id="metricsDate" class="muted"></span>
+        <span id="tableOrderState" class="small" role="status" aria-live="polite">Ручной порядок</span>
+        <span id="layoutState" class="small" role="status" aria-live="polite"></span>
+        <span id="tablePrefsState" class="small" role="status" aria-live="polite"></span>
+      </div>
+      <p id="accountsMessage" class="empty">Войдите, чтобы увидеть аккаунты вашей организации.</p>
+      <div class="table-scroll" tabindex="0" role="region" aria-label="Таблица аккаунтов: прокрутка по вертикали и горизонтали"><table class="accounts-table"><caption class="visually-hidden">Показатели подключённых аккаунтов Avito. Нажмите заголовок для сортировки: сначала по убыванию, повторно по возрастанию.</caption><thead><tr>
+        <th id="sortNameHeading" scope="col" aria-sort="none"><button id="sortName" class="table-sort" type="button"><span class="metric-icon" aria-hidden="true">👤</span>Аккаунт</button></th>
+        <th id="sortAdvanceHeading" scope="col" aria-sort="none" title="Баланс CPA/аванса Avito, отдельно от кошелька"><button id="sortAdvance" class="table-sort" type="button"><span class="metric-icon" aria-hidden="true">💳</span>Аванс</button></th>
+        <th id="sortWalletHeading" scope="col" aria-sort="none"><button id="sortWallet" class="table-sort" type="button"><span class="metric-icon" aria-hidden="true">👛</span>Кошелёк</button></th>
+        <th id="sortSpendingHeading" scope="col" title="Расходы сегодня" aria-sort="none"><button id="sortSpending" class="table-sort" type="button" aria-label="Сортировать по расходам сегодня"><span class="metric-icon" aria-hidden="true">₽</span>Расходы</button></th>
+        <th id="sortListingsHeading" scope="col" title="Активные объявления. Статусы публикации Avito; видимость в поиске API не сообщает." aria-sort="none"><button id="sortListings" class="table-sort" type="button" aria-label="Сортировать по числу активных объявлений">Объявл.</button></th>
+        <th id="sortContactsHeading" scope="col" class="icon-metric-heading" title="Контакты сегодня" aria-sort="none"><button id="sortContacts" class="table-sort" type="button" aria-label="Сортировать по контактам сегодня"><span class="metric-icon" aria-hidden="true">☎</span><span class="visually-hidden">Контакты</span></button></th>
+        <th id="sortViewsHeading" scope="col" class="icon-metric-heading" title="Просмотры сегодня" aria-sort="none"><button id="sortViews" class="table-sort" type="button" aria-label="Сортировать по просмотрам сегодня"><span class="metric-icon" aria-hidden="true">👁</span><span class="visually-hidden">Просмотры</span></button></th>
+        <th id="sortFavoritesHeading" scope="col" class="icon-metric-heading" title="Добавления в избранное сегодня" aria-sort="none"><button id="sortFavorites" class="table-sort" type="button" aria-label="Сортировать по добавлениям в избранное сегодня"><span class="metric-icon" aria-hidden="true">&#9829;</span><span class="visually-hidden">В избранное</span></button></th>
+        <th scope="col"><span class="metric-icon" aria-hidden="true">⚙</span>Действия</th>
+        <th id="sortGroupHeading" scope="col" aria-sort="none"><button id="sortGroup" class="table-sort" type="button">Группа</button></th>
+      </tr></thead><tbody id="accountsGrid"></tbody></table></div>
+    </section>
+    <section class="hero">
+      <p class="eyebrow">Аккаунты и клиентские подключения</p>
+      <h2>Подключение аккаунтов</h2>
+      <p class="muted">Добавляйте аккаунты по Client ID и Client Secret. Аванс, кошелёк и статистика доступны в пределах разрешений Avito. Эта страница не изменяет CRM, кассу и проекты.</p>
+      <p id="pageState" class="state" role="status">Проверяем настройки...</p>
+    </section>
+    <div id="notice" class="notice is-hidden" role="status" aria-live="polite"><span id="noticeText"></span><button id="noticeClose" type="button" aria-label="Закрыть уведомление">&times;</button></div>
+    <section id="authPanel" class="panel is-hidden" aria-labelledby="loginTitle">
+      <h2 id="loginTitle">Вход в AVITOBOSS</h2>
+      <p class="muted">Используйте существующий аккаунт Supabase. Пароль и ключи не отправляйте в чат.</p>
+      <form id="loginForm" class="login-form">
+        <label>Email<input id="loginEmail" type="email" autocomplete="username" required maxlength="254"></label>
+        <label>Пароль<input id="loginPassword" type="password" autocomplete="current-password" required></label>
+        <button id="loginBtn" class="button primary" type="submit">Войти</button>
+      </form>
+    </section>
+    <div id="accountDetailHome">
+    <section id="accountDetail" class="panel detail-panel is-hidden" aria-labelledby="detailTitle">
+      <div class="section-head"><h2 id="detailTitle">Данные аккаунта</h2><div class="detail-actions"><details id="apiActionsMenu" class="api-actions-menu"><summary class="button">API <span aria-hidden="true">▾</span></summary><div class="api-actions-content"><button id="refreshAccountBtn" class="button" type="button">Обновить API</button><div id="sourceControls" class="source-controls"></div></div></details><button id="closeDetailsBtn" class="button detail-collapse" type="button" aria-label="Свернуть обзор" title="Свернуть обзор"><span aria-hidden="true">✔</span></button></div></div>
+      <div id="accountReadData">
+      <p id="detailStatus" class="muted" role="status"></p>
+      <div class="detail-facts"><div id="profileData" class="data-grid"></div><div id="balanceData" class="data-grid"></div><div id="accountBiddingHost" class="account-bidding-host avb-host"></div></div>
+      <div id="tariffPaymentData" class="tariff-payment-data is-hidden" role="status" aria-live="polite"></div>
+      <div class="statistics-head"><h3 id="todayTitle">Статистика (МСК)</h3><div class="statistics-period"><button id="statisticsTodayBtn" class="button" type="button" aria-pressed="false">Сегодня</button><button id="statisticsMonthBtn" class="button" type="button" aria-pressed="true">30 дней</button></div></div><div id="todayData" class="statistics-grid"></div>
+      <p id="statisticsNote" class="small"></p>
+      <div class="is-hidden"><p id="itemsStatus"></p><table id="itemsTable" class="is-hidden"><tbody id="itemsBody"></tbody></table></div>
+      </div>
+      <details id="credentialPanel" class="credential-panel"><summary>Персональные API-ключи этого аккаунта</summary>
+        <h3 id="credentialTitle">Добавить персональные API-ключи</h3>
+        <p id="credentialContext" class="muted"></p>
+        <p id="credentialStatus" class="state" role="status" aria-live="polite"></p>
+        <p id="credentialHelp" class="small">CPA-аванс доступен по персональным ключам соответствующего аккаунта. OAuth остаётся отдельным подключением.</p>
+        <form id="credentialForm" autocomplete="off"><fieldset id="credentialFields" disabled>
+          <label>Название для нового аккаунта (необязательно)<input id="accountName" maxlength="120" autocomplete="off" placeholder="Название профиля Avito по умолчанию"></label>
+          <label>Группа<select id="credentialGroup" aria-describedby="credentialGroupHint"><option value="__auto__">Авто по названию</option><option value="">Без группы</option><option value="construction">🏗 Строительство</option><option value="furniture">🛋 Мебель</option><option value="special">🛠 Спецуслуги</option><option value="materials">🧱 Стройматериалы</option><option value="online">🌐 Online услуги</option><option value="equipment">⚙ Оборудование</option><option value="auto">🚗 Авто / мото</option><option value="avitolog">🅰️ Авитологи</option><option value="fences">📐 Ворота / заборы</option><option value="houses">🏡 Дома</option><option value="other">Другое</option></select></label>
+          <p id="credentialGroupHint" class="small">Группа определяется по названию; при необходимости выберите её вручную.</p>
+          <label>Client ID<input id="clientId" required maxlength="256" autocomplete="off" autocapitalize="none" spellcheck="false"></label>
+          <label>Client Secret<input id="clientSecret" type="password" required maxlength="512" autocomplete="off" autocapitalize="none" spellcheck="false"></label>
+          <p class="small">Ключи проверяются сервером только после нажатия кнопки. Секрет не сохраняется в браузере и очищается из поля перед отправкой.</p>
+          <button id="saveAccountBtn" class="button primary" type="submit">Проверить и добавить</button>
+        </fieldset></form>
+        <button id="cancelReconnectBtn" class="button is-hidden" type="button">Очистить форму ключей</button>
+      </details>
+    </section>
+    </div>
+    <footer class="small">Персональные ключи и клиентские OAuth-подключения изолированы от CRM, кассы и проектов. Клиентские ссылки работают только после проверки безопасного callback.</footer>
+  </main>
+  <dialog id="aliasDialog"><h2>Название и иконка</h2><form id="aliasForm"><label>Иконка<select id="accountEmoji"><option value="">Своя / не менять</option><option>👤</option><option>🏡</option><option>🚚</option><option>🧱</option><option>🏭</option><option>🛠️</option><option>🌿</option><option>⭐</option></select></label><label>Название с эмодзи<input id="accountAlias" maxlength="400" autocomplete="off" required></label><p class="small">Название сохраняется отдельно от имени профиля Avito и ключей.</p><div class="dialog-actions"><button id="cancelAliasBtn" class="button" type="button">Отмена</button><button id="saveAliasBtn" class="button primary" type="submit">Сохранить название</button></div></form></dialog>
+  <dialog id="disconnectDialog">
+    <h2>Отключить аккаунт?</h2><p id="disconnectText" class="muted"></p>
+    <div class="dialog-actions"><button id="disconnectCancel" class="button" type="button">Отмена</button><button id="disconnectConfirm" class="button danger" type="button">Отключить</button></div>
+  </dialog>
+</body>
+</html>

@@ -372,6 +372,7 @@ function loadProjectsData(forceReload) {
   try {
     var storageKey = projectsDataKey();
     var initialPending = isProjectsServerOnlyMode() && window.AVITOLOG_BACKEND_INITIAL_SYNC_READY !== true;
+    if (initialPending) return window.AVBStartupCache && window.AVBStartupCache.projects() || { projects: [], hiddenProjects: [], tasks: [], taskLog: [] };
     if (forceReload) {
       _projectsDataMem = null;
       _projectsDataMemKey = null;
@@ -535,7 +536,7 @@ function loadProjectsData(forceReload) {
   }
 }
 function isProjectsReadOnlyView() {
-  return !!(window.AVITOLOG_BACKEND_MODE && typeof window.__avitologBackendReadOnly === 'function' && window.__avitologBackendReadOnly());
+  return !!(isProjectsServerOnlyMode() && window.AVITOLOG_BACKEND_INITIAL_SYNC_READY !== true || window.AVITOLOG_BACKEND_MODE && typeof window.__avitologBackendReadOnly === 'function' && window.__avitologBackendReadOnly());
 }
 function saveProjectsData(data, opts) {
   if (isProjectsReadOnlyView()) { _projectsDataMem = null; _projectsDataMemKey = null; return false; }
