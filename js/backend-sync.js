@@ -854,6 +854,10 @@
             : mergeArrayByChangedIds(remote[field], previous[field], next[field]);
       }
     });
+    if(out.projectGroupsV1&&out.projectGroupsV1.version===1&&Array.isArray(out.projectGroupsV1.groups)){
+      var priorGroups=Object.create(null);(remote.projects||[]).forEach(function(p){priorGroups[backendItemId(p)]=p.projectGroupId;});
+      (out.projects||[]).forEach(function(p){if(p.projectGroupId&&p.projectGroupId!==priorGroups[backendItemId(p)]&&!out.projectGroupsV1.groups.some(function(g){return g.id===p.projectGroupId&&!g.deleted;}))throw new Error('Группа удалена или изменена в другом окне. Выберите другую группу; черновик сохранён.');});
+    }
     return JSON.stringify(out);
   }
   function mergeProjectsWithoutLoss(remoteValue, localValue) {

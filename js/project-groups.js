@@ -51,7 +51,8 @@
     function ready(){return !win.AVITOLOG_BACKEND_MODE||win.AVITOLOG_BACKEND_INITIAL_SYNC_READY===true;}
     function readonly(){return typeof win.__avitologBackendReadOnly==='function'&&win.__avitologBackendReadOnly();}
     function scope(){var identity=typeof win.__avitologBackendIdentity==='function'&&win.__avitologBackendIdentity();return (identity&&identity.id||'')+'|'+(win.AVITOLOG_KEY_SUFFIX||'');}
-    function list(){return catalog(data()).groups.filter(function(g){return !g.deleted;});}
+    function cachedData(){var key=typeof win.AVITOLOG_KEY==='function'?win.AVITOLOG_KEY('avitolog_projects'):'avitolog_projects';return win._projectsDataMemKey===key&&win._projectsDataMem&&Array.isArray(win._projectsDataMem.projects)?win._projectsDataMem:null;}
+    function list(){return catalog(cachedData()||data()).groups.filter(function(g){return !g.deleted;});}
     function has(id){return !id||list().some(function(g){return g.id===id;});}
     function selected(project,client){
       var id;if(project&&Object.prototype.hasOwnProperty.call(project,'projectGroupId'))id=project.projectGroupId;
@@ -64,7 +65,23 @@
       return groups.find(function(g){return g.id===id&&!g.deleted;})||null;
     }
     async function assign(projectId,groupId){
-      await commit(function(current){var out=copy(current),groups=catalog(out).groups,p=(out.projects||[]).find(function(item){return item.id===projectId;});if(!p)throw Error('Проект больше не найден. Обновите список.');if(groupId&&!groups.some(function(g){return g.id===groupId&&!g.deleted;}))throw Error('Группа больше не существует.');p.projectGroupId=groupId;p.projectGroupSource='manual';p.crmData=Object.assign({},p.crmData,{project_group_id:groupId});return out;});
+      if(!ready()||readonly())throw Error('В этом режиме группы доступны только для просмотра.');
+      function change(current){
+        var groups=catalog(current).groups,p=(current.projects||[]).find(function(item){return item.id===projectId;});
+        if(!p)throw Error('Проект больше не найден. Обновите список.');
+        if(groupId&&!groups.some(function(g){return g.id===groupId&&!g.deleted;}))throw Error('Группа больше не существует.');
+        var updated=Object.assign({},p,{projectGroupId:groupId,projectGroupSource:'manual',crmData:Object.assign({},p.crmData,{project_group_id:groupId})});
+        return Object.assign({},current,{projects:current.projects.map(function(item){return item===p?updated:item;})});
+      }
+      if(typeof win.loadProjectsData==='function'&&typeof win.saveProjectsData==='function'){
+        if(win.AVITOLOG_BACKEND_SERVER_ONLY&&typeof win.__avitologBackendCommitStatePatch!=='function')throw Error('Обновите страницу для сохранения групп на сервере.');
+        // Use the existing durable, scoped write queue, without waiting for its network round trip.
+        if(win.saveProjectsData(change(cachedData()||win.loadProjectsData()))===false)throw Error('Не удалось поставить группу на сохранение.');
+        try{if(win.projectsMode&&typeof win.refreshProjectsGroupRows==='function')win.refreshProjectsGroupRows(projectId);else if(win.projectsMode&&typeof win.rerenderProjectsPreserveScroll==='function')win.rerenderProjectsPreserveScroll();}catch(viewError){try{if(win.projectsMode&&typeof win.rerenderProjectsPreserveScroll==='function')win.rerenderProjectsPreserveScroll();}catch(ignoredViewError){}}
+        try{if(doc)doc.dispatchEvent(new win.CustomEvent('avitolog:project-groups-changed',{detail:{projectId:projectId,queued:true}}));}catch(ignoredEventError){}
+        return;
+      }
+      await commit(change);
       if(win.projectsMode&&typeof win.rerenderProjectsPreserveScroll==='function')win.rerenderProjectsPreserveScroll();
     }
     function options(id){return '<option value="">Без группы</option>'+list().map(function(g){return '<option value="'+escape(g.id)+'"'+(g.id===id?' selected':'')+'>'+escape(g.emoji+' '+g.name)+'</option>';}).join('');}

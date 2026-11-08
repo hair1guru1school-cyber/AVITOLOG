@@ -4530,34 +4530,8 @@ function renderProjectsScreen(opts) {
 
   var allProjects = [];
   var projectGroups = window.ProjectGroups ? window.ProjectGroups.list() : [];
-  var visibleProjects = data.projects
-    .filter(function(p){ return (p.zone || 'active') === _projectsZoneTab; })
-    .sort(function(a,b){ return (a.sortOrder||0)-(b.sortOrder||0); });
   syncProjectsGroupSortPreference();
-  if (_projectsTasksSortOn) {
-    visibleProjects.sort(function(a,b){
-      var ca = (typeof getTasksForProject === 'function' ? getTasksForProject(a.id) : []).length;
-      var cb = (typeof getTasksForProject === 'function' ? getTasksForProject(b.id) : []).length;
-      return cb - ca;
-    });
-  }
-  if (_projectsTypeSortPriority) {
-    var first = visibleProjects.filter(function(p){ return normalizeProjectClientType(p.clientType) === _projectsTypeSortPriority; });
-    var rest = visibleProjects.filter(function(p){ return normalizeProjectClientType(p.clientType) !== _projectsTypeSortPriority; });
-    visibleProjects = first.concat(rest);
-  }
-  if (_projectsFilterLaunch || _projectsFilterAutoload || _projectsFilterMustLaunch) {
-    var matchFilter = function(p) {
-      if (_projectsFilterLaunch && projectHasLaunch(p)) return true;
-      if (_projectsFilterAutoload && projectHasAutoload(p)) return true;
-      if (_projectsFilterMustLaunch && projectHasMustLaunch(p)) return true;
-      return false;
-    };
-    var first = visibleProjects.filter(matchFilter);
-    var rest = visibleProjects.filter(function(p){ return !matchFilter(p); });
-    visibleProjects = first.concat(rest);
-  }
-  if (_projectsGroupSortOn) visibleProjects = arrangeProjectsByGroup(visibleProjects, projectGroups);
+  var visibleProjects = getProjectsInCurrentOrder(data, projectGroups);
   ensureProjectsGroupRowStyle();
   // Choose a context for the collapsed handle without expanding the drawer.
   if (visibleProjects.length) {
@@ -4889,6 +4863,36 @@ function arrangeProjectsByGroup(projects, groups) {
     var id = getProjectGroupId(project, groups);
     return {project:project,index:index,rank:Object.prototype.hasOwnProperty.call(rank,id) ? rank[id] : groups.length};
   }).sort(function(a,b){ return a.rank - b.rank || a.index - b.index; }).map(function(row){ return row.project; });
+}
+function getProjectsInCurrentOrder(data, groups) {
+  var visibleProjects = data.projects.filter(function(p){return (p.zone||'active')===_projectsZoneTab;}).sort(function(a,b){return (a.sortOrder||0)-(b.sortOrder||0);});
+  if(_projectsTasksSortOn)visibleProjects.sort(function(a,b){return (typeof getTasksForProject==='function'?getTasksForProject(b.id).length-getTasksForProject(a.id).length:0);});
+  if(_projectsTypeSortPriority){var matchType=function(p){return normalizeProjectClientType(p.clientType)===_projectsTypeSortPriority;};visibleProjects=visibleProjects.filter(matchType).concat(visibleProjects.filter(function(p){return !matchType(p);}));}
+  if(_projectsFilterLaunch||_projectsFilterAutoload||_projectsFilterMustLaunch){var match=function(p){return _projectsFilterLaunch&&projectHasLaunch(p)||_projectsFilterAutoload&&projectHasAutoload(p)||_projectsFilterMustLaunch&&projectHasMustLaunch(p);};visibleProjects=visibleProjects.filter(match).concat(visibleProjects.filter(function(p){return !match(p);}));}
+  if(_projectsGroupSortOn)visibleProjects = arrangeProjectsByGroup(visibleProjects, groups);
+  return visibleProjects;
+}
+function refreshProjectsGroupRows(projectId) {
+  if(!projectsMode)return;
+  var table=document.querySelector('.projects-table');if(!table)return;
+  var data=loadProjectsData(),groups=window.ProjectGroups?window.ProjectGroups.list():[],project=data.projects.find(function(p){return p.id===projectId;});if(!project)return;
+  var packs=buildDragRowDomCache(table),pack=packs[projectId];if(!pack||!pack.main)return;
+  var group=window.ProjectGroups&&window.ProjectGroups.forProject(project,groups);
+  var emoji=pack.main.querySelector('.proj-emoji-btn');
+  if(emoji)emoji.innerHTML=group?'<span title="'+escAttr(group.name)+'" style="color:'+group.color+'">'+escAttr(group.emoji)+'</span>':getProjectEmojiButtonHtml(project);
+  pack.all.forEach(function(row){
+    if(_projectsGroupSortOn){var color=group&&/^#[0-9a-f]{6}$/i.test(group.color)?group.color:'#93a9bb';row.setAttribute('data-project-group',group?group.id:'ungrouped');row.style.setProperty('--projects-niche-color',color);row.style.setProperty('--projects-niche-tint',color+'18');}
+    else{row.removeAttribute('data-project-group');row.style.removeProperty('--projects-niche-color');row.style.removeProperty('--projects-niche-tint');}
+  });
+  if(!_projectsGroupSortOn)return;
+  if(hasProjectsInlineEdit()||_ptrRowDrag||_dragProjectId){_projectsRenderPending=true;return;}
+  var ordered=getProjectsInCurrentOrder(data,groups),index=ordered.findIndex(function(p){return p.id===projectId;}),next=null;
+  for(var i=index+1;i<ordered.length;i++){var candidate=packs[ordered[i].id];if(candidate&&candidate.main){next=candidate.main;break;}}
+  if(index<0||pack.all[pack.all.length-1].nextSibling===next)return;
+  var scroll=getProjectsWrapScroll(),fragment=document.createDocumentFragment();
+  pack.all.forEach(function(row){fragment.appendChild(row);});table.insertBefore(fragment,next);
+  var wrap=document.querySelector('.projects-table-wrap'),content=document.querySelector('.content');
+  if(wrap){wrap.scrollLeft=scroll.wrapLeft;wrap.scrollTop=scroll.wrapTop;}if(content)content.scrollTop=scroll.contentTop;
 }
 function getProjectsGroupRowAttrs(group) {
   var color = group && /^#[0-9a-f]{6}$/i.test(group.color) ? group.color : '#93a9bb';
