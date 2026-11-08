@@ -206,20 +206,30 @@ export function createAvitoBidding({ requestJson, fetch: fetchImpl = globalThis.
     statisticsPending.set(key, work);
     try { return await work; } finally { if (statisticsPending.get(key) === work) statisticsPending.delete(key); }
   }
+  async function queuedRead(context, kind, url, init, code, maximum, initialReserved = false) {
+    for (let attempt = 0; attempt < 2; attempt++) {
+      if (!initialReserved || attempt) await reserve(context, kind);
+      await context.guard();
+      try { return await requestJson(url, init, code, maximum); }
+      catch (error) {
+        if (!context.workerQueue || attempt || error.code !== code) throw error;
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        await context.guard();
+      }
+    }
+  }
   async function own(context, id) {
-    await reserve(context, 'own'); await context.guard();
-    const value = await requestJson(API + '/core/v1/accounts/' + itemId(context.row.avito_user_id) + '/items/' + itemId(id) + '/', { headers: auth(context.token) }, 'bidding_item_unavailable', 65536);
+    const value = await queuedRead(context, 'own', API + '/core/v1/accounts/' + itemId(context.row.avito_user_id) + '/items/' + itemId(id) + '/', { headers: auth(context.token) }, 'bidding_item_unavailable', 65536);
     if (!object(value) || value.status !== 'active' || Object.hasOwn(value, 'error')) throw fail(409, 'bidding_item_not_active');
   }
   async function detail(context, id) {
     await reserve(context, 'detail'); await context.guard(); await own(context, id);
-    const value = await requestJson(API + '/cpxpromo/1/getBids/' + itemId(id), { headers: auth(context.token) }, 'bidding_unavailable', 524288);
+    const value = await queuedRead(context, 'detail', API + '/cpxpromo/1/getBids/' + itemId(id), { headers: auth(context.token) }, 'bidding_unavailable', 524288, true);
     await context.guard();
     return normalizeBidding(value, id, now());
   }
   async function promotions(context, ids) {
-    await reserve(context, 'promotions'); await context.guard();
-    const response = await requestJson(API + '/cpxpromo/1/getPromotionsByItemIds', { method: 'POST', headers: { ...auth(context.token), 'Content-Type': 'application/json' }, body: JSON.stringify({ itemIDs: ids.map(Number) }) }, 'bidding_promotions_unavailable', 524288);
+    const response = await queuedRead(context, 'promotions', API + '/cpxpromo/1/getPromotionsByItemIds', { method: 'POST', headers: { ...auth(context.token), 'Content-Type': 'application/json' }, body: JSON.stringify({ itemIDs: ids.map(Number) }) }, 'bidding_promotions_unavailable', 524288);
     if (!object(response) || !Array.isArray(response.items) || response.items.length > ids.length) throw fail(502, 'bidding_invalid_response');
     const values = new Map(), requested = new Set(ids);
     for (const value of response.items) {
