@@ -26,11 +26,10 @@ Deno.serve(async request => {
     const bytes = Uint8Array.from(hex.match(/../g), pair => parseInt(pair, 16));
     if (!await crypto.subtle.verify('HMAC', key, bytes, new TextEncoder().encode(ts + '|' + nonce)) || await rpc('worker_nonce', { p_nonce: nonce }) !== true) return new Response(null, { status: 403 });
     const started = Date.now(); let processed = 0;
-    while (processed < 3 && Date.now() - started < 40000) {
+    while (processed < 10000 && Date.now() - started < 45000) {
       const claim = await rpc('claim'); if (!claim) break;
       const handler = handlers.get(claim.module); if (!handler) throw Error('queue_module');
       await handler(claim); processed++;
-      if (processed < 3) await new Promise(resolve => setTimeout(resolve, 7000));
     }
     return Response.json({ ok: true, processed }, { headers: { 'Cache-Control': 'no-store' } });
   } catch (_) { return Response.json({ ok: false, error: 'queue_worker_unavailable' }, { status: 503 }); }

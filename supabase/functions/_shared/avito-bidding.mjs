@@ -155,6 +155,7 @@ export function createBiddingStore(service) {
   return {
     queue: (name, payload) => service('rpc/avito_bid_' + name, 'POST', payload),
     reserve: payload => service('rpc/avito_bidding_reserve', 'POST', payload),
+    waitSlot: payload => service('rpc/avito_bidding_wait_slot', 'POST', payload),
     begin: payload => service('rpc/avito_bidding_begin', 'POST', payload),
     finish: payload => service('rpc/avito_bidding_finish', 'POST', payload),
     async getGroups(module, org, account) { return one(await service('avito_bidding_groups?select=groups,revision&module=eq.' + module + '&organization_id=eq.' + org + '&account_id=eq.' + account + '&limit=1')); },
@@ -164,7 +165,21 @@ export function createBiddingStore(service) {
 export function createAvitoBidding({ requestJson, fetch: fetchImpl = globalThis.fetch, now = Date.now, signingSecret, store, module }) {
   const statisticsCache = new Map(), statisticsPending = new Map();
   async function reserve(context, kind) {
-    if (!store?.reserve || await store.reserve({ p_module: module, p_organization_id: context.org, p_account_id: context.row.id, p_actor_id: context.actor, p_kind: kind }) !== true) throw fail(429, 'bidding_rate_limited');
+    const payload = { p_module: module, p_organization_id: context.org, p_account_id: context.row.id, p_actor_id: context.actor, p_kind: kind };
+    for (let attempt = 0; attempt < 2; attempt++) {
+      if (store?.waitSlot) {
+        const delay = await store.waitSlot(payload);
+        if (!Number.isSafeInteger(delay) || delay < 0 || delay > 120000) throw fail(503, 'bidding_rate_unavailable');
+        if (delay) await new Promise(resolve => setTimeout(resolve, delay));
+        await context.guard();
+      }
+      if (store?.reserve && await store.reserve(payload) === true) return;
+      if (!context.workerQueue || attempt) break;
+      // Only the local, pre-submission quota can wait. Provider writes are never replayed.
+      await new Promise(resolve => setTimeout(resolve, 60001 - now() % 60000));
+      await context.guard();
+    }
+    throw fail(429, 'bidding_rate_limited');
   }
   const auth = token => ({ Authorization: 'Bearer ' + token });
   async function statistics(context, items, period) {
@@ -192,6 +207,7 @@ export function createAvitoBidding({ requestJson, fetch: fetchImpl = globalThis.
     try { return await work; } finally { if (statisticsPending.get(key) === work) statisticsPending.delete(key); }
   }
   async function own(context, id) {
+    await reserve(context, 'own'); await context.guard();
     const value = await requestJson(API + '/core/v1/accounts/' + itemId(context.row.avito_user_id) + '/items/' + itemId(id) + '/', { headers: auth(context.token) }, 'bidding_item_unavailable', 65536);
     if (!object(value) || value.status !== 'active' || Object.hasOwn(value, 'error')) throw fail(409, 'bidding_item_not_active');
   }
@@ -200,6 +216,18 @@ export function createAvitoBidding({ requestJson, fetch: fetchImpl = globalThis.
     const value = await requestJson(API + '/cpxpromo/1/getBids/' + itemId(id), { headers: auth(context.token) }, 'bidding_unavailable', 524288);
     await context.guard();
     return normalizeBidding(value, id, now());
+  }
+  async function promotions(context, ids) {
+    await reserve(context, 'promotions'); await context.guard();
+    const response = await requestJson(API + '/cpxpromo/1/getPromotionsByItemIds', { method: 'POST', headers: { ...auth(context.token), 'Content-Type': 'application/json' }, body: JSON.stringify({ itemIDs: ids.map(Number) }) }, 'bidding_promotions_unavailable', 524288);
+    if (!object(response) || !Array.isArray(response.items) || response.items.length > ids.length) throw fail(502, 'bidding_invalid_response');
+    const values = new Map(), requested = new Set(ids);
+    for (const value of response.items) {
+      const id = itemId(value?.itemID), manual = value.manualPromotion, auto = value.autoPromotion;
+      if (!requested.has(id) || values.has(id) || !Number.isSafeInteger(value.actionTypeID) || value.actionTypeID <= 0 || manual != null && auto != null || manual != null && (!object(manual) || !money(manual.bidPenny)) || auto != null && (!object(auto) || !money(auto.budgetPenny) || !['1d','7d','30d'].includes(auto.budgetType))) throw fail(502, 'bidding_invalid_response');
+      values.set(id, { mode: manual ? 'manual' : auto ? 'auto' : 'base', action_type_id: value.actionTypeID, bid_penny: manual ? manual.bidPenny : null, limit_penny: manual ? optionalMoney(manual.limitPenny) : null, budget_penny: auto ? auto.budgetPenny : null, budget_type: auto ? auto.budgetType : null });
+    }
+    await context.guard(); return values;
   }
   async function sign(payload) {
     const text = base64(encoder.encode(JSON.stringify(payload)));
@@ -236,6 +264,7 @@ export function createAvitoBidding({ requestJson, fetch: fetchImpl = globalThis.
     const statisticsPeriod = biddingStatisticsPeriod(now(), requestedDays === '30' ? 30 : 270);
     if (items.length) await Promise.all([
       (async () => { try {
+        await reserve(context, 'promotions'); await context.guard();
         const promotions = await requestJson(API + '/cpxpromo/1/getPromotionsByItemIds', { method: 'POST', headers: { ...auth(context.token), 'Content-Type': 'application/json' }, body: JSON.stringify({ itemIDs: items.map(item => Number(item.item_id)) }) }, 'bidding_promotions_unavailable', 262144);
         if (!object(promotions) || !Array.isArray(promotions.items) || promotions.items.length > items.length) throw fail(502, 'bidding_invalid_response');
         const unique = new Set();
@@ -259,24 +288,29 @@ export function createAvitoBidding({ requestJson, fetch: fetchImpl = globalThis.
     await context.guard();
     return { ok: true, items, statistics_period: statisticsPeriod, next_offset: items.length === limit ? offset + limit : null, fetched_at: new Date(now()).toISOString() };
   }
-  async function preview(context, body) {
-    const id = itemId(body.item_id), value = await detail(context, id), after = biddingChange(body, value);
+  async function sealPreview(context, id, value, after) {
     const issued = now(), payload = { v: 1, id: crypto.randomUUID(), module, org: context.org, account: context.row.id, actor: context.actor, version: String(context.row.credential_version), item: id, issued, expires: issued + QUOTE_TTL, before: value.current, after, fingerprint: await digest(value.current) };
     await context.guard();
     return { ok: true, item_id: id, quote: await sign(payload), expires_at: new Date(payload.expires).toISOString(), before: value.current, after };
   }
-  async function apply(context, body) {
+  async function preview(context, body) {
+    const id = itemId(body.item_id), value = await detail(context, id), after = biddingChange(body, value);
+    return sealPreview(context, id, value, after);
+  }
+  async function apply(context, body, prepared, beforeSubmit) {
     if (!object(body) || Object.keys(body).some(key => !['organization_id', 'quote', 'confirmation'].includes(key)) || body.confirmation !== 'APPLY_BIDS') throw fail(400, 'confirmation_required');
     const quote = await decode(body.quote, context);
     if (quote.kind) throw fail(400, 'invalid_quote');
-    const current = await detail(context, quote.item);
+    if (prepared) await reserve(context, quote.after.mode);
+    const current = prepared && now() - prepared.at <= 10000 ? prepared.value : await detail(context, quote.item);
     if (await digest(current.current) !== quote.fingerprint) throw fail(409, 'bidding_changed');
     const change = { item_id: quote.item, mode: quote.after.mode };
     if (quote.after.mode === 'manual') Object.assign(change, { bid_penny: quote.after.bid_penny, limit_penny: quote.after.limit_penny });
     if (quote.after.mode === 'auto') Object.assign(change, { budget_penny: quote.after.budget_penny, budget_type: quote.after.budget_type });
     if (stable(biddingChange(change, current)) !== stable(quote.after)) throw fail(409, 'bidding_changed');
     await context.guard();
-    await reserve(context, quote.after.mode);
+    if (!prepared) await reserve(context, quote.after.mode);
+    if (beforeSubmit) await beforeSubmit();
     const started = await store.begin({ p_quote_id: quote.id, p_module: module, p_organization_id: context.org, p_account_id: context.row.id, p_actor_id: context.actor, p_credential_version: quote.version, p_item_id: quote.item, p_before: quote.before, p_after: quote.after, p_expires_at: new Date(quote.expires).toISOString() });
     if (started !== true) throw fail(409, 'bidding_quote_consumed');
     let status = 'unknown', error = null, submitted = false;
@@ -301,6 +335,23 @@ export function createAvitoBidding({ requestJson, fetch: fetchImpl = globalThis.
     catch (_) { status = 'unknown'; error = 'bidding_audit_unconfirmed'; }
     return { ok: true, status, item_id: quote.item, ...(error ? { error } : {}) };
   }
+  // Internal worker entry point. No HTTP route accepts a prepared detail or a lease callback.
+  async function runQueued(context, id, intent, beforeSubmit) {
+    context = { ...context, workerQueue: true }; id = itemId(id);
+    let value;
+    if (intent.mode === 'base') {
+      await own(context, id);
+      const current = (await promotions(context, [id])).get(id);
+      await context.guard();
+      if (!current || current.mode === 'base') return { ok: true, status: 'applied', item_id: id, error: 'bidding_no_paid_promotion' };
+      value = { item_id: id, action_type_id: current.action_type_id, current };
+    } else value = await detail(context, id);
+    const after = biddingChange({ item_id: id, mode: intent.mode, ...(intent.mode === 'manual' ? { bid_penny: intent.bid_penny, limit_penny: intent.limit_penny } : intent.mode === 'auto' ? { budget_penny: intent.budget_penny, budget_type: intent.budget_type } : {}) }, value);
+    const expected = intent.mode === 'base' ? { ...intent, action_type_id: after.action_type_id } : intent;
+    if (stable(after) !== stable(expected)) throw fail(409, 'bidding_changed');
+    const at = now(), quote = await sealPreview(context, id, value, after);
+    return apply(context, { quote: quote.quote, confirmation: 'APPLY_BIDS' }, { value, at }, beforeSubmit);
+  }
   async function queue(context, action, body) {
     const scope = { p_module: module, p_org: context.org, p_account: context.row.id, p_actor: context.actor };
     await context.guard();
@@ -311,14 +362,23 @@ export function createAvitoBidding({ requestJson, fetch: fetchImpl = globalThis.
     }
     if (action === 'queue-preview') {
       if (!object(body) || Object.keys(body).some(k => !['organization_id','item_ids','change'].includes(k)) || !Array.isArray(body.item_ids) || body.item_ids.length < 1 || body.item_ids.length > 10000 || !object(body.change)) throw fail(400, 'invalid_queue');
-      const ids = body.item_ids.map(itemId);
+      let ids = body.item_ids.map(itemId);
       if (new Set(ids).size !== ids.length) throw fail(400, 'invalid_queue');
+      if (body.change.mode === 'base') {
+        const paid = [];
+        for (let offset = 0; offset < ids.length; offset += 200) {
+          const values = await promotions(context, ids.slice(offset, offset + 200));
+          for (const id of ids.slice(offset, offset + 200)) if (['manual','auto'].includes(values.get(id)?.mode)) paid.push(id);
+        }
+        ids = paid;
+        if (!ids.length) return { ok: true, count: 0, item_ids: [], after: null };
+      }
       const value = await detail(context, ids[0]), after = biddingChange({ ...body.change, item_id: ids[0] }, value);
       if (after.mode === 'manual' && after.bid_penny > 35000) throw fail(400, 'bid_out_of_bounds');
       const issued = now(), payload = { v: 1, kind: 'queue', id: crypto.randomUUID(), module, org: context.org, account: context.row.id, actor: context.actor, version: String(context.row.credential_version), item: ids[0], after, count: ids.length, issued, expires: issued + QUOTE_TTL };
       await context.guard();
       if (await store.queue('draft', { ...scope, p_id: payload.id, p_version: payload.version, p_intent: after, p_ids: ids, p_expires: new Date(payload.expires).toISOString() }) !== true) throw fail(503, 'storage_unavailable');
-      return { ok: true, job_id: payload.id, quote: await sign(payload), after, count: ids.length, expires_at: new Date(payload.expires).toISOString() };
+      return { ok: true, job_id: payload.id, quote: await sign(payload), after, count: ids.length, ...(after.mode === 'base' ? { item_ids: ids } : {}), expires_at: new Date(payload.expires).toISOString() };
     }
     if (!object(body) || Object.keys(body).some(k => !['organization_id','quote','confirmation'].includes(k)) || body.confirmation !== 'QUEUE_BIDS') throw fail(400, 'confirmation_required');
     const quote = await decode(body.quote, context);
@@ -341,7 +401,7 @@ export function createAvitoBidding({ requestJson, fetch: fetchImpl = globalThis.
     await context.guard();
     return { ok: true, revision: saved.revision, groups: validateBiddingGroups(saved.groups) };
   }
-  return { async handle({ context, route, url, method, body }) {
+  return { runQueued, async handle({ context, route, url, method, body }) {
     if (method === 'GET' && route.action === 'jobs' || method === 'POST' && ['queue-preview','queue-confirm','queue-cancel'].includes(route.action)) return queue(context, route.action, body);
     if (method === 'GET' && route.action === 'items') return list(context, url);
     if (method === 'GET' && route.action === 'detail') return { ok: true, bidding: await detail(context, route.itemId) };

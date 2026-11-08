@@ -623,9 +623,11 @@
         if (!valid(state) || !state.dialog || !state.dialog.open) return;
         if (!state.loaded || state.next != null || state.loading) throw Error('Полный список ещё не получен. Отключение не подготовлено; повторите после загрузки.');
         if (!state.items.length) throw Error('Нет активных объявлений для отключения.');
-        state.groupId = ''; state.filter = ''; state.groupSelection = true; state.selected = new Set(state.items.map(function(item) { return String(item.item_id); }));
+        var paid = state.items.filter(function(item) { return item.promotion && !item.promotion_error && !item.promotion_stale && ['manual','auto'].indexOf(item.promotion.mode) >= 0; });
+        if (!paid.length) { note(state, 'По свежим данным нет подтверждённого платного продвижения для отключения. Неизвестные настройки не считаются платными.'); return; }
+        state.groupId = PAID_GROUP_ID; state.filter = ''; state.groupSelection = false; state.selected = new Set(paid.map(function(item) { return String(item.item_id); }));
         state.serverDraft = null; state.quotes = []; state.form.mode = 'base';
-        await choose(state, initialItemId(state.items, state.details, state.loadedAt));
+        await choose(state, String(paid[0].item_id));
         if (!valid(state) || !state.dialog.open) return;
         state.form.mode = 'base'; renderToolbar(state, true); renderControls(state);
         await serverPreviewChanges(state);
@@ -655,8 +657,8 @@
       history.append(el('summary', '', 'Предыдущие очереди · ' + previous.length));
       jobs.slice(0,3).forEach(function (job) {
         var counts = job.counts || {}, row = el('div','avb-server-job'), done = (counts.applied||0)+(counts.rejected||0)+(counts.unknown||0)+(counts.cancelled||0)+(counts.superseded||0), meter = el('progress'); meter.max = job.item_count; meter.value = done;
-        row.append(el('strong','',({queued:'В очереди',running:'Выполняется на сервере',complete:'Готово',partial:'Частично / заменено новой ставкой',blocked:'Остановлено: проверьте результат',cancelled:'Остановлено',expired:'Срок очереди истёк'})[job.status] || job.status),el('span','','Применено '+(counts.applied||0)+' / '+job.item_count),meter);
-        row.append(el('small','avb-job-counts','Ошибок: '+(counts.rejected||0)+' · Без подтверждения: '+(counts.unknown||0)+' · Не отправлено: '+((counts.cancelled||0)+(counts.superseded||0))+' · Осталось: '+((counts.pending||0)+(counts.preparing||0)+(counts.submitting||0))));
+        row.append(el('strong','',({queued:'В очереди',running:'Выполняется на сервере',complete:'Готово',partial:'Частично / заменено новой ставкой',blocked:'Остановлено: проверьте результат',cancelled:'Остановлено',expired:'Срок очереди истёк'})[job.status] || job.status),el('span','','Обработано '+(counts.applied||0)+' / '+job.item_count),meter);
+        row.append(el('small','avb-job-counts','Без платного продвижения: '+(counts.unchanged||0)+' · Ошибок: '+(counts.rejected||0)+' · Без подтверждения: '+(counts.unknown||0)+' · Не отправлено: '+((counts.cancelled||0)+(counts.superseded||0))+' · Осталось: '+((counts.pending||0)+(counts.preparing||0)+(counts.submitting||0))));
         var created = Date.parse(job.confirmed_at || job.created_at);
         if (Number.isFinite(created)) row.append(el('small', 'avb-job-counts', 'Запущена: ' + new Date(created).toLocaleString('ru-RU')));
         if (['queued','running'].indexOf(job.status)>=0) row.append(button(state,'Остановить оставшиеся','avb-secondary',async function(){try { await request(state,'/queue-cancel',{job_id:job.id}); if(state.jobsTimer)win.clearTimeout(state.jobsTimer);pollJobs(state); }catch(error){note(state,message(error),'error');}}));
@@ -674,6 +676,12 @@
         var change = validateForm(state.form,cached&&cached.value), fingerprint = JSON.stringify([ids,state.form]);
         state.busy=true; state.serverDraft=null;
         var reply=await request(state,'/queue-preview',{item_ids:ids,change:change});
+        if (change.mode === 'base' && Array.isArray(reply.item_ids)) {
+          var targets = reply.item_ids.map(String), allowed = new Set(ids);
+          if (reply.count !== targets.length || new Set(targets).size !== targets.length || targets.some(function(id) { return !allowed.has(id); })) throw Error('Сервер вернул другой состав отключения.');
+          if (!targets.length) { note(state, 'Платное продвижение уже отключено. Новая очередь не требуется.'); return; }
+          state.selected = new Set(targets); state.groupSelection = false; ids = targets; fingerprint = JSON.stringify([ids,state.form]); renderTable(state);
+        }
         if (!reply.quote || !reply.after || reply.count!==ids.length) throw Error('Сервер не подтвердил очередь.');
         state.serverDraft={reply:reply,fingerprint:fingerprint};
         note(state,'Проверьте ставку и общий предел расходов. Очередь ещё не запущена.');

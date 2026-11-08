@@ -23,6 +23,15 @@ export function registerBidWorker(registry, module, { service, getRow, activeTok
       };
       await guard();
       const context = { row, org: canonical.organization_id, actor: canonical.actor_id, token, guard };
+      if (bidding.runQueued) {
+        const result = await bidding.runQueued(context, claim.item_id, canonical.intent, async () => {
+          await guard();
+          if (await rpc('mark_submitting', lease) !== true) throw fail('queue_stopped');
+          submitted = true;
+        });
+        await rpc('finish_item', { ...lease, p_status: result.status, p_error: result.error || null });
+        return;
+      }
       const preview = await bidding.handle({ context, route: { action: 'preview' }, method: 'POST', body: { item_id: claim.item_id, ...changeOf(canonical.intent) } });
       const expected = canonical.intent.mode === 'base' ? { ...canonical.intent, action_type_id: preview.after.action_type_id } : canonical.intent;
       if (Object.keys(preview.after).length !== Object.keys(expected).length || Object.keys(preview.after).some(k => preview.after[k] !== expected[k])) throw fail('bidding_changed');
