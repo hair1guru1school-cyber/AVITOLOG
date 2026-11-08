@@ -59,6 +59,14 @@
       else return suggest(project||client,list());
       return has(text(id))?text(id):'';
     }
+    function forProject(project,groups){
+      groups=groups||list();var id=project&&Object.prototype.hasOwnProperty.call(project,'projectGroupId')?text(project.projectGroupId):project&&project.crmData&&Object.prototype.hasOwnProperty.call(project.crmData,'project_group_id')?text(project.crmData.project_group_id):suggest(project,groups);
+      return groups.find(function(g){return g.id===id&&!g.deleted;})||null;
+    }
+    async function assign(projectId,groupId){
+      await commit(function(current){var out=copy(current),groups=catalog(out).groups,p=(out.projects||[]).find(function(item){return item.id===projectId;});if(!p)throw Error('Проект больше не найден. Обновите список.');if(groupId&&!groups.some(function(g){return g.id===groupId&&!g.deleted;}))throw Error('Группа больше не существует.');p.projectGroupId=groupId;p.projectGroupSource='manual';p.crmData=Object.assign({},p.crmData,{project_group_id:groupId});return out;});
+      if(win.projectsMode&&typeof win.rerenderProjectsPreserveScroll==='function')win.rerenderProjectsPreserveScroll();
+    }
     function options(id){return '<option value="">Без группы</option>'+list().map(function(g){return '<option value="'+escape(g.id)+'"'+(g.id===id?' selected':'')+'>'+escape(g.emoji+' '+g.name)+'</option>';}).join('');}
     function fieldHtml(id){return '<label class="project-card-field project-card-field-wide">Группа проекта<span style="display:flex;gap:6px"><select name="project_group_id" data-project-group-select>'+options(id)+'</select><button type="button" class="project-card-tool" data-project-groups-manage title="Добавить, изменить или удалить группы" aria-label="Управление группами проектов">⚙</button></span></label>';}
     function commit(update){
@@ -91,7 +99,7 @@
       node.addEventListener('keydown',function(e){if(e.key==='Escape'){e.preventDefault();e.stopPropagation();close();}if(e.key==='Tab'){var els=Array.from(node.querySelectorAll('button,input')).filter(function(el){return !el.disabled;});if(e.shiftKey&&doc.activeElement===els[0]){e.preventDefault();els[els.length-1].focus();}else if(!e.shiftKey&&doc.activeElement===els[els.length-1]){e.preventDefault();els[0].focus();}}});render();node.querySelector('[data-close]').focus();
     }
     if(doc){['avitolog:backend-initial-ready','avitolog:backend-remote-applied'].forEach(function(event){doc.addEventListener(event,scheduleAuto);});doc.addEventListener('avitolog:workspace-reset',function(){if(manager&&manager.scope!==scope())close();scheduleAuto();});if(doc.readyState==='loading')doc.addEventListener('DOMContentLoaded',scheduleAuto);else scheduleAuto();}
-    return {list:list,has:has,selected:selected,options:options,fieldHtml:fieldHtml,openManager:openManager,ensureAuto:ensureAuto,close:close};
+    return {list:list,has:has,selected:selected,forProject:forProject,assign:assign,options:options,fieldHtml:fieldHtml,openManager:openManager,ensureAuto:ensureAuto,close:close};
   }
   return {catalog:catalog,suggest:suggest,autoPlan:autoPlan,mutate:mutate,clean:clean,install:install};
 });

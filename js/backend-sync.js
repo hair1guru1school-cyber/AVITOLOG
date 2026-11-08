@@ -300,10 +300,11 @@
     var message = String((error && error.message) || '');
     return name === 'QuotaExceededError' || name === 'NS_ERROR_DOM_QUOTA_REACHED' || /exceeded the quota|quota/i.test(message);
   }
-  function applyStorageValue(key, value) {
+  function applyStorageValue(key, value, liveValue) {
     if (serverOnlyMode && isProjectsStorageKey(key)) {
       try { confirmedProjectSnapshots[key] = { scope: pendingWriteScope(), data: JSON.parse(value) }; } catch (snapshotError) {}
     }
+    if (typeof liveValue === 'string') value = liveValue;
     var target = window.AVITOLOG_BACKEND_STORAGE_TARGET;
     var prefix = typeof window.AVITOLOG_BACKEND_STORAGE_PREFIX === 'string' ? window.AVITOLOG_BACKEND_STORAGE_PREFIX : 'sb_backend::';
     try {
@@ -694,6 +695,9 @@
           stableJson(previousItem[field]) !== stableJson(nextItem[field])) {
         if (field === 'crmData' && isProjectGroupCrmChange(previousItem.crmData, nextItem.crmData)) {
           out.crmData = Object.assign({}, remoteItem.crmData, { project_group_id: (nextItem.crmData || {}).project_group_id });
+        } else if (field === 'events') out.events = mergeProjectCalendarEvents(remoteItem.events, previousItem.events, nextItem.events);
+        else if (field === 'childLineEvents' && stableJson(remoteItem.childLines) === stableJson(previousItem.childLines) && stableJson(nextItem.childLines) === stableJson(previousItem.childLines)) {
+          out.childLineEvents = (nextItem.childLineEvents || []).map(function(events,index){ return mergeProjectCalendarEvents((remoteItem.childLineEvents || [])[index], (previousItem.childLineEvents || [])[index], events); });
         } else out[field] = field === 'intakeContextV1' ? mergeProjectIntakeContext(remoteItem[field], nextItem[field], nextItem.id) : nextItem[field];
       }
     });
@@ -709,6 +713,19 @@
       if (out.crmData && remoteItem.crmData && Object.prototype.hasOwnProperty.call(remoteItem.crmData, 'project_group_id')) out.crmData.project_group_id = remoteItem.crmData.project_group_id;
     }
     return preserveManualProjectZone(remoteItem, previousItem, nextItem, out);
+  }
+  function mergeProjectCalendarEvents(remote, previous, next) {
+    remote = Array.isArray(remote) ? remote : []; previous = Array.isArray(previous) ? previous : []; next = Array.isArray(next) ? next : [];
+    var types = new Set(previous.concat(next).map(function(event){return event && event.type;}));
+    var out = remote.slice();
+    types.forEach(function(type){
+      var before = previous.filter(function(event){return event && event.type === type;}), after = next.filter(function(event){return event && event.type === type;});
+      if (stableJson(before) === stableJson(after)) return;
+      var fresh = remote.filter(function(event){return event && event.type === type;});
+      if (stableJson(fresh) !== stableJson(before) && stableJson(fresh) !== stableJson(after)) throw new Error('Этот участок календаря изменён в другом окне. Черновик сохранён; обновите данные перед повтором.');
+      out = out.filter(function(event){return !event || event.type !== type;}).concat(after);
+    });
+    return out;
   }
   function isProjectGroupCrmChange(previousCrm, nextCrm) {
     previousCrm = previousCrm || {}; nextCrm = nextCrm || {};
@@ -1087,8 +1104,9 @@
       });
     }).then(function (payload) {
       if (!payload || !pendingWriteMatchesScope(pending)) return;
+      var confirmed = typeof payload.result.value_text === 'string' ? payload.result.value_text : payload.prepared;
       if (pendingWrites[key] === pending) {
-        applyStorageValue(key, payload.prepared);
+        applyStorageValue(key, confirmed);
         delete pendingWrites[key];
         clearDirty(key);
         clearPendingPayload(key);
@@ -1096,8 +1114,13 @@
       } else {
         var nextPending = pendingWrites[key];
         if (nextPending && pendingWriteMatchesScope(nextPending)) {
-          nextPending.previousValue = payload.prepared;
+          // Rebase only edits made after this request started; keep remote rows and calendar entries.
+          if (isProjectsStorageKey(key)) nextPending.value = mergeProjectsValue(confirmed, pending.value, nextPending.value);
+          else if (isClientsStorageKey(key)) nextPending.value = mergeClientsValue(confirmed, pending.value, nextPending.value);
+          else if (isGoalsStorageKey(key)) nextPending.value = mergeGoalsValue(confirmed, pending.value, nextPending.value);
+          nextPending.previousValue = confirmed;
           rememberPendingPayload(key, nextPending.value, nextPending.previousValue);
+          applyStorageValue(key, confirmed, nextPending.value);
         }
         shouldWriteNext = true;
         setStatus('Supabase: дописываю свежую версию...', false, key);
@@ -1437,6 +1460,7 @@
   window.__avitologBackendCommitStatePatch = async function (keys, build) {
     var scope = pendingWriteScope();
     if (!serverOnlyMode || !initialSyncReady || !scope || isServerOnlySashaViewer() || typeof build !== 'function' || !Array.isArray(keys) || !keys.length || keys.length > 2 || new Set(keys).size !== keys.length || keys.some(function(key) { return !/^avitolog_(projects|clients)(_sasha)?$/.test(key) || !isCurrentProfileWritableKey(key); })) throw new Error('Сохранение недоступно в текущем режиме.');
+    if (keys.some(isProjectsStorageKey) && typeof window.__projectsPrepareManualSave === 'function') window.__projectsPrepareManualSave();
     function busy() { return keys.some(function(key) { return statePatchLocks[key]; }); }
     for (var wait = 0; busy() && wait < 50; wait++) { await new Promise(function(resolve) { setTimeout(resolve, 100); }); if (scope !== pendingWriteScope()) throw new Error('Режим изменился; черновик оставлен в карте.'); }
     if (busy()) throw new Error('Предыдущая запись ещё выполняется. Повторите сохранение.');
@@ -1467,7 +1491,7 @@
           var saved = await response.json();
           if (scope !== pendingWriteScope()) throw new Error('Режим изменился; проверьте сохранение после входа.');
           if (!Array.isArray(saved) || saved.length !== updates.length || new Set(saved.map(function(row) { return row.storage_key; })).size !== saved.length || saved.some(function(row) { return !updates.some(function(item) { return item.key === row.storage_key; }) || !row.revision; })) throw new Error('Сервер не подтвердил все изменения.');
-          saved.forEach(function(row) { rememberRevision(row.storage_key, row.revision); });
+          saved.forEach(function(row) { rememberRevision(row.storage_key, row.revision); var item=updates.find(function(update){return update.key===row.storage_key;}); if(item && typeof row.value_text==='string')item.value=row.value_text; });
         }
         var applied = [];
         updates.forEach(function(item) { try { if (window.AVITOLOG_EDIT_HISTORY) window.AVITOLOG_EDIT_HISTORY.record(item.key, values[item.key], item.value); } catch (historyError) {} });
@@ -1481,8 +1505,11 @@
               pending.value = isProjectsStorageKey(item.key) ? mergeProjectsValue(rebased, values[item.key], item.value) : mergeClientsValue(rebased, values[item.key], item.value);
               pending.previousValue = item.value; rememberPendingPayload(item.key, pending.value, pending.previousValue);
             } catch (draftError) { /* Keep the original durable draft for its guarded retry. */ }
+          } else if (pending && pendingWriteMatchesScope(pending)) {
+            pending.value = isProjectsStorageKey(item.key) ? mergeProjectsValue(item.value, pending.previousValue || values[item.key], pending.value) : mergeClientsValue(item.value, pending.previousValue || values[item.key], pending.value);
+            pending.previousValue = item.value; rememberPendingPayload(item.key, pending.value, pending.previousValue);
           }
-          applyStorageValue(item.key, item.value); applied.push(item.key);
+          applyStorageValue(item.key, item.value, pending && pendingWriteMatchesScope(pending) ? pending.value : undefined); applied.push(item.key);
           if (isClientsStorageKey(item.key) && typeof window.__crmClientsApplyBackendValue === 'function') window.__crmClientsApplyBackendValue(item.key, item.value);
         });
         refreshOpenScreensAfterRemoteApply(applied, []);
@@ -1513,6 +1540,10 @@
             if (typeof window.setProjectZoneIntent !== 'function') throw new Error('history_unavailable');
             window.setProjectZoneIntent(project, project.zone || 'active');
           }
+          if (previous && !!previous.mustLaunchRequired !== !!project.mustLaunchRequired) {
+            project.mustLaunchUpdatedAt = new Date().toISOString();
+            project.mustLaunchManualClearedAt = project.mustLaunchRequired ? '' : project.mustLaunchUpdatedAt;
+          }
         });
       }
       return { key: edit.key, expected_revision: row.revision, value: JSON.stringify(next) };
@@ -1523,7 +1554,7 @@
     var saved = await response.json();
     if (scope !== pendingWriteScope()) throw new Error('context_changed');
     if (!Array.isArray(saved) || saved.length !== updates.length) throw new Error('history_save_failed');
-    saved.forEach(function (row) { rememberRevision(row.storage_key, row.revision); });
+    saved.forEach(function (row) { rememberRevision(row.storage_key, row.revision); var item=updates.find(function(update){return update.key===row.storage_key;}); if(item && typeof row.value_text==='string')item.value=row.value_text; });
     var applied = [];
     updates.forEach(function (item) {
       if (pendingWrites[item.key] || writeInFlight[item.key]) return;
@@ -1984,9 +2015,14 @@
       setTimeout(function() {
         try {
           if ((hasProjects || hasAoax) && typeof window !== 'undefined') {
-            if (!projectsInFallback) {
-              window._projectsDataMem = null;
-              window._projectsDataMemKey = null;
+            // Project snapshots already updated the in-memory cache. Dropping it here
+            // races with deferred local edits and can reopen an older browser copy.
+            if (hasAoax && !hasProjects && !projectsInFallback && !pendingWrites[window.AVITOLOG_KEY_SUFFIX === '_sasha' ? 'avitolog_projects_sasha' : 'avitolog_projects']) {
+              if (typeof window.__projectsPrepareManualSave === 'function') window.__projectsPrepareManualSave();
+              if (!pendingWrites[window.AVITOLOG_KEY_SUFFIX === '_sasha' ? 'avitolog_projects_sasha' : 'avitolog_projects']) {
+                window._projectsDataMem = null;
+                window._projectsDataMemKey = null;
+              }
             }
             if (window.projectsMode && typeof window.rerenderProjectsPreserveScroll === 'function') {
               window.rerenderProjectsPreserveScroll();

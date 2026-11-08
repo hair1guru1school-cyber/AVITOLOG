@@ -73,6 +73,8 @@ var _projectsFilterLaunch = false;
 var _projectsFilterAutoload = false;
 var _projectsFilterMustLaunch = false;
 var _projectsZoneTab = 'active'; // active | second_chance | archive
+var _projectsGroupFilter = '';
+var _projectsGroupFilterScope = '';
 var _projectsMultiSelectIds = {};
 var TASKS_LAYER_ON_KEY = (typeof window.AVITOLOG_KEY === 'function') ? window.AVITOLOG_KEY('avitolog_tasks_layer_on') : 'avitolog_tasks_layer_on';
 var TASK_PANEL_FONT_KEY = (typeof window.AVITOLOG_KEY === 'function') ? window.AVITOLOG_KEY('avitolog_task_panel_font') : 'avitolog_task_panel_font';
@@ -305,6 +307,7 @@ function stopProjectsSheetPullTimer() {
 }
 
 function runProjectsSheetPull(forceMerge) {
+  if (isProjectsServerOnlyMode()) return;
   if (document.hidden) return;
   if (!_driveToken) return;
   if (Date.now() < _projectsSheetPullPauseUntil) return;
@@ -320,6 +323,7 @@ function runProjectsSheetPull(forceMerge) {
 }
 
 function startProjectsSheetPullTimer() {
+  if (isProjectsServerOnlyMode()) { stopProjectsSheetPullTimer(); return; }
   if (!_driveToken) return;
   stopProjectsSheetPullTimer();
   setTimeout(function() { runProjectsSheetPull(true); }, 2500);
@@ -622,6 +626,8 @@ function flushScheduledProjectsData() {
 window.addEventListener('pagehide', flushScheduledProjectsData, true);
 window.addEventListener('beforeunload', flushScheduledProjectsData, true);
 async function hydrateProjectsFromActiveSheet(forceMerge) {
+  // In server mode Sheets is a backup, never a competing source of calendar edits.
+  if (isProjectsServerOnlyMode()) return false;
   if (!_driveToken) return false;
   var owner = projectsInteractionScope(), revision = _projectsLocalRevision;
   if (_projectsSheetWritesPending || hasProjectsInlineEdit() || isProjectsReadOnlyView()) return false;
@@ -1410,8 +1416,7 @@ function moveProjectToZone(projectId, zone) {
   p.sortOrder = nextSort;
   saveProjectsData(data);
   syncProjectToActiveSheet(projectId, 'zone_move_' + z);
-  if (_projectsZoneTab !== z) _projectsZoneTab = z;
-  renderProjectsScreen();
+  rerenderProjectsImmediate();
 }
 function getProjectBulkActionIds(projectId) {
   var ids = getProjectsMultiSelectedIds();
@@ -1446,8 +1451,7 @@ function moveProjectsToZone(projectIds, zone) {
   saveProjectsData(data);
   changed.forEach(function(id){ syncProjectToActiveSheet(id, 'zone_move_' + z); });
   clearProjectsMultiSelection();
-  if (_projectsZoneTab !== z) _projectsZoneTab = z;
-  renderProjectsScreen();
+  rerenderProjectsImmediate();
 }
 function deleteProject(projectId) {
   var data = loadProjectsData();
@@ -4523,9 +4527,17 @@ function renderProjectsScreen(opts) {
   var zoneClass = function(z) { return z==='active'?'projects-zone-active':z==='second_chance'?'projects-zone-second':'projects-zone-archive'; };
 
   var allProjects = [];
+  var projectGroups = window.ProjectGroups ? window.ProjectGroups.list() : [];
   var visibleProjects = data.projects
     .filter(function(p){ return (p.zone || 'active') === _projectsZoneTab; })
     .sort(function(a,b){ return (a.sortOrder||0)-(b.sortOrder||0); });
+  if (_projectsGroupFilterScope !== projectsInteractionScope()) {
+    _projectsGroupFilterScope = projectsInteractionScope(); _projectsGroupFilter = '';
+  }
+  if (_projectsGroupFilter) {
+    if (_projectsGroupFilter !== '__ungrouped' && !projectGroups.some(function(g){ return g.id === _projectsGroupFilter; })) _projectsGroupFilter = '';
+    if (_projectsGroupFilter) visibleProjects = visibleProjects.filter(function(p){ return (getProjectGroupId(p, projectGroups) || '__ungrouped') === _projectsGroupFilter; });
+  }
   if (_projectsTasksSortOn) {
     visibleProjects.sort(function(a,b){
       var ca = (typeof getTasksForProject === 'function' ? getTasksForProject(a.id) : []).length;
@@ -4595,9 +4607,11 @@ function renderProjectsScreen(opts) {
   }).join('');
   var zoneTabsRow = '<div class="projects-zone-tabs projects-zone-tabs-top">' + tabsBtns + '</div>';
   var addBtnHtml = '<span class="projects-head-chip projects-add-chip" title="Добавить проект" onclick="event.stopPropagation();createNewProjectInActive()">+</span>';
+  var filteredGroup = projectGroups.find(function(g){ return g.id === _projectsGroupFilter; });
+  var groupBtnHtml = '<button type="button" class="projects-head-chip' + (_projectsGroupFilter ? ' is-on' : '') + '" title="Группы проектов' + (filteredGroup ? ': ' + escAttr(filteredGroup.name) : '') + '" onclick="event.stopPropagation();showProjectsGroupPicker(this)">' + (filteredGroup ? escAttr(filteredGroup.emoji) : '&#128193;') + '</button>';
   var chipsRow1 = '<span class="projects-head-stats">' +
-          addBtnHtml +
-          '<span class="projects-head-chip active" title="Все проекты" onclick="event.stopPropagation();setProjectsTypeSortPriority(null)">🃏 <b>' + activeCount + '</b></span>' +
+          addBtnHtml + groupBtnHtml +
+          '<span class="projects-head-chip active" title="Все проекты" onclick="event.stopPropagation();_projectsGroupFilter=\'\';setProjectsTypeSortPriority(null)">🃏 <b>' + activeCount + '</b></span>' +
           '<span class="projects-head-chip diamond' + (_projectsTypeSortPriority === 'old' ? ' is-on' : '') + '" title="Алмазы" onclick="event.stopPropagation();setProjectsTypeSortPriority(\'old\')">💎 <b>' + diamondCount + '</b></span>' +
           '<span class="projects-head-chip ret' + (_projectsTypeSortPriority === 'returning' ? ' is-on' : '') + '" title="Второй раз" onclick="event.stopPropagation();setProjectsTypeSortPriority(\'returning\')">2️⃣ <b>' + returningCount + '</b></span>' +
           '<span class="projects-head-chip new' + (_projectsTypeSortPriority === 'new' ? ' is-on' : '') + '" onclick="event.stopPropagation();setProjectsTypeSortPriority(\'new\')">NEW <b>' + newCount + '</b></span>' +
@@ -4630,7 +4644,8 @@ function renderProjectsScreen(opts) {
 
   visibleProjects.forEach(function(p) {
     ensureChildLineEvents(p);
-    var emHtml = getProjectEmojiButtonHtml(p);
+    var group = window.ProjectGroups && window.ProjectGroups.forProject(p, projectGroups);
+    var emHtml = group ? '<span title="' + escAttr(group.name) + '" style="color:' + group.color + '">' + escAttr(group.emoji) + '</span>' : getProjectEmojiButtonHtml(p);
     var pathHtml = pathLabels.map(function(pl){ return '<button type="button" class="proj-path-btn' + (p.clientPath&&p.clientPath[pl.k]?' on':'') + '" title="' + pl.l + '" onclick="event.stopPropagation();toggleProjectPath(\'' + p.id + '\',\'' + pl.k + '\')">' + (pl.e||pl.l.slice(0,1)) + '</button>'; }).join('');
     var normType = normalizeProjectClientType(p.clientType);
     var typeHtml = (normType==='old') ? '<span class="proj-type-diamond">💎</span>' : (normType==='returning') ? '<span class="proj-type-2">2</span>' : '<span class="proj-type-new">NEW</span>';
@@ -4849,7 +4864,50 @@ function editProjectCell(el) {
     done(e.key === 'Enter'); inp.blur();
   };
 }
+function getProjectGroupId(project, groups) {
+  var group = window.ProjectGroups && window.ProjectGroups.forProject(project, groups);
+  return group ? group.id : '';
+}
+function showProjectsGroupPicker(btn, projectId) {
+  if (!window.ProjectGroups) return;
+  var previous = document.getElementById('projectsGroupPicker'); if (previous) previous.remove();
+  var owner = projectsInteractionScope(), picker = document.createElement('div');
+  picker.id = 'projectsGroupPicker'; picker.className = 'proj-emoji-picker';
+  picker.style.cssText = 'position:fixed;display:flex;flex-direction:column;gap:3px;width:260px;max-height:65vh;overflow:auto;padding:7px;z-index:10010';
+  var data = loadProjectsData(), groups = window.ProjectGroups.list();
+  var project = projectId && data.projects.find(function(p){return p.id === projectId;});
+  var current = projectId ? getProjectGroupId(project, groups) : _projectsGroupFilter;
+  function add(label, id, color) {
+    var button = document.createElement('button'); button.type = 'button'; button.textContent = label;
+    button.style.cssText = 'text-align:left;white-space:nowrap;padding:7px 9px;border:1px solid ' + (id === current ? (color || '#56cbd8') : 'transparent') + ';border-radius:5px;background:var(--panel,#15202b);color:var(--text,#e6eef6);font:inherit;cursor:pointer';
+    button.onclick = async function() {
+      if (owner !== projectsInteractionScope()) { picker.remove(); return; }
+      if (!projectId) { _projectsGroupFilter = id; picker.remove(); rerenderProjectsImmediate(); return; }
+      button.disabled = true;
+      try { await window.ProjectGroups.assign(projectId, id); picker.remove(); }
+      catch (e) { button.disabled = false; button.title = e.message; button.textContent = label + ' · не сохранено'; }
+    };
+    picker.appendChild(button);
+  }
+  if (!projectId) add('Все проекты', '', '');
+  groups.forEach(function(group) {
+    var count = projectId ? '' : ' · ' + data.projects.filter(function(p){ return (p.zone || 'active') === _projectsZoneTab && getProjectGroupId(p, groups) === group.id; }).length;
+    add(group.emoji + ' ' + group.name + count, group.id, group.color);
+  });
+  add('Без группы', projectId ? '' : '__ungrouped', '');
+  var manage = document.createElement('button'); manage.type = 'button'; manage.textContent = '⚙ Настроить группы';
+  manage.onclick = function() { picker.remove(); window.ProjectGroups.openManager(); }; picker.appendChild(manage);
+  document.body.appendChild(picker);
+  var rect = btn.getBoundingClientRect(); picker.style.left = Math.max(4, Math.min(rect.left, window.innerWidth - 276)) + 'px';
+  picker.style.top = Math.max(4, Math.min(rect.bottom + 4, window.innerHeight - picker.offsetHeight - 4)) + 'px';
+  function close(e) { if (!picker.isConnected || e.key === 'Escape' || e.type === 'click' && !picker.contains(e.target) && e.target !== btn) { picker.remove(); document.removeEventListener('click', close); document.removeEventListener('keydown', close); } }
+  setTimeout(function(){document.addEventListener('click', close);document.addEventListener('keydown', close);}, 0);
+}
 function showProjEmojiPicker(btn, projectId) {
+  if (window.ProjectGroups) return showProjectsGroupPicker(btn, projectId);
+  return showProjLegacyEmojiPicker(btn, projectId);
+}
+function showProjLegacyEmojiPicker(btn, projectId) {
   var existing = document.getElementById('projEmojiPicker');
   if (existing) existing.remove();
   var picker = document.createElement('div');
