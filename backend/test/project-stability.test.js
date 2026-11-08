@@ -65,6 +65,10 @@ test('single and bulk moves preserve the current section, order of remaining pro
 test('group filtering does not mutate the default project order or zone',()=>{
  const h=harness(),before=h.data();h.ctx.ProjectGroups={forProject:(p,groups)=>groups.find(g=>g.id===p.projectGroupId)};assert.equal(h.ctx.getProjectGroupId({projectGroupId:'furniture'},[{id:'furniture'}]),'furniture');assert.deepEqual(h.data(),before);
 });
+test('disconnecting AoA-X preserves newer manual calendar entries rather than replaying its old backup',()=>{
+ const h=harness(),p={events:[{type:'active_range',source:'manual',startDate:'2026-11-08',endDate:'2026-12-08'},{type:'active_range',source:'aoax',startDate:'2026-10-01',endDate:'2026-10-31'}],aoaxAutoloadBackup:{events:[{type:'active_range',source:'manual',startDate:'2020-01-01',endDate:'2020-02-01'}]}};
+ h.ctx.restoreProjectBeforeAoax(p);assert.equal(p.events.length,1);assert.equal(p.events[0].startDate,'2026-11-08');assert.equal(p.aoaxAutoloadBackup,undefined);
+});
 }
 
 {

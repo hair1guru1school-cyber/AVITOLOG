@@ -1058,7 +1058,9 @@ function snapshotProjectBeforeAoax(p) {
 function restoreProjectBeforeAoax(p) {
   if (!p || !p.aoaxAutoloadBackup) return false;
   var b = p.aoaxAutoloadBackup;
-  p.events = cloneAoaxValue(b.events || []);
+  // AoA-X only adds events marked with its source. Never replay an old backup
+  // over manual calendar changes made since the integration was connected.
+  p.events = (p.events || []).filter(function(ev){ return !(ev && ev.source === 'aoax'); });
   p.childLines = cloneAoaxValue(b.childLines || []);
   p.childLineEvents = cloneAoaxValue(b.childLineEvents || []);
   if (!p.clientPath || typeof p.clientPath !== 'object') p.clientPath = {autoload:false,analytics:false,texts:false,packaging:false,portfolio:false};
