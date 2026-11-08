@@ -132,7 +132,7 @@ const row = (key, value) => ({ storage_key: key, value_text: JSON.stringify(valu
 const pendingKeys = local => Object.keys(local.snapshot()).filter(key => key.startsWith('avitolog_backend_pending_payload_v2_'));
 
 
-const groupsApi=require('../../js/project-groups.js');
+const groupSandbox={module:{exports:{}}};vm.runInNewContext(fs.readFileSync(path.resolve(__dirname,'../../js/project-groups.js'),'utf8'),groupSandbox);const groupsApi=groupSandbox.module.exports;
 function groupState(){return {projectGroupsV1:groupsApi.catalog({}),projects:['p1','p2','p3'].map(id=>({id,zone:'active',title:id,sortOrder:1,projectGroupId:'furniture',projectGroupSource:'manual',crmData:{project_group_id:'furniture',notes:'Keep'},events:[{type:'active_range',startDate:'2026-11-01',endDate:'2026-12-01'}],mustLaunchRequired:true,manualPaymentsV1:{totalPaid:100}})),tasks:[{id:'keep-task'}]};}
 function attachGroups(env){
  const win=env.window;win.CustomEvent=function(type,options){this.type=type;this.detail=options&&options.detail;};win.document.readyState='loading';win.AVITOLOG_KEY=k=>k+(win.AVITOLOG_KEY_SUFFIX||'');win.projectsMode=true;win.groupRefreshes=[];
