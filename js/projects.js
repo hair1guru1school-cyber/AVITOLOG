@@ -73,8 +73,8 @@ var _projectsFilterLaunch = false;
 var _projectsFilterAutoload = false;
 var _projectsFilterMustLaunch = false;
 var _projectsZoneTab = 'active'; // active | second_chance | archive
-var _projectsGroupFilter = '';
-var _projectsGroupFilterScope = '';
+var _projectsGroupSortOn = true;
+var _projectsGroupSortScope = '';
 var _projectsMultiSelectIds = {};
 var TASKS_LAYER_ON_KEY = (typeof window.AVITOLOG_KEY === 'function') ? window.AVITOLOG_KEY('avitolog_tasks_layer_on') : 'avitolog_tasks_layer_on';
 var TASK_PANEL_FONT_KEY = (typeof window.AVITOLOG_KEY === 'function') ? window.AVITOLOG_KEY('avitolog_task_panel_font') : 'avitolog_task_panel_font';
@@ -4533,13 +4533,7 @@ function renderProjectsScreen(opts) {
   var visibleProjects = data.projects
     .filter(function(p){ return (p.zone || 'active') === _projectsZoneTab; })
     .sort(function(a,b){ return (a.sortOrder||0)-(b.sortOrder||0); });
-  if (_projectsGroupFilterScope !== projectsInteractionScope()) {
-    _projectsGroupFilterScope = projectsInteractionScope(); _projectsGroupFilter = '';
-  }
-  if (_projectsGroupFilter) {
-    if (_projectsGroupFilter !== '__ungrouped' && !projectGroups.some(function(g){ return g.id === _projectsGroupFilter; })) _projectsGroupFilter = '';
-    if (_projectsGroupFilter) visibleProjects = visibleProjects.filter(function(p){ return (getProjectGroupId(p, projectGroups) || '__ungrouped') === _projectsGroupFilter; });
-  }
+  syncProjectsGroupSortPreference();
   if (_projectsTasksSortOn) {
     visibleProjects.sort(function(a,b){
       var ca = (typeof getTasksForProject === 'function' ? getTasksForProject(a.id) : []).length;
@@ -4563,6 +4557,8 @@ function renderProjectsScreen(opts) {
     var rest = visibleProjects.filter(function(p){ return !matchFilter(p); });
     visibleProjects = first.concat(rest);
   }
+  if (_projectsGroupSortOn) visibleProjects = arrangeProjectsByGroup(visibleProjects, projectGroups);
+  ensureProjectsGroupRowStyle();
   // Choose a context for the collapsed handle without expanding the drawer.
   if (visibleProjects.length) {
     var stillVisible = _taskPanelProjectId && visibleProjects.some(function(p){ return p.id === _taskPanelProjectId; });
@@ -4609,11 +4605,10 @@ function renderProjectsScreen(opts) {
   }).join('');
   var zoneTabsRow = '<div class="projects-zone-tabs projects-zone-tabs-top">' + tabsBtns + '</div>';
   var addBtnHtml = '<span class="projects-head-chip projects-add-chip" title="Добавить проект" onclick="event.stopPropagation();createNewProjectInActive()">+</span>';
-  var filteredGroup = projectGroups.find(function(g){ return g.id === _projectsGroupFilter; });
-  var groupBtnHtml = '<button type="button" class="projects-head-chip' + (_projectsGroupFilter ? ' is-on' : '') + '" title="Группы проектов' + (filteredGroup ? ': ' + escAttr(filteredGroup.name) : '') + '" onclick="event.stopPropagation();showProjectsGroupPicker(this)">' + (filteredGroup ? escAttr(filteredGroup.emoji) : '&#128193;') + '</button>';
+  var groupBtnHtml = '<button type="button" class="projects-head-chip' + (_projectsGroupSortOn ? ' is-on' : '') + '" aria-pressed="' + _projectsGroupSortOn + '" title="' + (_projectsGroupSortOn ? 'По группам: все проекты видны. Вернуть обычный порядок' : 'Сгруппировать все проекты и окрасить строки') + '" onclick="event.stopPropagation();toggleProjectsGroupSort()">&#128193;</button>';
   var chipsRow1 = '<span class="projects-head-stats">' +
           addBtnHtml + groupBtnHtml +
-          '<span class="projects-head-chip active" title="Все проекты" onclick="event.stopPropagation();_projectsGroupFilter=\'\';setProjectsTypeSortPriority(null)">🃏 <b>' + activeCount + '</b></span>' +
+          '<span class="projects-head-chip active" title="Все проекты" onclick="event.stopPropagation();setProjectsGroupSort(false);setProjectsTypeSortPriority(null)">🃏 <b>' + activeCount + '</b></span>' +
           '<span class="projects-head-chip diamond' + (_projectsTypeSortPriority === 'old' ? ' is-on' : '') + '" title="Алмазы" onclick="event.stopPropagation();setProjectsTypeSortPriority(\'old\')">💎 <b>' + diamondCount + '</b></span>' +
           '<span class="projects-head-chip ret' + (_projectsTypeSortPriority === 'returning' ? ' is-on' : '') + '" title="Второй раз" onclick="event.stopPropagation();setProjectsTypeSortPriority(\'returning\')">2️⃣ <b>' + returningCount + '</b></span>' +
           '<span class="projects-head-chip new' + (_projectsTypeSortPriority === 'new' ? ' is-on' : '') + '" onclick="event.stopPropagation();setProjectsTypeSortPriority(\'new\')">NEW <b>' + newCount + '</b></span>' +
@@ -4746,7 +4741,8 @@ function renderProjectsScreen(opts) {
     }
     var mainEvents = getEventsForProjectRow(p, -1);
     var eventsForMainRow = (hasChildLines && !showPositionRows) ? getAggregatedAutoloadEventsForCollapsed(p) : mainEvents;
-    var rowHtml = '<div class="projects-table-row' + selectedClass + multiSelectedClass + groupedClass + newFromGoalsClass + negativeClass + '" data-id="' + p.id + '" data-child-line-index="-1" onclick="handleProjectRowClick(event,\'' + p.id + '\')"><div class="projects-sticky">' + stickyHtml + '</div><div class="projects-scroll">' + renderRowCells(eventsForMainRow, -1, hasChildLines && !showPositionRows) + '</div></div>';
+    var groupAttrs = _projectsGroupSortOn ? getProjectsGroupRowAttrs(group) : '';
+    var rowHtml = '<div class="projects-table-row' + selectedClass + multiSelectedClass + groupedClass + newFromGoalsClass + negativeClass + '"' + groupAttrs + ' data-id="' + p.id + '" data-child-line-index="-1" onclick="handleProjectRowClick(event,\'' + p.id + '\')"><div class="projects-sticky">' + stickyHtml + '</div><div class="projects-scroll">' + renderRowCells(eventsForMainRow, -1, hasChildLines && !showPositionRows) + '</div></div>';
     html += rowHtml;
     var childLines = getProjectChildLines(p);
     if (hasChildLines) {
@@ -4755,7 +4751,7 @@ function renderProjectsScreen(opts) {
         var childLineHtml = renderProjectChildLineHtml(p, origIdx);
         var hiddenCls = showPositionRows ? '' : ' proj-position-hidden';
         var childStickySimple = '<div class="proj-col-expand"></div><div class="proj-col-type"></div><span class="proj-drive-btn" style="pointer-events:none;opacity:0"></span><div class="proj-cell-editable proj-child-line-cell" data-id="' + p.id + '" data-child-line-index="' + origIdx + '">' + childLineHtml + '</div>';
-        var childRowHtml = '<div class="projects-table-row projects-table-row-child proj-position-row' + hiddenCls + selectedClass + multiSelectedClass + '" data-id="' + p.id + '" data-child-line-index="' + origIdx + '" onclick="handleProjectRowClick(event,\'' + p.id + '\')"><div class="projects-sticky">' + childStickySimple + '</div><div class="projects-scroll">' + renderRowCells(childEvents, origIdx) + '</div></div>';
+        var childRowHtml = '<div class="projects-table-row projects-table-row-child proj-position-row' + hiddenCls + selectedClass + multiSelectedClass + '"' + groupAttrs + ' data-id="' + p.id + '" data-child-line-index="' + origIdx + '" onclick="handleProjectRowClick(event,\'' + p.id + '\')"><div class="projects-sticky">' + childStickySimple + '</div><div class="projects-scroll">' + renderRowCells(childEvents, origIdx) + '</div></div>';
         html += childRowHtml;
       });
     }
@@ -4870,7 +4866,42 @@ function getProjectGroupId(project, groups) {
   var group = window.ProjectGroups && window.ProjectGroups.forProject(project, groups);
   return group ? group.id : '';
 }
+function projectsGroupSortKey() {
+  return 'av_projects_group_sort_v1:' + projectsInteractionScope();
+}
+function syncProjectsGroupSortPreference() {
+  var scope = projectsInteractionScope();
+  if (_projectsGroupSortScope === scope) return;
+  _projectsGroupSortScope = scope;
+  try { _projectsGroupSortOn = localStorage.getItem(projectsGroupSortKey()) !== '0'; }
+  catch (_) { _projectsGroupSortOn = true; }
+}
+function setProjectsGroupSort(enabled) {
+  syncProjectsGroupSortPreference(); _projectsGroupSortOn = !!enabled;
+  try { localStorage.setItem(projectsGroupSortKey(), enabled ? '1' : '0'); } catch (_) {}
+}
+function toggleProjectsGroupSort() {
+  syncProjectsGroupSortPreference(); setProjectsGroupSort(!_projectsGroupSortOn); rerenderProjectsImmediate();
+}
+function arrangeProjectsByGroup(projects, groups) {
+  var rank = Object.create(null); groups.forEach(function(group, index){ rank[group.id] = index; });
+  return projects.map(function(project, index){
+    var id = getProjectGroupId(project, groups);
+    return {project:project,index:index,rank:Object.prototype.hasOwnProperty.call(rank,id) ? rank[id] : groups.length};
+  }).sort(function(a,b){ return a.rank - b.rank || a.index - b.index; }).map(function(row){ return row.project; });
+}
+function getProjectsGroupRowAttrs(group) {
+  var color = group && /^#[0-9a-f]{6}$/i.test(group.color) ? group.color : '#93a9bb';
+  return ' data-project-group="' + escAttr(group ? group.id : 'ungrouped') + '" style="--projects-niche-color:' + color + ';--projects-niche-tint:' + color + '18"';
+}
+function ensureProjectsGroupRowStyle() {
+  if (document.getElementById('projectsGroupRowStyle')) return;
+  var style = document.createElement('style'); style.id = 'projectsGroupRowStyle';
+  style.textContent = '.projects-board .projects-table-row[data-project-group]>.projects-sticky{background-image:linear-gradient(var(--projects-niche-tint),var(--projects-niche-tint))!important;border-left:3px solid var(--projects-niche-color)}';
+  document.head.appendChild(style);
+}
 function showProjectsGroupPicker(btn, projectId) {
+  if (!projectId) return toggleProjectsGroupSort();
   if (!window.ProjectGroups) return;
   var previous = document.getElementById('projectsGroupPicker'); if (previous) previous.remove();
   var owner = projectsInteractionScope(), picker = document.createElement('div');
@@ -4878,25 +4909,22 @@ function showProjectsGroupPicker(btn, projectId) {
   picker.style.cssText = 'position:fixed;display:flex;flex-direction:column;gap:3px;width:260px;max-height:65vh;overflow:auto;padding:7px;z-index:10010';
   var data = loadProjectsData(), groups = window.ProjectGroups.list();
   var project = projectId && data.projects.find(function(p){return p.id === projectId;});
-  var current = projectId ? getProjectGroupId(project, groups) : _projectsGroupFilter;
+  var current = getProjectGroupId(project, groups);
   function add(label, id, color) {
     var button = document.createElement('button'); button.type = 'button'; button.textContent = label;
     button.style.cssText = 'text-align:left;white-space:nowrap;padding:7px 9px;border:1px solid ' + (id === current ? (color || '#56cbd8') : 'transparent') + ';border-radius:5px;background:var(--panel,#15202b);color:var(--text,#e6eef6);font:inherit;cursor:pointer';
     button.onclick = async function() {
       if (owner !== projectsInteractionScope()) { picker.remove(); return; }
-      if (!projectId) { _projectsGroupFilter = id; picker.remove(); rerenderProjectsImmediate(); return; }
       button.disabled = true;
       try { await window.ProjectGroups.assign(projectId, id); picker.remove(); }
       catch (e) { button.disabled = false; button.title = e.message; button.textContent = label + ' · не сохранено'; }
     };
     picker.appendChild(button);
   }
-  if (!projectId) add('Все проекты', '', '');
   groups.forEach(function(group) {
-    var count = projectId ? '' : ' · ' + data.projects.filter(function(p){ return (p.zone || 'active') === _projectsZoneTab && getProjectGroupId(p, groups) === group.id; }).length;
-    add(group.emoji + ' ' + group.name + count, group.id, group.color);
+    add(group.emoji + ' ' + group.name, group.id, group.color);
   });
-  add('Без группы', projectId ? '' : '__ungrouped', '');
+  add('Без группы', '', '');
   var manage = document.createElement('button'); manage.type = 'button'; manage.textContent = '⚙ Настроить группы';
   manage.onclick = function() { picker.remove(); window.ProjectGroups.openManager(); }; picker.appendChild(manage);
   document.body.appendChild(picker);
