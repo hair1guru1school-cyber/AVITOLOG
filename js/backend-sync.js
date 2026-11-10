@@ -695,9 +695,9 @@
           stableJson(previousItem[field]) !== stableJson(nextItem[field])) {
         if (field === 'crmData' && isProjectGroupCrmChange(previousItem.crmData, nextItem.crmData)) {
           out.crmData = Object.assign({}, remoteItem.crmData, { project_group_id: (nextItem.crmData || {}).project_group_id });
-        } else if (field === 'events') out.events = mergeProjectCalendarEvents(remoteItem.events, previousItem.events, nextItem.events);
+        } else if (field === 'events') out.events = mergeProjectCalendarEvents(remoteItem.events, previousItem.events, nextItem.events, remoteItem, previousItem, nextItem);
         else if (field === 'childLineEvents' && stableJson(remoteItem.childLines) === stableJson(previousItem.childLines) && stableJson(nextItem.childLines) === stableJson(previousItem.childLines)) {
-          out.childLineEvents = (nextItem.childLineEvents || []).map(function(events,index){ return mergeProjectCalendarEvents((remoteItem.childLineEvents || [])[index], (previousItem.childLineEvents || [])[index], events); });
+          out.childLineEvents = (nextItem.childLineEvents || []).map(function(events,index){ return mergeProjectCalendarEvents((remoteItem.childLineEvents || [])[index], (previousItem.childLineEvents || [])[index], events, remoteItem, previousItem, nextItem); });
         } else out[field] = field === 'intakeContextV1' ? mergeProjectIntakeContext(remoteItem[field], nextItem[field], nextItem.id) : nextItem[field];
       }
     });
@@ -712,9 +712,31 @@
       out.projectGroupSource = remoteItem.projectGroupSource;
       if (out.crmData && remoteItem.crmData && Object.prototype.hasOwnProperty.call(remoteItem.crmData, 'project_group_id')) out.crmData.project_group_id = remoteItem.crmData.project_group_id;
     }
+    if(projectManualAutoloadChoice(remoteItem,previousItem,nextItem)==='remote'){
+      var beforeManual=Date.parse(previousItem.autoloadManualOverrideAt||''),afterManual=Date.parse(nextItem.autoloadManualOverrideAt||'');
+      if(Number.isFinite(afterManual)&&afterManual>(Number.isFinite(beforeManual)?beforeManual:0)&&projectActiveRangesSnapshot(out)!==projectActiveRangesSnapshot(remoteItem)){
+        // A disjoint row edit rebases onto the latest project timestamp.
+        var rebasedManual=new Date(Date.parse(remoteItem.autoloadManualOverrideAt)+1).toISOString();
+        out.autoloadUpdatedAt=rebasedManual;out.autoloadManualOverrideAt=rebasedManual;
+      }else{
+        ['autoloadUpdatedAt','autoloadManualOverrideAt','aoaxAutoloadManualClear'].forEach(function(field){if(Object.prototype.hasOwnProperty.call(remoteItem,field))out[field]=remoteItem[field];else delete out[field];});
+        if(remoteItem.clientPath&&Object.prototype.hasOwnProperty.call(remoteItem.clientPath,'autoload'))out.clientPath=Object.assign({},out.clientPath,{autoload:remoteItem.clientPath.autoload});
+      }
+    }
     return preserveManualProjectZone(remoteItem, previousItem, nextItem, out);
   }
-  function mergeProjectCalendarEvents(remote, previous, next) {
+  function projectManualAutoloadChoice(remote,previous,next){
+    if(!remote||!previous||!next)return '';
+    var fresh=Date.parse(remote.autoloadManualOverrideAt||''),before=Date.parse(previous.autoloadManualOverrideAt||''),after=Date.parse(next.autoloadManualOverrideAt||'');
+    if(Number.isFinite(after)&&after>(Number.isFinite(before)?before:0)&&(!Number.isFinite(fresh)||after>fresh))return 'local';
+    if(Number.isFinite(fresh)&&(!Number.isFinite(after)||after<fresh))return 'remote';
+    return '';
+  }
+  function projectActiveRangesSnapshot(project){
+    function ranges(events){return (Array.isArray(events)?events:[]).filter(function(event){return event&&event.type==='active_range';});}
+    return stableJson([ranges(project.events),(Array.isArray(project.childLineEvents)?project.childLineEvents:[]).map(ranges)]);
+  }
+  function mergeProjectCalendarEvents(remote, previous, next, remoteProject, previousProject, nextProject) {
     remote = Array.isArray(remote) ? remote : []; previous = Array.isArray(previous) ? previous : []; next = Array.isArray(next) ? next : [];
     var types = new Set(previous.concat(next).map(function(event){return event && event.type;}));
     var out = remote.slice();
@@ -722,6 +744,11 @@
       var before = previous.filter(function(event){return event && event.type === type;}), after = next.filter(function(event){return event && event.type === type;});
       if (stableJson(before) === stableJson(after)) return;
       var fresh = remote.filter(function(event){return event && event.type === type;});
+      if(type==='active_range'&&stableJson(fresh)!==stableJson(before)&&stableJson(fresh)!==stableJson(after)){
+        var choice=projectManualAutoloadChoice(remoteProject,previousProject,nextProject);
+        if(choice==='remote')return;
+        if(choice==='local'){out=out.filter(function(event){return !event||event.type!==type;}).concat(after);return;}
+      }
       if (stableJson(fresh) !== stableJson(before) && stableJson(fresh) !== stableJson(after)) throw new Error('Этот участок календаря изменён в другом окне. Черновик сохранён; обновите данные перед повтором.');
       out = out.filter(function(event){return !event || event.type !== type;}).concat(after);
     });

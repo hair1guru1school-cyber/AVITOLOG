@@ -2721,6 +2721,10 @@ function clearProjectLaunchRange(projectId, startDate, endDate, childLineIndex) 
 function applyProjectAutoloadRange(projectId, startDate, endDate) {
   applyProjectAutoloadRangeForRow(projectId, -1, startDate, endDate);
 }
+function nextProjectAutoloadTimestamp(project) {
+  var last=Math.max(getProjectTimestampMs(project.autoloadUpdatedAt),getProjectTimestampMs(project.autoloadManualOverrideAt));
+  return new Date(Math.max(Date.now(),last+1)).toISOString();
+}
 function applyProjectAutoloadRangeForRow(projectId, childLineIdx, startDate, endDate) {
   var data = loadProjectsData();
   var p = data.projects.find(function(x){ return x.id === projectId; });
@@ -2729,7 +2733,7 @@ function applyProjectAutoloadRangeForRow(projectId, childLineIdx, startDate, end
   var s = startDate <= endDate ? startDate : endDate;
   var e = startDate <= endDate ? endDate : startDate;
   var todayIso = getTodayISO();
-  var updatedAt = new Date().toISOString();
+  var updatedAt = nextProjectAutoloadTimestamp(p);
   p.autoloadUpdatedAt = updatedAt;
   p.autoloadManualOverrideAt = updatedAt;
   if (!p.clientPath || typeof p.clientPath !== 'object') p.clientPath = {autoload:false,analytics:false,texts:false,packaging:false,portfolio:false};
@@ -2745,6 +2749,9 @@ function applyProjectAutoloadRangeForRow(projectId, childLineIdx, startDate, end
     p.events.push({type:'active_range', startDate:s, endDate:e, source:'manual', updatedAt:updatedAt});
     if (p.mustLaunchRequired && e > todayIso) {
       p.mustLaunchRequired = false;
+      p.mustLaunchDate = '';
+      p.mustLaunchUpdatedAt = updatedAt;
+      p.mustLaunchManualClearedAt = updatedAt;
       p.mustLaunchSetSince = '';
       p.mustLaunchAutoFromLaunch = false;
       p.mustLaunchAutoDismissedAt = '';
@@ -2764,7 +2771,7 @@ function clearProjectCalendarRow(projectId, childLineIdx) {
   var p = data.projects.find(function(x){ return x.id === projectId; });
   if (!p) return;
   markAoaxAutoloadManuallyCleared(p, childLineIdx);
-  p.autoloadUpdatedAt = new Date().toISOString();
+  p.autoloadUpdatedAt = nextProjectAutoloadTimestamp(p);
   p.autoloadManualOverrideAt = p.autoloadUpdatedAt;
   var clearTypes = {
     launch_range: true,
@@ -2812,7 +2819,7 @@ function clearProjectAutoloadForRow(projectId, childLineIdx) {
   var p = data.projects.find(function(x){ return x.id === projectId; });
   if (!p) return;
   markAoaxAutoloadManuallyCleared(p, childLineIdx);
-  p.autoloadUpdatedAt = new Date().toISOString();
+  p.autoloadUpdatedAt = nextProjectAutoloadTimestamp(p);
   p.autoloadManualOverrideAt = p.autoloadUpdatedAt;
   if (childLineIdx >= 0) {
     ensureChildLineEvents(p);
@@ -2831,7 +2838,7 @@ function clearProjectAutoloadRangeForRow(projectId, childLineIdx, startDate, end
   var p = data.projects.find(function(x){ return x.id === projectId; });
   if (!p) return;
   markAoaxAutoloadManuallyCleared(p, childLineIdx);
-  p.autoloadUpdatedAt = new Date().toISOString();
+  p.autoloadUpdatedAt = nextProjectAutoloadTimestamp(p);
   p.autoloadManualOverrideAt = p.autoloadUpdatedAt;
   var s = startDate <= endDate ? startDate : endDate;
   var e = startDate <= endDate ? endDate : startDate;
@@ -2844,9 +2851,9 @@ function clearProjectAutoloadRangeForRow(projectId, childLineIdx, startDate, end
     var rs = String(rg.startDate || '');
     var re = String(rg.endDate || '');
     if (!rs || !re) return;
-    if (re < s || rs > e) { nextRanges.push({type:'active_range', startDate:rs, endDate:re}); return; }
-    if (rs < s) nextRanges.push({type:'active_range', startDate:rs, endDate:addDaysISO(s, -1)});
-    if (re > e) nextRanges.push({type:'active_range', startDate:addDaysISO(e, 1), endDate:re});
+    if (re < s || rs > e) { nextRanges.push(Object.assign({},rg)); return; }
+    if (rs < s) nextRanges.push(Object.assign({},rg,{type:'active_range',source:'manual',updatedAt:p.autoloadUpdatedAt,startDate:rs,endDate:addDaysISO(s,-1)}));
+    if (re > e) nextRanges.push(Object.assign({},rg,{type:'active_range',source:'manual',updatedAt:p.autoloadUpdatedAt,startDate:addDaysISO(e,1),endDate:re}));
   });
   targetEvents = targetEvents.filter(function(ev){ return ev.type !== 'active_range'; });
   nextRanges.forEach(function(rg){ targetEvents.push(rg); });
