@@ -683,6 +683,11 @@
         state.promotionRefreshDone = key;
         if (state.promotionRefreshKey === key) state.promotionRefreshKey = '';
         var paid = allGroups(state).find(function(group) { return group.id === PAID_GROUP_ID; });
+        if (state.groupId === PAID_GROUP_ID) {
+          var remaining = new Set(paid.item_ids);
+          state.selected = new Set(Array.from(state.selected).filter(function(id) { return remaining.has(String(id)); }));
+          if (state.selectedId && !remaining.has(String(state.selectedId))) { state.selectedId = ''; renderControls(state); renderPreview(state); }
+        }
         note(state, 'Продвижение перепроверено в Авито. С платным продвижением: ' + paid.item_ids.length + '.');
       }()).catch(function(error) { if (valid(state)) note(state, message(error) + ' Предыдущий состав группы сохранён.', 'warning'); })
         .finally(function() { state.refreshingJobPromotions = false; state.promotionRefreshPromise = null; });
