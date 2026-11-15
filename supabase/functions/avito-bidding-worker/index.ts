@@ -26,7 +26,8 @@ Deno.serve(async request => {
     const bytes = Uint8Array.from(hex.match(/../g), pair => parseInt(pair, 16));
     if (!await crypto.subtle.verify('HMAC', key, bytes, new TextEncoder().encode(ts + '|' + nonce)) || await rpc('worker_nonce', { p_nonce: nonce }) !== true) return new Response(null, { status: 403 });
     const started = Date.now(); let processed = 0;
-    while (processed < 10000 && Date.now() - started < 45000) {
+    // Keep each invocation below the hosted CPU budget; cron continues the durable queue.
+    while (processed < 8 && Date.now() - started < 20000) {
       const claim = await rpc('claim'); if (!claim) break;
       const handler = handlers.get(claim.module); if (!handler) throw Error('queue_module');
       await handler(claim); processed++;
