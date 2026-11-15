@@ -1418,7 +1418,7 @@
       '<div class="goal-week-rows" onclick="window.__goalsQuickAddClientToWeek && window.__goalsQuickAddClientToWeek(' + weekNum + ',event)" ondragover="window.__goalsWeekContainerDragOver&&window.__goalsWeekContainerDragOver(' + weekNum + ',event)" ondrop="window.__goalsWeekContainerDrop&&window.__goalsWeekContainerDrop(' + weekNum + ',event)">' + header + (rows.length ? rows.join('') : '<div class="goal-empty">Нет проектов</div>') + '</div>' +
       weekIndicators +
       '<div class="goal-week-add-row">' +
-      '<button type="button" class="goal-week-add" onclick="window.__goalsOpenModalForWeek && window.__goalsOpenModalForWeek(event,' + weekNum + ')">+ Добавить проект</button>' +
+      '<button type="button" class="goal-week-add" data-goal-create-week="' + weekNum + '">+ Добавить проект</button>' +
       (window.AVBTelegramLeads ? window.AVBTelegramLeads.weekButtonHtml(year, month, weekNum) : '') +
       (addClientBtn ? addClientBtn : '') +
       '</div>' +
@@ -1522,7 +1522,7 @@
       titleHtml +
       '<div class="goal-block-rows">' + (rows.length ? rows.join('') : '<div class="goal-empty">Пусто</div>') + '</div>' +
       (footerHtml || '') +
-      '<button type="button" class="goal-block-add" onclick="window.__goalsOpenModalForBtn && window.__goalsOpenModalForBtn(event)">+ Добавить проект</button>' +
+      '<button type="button" class="goal-block-add" data-goal-create-stage="' + esc(blockType === 'work' ? 'working' : blockType) + '">+ Добавить проект</button>' +
       '</div>';
   }
   function getGoalRecencyTs(p) {
@@ -2529,7 +2529,7 @@
             '<button type="button" class="goal-month-nav-btn" onclick="window.__goalsMonthNext()" title="Следующий месяц">▶</button>' +
           '</span>' +
           '<button type="button" class="goal-work-eq-btn" onclick="window.__goalsScrollToWork && window.__goalsScrollToWork()" title="Перейти к блоку В РАБОТЕ">🎯 В РАБОТЕ</button>' +
-          (!isArchiveView ? '<button type="button" class="goal-add-btn" onclick="window.__goalsOpenModalForBtn && window.__goalsOpenModalForBtn(event)">+ ПРОЕКТ</button>' : '') +
+          (!isArchiveView ? '<button type="button" class="goal-add-btn" data-goal-create-stage="working">+ ПРОЕКТ</button>' : '') +
           '<span class="goals-path-sep">/</span>' +
           '<span class="goal-counter goal-counter-total" title="Всего проектов">ВСЕГО ПРОЕКТОВ <b>' + totalCount + '</b></span>' +
           '<span class="goals-path-sep">/</span>' +
@@ -2723,22 +2723,6 @@
     window.__goalsDeletePermanent = deletePermanent;
     window.__goalsSelectRow = selectGoalRow;
     window.__goalsShowPricePopup = showPricePopup;
-    window.__goalsOpenModal = openModal;
-    window.__goalsOpenModalForWeek = function(ev, wn) {
-      var btn = ev && (ev.currentTarget || ev.target);
-      openModal(btn, wn, 'weekly');
-    };
-    window.__goalsOpenModalForBtn = function(ev) {
-      var btn = ev && (ev.currentTarget || ev.target);
-      var stage = 'working';
-      var block = btn && btn.closest ? btn.closest('.goal-block') : null;
-      if (block) {
-        if (block.classList.contains('goal-block-sold')) stage = 'sold';
-        else if (block.classList.contains('goal-block-archive')) stage = 'archive';
-        else if (block.classList.contains('goal-block-work')) stage = 'working';
-      }
-      openModal(btn, null, stage);
-    };
     window.__goalsSetStage = setStage;
     window.__goalsQuickSetSold = quickSetSold;
     window.__goalsShowSendToWeek = showSendToWeekPopup;
@@ -4093,12 +4077,25 @@
   }
 
   function openModal(anchorEl, weekNum, forcedStage) {
+    if (window.AVITOLOG_BACKEND_SERVER_ONLY && window.AVITOLOG_BACKEND_INITIAL_SYNC_READY !== true) {
+      showGoalsSmallToast('CRM ещё подключается. Дождитесь загрузки или восстановите подключение.');
+      return;
+    }
+    if (typeof window.__avitologBackendReadOnly === 'function' && window.__avitologBackendReadOnly()) {
+      showGoalsSmallToast('Этот профиль открыт только для просмотра.');
+      return;
+    }
+    var modalScope = goalsStorageKey(), modalMonth = _goalsViewMonth;
     var existing = document.getElementById('goalModal');
     if (existing) existing.remove();
     var isPopover = !!(anchorEl && anchorEl.getBoundingClientRect);
     var modal = document.createElement('div');
     modal.id = 'goalModal';
     modal.className = 'goal-modal-overlay' + (isPopover ? ' goal-modal-popover' : '');
+    modal.style.zIndex = '2147482400';
+    modal.setAttribute('role', 'dialog');
+    modal.setAttribute('aria-modal', 'true');
+    modal.setAttribute('aria-label', 'Новый проект');
     var today = getBusinessNow();
     var todayStr = today.getFullYear() + '-' + pad2(today.getMonth() + 1) + '-' + pad2(today.getDate());
     var modalStage = normalizeStage(forcedStage || 'weekly');
@@ -4189,6 +4186,12 @@
       if (v && newTags.indexOf(v) < 0) { newTags.push(v); inp.value = ''; refreshNewTagsList(); }
     };
     document.getElementById('goalModalSave').onclick = function() {
+      if (modalScope !== goalsStorageKey() || modalMonth !== _goalsViewMonth ||
+          window.AVITOLOG_BACKEND_SERVER_ONLY && window.AVITOLOG_BACKEND_INITIAL_SYNC_READY !== true ||
+          typeof window.__avitologBackendReadOnly === 'function' && window.__avitologBackendReadOnly()) {
+        showGoalsSmallToast('Режим изменился. Откройте добавление проекта в нужной неделе ещё раз.');
+        return;
+      }
       var name = ((document.getElementById('goalInpName') || {}).value || '').trim();
       if (!name) { alert('Введите название'); return; }
       var selEmoji = modal.querySelector('.goal-emoji-btn.goal-emoji-sel');
@@ -4244,7 +4247,37 @@
       modal.remove();
       render();
     };
+    if (nameInput) nameInput.focus();
   }
+
+  function openGoalCreateButton(button, weekNum) {
+    var week = Number(weekNum || button && button.getAttribute('data-goal-create-week'));
+    var block = button && button.closest ? button.closest('.goal-block') : null;
+    var stage = button && button.getAttribute('data-goal-create-stage') || 'working';
+    if (week >= 1 && week <= 4) stage = 'weekly';
+    else if (block && block.classList.contains('goal-block-sold')) stage = 'sold';
+    else if (block && block.classList.contains('goal-block-archive')) stage = 'archive';
+    try { openModal(button, stage === 'weekly' ? week : null, stage); }
+    catch (error) {
+      var modal = document.getElementById('goalModal'); if (modal) modal.remove();
+      console.warn('CRM create form failed', error);
+      showGoalsSmallToast('Не удалось открыть форму: ' + (error.message || String(error)));
+    }
+  }
+  // Register once at module load, independently of rendering and background refreshes.
+  document.addEventListener('click', function(event) {
+    var button = event.target && event.target.closest && event.target.closest('[data-goal-create-week],[data-goal-create-stage]');
+    if (!button || button.disabled) return;
+    event.preventDefault(); event.stopPropagation();
+    openGoalCreateButton(button);
+  }, true);
+  window.__goalsOpenModal = openModal;
+  window.__goalsOpenModalForWeek = function(event, week) {
+    openGoalCreateButton(event && (event.currentTarget || event.target), week);
+  };
+  window.__goalsOpenModalForBtn = function(event) {
+    openGoalCreateButton(event && (event.currentTarget || event.target));
+  };
 
   function getSelectedLeftPayload() {
     var active = (typeof window.__goalsGetActiveClient === 'function' && window.__goalsGetActiveClient()) || null;
