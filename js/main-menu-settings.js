@@ -20,9 +20,10 @@
     { key: 'assets', buttonId: 'btnAssets', label: 'Касса' },
     { key: 'tasks', buttonId: 'btnTasks', label: 'Задачи' },
     { key: 'ads', buttonId: 'btnAds', label: 'ADS' },
-    { key: 'accounts', buttonId: 'btnAvitoAccounts', label: 'Аккаунты Avito' }
+    { key: 'accounts', buttonId: 'btnAvitoAccounts', label: 'Аккаунты Avito' },
+    { key: 'protection', buttonId: 'btnAvitoProtection', label: 'Антискрутка' }
   ];
-  var REQUIRED_ORDER_KEYS = ['goals', 'analytics', 'projects', 'assets', 'tasks', 'ads', 'accounts'];
+  var REQUIRED_ORDER_KEYS = ['goals', 'analytics', 'projects', 'assets', 'tasks', 'ads', 'accounts', 'protection'];
   var KNOWN_ORDER_KEYS = REQUIRED_ORDER_KEYS.concat(['strategy', 'agency']);
   var MAX_ORDER_ITEMS = 16;
   var NAVIGATION_FUNCTIONS = [

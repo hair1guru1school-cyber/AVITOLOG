@@ -4,6 +4,7 @@ import { createAccountMetricCache, retainAccountMetricFields } from './avito-met
 import { createAvitoMessenger, messengerRoute, messengerPagination, messengerBody, requireMessengerScope } from './avito-messenger.mjs';
 import { createAvitoBidding, createBiddingStore, biddingRoute, requireBiddingScope } from './avito-bidding.mjs';
 import { registerBidWorker } from './avito-bid-worker.mjs';
+import { registerProtectionWorker } from './avito-protection-worker.mjs';
 import { signAccountRelayRequest, accountStatisticsRange, unavailableAccountHistory, safeAccountStatistics, readAccountMetadataPages, readAccountListingSummary, createProviderReadDiagnostic } from './avito-accounts-core.mjs';
 
 const API = '/api/integrations/avito-invites';
@@ -228,6 +229,7 @@ export function createAvitoInvitesHandler(options = {}) {
   const messenger = createAvitoMessenger({ requestJson, now, module: 'oauth', logger: typeof options.messengerLogger === 'function' ? options.messengerLogger : record => console.warn('avito_messenger_failure', JSON.stringify(record)) });
   const bidding = createAvitoBidding({ requestJson, fetch: fetchImpl, now, signingSecret: cfg.encryptionKey, module: 'oauth', store: options.biddingStore || createBiddingStore(service) });
   registerBidWorker(options.biddingWorkerRegistry, 'oauth', { service, activeToken, bidding, scope: requireBiddingScope, getRow: async (org, id) => (await service('avito_connections?select=id,organization_id,avito_user_id,status,scopes,credential_version,token_expires_at&organization_id=eq.' + org + '&id=eq.' + id + '&limit=1'))?.[0] });
+  registerProtectionWorker(options.protectionWorkerRegistry, 'oauth', { service, activeToken, requestJson, now, getRow: async (org,id) => (await service('avito_connections?select=id,organization_id,avito_user_id,status,scopes,credential_version,token_expires_at&organization_id=eq.'+org+'&id=eq.'+id+'&limit=1'))?.[0] });
   function ready() { if (!cfg.ready) throw fail(503, 'configuration'); }
   async function userRequest(route, authorization) { return requestJson(cfg.supabaseUrl + '/rest/v1/' + route, { headers: { apikey: cfg.anonKey, Authorization: authorization } }, 'permission_denied', 131072); }
   async function authenticate(request, org) {
