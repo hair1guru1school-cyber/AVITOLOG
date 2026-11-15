@@ -72,6 +72,7 @@ async function completedQueue(options={}){
   if(url.includes('/items?')){
    reads.push(url);if(options.fail)throw Error('Provider offline');
    const offset=Number(new URL(url,'https://fixture.invalid').searchParams.get('offset'));
+   if(options.failTailOnce&&offset===99&&reads.length===2)throw Error('Temporary provider failure');
    const items=(offset===0?old.slice(0,20):old.slice(20)).map(item=>({...item,promotion:options.paidId===item.item_id?item.promotion:{mode:'base'}}));
    return {items,next_offset:offset===0?99:null};
   }
@@ -94,4 +95,11 @@ test('fresh paid promotion remains in the group instead of forcing a cosmetic ze
 test('failed completion refresh retains the old paid group rather than claiming zero',async()=>{
  const h=await completedQueue({fail:true});assert.equal(h.state.items.filter(item=>item.promotion.mode==='manual').length,31);assert.ok(h.state.promotionRefreshKey);assert.equal(h.state.promotionRefreshDone,undefined);
  assert.doesNotMatch(h.state.status,/С платным продвижением: 0/);
+});
+test('a transient failure resumes the unfinished recount instead of downloading earlier pages again',async()=>{
+ const h=await completedQueue({failTailOnce:true});assert.ok(h.state.promotionRefreshKey);
+ all(h.state.parts.jobs).find(e=>e.textContent==='Обновить результат').fire('click');
+ for(let n=0;n<300;n++){await new Promise(r=>setImmediate(r));if(!h.state.jobsPromise&&!h.state.refreshingJobPromotions&&!h.state.loading&&!h.state.loadingAll)break;}
+ assert.deepEqual(h.reads.map(url=>Number(new URL(url,'https://fixture.invalid').searchParams.get('offset'))),[0,99,99]);
+ assert.equal(h.state.promotionRefreshKey,'');assert.match(h.state.status,/С платным продвижением: 0/);
 });

@@ -677,7 +677,10 @@
       var key = state.promotionRefreshKey;
       state.refreshingJobPromotions = true; state.promotionRefreshAttempts = (state.promotionRefreshAttempts || 0) + 1;
       state.promotionRefreshPromise = (async function() {
-        if (!await loadItems(state, false, true, true)) return;
+        if (state.promotionRefreshStarted !== key) {
+          if (!await loadItems(state, false, true, true)) return;
+          state.promotionRefreshStarted = key;
+        }
         if (state.next != null) await loadAllItems(state);
         if (!valid(state) || state.next != null || state.summaryError) return;
         state.promotionRefreshDone = key;
