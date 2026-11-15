@@ -498,6 +498,7 @@
       target.append(el('small', 'avb-stats-period', statsPeriodLabel(state) + ' · Загружено объявлений: ' + state.items.length + ' · Нажмите заголовок для сортировки' + (state.next != null ? ' · Список загружен частично' : '') + (state.loadingAll ? state.cancelAllLoad ? ' · Останавливаем загрузку…' : ' · Загружаем остальные…' : '') + (hasStale ? ' · Часть статистики из предыдущего обновления' : '') + (hasMissing ? ' · Часть статистики недоступна' : '')));
       if (dashboard) { if(state.parts.groupBars)state.parts.groupBars.replaceChildren(dashboard.renderBars(state,dashboardEnv(state)));else target.append(dashboard.renderBars(state, dashboardEnv(state))); if (state.cacheWarning) target.append(el('small', 'avb-warning', 'Кэш браузера недоступен. Серверные группы и ставки сохранены; снимки пока только в памяти вкладки.')); }
       [search, group, name, emoji, color].forEach(function (input) { input.addEventListener('blur', function () { if (valid(state) && state.toolbarPending) win.setTimeout(function () { renderToolbar(state); }, 0); }); });
+      refreshJobPromotions(state);
     }
     function renderTable(state) {
       if (!valid(state) || !state.parts) return;
@@ -664,12 +665,27 @@
         var quote = await request(state, '/queue-preview', { item_ids: ids, change: { mode: 'base' } });
         var targets = quote.item_ids, allowed = new Set(ids);
         if (!Array.isArray(targets) || quote.count !== targets.length || new Set(targets).size !== targets.length || targets.some(function(id){return !allowed.has(String(id));})) throw Error('Сервер не подтвердил состав отключения.');
-        if (!targets.length) { note(state, 'Платное продвижение уже отключено.'); return; }
+        if (!targets.length) { state.promotionRefreshKey = 'empty:' + Date.now(); state.promotionRefreshAttempts = 0; note(state, 'Платное продвижение уже отключено. Обновляем состав группы.'); return; }
         if (!quote.quote || !quote.after || quote.after.mode !== 'base') throw Error('Сервер не подтвердил отключение.');
         state.groupId = PAID_GROUP_ID; state.filter = ''; state.groupSelection = false; state.selected = new Set(targets.map(String));
         await confirmDisable(state, quote);
       } catch (error) { note(state, message(error), 'error'); }
       finally { state.preparingDisable = false; if (valid(state)) { renderToolbar(state); renderPreview(state); } }
+    }
+    function refreshJobPromotions(state) {
+      if (!state.promotionRefreshKey || state.promotionRefreshAttempts >= 3 || state.refreshingJobPromotions || !valid(state) || !state.dialog || !state.dialog.open || state.busy || state.preparingDisable || state.loading || state.loadingAll) return;
+      var key = state.promotionRefreshKey;
+      state.refreshingJobPromotions = true; state.promotionRefreshAttempts = (state.promotionRefreshAttempts || 0) + 1;
+      state.promotionRefreshPromise = (async function() {
+        if (!await loadItems(state, false, true, true)) return;
+        if (state.next != null) await loadAllItems(state);
+        if (!valid(state) || state.next != null || state.summaryError) return;
+        state.promotionRefreshDone = key;
+        if (state.promotionRefreshKey === key) state.promotionRefreshKey = '';
+        var paid = allGroups(state).find(function(group) { return group.id === PAID_GROUP_ID; });
+        note(state, 'Продвижение перепроверено в Авито. С платным продвижением: ' + paid.item_ids.length + '.');
+      }()).catch(function(error) { if (valid(state)) note(state, message(error) + ' Предыдущий состав группы сохранён.', 'warning'); })
+        .finally(function() { state.refreshingJobPromotions = false; state.promotionRefreshPromise = null; });
     }
     async function pollJobs(state) {
       if (!valid(state)) return;
@@ -678,10 +694,13 @@
       state.jobsPromise = (async function() {
       try { var previous = new Map((state.jobs || []).map(function(job) { return [job.id, job.counts && job.counts.applied || 0]; })), reply = await request(state, '/jobs'); if (!Array.isArray(reply.jobs)) throw Error('Статус очереди не подтверждён.');
         var changed = reply.jobs.some(function(job) { return previous.has(job.id) && (job.counts && job.counts.applied || 0) > previous.get(job.id); }); state.jobs = reply.jobs; state.jobsError = ''; state.jobsCheckedAt = Date.now(); renderSummary(state); renderServerJobs(state);
-        if (changed && state.dialog && state.dialog.open && !state.busy && !state.loadingAll && Date.now()-(state.lastJobListRefresh||0)>60000) { state.lastJobListRefresh=Date.now(); loadItems(state, false, true, true).then(function(ok) { if (ok && valid(state) && state.next != null) loadAllItems(state); }); }
+        var terminalKey = reply.jobs.filter(function(job) { return ['complete','partial','blocked','cancelled','expired'].indexOf(job.status) >= 0 && job.counts && job.counts.applied > 0; }).map(function(job) { return job.id + ':' + job.status + ':' + job.counts.applied; }).join('|');
+        if (terminalKey && terminalKey !== state.promotionRefreshDone && terminalKey !== state.promotionRefreshKey) { state.promotionRefreshKey = terminalKey; state.promotionRefreshAttempts = 0; }
+        refreshJobPromotions(state);
+        if (changed && !state.promotionRefreshKey && !state.refreshingJobPromotions && state.dialog && state.dialog.open && !state.busy && !state.loadingAll && Date.now()-(state.lastJobListRefresh||0)>60000) { state.lastJobListRefresh=Date.now(); loadItems(state, false, true, true).then(function(ok) { if (ok && valid(state) && state.next != null) loadAllItems(state); }); }
       } catch (error) { state.jobsError = 'Не удалось обновить результат. Последний подтверждённый статус сохранён.'; renderServerJobs(state); }
       renderDisableAll(state);
-      if (valid(state) && (state.jobs||[]).some(function(job){return ['queued','running'].indexOf(job.status)>=0;})) { state.jobsTimer = win.setTimeout(function () { pollJobs(state); }, 3000); if(state.jobsTimer&&state.jobsTimer.unref)state.jobsTimer.unref(); }
+      if (valid(state) && ((state.jobs||[]).some(function(job){return ['queued','running'].indexOf(job.status)>=0;}) || state.promotionRefreshKey && state.promotionRefreshAttempts < 3 && state.dialog && state.dialog.open)) { state.jobsTimer = win.setTimeout(function () { pollJobs(state); }, state.promotionRefreshKey ? 15000 : 3000); if(state.jobsTimer&&state.jobsTimer.unref)state.jobsTimer.unref(); }
       }()).finally(function() { state.jobsPromise = null; }); return state.jobsPromise;
     }
     function renderServerJobs(state) {
@@ -717,14 +736,14 @@
         if (change.mode === 'base' && Array.isArray(reply.item_ids)) {
           var targets = reply.item_ids.map(String), allowed = new Set(ids);
           if (reply.count !== targets.length || new Set(targets).size !== targets.length || targets.some(function(id) { return !allowed.has(id); })) throw Error('Сервер вернул другой состав отключения.');
-          if (!targets.length) { note(state, 'Платное продвижение уже отключено. Новая очередь не требуется.'); return; }
+          if (!targets.length) { state.promotionRefreshKey = 'empty:' + Date.now(); state.promotionRefreshAttempts = 0; note(state, 'Платное продвижение уже отключено. Обновляем состав группы.'); return; }
           state.selected = new Set(targets); state.groupSelection = false; ids = targets; fingerprint = JSON.stringify([ids,state.form]); renderTable(state);
         }
         if (!reply.quote || !reply.after || reply.count!==ids.length) throw Error('Сервер не подтвердил очередь.');
         state.serverDraft={reply:reply,fingerprint:fingerprint};
         note(state,'Проверьте ставку и общий предел расходов. Очередь ещё не запущена.');
       } catch(error) { if(state.formError)state.formError.textContent=message(error); note(state,message(error),'error'); }
-      finally {state.busy=false;renderPreview(state);}
+      finally {state.busy=false;renderPreview(state);refreshJobPromotions(state);}
     }
     function prepareBulk(state, ids, form) {
       if (state.groupSelection && state.next != null) throw new Error('Сначала дождитесь загрузки всей группы. Предыдущие данные остаются на экране.');

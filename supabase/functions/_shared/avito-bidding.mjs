@@ -286,6 +286,8 @@ export function createAvitoBidding({ requestJson, fetch: fetchImpl = globalThis.
           if (manual != null && (!object(manual) || !money(manual.bidPenny)) || auto != null && (!object(auto) || !money(auto.budgetPenny) || !['1d', '7d', '30d'].includes(auto.budgetType))) throw fail(502, 'bidding_invalid_response');
           item.promotion = { mode: manual ? 'manual' : auto ? 'auto' : 'base', action_type_id: value.actionTypeID, bid_penny: manual ? manual.bidPenny : null, limit_penny: manual ? optionalMoney(manual.limitPenny) : null, budget_penny: auto ? auto.budgetPenny : null, budget_type: auto ? auto.budgetType : null };
         }
+        // A valid bulk response omits items without paid promotion; failures stay unknown.
+        for (const item of items) if (!item.promotion) item.promotion = { mode: 'base', action_type_id: null, bid_penny: null, limit_penny: null, budget_penny: null, budget_type: null };
       } catch (error) { for (const item of items) { item.promotion = null; item.promotion_error = error.code || 'bidding_promotions_unavailable'; } } })(),
       (async () => {
         const result = await statistics(context, items, statisticsPeriod);

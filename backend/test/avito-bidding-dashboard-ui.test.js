@@ -12,7 +12,7 @@ function harness(options={}){
  let clock=Date.now(),current=true;class Clock extends Date{static now(){return clock;}}
  const h={module:{exports:{}},Date:Clock};vm.runInNewContext(read('avito-bidding.js'),h);
  const saved=new Map(),calls=[],bids=new Map(),body=new Element('body');
- const win={document:{body,createElement:t=>new Element(t)},crypto:{randomUUID:()=> 'new-group'},Option:function(t,v){const e=new Element('option');e.textContent=t;e.value=v;return e;},setTimeout(f,ms){if(ms!==400)clock+=ms;queueMicrotask(f);return 1;},clearTimeout(){},AvitoBiddingDashboard:{...dashboard,createStorage:()=>({read:async key=>{await options.restoreWait;return options.restore||saved.get(key);},write:async(key,value)=>{saved.set(key,value);}})}};
+ const win={document:{body,createElement:t=>new Element(t)},crypto:{randomUUID:()=> 'new-group'},Option:function(t,v){const e=new Element('option');e.textContent=t;e.value=v;return e;},setTimeout(f,ms){if(options.noPollTimers&&[3000,15000].includes(ms))return 1;if(ms!==400)clock+=ms;queueMicrotask(f);return 1;},clearTimeout(){},AvitoBiddingDashboard:{...dashboard,createStorage:()=>({read:async key=>{await options.restoreWait;return options.restore||saved.get(key);},write:async(key,value)=>{saved.set(key,value);}})}};
  const groups=[{id:'group-a',name:'Group A',item_ids:Array.from({length:21},(_,i)=>String(i+1))},{id:'group-b',name:'Group B',item_ids:Array.from({length:21},(_,i)=>String(i+11))}];
  const items=Array.from({length:31},(_,i)=>{const id=String(i+1);bids.set(id,1500);return {item_id:id,title:'Item '+id,status:'active',promotion:{mode:'manual',action_type_id:5,bid_penny:1500,limit_penny:100000}};});
  const detail=id=>({item_id:id,action_type_id:5,current:{mode:'manual',action_type_id:5,bid_penny:bids.get(id),limit_penny:100000},manual:{min_bid_penny:100,max_bid_penny:10000,min_limit_penny:1000,max_limit_penny:500000,recommended_bid_penny:2300,ladder:[]}});
@@ -48,8 +48,8 @@ test('a resumed cached pagination tail cannot delete pages loaded before the rel
 test('overlay refresh keeps old rows until the full traversal confirms removed ads',async()=>{
  const h=harness();await h.open();const old=h.state.items.slice();
  h.ctx.api=async url=>({items:url.includes('offset=0&')?old.slice(0,2):old.slice(2,3),next_offset:url.includes('offset=0&')?99:null});
- all(h.state.parts.toolbar).find(e=>e.textContent==='Обновить список').fire('click');await settle(h.state);assert.equal(h.state.items.length,31);
- all(h.state.parts.toolbar).find(e=>e.textContent==='Ещё объявления').fire('click');await settle(h.state);assert.deepEqual(Array.from(h.state.items,i=>i.item_id),['1','2','3']);
+ const observed=[];const api=h.ctx.api;h.ctx.api=async(...args)=>{const result=await api(...args);if(args[0].includes('offset=99'))observed.push(h.state.items.length);return result;};
+ all(h.state.parts.toolbar).find(e=>e.textContent==='Обновить список').fire('click');await settle(h.state);assert.deepEqual(observed,[31],'old rows stay visible until the refresh traversal completes');assert.deepEqual(Array.from(h.state.items,i=>i.item_id),['1','2','3']);
 });
 
 test('choosing a group bar clears search instead of silently applying only its search matches',async()=>{
@@ -59,4 +59,39 @@ test('choosing a group bar clears search instead of silently applying only its s
 test('first network page waits for durable restoration and overlays its prior cached tail',async()=>{
  let resolve;const restoreWait=new Promise(r=>{resolve=r;}),restore={loaded:true,loadedAt:Date.now()-120000,items:[{item_id:'99',title:'Cached tail'}],details:[],groups:[],revision:0,next:null};
  const h=harness({restoreWait,restore,partial:true});await new Promise(r=>setImmediate(r));assert.equal(h.calls.length,0,'network cannot overwrite a cache that is still opening');resolve();await h.open();assert.equal(h.state.items.some(i=>i.item_id==='99'),true);assert.equal(h.state.restored,true);
+});
+
+async function completedQueue(options={}){
+ const h=harness({noPollTimers:true});await h.open();
+ const original=h.ctx.api,old=h.state.items.slice(),reads=[];
+ h.ctx.serverQueue=true;h.state.jobsChecked=false;h.state.lastJobListRefresh=Date.now()+60000;
+ h.state.parts.jobs=new Element('section');
+ h.state.jobs=[{id:'base-job',intent:{mode:'base'},status:'running',item_count:31,counts:{applied:31}}];
+ h.ctx.api=async(url,opts)=>{
+  if(url.split('?')[0].endsWith('/jobs'))return {jobs:[{...h.state.jobs[0],status:'complete'}]};
+  if(url.includes('/items?')){
+   reads.push(url);if(options.fail)throw Error('Provider offline');
+   const offset=Number(new URL(url,'https://fixture.invalid').searchParams.get('offset'));
+   const items=(offset===0?old.slice(0,20):old.slice(20)).map(item=>({...item,promotion:options.paidId===item.item_id?item.promotion:{mode:'base'}}));
+   return {items,next_offset:offset===0?99:null};
+  }
+  return original(url,opts);
+ };
+ h.api.mount(h.host,h.ctx);
+ for(let n=0;n<300;n++){await new Promise(r=>setImmediate(r));if(!h.state.jobsPromise&&!h.state.refreshingJobPromotions&&!h.state.loading&&!h.state.loadingAll)break;}
+ return {...h,reads};
+}
+test('terminal queue status forces a full fresh group recount even with unchanged applied count and a fresh cache',async()=>{
+ const h=await completedQueue();assert.equal(h.reads.length,2);assert.equal(h.state.items.length,31);
+ assert.equal(h.state.items.filter(item=>item.promotion.mode!=='base').length,0);
+ assert.ok(h.state.promotionRefreshDone);assert.equal(h.state.promotionRefreshKey,'');
+ assert.match(h.state.status,/С платным продвижением: 0/);
+ const bars=all(h.state.parts.groupBars||h.state.parts.toolbar);assert.ok(bars.some(e=>String(e.textContent).includes('С платным продвижением')));
+});
+test('fresh paid promotion remains in the group instead of forcing a cosmetic zero',async()=>{
+ const h=await completedQueue({paidId:'31'});assert.equal(h.state.items.filter(item=>item.promotion.mode!=='base').length,1);assert.match(h.state.status,/С платным продвижением: 1/);
+});
+test('failed completion refresh retains the old paid group rather than claiming zero',async()=>{
+ const h=await completedQueue({fail:true});assert.equal(h.state.items.filter(item=>item.promotion.mode==='manual').length,31);assert.ok(h.state.promotionRefreshKey);assert.equal(h.state.promotionRefreshDone,undefined);
+ assert.doesNotMatch(h.state.status,/С платным продвижением: 0/);
 });

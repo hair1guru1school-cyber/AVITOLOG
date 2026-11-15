@@ -32,7 +32,7 @@ async function harness(options = {}) {
     if (url.includes('/core/v1/accounts/')) return { status: options.itemStatus || 'active' };
     if (url.includes('/cpxpromo/1/getBids/')) return structuredClone(value);
     if (url.includes('/core/v1/items?')) { const parsed = new URL(url), limit = Number(parsed.searchParams.get('per_page')), page = Number(parsed.searchParams.get('page')); return { resources: options.itemResources || [{ id: 1234, title: '<b>Real title</b>', status: 'active', url: 'https://www.avito.ru/test_1234' }], meta: { page, per_page: limit } }; }
-    if (url.endsWith('/getPromotionsByItemIds')) { if (options.promotionsFail) throw Object.assign(new Error(), { code: 'bidding_promotions_unavailable' }); return { items: [{ itemID: 1234, actionTypeID: 5, manualPromotion: { bidPenny: 200, limitPenny: 20000 } }] }; }
+    if (url.endsWith('/getPromotionsByItemIds')) { if (options.promotionsFail) throw Object.assign(new Error(), { code: 'bidding_promotions_unavailable' }); return options.promotionsResponse || { items: [{ itemID: 1234, actionTypeID: 5, manualPromotion: { bidPenny: 200, limitPenny: 20000 } }] }; }
     if (url.includes('/stats/v1/accounts/')) {
       await options.onStatistics?.();
       if (options.statisticsFail) throw Object.assign(new Error('private diagnostic'), { code: 'statistics_provider_error' });
@@ -108,6 +108,14 @@ test('list and detail perform no financial requests; list promotion failure pres
     assert.match(h.reads.find(read => read.url.includes('/core/v1/accounts/')).url, /\/accounts\/123\/items\/1234\/$/);
   }
 });
+test('successful empty promotion response clears old paid state, but failed or malformed reads stay unknown',async()=>{
+  const h=await harness({promotionsResponse:{items:[]}}),list=await h.run('items');
+  assert.equal(list.items[0].promotion.mode,'base');assert.equal(list.items[0].promotion.bid_penny,null);assert.equal(h.writes.length,0);
+  for(const options of [{promotionsFail:true},{promotionsResponse:{other:[]}}, {promotionsResponse:{items:[{itemID:9999,actionTypeID:5}]}}]){
+    const failed=await harness(options),result=await failed.run('items');assert.equal(result.items[0].promotion,null);assert.ok(result.items[0].promotion_error);assert.equal(failed.writes.length,0);
+  }
+});
+
 test('preview contains signed bounded change only and does not submit', async () => {
   const h = await harness(), result = await h.preview();
   assert.equal(h.writes.length, 0); assert.equal(h.audits.size, 0);
