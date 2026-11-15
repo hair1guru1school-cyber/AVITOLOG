@@ -40,14 +40,14 @@ async function acknowledged(response) {
 }
 export function biddingRoute(path, prefix) {
   if (!path.startsWith(prefix + '/')) return null;
-  const match = path.slice(prefix.length).match(/^\/([^/]+)\/bidding\/(items(?:\/([1-9][0-9]{0,15}))?|preview|apply|groups|jobs|queue-preview|queue-confirm|queue-cancel)$/);
+  const match = path.slice(prefix.length).match(/^\/([^/]+)\/bidding\/(items(?:\/([1-9][0-9]{0,15}))?|preview|apply|groups|jobs|queue-preview|queue-confirm|queue-cancel|queue-resume)$/);
   if (!match || !UUID.test(match[1])) return null;
   return { accountId: match[1], action: match[2].startsWith('items') ? match[3] ? 'detail' : 'items' : match[2], itemId: match[3] || null };
 }
 export function requireBiddingScope(row, action, oauth) {
   if (!row || row.status !== 'connected') throw fail(409, 'account_disconnected');
   if (!oauth) return;
-  const needed = ['items:info', 'cpxpromo:read', ...(['preview','apply','queue-preview','queue-confirm'].includes(action) ? ['cpxpromo:edit'] : [])];
+  const needed = ['items:info', 'cpxpromo:read', ...(['preview','apply','queue-preview','queue-confirm','queue-resume'].includes(action) ? ['cpxpromo:edit'] : [])];
   if (!Array.isArray(row.scopes) || needed.some(scope => !row.scopes.includes(scope))) throw fail(403, 'bidding_scope_required');
 }
 function ladder(value) {
@@ -353,6 +353,7 @@ export function createAvitoBidding({ requestJson, fetch: fetchImpl = globalThis.
       await own(context, id);
       const current = (await promotions(context, [id])).get(id);
       await context.guard();
+      if (context.reconcileBase && await context.reconcileBase(current) !== true) throw fail(409, 'bidding_reconciliation_pending');
       if (!current || current.mode === 'base') return { ok: true, status: 'applied', item_id: id, error: 'bidding_no_paid_promotion' };
       value = { item_id: id, action_type_id: current.action_type_id, current };
     } else value = await detail(context, id);
@@ -366,9 +367,9 @@ export function createAvitoBidding({ requestJson, fetch: fetchImpl = globalThis.
     const scope = { p_module: module, p_org: context.org, p_account: context.row.id, p_actor: context.actor };
     await context.guard();
     if (action === 'jobs') return { ok: true, jobs: await store.queue('list', scope) };
-    if (action === 'queue-cancel') {
+    if (action === 'queue-cancel' || action === 'queue-resume') {
       if (!object(body) || Object.keys(body).some(k => !['organization_id','job_id'].includes(k)) || !UUID.test(body.job_id || '')) throw fail(400, 'invalid_request');
-      return { ok: true, job: await store.queue('cancel', { ...scope, p_id: body.job_id }) };
+      return { ok: true, job: await store.queue(action === 'queue-resume' ? 'resume' : 'cancel', { ...scope, p_id: body.job_id }) };
     }
     if (action === 'queue-preview') {
       if (!object(body) || Object.keys(body).some(k => !['organization_id','item_ids','change'].includes(k)) || !Array.isArray(body.item_ids) || body.item_ids.length < 1 || body.item_ids.length > 10000 || !object(body.change)) throw fail(400, 'invalid_queue');
@@ -412,7 +413,7 @@ export function createAvitoBidding({ requestJson, fetch: fetchImpl = globalThis.
     return { ok: true, revision: saved.revision, groups: validateBiddingGroups(saved.groups) };
   }
   return { runQueued, async handle({ context, route, url, method, body }) {
-    if (method === 'GET' && route.action === 'jobs' || method === 'POST' && ['queue-preview','queue-confirm','queue-cancel'].includes(route.action)) return queue(context, route.action, body);
+    if (method === 'GET' && route.action === 'jobs' || method === 'POST' && ['queue-preview','queue-confirm','queue-cancel','queue-resume'].includes(route.action)) return queue(context, route.action, body);
     if (method === 'GET' && route.action === 'items') return list(context, url);
     if (method === 'GET' && route.action === 'detail') return { ok: true, bidding: await detail(context, route.itemId) };
     if (method === 'POST' && route.action === 'preview') return preview(context, body);

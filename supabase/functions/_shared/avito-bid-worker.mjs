@@ -15,17 +15,21 @@ export function registerBidWorker(registry, module, { service, getRow, activeTok
       const old = String(row.credential_version), token = await activeToken(row, canonical.organization_id, { user: { id: canonical.actor_id } });
       if (String(row.credential_version) !== old && await rpc('rotate_version', { ...lease, p_old: old, p_next: String(row.credential_version) }) !== true) throw fail('account_changed');
       row = await getRow(canonical.organization_id, canonical.account_id);
-      const guard = async () => {
+      const guard = async (full = false) => {
         canonical = await rpc('validate_lease', lease);
-        const current = await getRow(canonical.organization_id, canonical.account_id);
-        scope(current, 'apply', module === 'oauth');
-        if (String(current.credential_version) !== canonical.credential_version || current.avito_user_id !== row.avito_user_id) throw fail('account_changed');
+        if (String(row.credential_version) !== canonical.credential_version) throw fail('account_changed');
+        if (full) {
+          const current = await getRow(canonical.organization_id, canonical.account_id);
+          scope(current, 'apply', module === 'oauth');
+          if (String(current.credential_version) !== canonical.credential_version || current.avito_user_id !== row.avito_user_id) throw fail('account_changed');
+        }
       };
-      await guard();
-      const context = { row, org: canonical.organization_id, actor: canonical.actor_id, token, guard };
+      await guard(true);
+      const context = { row, org: canonical.organization_id, actor: canonical.actor_id, token, guard,
+        reconcileBase: current => rpc('reconcile_base', { ...lease, p_mode: current?.mode || 'base' }) };
       if (bidding.runQueued) {
         const result = await bidding.runQueued(context, claim.item_id, canonical.intent, async () => {
-          await guard();
+          await guard(true);
           if (await rpc('mark_submitting', lease) !== true) throw fail('queue_stopped');
           submitted = true;
         });

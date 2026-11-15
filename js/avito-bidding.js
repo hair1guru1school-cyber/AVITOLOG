@@ -400,10 +400,12 @@
       if (chart) editor.append(chart);
       var groupBars = state.ctx.serverQueue !== false ? el('section','avb-list-groups') : null;
       if(groupBars){var listPane=el('section','avb-list-pane');listPane.append(groupBars,table);layout.append(listPane,editor);}else layout.append(table,editor);
+      var disableHost = el('section', 'avb-disable-host');
+      if (state.ctx.serverQueue !== false) editor.append(disableHost);
       editor.append(controls, preview);
       foot.append(el('span', 'avb-muted', 'Ставки меняются только после подтверждения. После применения расходы идут по правилам Авито. Конкуренция и прогноз — оценки Авито, не гарантия заявок.'));
       dialog.append(head, status, toolbar, layout, foot); doc.body.append(dialog);
-      state.dialog = dialog; state.parts = { status: status, toolbar: toolbar, table: table, controls: controls, preview: preview, chart: chart, groupBars: groupBars };
+      state.dialog = dialog; state.parts = { status: status, toolbar: toolbar, table: table, controls: controls, preview: preview, chart: chart, groupBars: groupBars, disableHost: disableHost, editor: editor };
       dialog.addEventListener('close', function () { parentDialog(false); state.cancelPreview = true; state.cancelAllLoad = true; state.resumeContactsLoad = false; if (state.runner) state.runner.cancel(); });
       dialog.showModal(); renderToolbar(state); renderTable(state); renderControls(state); renderPreview(state);
       parentDialog(true);
@@ -455,7 +457,7 @@
       group.addEventListener('change', function () { if (!valid(state)) return; if (dashboard) { state.groupId = group.value; dashboardEnv(state).selectGroup(group.value, filtered(state)); return; } state.groupId = group.value; var selected = allGroups(state).find(function (row) { return row.id === group.value; }), appearance = groupAppearance(selected); state.groupName = selected ? selected.name : ''; state.groupEmoji = selected ? appearance.emoji : ''; state.groupColor = selected ? appearance.color : ''; renderToolbar(state, true); renderTable(state); if (state.groupId === CONTACT_GROUP_ID && (!state.loaded || state.loading || state.next != null)) loadAllItems(state); });
       var refresh = button(state, state.loading ? 'Обновляем…' : 'Обновить список', 'avb-secondary', async function () { loadGroups(state); if (await loadItems(state, false, false, true) && state.next != null) loadAllItems(state); }); refresh.disabled = state.loading || state.loadingAll || state.busy;
       target.append(search, group, refresh);
-      if (state.ctx.serverQueue !== false) { var disableAll = button(state, 'Отключить все ставки', 'avb-danger avb-disable-all', function() { prepareDisableAll(state); }); disableAll.title = 'Все активные объявления только этого аккаунта. Сначала покажем подтверждение; базовое размещение может быть платным.'; disableAll.disabled = state.busy || state.loadingAll || state.preparingDisable || !state.ctx.canManage; target.append(disableAll); }
+      renderDisableAll(state);
       if (state.loadingAll) { var cancelLoad = button(state, state.cancelAllLoad ? 'Останавливаем загрузку…' : 'Остановить загрузку', 'avb-secondary', function () { state.cancelAllLoad = true; note(state, 'Останавливаем оставшиеся страницы. Уже загруженные данные сохранены; отправленный запрос отменить нельзя.'); renderToolbar(state); }); cancelLoad.disabled = state.cancelAllLoad; target.append(cancelLoad); }
       else if (state.next != null) { var more = button(state, 'Ещё объявления', 'avb-secondary', function () { loadItems(state, true); }); more.disabled = state.loading || state.busy; target.append(more); var all = button(state, 'Загрузить все', 'avb-secondary', function () { loadAllItems(state); }); all.disabled = state.busy; target.append(all); }
       var selected = button(state, dashboard ? (state.filter ? 'Выбрать найденные' : 'Выбрать всю группу') : 'Выбрать видимые', 'avb-secondary', function () { var items = filtered(state); if (!dashboard && items.length > MAX_BATCH) return note(state, 'За один раз можно изменить до 20 объявлений. Уточните поиск или выберите строки вручную.', 'warning'); state.selected = new Set(items.map(function (item) { return String(item.item_id); })); state.groupSelection = !!dashboard; state.quotes = []; renderTable(state); renderControls(state); renderPreview(state); if (dashboard && state.next != null) loadAllItems(state); }); selected.disabled = state.busy; target.append(selected);
@@ -613,24 +615,59 @@
       if (!state.ctx.canManage) target.append(el('p', 'avb-warning', 'Только просмотр. Изменение расходов доступно владельцу или менеджеру.'));
     }
     function pendingIds(state) { return state.selected.size ? Array.from(state.selected) : state.selectedId ? [state.selectedId] : []; }
+    function renderDisableAll(state) {
+      if (!state.parts || !state.parts.disableHost || state.ctx.serverQueue === false) return;
+      var host = state.parts.disableHost; host.replaceChildren();
+      var baseJobs = (state.jobs || []).filter(function(job) { return job.intent && job.intent.mode === 'base'; });
+      var job = baseJobs.find(function(job) { return ['queued','running'].indexOf(job.status) >= 0; }) || baseJobs[0];
+      var active = job && ['queued','running'].indexOf(job.status) >= 0, counts = job && job.counts || {};
+      var done = (counts.applied||0)+(counts.rejected||0)+(counts.unknown||0)+(counts.cancelled||0)+(counts.superseded||0);
+      var remaining = job ? Math.max(0, job.item_count-(counts.applied||0)-(counts.superseded||0)) : 0;
+      var resume = job && remaining > 0 && ['partial','blocked','expired','cancelled'].indexOf(job.status) >= 0;
+      var text = state.preparingDisable ? 'Готовлю отключение…' : active ? 'Отключение: ' + (counts.applied||0) + ' / ' + job.item_count : resume ? 'Продолжить отключение · осталось ' + remaining : state.disableDraft ? 'Проверить запуск отключения' : 'Отключить все ставки';
+      var control = button(state, text, 'avb-danger avb-disable-all' + (active ? ' is-running' : ''), function() { if (resume) resumeDisable(state, job); else prepareDisableAll(state); });
+      control.disabled = !!active || state.busy || state.preparingDisable || !state.ctx.canManage;
+      control.setAttribute('aria-label', text); control.setAttribute('aria-busy', String(!!active || !!state.preparingDisable));
+      if (control.style && control.style.setProperty) control.style.setProperty('--avb-disable-progress', (job ? Math.min(100, 100*done/job.item_count) : 0) + '%');
+      host.append(control, el('small', 'avb-muted', active ? 'Серверная очередь сохранена. Можно закрыть окно и браузер.' : 'Один клик: отключение повышенных ставок и автобюджетов этого аккаунта. Базовое размещение может быть платным.'));
+      if (state.parts.editor) state.parts.editor.className = 'avb-editor' + (active && !state.showBidControls ? ' is-disabling' : '');
+      if (active) host.append(button(state, state.showBidControls ? 'Скрыть настройки ставок' : 'Настройки ставок', 'avb-secondary avb-job-refresh', function(){state.showBidControls=!state.showBidControls;renderDisableAll(state);}));
+    }
+    async function resumeDisable(state, job) {
+      if (!valid(state) || state.busy || !state.ctx.canManage) return;
+      state.busy = true; renderDisableAll(state);
+      try { var result = await request(state, '/queue-resume', { job_id: job.id }); if (!result.job) throw Error('Не подтверждено продолжение очереди.'); state.activeJobId = result.job.id; await pollJobs(state); note(state, 'Продолжаем с сохранённого места. Обработанные объявления не повторяются.'); }
+      catch (error) { note(state, message(error), 'error'); }
+      finally { state.busy = false; renderDisableAll(state); }
+    }
+    async function confirmDisable(state, quote) {
+      state.disableDraft = quote;
+      var result = await request(state, '/queue-confirm', { quote: quote.quote, confirmation: 'QUEUE_BIDS' });
+      if (!result.job) throw Error('Запуск не подтверждён. Нажмите «Проверить запуск»: повторяется только это же подтверждение.');
+      state.activeJobId = result.job.id; state.disableDraft = null; state.serverDraft = null;
+      await pollJobs(state); note(state, 'Отключение сохранено на сервере. Можно закрыть окно и браузер.');
+    }
     async function prepareDisableAll(state) {
       if (!valid(state) || state.busy || state.preparingDisable || !state.ctx.canManage) return;
       state.preparingDisable = true; state.serverDraft = null; renderToolbar(state); renderPreview(state);
       try {
+        if (state.disableDraft) { await confirmDisable(state, state.disableDraft); return; }
         note(state, 'Проверяем полный список этого аккаунта. Ставки пока не меняются.');
-        if (!await loadItems(state, false, true, true)) throw Error('Не удалось подтвердить актуальный список. Отключение не подготовлено.');
-        await loadAllItems(state);
-        if (!valid(state) || !state.dialog || !state.dialog.open) return;
+        if (!state.loaded || state.next != null || Date.now()-state.loadedAt>60000) {
+          if (!await loadItems(state, false, true, true)) throw Error('Не удалось подтвердить актуальный список.');
+          await loadAllItems(state);
+        }
+        if (!valid(state)) return;
         if (!state.loaded || state.next != null || state.loading) throw Error('Полный список ещё не получен. Отключение не подготовлено; повторите после загрузки.');
         if (!state.items.length) throw Error('Нет активных объявлений для отключения.');
-        var paid = state.items.filter(function(item) { return item.promotion && !item.promotion_error && !item.promotion_stale && ['manual','auto'].indexOf(item.promotion.mode) >= 0; });
-        if (!paid.length) { note(state, 'По свежим данным нет подтверждённого платного продвижения для отключения. Неизвестные настройки не считаются платными.'); return; }
-        state.groupId = PAID_GROUP_ID; state.filter = ''; state.groupSelection = false; state.selected = new Set(paid.map(function(item) { return String(item.item_id); }));
-        state.serverDraft = null; state.quotes = []; state.form.mode = 'base';
-        await choose(state, String(paid[0].item_id));
-        if (!valid(state) || !state.dialog.open) return;
-        state.form.mode = 'base'; renderToolbar(state, true); renderControls(state);
-        await serverPreviewChanges(state);
+        var ids = state.items.map(function(item) { return String(item.item_id); });
+        var quote = await request(state, '/queue-preview', { item_ids: ids, change: { mode: 'base' } });
+        var targets = quote.item_ids, allowed = new Set(ids);
+        if (!Array.isArray(targets) || quote.count !== targets.length || new Set(targets).size !== targets.length || targets.some(function(id){return !allowed.has(String(id));})) throw Error('Сервер не подтвердил состав отключения.');
+        if (!targets.length) { note(state, 'Платное продвижение уже отключено.'); return; }
+        if (!quote.quote || !quote.after || quote.after.mode !== 'base') throw Error('Сервер не подтвердил отключение.');
+        state.groupId = PAID_GROUP_ID; state.filter = ''; state.groupSelection = false; state.selected = new Set(targets.map(String));
+        await confirmDisable(state, quote);
       } catch (error) { note(state, message(error), 'error'); }
       finally { state.preparingDisable = false; if (valid(state)) { renderToolbar(state); renderPreview(state); } }
     }
@@ -641,9 +678,10 @@
       state.jobsPromise = (async function() {
       try { var previous = new Map((state.jobs || []).map(function(job) { return [job.id, job.counts && job.counts.applied || 0]; })), reply = await request(state, '/jobs'); if (!Array.isArray(reply.jobs)) throw Error('Статус очереди не подтверждён.');
         var changed = reply.jobs.some(function(job) { return previous.has(job.id) && (job.counts && job.counts.applied || 0) > previous.get(job.id); }); state.jobs = reply.jobs; state.jobsError = ''; state.jobsCheckedAt = Date.now(); renderSummary(state); renderServerJobs(state);
-        if (changed && state.dialog && state.dialog.open && !state.busy && !state.loadingAll) loadItems(state, false, true, true).then(function(ok) { if (ok && valid(state) && state.next != null) loadAllItems(state); });
+        if (changed && state.dialog && state.dialog.open && !state.busy && !state.loadingAll && Date.now()-(state.lastJobListRefresh||0)>60000) { state.lastJobListRefresh=Date.now(); loadItems(state, false, true, true).then(function(ok) { if (ok && valid(state) && state.next != null) loadAllItems(state); }); }
       } catch (error) { state.jobsError = 'Не удалось обновить результат. Последний подтверждённый статус сохранён.'; renderServerJobs(state); }
-      if (valid(state) && (state.jobs||[]).some(function(job){return ['queued','running'].indexOf(job.status)>=0;})) { state.jobsTimer = win.setTimeout(function () { pollJobs(state); }, 15000); if(state.jobsTimer&&state.jobsTimer.unref)state.jobsTimer.unref(); }
+      renderDisableAll(state);
+      if (valid(state) && (state.jobs||[]).some(function(job){return ['queued','running'].indexOf(job.status)>=0;})) { state.jobsTimer = win.setTimeout(function () { pollJobs(state); }, 3000); if(state.jobsTimer&&state.jobsTimer.unref)state.jobsTimer.unref(); }
       }()).finally(function() { state.jobsPromise = null; }); return state.jobsPromise;
     }
     function renderServerJobs(state) {
@@ -658,11 +696,11 @@
       jobs.slice(0,3).forEach(function (job) {
         var counts = job.counts || {}, row = el('div','avb-server-job'), done = (counts.applied||0)+(counts.rejected||0)+(counts.unknown||0)+(counts.cancelled||0)+(counts.superseded||0), meter = el('progress'); meter.max = job.item_count; meter.value = done;
         row.append(el('strong','',({queued:'В очереди',running:'Выполняется на сервере',complete:'Готово',partial:'Частично / заменено новой ставкой',blocked:'Остановлено: проверьте результат',cancelled:'Остановлено',expired:'Срок очереди истёк'})[job.status] || job.status),el('span','','Обработано '+(counts.applied||0)+' / '+job.item_count),meter);
-        row.append(el('small','avb-job-counts','Без платного продвижения: '+(counts.unchanged||0)+' · Ошибок: '+(counts.rejected||0)+' · Без подтверждения: '+(counts.unknown||0)+' · Не отправлено: '+((counts.cancelled||0)+(counts.superseded||0))+' · Осталось: '+((counts.pending||0)+(counts.preparing||0)+(counts.submitting||0))));
+        row.append(el('small','avb-job-counts','Без платного продвижения: '+(counts.unchanged||0)+' · Повторная проверка: '+(counts.retrying||0)+' · Ошибок: '+(counts.rejected||0)+' · Без подтверждения: '+(counts.unknown||0)+' · Не отправлено: '+((counts.cancelled||0)+(counts.superseded||0))+' · Осталось: '+((counts.pending||0)+(counts.preparing||0)+(counts.submitting||0))));
         var created = Date.parse(job.confirmed_at || job.created_at);
         if (Number.isFinite(created)) row.append(el('small', 'avb-job-counts', 'Запущена: ' + new Date(created).toLocaleString('ru-RU')));
         if (['queued','running'].indexOf(job.status)>=0) row.append(button(state,'Остановить оставшиеся','avb-secondary',async function(){try { await request(state,'/queue-cancel',{job_id:job.id}); if(state.jobsTimer)win.clearTimeout(state.jobsTimer);pollJobs(state); }catch(error){note(state,message(error),'error');}}));
-        if (job.status==='blocked') { var failure = (job.results||[]).find(function(r){return (r.status==='rejected'||r.status==='unknown')&&r.error_code;}) || {}; row.append(el('small','avb-warning','Автоматического повтора нет. '+message({code:failure.error_code,message:failure.error_code||'Проверьте результат в Авито.'}))); }
+        if (job.status==='blocked') { var failure = (job.results||[]).find(function(r){return (r.status==='rejected'||r.status==='unknown')&&r.error_code;}) || {}; row.append(el('small','avb-warning',(job.intent&&job.intent.mode==='base'?'Прогресс сохранён. После устранения ошибки нажмите «Продолжить отключение». ':'Автоматического повтора нет. ')+message({code:failure.error_code,message:failure.error_code||'Проверьте результат в Авито.'}))); }
         if (previous.indexOf(job) >= 0) history.append(row); else host.append(row);
       });
       if (previous.length) host.append(history);

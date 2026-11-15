@@ -396,6 +396,8 @@ body.day-mode .avb-summary .avb-primary,
 .avb-job-history>summary{cursor:pointer;padding:4px 0}
 .avb-job-history[open]{max-height:190px;overflow:auto}
 .avb-dialog .avb-disable-all{white-space:nowrap}
+.avb-disable-host{display:grid;gap:4px;flex:none}.avb-dialog .avb-disable-host .avb-disable-all{width:100%;min-height:48px;padding:11px 14px;font-size:15px;font-weight:800;white-space:normal;background:linear-gradient(90deg,rgba(44,196,144,.45) var(--avb-disable-progress,0%),rgba(221,71,100,.13) var(--avb-disable-progress,0%));border:1px solid #dc607d;border-radius:9px;transition:background .3s}.avb-disable-host small{font-size:10px;line-height:1.3}.avb-dialog .avb-disable-all.is-running{opacity:1;color:var(--avb-text,#edfaff);border-color:#3ac89d;cursor:progress}
+.avb-editor.is-disabling .avb-controls{display:none}.avb-disable-host>.avb-job-refresh{justify-self:start}
 @media(min-width:1100px){.avb-layout{grid-template-columns:minmax(0,1.85fr) minmax(350px,1fr)}}
 .avb-dialog button.avb-item-expand{min-height:24px;padding:2px 5px;margin-top:5px;font-size:10px;background:transparent;color:var(--avb-muted)}
 .avb-row-detail{padding:9px 11px;background:var(--avb-panel);font-size:11px;line-height:1.6}.avb-row-detail p{margin:5px 0}.avb-row-detail strong{color:var(--avb-accent)}
