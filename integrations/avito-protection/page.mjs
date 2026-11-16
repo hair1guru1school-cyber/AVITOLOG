@@ -1,5 +1,6 @@
-import { normalizeRules, defaultAccountIds } from '../../js/avito-protection-model.mjs';
-import { createCloudUI } from './cloud-ui.mjs?v=20261116-protection-compact1';
+import { normalizeRules, defaultAccountIds } from '../../js/avito-protection-model.mjs?v=20261116-protection-today1';
+import { createCloudUI } from './cloud-ui.mjs?v=20261116-protection-today1';
+import { createTodayUI } from './today-ui.mjs?v=20261116-protection-today1';
 const $=id=>document.getElementById(id),cfg=window.AVITOLOG_SUPABASE||{},params=new URL(location.href).searchParams;
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 let data=null,selected='',user='',loading=false,generation=0,seeded=false,editing=null;
@@ -24,13 +25,14 @@ async function session(){
  user=id;return s;
 }
 async function rpc(name,body){
- if(!['avito_guard_dashboard','avito_guard_save','avito_guard_cloud_dashboard','avito_guard_cloud_save'].includes(name))throw {code:'invalid_request'};
+ if(!['avito_guard_dashboard','avito_guard_save','avito_guard_cloud_dashboard','avito_guard_cloud_save','avito_guard_today'].includes(name))throw {code:'invalid_request'};
  const s=await session(),owner=user;
  const response=await fetch(cfg.url+'/rest/v1/rpc/'+name,{method:'POST',headers:{apikey:cfg.publishableKey,Authorization:'Bearer '+s.access_token,'Content-Type':'application/json'},body:JSON.stringify(body),signal:AbortSignal.timeout(20000)});
  const value=await response.json();await session();if(owner!==user)throw {code:'subject_mismatch'};
  if(!response.ok)throw {code:response.status===401?'auth_required':value?.code==='40001'?'revision_conflict':response.status===403?'permission_denied':'server_error'};return value;
 }
 const cloudUI=createCloudUI({rpc,setting,account,org,onStatus:status});
+const todayUI=createTodayUI({rpc,setting,events:()=>data?.events.filter(e=>e.settings_id===setting()?.id)||[]});
 function time(value){return value?new Date(value).toLocaleString('ru-RU',{timeZone:'Europe/Moscow',day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):'нет данных';}
 function viewEvents(){return (data?.events||[]).filter(e=>(!selected||e.settings_id===setting()?.id)&&(!$('filter').value||e.severity===$('filter').value));}
 function samplingStatus(){const s=setting(),r=data?.runtime.find(r=>r.settings_id===s?.id);return !s?'Подключите аккаунт для сбора статистики.':!s.enabled?'Сбор статистики выключен. Включите галочку у аккаунта для новых срезов.':r?.last_error&&r.last_error!=='statistics_partial'?'Сбор включён, но API временно недоступен. Ранее полученные данные сохранены.':r?.last_error==='statistics_partial'?'Сбор включён · Авито возвращает часть счётчиков.':r?.last_success_at?'Сбор статистики работает на сервере.':'Сбор включён · ожидаем первый срез Авито.';}
@@ -38,6 +40,7 @@ function render(){
  if(!data)return;
  const select=$('account');let old=selected;try{old=old||localStorage.getItem('avito_guard_account:'+user+':'+org)||'';}catch(_){}select.replaceChildren();for(const a of data.accounts){const option=el('option',a.display_name);option.value=key(a);select.append(option);}selected=data.accounts.some(a=>key(a)===old)?old:data.settings.length?key(data.settings[0]):data.accounts[0]?key(data.accounts[0]):'';select.value=selected;try{localStorage.setItem('avito_guard_account:'+user+':'+org,selected);}catch(_){}
  const s=setting(),runtime=data.runtime.find(r=>r.settings_id===s?.id);$('enabled').checked=s?.enabled===true;$('enabled').disabled=!account();
+ todayUI.render();
  $('add').hidden=Boolean(s);
  $('sampling').textContent=samplingStatus()+(runtime?.last_success_at?' Последний обход API: '+time(runtime.last_success_at)+'. Всего измерений карточек: '+runtime.sampled_items+'.':'');$('sampling').dataset.state=!s?.enabled?'paused':runtime?.last_error?'partial':'active';
  $('runtime').textContent=runtime?'Последний обход API: '+time(runtime.last_success_at)+' · всего полных измерений карточек: '+runtime.sampled_items+' · просканировано в текущем обходе: '+runtime.cycle_items+(runtime.last_error?' · '+runtime.last_error:''):s?'Ожидаем первый серверный срез':'Наблюдение не подключено';
@@ -56,10 +59,11 @@ async function load(seed=false){if(loading)return;loading=true;const turn=++gene
  if(!UUID.test(org||'')||params.get('embedded')==='1'&&!UUID.test(expected))throw {code:'subject_mismatch'};
  const result=await rpc('avito_guard_dashboard',{p_org:org});if(turn!==generation)return;if(!result||!Array.isArray(result.accounts)||!Array.isArray(result.settings))throw {code:'permission_denied'};data=result;await cloudUI.load();
  if(seed&&!seeded){seeded=true;const ids=defaultAccountIds(data.accounts.map(a=>({...a,id:key(a)})));for(const id of ids){if(data.settings.some(s=>key(s)===id))continue;selected=id;await save(true,{});}}
- render();status('График — подозрительные скачки, не общее число просмотров.');
- }catch(error){if(['auth_required','subject_mismatch','permission_denied'].includes(error.code)){generation++;data=null;selected='';cloudUI.clear();$('account').replaceChildren();$('events').replaceChildren();$('chart').replaceChildren();for(const id of ['signals','quarantines','unread'])$(id).textContent='—';$('runtime').textContent='';$('sampling').textContent='Войдите для просмотра статистики.';$('enabled').checked=false;$('enabled').disabled=true;if($('rules').open)$('rules').close();$('rules-form').reset();}status(message(error),true);}finally{loading=false;$('refresh').disabled=false;}}
-$('refresh').addEventListener('click',()=>load());$('account').addEventListener('change',()=>{selected=$('account').value;render();});$('filter').addEventListener('change',render);
-$('enabled').addEventListener('change',async()=>{const checkbox=$('enabled'),enabled=checkbox.checked;checkbox.disabled=true;try{await save(enabled);status(enabled?'Наблюдение включено. Объявления не меняются.':'Наблюдение выключено.');}catch(e){status(message(e),true);render();}});
+ render();await todayUI.load();status('Квадратики — просмотры за сегодня. График — подозрительные скачки.');
+ }catch(error){clearProtected(error);status(message(error),true);}finally{loading=false;$('refresh').disabled=false;}}
+function clearProtected(error){if(!['auth_required','subject_mismatch','permission_denied'].includes(error.code))return;generation++;data=null;selected='';cloudUI.clear();todayUI.clear();$('account').replaceChildren();$('events').replaceChildren();$('chart').replaceChildren();for(const id of ['signals','quarantines','unread'])$(id).textContent='—';$('runtime').textContent='';$('sampling').textContent='Войдите для просмотра статистики.';$('enabled').checked=false;$('enabled').disabled=true;if($('rules').open)$('rules').close();$('rules-form').reset();}
+$('refresh').addEventListener('click',()=>load());$('account').addEventListener('change',()=>{selected=$('account').value;render();todayUI.load().catch(error=>{clearProtected(error);status(message(error),true);});});$('filter').addEventListener('change',render);
+$('enabled').addEventListener('change',async()=>{const checkbox=$('enabled'),enabled=checkbox.checked;checkbox.disabled=true;try{await save(enabled);status(enabled?'Сбор включён. Обработка файла выполняется по настройкам облака.':'Наблюдение выключено.');}catch(e){status(message(e),true);render();}});
 $('add').addEventListener('click',async()=>{try{await save(false);status('Аккаунт подключён. Включите сбор сигналов.');}catch(e){status(message(e),true);}});
 $('seen').addEventListener('click',()=>{try{localStorage.setItem('avito_guard_seen:'+user+':'+org,new Date().toISOString());render();}catch(_){status('Не удалось сохранить отметку прочтения.',true);}});
 $('settings').addEventListener('click',()=>{if(!account())return;editing={account:{...account()},revision:setting()?.revision??-1,enabled:setting()?.enabled===true};const form=$('rules-form'),rules=normalizeRules(setting()?.rules||{});for(const [name,value]of Object.entries(rules)){const input=form.elements.namedItem(name);if(!input)continue;if(input.type==='checkbox')input.checked=value;else input.value=Array.isArray(value)?value.join(name==='titles'?'\n':', '):value;}$('save-status').textContent='';$('rules').showModal();});$('close-rules').addEventListener('click',()=>$('rules').close());

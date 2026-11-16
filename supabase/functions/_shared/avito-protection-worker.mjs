@@ -22,11 +22,11 @@ export function registerProtectionWorker(registry,module,{service,getRow,activeT
    if(ids.length){
     const data=await requestJson('https://api.avito.ru/stats/v1/accounts/'+id(row.avito_user_id)+'/items',{method:'POST',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({itemIds:ids.map(Number),dateFrom:date,dateTo:date,fields:['uniqContacts','uniqViews','uniqFavorites'],periodGrouping:'day'})},'guard_statistics_unavailable',524288);
     if(!Array.isArray(data?.result?.items)||data.result.items.length>ids.length)throw fail('invalid_statistics_response');
-    for(const item of data.result.items){const key=id(item.itemId);if(!ids.includes(key)||values.has(key)||!Array.isArray(item.stats))throw fail('invalid_statistics_response');const days=item.stats.filter(d=>d.date===date);if(days.length>1)throw fail('invalid_statistics_response');const d=days[0];if(d&&Number.isSafeInteger(d.uniqViews)&&d.uniqViews>=0&&Number.isSafeInteger(d.uniqContacts)&&d.uniqContacts>=0)values.set(key,{views:d.uniqViews,contacts:d.uniqContacts});}
+    for(const item of data.result.items){const key=id(item.itemId);if(!ids.includes(key)||values.has(key)||!Array.isArray(item.stats))throw fail('invalid_statistics_response');const days=item.stats.filter(d=>d.date===date);if(days.length>1)throw fail('invalid_statistics_response');const d=days[0],counter=v=>Number.isSafeInteger(v)&&v>=0?v:null;values.set(key,{views:counter(d?.uniqViews),contacts:counter(d?.uniqContacts)});}
    }
    await rpc('validate',lease);
    const rows=page.resources.map(item=>({id:id(item.id),title:String(item.title||'').slice(0,300),url:typeof item.url==='string'?item.url:null,date,...(values.get(id(item.id))||{views:null,contacts:null})}));
-   if(await rpc('record',{...lease,p_revision:c.revision,p_rows:rows,p_more:ids.length===99,p_error:values.size<ids.length?'statistics_partial':null})!==true)throw fail('guard_store_failed');
+   if(await rpc('record',{...lease,p_revision:c.revision,p_rows:rows,p_more:ids.length===99,p_error:rows.some(r=>r.views===null||r.contacts===null)?'statistics_partial':null})!==true)throw fail('guard_store_failed');
   }catch(error){
    console.warn('avito_guard_failure',JSON.stringify({code:/^[a-z_]{1,80}$/.test(error.code||'')?error.code:'guard_worker_failed',http_status:Number.isInteger(error.providerStatus)?error.providerStatus:null}));
    await rpc('failed',{...lease,p_error:/^[a-z_]{1,80}$/.test(error.code||'')?error.code:'guard_worker_failed'});
