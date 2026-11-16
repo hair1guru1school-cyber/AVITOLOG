@@ -4435,14 +4435,20 @@
     var data = loadData();
     data.projects = data.projects || [];
     var keyFolder = String(project.crmClientId || '').trim();
+    var keyRecord = String(project.crmClientRecordId || '').trim();
     var keyName = String(project.name || '').trim().toLowerCase();
     var existing = data.projects.find(function(x) {
       if (!x) return false;
       var isWeekly = !x.stage || x.stage === 'weekly';
       if (!isWeekly) return false;
-      if (keyFolder && String(x.crmClientId || x.folderId || '') === keyFolder) return true;
       var xn = String(x.name || x.company || '').trim().toLowerCase();
-      return !!(keyName && xn && xn === keyName);
+      // A stale folder binding must not merge two differently named projects.
+      if (!keyName || xn !== keyName) return false;
+      var record = String(x.crmClientRecordId || '').trim();
+      if (keyRecord && record) return keyRecord === record;
+      var folder = String(x.crmClientId || x.folderId || '').trim();
+      if (keyFolder && folder) return keyFolder === folder;
+      return true;
     });
     if (existing) {
       existing.weekIndex = weekNum;

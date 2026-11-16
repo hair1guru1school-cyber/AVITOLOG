@@ -18,6 +18,7 @@ function harness(suffix = '_sasha') {
       capture: function() { openModal = function(button, week, stage) { window.__opened(button, week, stage); }; },
       captureClient: function() { addClientToWeek = function(week, name) { window.__opened(null, week, name); }; },
       payload: getSelectedLeftPayload,
+      insert: function(client, data) { loadData = function() { return data; }; saveData = function() { return true; }; syncGoalToKassaIfReady = function() {}; render = function() {}; insertClientToWeekAt(3, '', 'weekly', client); return data.projects; },
       week: renderWeekSection, section: renderSection };
   ` + source.slice(end);
   window.__opened = (button, week, stage) => opened.push({ button, week, stage });
@@ -103,4 +104,12 @@ test('attached client selection never takes another project name or contacts fro
   const payload = h.api.payload(true);
   assert.equal(payload.company, 'Выкуп тачек'); assert.equal(payload.phone, 'selected-phone'); assert.equal(payload.telegram, 'selected-tg'); assert.equal(payload.contact_name || '', ''); assert.equal(payload.source_account_id, 'selected-source');
   assert.equal(h.api.payload().company, 'Блочник');
+});
+
+test('shared legacy folder links cannot replace another named CRM project', () => {
+  const h=harness();h.window.AVITOLOG_BACKEND_INITIAL_SYNC_READY=true;
+  const old={id:'existing',name:'Елочник',company:'Выкуп тачек',stage:'weekly',date:'2026-11-15',folderId:'shared-folder',crmClientId:'shared-folder',crmClientRecordId:'shared-client',mainPrice:'20000',weekIndex:3};
+  const snapshot=JSON.stringify(old),data={projects:[old]},client={company:'Выкуп тачек',folderId:'shared-folder',client_id:'shared-client'};
+  h.api.insert(client,data);assert.equal(data.projects.length,2);assert.equal(JSON.stringify(old),snapshot);assert.equal(data.projects[0].name,'Выкуп тачек');assert.equal(data.projects[0].weekIndex,3);
+  h.api.insert(client,data);assert.equal(data.projects.length,2);
 });
