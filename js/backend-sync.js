@@ -349,10 +349,11 @@
     var data = sessionData();
     return tokenUserId(data && data.access_token) === 'd1915d6d-2f70-4c75-be95-454dd1b64dce';
   }
-  function canWriteSashaProfile() {
-    return isBackendSessionSasha() || initialSyncReady && !!sashaOwnerEditScope &&
+  function isSashaOwnerEditing() {
+    return initialSyncReady && !!sashaOwnerEditScope &&
       sashaOwnerEditScope === pendingWriteScope() && backendIdentity().id === 'aa63f3cd-73bc-40c0-9b5f-ce62f3d28e49' && window.AVITOLOG_KEY_SUFFIX === '_sasha';
   }
+  function canWriteSashaProfile() { return isBackendSessionSasha() || isSashaOwnerEditing(); }
   function isServerOnlySashaViewer() {
     return serverOnlyMode && window.AVITOLOG_KEY_SUFFIX === '_sasha' && !canWriteSashaProfile();
   }
@@ -552,7 +553,7 @@
   async function writeKey(key, value, scope) {
     if (serverOnlyMode && isSashaScopedKey(key) && !canWriteSashaProfile()) throw new Error('Профиль Саши открыт только для просмотра; его данные не изменены');
     if (serverOnlyMode && !scope) scope = pendingWriteScope();
-    var response = await authFetch(cfg.url + '/rest/v1/rpc/upsert_frontend_state', {
+    var response = await authFetch(cfg.url + '/rest/v1/rpc/' + (isSashaOwnerEditing() && isSashaScopedKey(key) ? 'upsert_sasha_owner_state' : 'upsert_frontend_state'), {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ p_key: key, p_value: String(value == null ? '' : value) })
     }, scope);
@@ -570,7 +571,7 @@
       if (data && data.expires_at && Number(data.expires_at) <= Math.floor(Date.now() / 1000) + 60) return false;
       var body = JSON.stringify({ p_key: key, p_value: String(value == null ? '' : value) });
       if (body.length > 60000) return false;
-      fetch(cfg.url + '/rest/v1/rpc/upsert_frontend_state', {
+      fetch(cfg.url + '/rest/v1/rpc/' + (isSashaOwnerEditing() && isSashaScopedKey(key) ? 'upsert_sasha_owner_state' : 'upsert_frontend_state'), {
         method: 'POST',
         keepalive: true,
         headers: {
@@ -1539,7 +1540,7 @@
         }).filter(function(item) { return stableJson(JSON.parse(item.value)) !== stableJson(JSON.parse(values[item.key])); });
         if (scope !== pendingWriteScope()) throw new Error('Режим изменился; черновик оставлен в карте.');
         if (updates.length) {
-          var response = await authFetch(cfg.url + '/rest/v1/rpc/compare_and_swap_frontend_edits', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ p_edits: updates }) }, scope);
+          var response = await authFetch(cfg.url + '/rest/v1/rpc/' + (isSashaOwnerEditing() ? 'compare_and_swap_sasha_owner_edits' : 'compare_and_swap_frontend_edits'), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ p_edits: updates }) }, scope);
           if (!response.ok) { var message = await response.text(); if (/40001|conflict/i.test(message) && attempt < 2) continue; throw new Error(/40001|conflict/i.test(message) ? 'Данные изменились в другом окне. Повторите сохранение.' : 'Сервер не подтвердил запись: ' + message.slice(0, 300)); }
           var saved = await response.json();
           if (scope !== pendingWriteScope()) throw new Error('Режим изменился; проверьте сохранение после входа.');
@@ -1602,7 +1603,7 @@
       return { key: edit.key, expected_revision: row.revision, value: JSON.stringify(next) };
     });
     if (busy()) throw new Error('history_pending');
-    var response = await authFetch(cfg.url + '/rest/v1/rpc/compare_and_swap_frontend_edits', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ p_edits: updates }) }, scope);
+    var response = await authFetch(cfg.url + '/rest/v1/rpc/' + (isSashaOwnerEditing() ? 'compare_and_swap_sasha_owner_edits' : 'compare_and_swap_frontend_edits'), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ p_edits: updates }) }, scope);
     if (!response.ok) { var message = await response.text(); throw new Error(/40001|conflict/i.test(message) ? 'history_conflict' : 'history_save_failed'); }
     var saved = await response.json();
     if (scope !== pendingWriteScope()) throw new Error('context_changed');
