@@ -5,7 +5,7 @@ import { createAvitoProviderReadFetch } from '../_shared/avito-provider-read.mjs
 import { createCloudFeedProcessor } from '../_shared/avito-cloud-feed.mjs';
 const handlers=new Map(),registry={register:(module,handler)=>handlers.set(module,handler)};
 const avitoFetch=createAvitoProviderReadFetch({fetch:createAvitoFetch({}),relaySecret:Deno.env.get('AVITO_RELAY_SECRET')});
-const cloudProcess=createCloudFeedProcessor({rpc:(name,body)=>rpc('avito_guard_cloud_'+name,body)});
+const cloudProcess=createCloudFeedProcessor({rpc:(name,body)=>rpc('avito_guard_cloud_'+name,body),providerFetch:avitoFetch});
 createAvitoAccountsHandler({env:Deno.env,fetch:avitoFetch,protectionWorkerRegistry:registry,protectionCloudProcess:cloudProcess});
 createAvitoInvitesHandler({env:Deno.env,fetch:avitoFetch,protectionWorkerRegistry:registry,protectionCloudProcess:cloudProcess});
 async function rpc(name,body={}){

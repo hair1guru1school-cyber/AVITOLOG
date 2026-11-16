@@ -1,4 +1,4 @@
-export const DEFAULT_RULES = Object.freeze({ warningViews: 3, quarantineViews: 4, windowsMinutes: [5, 10, 15], noContacts: true, batchedTrigger: true, cooldownMinutes: 60, pauseAutoload: true, titles: [], mode: 'monitor' });
+export const DEFAULT_RULES = Object.freeze({ warningViews: 3, quarantineViews: 4, windowsMinutes: [5, 10, 15], noContacts: true, batchedTrigger: true, cooldownMinutes: 60, pauseAutoload: true, titles: [], mode: 'monitor', spreadTrigger: true, spreadMinItems: 5, spreadWindowMinutes: 5, uploadNow: false });
 const object = value => value && typeof value === 'object' && !Array.isArray(value);
 const fail = code => Object.assign(new Error(code), { code });
 export function normalizeRules(value = {}) {
@@ -8,9 +8,20 @@ export function normalizeRules(value = {}) {
   if (result.quarantineViews < result.warningViews || !['monitor', 'protect'].includes(result.mode)) throw fail('invalid_rules');
   if (!Array.isArray(result.windowsMinutes) || !result.windowsMinutes.length || result.windowsMinutes.length > 6 || result.windowsMinutes.some(n => !Number.isSafeInteger(n) || n < 1 || n > 60)) throw fail('invalid_rules');
   result.windowsMinutes = [...new Set(result.windowsMinutes)].sort((a,b)=>a-b);
-  for (const key of ['noContacts','batchedTrigger','pauseAutoload']) if (typeof result[key] !== 'boolean') throw fail('invalid_rules');
+  for (const key of ['noContacts','batchedTrigger','pauseAutoload','spreadTrigger','uploadNow']) if (typeof result[key] !== 'boolean') throw fail('invalid_rules');
+  if (!Number.isSafeInteger(result.spreadMinItems)||result.spreadMinItems<2||result.spreadMinItems>100||!Number.isSafeInteger(result.spreadWindowMinutes)||result.spreadWindowMinutes<1||result.spreadWindowMinutes>30) throw fail('invalid_rules');
   if (!Array.isArray(result.titles) || result.titles.length > 20 || result.titles.some(title => typeof title !== 'string' || !title.trim() || Array.from(title.trim()).length > 50 || /[\p{Cc}\p{Cs}]/u.test(title))) throw fail('invalid_titles');
   result.titles = [...new Set(result.titles.map(title=>title.trim()))]; return result;
+}
+export function detectSpread(items,input={}) {
+  const rules=normalizeRules(input);if(!rules.spreadTrigger||!Array.isArray(items))return null;
+  const seen=new Set(),candidates=[];
+  for(const item of items){if(!item||seen.has(item.id)||!validSample(item.latest))continue;seen.add(item.id);const latest=item.latest,at=Date.parse(latest.at),points=(item.history||[]).filter(validSample).filter(p=>p.date===latest.date&&Date.parse(p.at)<at&&at-Date.parse(p.at)<=rules.spreadWindowMinutes*60000).sort((a,b)=>Date.parse(a.at)-Date.parse(b.at)),base=points[0],prev=points.at(-1);
+    if(!base||latest.views<=base.views||latest.views<prev.views||latest.contacts<prev.contacts||latest.contacts<base.contacts||rules.noContacts&&latest.contacts!==base.contacts)continue;
+    candidates.push({id:item.id,views:latest.views-base.views,contacts:latest.contacts-base.contacts,from:base.at,at:latest.at});
+  }
+  if(!candidates.length)return null;const end=Math.max(...candidates.map(c=>Date.parse(c.at))),recent=candidates.filter(c=>end-Date.parse(c.at)<=rules.spreadWindowMinutes*60000);
+  return recent.length>=rules.spreadMinItems?{reason:'multi_item_growth',severity:'quarantine',windowMinutes:rules.spreadWindowMinutes,items:recent,sourceResolution:'daily_counters'}:null;
 }
 function validSample(value) { return object(value) && Number.isFinite(Date.parse(value.at)) && /^\d{4}-\d{2}-\d{2}$/.test(value.date||'') && Number.isSafeInteger(value.views) && value.views >= 0 && Number.isSafeInteger(value.contacts) && value.contacts >= 0; }
 export function detectSignal(history, latest, input = DEFAULT_RULES) {

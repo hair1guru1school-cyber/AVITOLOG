@@ -34,7 +34,8 @@ export function createCloudStorage({fetch:fetcher=fetch,now=Date.now}={}){
   if(keys){const signed=await cloudSignedRequest(method,location.bucket,key,keys,{body,headers,at:now()});url=signed.url;init=signed.init;}else if(method!=='GET')throw fault('cloud_keys_required');
   let response;try{response=await fetcher(url,{...init,signal:AbortSignal.timeout(25000)});}catch(_){throw fault(method==='PUT'?'cloud_write_unconfirmed':'cloud_unavailable');}
   if(allowMissing&&response.status===404){await response.body?.cancel();return null;}
-  if(!response.ok){await response.body?.cancel();throw fault(response.status===412?'cloud_conflict':response.status===403?'cloud_access_denied':response.status===429?'cloud_rate_limited':'cloud_unavailable');}
+  if(!response.ok){let providerCode='';if(response.status===403){try{const text=new TextDecoder().decode(await cloudBytes(response,8192));providerCode=/<Code>([A-Za-z]+)<\/Code>/.exec(text)?.[1]||'';}catch(_){}}else await response.body?.cancel();
+   throw fault(({InvalidAccessKeyId:'cloud_invalid_access_key',SignatureDoesNotMatch:'cloud_signature_mismatch',RequestTimeTooSkewed:'cloud_clock_skew'})[providerCode]||(response.status===412?'cloud_conflict':response.status===403?'cloud_access_denied':response.status===429?'cloud_rate_limited':'cloud_unavailable'));}
   return response;
  };
 }
