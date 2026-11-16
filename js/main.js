@@ -215,13 +215,21 @@ function switchUserProfile() {
       localStorage.removeItem('avitolog_profile_bookmark');
     } catch(e) {}
   } else {
-    if (!confirm('Переключиться на профиль Саши?\n\nДанные Фила сохранятся — можно вернуться обратно.')) return;
+    if (!confirm('Переключиться на профиль Саши?\n\nДля владельца будет доступна проверка и редактирование CRM Саши. Данные Фила сохранятся.')) return;
     try {
       localStorage.setItem('avitolog_current_user', 'sasha');
       localStorage.setItem('avitolog_profile_bookmark', 'sasha');
     } catch(e) {}
   }
-  location.reload();
+  if (window.AVITOLOG_BACKEND_MODE && window.location && window.location.href) {
+    var nextProfileUrl = new URL(window.location.href);
+    nextProfileUrl.searchParams.set('u', isSasha ? 'fil' : 'sasha');
+    nextProfileUrl.searchParams.set('v', '20261116-sasha-access1');
+    var switchIdentity = typeof window.__avitologBackendIdentity === 'function' ? window.__avitologBackendIdentity() : null;
+    if (!isSasha && switchIdentity && switchIdentity.id === 'aa63f3cd-73bc-40c0-9b5f-ce62f3d28e49') nextProfileUrl.searchParams.set('editSasha', '1');
+    else nextProfileUrl.searchParams.delete('editSasha');
+    location.href = nextProfileUrl.href;
+  } else location.reload();
 }
 window.switchUserProfile = switchUserProfile;
 

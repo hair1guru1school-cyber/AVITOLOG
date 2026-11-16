@@ -30,6 +30,9 @@
   var refreshPromise = null;
   var authWriteTail = Promise.resolve();
   var authRevision = 0;
+  var sashaOwnerEditScope = '';
+  var sashaOwnerEditRequested = false;
+  try { sashaOwnerEditRequested = new URLSearchParams(window.location.search).get('editSasha') === '1'; } catch (editIntentError) {}
   function authCache(action, value) {
     return new Promise(function (resolve) {
       var db, transaction, settled = false, result = null;
@@ -344,12 +347,29 @@
   }
   function isBackendSessionSasha() {
     var data = sessionData();
-    return String((data && data.email) || '').toLowerCase() === 'cyplakovaleksandr153@gmail.com';
+    return tokenUserId(data && data.access_token) === 'd1915d6d-2f70-4c75-be95-454dd1b64dce';
+  }
+  function canWriteSashaProfile() {
+    return isBackendSessionSasha() || initialSyncReady && !!sashaOwnerEditScope &&
+      sashaOwnerEditScope === pendingWriteScope() && backendIdentity().id === 'aa63f3cd-73bc-40c0-9b5f-ce62f3d28e49' && window.AVITOLOG_KEY_SUFFIX === '_sasha';
   }
   function isServerOnlySashaViewer() {
-    return serverOnlyMode && window.AVITOLOG_KEY_SUFFIX === '_sasha' && !isBackendSessionSasha();
+    return serverOnlyMode && window.AVITOLOG_KEY_SUFFIX === '_sasha' && !canWriteSashaProfile();
   }
   window.__avitologBackendReadOnly = isServerOnlySashaViewer;
+  async function confirmSashaOwnerEditing() {
+    if (!sashaOwnerEditRequested || !serverOnlyMode || window.AVITOLOG_KEY_SUFFIX !== '_sasha' || backendIdentity().id !== 'aa63f3cd-73bc-40c0-9b5f-ce62f3d28e49') return;
+    var expected = pendingWriteScope(), organization = cfg.profileOrganizations && cfg.profileOrganizations.fil;
+    if (!organization) return;
+    var userResponse = await authFetch(cfg.url + '/auth/v1/user', {}, expected);
+    if (!userResponse.ok) return;
+    var user = await userResponse.json();
+    if (user.id !== 'aa63f3cd-73bc-40c0-9b5f-ce62f3d28e49' || expected !== pendingWriteScope()) return;
+    var memberResponse = await authFetch(cfg.url + '/rest/v1/organization_members?select=organization_id,user_id,role&organization_id=eq.' + encodeURIComponent(organization) + '&user_id=eq.' + encodeURIComponent(user.id), {}, expected);
+    if (!memberResponse.ok) return;
+    var memberships = await memberResponse.json();
+    if (expected === pendingWriteScope() && Array.isArray(memberships) && memberships.some(function(member) { return member.user_id === user.id && member.organization_id === organization && ['owner','admin'].indexOf(member.role) >= 0; })) sashaOwnerEditScope = expected;
+  }
   function isCurrentProfileWritableKey(key) {
     var sashaProfile = window.AVITOLOG_KEY_SUFFIX === '_sasha';
     if (isServerOnlySashaViewer()) return false;
@@ -530,7 +550,8 @@
     return !!rev && !!known && rev <= known;
   }
   async function writeKey(key, value, scope) {
-    if (serverOnlyMode && isSashaScopedKey(key) && !isBackendSessionSasha()) throw new Error('Профиль Саши открыт только для просмотра; его данные не изменены');
+    if (serverOnlyMode && isSashaScopedKey(key) && !canWriteSashaProfile()) throw new Error('Профиль Саши открыт только для просмотра; его данные не изменены');
+    if (serverOnlyMode && !scope) scope = pendingWriteScope();
     var response = await authFetch(cfg.url + '/rest/v1/rpc/upsert_frontend_state', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ p_key: key, p_value: String(value == null ? '' : value) })
@@ -542,6 +563,7 @@
   }
   function writeKeyKeepalive(key, value) {
     try {
+      if (serverOnlyMode && isSashaScopedKey(key) && !canWriteSashaProfile()) return false;
       var data = sessionData();
       var accessToken = data && data.access_token;
       if (!accessToken || !key) return false;
@@ -2182,6 +2204,8 @@
       catch (readError) { if (window.AVITOLOG_KEY_SUFFIX !== '_sasha' || startupScope !== pendingWriteScope()) throw readError; await teamTask; if (startupScope !== pendingWriteScope()) throw readError; rows = await readRemote(); }
       phase = 'apply'; var applied = await applyRemoteRows(rows, { authoritativeInitial: serverOnlyMode }); var remoteKeys = applied.remoteKeys; var appliedKeys = applied.appliedKeys;
       phase = 'restore-pending'; await restoreScopedPendingWrites();
+      // Owner editing is explicit and starts only after applying the fresh server snapshot.
+      phase = 'owner-edit'; await confirmSashaOwnerEditing();
       initialSyncReady = true;
       finishInitialRead({ ok: true, applied: appliedKeys.length, keys: appliedKeys.slice() });
       window.AVITOLOG_BACKEND_INITIAL_SYNC_READY = true;
@@ -2222,7 +2246,7 @@
       }
       if (serverOnlyMode && !pullTimer) {
         if (!isServerOnlySashaViewer()) {
-          setStatus('Supabase SERVER: сервер главный · изменения пишутся сразу');
+          setStatus(sashaOwnerEditScope ? 'Саша: режим владельца · изменения сохраняются на сервере' : 'Supabase SERVER: сервер главный · изменения пишутся сразу');
         } else {
           setStatus('Саша: только просмотр · данные обновляются каждые 5 секунд');
         }
