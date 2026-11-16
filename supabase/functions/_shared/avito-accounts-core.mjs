@@ -550,7 +550,7 @@ export function createAvitoAccountsHandler(options = {}) {
   const messenger = createAvitoMessenger({ requestJson, now, module: 'personal', logger: typeof options.messengerLogger === 'function' ? options.messengerLogger : record => console.warn('avito_messenger_failure', JSON.stringify(record)) });
   const bidding = createAvitoBidding({ requestJson, fetch: fetchImpl, now, signingSecret: cfg.encryptionKey, module: 'personal', store: options.biddingStore || createBiddingStore(serviceRequest) });
   registerBidWorker(options.biddingWorkerRegistry, 'personal', { service: serviceRequest, activeToken, bidding, scope: requireBiddingScope, getRow: async (org, id) => (await serviceRequest('avito_personal_accounts?select=' + META + '&organization_id=eq.' + org + '&id=eq.' + id + '&limit=1'))?.[0] });
-  registerProtectionWorker(options.protectionWorkerRegistry, 'personal', { service: serviceRequest, activeToken, requestJson, now, getRow: async (org,id) => (await serviceRequest('avito_personal_accounts?select='+META+'&organization_id=eq.'+org+'&id=eq.'+id+'&limit=1'))?.[0] });
+  registerProtectionWorker(options.protectionWorkerRegistry, 'personal', { service: serviceRequest, activeToken, requestJson, now, cloudProcess: options.protectionCloudProcess, getRow: async (org,id) => (await serviceRequest('avito_personal_accounts?select='+META+'&organization_id=eq.'+org+'&id=eq.'+id+'&limit=1'))?.[0] });
   function ready() { if (!cfg.ready) throw fail(503, 'configuration'); }
   async function authenticate(request, org) {
     const authorization = request.headers.get('authorization') || '';

@@ -1,7 +1,7 @@
 import { normalizeRules } from '../../../js/avito-protection-model.mjs';
 const fail=code=>Object.assign(new Error(code),{code});
 const id=value=>{const s=String(value);if(!/^[1-9][0-9]{0,15}$/.test(s))throw fail('invalid_item');return s;};
-export function registerProtectionWorker(registry,module,{service,getRow,activeToken,requestJson,now=Date.now}) {
+export function registerProtectionWorker(registry,module,{service,getRow,activeToken,requestJson,cloudProcess,now=Date.now}) {
  if(!registry)return;
  const rpc=(name,p)=>service('rpc/avito_guard_'+name,'POST',p);
  registry.register(module,async claim=>{
@@ -14,6 +14,7 @@ export function registerProtectionWorker(registry,module,{service,getRow,activeT
    const previous=String(row.credential_version),token=await activeToken(row,c.organization_id,{user:{id:c.actor_id}});
    if(String(row.credential_version)!==previous&&await rpc('rotate',{...lease,p_old:previous,p_next:String(row.credential_version)})!==true)throw fail('account_changed');
    c=await rpc('validate',lease);
+   if(c.page===1&&cloudProcess)await cloudProcess.observe({context:{...c,id:claim.id},token,userId:row.avito_user_id,requestJson});
    const page=await requestJson('https://api.avito.ru/core/v1/items?page='+c.page+'&per_page=99&status=active',{headers:{Authorization:'Bearer '+token}},'guard_items_unavailable',262144);
    if(!Array.isArray(page?.resources)||page.resources.length>99||page.meta?.page!==c.page||page.meta?.per_page!==99||page.resources.some(item=>item?.status!=='active'))throw fail('invalid_items_response');
    const ids=page.resources.map(item=>id(item.id));if(new Set(ids).size!==ids.length||c.page===1011&&ids.length===99)throw fail('inventory_limit');
