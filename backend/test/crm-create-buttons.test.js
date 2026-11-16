@@ -16,6 +16,8 @@ function harness(suffix = '_sasha') {
   const code = source.slice(0, end) + `
     window.__createTest = { originalOpen: openModal,
       capture: function() { openModal = function(button, week, stage) { window.__opened(button, week, stage); }; },
+      captureClient: function() { addClientToWeek = function(week, name) { window.__opened(null, week, name); }; },
+      payload: getSelectedLeftPayload,
       week: renderWeekSection, section: renderSection };
   ` + source.slice(end);
   window.__opened = (button, week, stage) => opened.push({ button, week, stage });
@@ -85,4 +87,20 @@ test('week markup carries its own create target instead of a silent optional inl
   assert.match(html, /data-goal-create-week="3"/);
   assert.doesNotMatch(html, /onclick="window\.__goalsOpenModalForWeek/);
   assert.match(h.api.section('Working', '', [], '', false, false, 'work'), /data-goal-create-stage="working"/);
+});
+
+test('attached client buttons work before rerender and without the optional global mirror', () => {
+  const h = harness(); h.api.captureClient(); delete h.window.__goalsAddClientToWeek;
+  const b = button({ 'data-goal-add-client-week': '3', 'data-goal-client-name': 'Выкуп тачек' });
+  assert.deepEqual(click(h, b), { prevented: 1, stopped: 1 });
+  assert.equal(h.opened.length, 1); assert.equal(h.opened[0].week, 3); assert.equal(h.opened[0].stage, 'Выкуп тачек');
+});
+
+test('attached client selection never takes another project name or contacts from the hidden form', () => {
+  const h = harness(); h.window.__goalsGetActiveClient = () => ({ company: 'Выкуп тачек', folderId: 'selected-folder', phone: 'selected-phone', telegram: 'selected-tg', category: 'Авто', source_account_id: 'selected-source' });
+  const hidden = { company: 'Блочник', phone: 'other-phone', contact_name: 'Other person', tg: 'other-tg', category: 'Дома', source_account_id: 'other-source' };
+  h.document.getElementById = id => Object.hasOwn(hidden, id) ? { value: hidden[id] } : null;
+  const payload = h.api.payload(true);
+  assert.equal(payload.company, 'Выкуп тачек'); assert.equal(payload.phone, 'selected-phone'); assert.equal(payload.telegram, 'selected-tg'); assert.equal(payload.contact_name || '', ''); assert.equal(payload.source_account_id, 'selected-source');
+  assert.equal(h.api.payload().company, 'Блочник');
 });

@@ -1409,7 +1409,7 @@
     var avatarHtml = clientAvatar
       ? '<span class="goal-week-add-client-thumb"><img src="' + esc(clientAvatar) + '" alt=""></span>'
       : '<span class="goal-week-add-client-thumb"><span class="goal-week-add-client-fallback">🖼</span></span>';
-    var addClientBtn = clientName ? '<button type="button" class="goal-week-add-client" data-week="' + weekNum + '" onclick="event.preventDefault();event.stopPropagation();window.__goalsAddClientToWeek && window.__goalsAddClientToWeek(' + weekNum + ')" title="Добавить прикреплённый проект в неделю">' + avatarHtml + '<span class="goal-week-add-client-text"><span class="goal-week-add-client-plus">+</span><span>Добавить</span><span class="goal-week-add-client-name">' + esc(clientName) + '</span></span></button>' : '';
+    var addClientBtn = clientName ? '<button type="button" class="goal-week-add-client" data-week="' + weekNum + '" data-goal-add-client-week="' + weekNum + '" data-goal-client-name="' + esc(clientName) + '" title="Добавить прикреплённый проект в неделю">' + avatarHtml + '<span class="goal-week-add-client-text"><span class="goal-week-add-client-plus">+</span><span>Добавить</span><span class="goal-week-add-client-name">' + esc(clientName) + '</span></span></button>' : '';
     var dateRange = (typeof year === 'number' && typeof month === 'number') ? getWeekDateRange(weekNum, year, month) : '';
     var titleText = weekNum + ' НЕДЕЛЯ' + (dateRange ? ' · ' + dateRange : '');
     var activeCls = (currentWeekNum === weekNum) ? ' goal-week-active' : '';
@@ -2583,16 +2583,6 @@
     if (main) {
       main.innerHTML = html;
       setupAchievementHoverCards(main);
-      main.querySelectorAll('.goal-week-add-client').forEach(function(btn) {
-        btn.onclick = function(e) {
-          if (e) {
-            e.preventDefault();
-            e.stopPropagation();
-          }
-          var wn = parseInt(btn.getAttribute('data-week') || '1', 10);
-          addClientToWeek((wn >= 1 && wn <= 4) ? wn : 1);
-        };
-      });
       main.querySelectorAll('[data-goal-action="sold"][data-id]').forEach(function(btn) {
         btn.onclick = function(e) {
           if (e) {
@@ -4076,15 +4066,19 @@
     }, 10);
   }
 
-  function openModal(anchorEl, weekNum, forcedStage) {
+  function canAddGoalProject() {
     if (window.AVITOLOG_BACKEND_SERVER_ONLY && window.AVITOLOG_BACKEND_INITIAL_SYNC_READY !== true) {
       showGoalsSmallToast('CRM ещё подключается. Дождитесь загрузки или восстановите подключение.');
-      return;
+      return false;
     }
     if (typeof window.__avitologBackendReadOnly === 'function' && window.__avitologBackendReadOnly()) {
       showGoalsSmallToast('Этот профиль открыт только для просмотра.');
-      return;
+      return false;
     }
+    return true;
+  }
+  function openModal(anchorEl, weekNum, forcedStage) {
+    if (!canAddGoalProject()) return;
     var modalScope = goalsStorageKey(), modalMonth = _goalsViewMonth;
     var existing = document.getElementById('goalModal');
     if (existing) existing.remove();
@@ -4266,10 +4260,14 @@
   }
   // Register once at module load, independently of rendering and background refreshes.
   document.addEventListener('click', function(event) {
-    var button = event.target && event.target.closest && event.target.closest('[data-goal-create-week],[data-goal-create-stage]');
+    var button = event.target && event.target.closest && event.target.closest('[data-goal-create-week],[data-goal-create-stage],[data-goal-add-client-week]');
     if (!button || button.disabled) return;
     event.preventDefault(); event.stopPropagation();
-    openGoalCreateButton(button);
+    var clientWeek = Number(button.getAttribute('data-goal-add-client-week'));
+    if (clientWeek >= 1 && clientWeek <= 4) {
+      try { addClientToWeek(clientWeek, button.getAttribute('data-goal-client-name')); }
+      catch (error) { console.warn('CRM client add failed', error); showGoalsSmallToast('Не удалось добавить проект: ' + (error.message || String(error))); }
+    } else openGoalCreateButton(button);
   }, true);
   window.__goalsOpenModal = openModal;
   window.__goalsOpenModalForWeek = function(event, week) {
@@ -4279,9 +4277,16 @@
     openGoalCreateButton(event && (event.currentTarget || event.target));
   };
 
-  function getSelectedLeftPayload() {
+  function getSelectedLeftPayload(preferSelected) {
     var active = (typeof window.__goalsGetActiveClient === 'function' && window.__goalsGetActiveClient()) || null;
     var byName = (typeof window.__goalsGetSelectedProjectName === 'function' ? String(window.__goalsGetSelectedProjectName() || '').trim() : '');
+    if (preferSelected) {
+      var selected = Object.assign({}, active || {});
+      selected.company = String(selected.company || selected.contact_name || selected.name || byName || '').trim();
+      selected.telegram = selected.telegram || selected.tg || '';
+      selected.source_account_id = selected.source_account_id || selected.sourceAccountId || '';
+      return selected;
+    }
     var byCompany = '';
     var byContactName = '';
     var byPhone = '';
@@ -4329,8 +4334,16 @@
     return payload;
   }
 
-  function addClientToWeek(weekNum) {
-    insertClientToWeekAt(weekNum, '', 'weekly');
+  function addClientToWeek(weekNum, expectedName) {
+    if (!canAddGoalProject()) return;
+    var client = getSelectedLeftPayload(true);
+    if (!client.company || expectedName && String(expectedName).trim() !== client.company) {
+      showGoalsSmallToast('Выбранный проект изменился. Нажмите его кнопку ещё раз.');
+      render();
+      return;
+    }
+    var project = insertClientToWeekAt(weekNum, '', 'weekly', client);
+    if (project) showGoalsSmallToast('Проект «' + project.name + '» добавлен в неделю ' + weekNum);
   }
 
   function extractClientPrice(client) {
@@ -4414,8 +4427,9 @@
     return project;
   }
 
-  function insertClientToWeekAt(weekNum, beforeProjectId, targetStage) {
-    var client = getSelectedLeftPayload();
+  function insertClientToWeekAt(weekNum, beforeProjectId, targetStage, selectedClient) {
+    if (!canAddGoalProject()) return;
+    var client = selectedClient || getSelectedLeftPayload();
     var project = createGoalProjectFromClient(client, weekNum, targetStage || 'weekly');
     if (!project) return;
     var data = loadData();
@@ -4452,7 +4466,7 @@
       if (!saveData(data)) return;
       syncGoalToKassaIfReady(existing);
       render();
-      return;
+      return existing;
     }
     if (beforeProjectId) {
       var targetIdx = data.projects.findIndex(function(x) { return x.id === beforeProjectId; });
@@ -4464,6 +4478,7 @@
     if (!saveData(data)) return;
     syncGoalToKassaIfReady(project);
     render();
+    return project;
   }
 
   function startClientDrag(e) {
