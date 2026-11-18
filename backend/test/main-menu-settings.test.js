@@ -453,7 +453,10 @@ test('accounts embed is lazy, fixed-origin and preserved without replacing origi
   const iframe = document.getElementById('avitoAccountsFrame');
   assert.ok(iframe);
   assert.strictEqual(iframe.tagName, 'IFRAME');
-  assert.strictEqual(iframe.src || iframe.getAttribute('src'), 'https://avitoboss.online/integrations/avito-accounts/?embedded=1&profile=fil&organization_id=&expected_user_id=');
+  const embeddedUrl = new URL(iframe.src || iframe.getAttribute('src'));
+  assert.match(embeddedUrl.searchParams.get('v'), /^\d{8}-[a-z0-9-]+$/);
+  embeddedUrl.searchParams.delete('v');
+  assert.strictEqual(embeddedUrl.href, 'https://avitoboss.online/integrations/avito-accounts/?embedded=1&profile=fil&organization_id=&expected_user_id=');
   assert.strictEqual(iframe.referrerPolicy, 'no-referrer');
   assert.strictEqual(iframe.getAttribute('referrerpolicy'), 'no-referrer');
   assert.strictEqual(api.getState().accountsOpen, true);

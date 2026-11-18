@@ -134,3 +134,84 @@
   body.accounts-mobile-compact.day-mode { --mobile-account-surface: #fff; --mobile-account-selected: #e4f2fa; }
   :root[data-theme='light'] body.accounts-mobile-compact { --mobile-account-surface: #fff; --mobile-account-selected: #e4f2fa; }
 }
+
+@media (max-width: 768px), (orientation: landscape) and (max-width: 980px) and (max-height: 560px) {
+  /* A viewport-sized dialog must not inherit the surrounding desktop shell scale. */
+  body.avito-accounts-mode.avito-bid-overlay #mainApp {
+    --accounts-host-scale: 1 !important;
+    width: 100vw !important;
+    height: 100dvh !important;
+    max-width: none !important;
+    transform: scale(1) !important;
+    transform-origin: top left !important;
+  }
+  body.avito-accounts-mode.avito-bid-overlay #avitoAccountsFrameHost {
+    position: fixed;
+    inset: 0;
+    width: 100vw;
+    height: 100dvh;
+    min-height: 0;
+    max-width: none;
+    z-index: 2147482000;
+    border: 0;
+    border-radius: 0;
+  }
+
+  /* Only the account table zooms; its expanded statistics stay readable. */
+  body.accounts-mobile-compact .account-detail-cell #accountDetail {
+    zoom: calc(1 / var(--accounts-table-scale, 1));
+    width: calc(100vw - 12px);
+    max-width: calc(100vw - 12px);
+    padding: 10px;
+    position: sticky;
+    left: 0;
+    white-space: normal;
+  }
+  body.accounts-mobile-compact #accountDetail .section-head { flex-direction: row; align-items: flex-start; }
+  body.accounts-mobile-compact #accountDetail h2 { font-size: 16px; line-height: 1.35; }
+  body.accounts-mobile-compact #accountDetail .detail-actions { gap: 5px; }
+  body.accounts-mobile-compact #accountDetail .detail-actions .button { min-height: 40px; min-width: 40px; }
+  body.accounts-mobile-compact #accountDetail #detailStatus { font-size: 11px; line-height: 1.4; margin: 5px 0 9px; }
+  body.accounts-mobile-compact #accountDetail .detail-facts { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; }
+  body.accounts-mobile-compact #accountDetail .data-grid { gap: 10px 16px; }
+  body.accounts-mobile-compact #accountDetail .data-field dt { font-size: 10px; }
+  body.accounts-mobile-compact #accountDetail .data-field dd { font-size: 13px; }
+  body.accounts-mobile-compact #accountDetail .avb-host { min-width: 0; width: 100%; }
+  body.accounts-mobile-compact #accountDetail .avb-summary { flex-wrap: wrap; }
+  body.accounts-mobile-compact #accountDetail .statistics-head { flex-wrap: wrap; margin-top: 12px; }
+  body.accounts-mobile-compact #accountDetail .statistics-head h3 { font-size: 12px; line-height: 1.4; }
+  body.accounts-mobile-compact #accountDetail .statistics-period .button { min-height: 40px; padding: 7px 10px; font-size: 12px; }
+  body.accounts-mobile-compact #accountDetail .statistics-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  body.accounts-mobile-compact #accountDetail .statistics-card { padding: 9px; }
+  body.accounts-mobile-compact #accountDetail .statistics-card h4 { font-size: 12px; }
+  body.accounts-mobile-compact #accountDetail .statistics-total { font-size: 22px; }
+  body.accounts-mobile-compact #accountDetail .statistics-today { float: none; display: block; font-size: 11px; padding-top: 2px; }
+  body.accounts-mobile-compact #accountDetail .statistics-chart { height: 68px; }
+  body.accounts-mobile-compact #accountDetail .statistics-range { font-size: 10px; }
+  body.accounts-mobile-compact #accountDetail #statisticsNote { font-size: 11px; line-height: 1.4; margin-top: 8px; }
+
+  body.accounts-mobile-compact .avb-dialog {
+    position: fixed;
+    inset: 6px;
+    width: calc(100vw - 12px);
+    height: calc(100dvh - 12px);
+    max-height: calc(100dvh - 12px);
+    margin: 0;
+    padding: 9px;
+    overflow-y: auto;
+  }
+  body.accounts-mobile-compact .avb-dialog[open] { display: flex; flex-direction: column; gap: 8px; }
+  body.accounts-mobile-compact .avb-dialog > * { flex: 0 0 auto; min-width: 0; }
+  body.accounts-mobile-compact .avb-dialog-head { position: sticky; top: -9px; z-index: 6; padding: 8px 0; background: var(--avb-bg); }
+  body.accounts-mobile-compact .avb-dialog-head h2 { font-size: 17px; }
+  body.accounts-mobile-compact .avb-dialog-head > button { flex: none; min-height: 44px; }
+  body.accounts-mobile-compact .avb-toolbar > input[type='search'] { flex-basis: 100%; width: 100%; }
+  body.accounts-mobile-compact .avb-toolbar > select { max-width: 100%; }
+  body.accounts-mobile-compact .avb-layout { display: flex; flex-direction: column; min-height: 0; overflow: visible; gap: 10px; }
+  body.accounts-mobile-compact .avb-list-pane { flex: none; min-width: 0; }
+  body.accounts-mobile-compact .avb-list-pane > .avb-table-wrap,
+  body.accounts-mobile-compact .avb-layout > .avb-table-wrap { flex: none; height: max(220px, min(42dvh, 380px)); min-height: 220px; }
+  body.accounts-mobile-compact .avb-editor { overflow: visible; min-height: 0; padding: 0; }
+  body.accounts-mobile-compact .avb-dialog-foot { margin: 0; }
+  body.accounts-mobile-compact:has(.avb-dialog[open]) .accounts-mobile-scale { visibility: hidden; }
+}

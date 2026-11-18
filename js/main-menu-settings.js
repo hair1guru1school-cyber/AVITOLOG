@@ -12,7 +12,7 @@
   var TAB_SCALE_MIN = 80;
   var TAB_SCALE_MAX = 140;
   var UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-  var ACCOUNTS_URL = 'https://avitoboss.online/integrations/avito-accounts/?embedded=1&v=20261029-bidding-queue2';
+  var ACCOUNTS_URL = 'https://avitoboss.online/integrations/avito-accounts/?embedded=1&v=20261118-mobile-metrics1';
   var TAB_DEFINITIONS = [
     { key: 'goals', buttonId: 'btnGoals', label: 'CRM' },
     { key: 'analytics', buttonId: 'btnProjectsReturn', label: 'Клиент' },
