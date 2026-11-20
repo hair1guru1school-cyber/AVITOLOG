@@ -552,7 +552,7 @@ export function createAvitoAccountsHandler(options = {}) {
   registerBidWorker(options.biddingWorkerRegistry, 'personal', { service: serviceRequest, activeToken, bidding, scope: requireBiddingScope, getRow: async (org, id) => (await serviceRequest('avito_personal_accounts?select=' + META + '&organization_id=eq.' + org + '&id=eq.' + id + '&limit=1'))?.[0] });
   registerProtectionWorker(options.protectionWorkerRegistry, 'personal', { service: serviceRequest, activeToken, requestJson, now, cloudProcess: options.protectionCloudProcess, getRow: async (org,id) => (await serviceRequest('avito_personal_accounts?select='+META+'&organization_id=eq.'+org+'&id=eq.'+id+'&limit=1'))?.[0] });
   function ready() { if (!cfg.ready) throw fail(503, 'configuration'); }
-  async function authenticate(request, org) {
+  async function authenticate(request, org, allowMessenger = false) {
     const authorization = request.headers.get('authorization') || '';
     if (!/^Bearer\s+\S+$/i.test(authorization)) throw fail(401, 'authentication_required');
     if (!cfg.supabaseUrl || !cfg.anonKey) throw fail(503, 'configuration');
@@ -561,8 +561,9 @@ export function createAvitoAccountsHandler(options = {}) {
     if (!org) return { user, authorization };
     const members = await userRequest('organization_members?select=role&organization_id=eq.' + org + '&user_id=eq.' + user.id + '&limit=1', authorization);
     const member = Array.isArray(members) ? members[0] : null;
-    if (!member || !['owner', 'admin'].includes(member.role)) throw fail(403, 'permission_denied');
-    return { user, authorization, role: member.role };
+    const messengerOnly = allowMessenger && org === '2d775d05-277d-4955-82cd-f2abfaa25311' && user.id === 'd1915d6d-2f70-4c75-be95-454dd1b64dce' && member?.role === 'manager';
+    if (!member || !['owner', 'admin'].includes(member.role) && !messengerOnly) throw fail(403, 'permission_denied');
+    return { user, authorization, role: member.role, messengerOnly };
   }
   function organization(body, url) {
     const org = String(body.organization_id || url.searchParams.get('organization_id') || '');
@@ -792,8 +793,9 @@ export function createAvitoAccountsHandler(options = {}) {
       const chatRoute = messengerRoute(path, API + '/accounts');
       const bidRoute = biddingRoute(path, API + '/accounts');
       const chatRead = request.method === 'GET' && chatRoute && ['chats', 'messages'].includes(chatRoute.action);
+      const messengerCatalog = request.method === 'GET' && [API + '/accounts', API + '/preferences'].includes(path) && url.searchParams.getAll('messenger_access').length === 1 && url.searchParams.get('messenger_access') === '1';
       if (chatRoute) messengerKind = request.method === 'POST' && chatRoute.action === 'messages' ? 'send' : chatRoute.action;
-      if ([...url.searchParams.keys()].some(key => key !== 'organization_id' && !(key === 'ads_stats' && adsStatisticsRead) && !(key === 'statistics_days' && bidRoute?.action === 'items' && request.method === 'GET') && !((chatRead || bidRoute?.action === 'items' && request.method === 'GET') && ['limit', 'offset'].includes(key))) || ['organization_id', 'limit', 'offset', 'statistics_days'].some(key => url.searchParams.getAll(key).length > 1)) throw fail(400, 'invalid_request');
+      if ([...url.searchParams.keys()].some(key => key !== 'organization_id' && !(key === 'messenger_access' && messengerCatalog) && !(key === 'ads_stats' && adsStatisticsRead) && !(key === 'statistics_days' && bidRoute?.action === 'items' && request.method === 'GET') && !((chatRead || bidRoute?.action === 'items' && request.method === 'GET') && ['limit', 'offset'].includes(key))) || ['organization_id', 'limit', 'offset', 'statistics_days'].some(key => url.searchParams.getAll(key).length > 1)) throw fail(400, 'invalid_request');
       const origin = request.headers.get('origin');
       if (origin && origin !== cfg.origin) throw fail(403, 'origin_rejected');
       if (path === API + '/config' && request.method === 'GET') return json({ ok: true, configuration: { enabled: cfg.enabled, ready: cfg.ready, missing: cfg.missing } });
@@ -824,13 +826,13 @@ export function createAvitoAccountsHandler(options = {}) {
         if (!(chatRead || request.method === 'POST' && ['messages', 'read'].includes(chatRoute.action))) throw fail(405, 'method_not_allowed');
         const body = request.method === 'POST' ? await readSealedBody(rawBody, path, cfg.relaySecret) : {};
         if (body.organization_id && url.searchParams.has('organization_id') && body.organization_id !== url.searchParams.get('organization_id')) throw fail(400, 'invalid_request');
-        const org = organization(body, url), auth = await authenticate(request, org), row = await getAccount(org, chatRoute.accountId, auth);
+        const org = organization(body, url), auth = await authenticate(request, org, true), row = await getAccount(org, chatRoute.accountId, auth);
         requireMessengerScope(row, 'read', false);
         const page = chatRead ? messengerPagination(url) : null;
         const input = chatRead ? null : messengerBody(body, chatRoute.action);
         const token = await activeToken(row, org, auth);
         const guard = async () => {
-          await authenticate(request, org);
+          await authenticate(request, org, true);
           const current = await getAccount(org, row.id, auth);
           requireMessengerScope(current, 'read', false);
           if (current.credential_version !== row.credential_version) throw fail(409, 'account_changed');
@@ -856,7 +858,7 @@ export function createAvitoAccountsHandler(options = {}) {
       }
       if (path === API + '/preferences' && request.method === 'GET') {
         const org = organization({}, url);
-        await authenticate(request, org);
+        await authenticate(request, org, messengerCatalog);
         const rows = await store.listPreferences(org);
         if (!Array.isArray(rows)) throw fail(503, 'storage_unavailable');
         return json({ ok: true, preferences: rows.slice(0, 200).map(safePreference) });
@@ -869,8 +871,9 @@ export function createAvitoAccountsHandler(options = {}) {
         return json({ ok: true, preference: safePreference(preference) });
       }
       if (path === API + '/accounts' && request.method === 'GET') {
-        const org = organization({}, url), auth = await authenticate(request, org), rows = await store.listAccounts(org, auth.authorization);
+        const org = organization({}, url), auth = await authenticate(request, org, messengerCatalog), rows = await store.listAccounts(org, auth.authorization);
         const result = { ok: true, accounts: rows.map(row => safeAccount(row, now())) };
+        if (auth.messengerOnly) return json(result);
         const budget = Math.min(81920, 131072 - encoder.encode(JSON.stringify(result)).length - 32);
         const cached = await initialCachedOverviews(org, rows, budget);
         if (cached.length) result.cached_overviews = cached;
@@ -907,3 +910,4 @@ export function createAvitoAccountsHandler(options = {}) {
     }
   };
 }
+

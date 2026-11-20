@@ -210,7 +210,7 @@
     var session = await adsBridgeSession();
     if (adsAccountsCache && adsAccountsCache.expiresAt > Date.now() && adsAccountsCache.token === session.access_token && adsAccountsCache.revision === sessionRevision) return adsAccountsCache.accounts;
     // Workspace already pins the JWT subject. Each metadata endpoint verifies that
-    // JWT and exact-org owner/admin access; /context only adds redundant health probes.
+    // JWT and exact-org access; the messenger catalog does not grant account management.
     if (!workspaceBridge.enabled) {
       var context = await adsBridgeApi('/context');
       if (!context.user || String(context.user.id || '').toLowerCase() !== adsBridge.userId) throw adsBridgeError('subject_mismatch');
@@ -218,7 +218,7 @@
         return String(org.id || '').toLowerCase() === adsBridge.organizationId && (org.role === 'owner' || org.role === 'admin');
       })) throw adsBridgeError('organization_forbidden');
     }
-    var query = '?organization_id=' + encodeURIComponent(adsBridge.organizationId);
+    var query = '?organization_id=' + encodeURIComponent(adsBridge.organizationId) + (workspaceBridge.enabled ? '&messenger_access=1' : '');
     var metadata = await Promise.all([
       adsBridgeApi('/accounts' + query),
       adsBridgeApi('/connections' + query, true),
@@ -2637,3 +2637,4 @@
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
   else init();
 })();
+
