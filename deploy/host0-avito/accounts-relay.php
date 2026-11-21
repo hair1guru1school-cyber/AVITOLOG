@@ -91,8 +91,10 @@ if ($query !== '') {
         && preg_match('~^organization_id=(?i:' . ACCOUNTS_UUID . ')&ads_stats=1$~D', $query);
     $messengerQuery = $method === 'GET' && $messenger
         && preg_match('~^organization_id=(?i:' . ACCOUNTS_UUID . ')&limit=50&offset=(?:0|[1-9][0-9]{0,2}|1000)$~D', $query);
+    $messengerCatalogQuery = $method === 'GET' && in_array($path, [$base . '/accounts', $base . '/preferences'], true)
+        && preg_match('~^organization_id=(?i:' . ACCOUNTS_UUID . ')&messenger_access=1$~D', $query);
     if ($method !== 'GET' || $path === $base . '/config' || $path === $base . '/context'
-        || !preg_match('~^organization_id=(' . ACCOUNTS_UUID . ')$~iD', $query) && !$adsStatisticsQuery && !$messengerQuery && !$biddingQuery) rejectAccounts(400, 'invalid_request');
+        || !preg_match('~^organization_id=(' . ACCOUNTS_UUID . ')$~iD', $query) && !$adsStatisticsQuery && !$messengerQuery && !$biddingQuery && !$messengerCatalogQuery) rejectAccounts(400, 'invalid_request');
 }
 $inputLimit = $method === 'POST' && $path === $base . '/layout' ? 65536 : ACCOUNTS_MAX_INPUT;
 if ($method === 'POST' && $biddingGroups) $inputLimit = 24576;

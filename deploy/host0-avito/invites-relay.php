@@ -152,7 +152,9 @@ if ($callback) {
         && preg_match('~^organization_id=(?i:' . INVITES_UUID . ')&ads_stats=1$~D', $query);
     $messengerQuery = $method === 'GET' && $messenger
         && preg_match('~^organization_id=(?i:' . INVITES_UUID . ')&limit=50&offset=(?:0|[1-9][0-9]{0,2}|1000)$~D', $query);
-    if ($query !== '' && ($method !== 'GET' || in_array($path, [$base . '/config', $base . '/context'], true) || !preg_match('~^organization_id=(' . INVITES_UUID . ')$~iD', $query) && !$adsStatisticsQuery && !$messengerQuery && !$biddingQuery)) rejectInvites(400, 'invalid_request');
+    $messengerCatalogQuery = $method === 'GET' && $path === $base . '/connections'
+        && preg_match('~^organization_id=(?i:' . INVITES_UUID . ')&messenger_access=1$~D', $query);
+    if ($query !== '' && ($method !== 'GET' || in_array($path, [$base . '/config', $base . '/context'], true) || !preg_match('~^organization_id=(' . INVITES_UUID . ')$~iD', $query) && !$adsStatisticsQuery && !$messengerQuery && !$biddingQuery && !$messengerCatalogQuery)) rejectInvites(400, 'invalid_request');
     $inputLimit = $method === 'POST' && $biddingGroups ? 24576 : INVITES_MAX_INPUT;
     if ($method === 'POST' && $biddingPost && substr($path, -14) === '/queue-preview') $inputLimit = 262144;
     $input = file_get_contents('php://input', false, null, 0, $inputLimit + 1);
