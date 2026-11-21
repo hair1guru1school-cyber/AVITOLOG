@@ -32,6 +32,25 @@
     function access(key,value){return database().then(function(db){return new Promise(function(resolve,reject){var tx=db.transaction('records',value===undefined?'readonly':'readwrite'),request=value===undefined?tx.objectStore('records').get(key):tx.objectStore('records').put(value,key);tx.oncomplete=function(){resolve(request.result);};tx.onerror=tx.onabort=function(){reject(fail('Браузер не подтвердил сохранение КП. Другие данные не удалены.'));};});});}
     return {read:function(key){return access(key);},write:access};
   }
+  function coverLibrary(options){
+    var tail=Promise.resolve();
+    async function load(owner){
+      options.guard(owner);var value=await options.read(owner);options.guard(owner);
+      if(value==null)return {version:1,items:[],hidden:[]};
+      if(value.version!==1||!Array.isArray(value.items)||!Array.isArray(value.hidden)||value.items.some(function(item){return !item||!/^custom-[a-zA-Z0-9-]+$/.test(item.id)||typeof item.name!=='string'||!(item.blob instanceof options.Blob)||item.blob.type!=='image/png';})||value.hidden.some(function(id){return typeof id!=='string';}))throw fail('Не удалось прочитать библиотеку обложек. Сохранённые данные не изменены.');
+      return {version:1,items:value.items.map(function(item){return {id:item.id,name:item.name,blob:item.blob};}),hidden:value.hidden.slice()};
+    }
+    function change(owner,update){
+      var run=async function(){var value=await load(owner);update(value);options.guard(owner);await options.write(owner,value);options.guard(owner);return value;};
+      var task=tail.then(function(){return options.lock?options.lock(owner,run):run();});tail=task.catch(function(){});return task;
+    }
+    return {
+      load:load,
+      add:function(owner,items){return change(owner,function(value){if(!items.length||items.some(function(item){return !item||!(item.blob instanceof options.Blob)||item.blob.type!=='image/png'||item.blob.size>20*1024*1024;}))throw fail('Нужна обложка PNG до 20 МБ.');items.forEach(function(item){value.items.push({id:'custom-'+options.id(),name:safeName(item.name),blob:item.blob});});});},
+      remove:function(owner,id){return change(owner,function(value){if(!COVERS.concat(value.items).some(function(item){return item.id===id;}))throw fail('Обложка не найдена.');if(value.hidden.indexOf(id)<0)value.hidden.push(id);});},
+      restore:function(owner){return change(owner,function(value){value.hidden=[];});}
+    };
+  }
   function install(win,options){
     options=options||{};var doc=win.document,store=options.store||draftStore(win),memory=new Map(),jobs=new Map(),dialogs=new Map(),pending=0,settingsDialog=null;
     function el(tag,cls,text){var n=doc.createElement(tag);if(cls)n.className=cls;if(text!=null)n.textContent=text;return n;}
@@ -39,6 +58,7 @@
     function scope(){if((win.AVITOLOG_BACKEND_MODE||win.AVITOLOG_BACKEND_SERVER_ONLY)&&win.AVITOLOG_BACKEND_INITIAL_SYNC_READY!==true)return '';if(win.AvitoWorkspaceBridge&&win.AvitoWorkspaceBridge.context)return win.AvitoWorkspaceBridge.context();var id=typeof win.__avitologBackendIdentity==='function'?win.__avitologBackendIdentity()||{}:{};return JSON.stringify([id.id||'local',typeof win.AVITOLOG_KEY==='function'?win.AVITOLOG_KEY('avitolog_clients'):'avitolog_clients']);}
     function guard(owner){if(!owner||scope()!==owner)throw fail('Пользователь или режим изменился. КП не отправлено в другую папку.','context_changed');}
     function key(kind,owner,folder){return JSON.stringify([kind,owner,folder||'']);}
+    var covers=coverLibrary({guard:guard,Blob:win.Blob,id:function(){return win.crypto.randomUUID();},read:function(owner){return store.read(key('covers',owner));},write:function(owner,value){return store.write(key('covers',owner),value);},lock:win.navigator&&win.navigator.locks?function(owner,run){return win.navigator.locks.request('avitolog-kp-covers:'+owner,run);}:null});
     function environment(){return {JSZip:win.JSZip,DOMParser:win.DOMParser,XMLSerializer:win.XMLSerializer,Blob:win.Blob};}
     async function read(kind,owner,folder){guard(owner);var k=key(kind,owner,folder),value=memory.get(k)||await store.read(k);guard(owner);if(value)memory.set(k,value);return value||null;}
     async function write(kind,owner,folder,value){guard(owner);await store.write(key(kind,owner,folder),value);guard(owner);memory.set(key(kind,owner,folder),value);return value;}
@@ -69,11 +89,33 @@
     }
     function download(blob,name){var url=win.URL.createObjectURL(blob),a=el('a');a.href=url;a.download=name;doc.body.append(a);a.click();a.remove();win.setTimeout(function(){win.URL.revokeObjectURL(url);},60000);}
     async function chooseCover(owner,template,title){
-      var thumb=template.cover;if(!thumb){var info=await inspect(await template.blob.arrayBuffer(),environment());thumb=new win.Blob([await info.zip.file(info.coverPart).async('uint8array')],{type:'image/png'});}guard(owner);
-      return new Promise(function(resolve,reject){var modal=el('dialog','cg-template-menu kp-cover-pick'),chosen='original',custom=null,urls=[],settled=false;var grid=el('div','kp-cover-grid'),heading=el('h3','','КП · '+title),state=el('p','cg-caption','Выберите обложку. Имя клиента подставлено автоматически.');
-       COVERS.forEach(function(item){var card=button(item.name,function(){chosen=item.id;Array.from(grid.children).forEach(function(n){n.setAttribute('aria-pressed',String(n===card));});},'kp-cover-option'),image=el('img');image.alt=item.name;if(item.src)image.src=item.src;else{var url=win.URL.createObjectURL(thumb);urls.push(url);image.src=url;}card.prepend(image);card.setAttribute('aria-pressed',String(item.id==='original'));grid.append(card);});
-       var input=el('input');input.type='file';input.accept='image/png,image/jpeg,image/webp';input.setAttribute('aria-label','Своя обложка полного КП');input.addEventListener('change',async function(){try{if(!input.files[0])return;custom=await imageBlob(input.files[0],'image/png',2400);chosen='custom';state.textContent='Своя обложка: '+input.files[0].name;}catch(e){state.textContent=e.message;}});
-       var actions=el('div','cg-template-menu-actions'),save=button('Собрать Word + PDF',async function(){save.disabled=true;try{guard(owner);var cover=custom;if(chosen!=='custom'){var item=COVERS.find(function(c){return c.id===chosen;});cover=item.src?await imageBlob(await(await win.fetch(new win.URL(item.src,win.location.href),{credentials:'omit'})).blob(),'image/png',2400):null;}guard(owner);settled=true;resolve(cover);modal.close();}catch(e){state.textContent=e.message;save.disabled=false;}},'cg-template-save');actions.append(save,button('Отмена',function(){modal.close();}));modal.append(heading,state,grid,el('p','cg-caption','Или загрузите другую обложку:'),input,actions);modal.addEventListener('close',function(){dialogs.delete(modal);urls.forEach(function(u){win.URL.revokeObjectURL(u);});modal.remove();if(!settled)reject(fail('Сохранение КП отменено.','cancelled'));});dialogs.set(modal,owner);doc.body.append(modal);modal.showModal();});
+      var library=await covers.load(owner),thumb=template.cover;if(!thumb){var info=await inspect(await template.blob.arrayBuffer(),environment());thumb=new win.Blob([await info.zip.file(info.coverPart).async('uint8array')],{type:'image/png'});}guard(owner);
+      return new Promise(function(resolve,reject){
+        var modal=el('dialog','cg-template-menu kp-cover-pick'),chosen='original',urls=[],settled=false,closed=false,busy=false,grid=el('div','kp-cover-grid'),heading=el('h3','','КП · '+title),state=el('p','cg-caption','Выберите обложку. Имя клиента подставлено автоматически.'),toolbar=el('div','kp-cover-toolbar'),upload=el('label','kp-cover-upload','Добавить обложки'),input=el('input'),actions=el('div','cg-template-menu-actions');
+        function available(){return COVERS.concat(library.items).filter(function(item){return library.hidden.indexOf(item.id)<0;});}
+        function release(){urls.forEach(function(url){win.URL.revokeObjectURL(url);});urls=[];}
+        function controls(){input.disabled=busy;restore.disabled=busy;save.disabled=busy||!available().length;Array.from(grid.querySelectorAll('button')).forEach(function(node){node.disabled=busy;});modal.setAttribute('aria-busy',String(busy));}
+        function render(){
+          if(closed)return;release();grid.replaceChildren();var items=available();if(!items.some(function(item){return item.id===chosen;}))chosen=items.length?items[0].id:'';
+          items.forEach(function(item){
+            var card=el('div','kp-cover-card'),select=button(item.name,function(){chosen=item.id;Array.from(grid.querySelectorAll('.kp-cover-option')).forEach(function(node){node.setAttribute('aria-pressed',String(node===select));});},'kp-cover-option'),image=el('img');image.alt=item.name;
+            if(item.src)image.src=item.src;else{var url=win.URL.createObjectURL(item.blob||thumb);urls.push(url);image.src=url;}
+            select.prepend(image);select.setAttribute('aria-pressed',String(item.id===chosen));
+            var remove=button('×',function(){mutate(function(){return covers.remove(owner,item.id);},'Обложка удалена. Её можно восстановить.');},'kp-cover-remove');remove.setAttribute('aria-label','Удалить обложку «'+item.name+'»');remove.title='Удалить обложку';card.append(select,remove);grid.append(card);
+          });
+          if(!items.length)grid.append(el('p','cg-caption','Нет обложек. Добавьте новую или восстановите удалённые.'));restore.hidden=!library.hidden.length;controls();
+        }
+        async function mutate(action,message,selectNew){
+          if(busy)return;busy=true;controls();state.textContent='Сохраняем обложки…';
+          try{guard(owner);var value=await action();guard(owner);library=value;if(selectNew&&library.items.length)chosen=library.items[library.items.length-1].id;if(!closed){state.textContent=message;render();}}catch(error){if(!closed)state.textContent=error.message;}finally{busy=false;if(!closed)controls();}
+        }
+        input.type='file';input.accept='image/png,image/jpeg,image/webp';input.multiple=true;input.setAttribute('aria-label','Добавить обложки КП');upload.append(input);
+        input.addEventListener('change',function(){var files=Array.from(input.files||[]);if(!files.length)return;mutate(async function(){var items=[];for(var file of files){guard(owner);if(!/^image\/(png|jpeg|webp)$/.test(file.type)||file.size>15*1024*1024)throw fail('Выберите PNG, JPEG или WebP до 15 МБ.');var blob=await imageBlob(file,'image/png',2400);guard(owner);items.push({name:file.name.replace(/\.[^.]+$/,''),blob:blob});}return covers.add(owner,items);},'Обложки добавлены и сохранены в этом браузере.',true).finally(function(){input.value='';});});
+        var restore=button('Восстановить удалённые',function(){mutate(function(){return covers.restore(owner);},'Обложки восстановлены.');},'kp-cover-restore');toolbar.append(upload,restore);
+        var save=button('Собрать Word + PDF',async function(){if(busy)return;busy=true;controls();try{guard(owner);var item=available().find(function(value){return value.id===chosen;});if(!item)throw fail('Выберите обложку.');var cover=item.blob||null;if(item.src){var response=await win.fetch(new win.URL(item.src,win.location.href),{credentials:'omit'});if(!response.ok)throw fail('Обложка не загрузилась.');cover=await imageBlob(await response.blob(),'image/png',2400);}guard(owner);settled=true;resolve(cover);modal.close();}catch(error){if(!closed)state.textContent=error.message;}finally{busy=false;if(!closed)controls();}},'cg-template-save');
+        actions.append(save,button('Отмена',function(){modal.close();}));modal.append(heading,state,toolbar,grid,el('p','cg-caption','Библиотека сохраняется в этом браузере, отдельно для каждого профиля.'),actions);
+        modal.addEventListener('close',function(){closed=true;dialogs.delete(modal);release();modal.remove();if(!settled)reject(fail('Сохранение КП отменено.','cancelled'));});render();dialogs.set(modal,owner);doc.body.append(modal);modal.showModal();
+      });
     }
     var visibleJob=null,banner=el('aside','cg-progress kp-full-progress');banner.hidden=true;var bannerText=button('',function(){if(visibleJob&&visibleJob.owner===scope())statusWindow(visibleJob);}),bannerClose=button('×',function(){if(visibleJob)visibleJob.dismissed=true;banner.hidden=true;});bannerClose.setAttribute('aria-label','Скрыть уведомление КП');banner.append(bannerText,bannerClose);doc.body.append(banner);
     function notify(job,message){job.message=message;visibleJob=job;banner.hidden=job.owner!==scope()||!!job.dismissed;if(!banner.hidden)bannerText.textContent='КП · '+job.title+' · '+message;if(win.CustomEvent)doc.dispatchEvent(new win.CustomEvent('avitolog:kp-documents-updated',{detail:{folderId:job.folderId}}));}
@@ -103,5 +145,5 @@
     }
     return Object.freeze({scope:scope,settings:settings,save:save,latest:latest,headerImage:headerImage,importTemplate:importTemplate,download:download});
   }
-  return {WORD:WORD,safeName:safeName,stamp:stamp,imagePart:imagePart,inspect:inspect,assemble:assemble,draftStore:draftStore,install:install};
+  return {WORD:WORD,safeName:safeName,stamp:stamp,imagePart:imagePart,inspect:inspect,assemble:assemble,draftStore:draftStore,coverLibrary:coverLibrary,install:install};
 }));
