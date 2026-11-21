@@ -1,0 +1,6 @@
+'use strict';
+const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
+const root=require('node:path').resolve(__dirname,'../..'),box={module:{exports:{}}};vm.runInNewContext(fs.readFileSync(root+'/js/interface-scale.js','utf8'),box);const scale=box.module.exports;
+test('interface scale has a safe default, five-percent steps and bounded desktop values',()=>{for(const value of [null,undefined,'bad',0,-10,Infinity])assert.equal(scale.normalize(value),100);assert.equal(scale.normalize(79),80);assert.equal(scale.normalize(55),75);assert.equal(scale.normalize(500),125);});
+test('scale is saved only in the current browser store, not shared CRM keys',()=>{const values=new Map(),storage={getItem:key=>values.get(key),setItem:(key,value)=>values.set(key,value)};assert.equal(scale.read(storage),100);assert.equal(scale.write(storage,85),true);assert.equal(scale.read(storage),85);assert.equal(scale.read({getItem(){return null;}}),100);assert.equal(values.size,1);assert.equal(/^avitolog|^crm_|^avito_/.test(scale.key),false);});
+test('denied storage never claims persistence and keeps the default readable',()=>{const denied={getItem(){throw Error('denied');},setItem(){throw Error('quota');}};assert.equal(scale.read(denied),100);assert.equal(scale.write(denied,90),false);});

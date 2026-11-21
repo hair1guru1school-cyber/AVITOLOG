@@ -180,6 +180,8 @@
 <style>
 .hero-library-niches{display:flex;gap:6px;overflow-x:auto;scrollbar-width:thin;padding:2px 0 8px;margin:8px 0}.hero-library-niches .btn,.hero-library-groups .btn{white-space:nowrap;font-size:12px;padding:6px 9px}.hero-library-niches .btn[aria-pressed="true"]{border-color:var(--green);color:var(--green)}.kp-auto-image-label{display:flex!important;align-items:flex-start;gap:9px}.kp-auto-image-label input[type="checkbox"]{width:auto;min-height:0;margin:3px 0;flex:none}
 .editor #tabs .tab{font-size:11px;padding:0 3px}
+.layout,.stage,.stage-wrap{overflow-anchor:none}
+.pkg-core label{min-width:0}.pkg-core .pkg-label-text{display:flex;align-items:flex-end;min-height:2.8em;line-height:1.4}.pkg-core input{min-width:0}.pkg-core .pkg-limit-row{grid-template-columns:minmax(0,1fr);align-items:start}.pkg-core .pkg-unlimited-check{height:auto;min-height:32px;padding:6px;white-space:normal;font-size:11px}
 </style>
 </head>
 <body class="kp-mobile-editor"><script>if(new URLSearchParams(location.search).get("embedded")==="1")document.body.classList.add("embedded");</script>
@@ -295,14 +297,14 @@
           </div>
           <div class="pkg-core">
           <div class="pkg-limit-row" id="pkgLimitRow">
-            <label>Количество объявлений
+            <label><span class="pkg-label-text">Количество объявлений</span>
               <input id="pkgLimit" type="number" min="1" step="1" inputmode="numeric" placeholder="250">
             </label>
             <label class="pkg-unlimited-check" title="Для Альфы: без ограничения по количеству объявлений">
               <input id="pkgUnlimited" type="checkbox"> ∞ без ограничений
             </label>
           </div>
-            <label>Работа авитолога
+            <label><span class="pkg-label-text">Работа авитолога</span>
               <input id="pkgWork" inputmode="decimal">
             </label>
           </div>
@@ -1057,7 +1059,14 @@
       restoreScroll();
     }
     function captureEditorScroll(){
-      const nodes = [document.scrollingElement, editorEl.querySelector(".body"), $("pkgItems")].filter(Boolean);
+      const nodes = [document.scrollingElement, editorEl.querySelector(".body"), $("pkgItems"), document.querySelector(".stage-wrap")].filter(Boolean);
+      try {
+        let frame = window.frameElement;
+        while (frame) {
+          for (let node = frame.parentElement; node; node = node.parentElement) if (!nodes.includes(node)) nodes.push(node);
+          frame = frame.ownerDocument.defaultView.frameElement;
+        }
+      } catch (_) {}
       const positions = nodes.map(node => [node, node.scrollTop, node.scrollLeft]);
       return () => positions.forEach(([node, top, left]) => { node.scrollTop = top; node.scrollLeft = left; });
     }
@@ -1072,12 +1081,13 @@
         zone.setAttribute("aria-label", `Пакет ${item.index + 1}`);
         zone.dataset.packageIndex = item.index;
         zone.addEventListener("click", () => selectPackage(item.index));
+        zone.addEventListener("pointerdown", event => { if (event.button === 0) event.preventDefault(); });
         stage.appendChild(zone);
       });
     }
     function selectPackage(index){
-      finishInlineEdit(true);
       const restoreScroll = captureEditorScroll();
+      finishInlineEdit(true);
       flushPackageForm();
       selectedPackage = index;
       persistSelectedPackage();
@@ -1182,15 +1192,18 @@
     }
     function startInlineEdit(index,key){
       if(!formReady||imageSaving)return;
+      const restoreScroll=captureEditorScroll();
       finishInlineEdit(true);selectPackage(index);
       const field=inlineFields().find(item=>item.index===index&&item.key===key);if(!field)return;
       const input=document.createElement("input"),pkg=state.packages[index];input.className="canvas-inline-field";input.type="text";input.inputMode="numeric";input.setAttribute("aria-label",key==="quantity"?"Количество объявлений на листе":"Цена пакета на листе");input.value=key==="quantity"?(isPackageUnlimited(pkg,index)?"":packageQuantity(pkg)):String(pkg.work||"").replace(/[^\d\s]/g,"").trim();
       inlineEdit={index,key,input};stage.appendChild(input);positionInline(input,field);input.focus({preventScroll:true});input.select();
+      restoreScroll();
       input.addEventListener("keydown",event=>{if(event.isComposing)return;if(event.key==="Enter"){event.preventDefault();finishInlineEdit(true,true);}else if(event.key==="Escape"){event.preventDefault();finishInlineEdit(false);}});
       input.addEventListener("blur",()=>finishInlineEdit(true));
     }
     function finishInlineEdit(commit,keepInvalid=false){
       if(!inlineEdit)return true;
+      const restoreScroll=captureEditorScroll();
       const edit=inlineEdit,value=edit.input.value.trim(),digits=value.replace(/\s/g,"");
       const valid=/^\d+$/.test(digits)&&Number.isSafeInteger(Number(digits))&&(edit.key!=="quantity"||Number(digits)>0);
       if(commit&&!valid&&keepInvalid){edit.input.setAttribute("aria-invalid","true");edit.input.title="Введите целое число";return false;}
@@ -1201,6 +1214,7 @@
         syncPackageDerivedLines(pkg,edit.index);
         if(selectedPackage===edit.index)renderPackageForm();persistState();draw();
       }
+      restoreScroll();
       return true;
     }
     function drawBackground(){

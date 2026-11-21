@@ -996,7 +996,7 @@
     return (
       '<div class="kp-gen-section kp-editor-embed-section">' +
       '<div class="kp-gen-label">Расчет КП</div>' +
-      '<iframe class="kp-editor-embed" src="kp-editor.html?embedded=1&amp;v=20261107-kp-inline1" title="Редактор КП"></iframe>' +
+      '<iframe class="kp-editor-embed" src="kp-editor.html?embedded=1&amp;v=20261121-editor-stable2" title="Редактор КП"></iframe>' +
       '</div>'
     );
   }
@@ -1564,6 +1564,14 @@
 
   window.__showKpGenerator = function (mc) {
     if (!mc) return;
+    var client = getKpActiveClient();
+    var editorScope = JSON.stringify([kpSaveScopeKey(), String(client && (client.client_id || client.id || client.projectId || client.project_id) || ''), String(client && client.folderId || '')]);
+    var mounted = mc.querySelector('.kp-generator');
+    // Storage notifications from the iframe must not recreate the iframe itself.
+    if (mounted && mounted.dataset.editorScope === editorScope && mounted.querySelector('.kp-editor-embed')) {
+      refreshKpClientContext();
+      return;
+    }
     var d = loadDraft();
     ensureBlock2(d);
     if (d.block2.nicheId && (!d.block2.packages || !d.block2.packages.length)) {
@@ -1607,6 +1615,7 @@
       '</div>' +
       block2Html +
       '</div>';
+    mc.querySelector('.kp-generator').dataset.editorScope = editorScope;
 
     wire(mc);
     var wordSettings = mc.querySelector('#kpWordTemplateSettings');
