@@ -2,7 +2,8 @@
  * CRM Shadow Storage — дублирует все CRM/проектные данные из localStorage → IndexedDB.
  * IndexedDB не очищается при «очистить кэш» и гораздо надёжнее localStorage.
  * При каждом localStorage.setItem на нужный ключ — пишет и в IndexedDB.
- * Каждые 3 минуты делает полный снимок всех ключей.
+ * Снимки только при изменениях, не чаще раза в 30 минут.
+ * Новая история ограничена 96 снимками; старую очищают только после резервной копии.
  */
 (function () {
   'use strict';
@@ -11,6 +12,9 @@
   var DB_VERSION = 1;
   var LIVE_STORE = 'live';       // живые ключи: {key, value, updatedAt}
   var SNAP_STORE = 'snapshots';  // снимки:       {savedAt, keyCount, keys}
+  var SNAPSHOT_INTERVAL = 30 * 60 * 1000;
+  var SNAPSHOT_LIMIT = 96;
+  var RETENTION_KEY = '_crm_shadow_bounded_from_v2';
 
   var BACKUP_PREFIXES = [
     'avitolog_projects',
@@ -39,6 +43,7 @@
 
   var _db    = null;
   var _queue = [];
+  var _snapshotRunning = false;
 
   function openDB(callback) {
     try {
@@ -54,6 +59,7 @@
       };
       req.onsuccess = function (e) {
         _db = e.target.result;
+        _db.onversionchange = function () { _db.close(); _db = null; };
         try { callback(_db); } catch (ce) {}
         var q = _queue.slice(); _queue = [];
         q.forEach(function (fn) { try { fn(_db); } catch (err) {} });
@@ -78,33 +84,65 @@
     }
   }
 
-  function takeSnapshot(db) {
+  function takeSnapshot(db, force) {
+    if (_snapshotRunning) return;
     try {
       var keys = {};
       for (var i = 0; i < localStorage.length; i++) {
         var k = localStorage.key(i);
         if (isBackupKey(k)) {
-          try { keys[k] = localStorage.getItem(k); } catch (e2) {}
+          var value = localStorage.getItem(k);
+          if (value !== null) keys[k] = value;
         }
       }
       var count = Object.keys(keys).length;
       if (count === 0) return;
-      var savedAt = new Date().toISOString();
-      var snap = { savedAt: savedAt, keyCount: count, keys: keys };
-
-      var txSnap = db.transaction(SNAP_STORE, 'readwrite');
-      txSnap.objectStore(SNAP_STORE).put(snap);
-
-      var txLive = db.transaction(LIVE_STORE, 'readwrite');
-      var lStore = txLive.objectStore(LIVE_STORE);
-      Object.keys(keys).forEach(function (k) {
-        lStore.put({ key: k, value: keys[k], updatedAt: savedAt });
-      });
-
+      var now = Date.now();
+      var boundedFrom = null;
       try {
-        localStorage.setItem('_crm_shadow_last_snap', savedAt);
-      } catch (e3) {}
-    } catch (e) {}
+        boundedFrom = localStorage.getItem(RETENTION_KEY);
+        if (!boundedFrom || !isFinite(Date.parse(boundedFrom))) {
+          boundedFrom = new Date(now).toISOString();
+          localStorage.setItem(RETENTION_KEY, boundedFrom);
+        }
+      } catch (e2) { boundedFrom = null; }
+      _snapshotRunning = true;
+      var savedAt = null;
+      var tx = db.transaction([SNAP_STORE, LIVE_STORE], 'readwrite');
+      var snapshots = tx.objectStore(SNAP_STORE);
+      tx.onabort = tx.onerror = function () { _snapshotRunning = false; };
+      tx.oncomplete = function () {
+        _snapshotRunning = false;
+        if (savedAt) {
+          try { localStorage.setItem('_crm_shadow_last_snap', savedAt); } catch (e3) {}
+        }
+      };
+      var latest = snapshots.openCursor(null, 'prev');
+      latest.onsuccess = function () {
+        var previous = latest.result && latest.result.value;
+        var same = previous && previous.keys && Object.keys(previous.keys).length === count &&
+          Object.keys(keys).every(function (key) { return previous.keys[key] === keys[key]; });
+        var elapsed = previous ? now - Date.parse(previous.savedAt) : Infinity;
+        var live = tx.objectStore(LIVE_STORE);
+        Object.keys(keys).forEach(function (key) {
+          live.put({ key: key, value: keys[key], updatedAt: new Date(now).toISOString() });
+        });
+        if (same || (!force && elapsed >= 0 && elapsed < SNAPSHOT_INTERVAL)) return;
+        savedAt = new Date(previous && Date.parse(previous.savedAt) === now ? now + 1 : now).toISOString();
+        snapshots.put({ savedAt: savedAt, keyCount: count, keys: keys });
+        // Only prune history created since the bounded policy was installed.
+        // Key cursors avoid loading gigabytes of legacy snapshot values.
+        if (boundedFrom) {
+          var retained = 0;
+          var cursor = snapshots.openKeyCursor(IDBKeyRange.lowerBound(boundedFrom), 'prev');
+          cursor.onsuccess = function () {
+            if (!cursor.result) return;
+            if (++retained > SNAPSHOT_LIMIT) snapshots.delete(cursor.result.primaryKey);
+            cursor.result.continue();
+          };
+        }
+      };
+    } catch (e) { _snapshotRunning = false; }
   }
 
   // Патч localStorage.setItem
@@ -129,7 +167,7 @@
     takeSnapshot(db);
     setInterval(function () {
       try { takeSnapshot(db); } catch (e) {}
-    }, 3 * 60 * 1000);
+    }, SNAPSHOT_INTERVAL);
   });
 
   // Публичный API для CRM/table.html
@@ -142,7 +180,7 @@
       try { shadowWrite(String(key), String(value)); } catch (e) {}
     },
     takeSnapshot: function () {
-      if (_db) takeSnapshot(_db);
+      if (_db) takeSnapshot(_db, true);
     },
     readAllLive: function (callback) {
       if (!_db) { callback(null); return; }

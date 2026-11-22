@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="ru">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'unsafe-inline'; connect-src 'none'; img-src 'none'; base-uri 'none'; form-action 'none'">
+<title>AVITOBO$$ — обслуживание хранилища</title>
+<style>
+  :root{color-scheme:dark;font:16px/1.5 system-ui;background:#080e17;color:#e2f0f4}
+  body{max-width:760px;margin:40px auto;padding:20px}h1{font-size:24px}
+  section{background:#101d29;border:1px solid #2f5264;border-radius:12px;padding:20px;margin:16px 0}
+  button,a{font:inherit}button{padding:12px 18px;border:1px solid #4fbfc8;border-radius:8px;background:#123a48;color:#fff;cursor:pointer;margin:6px 6px 6px 0}
+  button:disabled{opacity:.4;cursor:default}label{display:block;margin:18px 0}
+  #status{white-space:pre-line}a{color:#66d7eb}small{color:#adc1cc}
+</style>
+<h1>Порядок в хранилище браузера</h1>
+<p>Эта страница не передаёт данные в интернет. Проекты, текущие данные CRM, картинки, шаблоны и документы не удаляются.</p>
+<section>
+  <h2>Резервная копия</h2>
+  <p>Сначала нужна проверенная полная внешняя копия хранилища. Затем сохраните текущие данные отдельным файлом.</p>
+  <button id="export" disabled>Сохранить текущие данные</button>
+  <label><input type="checkbox" id="archive-verified"> Полная внешняя копия сохранена и проверена</label>
+  <small>Файл текущих данных содержит личные сведения. Не отправляйте его посторонним.</small>
+</section>
+<section>
+  <h2>Старые автоматические снимки</h2>
+  <p>Останутся 96 последних снимков. Будут удалены только более старые снимки из резервной истории CRM. Остальные базы и текущие записи остаются на месте.</p>
+  <p id="summary">Проверяю хранилище…</p>
+  <button id="clean" disabled>Очистить старую историю</button>
+  <p id="status" role="status" aria-live="polite"></p>
+</section>
+<a href="index.html">Вернуться в систему</a>
+<script src="js/storage-maintenance.js?v=20261122-storage-bounded1"></script>
+</html>
