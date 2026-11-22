@@ -7,6 +7,9 @@
   'use strict';
   var DB = 'avitolog_shadow_v1';
   var KEEP = 96;
+  var POLICY_KEY = '__crm_shadow_policy_v2';
+
+  function workingRows(rows) { return rows.filter(function (row) { return row.key !== POLICY_KEY; }); }
 
   async function openExisting(env) {
     var databases = await env.indexedDB.databases();
@@ -40,7 +43,10 @@
       var tx = db.transaction(['live', 'snapshots'], 'readonly');
       var live = tx.objectStore('live').getAll();
       var count = tx.objectStore('snapshots').count();
-      tx.oncomplete = function () { resolve({ live: live.result, count: count.result }); };
+      tx.oncomplete = function () {
+        var policy = live.result.find(function (row) { return row.key === POLICY_KEY; });
+        resolve({ live: workingRows(live.result), count: count.result, boundedFrom: policy ? policy.value : null });
+      };
       tx.onabort = tx.onerror = function () { reject(tx.error || Error('Не удалось прочитать базу.')); };
     });
   }
@@ -49,12 +55,13 @@
     return new Promise(function (resolve, reject) {
       var removed = 0;
       var kept = 0;
+      var oldestKept = null;
       var problem = null;
       // Lock live while pruning, but never write or remove any live record.
       var tx = db.transaction(['live', 'snapshots'], 'readwrite');
       var live = tx.objectStore('live').getAll();
       live.onsuccess = function () {
-        if (JSON.stringify(live.result) !== expectedLive) {
+        if (JSON.stringify(workingRows(live.result)) !== expectedLive) {
           problem = Error('Данные изменились после копирования. Сохраните свежую копию и повторите.');
           tx.abort(); return;
         }
@@ -62,8 +69,12 @@
         var cursor = snapshots.openKeyCursor(null, 'prev');
         cursor.onsuccess = function () {
           var row = cursor.result;
-          if (!row) return;
+          if (!row) {
+            if (oldestKept) tx.objectStore('live').put({ key: POLICY_KEY, value: oldestKept, updatedAt: new Date().toISOString() });
+            return;
+          }
           if (++kept > KEEP) { snapshots.delete(row.primaryKey); removed++; }
+          else oldestKept = row.primaryKey;
           if (progress && removed && removed % 250 === 0) progress(removed);
           row.continue();
         };
@@ -97,7 +108,7 @@
         var db = await openExisting(env);
         var data;
         try { data = await readState(db); } finally { db.close(); }
-        var next = { format: 'avitolog-current-storage-v1', origin: env.location.origin, createdAt: new Date().toISOString(), localStorage: localData(env), live: data.live, snapshotCount: data.count };
+        var next = { format: 'avitolog-current-storage-v1', origin: env.location.origin, createdAt: new Date().toISOString(), localStorage: localData(env), live: data.live, snapshotCount: data.count, boundedFrom: data.boundedFrom };
         var text = JSON.stringify(next);
         var blob = new env.Blob([text], { type: 'application/json' });
         var filename = 'AVITOLOG-current-storage-20261122.json';
@@ -125,13 +136,6 @@
         var result;
         try {
           result = await pruneSnapshots(db, JSON.stringify(backup.live), function (count) { status.textContent = 'Обрабатываю старые снимки: ' + count + '. Ожидаю завершения записи…'; });
-          var oldest = await new Promise(function (resolve, reject) {
-            var tx = db.transaction('snapshots', 'readonly');
-            var request = tx.objectStore('snapshots').openKeyCursor();
-            tx.oncomplete = function () { resolve(request.result && request.result.primaryKey); };
-            tx.onabort = function () { reject(tx.error); };
-          });
-          if (oldest) env.localStorage.setItem('_crm_shadow_bounded_from_v2', oldest);
         } finally { db.close(); }
         await audit();
         status.textContent = 'Готово. Удалено старых снимков: ' + result.removed + '. Сохранено последних: ' + result.retained + '. Текущие данные не изменены. Для освобождения файлов на диске закройте Chrome и откройте заново.';

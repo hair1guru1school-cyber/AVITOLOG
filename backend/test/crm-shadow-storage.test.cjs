@@ -51,7 +51,10 @@ test('storage retention and verified cleanup in real IndexedDB', { skip: !chromi
       try { return await maintenance.readState(db); } finally { db.close(); }
     });
   }
-  async function settle(page) { await page.waitForFunction(() => localStorage.getItem('_crm_shadow_bounded_from_v2')); await page.evaluate(() => new Promise(r => setTimeout(r, 100))); }
+  async function settle(page) {
+    await page.waitForFunction(async () => { const db = await maintenance.openExisting(window); try { return !!(await maintenance.readState(db)).boundedFrom; } finally { db.close(); } });
+    await page.evaluate(() => new Promise(r => setTimeout(r, 100)));
+  }
   try {
     await t.test('unchanged data is not snapshotted again; legacy history is retained', async () => {
       const { context, page } = await fixture();
@@ -74,6 +77,14 @@ test('storage retention and verified cleanup in real IndexedDB', { skip: !chromi
     });
     await t.test('managed history is bounded to the newest 96 snapshots', async () => {
       const { context, page } = await fixture(250, { bounded: true, old: true, previous: 'old' });
+      try {
+        await page.addScriptTag({ content: shadow }); await settle(page);
+        assert.equal((await state(page)).count, 96);
+        assert.equal((await state(page)).live[0].value, 'current');
+      } finally { await context.close(); }
+    });
+    await t.test('managed history is pruned even when the current data is unchanged', async () => {
+      const { context, page } = await fixture(250, { bounded: true });
       try {
         await page.addScriptTag({ content: shadow }); await settle(page);
         assert.equal((await state(page)).count, 96);
@@ -156,7 +167,7 @@ test('storage retention and verified cleanup in real IndexedDB', { skip: !chromi
         await page.click('#clean'); await page.waitForFunction(() => document.querySelector('#status').textContent.startsWith('Готово.'));
         assert.equal((await state(page)).count, 96);
         assert.equal(await page.isDisabled('#clean'), true);
-        assert.ok(await page.evaluate(() => localStorage.getItem('_crm_shadow_bounded_from_v2')));
+        assert.ok((await state(page)).boundedFrom);
       } finally { await context.close(); }
     });
     await t.test('production page runs under its network-blocking security policy', async () => {
@@ -169,6 +180,30 @@ test('storage retention and verified cleanup in real IndexedDB', { skip: !chromi
         await page.reload(); await page.waitForSelector('#export:not([disabled])');
         assert.match(await page.textContent('#summary'), /Снимков: 200/);
         assert.match(html, /connect-src 'none'/);
+      } finally { await context.close(); }
+    });
+    await t.test('cleanup and retention policy survive exhausted localStorage without removing settings', async () => {
+      const { context, page } = await fixture();
+      try {
+        await page.evaluate(() => {
+          let length = 0;
+          for (let step = 4194304; step; step = Math.floor(step / 2)) {
+            try { localStorage.setItem('quota-padding', 'x'.repeat(length + step)); length += step; } catch {}
+          }
+        });
+        await page.addScriptTag({ content: shadow }); await settle(page);
+        const result = await page.evaluate(async () => {
+          const db = await maintenance.openExisting(window);
+          const before = await maintenance.readState(db);
+          const padding = localStorage.getItem('quota-padding');
+          await maintenance.pruneSnapshots(db, JSON.stringify(before.live));
+          const after = await maintenance.readState(db); db.close();
+          const publicRows = await new Promise(resolve => __crmShadow.readAllLive(resolve));
+          return { before, after, settingsKept: localStorage.getItem('quota-padding') === padding, policyLeaked: Object.hasOwn(publicRows, '__crm_shadow_policy_v2') };
+        });
+        assert.equal(result.after.count, 96); assert.ok(result.after.boundedFrom);
+        assert.deepEqual(result.after.live, result.before.live);
+        assert.equal(result.settingsKept, true); assert.equal(result.policyLeaked, false);
       } finally { await context.close(); }
     });
   } finally { await browser.close(); }
