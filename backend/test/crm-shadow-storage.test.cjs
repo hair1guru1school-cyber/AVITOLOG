@@ -182,6 +182,41 @@ test('storage retention and verified cleanup in real IndexedDB', { skip: !chromi
         assert.match(html, /connect-src 'none'/);
       } finally { await context.close(); }
     });
+    await t.test('changing a backup timestamp or ADS cache metadata does not block cleanup', async () => {
+      const { context, page } = await fixture();
+      try {
+        await page.evaluate(() => maintenance.mount(window));
+        await page.waitForSelector('#export:not([disabled])');
+        const downloading = page.waitForEvent('download'); await page.click('#export'); await downloading;
+        await page.waitForSelector('#export:not([disabled])');
+        await page.evaluate(async () => {
+          localStorage.setItem('_crm_shadow_last_snap', 'new-time');
+          localStorage.setItem('avitolog_ads_snapshot_v1:fixture:cache-meta', 'new-cache-time');
+          const db = await maintenance.openExisting(window);
+          await new Promise((resolve, reject) => {
+            const tx = db.transaction('live', 'readwrite');
+            tx.objectStore('live').put({ key: 'avitolog_projects', value: 'before', updatedAt: 'new-time' });
+            tx.oncomplete = resolve; tx.onabort = () => reject(tx.error);
+          }); db.close();
+        });
+        await page.check('#archive-verified'); await page.click('#clean');
+        await page.waitForFunction(() => document.querySelector('#status').textContent.startsWith('Готово.'));
+        assert.equal((await state(page)).count, 96);
+      } finally { await context.close(); }
+    });
+    await t.test('changing a real setting still blocks cleanup', async () => {
+      const { context, page } = await fixture();
+      try {
+        await page.evaluate(() => maintenance.mount(window));
+        await page.waitForSelector('#export:not([disabled])');
+        const downloading = page.waitForEvent('download'); await page.click('#export'); await downloading;
+        await page.waitForSelector('#export:not([disabled])');
+        await page.evaluate(() => localStorage.setItem('custom-setting', 'new-value'));
+        await page.check('#archive-verified'); await page.click('#clean');
+        await page.waitForFunction(() => document.querySelector('#status').textContent.includes('Настройки изменились'));
+        assert.equal((await state(page)).count, 200);
+      } finally { await context.close(); }
+    });
     await t.test('cleanup and retention policy survive exhausted localStorage without removing settings', async () => {
       const { context, page } = await fixture();
       try {

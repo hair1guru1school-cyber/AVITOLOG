@@ -10,6 +10,12 @@
   var POLICY_KEY = '__crm_shadow_policy_v2';
 
   function workingRows(rows) { return rows.filter(function (row) { return row.key !== POLICY_KEY; }); }
+  function liveValues(rows) { return JSON.stringify(workingRows(rows).map(function (row) { return [row.key, row.value]; })); }
+  function localValues(rows) {
+    return JSON.stringify(rows.filter(function (row) {
+      return row[0] !== '_crm_shadow_last_snap' && !/^avitolog_ads_snapshot_v1:.*:cache-meta$/.test(row[0]);
+    }));
+  }
 
   async function openExisting(env) {
     var databases = await env.indexedDB.databases();
@@ -61,7 +67,7 @@
       var tx = db.transaction(['live', 'snapshots'], 'readwrite');
       var live = tx.objectStore('live').getAll();
       live.onsuccess = function () {
-        if (JSON.stringify(workingRows(live.result)) !== expectedLive) {
+        if (liveValues(live.result) !== liveValues(JSON.parse(expectedLive))) {
           problem = Error('Данные изменились после копирования. Сохраните свежую копию и повторите.');
           tx.abort(); return;
         }
@@ -131,7 +137,7 @@
       busy = true; buttons();
       status.textContent = 'Очищаю только старую резервную историю…';
       try {
-        if (JSON.stringify(localData(env)) !== JSON.stringify(backup.localStorage)) throw Error('Настройки изменились. Сохраните свежую копию.');
+        if (localValues(localData(env)) !== localValues(backup.localStorage)) throw Error('Настройки изменились. Сохраните свежую копию.');
         var db = await openExisting(env);
         var result;
         try {
